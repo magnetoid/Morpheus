@@ -10,8 +10,8 @@
       <p class="text-sm text-[color:var(--text-muted)]">Most recent 100.</p>
     </div>
     <div class="flex items-center gap-2">
-      <button class="btn"><i data-lucide="upload" class="h-4 w-4"></i> Import</button>
-      <button class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add product</button>
+      <a href="/dashboard/apps/importers/csv/" class="btn"><i data-lucide="upload" class="h-4 w-4"></i> Import</a>
+      <a href="{% url 'admin_dashboard:product_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add product</a>
     </div>
   </div>
 
@@ -43,15 +43,15 @@
         <tr>
           <td><input type="checkbox" class="rounded border-[color:var(--border)]"></td>
           <td>
-            <div class="flex items-center gap-3">
+            <a href="{% url 'admin_dashboard:product_edit' product_id=p.id %}" class="flex items-center gap-3">
               <div class="h-9 w-9 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] flex items-center justify-center">
                 <i data-lucide="package" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
               </div>
               <div class="min-w-0">
-                <div class="font-medium truncate">{{ p.name }}</div>
+                <div class="font-medium truncate hover:underline">{{ p.name }}</div>
                 <div class="text-xs text-[color:var(--text-muted)] truncate">{{ p.short_description|default:"" }}</div>
               </div>
-            </div>
+            </a>
           </td>
           <td class="text-[color:var(--text-muted)]">{{ p.sku|default:"—" }}</td>
           <td class="text-[color:var(--text-muted)]">{{ p.category.name|default:"—" }}</td>
@@ -71,6 +71,9 @@
       <i data-lucide="package" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
       <h3 class="font-medium">No products yet</h3>
       <p class="text-sm text-[color:var(--text-muted)] mt-1">Add your first product to start selling.</p>
+      <a href="{% url 'admin_dashboard:product_new' %}" class="btn btn-primary mt-4 inline-flex">
+        <i data-lucide="plus" class="h-4 w-4"></i> Add product
+      </a>
     </div>
     {% endif %}
   </div>

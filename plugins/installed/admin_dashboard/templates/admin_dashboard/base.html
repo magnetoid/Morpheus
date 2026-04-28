@@ -99,7 +99,7 @@
       <span>AI &amp; agents</span><i data-lucide="chevron-down" class="h-3 w-3"></i>
     </button>
     <div class="nav-group" data-group="ai">
-      <a href="/admin/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
+      <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
       <a href="{% url 'admin_dashboard:ai_insights' %}" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}"><i data-lucide="bar-chart" class="h-4 w-4"></i> Insights</a>
     </div>
 
@@ -196,14 +196,24 @@
         <p style="padding:.5rem .65rem; font-size:.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); margin-bottom:.25rem;">
           Signed in as<br><strong style="color:var(--text);">{{ request.user.email|default:"Staff" }}</strong>
         </p>
-        <a href="/admin/" class="nav-link" style="font-size:.85rem;"><i data-lucide="shield" class="h-4 w-4"></i> Django admin</a>
         <a href="{% url 'admin_dashboard:settings' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="settings" class="h-4 w-4"></i> Settings</a>
-        <a href="/accounts/logout/" class="nav-link" style="font-size:.85rem;"><i data-lucide="log-out" class="h-4 w-4"></i> Sign out</a>
+        <a href="/auth/logout/" class="nav-link" style="font-size:.85rem;"><i data-lucide="log-out" class="h-4 w-4"></i> Sign out</a>
       </div>
     </div>
   </header>
 
   <main class="flex-1 overflow-y-auto p-4 lg:p-6">
+    {% if messages %}
+    <div class="max-w-7xl mx-auto mb-3 space-y-2">
+      {% for m in messages %}
+      <div class="card card-padded text-sm" style="
+          border-color: {% if 'error' in m.tags %}var(--danger){% elif 'success' in m.tags %}var(--success){% else %}var(--border){% endif %};
+          color: {% if 'error' in m.tags %}var(--danger){% elif 'success' in m.tags %}var(--success){% else %}var(--text){% endif %};">
+        {{ m.message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </div>

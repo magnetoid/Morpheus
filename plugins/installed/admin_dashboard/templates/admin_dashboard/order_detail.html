@@ -13,9 +13,31 @@
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-semibold">Order #{{ order.order_number }}</h1>
     <div class="flex items-center gap-2">
-      <button class="btn"><i data-lucide="printer" class="h-4 w-4"></i> Print</button>
-      <button class="btn"><i data-lucide="refresh-ccw" class="h-4 w-4"></i> Refund</button>
-      <button class="btn btn-primary"><i data-lucide="check-circle" class="h-4 w-4"></i> Mark fulfilled</button>
+      {% if order.status == 'pending' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirm">
+        <button class="btn"><i data-lucide="check" class="h-4 w-4"></i> Confirm</button>
+      </form>
+      {% endif %}
+      {% if order.payment_status != 'paid' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark_paid">
+        <button class="btn"><i data-lucide="credit-card" class="h-4 w-4"></i> Mark paid</button>
+      </form>
+      {% endif %}
+      {% if order.status != 'cancelled' and order.status != 'refunded' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}"
+            onsubmit="return confirm('Cancel this order?');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancel">
+        <button class="btn"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'admin_dashboard:order_refund' order_number=order.order_number %}" class="btn">
+        <i data-lucide="refresh-ccw" class="h-4 w-4"></i> Refund
+      </a>
     </div>
   </div>
 
@@ -53,6 +75,31 @@
           <div class="flex justify-between font-semibold pt-1 border-t border-[color:var(--border)]"><span>Total</span><span>{{ order.total }}</span></div>
         </div>
       </div>
+
+      {% if refunds %}
+      <div class="card">
+        <div class="card-padded flex items-center justify-between">
+          <h2 class="font-semibold">Refunds</h2>
+          <span class="text-sm text-[color:var(--text-muted)]">Total refunded: <strong>${{ refunded_total|floatformat:2 }}</strong></span>
+        </div>
+        <table class="morph-table">
+          <thead><tr><th>Amount</th><th>Reason</th><th>Status</th><th class="text-right">When</th></tr></thead>
+          <tbody>
+            {% for r in refunds %}
+            <tr>
+              <td class="font-medium">{{ r.amount }}</td>
+              <td class="text-[color:var(--text-muted)]">{{ r.get_reason_display }}{% if r.notes %} — <span class="text-xs">{{ r.notes }}</span>{% endif %}</td>
+              <td>
+                {% if r.is_processed %}<span class="pill pill-success">processed</span>
+                {% else %}<span class="pill pill-warn">pending</span>{% endif %}
+              </td>
+              <td class="text-right text-[color:var(--text-muted)] whitespace-nowrap">{{ r.created_at|date:"M j, H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
 
       <div class="card">
         <div class="card-padded">

@@ -1,0 +1,101 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if address %}Edit address{% else %}New address{% endif %} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Customers</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <a href="{% url 'admin_dashboard:customer_edit' customer_id=customer.id %}" class="hover:underline">{{ customer.email }}</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">
+      {% if address %}Edit address{% else %}New address{% endif %}
+    </span>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">
+      {% if address %}Edit address{% else %}Add address{% endif %}
+    </h1>
+    <div class="flex items-center gap-2">
+      {% if address %}
+      <form method="post" action="{% url 'admin_dashboard:address_delete' customer_id=customer.id address_id=address.id %}"
+            onsubmit="return confirm('Delete this address?');">
+        {% csrf_token %}
+        <button class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'admin_dashboard:customer_edit' customer_id=customer.id %}" class="btn">Cancel</a>
+      <button form="address-form" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </div>
+
+  <form method="post" id="address-form" class="card card-padded space-y-3">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Type</label>
+        <select name="address_type" class="input">
+          {% for value, label in form.fields.address_type.choices %}
+          <option value="{{ value }}" {% if form.address_type.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex items-end">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_default" {% if form.is_default.value %}checked{% endif %}>
+          Default for this type
+        </label>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">First name</label>
+        <input type="text" name="first_name" class="input" required value="{{ form.first_name.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Last name</label>
+        <input type="text" name="last_name" class="input" required value="{{ form.last_name.value|default:'' }}">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Company</label>
+        <input type="text" name="company" class="input" value="{{ form.company.value|default:'' }}">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Address line 1</label>
+        <input type="text" name="address_line1" class="input" required value="{{ form.address_line1.value|default:'' }}">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Address line 2</label>
+        <input type="text" name="address_line2" class="input" value="{{ form.address_line2.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">City</label>
+        <input type="text" name="city" class="input" required value="{{ form.city.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">State / region</label>
+        <input type="text" name="state" class="input" required value="{{ form.state.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Postal code</label>
+        <input type="text" name="postal_code" class="input" required value="{{ form.postal_code.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Country (ISO 2)</label>
+        <input type="text" name="country" maxlength="2" class="input" required value="{{ form.country.value|default:'US' }}">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Phone</label>
+        <input type="text" name="phone" class="input" value="{{ form.phone.value|default:'' }}">
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2">
+      <a href="{% url 'admin_dashboard:customer_edit' customer_id=customer.id %}" class="btn">Cancel</a>
+      <button class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

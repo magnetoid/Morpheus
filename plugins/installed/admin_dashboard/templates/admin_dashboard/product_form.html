@@ -1,0 +1,260 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if product %}{{ product.name }}{% else %}New product{% endif %} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:products' %}" class="hover:underline">Products</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">
+      {% if product %}{{ product.name }}{% else %}New product{% endif %}
+    </span>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">
+      {% if product %}{{ product.name }}{% else %}Add product{% endif %}
+    </h1>
+    <div class="flex items-center gap-2">
+      {% if product %}
+      <form method="post" action="{% url 'admin_dashboard:product_delete' product_id=product.id %}"
+            onsubmit="return confirm('Delete this product? This cannot be undone.');">
+        {% csrf_token %}
+        <button type="submit" class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'admin_dashboard:products' %}" class="btn">Cancel</a>
+      <button type="submit" form="product-form" class="btn btn-primary">
+        <i data-lucide="save" class="h-4 w-4"></i> Save
+      </button>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="card card-padded" style="border-color: var(--danger); color: var(--danger);">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <form method="post" id="product-form" class="space-y-4">
+    {% csrf_token %}
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Basics</h2>
+      <div>
+        <label class="block text-sm font-medium mb-1">Name</label>
+        <input type="text" name="name" class="input" required value="{{ form.name.value|default:'' }}">
+        {% if form.name.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">SKU</label>
+          <input type="text" name="sku" class="input" value="{{ form.sku.value|default:'' }}">
+          {% if form.sku.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.sku.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Status</label>
+          <select name="status" class="input">
+            {% for value, label in form.fields.status.choices %}
+            <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Type</label>
+          <select name="product_type" class="input">
+            {% for value, label in form.fields.product_type.choices %}
+            <option value="{{ value }}" {% if form.product_type.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Category</label>
+          <select name="category" class="input">
+            <option value="">— None —</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" {% if form.category.value == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Short description</label>
+        <textarea name="short_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.short_description.value|default:'' }}</textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Description</label>
+        <textarea name="description" rows="6" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.description.value|default:'' }}</textarea>
+      </div>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Pricing</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Price</label>
+          <input type="number" step="0.01" min="0" name="price" class="input" required value="{{ form.price.value|default:'' }}">
+          {% if form.price.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.price.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Compare-at price</label>
+          <input type="number" step="0.01" min="0" name="compare_at_price" class="input" value="{{ form.compare_at_price.value|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Cost</label>
+          <input type="number" step="0.01" min="0" name="cost_price" class="input" value="{{ form.cost_price.value|default:'' }}">
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Inventory &amp; shipping</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Vendor</label>
+          <select name="vendor" class="input">
+            <option value="">— None —</option>
+            {% for v in vendors %}
+            <option value="{{ v.id }}" {% if form.vendor.value == v.id %}selected{% endif %}>{{ v.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Weight</label>
+          <input type="number" step="0.001" min="0" name="weight" class="input" value="{{ form.weight.value|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Weight unit</label>
+          <input type="text" name="weight_unit" class="input" value="{{ form.weight_unit.value|default:'kg' }}">
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-4 pt-1">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="track_inventory" {% if form.track_inventory.value %}checked{% endif %}> Track inventory
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="requires_shipping" {% if form.requires_shipping.value %}checked{% endif %}> Requires shipping
+        </label>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2">
+      <a href="{% url 'admin_dashboard:products' %}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="save" class="h-4 w-4"></i> Save
+      </button>
+    </div>
+  </form>
+
+  {% if product %}
+  <div class="card card-padded">
+    <h2 class="font-semibold text-sm">Images</h2>
+    <p class="text-xs text-[color:var(--text-muted)]">First-shown image is the primary; click ★ to change.</p>
+
+    {% if images %}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+      {% for img in images %}
+      <div class="card overflow-hidden">
+        <div style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+          {% if img.image %}
+          <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" style="width:100%; height:100%; object-fit:cover;">
+          {% else %}
+          <i data-lucide="image-off" class="h-6 w-6 text-[color:var(--text-subtle)]"></i>
+          {% endif %}
+        </div>
+        <div class="card-padded" style="padding:.6rem .75rem;">
+          <div class="flex items-center justify-between gap-2">
+            {% if img.is_primary %}
+            <span class="pill pill-info"><i data-lucide="star" class="h-3 w-3" style="margin-right:.2rem;"></i> Primary</span>
+            {% else %}
+            <form method="post" action="{% url 'admin_dashboard:image_set_primary' product_id=product.id image_id=img.id %}">
+              {% csrf_token %}
+              <button class="btn btn-ghost p-1" title="Set as primary"><i data-lucide="star" class="h-4 w-4"></i></button>
+            </form>
+            {% endif %}
+            <form method="post" action="{% url 'admin_dashboard:image_delete' product_id=product.id image_id=img.id %}"
+                  onsubmit="return confirm('Delete this image?');">
+              {% csrf_token %}
+              <button class="btn btn-ghost p-1" aria-label="Delete"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard:image_upload' product_id=product.id %}" class="mt-4 grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+      {% csrf_token %}
+      <div class="md:col-span-5">
+        <label class="block text-sm font-medium mb-1">Image file</label>
+        <input type="file" name="image" accept="image/*" required class="input" style="padding:.4rem .55rem;">
+      </div>
+      <div class="md:col-span-4">
+        <label class="block text-sm font-medium mb-1">Alt text</label>
+        <input type="text" name="alt_text" class="input" placeholder="Describe the image">
+      </div>
+      <div class="md:col-span-2 flex items-center pt-5">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_primary"> Primary
+        </label>
+      </div>
+      <div class="md:col-span-1">
+        <button class="btn btn-primary w-full"><i data-lucide="upload" class="h-4 w-4"></i> Add</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-padded flex items-center justify-between">
+      <div>
+        <h2 class="font-semibold text-sm">Variants</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Specific purchasable versions of this product (e.g. size, color).</p>
+      </div>
+      <a href="{% url 'admin_dashboard:variant_new' product_id=product.id %}" class="btn">
+        <i data-lucide="plus" class="h-4 w-4"></i> Add variant
+      </a>
+    </div>
+    {% if variants %}
+    <table class="morph-table">
+      <thead>
+        <tr><th>Name</th><th>SKU</th><th class="text-right">Price</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for v in variants %}
+        <tr>
+          <td>
+            <a href="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}" class="font-medium hover:underline">{{ v.name }}</a>
+          </td>
+          <td class="text-[color:var(--text-muted)]"><code>{{ v.sku }}</code></td>
+          <td class="text-right">{{ v.effective_price|default:"—" }}</td>
+          <td>
+            {% if v.is_active %}<span class="pill pill-success">Active</span>
+            {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+          </td>
+          <td class="text-right">
+            <a href="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}" class="btn btn-ghost p-1.5">
+              <i data-lucide="pencil" class="h-4 w-4"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">
+      No variants yet. Add one to switch this product into variable mode.
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

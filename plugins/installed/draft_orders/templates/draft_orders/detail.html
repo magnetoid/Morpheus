@@ -2,46 +2,176 @@
 {% block title %}Draft {{ draft.number }} · Morpheus{% endblock %}
 
 {% block content %}
-<p><a href="/dashboard/draft-orders/" class="meta">← Draft orders</a></p>
-<h1 class="text-xl font-semibold mb-2">Draft #{{ draft.number }}</h1>
-<p class="meta mb-4">
-  Status: <span class="pill">{{ draft.get_status_display }}</span> ·
-  Customer: {{ draft.customer.email|default:draft.customer_email|default:"—" }} ·
-  Channel: {{ draft.channel.slug|default:"—" }}
-</p>
+<div class="max-w-5xl mx-auto space-y-4">
 
-<div class="card mb-6">
-  <table class="morph-table">
-    <thead><tr><th>Product</th><th>SKU</th><th>Qty</th><th>Unit</th><th>Line</th></tr></thead>
-    <tbody>
-    {% for line in draft.lines.all %}
-      <tr>
-        <td>{{ line.product_name }}</td>
-        <td><code>{{ line.sku|default:"—" }}</code></td>
-        <td>{{ line.quantity }}</td>
-        <td>{{ line.unit_price }}</td>
-        <td>{{ line.line_total }}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No lines yet.</td></tr>
-    {% endfor %}
-    </tbody>
-    <tfoot>
-      <tr><td colspan="4" style="text-align:right;">Subtotal</td><td>{{ draft.subtotal }}</td></tr>
-      <tr><td colspan="4" style="text-align:right;">Discount</td><td>−{{ draft.discount_total }}</td></tr>
-      <tr><td colspan="4" style="text-align:right;">Tax</td><td>{{ draft.tax_total }}</td></tr>
-      <tr><td colspan="4" style="text-align:right;">Shipping</td><td>{{ draft.shipping_total }}</td></tr>
-      <tr><td colspan="4" style="text-align:right;"><strong>Total</strong></td><td><strong>{{ draft.total }}</strong></td></tr>
-    </tfoot>
-  </table>
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="/dashboard/orders/" class="hover:underline">Orders</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <a href="/dashboard/draft-orders/" class="hover:underline">Drafts</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">#{{ draft.number }}</span>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Draft #{{ draft.number }}</h1>
+    <div class="flex items-center gap-2">
+      {% if editable %}
+      <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/cancel/"
+            onsubmit="return confirm('Cancel this draft?');">
+        {% csrf_token %}
+        <button class="btn"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel draft</button>
+      </form>
+      <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/convert/">
+        {% csrf_token %}
+        <button class="btn btn-primary" {% if not draft.lines.all %}disabled title="Add at least one line first"{% endif %}>
+          <i data-lucide="check-circle" class="h-4 w-4"></i> Convert to order
+        </button>
+      </form>
+      {% else %}
+      <span class="pill pill-neutral">{{ draft.get_status_display }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 space-y-4">
+
+      <div class="card">
+        <div class="card-padded flex items-center justify-between">
+          <h2 class="font-semibold">Items</h2>
+          <span class="pill pill-neutral">{{ draft.get_status_display }}</span>
+        </div>
+        <table class="morph-table">
+          <thead>
+            <tr><th>Product</th><th>SKU</th><th class="text-right">Qty</th><th class="text-right">Unit</th><th class="text-right">Line</th><th class="w-10"></th></tr>
+          </thead>
+          <tbody>
+            {% for line in draft.lines.all %}
+            <tr>
+              <td>
+                <div class="font-medium">{{ line.product_name }}</div>
+                {% if line.variant %}<div class="text-xs text-[color:var(--text-muted)]">{{ line.variant.product.name }}</div>{% endif %}
+              </td>
+              <td class="text-[color:var(--text-muted)]"><code>{{ line.sku|default:"—" }}</code></td>
+              <td class="text-right">{{ line.quantity }}</td>
+              <td class="text-right text-[color:var(--text-muted)]">{{ line.unit_price }}</td>
+              <td class="text-right font-medium">{{ line.line_total }}</td>
+              <td>
+                {% if editable %}
+                <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/lines/{{ line.id }}/delete/"
+                      onsubmit="return confirm('Remove this line?');">
+                  {% csrf_token %}
+                  <button class="btn btn-ghost p-1.5" aria-label="Remove">
+                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="card-padded text-center text-[color:var(--text-muted)] py-8">No lines yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="card-padded border-t border-[color:var(--border)] space-y-1.5 text-sm">
+          <div class="flex justify-between text-[color:var(--text-muted)]"><span>Subtotal</span><span>{{ draft.subtotal }}</span></div>
+          {% if draft.discount_total %}<div class="flex justify-between text-[color:var(--text-muted)]"><span>Discount</span><span>−{{ draft.discount_total }}</span></div>{% endif %}
+          <div class="flex justify-between text-[color:var(--text-muted)]"><span>Shipping</span><span>{{ draft.shipping_total }}</span></div>
+          <div class="flex justify-between text-[color:var(--text-muted)]"><span>Tax</span><span>{{ draft.tax_total }}</span></div>
+          <div class="flex justify-between font-semibold pt-1 border-t border-[color:var(--border)]"><span>Total</span><span>{{ draft.total }}</span></div>
+        </div>
+      </div>
+
+      {% if editable %}
+      <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/lines/add/" class="card card-padded space-y-3">
+        {% csrf_token %}
+        <h2 class="font-semibold text-sm">Add line item</h2>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Pick a variant</label>
+          <select id="variant-picker" name="variant" class="input">
+            <option value="">— Custom (fill in fields below) —</option>
+            {% for v in variants %}
+            <option value="{{ v.id }}"
+                    data-name="{{ v.product.name }}{% if v.name %} — {{ v.name }}{% endif %}"
+                    data-sku="{{ v.sku }}"
+                    data-price="{{ v.effective_price.amount|default_if_none:'' }}">
+              {{ v.product.name }}{% if v.name %} — {{ v.name }}{% endif %} · {{ v.sku }}
+            </option>
+            {% endfor %}
+          </select>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">
+            Picking a variant auto-fills name, SKU, and unit price.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-1">Product name</label>
+            <input type="text" name="product_name" id="line-name" class="input">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">SKU</label>
+            <input type="text" name="sku" id="line-sku" class="input">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Quantity</label>
+            <input type="number" name="quantity" min="1" value="1" class="input">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Unit price</label>
+            <input type="number" step="0.01" min="0" name="unit_price" id="line-price" class="input">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end">
+          <button class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add line</button>
+        </div>
+      </form>
+      {% endif %}
+
+    </div>
+
+    <aside class="space-y-4">
+      <div class="card card-padded">
+        <h3 class="font-semibold text-sm">Customer</h3>
+        <p class="mt-2 text-sm">{{ draft.customer.email|default:draft.customer_email|default:"—" }}</p>
+        {% if draft.customer %}
+        <p class="text-xs text-[color:var(--text-muted)]">{{ draft.customer.first_name }} {{ draft.customer.last_name }}</p>
+        {% endif %}
+      </div>
+      {% if draft.note %}
+      <div class="card card-padded">
+        <h3 class="font-semibold text-sm">Note</h3>
+        <p class="mt-2 text-sm whitespace-pre-wrap">{{ draft.note }}</p>
+      </div>
+      {% endif %}
+      {% if draft.status == 'converted' and draft.converted_order_id %}
+      <div class="card card-padded">
+        <p class="text-sm">
+          Converted — <a class="hover:underline font-medium" href="/dashboard/orders/">view orders</a>
+        </p>
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+
 </div>
 
-{% if draft.status != 'converted' and draft.status != 'cancelled' %}
-<form method="post" action="/dashboard/draft-orders/{{ draft.number }}/convert/">
-  {% csrf_token %}
-  <button type="submit" class="btn btn-primary">Convert to order →</button>
-</form>
-{% else %}
-<p class="meta">Already {{ draft.get_status_display }}{% if draft.converted_order_id %} (order id {{ draft.converted_order_id }}){% endif %}.</p>
-{% endif %}
+<script>
+  (() => {
+    const sel = document.getElementById('variant-picker');
+    if (!sel) return;
+    const nameI = document.getElementById('line-name');
+    const skuI = document.getElementById('line-sku');
+    const priceI = document.getElementById('line-price');
+    sel.addEventListener('change', () => {
+      const opt = sel.options[sel.selectedIndex];
+      if (!opt || !opt.value) return;
+      if (!nameI.value) nameI.value = opt.dataset.name || '';
+      if (!skuI.value) skuI.value = opt.dataset.sku || '';
+      if (!priceI.value) priceI.value = opt.dataset.price || '';
+    });
+  })();
+</script>
 {% endblock %}

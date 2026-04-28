@@ -1,0 +1,154 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if customer %}{{ customer.email }}{% else %}New customer{% endif %} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Customers</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">
+      {% if customer %}{{ customer.email }}{% else %}New customer{% endif %}
+    </span>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">
+      {% if customer %}{{ customer.full_name }}{% else %}Add customer{% endif %}
+    </h1>
+    <div class="flex items-center gap-2">
+      {% if customer and not customer.is_staff and not customer.is_superuser %}
+      <form method="post" action="{% url 'admin_dashboard:customer_delete' customer_id=customer.id %}"
+            onsubmit="return confirm('Delete this customer? This cannot be undone.');">
+        {% csrf_token %}
+        <button type="submit" class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'admin_dashboard:customers' %}" class="btn">Cancel</a>
+      <button type="submit" form="customer-form" class="btn btn-primary">
+        <i data-lucide="save" class="h-4 w-4"></i> Save
+      </button>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="card card-padded" style="border-color: var(--danger); color: var(--danger);">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <form method="post" id="customer-form" class="lg:col-span-2 space-y-4">
+      {% csrf_token %}
+
+      <div class="card card-padded space-y-3">
+        <h2 class="font-semibold text-sm">Contact</h2>
+        <div>
+          <label class="block text-sm font-medium mb-1">Email</label>
+          <input type="email" name="email" class="input" required value="{{ form.email.value|default:'' }}">
+          {% if form.email.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.email.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">First name</label>
+            <input type="text" name="first_name" class="input" value="{{ form.first_name.value|default:'' }}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Last name</label>
+            <input type="text" name="last_name" class="input" value="{{ form.last_name.value|default:'' }}">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Phone</label>
+          <input type="text" name="phone" class="input" value="{{ form.phone.value|default:'' }}">
+        </div>
+      </div>
+
+      <div class="card card-padded space-y-3">
+        <h2 class="font-semibold text-sm">Preferences</h2>
+        <div class="flex flex-wrap gap-4">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" name="accepts_marketing" {% if form.accepts_marketing.value %}checked{% endif %}> Accepts marketing
+          </label>
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" name="is_verified" {% if form.is_verified.value %}checked{% endif %}> Verified
+          </label>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Internal notes</label>
+          <textarea name="notes" rows="4" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.notes.value|default:'' }}</textarea>
+        </div>
+      </div>
+    </form>
+
+    <aside class="space-y-4">
+      {% if customer and order_summary %}
+      <div class="card card-padded">
+        <h3 class="font-semibold text-sm">Lifetime</h3>
+        <div class="mt-2 grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <div class="text-[color:var(--text-muted)] text-xs">Orders</div>
+            <div class="text-lg font-semibold">{{ order_summary.count }}</div>
+          </div>
+          <div>
+            <div class="text-[color:var(--text-muted)] text-xs">Spent</div>
+            <div class="text-lg font-semibold">${{ order_summary.spent|floatformat:2 }}</div>
+          </div>
+        </div>
+      </div>
+      {% if order_summary.recent %}
+      <div class="card">
+        <div class="card-padded"><h3 class="font-semibold text-sm">Recent orders</h3></div>
+        <table class="morph-table">
+          <tbody>
+            {% for o in order_summary.recent %}
+            <tr>
+              <td>
+                <a href="{% url 'admin_dashboard:order_detail' o.order_number %}" class="font-medium hover:underline">#{{ o.order_number }}</a>
+                <div class="text-xs text-[color:var(--text-muted)]">{{ o.placed_at|date:"M j, Y" }}</div>
+              </td>
+              <td class="text-right font-medium">{{ o.total }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="card-padded flex items-center justify-between">
+          <h3 class="font-semibold text-sm">Addresses</h3>
+          <a href="{% url 'admin_dashboard:address_new' customer_id=customer.id %}" class="btn btn-ghost p-1.5" aria-label="Add address">
+            <i data-lucide="plus" class="h-4 w-4"></i>
+          </a>
+        </div>
+        {% if addresses %}
+        <ul class="divide-y divide-[color:var(--border)]">
+          {% for a in addresses %}
+          <li class="card-padded">
+            <a href="{% url 'admin_dashboard:address_edit' customer_id=customer.id address_id=a.id %}" class="block hover:underline">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-medium">{{ a.first_name }} {{ a.last_name }}</div>
+                <div class="flex items-center gap-2">
+                  <span class="pill pill-neutral">{{ a.get_address_type_display }}</span>
+                  {% if a.is_default %}<span class="pill pill-info">default</span>{% endif %}
+                </div>
+              </div>
+              <div class="text-xs text-[color:var(--text-muted)] mt-1">
+                {{ a.address_line1 }}{% if a.address_line2 %}, {{ a.address_line2 }}{% endif %}<br>
+                {{ a.city }}, {{ a.state }} {{ a.postal_code }} · {{ a.country }}
+              </div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="card-padded text-sm text-[color:var(--text-muted)]">No addresses yet.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+
+</div>
+{% endblock %}

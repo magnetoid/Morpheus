@@ -1,0 +1,62 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Refund · Order #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:orders' %}" class="hover:underline">Orders</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <a href="{% url 'admin_dashboard:order_detail' order_number=order.order_number %}" class="hover:underline">#{{ order.order_number }}</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">Refund</span>
+  </div>
+
+  <h1 class="text-xl font-semibold">Issue refund</h1>
+  <p class="text-sm text-[color:var(--text-muted)]">
+    Order total: <strong>{{ order.total }}</strong>.
+  </p>
+
+  {% if form.non_field_errors %}
+  <div class="card card-padded" style="border-color: var(--danger); color: var(--danger);">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <form method="post" class="card card-padded space-y-3">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Amount</label>
+      <input type="number" step="0.01" min="0.01" name="amount" class="input" required value="{{ form.amount.value|default:'' }}">
+      {% if form.amount.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.amount.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Reason</label>
+      <select name="reason" class="input">
+        {% for value, label in form.fields.reason.choices %}
+        <option value="{{ value }}" {% if form.reason.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Notes</label>
+      <textarea name="notes" rows="3" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.notes.value|default:'' }}</textarea>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2">
+      <a href="{% url 'admin_dashboard:order_detail' order_number=order.order_number %}" class="btn">Cancel</a>
+      <button class="btn btn-primary"><i data-lucide="refresh-ccw" class="h-4 w-4"></i> Issue refund</button>
+    </div>
+  </form>
+
+  <p class="text-xs text-[color:var(--text-muted)]">
+    Issuing a refund here records the amount and reason against this order
+    and writes a timeline event. It does not yet trigger gateway-side
+    reversal — connect a payment plugin's refund hook to wire that up.
+  </p>
+
+</div>
+{% endblock %}

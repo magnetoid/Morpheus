@@ -16,8 +16,8 @@
         {% if draft_count %}<span class="pill pill-info" style="margin-left:.35rem;">{{ draft_count }}</span>{% endif %}
       </a>
       {% endif %}
-      <button class="btn"><i data-lucide="download" class="h-4 w-4"></i> Export</button>
-      <button class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Create order</button>
+      <a href="/dashboard/apps/importers/csv/" class="btn"><i data-lucide="download" class="h-4 w-4"></i> Export</a>
+      <a href="{% url 'admin_dashboard:order_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Create order</a>
     </div>
   </div>
 
@@ -77,6 +77,9 @@
       <i data-lucide="shopping-bag" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
       <h3 class="font-medium">No orders yet</h3>
       <p class="text-sm text-[color:var(--text-muted)] mt-1">When customers place orders, they'll appear here.</p>
+      <a href="{% url 'admin_dashboard:order_new' %}" class="btn btn-primary mt-4 inline-flex">
+        <i data-lucide="plus" class="h-4 w-4"></i> Create order
+      </a>
     </div>
     {% endif %}
   </div>

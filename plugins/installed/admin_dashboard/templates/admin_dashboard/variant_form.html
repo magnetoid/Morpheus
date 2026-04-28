@@ -1,0 +1,87 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if variant %}{{ variant.name }}{% else %}New variant{% endif %} · {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:products' %}" class="hover:underline">Products</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <a href="{% url 'admin_dashboard:product_edit' product_id=product.id %}" class="hover:underline">{{ product.name }}</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">
+      {% if variant %}{{ variant.name }}{% else %}New variant{% endif %}
+    </span>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">
+      {% if variant %}Edit variant{% else %}Add variant{% endif %}
+    </h1>
+    <div class="flex items-center gap-2">
+      {% if variant %}
+      <form method="post" action="{% url 'admin_dashboard:variant_delete' product_id=product.id variant_id=variant.id %}"
+            onsubmit="return confirm('Delete this variant?');">
+        {% csrf_token %}
+        <button class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'admin_dashboard:product_edit' product_id=product.id %}" class="btn">Cancel</a>
+      <button form="variant-form" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </div>
+
+  <form method="post" id="variant-form" class="card card-padded space-y-3">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Name</label>
+        <input type="text" name="name" class="input" required
+               placeholder="e.g. Red / XL"
+               value="{{ form.name.value|default:'' }}">
+        {% if form.name.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">SKU</label>
+        <input type="text" name="sku" class="input" required value="{{ form.sku.value|default:'' }}">
+        {% if form.sku.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.sku.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Price</label>
+        <input type="number" step="0.01" min="0" name="price" class="input" value="{{ form.price.value|default:'' }}">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">
+          Leave blank to inherit from the parent product ({{ product.price }}).
+        </p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Compare-at</label>
+        <input type="number" step="0.01" min="0" name="compare_at_price" class="input" value="{{ form.compare_at_price.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Cost</label>
+        <input type="number" step="0.01" min="0" name="cost_price" class="input" value="{{ form.cost_price.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Weight</label>
+        <input type="number" step="0.001" min="0" name="weight" class="input" value="{{ form.weight.value|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Sort order</label>
+        <input type="number" min="0" name="sort_order" class="input" value="{{ form.sort_order.value|default:0 }}">
+      </div>
+      <div class="flex items-end">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_active" {% if form.is_active.value %}checked{% endif %}> Active
+        </label>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2">
+      <a href="{% url 'admin_dashboard:product_edit' product_id=product.id %}" class="btn">Cancel</a>
+      <button class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

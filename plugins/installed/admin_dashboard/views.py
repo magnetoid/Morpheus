@@ -23,11 +23,21 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
-from django.contrib.admin.views.decorators import staff_member_required
+from morpheus.views import messages
+from morpheus.views import staff_member_required
 from django.db.models import Sum
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from morpheus.views import HttpRequest, HttpResponse
+from morpheus.views import get_object_or_404, redirect, render
 from django.utils import timezone
+
+from plugins.installed.admin_dashboard.forms import (
+    AddressForm,
+    CustomerForm,
+    DraftOrderForm,
+    ProductForm,
+    RefundForm,
+    VariantForm,
+)
 
 logger = logging.getLogger('morpheus.admin')
 
@@ -227,8 +237,20 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         )
     except Exception:  # noqa: BLE001
         order = None
+    refunds: list[Any] = []
+    refunded_total = Decimal('0')
+    if order is not None:
+        try:
+            refunds = list(order.refunds.all().order_by('-created_at'))
+            refunded_total = sum(
+                (Decimal(str(r.amount.amount)) for r in refunds), Decimal('0'),
+            )
+        except Exception:  # noqa: BLE001
+            pass
     return render(request, 'admin_dashboard/order_detail.html', {
         'order': order,
+        'refunds': refunds,
+        'refunded_total': refunded_total,
         'active_nav': 'orders',
     })
 
@@ -262,6 +284,77 @@ def products_list(request: HttpRequest) -> HttpResponse:
         'search': search,
         'active_nav': 'products',
     })
+
+
+def _product_form_choices():
+    """Categories + vendors for the product form selects."""
+    categories: list[Any] = []
+    vendors: list[Any] = []
+    try:
+        from plugins.installed.catalog.models import Category, Vendor
+        categories = list(Category.objects.filter(is_active=True).order_by('name'))
+        vendors = list(Vendor.objects.filter(is_active=True).order_by('name'))
+    except Exception:  # noqa: BLE001
+        pass
+    return categories, vendors
+
+
+@staff_member_required
+def product_new(request: HttpRequest) -> HttpResponse:
+    if request.method == 'POST':
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            product = form.save()
+            messages.success(request, f'Product "{product.name}" created.')
+            return redirect('admin_dashboard:product_edit', product_id=product.id)
+    else:
+        form = ProductForm()
+    categories, vendors = _product_form_choices()
+    return render(request, 'admin_dashboard/product_form.html', {
+        'form': form,
+        'product': None,
+        'categories': categories,
+        'vendors': vendors,
+        'active_nav': 'products',
+    })
+
+
+@staff_member_required
+def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
+    from plugins.installed.catalog.models import Product
+    product = get_object_or_404(Product, pk=product_id)
+    if request.method == 'POST':
+        form = ProductForm(request.POST, instance=product)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Product saved.')
+            return redirect('admin_dashboard:product_edit', product_id=product.id)
+    else:
+        form = ProductForm(instance=product)
+    categories, vendors = _product_form_choices()
+    variants = list(product.variants.all().order_by('sort_order', 'name'))
+    images = list(product.images.all().order_by('sort_order', '-is_primary'))
+    return render(request, 'admin_dashboard/product_form.html', {
+        'form': form,
+        'product': product,
+        'categories': categories,
+        'vendors': vendors,
+        'variants': variants,
+        'images': images,
+        'active_nav': 'products',
+    })
+
+
+@staff_member_required
+def product_delete(request: HttpRequest, product_id: str) -> HttpResponse:
+    from plugins.installed.catalog.models import Product
+    product = get_object_or_404(Product, pk=product_id)
+    if request.method == 'POST':
+        name = product.name
+        product.delete()
+        messages.success(request, f'Deleted product "{name}".')
+        return redirect('admin_dashboard:products')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
 
 
 # ── Customers ─────────────────────────────────────────────────────────────────
@@ -300,6 +393,358 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         'search': search,
         'active_nav': 'customers',
     })
+
+
+@staff_member_required
+def customer_new(request: HttpRequest) -> HttpResponse:
+    if request.method == 'POST':
+        form = CustomerForm(request.POST)
+        if form.is_valid():
+            customer = form.save()
+            messages.success(request, f'Customer "{customer.email}" created.')
+            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+    else:
+        form = CustomerForm()
+    return render(request, 'admin_dashboard/customer_form.html', {
+        'form': form,
+        'customer': None,
+        'active_nav': 'customers',
+    })
+
+
+@staff_member_required
+def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    customer = get_object_or_404(User, pk=customer_id)
+    if request.method == 'POST':
+        form = CustomerForm(request.POST, instance=customer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Customer saved.')
+            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+    else:
+        form = CustomerForm(instance=customer)
+    # Quick stats so the edit page also works as a customer profile.
+    order_summary: dict[str, Any] = {'count': 0, 'spent': Decimal('0'), 'recent': []}
+    try:
+        from plugins.installed.orders.models import Order
+        orders_qs = Order.objects.filter(customer=customer)
+        order_summary['count'] = orders_qs.count()
+        order_summary['spent'] = (
+            orders_qs.aggregate(t=Sum('total'))['t'] or Decimal('0')
+        )
+        order_summary['recent'] = list(orders_qs.order_by('-placed_at')[:5])
+    except Exception:  # noqa: BLE001
+        pass
+    addresses: list[Any] = []
+    try:
+        addresses = list(customer.addresses.all())
+    except Exception:  # noqa: BLE001 — customer model may not have addresses
+        pass
+    return render(request, 'admin_dashboard/customer_form.html', {
+        'form': form,
+        'customer': customer,
+        'order_summary': order_summary,
+        'addresses': addresses,
+        'active_nav': 'customers',
+    })
+
+
+@staff_member_required
+def customer_delete(request: HttpRequest, customer_id: str) -> HttpResponse:
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    customer = get_object_or_404(User, pk=customer_id)
+    if request.method == 'POST':
+        # Refuse to nuke staff/superuser accounts from the merchant UI.
+        if customer.is_staff or customer.is_superuser:
+            messages.error(request, 'Staff accounts cannot be deleted from here.')
+            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+        email = customer.email
+        customer.delete()
+        messages.success(request, f'Deleted customer "{email}".')
+        return redirect('admin_dashboard:customers')
+    return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+
+
+# ── Customer addresses ────────────────────────────────────────────────────────
+
+
+def _get_customer(customer_id: str):
+    from django.contrib.auth import get_user_model
+    return get_object_or_404(get_user_model(), pk=customer_id)
+
+
+@staff_member_required
+def address_new(request: HttpRequest, customer_id: str) -> HttpResponse:
+    customer = _get_customer(customer_id)
+    if request.method == 'POST':
+        form = AddressForm(request.POST, customer=customer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Address added.')
+            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+    else:
+        form = AddressForm(customer=customer)
+    return render(request, 'admin_dashboard/address_form.html', {
+        'form': form,
+        'customer': customer,
+        'address': None,
+        'active_nav': 'customers',
+    })
+
+
+@staff_member_required
+def address_edit(request: HttpRequest, customer_id: str, address_id: str) -> HttpResponse:
+    from plugins.installed.customers.models import Address
+    customer = _get_customer(customer_id)
+    address = get_object_or_404(Address, pk=address_id, customer=customer)
+    if request.method == 'POST':
+        form = AddressForm(request.POST, instance=address, customer=customer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Address saved.')
+            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+    else:
+        form = AddressForm(instance=address, customer=customer)
+    return render(request, 'admin_dashboard/address_form.html', {
+        'form': form,
+        'customer': customer,
+        'address': address,
+        'active_nav': 'customers',
+    })
+
+
+@staff_member_required
+def address_delete(request: HttpRequest, customer_id: str, address_id: str) -> HttpResponse:
+    from plugins.installed.customers.models import Address
+    customer = _get_customer(customer_id)
+    address = get_object_or_404(Address, pk=address_id, customer=customer)
+    if request.method == 'POST':
+        address.delete()
+        messages.success(request, 'Address deleted.')
+    return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+
+
+# ── Order actions ─────────────────────────────────────────────────────────────
+
+
+@staff_member_required
+def order_new(request: HttpRequest) -> HttpResponse:
+    """Create a draft order from the dashboard.
+
+    Real `orders.Order` rows are produced by the storefront checkout or by
+    converting a draft — staff don't hand-craft FSM-managed orders.
+    """
+    customers: list[Any] = []
+    try:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        customers = list(User.objects.order_by('-date_joined')[:200])
+    except Exception:  # noqa: BLE001
+        pass
+
+    if request.method == 'POST':
+        form = DraftOrderForm(request.POST)
+        if form.is_valid():
+            draft = form.save()
+            messages.success(request, f'Draft order #{draft.number} created.')
+            return redirect(f'/dashboard/draft-orders/{draft.number}/')
+    else:
+        form = DraftOrderForm()
+    return render(request, 'admin_dashboard/order_new.html', {
+        'form': form,
+        'customers': customers,
+        'active_nav': 'orders',
+    })
+
+
+@staff_member_required
+def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
+    """POST-only side-effects on an existing order (cancel, mark paid, …)."""
+    if request.method != 'POST':
+        return redirect('admin_dashboard:order_detail', order_number=order_number)
+
+    from plugins.installed.orders.models import Order
+    order = get_object_or_404(Order, order_number=order_number)
+    action = request.POST.get('action', '')
+
+    try:
+        if action == 'cancel':
+            order.cancel(reason=request.POST.get('reason', '') or 'Cancelled from dashboard')
+            order.save()
+            messages.success(request, f'Order #{order.order_number} cancelled.')
+        elif action == 'confirm':
+            order.confirm()
+            order.save()
+            messages.success(request, f'Order #{order.order_number} confirmed.')
+        elif action == 'mark_paid':
+            order.payment_status = 'paid'
+            order.save(update_fields=['payment_status', 'updated_at'])
+            order.log_event('PAYMENT_MARKED_PAID', message='Marked paid via dashboard')
+            messages.success(request, f'Order #{order.order_number} marked paid.')
+        elif action == 'add_tracking':
+            tracking = (request.POST.get('tracking_number') or '').strip()[:200]
+            method = (request.POST.get('shipping_method') or '').strip()[:100]
+            order.tracking_number = tracking
+            if method:
+                order.shipping_method = method
+            order.save(update_fields=['tracking_number', 'shipping_method', 'updated_at'])
+            order.log_event('TRACKING_UPDATED', message=tracking)
+            messages.success(request, 'Tracking updated.')
+        else:
+            messages.error(request, f'Unknown action "{action}".')
+    except Exception as e:  # noqa: BLE001 — FSM rejects illegal transitions
+        logger.warning('order_action %s on %s failed: %s', action, order_number, e)
+        messages.error(request, f'Action failed: {e}')
+
+    return redirect('admin_dashboard:order_detail', order_number=order_number)
+
+
+@staff_member_required
+def order_refund(request: HttpRequest, order_number: str) -> HttpResponse:
+    from plugins.installed.orders.models import Order
+    order = get_object_or_404(Order, order_number=order_number)
+    if request.method == 'POST':
+        form = RefundForm(request.POST, order=order)
+        if form.is_valid():
+            refund = form.save()
+            messages.success(request, f'Refund of {refund.amount} recorded.')
+            return redirect('admin_dashboard:order_detail', order_number=order.order_number)
+    else:
+        form = RefundForm(order=order)
+    return render(request, 'admin_dashboard/order_refund.html', {
+        'form': form,
+        'order': order,
+        'active_nav': 'orders',
+    })
+
+
+# ── Product variants ──────────────────────────────────────────────────────────
+
+
+def _get_product(product_id: str):
+    from plugins.installed.catalog.models import Product
+    return get_object_or_404(Product, pk=product_id)
+
+
+@staff_member_required
+def variant_new(request: HttpRequest, product_id: str) -> HttpResponse:
+    product = _get_product(product_id)
+    if request.method == 'POST':
+        form = VariantForm(request.POST, product=product)
+        if form.is_valid():
+            form.save()
+            # First variant flips the product to 'variable' as a convenience.
+            if product.product_type == 'simple':
+                product.product_type = 'variable'
+                product.save(update_fields=['product_type', 'updated_at'])
+            messages.success(request, 'Variant added.')
+            return redirect('admin_dashboard:product_edit', product_id=product.id)
+    else:
+        form = VariantForm(product=product)
+    return render(request, 'admin_dashboard/variant_form.html', {
+        'form': form,
+        'product': product,
+        'variant': None,
+        'active_nav': 'products',
+    })
+
+
+@staff_member_required
+def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> HttpResponse:
+    from plugins.installed.catalog.models import ProductVariant
+    product = _get_product(product_id)
+    variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
+    if request.method == 'POST':
+        form = VariantForm(request.POST, instance=variant, product=product)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Variant saved.')
+            return redirect('admin_dashboard:product_edit', product_id=product.id)
+    else:
+        form = VariantForm(instance=variant, product=product)
+    return render(request, 'admin_dashboard/variant_form.html', {
+        'form': form,
+        'product': product,
+        'variant': variant,
+        'active_nav': 'products',
+    })
+
+
+@staff_member_required
+def variant_delete(request: HttpRequest, product_id: str, variant_id: str) -> HttpResponse:
+    from plugins.installed.catalog.models import ProductVariant
+    product = _get_product(product_id)
+    variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
+    if request.method == 'POST':
+        variant.delete()
+        messages.success(request, 'Variant deleted.')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
+
+
+# ── Product images ────────────────────────────────────────────────────────────
+
+
+@staff_member_required
+def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
+    """POST-only: accept a multipart upload, attach to product."""
+    if request.method != 'POST':
+        return redirect('admin_dashboard:product_edit', product_id=product_id)
+    from plugins.installed.catalog.models import ProductImage
+    product = _get_product(product_id)
+    upload = request.FILES.get('image')
+    if not upload:
+        messages.error(request, 'Choose an image to upload.')
+        return redirect('admin_dashboard:product_edit', product_id=product.id)
+    # Cheap MIME guard — ImageField does its own validation but we want a
+    # clearer error if someone uploads a PDF or .txt by accident.
+    if not (upload.content_type or '').startswith('image/'):
+        messages.error(request, 'That file is not an image.')
+        return redirect('admin_dashboard:product_edit', product_id=product.id)
+    alt = (request.POST.get('alt_text') or '').strip()[:255]
+    is_primary = bool(request.POST.get('is_primary'))
+    if is_primary:
+        # Only one primary at a time.
+        ProductImage.objects.filter(product=product, is_primary=True).update(is_primary=False)
+    next_order = (
+        ProductImage.objects.filter(product=product)
+        .order_by('-sort_order').values_list('sort_order', flat=True).first()
+    )
+    ProductImage.objects.create(
+        product=product,
+        image=upload,
+        alt_text=alt,
+        is_primary=is_primary,
+        sort_order=(next_order or 0) + 1,
+    )
+    messages.success(request, 'Image uploaded.')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
+
+
+@staff_member_required
+def image_delete(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
+    from plugins.installed.catalog.models import ProductImage
+    product = _get_product(product_id)
+    image = get_object_or_404(ProductImage, pk=image_id, product=product)
+    if request.method == 'POST':
+        image.delete()
+        messages.success(request, 'Image deleted.')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
+
+
+@staff_member_required
+def image_set_primary(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
+    from plugins.installed.catalog.models import ProductImage
+    product = _get_product(product_id)
+    image = get_object_or_404(ProductImage, pk=image_id, product=product)
+    if request.method == 'POST':
+        ProductImage.objects.filter(product=product, is_primary=True).update(is_primary=False)
+        image.is_primary = True
+        image.save(update_fields=['is_primary'])
+        messages.success(request, 'Primary image updated.')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
 
 
 # ── Analytics ─────────────────────────────────────────────────────────────────
@@ -374,7 +819,7 @@ def apps_view(request: HttpRequest) -> HttpResponse:
 
 def _toggle_plugin(request: HttpRequest):
     """POST handler on the apps page: flip a plugin's enabled state in DB."""
-    from django.shortcuts import redirect
+    from morpheus.views import redirect
 
     name = request.POST.get('plugin', '').strip()
     desired = request.POST.get('enabled') == '1'
