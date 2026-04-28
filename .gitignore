@@ -49,3 +49,4 @@ dist/
 
 # Logs
 *.log
+logs.json
