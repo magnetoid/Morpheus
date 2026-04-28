@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
+from morpheus import events
+from morpheus import Plugin
 
 logger = logging.getLogger('morpheus.functions')
 
 
-class FunctionsPlugin(MorpheusPlugin):
+class FunctionsPlugin(Plugin):
     name = 'functions'
     label = 'Functions Runtime'
     version = '0.1.0'
@@ -24,12 +24,12 @@ class FunctionsPlugin(MorpheusPlugin):
         self.register_graphql_extension('plugins.installed.functions.graphql.mutations')
 
         self.register_hook(
-            MorpheusEvents.PRODUCT_CALCULATE_PRICE,
+            events.PRODUCT_CALCULATE_PRICE,
             self.on_calculate_price,
             priority=40,  # before AI dynamic pricing (50) so merchant rules win first
         )
         self.register_hook(
-            MorpheusEvents.CART_CALCULATE_TOTAL,
+            events.CART_CALCULATE_TOTAL,
             self.on_calculate_cart_total,
             priority=40,
         )

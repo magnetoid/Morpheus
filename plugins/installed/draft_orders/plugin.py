@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import logging
 
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 logger = logging.getLogger('morpheus.draft_orders')
 
 
-class DraftOrdersPlugin(MorpheusPlugin):
+class DraftOrdersPlugin(Plugin):
     name = 'draft_orders'
     label = 'Draft Orders'
     version = '1.1.0'

@@ -1,7 +1,7 @@
 """Storefront-side affiliate redirect: /r/<code> -> set cookie + redirect."""
 from __future__ import annotations
 
-from django.http import HttpRequest, HttpResponseRedirect
+from morpheus.views import HttpRequest, HttpResponseRedirect
 
 _AFFILIATE_COOKIE = 'morph_aff'
 _COOKIE_TTL = 60 * 60 * 24 * 30  # 30 days; programs may override via cookie_window_days

@@ -1,11 +1,11 @@
 """Demo data plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage
+from morpheus import Plugin
+from morpheus import DashboardPage
 
 
-class DemoDataPlugin(MorpheusPlugin):
+class DemoDataPlugin(Plugin):
     name = 'demo_data'
     label = 'Demo Data'
     version = '0.3.0'

@@ -4,9 +4,9 @@ from __future__ import annotations
 import logging
 from decimal import Decimal, InvalidOperation
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from morpheus.views import staff_member_required
+from morpheus.views import HttpRequest, HttpResponse
+from morpheus.views import redirect, render
 from djmoney.money import Money
 
 logger = logging.getLogger('morpheus.advanced_ecommerce')

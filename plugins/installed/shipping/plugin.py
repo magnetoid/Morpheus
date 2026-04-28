@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import SettingsPanel
+from morpheus import Plugin
+from morpheus import SettingsPanel
 
 logger = logging.getLogger('morpheus.shipping')
 
 
-class ShippingPlugin(MorpheusPlugin):
+class ShippingPlugin(Plugin):
     name = 'shipping'
     label = 'Shipping'
     version = '1.0.0'
@@ -21,10 +21,10 @@ class ShippingPlugin(MorpheusPlugin):
     requires = ['catalog', 'orders']
 
     def ready(self) -> None:
-        from core.hooks import MorpheusEvents
+        from morpheus import events
         # Tax must run BEFORE shipping (so shipping doesn't get taxed unless
         # we explicitly want that). Tax uses priority 20; we use 30.
-        self.register_hook(MorpheusEvents.CART_CALCULATE_TOTAL, self.on_cart_total, priority=30)
+        self.register_hook(events.CART_CALCULATE_TOTAL, self.on_cart_total, priority=30)
 
     def on_cart_total(self, value, cart=None, address=None, shipping_rate_id=None, **kwargs):
         """Add the chosen shipping rate's amount to the cart total."""

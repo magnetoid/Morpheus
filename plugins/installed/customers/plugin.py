@@ -1,7 +1,7 @@
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class CustomersPlugin(MorpheusPlugin):
+class CustomersPlugin(Plugin):
     name = "customers"
     label = "Customers"
     version = "1.0.0"

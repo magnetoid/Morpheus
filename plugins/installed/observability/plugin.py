@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from celery.schedules import crontab
 
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class ObservabilityPlugin(MorpheusPlugin):
+class ObservabilityPlugin(Plugin):
     name = 'observability'
     label = 'Observability'
     version = '0.1.0'

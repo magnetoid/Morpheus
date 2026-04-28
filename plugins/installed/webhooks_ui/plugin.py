@@ -1,11 +1,11 @@
 """Webhooks UI plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage
+from morpheus import Plugin
+from morpheus import DashboardPage
 
 
-class WebhooksUiPlugin(MorpheusPlugin):
+class WebhooksUiPlugin(Plugin):
     name = 'webhooks_ui'
     label = 'Webhooks'
     version = '1.0.0'

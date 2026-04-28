@@ -1,8 +1,8 @@
 """Dashboard views for the promotions plugin."""
 from __future__ import annotations
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from morpheus.views import login_required
+from morpheus.views import render
 
 
 @login_required

@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from django.db import models
+from morpheus import models
 
 
 class TaxCategory(models.Model):

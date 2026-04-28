@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
+from morpheus import events
+from morpheus import Plugin
 
 logger = logging.getLogger('morpheus.marketplace')
 
 
-class MarketplacePlugin(MorpheusPlugin):
+class MarketplacePlugin(Plugin):
     name = 'marketplace'
     label = 'Marketplace'
     version = '0.1.0'
@@ -19,7 +19,7 @@ class MarketplacePlugin(MorpheusPlugin):
 
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.marketplace.graphql.queries')
-        self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order_placed, priority=80)
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
 
     def on_order_placed(self, order, **kwargs):
         try:
@@ -29,7 +29,7 @@ class MarketplacePlugin(MorpheusPlugin):
             logger.warning('marketplace: split_order failed for %s: %s', order.id, e, exc_info=True)
 
     def contribute_dashboard_pages(self) -> list:
-        from plugins.contributions import DashboardPage
+        from morpheus import DashboardPage
         return [
             DashboardPage(
                 label='Vendors', slug='vendors',

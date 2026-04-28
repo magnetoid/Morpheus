@@ -10,11 +10,11 @@ This plugin still owns the storefront-side hooks that produce signals
 the agent layer consumes (embedding refresh on product create/update,
 view recording, search logging).
 """
-from plugins.base import MorpheusPlugin
-from core.hooks import MorpheusEvents
+from morpheus import Plugin
+from morpheus import events
 
 
-class AIAssistantPlugin(MorpheusPlugin):
+class AIAssistantPlugin(Plugin):
     name = "ai_assistant"
     label = "AI Signals (embeddings, search, pricing)"
     version = "2.0.0"
@@ -35,16 +35,16 @@ class AIAssistantPlugin(MorpheusPlugin):
         self.register_urls('plugins.installed.ai_assistant.urls', prefix='api/')
 
         # React to store events
-        self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order_placed, priority=80)
-        self.register_hook(MorpheusEvents.PRODUCT_VIEWED, self.on_product_viewed, priority=80)
-        self.register_hook(MorpheusEvents.CUSTOMER_REGISTERED, self.on_customer_registered, priority=80)
-        self.register_hook(MorpheusEvents.SEARCH_PERFORMED, self.on_search_performed, priority=80)
-        self.register_hook(MorpheusEvents.CART_ABANDONED, self.on_cart_abandoned, priority=80)
-        self.register_hook(MorpheusEvents.PRODUCT_CREATED, self.on_product_created, priority=90)
-        self.register_hook(MorpheusEvents.PRODUCT_UPDATED, self.on_product_updated, priority=90)
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
+        self.register_hook(events.PRODUCT_VIEWED, self.on_product_viewed, priority=80)
+        self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=80)
+        self.register_hook(events.SEARCH_PERFORMED, self.on_search_performed, priority=80)
+        self.register_hook(events.CART_ABANDONED, self.on_cart_abandoned, priority=80)
+        self.register_hook(events.PRODUCT_CREATED, self.on_product_created, priority=90)
+        self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=90)
 
         # Price filter — AI can influence pricing
-        self.register_hook(MorpheusEvents.PRODUCT_CALCULATE_PRICE, self.on_calculate_price, priority=50)
+        self.register_hook(events.PRODUCT_CALCULATE_PRICE, self.on_calculate_price, priority=50)
 
     def on_order_placed(self, order, **kwargs):
         """Update recommendation model after purchase."""

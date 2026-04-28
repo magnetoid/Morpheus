@@ -1,7 +1,7 @@
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class StorefrontPlugin(MorpheusPlugin):
+class StorefrontPlugin(Plugin):
     name = "storefront"
     label = "Storefront"
     version = "1.0.0"

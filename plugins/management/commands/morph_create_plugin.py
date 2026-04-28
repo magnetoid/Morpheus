@@ -160,10 +160,10 @@ class Command(BaseCommand):
             """{label} plugin manifest."""
             from __future__ import annotations
 
-            from plugins.base import MorpheusPlugin
+            from morpheus import Plugin, events
 
 
-            class {cls_prefix}Plugin(MorpheusPlugin):
+            class {cls_prefix}Plugin(Plugin):
                 name = "{name}"
                 label = "{label}"
                 version = "{version}"
@@ -174,9 +174,8 @@ class Command(BaseCommand):
             {chr(10).join(ready_lines)}
 
                 # Example hook (uncomment when you wire it):
-                # from core.hooks import MorpheusEvents
                 # def ready(self) -> None:
-                #     self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order)
+                #     self.register_hook(events.ORDER_PLACED, self.on_order)
                 #
                 # def on_order(self, order, **kwargs):
                 #     pass
@@ -204,7 +203,7 @@ class Command(BaseCommand):
             from __future__ import annotations
 
             import uuid
-            from django.db import models
+            from morpheus import models
 
 
             class {name.capitalize()}Example(models.Model):
@@ -252,7 +251,7 @@ class Command(BaseCommand):
     @staticmethod
     def _views_py() -> str:
         return dedent('''
-            from django.http import HttpResponse
+            from morpheus.views import HttpResponse, render
 
 
             def index(request):

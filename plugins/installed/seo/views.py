@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import json
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from morpheus.views import staff_member_required
+from morpheus.views import HttpRequest, HttpResponse, JsonResponse
+from morpheus.views import get_object_or_404, redirect, render
 
 from plugins.installed.seo.services import (
     audit_all_products, audit_product, refresh_404_suggestions,

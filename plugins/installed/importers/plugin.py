@@ -1,11 +1,11 @@
 """Importer plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage
+from morpheus import Plugin
+from morpheus import DashboardPage
 
 
-class ImportersPlugin(MorpheusPlugin):
+class ImportersPlugin(Plugin):
     name = 'importers'
     label = 'Migration Importers'
     version = '0.2.0'

@@ -1,10 +1,10 @@
-from plugins.base import MorpheusPlugin
-from core.hooks import MorpheusEvents
+from morpheus import Plugin
+from morpheus import events
 import logging
 
 logger = logging.getLogger('morpheus.plugins.payments')
 
-class PaymentsPlugin(MorpheusPlugin):
+class PaymentsPlugin(Plugin):
     name = "payments"
     label = "Payments Engine"
     version = "1.0.0"
@@ -14,7 +14,7 @@ class PaymentsPlugin(MorpheusPlugin):
 
     def ready(self):
         # Register hooks for order payment
-        self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order_placed, priority=20)
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=20)
 
         # Register GraphQL extensions if we want mutations like `processPayment`
         self.register_graphql_extension('plugins.installed.payments.graphql.mutations')

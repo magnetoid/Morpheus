@@ -4,11 +4,11 @@ from __future__ import annotations
 import json
 import logging
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseBadRequest, JsonResponse
-from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from morpheus.views import staff_member_required
+from morpheus.views import HttpResponseBadRequest, JsonResponse
+from morpheus.views import render
+from morpheus.views import csrf_exempt
+from morpheus.views import require_http_methods
 
 logger = logging.getLogger('morpheus.analytics')
 

@@ -1,6 +1,6 @@
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
-class AdminDashboardPlugin(MorpheusPlugin):
+class AdminDashboardPlugin(Plugin):
     name = "admin_dashboard"
     label = "Admin Dashboard (shadcn/ui)"
     version = "1.0.0"

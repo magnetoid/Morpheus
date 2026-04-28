@@ -3,7 +3,7 @@ Morpheus CMS - Orders Models
 Cart → Order → Fulfillment pipeline
 """
 import uuid
-from django.db import models
+from morpheus import models
 from djmoney.models.fields import MoneyField
 from django.utils import timezone
 

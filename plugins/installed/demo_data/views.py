@@ -1,9 +1,9 @@
 """demo_data dashboard view — rendered as the plugin's settings page."""
 from __future__ import annotations
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib import messages
-from django.shortcuts import redirect, render
+from morpheus.views import staff_member_required
+from morpheus.views import messages
+from morpheus.views import redirect, render
 
 
 @staff_member_required

@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage
+from morpheus import Plugin
+from morpheus import DashboardPage
 
 logger = logging.getLogger('morpheus.promotions')
 
 
-class PromotionsPlugin(MorpheusPlugin):
+class PromotionsPlugin(Plugin):
     name = 'promotions'
     label = 'Promotions'
     version = '1.0.0'
@@ -22,8 +22,8 @@ class PromotionsPlugin(MorpheusPlugin):
     requires = ['orders']
 
     def ready(self) -> None:
-        from core.hooks import MorpheusEvents
-        self.register_hook(MorpheusEvents.CART_CALCULATE_TOTAL, self.on_cart_total, priority=10)
+        from morpheus import events
+        self.register_hook(events.CART_CALCULATE_TOTAL, self.on_cart_total, priority=10)
         self.register_urls(
             'plugins.installed.promotions.urls',
             prefix='dashboard/promotions/',

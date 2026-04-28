@@ -1,8 +1,8 @@
 """CRM dashboard views."""
 from __future__ import annotations
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
+from morpheus.views import staff_member_required
+from morpheus.views import render
 
 
 @staff_member_required

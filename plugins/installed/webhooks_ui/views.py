@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import secrets
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import get_object_or_404, redirect, render
+from morpheus.views import staff_member_required
+from morpheus.views import get_object_or_404, redirect, render
 
 
 @staff_member_required

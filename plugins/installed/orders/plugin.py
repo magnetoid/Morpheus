@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
+from morpheus import events
+from morpheus import Plugin
 
 logger = logging.getLogger('morpheus.orders')
 
 
-class OrdersPlugin(MorpheusPlugin):
+class OrdersPlugin(Plugin):
     name = 'orders'
     label = 'Orders'
     version = '1.0.0'
@@ -20,7 +20,7 @@ class OrdersPlugin(MorpheusPlugin):
         self.register_graphql_extension('plugins.installed.orders.graphql.queries')
         self.register_graphql_extension('plugins.installed.orders.graphql.mutations')
         self.register_hook('payment.captured', self.on_payment_captured, priority=10)
-        self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order_placed, priority=15)
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=15)
         from plugins.installed.orders import signals  # noqa: F401 — register signals on import
 
     def on_payment_captured(self, payment, **kwargs):

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid
 
-from django.db import models
+from morpheus import models
 from djmoney.models.fields import MoneyField
 
 

@@ -1,11 +1,11 @@
 """CMS storefront views — page resolver + form submission."""
 from __future__ import annotations
 
-from django.contrib import messages
-from django.http import Http404
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.csrf import csrf_protect
-from django.views.decorators.http import require_http_methods
+from morpheus.views import messages
+from morpheus.views import Http404
+from morpheus.views import get_object_or_404, redirect, render
+from morpheus.views import csrf_protect
+from morpheus.views import require_http_methods
 
 
 def page_view(request, slug: str):

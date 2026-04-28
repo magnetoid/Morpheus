@@ -1,10 +1,10 @@
 """B2B plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class B2bPlugin(MorpheusPlugin):
+class B2bPlugin(Plugin):
     name = 'b2b'
     label = 'B2B'
     version = '1.0.0'

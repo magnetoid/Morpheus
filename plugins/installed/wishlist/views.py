@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import json
 
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseBadRequest, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.csrf import csrf_protect
-from django.views.decorators.http import require_http_methods
+from morpheus.views import login_required
+from morpheus.views import HttpResponseBadRequest, JsonResponse
+from morpheus.views import get_object_or_404, redirect, render
+from morpheus.views import csrf_protect
+from morpheus.views import require_http_methods
 
 
 def _decode_body(request):

@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import logging
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage, SettingsPanel
+from morpheus import events
+from morpheus import Plugin
+from morpheus import DashboardPage, SettingsPanel
 
 logger = logging.getLogger('morpheus.crm')
 
 
-class CrmPlugin(MorpheusPlugin):
+class CrmPlugin(Plugin):
     name = 'crm'
     label = 'CRM'
     version = '1.0.0'
@@ -31,9 +31,9 @@ class CrmPlugin(MorpheusPlugin):
             namespace='crm',
         )
 
-        self.register_hook(MorpheusEvents.CUSTOMER_REGISTERED, self.on_customer_registered, priority=70)
-        self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order_placed, priority=70)
-        self.register_hook(MorpheusEvents.CART_ABANDONED, self.on_cart_abandoned, priority=70)
+        self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=70)
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=70)
+        self.register_hook(events.CART_ABANDONED, self.on_cart_abandoned, priority=70)
 
     # ── Hooks ─────────────────────────────────────────────────────────────────
 

@@ -1,10 +1,10 @@
 """Gift cards plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class GiftCardsPlugin(MorpheusPlugin):
+class GiftCardsPlugin(Plugin):
     name = 'gift_cards'
     label = 'Gift Cards'
     version = '1.0.0'

@@ -14,11 +14,11 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
-from django.shortcuts import get_object_or_404, render
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from morpheus.views import staff_member_required
+from morpheus.views import HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
+from morpheus.views import get_object_or_404, render
+from morpheus.views import csrf_exempt
+from morpheus.views import require_http_methods
 
 from core.agents import agent_registry
 from plugins.installed.agent_core.services import (
@@ -69,7 +69,7 @@ def _agent_rate_key(request):
 @require_http_methods(['POST'])
 def invoke_agent_view(request, agent_name: str):
     from core.utils.rate_limit import RateLimitExceeded, check_and_consume
-    from django.http import HttpResponse
+    from morpheus.views import HttpResponse
     try:
         check_and_consume(key=_agent_rate_key(request), max_per_window=20, window_seconds=60)
     except RateLimitExceeded as e:
@@ -295,7 +295,7 @@ def observability_view(request):
 
 @staff_member_required
 def background_agents_view(request):
-    from django.shortcuts import redirect
+    from morpheus.views import redirect
     from django.utils import timezone
     from plugins.installed.agent_core.models import BackgroundAgent
 
@@ -326,7 +326,7 @@ def background_agents_view(request):
 
 @staff_member_required
 def background_agent_action_view(request, bg_id: str, action: str):
-    from django.shortcuts import redirect
+    from morpheus.views import redirect
     from django.utils import timezone
     from plugins.installed.agent_core.models import BackgroundAgent
     from plugins.installed.agent_core.scheduler import fire

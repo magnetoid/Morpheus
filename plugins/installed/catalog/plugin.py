@@ -1,7 +1,7 @@
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class CatalogPlugin(MorpheusPlugin):
+class CatalogPlugin(Plugin):
     name = "catalog"
     label = "Product Catalog"
     version = "1.0.0"

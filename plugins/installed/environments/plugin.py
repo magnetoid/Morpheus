@@ -1,10 +1,10 @@
 """Environments plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class EnvironmentsPlugin(MorpheusPlugin):
+class EnvironmentsPlugin(Plugin):
     name = 'environments'
     label = 'Environments'
     version = '0.1.0'

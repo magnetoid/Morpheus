@@ -1,7 +1,7 @@
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class InventoryPlugin(MorpheusPlugin):
+class InventoryPlugin(Plugin):
     name = "inventory"
     label = "Inventory"
     version = "1.0.0"

@@ -1,8 +1,8 @@
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage
+from morpheus import Plugin
+from morpheus import DashboardPage
 
 
-class MarketingPlugin(MorpheusPlugin):
+class MarketingPlugin(Plugin):
     name = "marketing"
     label = "Marketing"
     version = "1.1.0"

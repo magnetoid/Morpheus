@@ -1,12 +1,12 @@
 """Analytics plugin — event tracking, funnels, real-time, AI agent stats."""
 from __future__ import annotations
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage, SettingsPanel, StorefrontBlock
+from morpheus import events
+from morpheus import Plugin
+from morpheus import DashboardPage, SettingsPanel, StorefrontBlock
 
 
-class AnalyticsPlugin(MorpheusPlugin):
+class AnalyticsPlugin(Plugin):
     name = 'analytics'
     label = 'Analytics'
     version = '2.0.0'
@@ -31,9 +31,9 @@ class AnalyticsPlugin(MorpheusPlugin):
 
         # Hook fan-out — every domain event becomes an analytics event.
         for event in [
-            MorpheusEvents.ORDER_PLACED, MorpheusEvents.PAYMENT_CAPTURED,
-            MorpheusEvents.PRODUCT_VIEWED, MorpheusEvents.SEARCH_PERFORMED,
-            MorpheusEvents.CUSTOMER_REGISTERED, MorpheusEvents.CART_ABANDONED,
+            events.ORDER_PLACED, events.PAYMENT_CAPTURED,
+            events.PRODUCT_VIEWED, events.SEARCH_PERFORMED,
+            events.CUSTOMER_REGISTERED, events.CART_ABANDONED,
         ]:
             self.register_hook(event, self._on_event(event), priority=99)
 

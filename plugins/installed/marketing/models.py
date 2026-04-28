@@ -3,7 +3,7 @@ Morpheus CMS - Marketing Models
 Coupons, Discounts, Email Campaigns, SEO Redirects
 """
 import uuid
-from django.db import models
+from morpheus import models
 from django.utils import timezone
 from djmoney.models.fields import MoneyField
 

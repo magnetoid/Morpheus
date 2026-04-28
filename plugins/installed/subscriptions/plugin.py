@@ -1,10 +1,10 @@
 """Subscriptions plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
+from morpheus import Plugin
 
 
-class SubscriptionsPlugin(MorpheusPlugin):
+class SubscriptionsPlugin(Plugin):
     name = 'subscriptions'
     label = 'Subscriptions'
     version = '1.0.0'

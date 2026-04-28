@@ -30,14 +30,14 @@ from __future__ import annotations
 
 import logging
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage, SettingsPanel, StorefrontBlock
+from morpheus import events
+from morpheus import Plugin
+from morpheus import DashboardPage, SettingsPanel, StorefrontBlock
 
 logger = logging.getLogger('morpheus.advanced_ecommerce')
 
 
-class AdvancedEcommercePlugin(MorpheusPlugin):
+class AdvancedEcommercePlugin(Plugin):
     name = 'advanced_ecommerce'
     label = 'Advanced Ecommerce'
     version = '0.1.0'
@@ -52,7 +52,7 @@ class AdvancedEcommercePlugin(MorpheusPlugin):
     # ── Lifecycle ────────────────────────────────────────────────────────────
 
     def ready(self) -> None:
-        self.register_hook(MorpheusEvents.PRODUCT_VIEWED, self.on_product_viewed, priority=70)
+        self.register_hook(events.PRODUCT_VIEWED, self.on_product_viewed, priority=70)
 
     # ── Hooks ────────────────────────────────────────────────────────────────
 

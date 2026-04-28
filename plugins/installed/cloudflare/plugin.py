@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
+from morpheus import events
+from morpheus import Plugin
 
 logger = logging.getLogger('morpheus.cloudflare')
 
 
-class CloudflarePlugin(MorpheusPlugin):
+class CloudflarePlugin(Plugin):
     name = 'cloudflare'
     label = 'Cloudflare'
     version = '0.1.0'
@@ -19,9 +19,9 @@ class CloudflarePlugin(MorpheusPlugin):
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.cloudflare.graphql.queries')
         self.register_graphql_extension('plugins.installed.cloudflare.graphql.mutations')
-        self.register_hook(MorpheusEvents.PRODUCT_UPDATED, self.on_product_updated, priority=85)
-        self.register_hook(MorpheusEvents.PRODUCT_CREATED, self.on_product_updated, priority=85)
-        self.register_hook(MorpheusEvents.CATEGORY_UPDATED, self.on_category_updated, priority=85)
+        self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=85)
+        self.register_hook(events.PRODUCT_CREATED, self.on_product_updated, priority=85)
+        self.register_hook(events.CATEGORY_UPDATED, self.on_category_updated, priority=85)
 
     def on_product_updated(self, product, **kwargs):
         try:

@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage, SettingsPanel
+from morpheus import Plugin
+from morpheus import DashboardPage, SettingsPanel
 
 logger = logging.getLogger('morpheus.tax')
 
 
-class TaxPlugin(MorpheusPlugin):
+class TaxPlugin(Plugin):
     name = 'tax'
     label = 'Tax'
     version = '1.0.0'
@@ -21,8 +21,8 @@ class TaxPlugin(MorpheusPlugin):
     requires = ['catalog', 'orders']
 
     def ready(self) -> None:
-        from core.hooks import MorpheusEvents
-        self.register_hook(MorpheusEvents.CART_CALCULATE_TOTAL, self.on_cart_total, priority=20)
+        from morpheus import events
+        self.register_hook(events.CART_CALCULATE_TOTAL, self.on_cart_total, priority=20)
 
     def on_cart_total(self, value, cart=None, address=None, **kwargs):
         """Cart total filter: add tax based on shipping address (or default region).

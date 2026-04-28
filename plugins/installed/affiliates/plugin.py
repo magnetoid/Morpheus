@@ -1,11 +1,11 @@
 """Affiliates plugin manifest."""
 from __future__ import annotations
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
+from morpheus import events
+from morpheus import Plugin
 
 
-class AffiliatesPlugin(MorpheusPlugin):
+class AffiliatesPlugin(Plugin):
     name = 'affiliates'
     label = 'Affiliate Platform'
     version = '0.1.0'
@@ -16,7 +16,7 @@ class AffiliatesPlugin(MorpheusPlugin):
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.affiliates.graphql.queries')
         self.register_urls('plugins.installed.affiliates.urls', prefix='', namespace='affiliates')
-        self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order_placed, priority=70)
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=70)
 
     def on_order_placed(self, order, **kwargs):
         """If the order carries an affiliate code on its source/metadata, attribute it."""
@@ -42,7 +42,7 @@ class AffiliatesPlugin(MorpheusPlugin):
         ]
 
     def contribute_dashboard_pages(self) -> list:
-        from plugins.contributions import DashboardPage
+        from morpheus import DashboardPage
         return [
             DashboardPage(
                 label='Affiliates', slug='list',

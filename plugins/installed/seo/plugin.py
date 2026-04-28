@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import logging
 
-from core.hooks import MorpheusEvents
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage, SettingsPanel
+from morpheus import events
+from morpheus import Plugin
+from morpheus import DashboardPage, SettingsPanel
 
 logger = logging.getLogger('morpheus.seo')
 
 
-class SeoPlugin(MorpheusPlugin):
+class SeoPlugin(Plugin):
     name = 'seo'
     label = 'SEO'
     version = '2.0.0'
@@ -32,8 +32,8 @@ class SeoPlugin(MorpheusPlugin):
             'plugins.installed.seo.urls_dashboard',
             prefix='dashboard/seo/', namespace='seo_dashboard',
         )
-        self.register_hook(MorpheusEvents.PRODUCT_CREATED, self.on_product_created, priority=85)
-        self.register_hook(MorpheusEvents.PRODUCT_UPDATED, self.on_product_updated, priority=85)
+        self.register_hook(events.PRODUCT_CREATED, self.on_product_created, priority=85)
+        self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=85)
 
     def on_product_created(self, product, **kwargs):
         try:

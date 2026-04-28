@@ -1,11 +1,11 @@
 """Wishlist plugin manifest."""
 from __future__ import annotations
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import StorefrontBlock
+from morpheus import Plugin
+from morpheus import StorefrontBlock
 
 
-class WishlistPlugin(MorpheusPlugin):
+class WishlistPlugin(Plugin):
     name = 'wishlist'
     label = 'Wishlist'
     version = '1.0.0'

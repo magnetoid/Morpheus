@@ -6,7 +6,7 @@ streaming chat endpoint, dashboard, and four built-in agents.
 
 Other plugins extend the agent layer through:
 
-    class FooPlugin(MorpheusPlugin):
+    class FooPlugin(Plugin):
         def contribute_agent_tools(self):
             return [my_tool]
         def contribute_agents(self):
@@ -19,13 +19,13 @@ from __future__ import annotations
 
 import logging
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage, SettingsPanel, StorefrontBlock
+from morpheus import Plugin
+from morpheus import DashboardPage, SettingsPanel, StorefrontBlock
 
 logger = logging.getLogger('morpheus.agent_core')
 
 
-class AgentCorePlugin(MorpheusPlugin):
+class AgentCorePlugin(Plugin):
     name = 'agent_core'
     label = 'Agent Core'
     version = '1.0.0'

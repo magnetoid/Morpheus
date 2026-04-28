@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Morpheus CLI — thin wrapper over `manage.py morpheus`.
+#
+# Run `morpheus help` for the list of subcommands.
+set -euo pipefail
+
+# Locate the project root (the dir that contains manage.py).
+root="$(cd "$(dirname "$0")/.." && pwd)"
+manage="$root/manage.py"
+
+if [[ ! -f "$manage" ]]; then
+  echo "morpheus: manage.py not found at $manage" >&2
+  exit 1
+fi
+
+# Prefer the project's venv if present, otherwise fall back to PATH python.
+if [[ -x "$root/venv/bin/python" ]]; then
+  python="$root/venv/bin/python"
+elif [[ -x "$root/.venv/bin/python" ]]; then
+  python="$root/.venv/bin/python"
+else
+  python="$(command -v python3 || command -v python)"
+fi
+
+exec "$python" "$manage" morpheus "$@"

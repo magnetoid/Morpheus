@@ -1,10 +1,10 @@
-from plugins.base import MorpheusPlugin
-from core.hooks import MorpheusEvents
+from morpheus import Plugin
+from morpheus import events
 import logging
 
 logger = logging.getLogger('morpheus.ai_content')
 
-class AIContentPlugin(MorpheusPlugin):
+class AIContentPlugin(Plugin):
     name = "ai_content"
     label = "AI Content & Assets Studio"
     version = "1.0.0"
@@ -14,7 +14,7 @@ class AIContentPlugin(MorpheusPlugin):
 
     def ready(self):
         # We hook into product creation to autonomously generate content
-        self.register_hook(MorpheusEvents.PRODUCT_CREATED, self.on_product_created, priority=90)
+        self.register_hook(events.PRODUCT_CREATED, self.on_product_created, priority=90)
 
     def on_product_created(self, product, **kwargs):
         """Trigger background tasks to generate text and images for the new product."""

@@ -3,7 +3,7 @@ Morpheus CMS - Catalog Models
 Products, Variants, Categories, Collections, Attributes, Reviews
 """
 import uuid
-from django.db import models
+from morpheus import models
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, MaxValueValidator
 from mptt.models import MPTTModel, TreeForeignKey

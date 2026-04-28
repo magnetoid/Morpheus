@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 
-from plugins.base import MorpheusPlugin
-from plugins.contributions import DashboardPage
+from morpheus import Plugin
+from morpheus import DashboardPage
 
 logger = logging.getLogger('morpheus.cms')
 
 
-class CmsPlugin(MorpheusPlugin):
+class CmsPlugin(Plugin):
     name = 'cms'
     label = 'CMS'
     version = '1.0.0'

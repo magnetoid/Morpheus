@@ -4,7 +4,7 @@ Stock tracking, warehouses, stock movements
 """
 import uuid
 from django.conf import settings
-from django.db import models
+from morpheus import models
 from django.db import transaction
 
 
