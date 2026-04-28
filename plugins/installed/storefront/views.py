@@ -2,7 +2,7 @@
 Storefront Plugin — Views
 Consumes the GraphQL API via internal_graphql(). Never touches ORM directly.
 """
-from django.shortcuts import render, redirect
+from morpheus.views import render, redirect
 from api.client import internal_graphql
 
 
@@ -134,7 +134,7 @@ def product_detail(request, slug):
     data = internal_graphql(PRODUCT_DETAIL_QUERY, variables={'slug': slug}, request=request)
     product = (data or {}).get('product')
     if not product:
-        from django.http import Http404
+        from morpheus.views import Http404
         raise Http404
     return render(request, 'storefront/product_detail.html', {'product': product})
 
@@ -261,7 +261,7 @@ def journal_index(request):
 
 
 def journal_detail(request, slug):
-    from django.http import Http404
+    from morpheus.views import Http404
     entry = next((e for e in _JOURNAL_ENTRIES if e['slug'] == slug), None)
     if entry is None:
         raise Http404
@@ -283,8 +283,8 @@ def categories(request):
 
 def account_home(request):
     if not request.user.is_authenticated:
-        from django.shortcuts import redirect
-        return redirect('/accounts/login/?next=/account/')
+        from morpheus.views import redirect
+        return redirect('/auth/login/?next=/account/')
     return render(request, 'storefront/account_home.html', {
         'user': request.user,
     })
@@ -292,8 +292,8 @@ def account_home(request):
 
 def account_orders(request):
     if not request.user.is_authenticated:
-        from django.shortcuts import redirect
-        return redirect('/accounts/login/?next=/account/orders/')
+        from morpheus.views import redirect
+        return redirect('/auth/login/?next=/account/orders/')
     try:
         from plugins.installed.orders.models import Order
         orders = list(
@@ -307,9 +307,9 @@ def account_orders(request):
 
 def account_order_detail(request, order_number):
     if not request.user.is_authenticated:
-        from django.shortcuts import redirect
-        return redirect(f'/accounts/login/?next=/account/orders/{order_number}/')
-    from django.shortcuts import get_object_or_404
+        from morpheus.views import redirect
+        return redirect(f'/auth/login/?next=/account/orders/{order_number}/')
+    from morpheus.views import get_object_or_404
     from plugins.installed.orders.models import Order
     order = get_object_or_404(
         Order.objects.prefetch_related('items'),
@@ -321,7 +321,7 @@ def account_order_detail(request, order_number):
 def order_confirmation(request, order_number):
     """Public order confirmation — accessible by order_number alone (signed link).
     Future: token-protect to prevent enumeration."""
-    from django.shortcuts import get_object_or_404
+    from morpheus.views import get_object_or_404
     from plugins.installed.orders.models import Order
     order = get_object_or_404(
         Order.objects.prefetch_related('items'), order_number=order_number,
@@ -352,7 +352,7 @@ def coming_soon(request, slug=None):
 def _login_required(request, target):
     if not request.user.is_authenticated:
         from django.shortcuts import redirect as _redirect
-        return _redirect(f'/accounts/login/?next={target}')
+        return _redirect(f'/auth/login/?next={target}')
     return None
 
 
@@ -390,7 +390,7 @@ def account_address_form(request, address_id=None):
     from plugins.installed.customers.models import Address
     address = None
     if address_id:
-        from django.shortcuts import get_object_or_404
+        from morpheus.views import get_object_or_404
         address = get_object_or_404(Address, id=address_id, customer=request.user)
     if request.method == 'POST':
         from django.shortcuts import redirect as _redirect

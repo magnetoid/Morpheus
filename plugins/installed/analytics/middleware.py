@@ -10,7 +10,7 @@ logger = logging.getLogger('morpheus.analytics')
 _EXCLUDED_PREFIXES = (
     '/admin/', '/api/', '/graphql', '/healthz',
     '/static/', '/media/', '/dashboard/',
-    '/accounts/',
+    '/auth/',
 )
 
 

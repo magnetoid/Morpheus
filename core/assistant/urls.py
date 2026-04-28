@@ -1,4 +1,4 @@
-"""Assistant URL routes — mounted at `/admin/assistant/` in the project URLconf."""
+"""Assistant URL routes — mounted at `/dashboard/assistant/` in the project URLconf."""
 from __future__ import annotations
 
 from django.urls import path

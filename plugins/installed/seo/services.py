@@ -238,7 +238,7 @@ def render_robots_txt() -> str:
         'Allow: /',
         'Disallow: /admin/',
         'Disallow: /dashboard/',
-        'Disallow: /accounts/',
+        'Disallow: /auth/',
         'Disallow: /cart/',
         'Disallow: /checkout/',
         f'Sitemap: {urljoin(base, "/sitemap.xml")}',

@@ -1,6 +1,6 @@
 """Assistant HTTP surface.
 
-Mounted in the project URLconf at `/admin/assistant/` so it's reachable
+Mounted in the project URLconf at `/dashboard/assistant/` so it's reachable
 even if the entire plugin layer fails to load.
 """
 from __future__ import annotations

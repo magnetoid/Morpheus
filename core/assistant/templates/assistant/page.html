@@ -64,7 +64,7 @@
     thinking.style.cssText = 'margin: .5rem 0; color: var(--text-muted); font-style: italic;';
     thinking.textContent = 'Thinking…';
     log.appendChild(thinking);
-    fetch('/admin/assistant/invoke/', {
+    fetch('/dashboard/assistant/invoke/', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
       body: JSON.stringify({message: text}),
