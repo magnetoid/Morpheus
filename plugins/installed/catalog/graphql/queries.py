@@ -22,6 +22,36 @@ def _clamp_first(first: int) -> int:
     return max(1, min(first, _MAX_FIRST))
 
 
+def _apply_fts(qs, term: str):
+    """Postgres full-text search with relevance, LIKE fallback elsewhere."""
+    from django.db import connection
+    if connection.vendor == 'postgresql':
+        try:
+            from django.contrib.postgres.search import (
+                SearchQuery, SearchRank, SearchVector,
+            )
+            vector = (
+                SearchVector('name', weight='A')
+                + SearchVector('short_description', weight='B')
+                + SearchVector('description', weight='C')
+            )
+            search_q = SearchQuery(term, search_type='websearch')
+            return (
+                qs.annotate(_rank=SearchRank(vector, search_q))
+                .filter(Q(_rank__gt=0) | Q(sku__iexact=term))
+                .order_by('-_rank', '-created_at')
+                .distinct()
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    return qs.filter(
+        Q(name__icontains=term)
+        | Q(short_description__icontains=term)
+        | Q(tags__name__icontains=term)
+        | Q(sku__iexact=term)
+    ).distinct()
+
+
 def _scope_to_channel(qs, info):
     channel_id = current_channel_id(info)
     if channel_id:
@@ -65,11 +95,7 @@ class CatalogQueryExtension:
         if search:
             search = search.strip()[:_MAX_SEARCH_LEN]
             if search:
-                qs = qs.filter(
-                    Q(name__icontains=search)
-                    | Q(short_description__icontains=search)
-                    | Q(tags__name__icontains=search)
-                ).distinct()
+                qs = _apply_fts(qs, search)
         if category:
             qs = qs.filter(category__slug=category)
 

@@ -1,0 +1,35 @@
+{% extends "account/base.html" %}
+{% load i18n account %}
+
+{% block head_title %}{% trans "Create account" %}{% endblock %}
+{% block heading %}{% trans "Create account" %}{% endblock %}
+{% block subheading %}<p class="text-sm" style="color:var(--text-muted);">Track orders and save your details.</p>{% endblock %}
+
+{% block content %}
+<form method="post" action="{% url 'account_signup' %}" class="space-y-3">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% for field in form %}
+    {% if field.name != 'captcha' %}
+    <div>
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      {% if field.help_text %}<p class="text-xs mt-1" style="color: var(--text-muted);">{{ field.help_text }}</p>{% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}
+
+  <button type="submit" class="btn btn-primary">{% trans "Create account" %}</button>
+
+  <p class="text-xs pt-2 text-center" style="color: var(--text-muted);">
+    {% trans "Already have an account?" %} <a href="{% url 'account_login' %}">{% trans "Sign in" %}</a>
+  </p>
+</form>
+{% endblock %}

@@ -77,11 +77,10 @@ def product_list(request):
 
     qs = Product.objects.filter(status='active').select_related('category')
 
-    # Search
+    # Search — Postgres full-text on Postgres backends, LIKE fallback elsewhere.
     q = (request.GET.get('q') or '').strip()
     if q:
-        from django.db.models import Q
-        qs = qs.filter(Q(name__icontains=q) | Q(short_description__icontains=q) | Q(sku__iexact=q))
+        qs = _apply_search(qs, q)
 
     # Category filter
     cat_slug = (request.GET.get('category') or '').strip()
@@ -128,6 +127,42 @@ def product_list(request):
         'price_min': pmin or '',
         'price_max': pmax or '',
     })
+
+
+def _apply_search(qs, q: str):
+    """Postgres full-text search with relevance ranking.
+
+    Builds a SearchVector over name + short_description + tags and orders
+    by SearchRank. Falls back to ILIKE on non-Postgres backends so the
+    storefront still works in dev sqlite without crashing.
+    """
+    from django.db import connection
+    from django.db.models import Q
+
+    if connection.vendor == 'postgresql':
+        try:
+            from django.contrib.postgres.search import (
+                SearchQuery, SearchRank, SearchVector,
+            )
+            vector = (
+                SearchVector('name', weight='A')
+                + SearchVector('short_description', weight='B')
+                + SearchVector('description', weight='C')
+            )
+            search_q = SearchQuery(q, search_type='websearch')
+            return (
+                qs.annotate(_rank=SearchRank(vector, search_q))
+                .filter(Q(_rank__gt=0) | Q(sku__iexact=q))
+                .order_by('-_rank', '-created_at')
+            )
+        except Exception:  # noqa: BLE001 — fall through to LIKE
+            pass
+
+    return qs.filter(
+        Q(name__icontains=q)
+        | Q(short_description__icontains=q)
+        | Q(sku__iexact=q)
+    )
 
 
 def product_detail(request, slug):

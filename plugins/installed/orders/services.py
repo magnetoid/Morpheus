@@ -61,13 +61,43 @@ class OrderService:
             currency,
         )
 
+        # Run subtotal through the cart-total filter so tax / shipping /
+        # promotions plug in. Each handler returns Money or a dict with
+        # adjustments; we accumulate component totals to persist on the Order.
+        tax_total = Money(Decimal('0'), currency)
+        shipping_total = Money(Decimal('0'), currency)
+        discount_total = Money(Decimal('0'), currency)
+        try:
+            adjusted = hook_registry.filter(
+                MorpheusEvents.CART_CALCULATE_TOTAL,
+                value=subtotal,
+                cart=cart,
+                shipping_address=shipping_address,
+                billing_address=billing_address,
+            )
+            if isinstance(adjusted, dict):
+                tax_total = adjusted.get('tax', tax_total) or tax_total
+                shipping_total = adjusted.get('shipping', shipping_total) or shipping_total
+                discount_total = adjusted.get('discount', discount_total) or discount_total
+                final_total = adjusted.get('total', subtotal) or subtotal
+            elif isinstance(adjusted, Money):
+                final_total = adjusted
+            else:
+                final_total = subtotal
+        except Exception as e:  # noqa: BLE001 — hook chain shouldn't block checkout
+            logger.warning('cart.calculate_total filter error: %s', e, exc_info=True)
+            final_total = subtotal
+
         order = Order.objects.create(
             customer=cart.customer,
             email=email,
             shipping_address=shipping_address,
             billing_address=billing_address,
             subtotal=subtotal,
-            total=subtotal,  # tax + shipping engines plug in here later
+            tax_total=tax_total,
+            shipping_total=shipping_total,
+            discount_total=discount_total,
+            total=final_total,
         )
 
         for cart_item in items:

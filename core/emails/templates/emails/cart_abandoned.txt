@@ -1,0 +1,11 @@
+Hi{% if cart.customer.first_name %} {{ cart.customer.first_name }}{% endif %},
+
+Looks like you left a few things in your cart. They're still there
+whenever you want to come back:
+
+{% for item in cart.items.all %}- {{ item.quantity }}× {{ item.product.name }}{% if item.variant %} ({{ item.variant.name }}){% endif %} — {{ item.unit_price }}
+{% endfor %}
+
+Head back to your cart to pick up where you left off.
+
+— The team

@@ -1,0 +1,10 @@
+Hi{% if customer.first_name %} {{ customer.first_name }}{% endif %},
+
+Welcome — your account is ready.
+
+You can sign in any time at /auth/login/ to track orders, save addresses,
+and manage payment methods.
+
+If you didn't sign up, just ignore this email.
+
+— The team

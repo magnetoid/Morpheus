@@ -31,6 +31,8 @@ def register_handlers() -> None:
     hook_registry.register(events.ORDER_FULFILLED, on_order_fulfilled, priority=70)
     hook_registry.register(events.ORDER_CANCELLED, on_order_cancelled, priority=70)
     hook_registry.register(events.PAYMENT_REFUNDED, on_payment_refunded, priority=70)
+    hook_registry.register(events.CUSTOMER_REGISTERED, on_customer_registered, priority=70)
+    hook_registry.register(events.CART_ABANDONED, on_cart_abandoned, priority=70)
     _REGISTERED = True
 
 
@@ -70,6 +72,34 @@ def on_order_cancelled(order: Any, **kwargs: Any) -> None:
         subject=f'Order #{order.order_number} cancelled',
         to=_order_recipient(order),
         ctx={'order': order},
+    )
+
+
+def on_cart_abandoned(cart: Any = None, email: Any = None, **kwargs: Any) -> None:
+    if cart is None:
+        return
+    to = email or getattr(getattr(cart, 'customer', None), 'email', None)
+    if not to:
+        return
+    _send(
+        template_base='emails/cart_abandoned',
+        subject='You left items in your cart',
+        to=to,
+        ctx={'cart': cart},
+    )
+
+
+def on_customer_registered(customer: Any = None, **kwargs: Any) -> None:
+    if customer is None:
+        return
+    to = getattr(customer, 'email', None)
+    if not to:
+        return
+    _send(
+        template_base='emails/welcome',
+        subject='Welcome',
+        to=to,
+        ctx={'customer': customer},
     )
 
 

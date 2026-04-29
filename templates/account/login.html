@@ -1,0 +1,43 @@
+{% extends "account/base.html" %}
+{% load i18n account %}
+
+{% block head_title %}{% trans "Sign in" %}{% endblock %}
+{% block heading %}{% trans "Sign in" %}{% endblock %}
+{% block subheading %}<p class="text-sm" style="color:var(--text-muted);">Welcome back.</p>{% endblock %}
+
+{% block content %}
+<form method="post" action="{% url 'account_login' %}" class="space-y-3">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <div>
+    <label for="id_login">{{ form.login.label }}</label>
+    {{ form.login }}
+    {% if form.login.errors %}<ul class="errorlist">{% for e in form.login.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+
+  <div>
+    <label for="id_password">{{ form.password.label }}</label>
+    {{ form.password }}
+    {% if form.password.errors %}<ul class="errorlist">{% for e in form.password.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+
+  {% if form.remember %}
+  <label class="inline-flex items-center gap-2 text-sm">
+    {{ form.remember }} {% trans "Remember me" %}
+  </label>
+  {% endif %}
+
+  {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}
+
+  <button type="submit" class="btn btn-primary">{% trans "Sign in" %}</button>
+
+  <div class="flex justify-between text-xs pt-2" style="color: var(--text-muted);">
+    <a href="{% url 'account_reset_password' %}">{% trans "Forgot password?" %}</a>
+    <a href="{% url 'account_signup' %}">{% trans "Create account" %}</a>
+  </div>
+</form>
+{% endblock %}

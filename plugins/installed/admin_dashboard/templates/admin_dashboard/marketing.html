@@ -8,21 +8,40 @@
       <h1 class="text-xl font-semibold tracking-tight">Marketing</h1>
       <p class="text-sm text-[color:var(--text-muted)]">Coupons, campaigns, and discount rules.</p>
     </div>
-    <button class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New coupon</button>
+    <a href="{% url 'admin_dashboard:coupon_new' %}" class="btn btn-primary">
+      <i data-lucide="plus" class="h-4 w-4"></i> New coupon
+    </a>
   </div>
 
   <div class="card overflow-hidden">
     {% if coupons %}
     <table class="morph-table">
-      <thead><tr><th>Code</th><th>Type</th><th class="text-right">Value</th><th>Status</th><th>Created</th></tr></thead>
+      <thead><tr><th>Code</th><th>Name</th><th>Type</th><th class="text-right">Value</th><th>Used</th><th>Status</th><th>Expires</th></tr></thead>
       <tbody>
         {% for c in coupons %}
         <tr>
-          <td><span class="font-mono">{{ c.code }}</span></td>
-          <td class="text-[color:var(--text-muted)]">{{ c.discount_type|default:"—" }}</td>
-          <td class="text-right">{{ c.value|default:"—" }}</td>
-          <td>{% if c.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}</td>
-          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ c.created_at|date:"M j, Y" }}</td>
+          <td>
+            <a href="{% url 'admin_dashboard:coupon_edit' coupon_id=c.id %}" class="font-mono font-medium hover:underline">{{ c.code }}</a>
+          </td>
+          <td class="text-[color:var(--text-muted)]">{{ c.name }}</td>
+          <td class="text-[color:var(--text-muted)]">{{ c.get_discount_type_display }}</td>
+          <td class="text-right">
+            {% if c.discount_type == 'percentage' %}{{ c.discount_value }}%
+            {% elif c.discount_type == 'fixed_amount' %}${{ c.discount_value }}
+            {% elif c.discount_type == 'free_shipping' %}—
+            {% else %}{{ c.discount_value }}{% endif %}
+          </td>
+          <td class="text-[color:var(--text-muted)]">
+            {{ c.times_used }}{% if c.usage_limit %} / {{ c.usage_limit }}{% endif %}
+          </td>
+          <td>
+            {% if c.is_valid %}<span class="pill pill-success">Active</span>
+            {% elif c.is_active %}<span class="pill pill-warn">Pending/expired</span>
+            {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+          </td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">
+            {% if c.expires_at %}{{ c.expires_at|date:"M j, Y" }}{% else %}—{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -30,8 +49,11 @@
     {% else %}
     <div class="card-padded text-center py-16">
       <i data-lucide="megaphone" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">No marketing rules yet</h3>
+      <h3 class="font-medium">No coupons yet</h3>
       <p class="text-sm text-[color:var(--text-muted)] mt-1">Create your first coupon to get started.</p>
+      <a href="{% url 'admin_dashboard:coupon_new' %}" class="btn btn-primary mt-4 inline-flex">
+        <i data-lucide="plus" class="h-4 w-4"></i> New coupon
+      </a>
     </div>
     {% endif %}
   </div>
