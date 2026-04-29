@@ -72,6 +72,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.promotions',
     'plugins.installed.draft_orders',
     'plugins.installed.cart_abandonment',
+    'plugins.installed.backups',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────
@@ -146,6 +147,7 @@ MIDDLEWARE = [
     'plugins.installed.ai_assistant.middleware.AIContextMiddleware',
     'api.permissions.AgentAuthMiddleware',
     'api.rate_limit.RateLimitMiddleware',
+    'core.ratelimit.RateLimitMiddleware',
     'plugins.installed.environments.middleware.EnvironmentMiddleware',
     'plugins.installed.seo.middleware.SeoRedirectMiddleware',
     'plugins.installed.analytics.middleware.AnalyticsMiddleware',

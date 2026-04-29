@@ -1,0 +1,55 @@
+"""Backups plugin.
+
+Wraps the existing ``manage.py morph_backup`` management command in a
+Celery beat task that runs once a day at 03:30 UTC. The command itself
+already handles destination directory, retention pruning, and Postgres
+or SQLite engines — see ``core.management.commands.morph_backup``.
+
+Configuration is read from env (consumed by the underlying command):
+
+    MORPHEUS_BACKUP_DIR  — default ``/tmp/morpheus-backups``
+    MORPHEUS_BACKUP_KEEP — default ``7``
+"""
+from __future__ import annotations
+
+from morpheus import Plugin
+
+try:
+    from celery.schedules import crontab
+    _DAILY = crontab(hour=3, minute=30)  # 03:30 UTC
+except Exception:  # noqa: BLE001 — celery missing in management commands
+    _DAILY = 60 * 60 * 24
+
+
+class BackupsPlugin(Plugin):
+    name = "backups"
+    label = "Backups"
+    version = "0.1.0"
+    description = (
+        'Daily database + media backup via the morph_backup management '
+        'command, scheduled through Celery beat.'
+    )
+    has_models = False
+
+    def ready(self) -> None:
+        self.register_celery_tasks('plugins.installed.backups.tasks')
+        self.register_celery_beat(
+            'backups.daily',
+            {
+                'task': 'plugins.installed.backups.tasks.run_backup',
+                'schedule': _DAILY,
+            },
+        )
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'include_media': {
+                    'type': 'boolean',
+                    'title': 'Include media files',
+                    'default': True,
+                    'description': 'When False the task passes --no-media; useful when media is on S3/CDN.',
+                },
+            },
+        }
