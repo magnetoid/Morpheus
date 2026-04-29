@@ -2,104 +2,70 @@
 {% block title %}Settings · Morpheus{% endblock %}
 
 {% block content %}
-<div class="settings-shell">
+<div class="max-w-5xl mx-auto space-y-6">
 
-  {# Settings menu lives in the main left sidebar (settings-mode). Right pane only here. #}
-  <main class="settings-pane">
-    <div class="settings-pane-head">
-      <button id="settings-back" type="button" class="settings-back" aria-label="Back" style="display: none;">
-        <i data-lucide="chevron-left" class="h-4 w-4"></i> Back
-      </button>
-      <h1 id="settings-pane-title" class="text-xl font-semibold tracking-tight">Settings</h1>
-    </div>
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Settings</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Configure {{ store_summary.name }} — payments, shipping, taxes, and the rest.
+    </p>
+  </div>
 
-    <div id="settings-pane-default" class="settings-pane-body">
-      <p class="text-sm text-[color:var(--text-muted)]">
-        Pick an item from the left to view or edit. Plugin pages open inline;
-        each plugin owns its own settings page.
-      </p>
-    </div>
-
-    {% for s in core_sections %}
-    <div class="settings-pane-body settings-pane-detail" id="pane-core-{{ s.key }}" hidden>
-      <p class="text-sm text-[color:var(--text-muted)] mb-4">{{ s.description }}</p>
-      <div class="card">
-        <dl class="divide-y divide-[color:var(--border)]">
-          {% for k, v in s.items %}
-          <div class="flex items-center justify-between px-5 py-3">
-            <dt class="text-sm text-[color:var(--text-muted)]">{{ k }}</dt>
-            <dd class="text-sm font-medium">{{ v }}</dd>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    {% for c in cards %}
+    <a href="{% url 'admin_dashboard:settings_category' category=c.category.slug %}"
+       class="card card-padded settings-tile">
+      <div class="flex items-start gap-3">
+        <div class="settings-tile-icon">
+          <i data-lucide="{{ c.category.icon }}" class="h-5 w-5"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="font-medium">{{ c.category.label }}</h2>
+            {% if c.count %}<span class="pill pill-neutral">{{ c.count }}</span>{% endif %}
           </div>
-          {% endfor %}
-        </dl>
+          <p class="text-xs text-[color:var(--text-muted)] mt-0.5 leading-relaxed">{{ c.category.description }}</p>
+          {% if c.plugins %}
+          <p class="text-xs text-[color:var(--text-subtle)] mt-1.5 truncate">{{ c.plugins|join:" · " }}</p>
+          {% endif %}
+        </div>
       </div>
-    </div>
+    </a>
     {% endfor %}
+  </div>
 
-    {% for p in plugin_panels %}
-    <div class="settings-pane-body settings-pane-detail" id="pane-plugin-{{ p.plugin }}" hidden data-load-url="{{ p.url }}">
-      <p class="text-sm text-[color:var(--text-muted)] mb-4">{{ p.description }}</p>
-      <div class="card card-padded">
-        <p class="text-sm">
-          Open the full settings page for <strong>{{ p.label }}</strong>:
-          <a href="{{ p.url }}" class="btn-link">Open</a>
-        </p>
+  <div class="card card-padded">
+    <h3 class="font-medium text-sm">Store snapshot</h3>
+    <dl class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Name</dt>
+        <dd class="font-medium">{{ store_summary.name }}</dd>
       </div>
-    </div>
-    {% endfor %}
-  </main>
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Currency</dt>
+        <dd class="font-medium">{{ store_summary.currency }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Country</dt>
+        <dd class="font-medium">{{ store_summary.country }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Theme</dt>
+        <dd class="font-medium">{{ store_summary.theme }}</dd>
+      </div>
+    </dl>
+  </div>
+
 </div>
 
 <style>
-  .settings-shell { display: block; min-height: 70vh; }
-  .settings-pane { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
-  .settings-pane-head { display: flex; align-items: center; gap: .75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
-  .settings-back { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .65rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); cursor: pointer; font-size: .8rem; }
+  .settings-tile { display: block; transition: background .15s, border-color .15s; }
+  .settings-tile:hover { background: var(--surface-2); }
+  .settings-tile-icon {
+    width: 2.25rem; height: 2.25rem; border-radius: 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); flex-shrink: 0;
+  }
 </style>
-
-<script>
-(() => {
-  const items = document.querySelectorAll('.settings-rail-item');
-  const detailPanes = document.querySelectorAll('.settings-pane-detail');
-  const defaultPane = document.getElementById('settings-pane-default');
-  const title = document.getElementById('settings-pane-title');
-  const back = document.getElementById('settings-back');
-
-  function showPane(key) {
-    detailPanes.forEach(p => p.hidden = true);
-    defaultPane.hidden = true;
-    const target = document.getElementById('pane-' + key);
-    if (target) {
-      target.hidden = false;
-      const item = document.querySelector(`[data-pane="${key}"]`);
-      if (item) {
-        title.textContent = item.querySelector('span').textContent;
-        items.forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        back.style.display = 'inline-flex';
-      }
-    }
-  }
-
-  function showDefault() {
-    detailPanes.forEach(p => p.hidden = true);
-    defaultPane.hidden = false;
-    title.textContent = 'Settings';
-    items.forEach(i => i.classList.remove('active'));
-    back.style.display = 'none';
-  }
-
-  items.forEach(item => {
-    item.addEventListener('click', e => {
-      e.preventDefault();
-      showPane(item.dataset.pane);
-    });
-  });
-  back.addEventListener('click', showDefault);
-
-  // Deep-link via hash: #pane=plugin-stripe
-  const m = (location.hash || '').match(/pane=([\w-]+)/);
-  if (m) showPane(m[1]);
-})();
-</script>
 {% endblock %}

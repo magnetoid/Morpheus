@@ -58,6 +58,7 @@ class TaxPlugin(Plugin):
             label='Tax',
             description='Configure tax provider, rounding, and inclusive pricing.',
             schema=self.get_config_schema(),
+            category='taxes',
         )
 
     def get_config_schema(self) -> dict:

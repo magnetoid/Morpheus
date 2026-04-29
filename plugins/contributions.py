@@ -72,8 +72,29 @@ class DashboardPage:
 
 @dataclass(slots=True)
 class SettingsPanel:
-    """Declarative settings panel rendered from a JSON Schema."""
+    """Declarative settings panel rendered from a JSON Schema.
+
+    `category` controls which Shopify-style category the panel shows
+    under in the unified `/dashboard/settings/<category>/` view. If left
+    blank the panel falls into the catch-all 'apps' bucket so it still
+    has a home — older plugins that haven't been categorized yet keep
+    working without a code change.
+
+    Standard categories (see SETTINGS_CATEGORIES in
+    `plugins.installed.admin_dashboard.settings_categories`):
+      * 'general'        — Store name, currency, locales
+      * 'payments'       — Stripe, PayPal, manual, …
+      * 'shipping'       — Carriers, zones, rates
+      * 'taxes'          — Regions, rates
+      * 'channels'       — Storefront SEO, marketplaces, social
+      * 'ai'             — Provider, model, agent settings
+      * 'marketing'      — Email, coupons, CRM defaults
+      * 'notifications'  — Email/SMS templates, webhooks
+      * 'developer'      — API keys, agent tokens, observability
+      * 'apps'           — Catch-all for plugin-specific config
+    """
     label: str
     schema: dict            # JSON Schema; usually `plugin.get_config_schema()`
     description: str = ''
     plugin: str = ''
+    category: str = 'apps'  # one of the standard category slugs above

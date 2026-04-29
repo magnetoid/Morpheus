@@ -150,6 +150,7 @@ class AnalyticsPlugin(Plugin):
             label='Analytics',
             description='Event log retention, daily rollups, funnel definitions.',
             schema=self.get_config_schema(),
+            category='developer',
         )
 
     def get_config_schema(self) -> dict:

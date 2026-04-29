@@ -103,4 +103,5 @@ class SeoPlugin(Plugin):
             label='SEO',
             description='Site-wide SEO defaults, JSON-LD, AI discovery feeds, audits.',
             schema={'type': 'object', 'properties': {}},
+            category='channels',
         )

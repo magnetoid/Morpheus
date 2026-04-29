@@ -939,66 +939,122 @@ def _toggle_plugin(request: HttpRequest):
 # ── Settings ──────────────────────────────────────────────────────────────────
 
 
-@staff_member_required
-def settings_view(request: HttpRequest) -> HttpResponse:
-    """Unified Settings hub.
-
-    Top-level sections (Store / AI / Theme / Channels / Webhooks) come from
-    core. Every plugin that contributes a `SettingsPanel` gets its own
-    page in the list — e.g. a Payoneer payment plugin shows up as its own
-    entry. Click an entry → its form opens (handled at
-    `/dashboard/apps/<plugin>/settings/`).
-    """
-    from django.conf import settings as dj_settings
+def _panels_by_category() -> dict:
+    """Index every active plugin's SettingsPanel by its category slug."""
     from plugins.registry import plugin_registry
 
-    core_sections = [
-        {
-            'key': 'store', 'label': 'Store', 'icon': 'store',
-            'description': 'Name, country, default currency.',
-            'items': [
-                ('Store name', getattr(dj_settings, 'STORE_NAME', '—')),
-                ('Currency', getattr(dj_settings, 'STORE_CURRENCY', '—')),
-                ('Country', getattr(dj_settings, 'STORE_COUNTRY', '—')),
-                ('Tax rate', f'{getattr(dj_settings, "STORE_TAX_RATE", 0)} %'),
-            ],
-        },
-        {
-            'key': 'ai', 'label': 'AI defaults', 'icon': 'sparkles',
-            'description': 'LLM provider + model used by the kernel Assistant and built-in agents.',
-            'items': [
-                ('Provider', getattr(dj_settings, 'AI_PROVIDER', '—')),
-                ('Model', getattr(dj_settings, 'AI_MODEL', '—')),
-                ('Embedding model', getattr(dj_settings, 'AI_EMBEDDING_MODEL', '—')),
-            ],
-        },
-        {
-            'key': 'theme', 'label': 'Theme', 'icon': 'palette',
-            'description': 'Active storefront theme.',
-            'items': [
-                ('Active theme', getattr(dj_settings, 'MORPHEUS_ACTIVE_THEME', '—')),
-            ],
-        },
-    ]
-
-    # Aggregate every plugin's SettingsPanel so each appears as its own
-    # entry in the unified menu (e.g. "Payoneer", "Stripe", "Cloudflare").
-    plugin_panels = []
+    by_cat: dict[str, list] = {}
     for plugin in plugin_registry.active_plugins():
         panel = plugin_registry.settings_panel(plugin.name)
-        if panel is not None:
-            plugin_panels.append({
-                'plugin': plugin.name,
-                'label': panel.label or plugin.label,
-                'description': panel.description or plugin.description,
-                'icon': 'settings',
-                'url': f'/dashboard/apps/{plugin.name}/settings/',
-            })
-    plugin_panels.sort(key=lambda p: p['label'].lower())
+        if panel is None:
+            continue
+        cat = getattr(panel, 'category', '') or 'apps'
+        by_cat.setdefault(cat, []).append({
+            'plugin': plugin.name,
+            'plugin_label': plugin.label,
+            'plugin_description': plugin.description,
+            'panel': panel,
+        })
+    for entries in by_cat.values():
+        entries.sort(key=lambda e: (e['panel'].label or e['plugin_label']).lower())
+    return by_cat
 
+
+def _build_panel_fields(plugin_instance, schema: dict) -> list[dict]:
+    """Schema → list of form-field dicts (matches plugin_settings.html shape)."""
+    config = plugin_instance.get_config()
+    fields = []
+    for key, prop in (schema.get('properties') or {}).items():
+        ptype = prop.get('type', 'string')
+        kind = 'enum' if 'enum' in prop else ptype
+        value = config.get(key, prop.get('default', ''))
+        if kind == 'boolean':
+            value = bool(value)
+        fields.append({
+            'key': key,
+            'title': prop.get('title') or key.replace('_', ' ').title(),
+            'description': prop.get('description', ''),
+            'kind': kind,
+            'enum': prop.get('enum') or [],
+            'value': value,
+        })
+    return fields
+
+
+@staff_member_required
+def settings_view(request: HttpRequest) -> HttpResponse:
+    """Settings hub — Shopify-style category index.
+
+    Renders one card per ``SettingsCategory`` showing how many plugin
+    panels live under it. Each card links to
+    ``/dashboard/settings/<slug>/`` where the actual editable forms are
+    grouped together. The legacy
+    ``/dashboard/apps/<plugin>/settings/`` URL still works as a deep
+    link for backward compat.
+    """
+    from django.conf import settings as dj_settings
+    from plugins.installed.admin_dashboard.settings_categories import (
+        SETTINGS_CATEGORIES,
+    )
+
+    by_cat = _panels_by_category()
+    cards = []
+    for cat in SETTINGS_CATEGORIES:
+        entries = by_cat.get(cat.slug, [])
+        cards.append({
+            'category': cat,
+            'count': len(entries),
+            # Show up to 3 plugin labels as a hint of what's inside.
+            'plugins': [e['panel'].label or e['plugin_label'] for e in entries[:3]],
+        })
+
+    store_summary = {
+        'name': getattr(dj_settings, 'STORE_NAME', '—'),
+        'currency': getattr(dj_settings, 'STORE_CURRENCY', '—'),
+        'country': getattr(dj_settings, 'STORE_COUNTRY', '—'),
+        'theme': getattr(dj_settings, 'MORPHEUS_ACTIVE_THEME', '—'),
+    }
     return render(request, 'admin_dashboard/settings.html', {
-        'core_sections': core_sections,
-        'plugin_panels': plugin_panels,
+        'cards': cards,
+        'store_summary': store_summary,
+        'active_nav': 'settings',
+    })
+
+
+@staff_member_required
+def settings_category(request: HttpRequest, category: str) -> HttpResponse:
+    """Render every plugin SettingsPanel that belongs to one category.
+
+    Each panel becomes a card with an inline form posting to the existing
+    plugin-settings handler at ``/dashboard/apps/<plugin>/settings/``.
+    """
+    from plugins.installed.admin_dashboard.settings_categories import get_category
+    from plugins.registry import plugin_registry
+
+    cat = get_category(category)
+    if cat is None:
+        from morpheus.views import Http404
+        raise Http404('Unknown settings category')
+
+    by_cat = _panels_by_category()
+    entries = by_cat.get(category, [])
+
+    cards = []
+    for entry in entries:
+        instance = plugin_registry.get(entry['plugin'])
+        if instance is None:
+            continue
+        cards.append({
+            'plugin': instance,
+            'plugin_name': entry['plugin'],
+            'panel': entry['panel'],
+            'fields': _build_panel_fields(instance, entry['panel'].schema),
+            'submit_url': f'/dashboard/apps/{entry["plugin"]}/settings/',
+        })
+
+    return render(request, 'admin_dashboard/settings_category.html', {
+        'category': cat,
+        'cards': cards,
         'active_nav': 'settings',
     })
 

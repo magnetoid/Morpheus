@@ -162,6 +162,7 @@ class CrmPlugin(Plugin):
             label='CRM',
             description='Lead capture, follow-up automation, B2B accounts.',
             schema=self.get_config_schema(),
+            category='marketing',
         )
 
     def get_config_schema(self) -> dict:

@@ -1,0 +1,100 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ category.label }} · Settings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-5">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">{{ category.label }}</span>
+  </div>
+
+  <div class="flex items-start gap-3">
+    <div class="settings-tile-icon">
+      <i data-lucide="{{ category.icon }}" class="h-5 w-5"></i>
+    </div>
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ category.label }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">{{ category.description }}</p>
+    </div>
+  </div>
+
+  {% if cards %}
+    {% for c in cards %}
+    <div class="card">
+      <div class="card-padded flex items-start justify-between gap-3 border-b border-[color:var(--border)]">
+        <div class="min-w-0">
+          <h2 class="font-semibold">{{ c.panel.label }}</h2>
+          {% if c.panel.description %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ c.panel.description }}</p>{% endif %}
+          <p class="text-xs text-[color:var(--text-subtle)] mt-1">From plugin: <span class="font-mono">{{ c.plugin_name }}</span> · v{{ c.plugin.version }}</p>
+        </div>
+      </div>
+
+      {% if c.fields %}
+      <form method="post" action="{{ c.submit_url }}" class="card-padded space-y-4">
+        {% csrf_token %}
+        {% for field in c.fields %}
+        <div class="space-y-1">
+          <label for="f-{{ c.plugin_name }}-{{ field.key }}"
+                 class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
+            {{ field.title }}
+          </label>
+          {% if field.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.description }}</p>{% endif %}
+
+          {% if field.kind == 'boolean' %}
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" id="f-{{ c.plugin_name }}-{{ field.key }}" name="{{ field.key }}"
+                   {% if field.value %}checked{% endif %}>
+            <span class="text-sm">Enabled</span>
+          </label>
+          {% elif field.kind == 'enum' %}
+          <select id="f-{{ c.plugin_name }}-{{ field.key }}" name="{{ field.key }}" class="input">
+            {% for option in field.enum %}
+              <option value="{{ option }}" {% if option == field.value %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <input type="{% if field.kind == 'number' or field.kind == 'integer' %}number{% else %}text{% endif %}"
+                 id="f-{{ c.plugin_name }}-{{ field.key }}" name="{{ field.key }}" class="input"
+                 value="{{ field.value }}">
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="pt-2 flex justify-end">
+          <button class="btn btn-primary" type="submit">
+            <i data-lucide="save" class="h-4 w-4"></i> Save {{ c.panel.label }}
+          </button>
+        </div>
+      </form>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">
+        This panel doesn't expose any editable fields yet.
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card card-padded text-center py-16">
+      <i data-lucide="{{ category.icon }}" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
+      <h3 class="font-medium">Nothing configured here yet</h3>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">
+        Install a plugin in this category to surface its settings.
+      </p>
+      <a href="{% url 'admin_dashboard:apps' %}" class="btn mt-4 inline-flex">
+        <i data-lucide="grid-3x3" class="h-4 w-4"></i> Browse apps
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+
+<style>
+  .settings-tile-icon {
+    width: 2.5rem; height: 2.5rem; border-radius: 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+</style>
+{% endblock %}

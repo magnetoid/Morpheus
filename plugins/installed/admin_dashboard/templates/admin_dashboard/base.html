@@ -135,13 +135,24 @@
 
   {# ── SETTINGS NAV (slides in when /dashboard/settings/ is open) ──────── #}
   <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-2 py-3 space-y-0.5" style="display:none;">
-    <div class="nav-section">Platform</div>
-    <a href="{% url 'admin_dashboard:settings' %}#pane=core-store" class="nav-link"><i data-lucide="store" class="h-4 w-4"></i> Store</a>
-    <a href="{% url 'admin_dashboard:settings' %}#pane=core-ai" class="nav-link"><i data-lucide="sparkles" class="h-4 w-4"></i> AI defaults</a>
-    <a href="{% url 'admin_dashboard:settings' %}#pane=core-theme" class="nav-link"><i data-lucide="palette" class="h-4 w-4"></i> Theme</a>
-    <a href="{% url 'admin_dashboard:apps' %}" class="nav-link"><i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps</a>
+    <a href="{% url 'admin_dashboard:settings' %}" class="nav-link {% if active_nav == 'settings' %}active{% endif %}">
+      <i data-lucide="settings" class="h-4 w-4"></i> Settings overview
+    </a>
+    <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' %}active{% endif %}">
+      <i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps
+    </a>
 
-    {# Plugin pages explicitly tagged nav='settings' (admin/setup tools). #}
+    {# Shopify-style: one entry per category. Each category page renders all
+       plugin settings that opted into it as inline cards. #}
+    <div class="nav-section">Configure</div>
+    {% for cat in settings_category_nav %}
+    <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}" class="nav-link">
+      <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> {{ cat.label }}
+    </a>
+    {% endfor %}
+
+    {# Plugin pages explicitly tagged nav='settings' (operational admin tools,
+       not schema-driven config — e.g. webhooks log, role manager). #}
     {% for section in settings_sections %}
     <div class="nav-section">{{ section.label }}</div>
     {% for page in section.pages %}
@@ -149,14 +160,6 @@
       <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
     </a>
     {% endfor %}
-    {% endfor %}
-
-    {# Schema-driven settings panels (form-based config: API keys, defaults). #}
-    <div class="nav-section">Plugin configuration</div>
-    {% for entry in plugin_settings_panels %}
-    <a href="/dashboard/apps/{{ entry.plugin }}/settings/" class="nav-link">
-      <i data-lucide="settings" class="h-4 w-4"></i> {{ entry.panel.label }}
-    </a>
     {% endfor %}
 
     <div style="margin-top:auto;"></div>

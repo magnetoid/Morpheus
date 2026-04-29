@@ -80,6 +80,25 @@ def plugin_context(request):
     main_pages = [p for p in pages if getattr(p, 'nav', 'main') != 'settings']
     settings_pages = [p for p in pages if getattr(p, 'nav', 'main') == 'settings']
 
+    # Shopify-style settings categories — drives the settings sidebar.
+    # Only show categories that actually have at least one panel inside
+    # (or 'general' / 'apps' which always make sense to expose).
+    try:
+        from plugins.installed.admin_dashboard.settings_categories import (
+            SETTINGS_CATEGORIES,
+        )
+        panels_by_cat: dict[str, int] = {}
+        for entry in plugin_registry.all_settings_panels():
+            panel = entry.get('panel') if isinstance(entry, dict) else entry[1] if isinstance(entry, tuple) else entry
+            cat = getattr(panel, 'category', '') or 'apps'
+            panels_by_cat[cat] = panels_by_cat.get(cat, 0) + 1
+        settings_category_nav = [
+            c for c in SETTINGS_CATEGORIES
+            if panels_by_cat.get(c.slug) or c.slug in ('general', 'apps')
+        ]
+    except Exception:  # noqa: BLE001 — never fail the page on missing module
+        settings_category_nav = []
+
     return {
         'active_plugins': plugin_registry._active,
         'plugin_registry': plugin_registry,
@@ -88,4 +107,6 @@ def plugin_context(request):
         'settings_sections': _group_by_section(settings_pages),  # settings sidebar
         # Schema-driven settings panels (form-based).
         'plugin_settings_panels': plugin_registry.all_settings_panels(),
+        # Settings categories shown in the settings-mode sidebar.
+        'settings_category_nav': settings_category_nav,
     }

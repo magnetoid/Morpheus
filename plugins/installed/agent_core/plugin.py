@@ -131,6 +131,7 @@ class AgentCorePlugin(Plugin):
             label='Agents',
             description='Configure the agent runtime and built-in agents.',
             schema=self.get_config_schema(),
+            category='ai',
         )
 
     def get_config_schema(self) -> dict:

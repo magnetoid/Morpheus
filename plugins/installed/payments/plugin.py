@@ -1,5 +1,4 @@
-from morpheus import Plugin
-from morpheus import events
+from morpheus import Plugin, SettingsPanel, events
 import logging
 
 logger = logging.getLogger('morpheus.plugins.payments')
@@ -98,9 +97,18 @@ class PaymentsPlugin(Plugin):
                 "stripe_public_key": {"type": "string", "title": "Stripe Public Key"},
                 "stripe_webhook_secret": {"type": "string", "title": "Stripe Webhook Secret"},
                 "capture_strategy": {
-                    "type": "string", 
-                    "enum": ["automatic", "manual"], 
-                    "default": "automatic"
-                }
-            }
+                    "type": "string",
+                    "enum": ["automatic", "manual"],
+                    "default": "automatic",
+                    "title": "Capture strategy",
+                },
+            },
         }
+
+    def contribute_settings_panel(self):
+        return SettingsPanel(
+            label='Stripe',
+            description='Card payments + webhooks. Set keys then register the webhook URL in Stripe.',
+            schema=self.get_config_schema(),
+            category='payments',
+        )

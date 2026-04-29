@@ -124,6 +124,7 @@ class AdvancedEcommercePlugin(Plugin):
             label='Advanced Ecommerce',
             description='Behavior toggles for storefront blocks and admin tools.',
             schema=self.get_config_schema(),
+            category='apps',
         )
 
     # ── Config schema ────────────────────────────────────────────────────────

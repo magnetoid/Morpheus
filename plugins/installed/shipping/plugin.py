@@ -55,6 +55,7 @@ class ShippingPlugin(Plugin):
             label='Shipping',
             description='Manage shipping zones, rates, free-shipping rules.',
             schema=self.get_config_schema(),
+            category='shipping',
         )
 
     def get_config_schema(self) -> dict:
