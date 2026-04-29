@@ -1,0 +1,10 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+Your order #{{ order.order_number }} is on the way.
+
+{% if order.tracking_number %}Tracking: {{ order.tracking_number }}{% if order.shipping_method %} ({{ order.shipping_method }}){% endif %}
+{% endif %}
+{% for it in order.items.all %}- {{ it.quantity }}× {{ it.product_name }}{% if it.variant_name %} ({{ it.variant_name }}){% endif %}
+{% endfor %}
+
+— The team

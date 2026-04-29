@@ -1,0 +1,67 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Fulfill · Order #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:orders' %}" class="hover:underline">Orders</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <a href="{% url 'admin_dashboard:order_detail' order_number=order.order_number %}" class="hover:underline">#{{ order.order_number }}</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">Fulfill</span>
+  </div>
+
+  <h1 class="text-xl font-semibold">Create fulfillment</h1>
+  <p class="text-sm text-[color:var(--text-muted)]">
+    Records shipping details for the items in this order. Currently fulfills the
+    full remaining quantity in one record — partial-line fulfillment is a future addition.
+  </p>
+
+  {% if form.non_field_errors %}
+  <div class="card card-padded" style="border-color: var(--danger); color: var(--danger);">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" class="card card-padded space-y-3">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Status</label>
+        <select name="status" class="input">
+          {% for value, label in form.fields.status.choices %}
+          <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Carrier</label>
+        <input type="text" name="carrier" class="input" placeholder="UPS, DHL, …" value="{{ form.carrier.value|default:'' }}">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Tracking number</label>
+        <input type="text" name="tracking_number" class="input" value="{{ form.tracking_number.value|default:'' }}">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Tracking URL</label>
+        <input type="url" name="tracking_url" class="input" value="{{ form.tracking_url.value|default:'' }}">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Notes</label>
+        <textarea name="notes" rows="3" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.notes.value|default:'' }}</textarea>
+      </div>
+    </div>
+
+    <label class="inline-flex items-center gap-2 text-sm">
+      <input type="checkbox" name="mark_shipped" {% if form.mark_shipped.value or form.mark_shipped.value is None %}checked{% endif %}>
+      Also mark order as shipped
+    </label>
+
+    <div class="flex items-center justify-end gap-2 pt-2">
+      <a href="{% url 'admin_dashboard:order_detail' order_number=order.order_number %}" class="btn">Cancel</a>
+      <button class="btn btn-primary"><i data-lucide="package-check" class="h-4 w-4"></i> Create fulfillment</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

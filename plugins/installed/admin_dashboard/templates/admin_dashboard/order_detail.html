@@ -20,6 +20,34 @@
         <button class="btn"><i data-lucide="check" class="h-4 w-4"></i> Confirm</button>
       </form>
       {% endif %}
+      {% if order.status == 'confirmed' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="process">
+        <button class="btn"><i data-lucide="cog" class="h-4 w-4"></i> Process</button>
+      </form>
+      {% endif %}
+      {% if order.status == 'processing' or order.status == 'partially_fulfilled' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="fulfill">
+        <button class="btn"><i data-lucide="package-check" class="h-4 w-4"></i> Fulfill</button>
+      </form>
+      {% endif %}
+      {% if order.status == 'fulfilled' or order.status == 'processing' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="ship">
+        <button class="btn"><i data-lucide="truck" class="h-4 w-4"></i> Mark shipped</button>
+      </form>
+      {% endif %}
+      {% if order.status == 'shipped' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="deliver">
+        <button class="btn"><i data-lucide="check-circle" class="h-4 w-4"></i> Mark delivered</button>
+      </form>
+      {% endif %}
       {% if order.payment_status != 'paid' %}
       <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
         {% csrf_token %}
@@ -34,6 +62,11 @@
         <input type="hidden" name="action" value="cancel">
         <button class="btn"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel</button>
       </form>
+      {% endif %}
+      {% if order.status != 'cancelled' and order.status != 'refunded' %}
+      <a href="{% url 'admin_dashboard:order_fulfill' order_number=order.order_number %}" class="btn">
+        <i data-lucide="package-check" class="h-4 w-4"></i> Fulfillment
+      </a>
       {% endif %}
       <a href="{% url 'admin_dashboard:order_refund' order_number=order.order_number %}" class="btn">
         <i data-lucide="refresh-ccw" class="h-4 w-4"></i> Refund
@@ -75,6 +108,36 @@
           <div class="flex justify-between font-semibold pt-1 border-t border-[color:var(--border)]"><span>Total</span><span>{{ order.total }}</span></div>
         </div>
       </div>
+
+      {% if fulfillments %}
+      <div class="card">
+        <div class="card-padded">
+          <h2 class="font-semibold">Fulfillments</h2>
+        </div>
+        <table class="morph-table">
+          <thead><tr><th>Status</th><th>Carrier</th><th>Tracking</th><th class="text-right">Created</th></tr></thead>
+          <tbody>
+            {% for f in fulfillments %}
+            <tr>
+              <td>
+                {% if f.status == 'delivered' %}<span class="pill pill-success">{{ f.get_status_display }}</span>
+                {% elif f.status == 'in_transit' %}<span class="pill pill-info">{{ f.get_status_display }}</span>
+                {% elif f.status == 'failed' or f.status == 'returned' %}<span class="pill pill-danger">{{ f.get_status_display }}</span>
+                {% else %}<span class="pill pill-warn">{{ f.get_status_display }}</span>{% endif %}
+              </td>
+              <td class="text-[color:var(--text-muted)]">{{ f.carrier|default:"—" }}</td>
+              <td class="text-[color:var(--text-muted)]">
+                {% if f.tracking_url %}<a class="hover:underline" target="_blank" rel="noopener" href="{{ f.tracking_url }}"><code>{{ f.tracking_number|default:"link" }}</code></a>
+                {% elif f.tracking_number %}<code>{{ f.tracking_number }}</code>
+                {% else %}—{% endif %}
+              </td>
+              <td class="text-right text-[color:var(--text-muted)] whitespace-nowrap">{{ f.created_at|date:"M j, H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
 
       {% if refunds %}
       <div class="card">

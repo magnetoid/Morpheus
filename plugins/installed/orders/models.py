@@ -192,6 +192,28 @@ class Order(models.Model):
     def process(self):
         self.log_event("ORDER_PROCESSING", prev_state='confirmed')
 
+    @transition(
+        field=status,
+        source=['processing', 'partially_fulfilled'],
+        target='fulfilled',
+    )
+    def fulfill(self):
+        self.log_event("ORDER_FULFILLED", prev_state=self.status)
+
+    @transition(
+        field=status,
+        source=['processing', 'fulfilled', 'partially_fulfilled'],
+        target='shipped',
+    )
+    def ship(self, tracking_number: str = ''):
+        if tracking_number:
+            self.tracking_number = tracking_number
+        self.log_event("ORDER_SHIPPED", message=tracking_number, prev_state=self.status)
+
+    @transition(field=status, source='shipped', target='delivered')
+    def deliver(self):
+        self.log_event("ORDER_DELIVERED", prev_state='shipped')
+
     @transition(field=status, source='*', target='cancelled')
     def cancel(self, reason=''):
         prev = self.status

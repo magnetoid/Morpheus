@@ -1,0 +1,7 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+Payment confirmed for order #{{ order.order_number }} — {{ order.total }}.
+
+We're packing your items now and will email tracking when they ship.
+
+— The team

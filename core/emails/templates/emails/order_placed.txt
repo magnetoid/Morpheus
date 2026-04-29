@@ -1,0 +1,18 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+Thanks for your order — we got it.
+
+Order #{{ order.order_number }}
+Placed {{ order.placed_at|date:"F j, Y H:i" }}
+
+{% for it in order.items.all %}- {{ it.quantity }}× {{ it.product_name }}{% if it.variant_name %} ({{ it.variant_name }}){% endif %} — {{ it.total_price }}
+{% endfor %}
+
+Subtotal: {{ order.subtotal }}
+Shipping: {{ order.shipping_total }}
+Tax:      {{ order.tax_total }}
+Total:    {{ order.total }}
+
+You'll get another email once payment is confirmed and your order ships.
+
+— The team

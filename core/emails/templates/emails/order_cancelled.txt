@@ -1,0 +1,11 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+Order #{{ order.order_number }} has been cancelled.
+
+{% if order.staff_notes %}Reason: {{ order.staff_notes }}
+{% endif %}
+If a payment was captured for this order, the refund will arrive in your
+original payment method shortly. If you have any questions, just reply
+to this email.
+
+— The team

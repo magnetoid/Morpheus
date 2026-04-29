@@ -314,7 +314,74 @@ class RefundForm(forms.Form):
             'REFUND_CREATED',
             message=f'{refund.amount} — {refund.get_reason_display()}',
         )
+        # Ask the payments plugin (or any other listener) to issue the
+        # actual refund via the gateway. Failures are logged on the order
+        # timeline; the local Refund record stays in place either way.
+        try:
+            from morpheus import hooks
+            hooks.fire('refund.requested', refund=refund)
+        except Exception:  # noqa: BLE001 — never block the dashboard save
+            pass
         return refund
+
+
+# ── Fulfillment ──────────────────────────────────────────────────────────────
+
+
+class FulfillmentForm(forms.Form):
+    """Create a `Fulfillment` row covering the entire order's items.
+
+    A line-by-line partial-fulfillment editor would be the next step up;
+    today's form ships the whole order in one Fulfillment record so staff
+    can record tracking + carrier without leaving the dashboard.
+    """
+
+    status = forms.ChoiceField(choices=[
+        ('pending', 'Pending'),
+        ('in_transit', 'In transit'),
+        ('delivered', 'Delivered'),
+        ('failed', 'Failed'),
+        ('returned', 'Returned'),
+    ], initial='in_transit')
+    tracking_number = forms.CharField(max_length=200, required=False)
+    tracking_url = forms.URLField(required=False)
+    carrier = forms.CharField(max_length=100, required=False)
+    notes = forms.CharField(widget=forms.Textarea, required=False)
+    mark_shipped = forms.BooleanField(
+        required=False, initial=True,
+        help_text="Also transition the order to 'shipped'.",
+    )
+
+    def __init__(self, *args, order=None, **kwargs):
+        self.order = order
+        super().__init__(*args, **kwargs)
+
+    def save(self):
+        from django.utils import timezone
+        from plugins.installed.orders.models import Fulfillment, FulfillmentItem
+        if self.order is None:
+            raise ValueError('FulfillmentForm.save() requires an order.')
+        cd = self.cleaned_data
+        f = Fulfillment.objects.create(
+            order=self.order,
+            status=cd['status'],
+            tracking_number=cd.get('tracking_number') or '',
+            tracking_url=cd.get('tracking_url') or '',
+            carrier=cd.get('carrier') or '',
+            notes=cd.get('notes') or '',
+            shipped_at=timezone.now() if cd['status'] != 'pending' else None,
+        )
+        # Mirror every order item into the fulfillment so reports match.
+        for item in self.order.items.all():
+            remaining = max(item.quantity - item.fulfilled_quantity, 0)
+            if remaining <= 0:
+                continue
+            FulfillmentItem.objects.create(
+                fulfillment=f, order_item=item, quantity=remaining,
+            )
+            item.fulfilled_quantity = item.quantity
+            item.save(update_fields=['fulfilled_quantity'])
+        return f
 
 
 # ── Product variant ──────────────────────────────────────────────────────────

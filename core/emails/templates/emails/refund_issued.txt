@@ -1,0 +1,11 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+A refund has been issued for order #{{ order.order_number }}.
+
+Amount: {{ refund.amount }}
+{% if refund.notes %}Note: {{ refund.notes }}
+{% endif %}
+
+The refund will land in your original payment method in a few business days.
+
+— The team

@@ -34,6 +34,7 @@ from plugins.installed.admin_dashboard.forms import (
     AddressForm,
     CustomerForm,
     DraftOrderForm,
+    FulfillmentForm,
     ProductForm,
     RefundForm,
     VariantForm,
@@ -239,6 +240,7 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         order = None
     refunds: list[Any] = []
     refunded_total = Decimal('0')
+    fulfillments: list[Any] = []
     if order is not None:
         try:
             refunds = list(order.refunds.all().order_by('-created_at'))
@@ -247,10 +249,19 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
             )
         except Exception:  # noqa: BLE001
             pass
+        try:
+            fulfillments = list(
+                order.fulfillments.all()
+                .prefetch_related('items', 'items__order_item')
+                .order_by('-created_at')
+            )
+        except Exception:  # noqa: BLE001
+            pass
     return render(request, 'admin_dashboard/order_detail.html', {
         'order': order,
         'refunds': refunds,
         'refunded_total': refunded_total,
+        'fulfillments': fulfillments,
         'active_nav': 'orders',
     })
 
@@ -579,6 +590,23 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
             order.confirm()
             order.save()
             messages.success(request, f'Order #{order.order_number} confirmed.')
+        elif action == 'process':
+            order.process()
+            order.save()
+            messages.success(request, f'Order #{order.order_number} marked as processing.')
+        elif action == 'fulfill':
+            order.fulfill()
+            order.save()
+            messages.success(request, f'Order #{order.order_number} marked as fulfilled.')
+        elif action == 'ship':
+            tracking = (request.POST.get('tracking_number') or '').strip()[:200]
+            order.ship(tracking_number=tracking)
+            order.save()
+            messages.success(request, f'Order #{order.order_number} marked as shipped.')
+        elif action == 'deliver':
+            order.deliver()
+            order.save()
+            messages.success(request, f'Order #{order.order_number} marked as delivered.')
         elif action == 'mark_paid':
             order.payment_status = 'paid'
             order.save(update_fields=['payment_status', 'updated_at'])
@@ -600,6 +628,33 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
         messages.error(request, f'Action failed: {e}')
 
     return redirect('admin_dashboard:order_detail', order_number=order_number)
+
+
+@staff_member_required
+def order_fulfill(request: HttpRequest, order_number: str) -> HttpResponse:
+    """Create a Fulfillment record for an order; optionally also flip the
+    order's status to 'shipped' via the FSM."""
+    from plugins.installed.orders.models import Order
+    order = get_object_or_404(Order, order_number=order_number)
+    if request.method == 'POST':
+        form = FulfillmentForm(request.POST, order=order)
+        if form.is_valid():
+            f = form.save()
+            if form.cleaned_data.get('mark_shipped') and order.status not in ('shipped', 'delivered', 'cancelled'):
+                try:
+                    order.ship(tracking_number=f.tracking_number)
+                    order.save()
+                except Exception as e:  # noqa: BLE001 — FSM rejects illegal moves
+                    logger.warning('order_fulfill: ship transition failed: %s', e)
+            messages.success(request, f'Fulfillment created for order #{order.order_number}.')
+            return redirect('admin_dashboard:order_detail', order_number=order.order_number)
+    else:
+        form = FulfillmentForm(order=order)
+    return render(request, 'admin_dashboard/order_fulfill.html', {
+        'form': form,
+        'order': order,
+        'active_nav': 'orders',
+    })
 
 
 @staff_member_required

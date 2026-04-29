@@ -112,6 +112,7 @@ urlpatterns = [
     path('orders/<str:order_number>/', views.order_detail, name='order_detail'),
     path('orders/<str:order_number>/action/', views.order_action, name='order_action'),
     path('orders/<str:order_number>/refund/', views.order_refund, name='order_refund'),
+    path('orders/<str:order_number>/fulfill/', views.order_fulfill, name='order_fulfill'),
     path('products/', views.products_list, name='products'),
     path('products/new/', views.product_new, name='product_new'),
     path('products/<uuid:product_id>/', views.product_edit, name='product_edit'),
