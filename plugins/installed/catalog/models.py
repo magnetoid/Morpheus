@@ -232,15 +232,20 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
     @property
-    def is_on_sale(self):
-        return self.compare_at_price and self.compare_at_price > self.price
+    def is_on_sale(self) -> bool:
+        # `compare_at_price` is nullable; must always return a real bool —
+        # the GraphQL type declares this field non-nullable, so a None
+        # leak (from `a and b` shortcircuit) crashes resolvers.
+        if not self.compare_at_price or not self.price:
+            return False
+        return self.compare_at_price > self.price
 
     @property
-    def discount_percentage(self):
-        if self.is_on_sale:
-            diff = self.compare_at_price.amount - self.price.amount
-            return round((diff / self.compare_at_price.amount) * 100)
-        return 0
+    def discount_percentage(self) -> int:
+        if not self.is_on_sale:
+            return 0
+        diff = self.compare_at_price.amount - self.price.amount
+        return round((diff / self.compare_at_price.amount) * 100)
 
     @property
     def primary_image(self):
