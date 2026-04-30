@@ -142,25 +142,22 @@
       <i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps
     </a>
 
-    {# Shopify-style: one entry per category. Each category page renders all
-       plugin settings that opted into it as inline cards. #}
-    <div class="nav-section">Configure</div>
+    {% comment %}
+      Shopify-style flat menu — one link per category, then operational
+      admin pages (webhooks log, role manager…). No section headers in
+      between; the right-hand pane already names what you're looking at.
+    {% endcomment %}
     {% for cat in settings_category_nav %}
     <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}" class="nav-link">
       <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> {{ cat.label }}
     </a>
     {% endfor %}
 
-    {# Plugin pages explicitly tagged nav='settings' (operational admin tools,
-       not schema-driven config — e.g. webhooks log, role manager). #}
-    {% for section in settings_sections %}
-    <div class="nav-section">{{ section.label }}</div>
-    {% for page in section.pages %}
+    {% for section in settings_sections %}{% for page in section.pages %}
     <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/" class="nav-link">
       <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
     </a>
-    {% endfor %}
-    {% endfor %}
+    {% endfor %}{% endfor %}
 
     <div style="margin-top:auto;"></div>
   </nav>

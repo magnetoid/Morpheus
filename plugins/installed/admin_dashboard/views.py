@@ -1021,12 +1021,35 @@ def settings_view(request: HttpRequest) -> HttpResponse:
     })
 
 
+_CORE_FORMS_BY_CATEGORY = {
+    'general': ('StoreGeneralForm', 'Store details', 'Name, description, currency, locale.'),
+    'notifications': ('StoreNotificationsForm', 'Email sender + SMTP', 'Outbound email used for transactional notifications.'),
+}
+
+
+def _core_form_for(category: str):
+    """Return (form_class, title, description) for a category, or None."""
+    entry = _CORE_FORMS_BY_CATEGORY.get(category)
+    if entry is None:
+        return None
+    from plugins.installed.admin_dashboard import forms as dashboard_forms
+    cls = getattr(dashboard_forms, entry[0])
+    return cls, entry[1], entry[2]
+
+
 @staff_member_required
 def settings_category(request: HttpRequest, category: str) -> HttpResponse:
     """Render every plugin SettingsPanel that belongs to one category.
 
-    Each panel becomes a card with an inline form posting to the existing
-    plugin-settings handler at ``/dashboard/apps/<plugin>/settings/``.
+    For categories that map to core ``StoreSettings`` fields ('general',
+    'notifications') we additionally render an editable core form at the
+    top of the page. POSTs land in this same view and are dispatched by
+    the hidden ``_form`` field so we can host both core and plugin
+    submissions on one URL.
+
+    Each plugin panel becomes a card with an inline form posting to the
+    existing plugin-settings handler at
+    ``/dashboard/apps/<plugin>/settings/``.
     """
     from plugins.installed.admin_dashboard.settings_categories import get_category
     from plugins.registry import plugin_registry
@@ -1036,9 +1059,30 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
         from morpheus.views import Http404
         raise Http404('Unknown settings category')
 
+    core_card = None
+    core_entry = _core_form_for(category)
+    if core_entry is not None:
+        FormCls, core_title, core_description = core_entry
+        from core.models import StoreSettings
+        instance = StoreSettings.objects.first()
+
+        if request.method == 'POST' and request.POST.get('_form') == 'core':
+            form = FormCls(request.POST, instance=instance)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f'{core_title} saved.')
+                return redirect('admin_dashboard:settings_category', category=category)
+        else:
+            form = FormCls(instance=instance)
+
+        core_card = {
+            'title': core_title,
+            'description': core_description,
+            'form': form,
+        }
+
     by_cat = _panels_by_category()
     entries = by_cat.get(category, [])
-
     cards = []
     for entry in entries:
         instance = plugin_registry.get(entry['plugin'])
@@ -1054,6 +1098,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
 
     return render(request, 'admin_dashboard/settings_category.html', {
         'category': cat,
+        'core_card': core_card,
         'cards': cards,
         'active_nav': 'settings',
     })
