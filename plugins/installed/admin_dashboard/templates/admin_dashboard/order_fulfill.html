@@ -19,7 +19,7 @@
   </p>
 
   {% if form.non_field_errors %}
-  <div class="card card-padded" style="border-color: var(--danger); color: var(--danger);">{{ form.non_field_errors }}</div>
+  <div class="card card-padded form-error-banner">{{ form.non_field_errors }}</div>
   {% endif %}
 
   <form method="post" class="card card-padded space-y-3">

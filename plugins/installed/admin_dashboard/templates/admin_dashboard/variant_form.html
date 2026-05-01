@@ -40,12 +40,12 @@
         <input type="text" name="name" class="input" required
                placeholder="e.g. Red / XL"
                value="{{ form.name.value|default:'' }}">
-        {% if form.name.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.name.errors.0 }}</p>{% endif %}
+        {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">SKU</label>
         <input type="text" name="sku" class="input" required value="{{ form.sku.value|default:'' }}">
-        {% if form.sku.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.sku.errors.0 }}</p>{% endif %}
+        {% if form.sku.errors %}<p class="field-error">{{ form.sku.errors.0 }}</p>{% endif %}
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Price</label>

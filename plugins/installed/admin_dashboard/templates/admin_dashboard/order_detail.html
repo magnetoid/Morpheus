@@ -10,78 +10,86 @@
   </div>
 
   {% if order %}
-  <div class="flex items-center justify-between">
-    <h1 class="text-xl font-semibold">Order #{{ order.order_number }}</h1>
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <h1 class="text-xl font-semibold">Order #{{ order.order_number }}</h1>
+      {% if order.status == 'fulfilled' or order.status == 'delivered' %}<span class="pill pill-success">{{ order.get_status_display }}</span>
+      {% elif order.status == 'cancelled' or order.status == 'refunded' %}<span class="pill pill-danger">{{ order.get_status_display }}</span>
+      {% else %}<span class="pill pill-warn">{{ order.get_status_display }}</span>{% endif %}
+      {% if order.payment_status == 'paid' %}<span class="pill pill-success">Paid</span>
+      {% else %}<span class="pill pill-warn">{{ order.payment_status|default:"unpaid"|title }}</span>{% endif %}
+    </div>
+
+    {% comment %}
+      Single primary action driven by the FSM state, plus a "More actions"
+      dropdown for everything else. Keeps the header from filling up with
+      8 buttons. Refund + Cancel always live in the menu.
+    {% endcomment %}
     <div class="flex items-center gap-2">
+      {# Primary action — single button per state. #}
       {% if order.status == 'pending' %}
       <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="confirm">
-        <button class="btn"><i data-lucide="check" class="h-4 w-4"></i> Confirm</button>
+        {% csrf_token %}<input type="hidden" name="action" value="confirm">
+        <button class="btn btn-primary"><i data-lucide="check" class="h-4 w-4"></i> Confirm order</button>
       </form>
-      {% endif %}
-      {% if order.status == 'confirmed' %}
+      {% elif order.status == 'confirmed' %}
       <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="process">
-        <button class="btn"><i data-lucide="cog" class="h-4 w-4"></i> Process</button>
+        {% csrf_token %}<input type="hidden" name="action" value="process">
+        <button class="btn btn-primary"><i data-lucide="cog" class="h-4 w-4"></i> Start processing</button>
       </form>
-      {% endif %}
-      {% if order.status == 'processing' or order.status == 'partially_fulfilled' %}
-      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="fulfill">
-        <button class="btn"><i data-lucide="package-check" class="h-4 w-4"></i> Fulfill</button>
-      </form>
-      {% endif %}
-      {% if order.status == 'fulfilled' or order.status == 'processing' %}
-      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="ship">
-        <button class="btn"><i data-lucide="truck" class="h-4 w-4"></i> Mark shipped</button>
-      </form>
-      {% endif %}
-      {% if order.status == 'shipped' %}
-      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="deliver">
-        <button class="btn"><i data-lucide="check-circle" class="h-4 w-4"></i> Mark delivered</button>
-      </form>
-      {% endif %}
-      {% if order.payment_status != 'paid' %}
-      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="mark_paid">
-        <button class="btn"><i data-lucide="credit-card" class="h-4 w-4"></i> Mark paid</button>
-      </form>
-      {% endif %}
-      {% if order.status != 'cancelled' and order.status != 'refunded' %}
-      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}"
-            onsubmit="return confirm('Cancel this order?');">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="cancel">
-        <button class="btn"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel</button>
-      </form>
-      {% endif %}
-      {% if order.status != 'cancelled' and order.status != 'refunded' %}
-      <a href="{% url 'admin_dashboard:order_fulfill' order_number=order.order_number %}" class="btn">
-        <i data-lucide="package-check" class="h-4 w-4"></i> Fulfillment
+      {% elif order.status == 'processing' or order.status == 'partially_fulfilled' %}
+      <a href="{% url 'admin_dashboard:order_fulfill' order_number=order.order_number %}" class="btn btn-primary">
+        <i data-lucide="package-check" class="h-4 w-4"></i> Create fulfillment
       </a>
+      {% elif order.status == 'fulfilled' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}<input type="hidden" name="action" value="ship">
+        <button class="btn btn-primary"><i data-lucide="truck" class="h-4 w-4"></i> Mark shipped</button>
+      </form>
+      {% elif order.status == 'shipped' %}
+      <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+        {% csrf_token %}<input type="hidden" name="action" value="deliver">
+        <button class="btn btn-primary"><i data-lucide="check-circle" class="h-4 w-4"></i> Mark delivered</button>
+      </form>
       {% endif %}
-      <a href="{% url 'admin_dashboard:order_refund' order_number=order.order_number %}" class="btn">
-        <i data-lucide="refresh-ccw" class="h-4 w-4"></i> Refund
-      </a>
+
+      {# More actions dropdown — refund, cancel, mark paid, side transitions. #}
+      <div class="dropdown" data-dropdown>
+        <button type="button" class="btn" data-dropdown-toggle aria-haspopup="menu" aria-expanded="false">
+          <i data-lucide="more-horizontal" class="h-4 w-4"></i> More
+        </button>
+        <div class="dropdown-menu" role="menu" hidden>
+          {% if order.payment_status != 'paid' %}
+          <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
+            {% csrf_token %}<input type="hidden" name="action" value="mark_paid">
+            <button class="dropdown-item"><i data-lucide="credit-card" class="h-4 w-4"></i> Mark as paid</button>
+          </form>
+          {% endif %}
+          {% if order.status != 'cancelled' and order.status != 'refunded' %}
+          <a href="{% url 'admin_dashboard:order_fulfill' order_number=order.order_number %}" class="dropdown-item">
+            <i data-lucide="package-check" class="h-4 w-4"></i> Add fulfillment
+          </a>
+          {% endif %}
+          <a href="{% url 'admin_dashboard:order_refund' order_number=order.order_number %}" class="dropdown-item">
+            <i data-lucide="refresh-ccw" class="h-4 w-4"></i> Issue refund
+          </a>
+          {% if order.status != 'cancelled' and order.status != 'refunded' %}
+          <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}"
+                onsubmit="return confirm('Cancel this order?');">
+            {% csrf_token %}<input type="hidden" name="action" value="cancel">
+            <button class="dropdown-item dropdown-item-danger"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel order</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     <div class="lg:col-span-2 space-y-4">
       <div class="card">
-        <div class="card-padded flex items-center justify-between">
+        <div class="card-padded">
           <h2 class="font-semibold">Items</h2>
-          {% if order.status == 'fulfilled' or order.status == 'delivered' %}<span class="pill pill-success">{{ order.get_status_display }}</span>
-          {% elif order.status == 'cancelled' or order.status == 'refunded' %}<span class="pill pill-danger">{{ order.get_status_display }}</span>
-          {% else %}<span class="pill pill-warn">{{ order.get_status_display }}</span>{% endif %}
         </div>
         <table class="morph-table">
           <thead><tr><th>Product</th><th class="text-right">Qty</th><th class="text-right">Unit</th><th class="text-right">Subtotal</th></tr></thead>

@@ -40,7 +40,7 @@
         <div>
           <label class="block text-sm font-medium mb-1">Code</label>
           <input type="text" name="code" class="input font-mono" required value="{{ form.code.value|default:'' }}">
-          {% if form.code.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.code.errors.0 }}</p>{% endif %}
+          {% if form.code.errors %}<p class="field-error">{{ form.code.errors.0 }}</p>{% endif %}
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Display name</label>

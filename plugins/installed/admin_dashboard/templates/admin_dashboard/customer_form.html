@@ -32,7 +32,7 @@
   </div>
 
   {% if form.non_field_errors %}
-  <div class="card card-padded" style="border-color: var(--danger); color: var(--danger);">
+  <div class="card card-padded form-error-banner">
     {{ form.non_field_errors }}
   </div>
   {% endif %}
@@ -46,7 +46,7 @@
         <div>
           <label class="block text-sm font-medium mb-1">Email</label>
           <input type="email" name="email" class="input" required value="{{ form.email.value|default:'' }}">
-          {% if form.email.errors %}<p class="text-xs mt-1" style="color:var(--danger);">{{ form.email.errors.0 }}</p>{% endif %}
+          {% if form.email.errors %}<p class="field-error">{{ form.email.errors.0 }}</p>{% endif %}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>

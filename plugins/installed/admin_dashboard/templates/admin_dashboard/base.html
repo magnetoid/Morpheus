@@ -36,12 +36,23 @@
   body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-card); }
   .card-padded { padding: 1.25rem; }
-  .btn { display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .85rem; font-size:.875rem; font-weight:500; border-radius: var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); transition:background .15s, border-color .15s; }
+  .btn { display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .85rem; font-size:.875rem; font-weight:500; border-radius: var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); transition:background .15s, border-color .15s, box-shadow .15s; cursor: pointer; }
   .btn:hover { background: var(--surface-2); }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn-primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
   .btn-primary:hover { background: var(--accent); }
   .btn-ghost { background: transparent; border-color: transparent; }
   .btn-ghost:hover { background: var(--surface-2); }
+  .btn-danger { background: var(--surface); color: var(--danger); border-color: var(--border); }
+  .btn-danger:hover { background: var(--danger-bg); border-color: var(--danger); }
+  /* Semantic text colors — used in form errors, hint text, etc. */
+  .text-success { color: var(--success); }
+  .text-warn    { color: var(--warn); }
+  .text-danger  { color: var(--danger); }
+  .text-info    { color: var(--info); }
+  .field-error  { color: var(--danger); font-size: .75rem; margin-top: .25rem; }
+  .form-error-banner { border-color: var(--danger); color: var(--danger); }
   .pill { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:9999px; font-size:.75rem; font-weight:500; line-height:1.4; }
   .pill-success { background: var(--success-bg); color: var(--success); }
   .pill-warn    { background: var(--warn-bg); color: var(--warn); }
@@ -70,6 +81,23 @@
   .input-search { padding-left: 2rem; }
   .drawer-backdrop { position:fixed; inset:0; background: rgba(0,0,0,.4); z-index:40; display:none; }
   .drawer-backdrop.open { display:block; }
+  /* Dropdown menus — used for action overflow on detail pages. */
+  .dropdown { position: relative; display: inline-block; }
+  .dropdown-menu {
+    position: absolute; right: 0; top: calc(100% + .35rem); z-index: 30;
+    min-width: 200px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); box-shadow: var(--shadow-pop); padding: .25rem;
+  }
+  .dropdown-item, button.dropdown-item, a.dropdown-item {
+    display: flex; align-items: center; gap: .55rem;
+    width: 100%; text-align: left;
+    padding: .45rem .65rem; font-size: .85rem; font-weight: 500;
+    color: var(--text); background: transparent; border: none; border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .dropdown-item:hover { background: var(--surface-2); }
+  .dropdown-item-danger { color: var(--danger); }
+  .dropdown-item-danger:hover { background: var(--danger-bg); }
   @keyframes fadein { from {opacity:0; transform:translateY(2px)} to {opacity:1; transform:none} }
   .fadein { animation: fadein .12s ease-out both; }
 </style>
@@ -233,6 +261,31 @@
     const upanel = document.getElementById('user-menu-panel');
     utoggle?.addEventListener('click', e => { e.stopPropagation(); upanel.style.display = upanel.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { if (upanel && !document.getElementById('user-menu')?.contains(e.target)) upanel.style.display = 'none'; });
+
+    // Generic dropdown menus — any [data-dropdown] container with a
+    // [data-dropdown-toggle] button and a .dropdown-menu sibling.
+    document.querySelectorAll('[data-dropdown]').forEach(d => {
+      const toggle = d.querySelector('[data-dropdown-toggle]');
+      const menu = d.querySelector('.dropdown-menu');
+      if (!toggle || !menu) return;
+      toggle.addEventListener('click', e => {
+        e.stopPropagation();
+        const open = !menu.hidden;
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.hidden = true);
+        menu.hidden = open;
+        toggle.setAttribute('aria-expanded', String(!open));
+      });
+    });
+    document.addEventListener('click', e => {
+      document.querySelectorAll('[data-dropdown]').forEach(d => {
+        if (!d.contains(e.target)) {
+          const m = d.querySelector('.dropdown-menu');
+          if (m) m.hidden = true;
+          const t = d.querySelector('[data-dropdown-toggle]');
+          if (t) t.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
 
     // Collapsible sidebar sections — Shopify-style. State persisted per-section in localStorage.
     document.querySelectorAll('.nav-section-btn').forEach(btn => {
