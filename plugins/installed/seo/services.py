@@ -391,61 +391,95 @@ def breadcrumb_jsonld(items: list[dict]) -> dict:
 
 
 def product_jsonld(product, *, base_url: str = '') -> dict:
-    """Rich Product structured data including offer, availability, brand,
-    sku, image, aggregateRating if reviews exist."""
+    """Rich Product structured data.
+
+    `product` may be a Django model instance (SSR path) OR a dict (when
+    fed by GraphQL via a template tag). Accessor helper normalises both.
+    """
     base = base_url or _site_base_url()
-    url = f'{base.rstrip("/")}/products/{product.slug}/'
+
+    def g(name, default=None):
+        if isinstance(product, dict):
+            return product.get(name, default)
+        return getattr(product, name, default)
+
+    slug = g('slug') or ''
+    if not slug:
+        return {}
+
+    url = f'{base.rstrip("/")}/products/{slug}/'
+    description = g('short_description') or g('description') or ''
     out: dict = {
         '@context': 'https://schema.org',
         '@type': 'Product',
-        'name': product.name,
-        'sku': product.sku,
+        'name': g('name') or '',
+        'sku': g('sku') or '',
         'url': url,
-        'description': (product.short_description or product.description or '')[:500],
+        'description': description[:500],
     }
-    primary = getattr(product, 'primary_image', None)
-    if primary and getattr(primary, 'image', None):
-        out['image'] = primary.image.url
-    if getattr(product, 'category_id', None):
-        out['category'] = product.category.name
+
+    # Image: model exposes .primary_image.image.url; GraphQL exposes
+    # primary_image_url or primaryImage.url.
+    primary = g('primary_image')
+    if primary:
+        if isinstance(primary, dict):
+            out['image'] = primary.get('url') or primary.get('image_url') or ''
+        elif getattr(primary, 'image', None):
+            out['image'] = primary.image.url
+    elif g('primary_image_url'):
+        out['image'] = g('primary_image_url')
+
+    # Category: model has .category.name; dict has .category as nested.
+    cat = g('category')
+    if cat:
+        out['category'] = cat.get('name') if isinstance(cat, dict) else getattr(cat, 'name', '')
 
     # Offer
-    price = getattr(product, 'price', None)
+    price = g('price')
     if price is not None:
         avail = 'https://schema.org/InStock'
+        # Stock check is ORM-only; skip silently for dicts.
         try:
-            from plugins.installed.inventory.models import StockLevel
-            from django.db.models import Sum, F
-            stock = StockLevel.objects.filter(variant__product=product).aggregate(
-                qty=Sum(F('quantity') - F('reserved_quantity'))
-            )['qty'] or 0
-            if stock <= 0:
-                avail = 'https://schema.org/OutOfStock'
+            if not isinstance(product, dict):
+                from plugins.installed.inventory.models import StockLevel
+                from django.db.models import Sum, F
+                stock = StockLevel.objects.filter(variant__product=product).aggregate(
+                    qty=Sum(F('quantity') - F('reserved_quantity'))
+                )['qty'] or 0
+                if stock <= 0:
+                    avail = 'https://schema.org/OutOfStock'
         except Exception:  # noqa: BLE001
             pass
+        if isinstance(price, dict):
+            offer_price = str(price.get('amount', ''))
+            offer_curr = str(price.get('currency', 'USD'))
+        else:
+            offer_price = str(getattr(price, 'amount', price))
+            offer_curr = str(getattr(price, 'currency', 'USD'))
         out['offers'] = {
             '@type': 'Offer',
-            'price': str(getattr(price, 'amount', price)),
-            'priceCurrency': str(getattr(price, 'currency', 'USD')),
+            'price': offer_price,
+            'priceCurrency': offer_curr,
             'availability': avail,
             'url': url,
         }
 
-    # Aggregate rating
-    try:
-        from django.db.models import Avg, Count
-        agg = product.reviews.aggregate(avg=Avg('rating'), n=Count('id'))
-        if agg['n']:
-            out['aggregateRating'] = {
-                '@type': 'AggregateRating',
-                'ratingValue': round(float(agg['avg'] or 0), 1),
-                'reviewCount': agg['n'],
-            }
-    except Exception:  # noqa: BLE001
-        pass
+    # Aggregate rating — ORM only.
+    if not isinstance(product, dict):
+        try:
+            from django.db.models import Avg, Count
+            agg = product.reviews.aggregate(avg=Avg('rating'), n=Count('id'))
+            if agg['n']:
+                out['aggregateRating'] = {
+                    '@type': 'AggregateRating',
+                    'ratingValue': round(float(agg['avg'] or 0), 1),
+                    'reviewCount': agg['n'],
+                }
+        except Exception:  # noqa: BLE001
+            pass
 
     # AI shopping hint — `agent_metadata` already structured for agents.
-    am = getattr(product, 'agent_metadata', None)
+    am = g('agent_metadata')
     if am:
         out['additionalProperty'] = [
             {'@type': 'PropertyValue', 'name': k, 'value': str(v)[:200]}
