@@ -144,12 +144,30 @@ class ProductForm(forms.Form):
 
 
 class CustomerForm(forms.Form):
-    """Create/edit a `customers.Customer`."""
+    """Create/edit a `customers.Customer` (a.k.a. Contact in the dashboard).
+
+    `source` marks where the contact arrived from — orders, lead form,
+    signup, etc. `company` is exposed so B2B contacts captured via the
+    storefront or CRM lead form land in the same record without
+    needing a separate Lead row.
+    """
 
     email = forms.EmailField()
     first_name = forms.CharField(max_length=100, required=False)
     last_name = forms.CharField(max_length=100, required=False)
     phone = forms.CharField(max_length=30, required=False)
+    company = forms.CharField(max_length=200, required=False)
+    source = forms.ChoiceField(choices=[
+        ('order', 'Order'),
+        ('signup', 'Signup'),
+        ('lead_form', 'Lead form'),
+        ('newsletter', 'Newsletter'),
+        ('import', 'Import'),
+        ('manual', 'Manual entry'),
+        ('agent', 'Agent-captured'),
+        ('referral', 'Referral'),
+        ('other', 'Other'),
+    ], required=False, initial='manual')
     accepts_marketing = forms.BooleanField(required=False)
     is_verified = forms.BooleanField(required=False)
     notes = forms.CharField(widget=forms.Textarea, required=False)
@@ -162,6 +180,8 @@ class CustomerForm(forms.Form):
                 'first_name': instance.first_name,
                 'last_name': instance.last_name,
                 'phone': instance.phone,
+                'company': getattr(instance, 'company', '') or '',
+                'source': getattr(instance, 'source', '') or 'other',
                 'accepts_marketing': instance.accepts_marketing,
                 'is_verified': instance.is_verified,
                 'notes': instance.notes,
@@ -192,6 +212,10 @@ class CustomerForm(forms.Form):
         customer.first_name = cd.get('first_name') or ''
         customer.last_name = cd.get('last_name') or ''
         customer.phone = cd.get('phone') or ''
+        if hasattr(customer, 'company'):
+            customer.company = cd.get('company') or ''
+        if hasattr(customer, 'source'):
+            customer.source = cd.get('source') or 'manual'
         customer.accepts_marketing = bool(cd.get('accepts_marketing'))
         customer.is_verified = bool(cd.get('is_verified'))
         customer.notes = cd.get('notes') or ''

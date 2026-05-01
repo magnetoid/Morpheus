@@ -5,7 +5,7 @@
 <div class="max-w-3xl mx-auto space-y-4">
 
   <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Customers</a>
+    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Contacts</a>
     <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
     <a href="{% url 'admin_dashboard:customer_edit' customer_id=customer.id %}" class="hover:underline">{{ customer.email }}</a>
     <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>

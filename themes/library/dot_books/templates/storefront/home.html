@@ -104,8 +104,8 @@
           <p class="title">{{ product.name }}</p>
           <p class="author">{{ product.category.name|default:"Independent press" }}</p>
           <p class="price">
-            {{ product.price }}
-            {% if product.is_on_sale %}<span class="compare">{{ product.compare_at_price }}</span>{% endif %}
+            {{ product.price|money }}
+            {% if product.is_on_sale %}<span class="compare">{{ product.compare_at_price|money }}</span>{% endif %}
           </p>
         </div>
       </a>
@@ -155,7 +155,7 @@
         <div>
           <p class="title">{{ product.name }}</p>
           <p class="author">{{ product.category.name|default:"Independent press" }}</p>
-          <p class="price">{{ product.price }}</p>
+          <p class="price">{{ product.price|money }}</p>
         </div>
       </a>
       {% endfor %}

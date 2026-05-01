@@ -374,24 +374,43 @@ def product_delete(request: HttpRequest, product_id: str) -> HttpResponse:
 
 @staff_member_required
 def customers_list(request: HttpRequest) -> HttpResponse:
+    """Unified Contacts list — customers, leads, signups in one table.
+
+    `source` filter narrows by where the contact arrived from (orders,
+    lead form, signup, newsletter, …). The view name + URL stay
+    `customers` for stability; the page label is "Contacts".
+    """
     search = request.GET.get('q', '').strip()[:80]
+    source_filter = request.GET.get('source', '').strip()[:20]
     customers: list[Any] = []
     try:
         from django.contrib.auth import get_user_model
+        from django.db.models import Q
         from plugins.installed.orders.models import Order
         User = get_user_model()
         qs = User.objects.order_by('-date_joined')
         if search:
-            qs = qs.filter(email__icontains=search)
+            qs = qs.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+        if source_filter:
+            qs = qs.filter(source=source_filter)
         rows = []
         for user in qs[:100]:
             order_qs = Order.objects.filter(customer=user)
+            source = getattr(user, 'source', '') or ''
             rows.append({
                 'id': user.pk,
                 'email': getattr(user, 'email', ''),
                 'name': (
                     (getattr(user, 'first_name', '') + ' ' +
                      getattr(user, 'last_name', '')).strip() or '—'
+                ),
+                'source': source,
+                'source_display': (
+                    user.get_source_display() if hasattr(user, 'get_source_display') and source else ''
                 ),
                 'order_count': order_qs.count(),
                 'spent': order_qs.aggregate(total=Sum('total'))['total'] or Decimal('0'),
@@ -403,6 +422,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
     return render(request, 'admin_dashboard/customers.html', {
         'customers': customers,
         'search': search,
+        'source_filter': source_filter,
         'active_nav': 'customers',
     })
 

@@ -34,7 +34,7 @@
                 </div>
               </td>
               <td style="text-align:right; padding: 1.25rem 0;">{{ item.quantity }}</td>
-              <td style="text-align:right; padding: 1.25rem 0; font-weight: 600;">{{ item.totalPrice.amount }} {{ item.totalPrice.currency }}</td>
+              <td style="text-align:right; padding: 1.25rem 0; font-weight: 600;">{{ item.totalPrice|money }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -47,13 +47,13 @@
         <p class="eyebrow">Order summary</p>
         <div style="margin-top: 1.5rem;">
           <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--ink-2);">
-            <span>Subtotal</span><span>{{ cart.subtotal.amount }} {{ cart.subtotal.currency }}</span>
+            <span>Subtotal</span><span>{{ cart.subtotal|money }}</span>
           </div>
           <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--muted); font-size: 0.9rem;">
             <span>Shipping</span><span>Calculated at checkout</span>
           </div>
           <div style="display:flex; justify-content:space-between; padding: 1rem 0; border-top: 1px solid var(--rule); font-family: var(--serif); font-size: 1.25rem; font-weight: 600; margin-top: 1rem;">
-            <span>Total</span><span>{{ cart.subtotal.amount }} {{ cart.subtotal.currency }}</span>
+            <span>Total</span><span>{{ cart.subtotal|money }}</span>
           </div>
         </div>
         {% storefront_blocks "cart_summary_extra" %}

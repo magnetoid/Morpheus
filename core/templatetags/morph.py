@@ -58,6 +58,46 @@ def storefront_blocks(context, slot: str) -> str:
     return mark_safe(''.join(rendered_parts))
 
 
+_CURRENCY_SYMBOLS = {
+    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+    'AUD': 'A$', 'CAD': 'C$', 'NZD': 'NZ$', 'CHF': 'CHF ',
+    'CNY': '¥', 'INR': '₹', 'BRL': 'R$', 'MXN': 'MX$',
+    'KRW': '₩', 'TRY': '₺', 'RUB': '₽', 'ZAR': 'R',
+    'SEK': 'kr ', 'NOK': 'kr ', 'DKK': 'kr ', 'PLN': 'zł ',
+    'RSD': 'RSD ',
+}
+
+
+@register.filter(name='money')
+def money_filter(value, _arg=None):
+    """Render a Money instance OR a GraphQL `{amount, currency}` dict.
+
+    Templates render storefront prices coming from the GraphQL layer as
+    dicts; without this filter Django prints the dict literal
+    (`{'amount': '17.00', 'currency': 'USD'}`) which is what merchants
+    were seeing on the PDP. Handles None / empty cleanly.
+    """
+    if value in (None, ''):
+        return ''
+    # Dict shape from GraphQL.
+    if isinstance(value, dict):
+        amount = value.get('amount') or '0'
+        currency = (value.get('currency') or 'USD').upper()
+    else:
+        # Money / Decimal / string.
+        amount = getattr(value, 'amount', value)
+        currency = str(getattr(value, 'currency', 'USD')).upper()
+    try:
+        from decimal import Decimal
+        amount = Decimal(str(amount))
+        # Format with comma thousands separator + 2 decimals.
+        formatted = f'{amount:,.2f}'
+    except Exception:  # noqa: BLE001
+        formatted = str(amount)
+    symbol = _CURRENCY_SYMBOLS.get(currency, f'{currency} ')
+    return f'{symbol}{formatted}'
+
+
 @register.filter(name='convert')
 def convert_money(value, target_currency: str):
     """Convert a Money value to the target currency using the latest ExchangeRate.

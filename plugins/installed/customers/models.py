@@ -9,16 +9,38 @@ from morpheus import models
 class Customer(AbstractUser):
     """
     Custom user model — replaces Django's default User.
-    Serves as both store customer and staff member.
+
+    Serves as the unified contact record: store customers, B2B contacts,
+    captured leads, manual entries, and staff all live in one table.
+    The `source` field marks where each contact arrived from so the
+    dashboard can filter (orders / signup / lead form / manual / …).
     """
+
+    SOURCE_CHOICES = [
+        ('order', 'Order'),
+        ('signup', 'Signup'),
+        ('lead_form', 'Lead form'),
+        ('newsletter', 'Newsletter'),
+        ('import', 'Import'),
+        ('manual', 'Manual entry'),
+        ('agent', 'Agent-captured'),
+        ('referral', 'Referral'),
+        ('other', 'Other'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=30, blank=True)
+    company = models.CharField(max_length=200, blank=True)
     avatar = models.ImageField(upload_to='customers/avatars/', blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
     accepts_marketing = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     is_verified = models.BooleanField(default=False)
+    source = models.CharField(
+        max_length=20, choices=SOURCE_CHOICES, default='other', db_index=True,
+    )
+    metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -29,8 +51,8 @@ class Customer(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
     class Meta:
-        verbose_name = 'Customer'
-        verbose_name_plural = 'Customers'
+        verbose_name = 'Contact'
+        verbose_name_plural = 'Contacts'
         ordering = ['-created_at']
 
     def __str__(self):

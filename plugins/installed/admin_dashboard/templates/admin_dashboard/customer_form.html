@@ -1,25 +1,25 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}{% if customer %}{{ customer.email }}{% else %}New customer{% endif %} · Morpheus{% endblock %}
+{% block title %}{% if customer %}{{ customer.email }}{% else %}New contact{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
 
   <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Customers</a>
+    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Contacts</a>
     <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
     <span class="font-medium text-[color:var(--text)]">
-      {% if customer %}{{ customer.email }}{% else %}New customer{% endif %}
+      {% if customer %}{{ customer.email }}{% else %}New contact{% endif %}
     </span>
   </div>
 
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-semibold">
-      {% if customer %}{{ customer.full_name }}{% else %}Add customer{% endif %}
+      {% if customer %}{{ customer.full_name }}{% else %}Add contact{% endif %}
     </h1>
     <div class="flex items-center gap-2">
       {% if customer and not customer.is_staff and not customer.is_superuser %}
       <form method="post" action="{% url 'admin_dashboard:customer_delete' customer_id=customer.id %}"
-            onsubmit="return confirm('Delete this customer? This cannot be undone.');">
+            onsubmit="return confirm('Delete this contact? This cannot be undone.');">
         {% csrf_token %}
         <button type="submit" class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
       </form>
@@ -58,9 +58,24 @@
             <input type="text" name="last_name" class="input" value="{{ form.last_name.value|default:'' }}">
           </div>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Phone</label>
+            <input type="text" name="phone" class="input" value="{{ form.phone.value|default:'' }}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Company</label>
+            <input type="text" name="company" class="input" value="{{ form.company.value|default:'' }}">
+          </div>
+        </div>
         <div>
-          <label class="block text-sm font-medium mb-1">Phone</label>
-          <input type="text" name="phone" class="input" value="{{ form.phone.value|default:'' }}">
+          <label class="block text-sm font-medium mb-1">Source</label>
+          <select name="source" class="input">
+            {% for value, label in form.fields.source.choices %}
+            <option value="{{ value }}" {% if form.source.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Where this contact arrived from. Editable.</p>
         </div>
       </div>
 

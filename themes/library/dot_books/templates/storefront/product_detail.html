@@ -50,8 +50,8 @@
         <p class="lede" style="margin-bottom: 1.5rem;">{{ product.short_description|default:"" }}</p>
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
-          <span style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{{ product.price }}</span>
-          {% if product.is_on_sale %}<span class="meta" style="text-decoration: line-through;">{{ product.compare_at_price }}</span>{% endif %}
+          <span style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{{ product.price|money }}</span>
+          {% if product.is_on_sale %}<span class="meta" style="text-decoration: line-through;">{{ product.compare_at_price|money }}</span>{% endif %}
         </div>
 
         {% storefront_blocks "pdp_below_price" %}

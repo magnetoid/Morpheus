@@ -1,25 +1,36 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Customers · Morpheus{% endblock %}
+{% block title %}Contacts · Morpheus{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-4">
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold tracking-tight">Customers</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Most recent 100.</p>
+      <h1 class="text-xl font-semibold tracking-tight">Contacts</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Customers, leads, signups — one unified table. Most recent 100.</p>
     </div>
     <div class="flex items-center gap-2">
       <a href="/dashboard/apps/importers/csv/" class="btn"><i data-lucide="download" class="h-4 w-4"></i> Export</a>
-      <a href="{% url 'admin_dashboard:customer_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add customer</a>
+      <a href="{% url 'admin_dashboard:customer_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add contact</a>
     </div>
   </div>
 
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
     <div class="relative flex-1 min-w-[200px]">
       <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
-      <input name="q" value="{{ search }}" placeholder="Email" class="input input-search">
+      <input name="q" value="{{ search }}" placeholder="Email or name" class="input input-search">
     </div>
+    <select name="source" class="input max-w-[180px]">
+      <option value="">All sources</option>
+      <option value="order"      {% if source_filter == 'order' %}selected{% endif %}>Order</option>
+      <option value="signup"     {% if source_filter == 'signup' %}selected{% endif %}>Signup</option>
+      <option value="lead_form"  {% if source_filter == 'lead_form' %}selected{% endif %}>Lead form</option>
+      <option value="newsletter" {% if source_filter == 'newsletter' %}selected{% endif %}>Newsletter</option>
+      <option value="import"     {% if source_filter == 'import' %}selected{% endif %}>Import</option>
+      <option value="manual"     {% if source_filter == 'manual' %}selected{% endif %}>Manual entry</option>
+      <option value="agent"      {% if source_filter == 'agent' %}selected{% endif %}>Agent</option>
+      <option value="referral"   {% if source_filter == 'referral' %}selected{% endif %}>Referral</option>
+    </select>
     <button class="btn btn-primary">Apply</button>
   </form>
 
@@ -27,7 +38,7 @@
     {% if customers %}
     <table class="morph-table">
       <thead>
-        <tr><th>Customer</th><th>Joined</th><th class="text-right">Orders</th><th class="text-right">Spent</th></tr>
+        <tr><th>Contact</th><th>Source</th><th>Joined</th><th class="text-right">Orders</th><th class="text-right">Spent</th></tr>
       </thead>
       <tbody>
         {% for c in customers %}
@@ -43,6 +54,14 @@
               </div>
             </a>
           </td>
+          <td>
+            {% if c.source %}
+              {% if c.source == 'order' %}<span class="pill pill-success">{{ c.source_display }}</span>
+              {% elif c.source == 'lead_form' or c.source == 'agent' %}<span class="pill pill-info">{{ c.source_display }}</span>
+              {% elif c.source == 'signup' or c.source == 'newsletter' %}<span class="pill pill-neutral">{{ c.source_display }}</span>
+              {% else %}<span class="pill pill-neutral">{{ c.source_display }}</span>{% endif %}
+            {% else %}<span class="pill pill-neutral">—</span>{% endif %}
+          </td>
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ c.date_joined|date:"M j, Y" }}</td>
           <td class="text-right">{{ c.order_count }}</td>
           <td class="text-right font-medium">${{ c.spent|floatformat:2 }}</td>
@@ -53,9 +72,9 @@
     {% else %}
     <div class="card-padded text-center py-16">
       <i data-lucide="users" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">No customers yet</h3>
+      <h3 class="font-medium">No contacts yet</h3>
       <a href="{% url 'admin_dashboard:customer_new' %}" class="btn btn-primary mt-4 inline-flex">
-        <i data-lucide="plus" class="h-4 w-4"></i> Add customer
+        <i data-lucide="plus" class="h-4 w-4"></i> Add contact
       </a>
     </div>
     {% endif %}

@@ -1,4 +1,5 @@
 {% extends "storefront/base.html" %}
+{% load morph %}
 {% block title %}Order received — dot books{% endblock %}
 
 {% block content %}
@@ -20,14 +21,14 @@
           <p style="font-family: var(--serif); font-size: 1.05rem;">
             {% if item.product %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}
           </p>
-          <p class="meta">{{ item.quantity }} × {{ item.unit_price }}</p>
+          <p class="meta">{{ item.quantity }} × {{ item.unit_price|money }}</p>
         </div>
-        <p style="font-family: var(--serif); font-weight: 600;">{{ item.total_price }}</p>
+        <p style="font-family: var(--serif); font-weight: 600;">{{ item.total_price|money }}</p>
       </div>
       {% endfor %}
       <div style="display:flex; justify-content: space-between; padding-top: 1rem;">
         <p style="font-family: var(--serif); font-size: 1.15rem;">Total</p>
-        <p style="font-family: var(--serif); font-size: 1.5rem; font-weight: 600;">{{ order.total }}</p>
+        <p style="font-family: var(--serif); font-size: 1.5rem; font-weight: 600;">{{ order.total|money }}</p>
       </div>
     </div>
 

@@ -1,4 +1,5 @@
 {% extends "storefront/base.html" %}
+{% load morph %}
 {% block title %}All books — dot books{% endblock %}
 
 {% block content %}
@@ -46,7 +47,7 @@
         <div>
           <p class="title">{{ p.name }}</p>
           <p class="author">Independent press</p>
-          <p class="price">{{ p.price.amount }} {{ p.price.currency }}{% if p.compareAtPrice %}<span class="compare">{{ p.compareAtPrice.amount }}</span>{% endif %}</p>
+          <p class="price">{{ p.price|money }}{% if p.compareAtPrice %}<span class="compare">{{ p.compareAtPrice|money }}</span>{% endif %}</p>
         </div>
       </a>
       {% endfor %}

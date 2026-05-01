@@ -122,6 +122,12 @@ class CrmPlugin(Plugin):
         return [AccountManagerAgent()]
 
     def contribute_dashboard_pages(self) -> list:
+        # NOTE: 'Leads' page intentionally removed. Contacts (renamed
+        # from 'Customers') is the single contact table — every record
+        # has a `source` field that distinguishes order customers,
+        # signups, lead-form captures, etc. The Lead model remains in
+        # place for now to preserve historical data; a follow-up will
+        # migrate Lead rows into Customer with source='lead_form'.
         return [
             DashboardPage(
                 label='CRM',
@@ -130,14 +136,6 @@ class CrmPlugin(Plugin):
                 icon='users-round',
                 section='crm',
                 order=10,
-            ),
-            DashboardPage(
-                label='Leads',
-                slug='leads',
-                view='plugins.installed.crm.views.leads_list',
-                icon='user-plus',
-                section='crm',
-                order=20,
             ),
             DashboardPage(
                 label='Pipeline',
