@@ -14,13 +14,21 @@ def _money(value, currency_fallback='USD') -> MoneyType:
 
 
 @strawberry.type
+class CartImageRef:
+    url: str
+    alt_text: str = ''
+
+
+@strawberry.type
 class CartProductRef:
     """Minimal product fields the cart needs — full ProductType would
-    create a circular import between orders and catalog."""
+    create a circular import between orders and catalog. Shape mirrors
+    the catalog ProductType (`primaryImage { url altText }`) so the
+    storefront's CART_QUERY works without changes."""
     id: strawberry.ID
     name: str
     slug: str
-    primary_image_url: Optional[str] = None
+    primary_image: Optional[CartImageRef] = None
 
 
 @strawberry.type
@@ -91,8 +99,13 @@ class CartItemType:
         if p is None:
             return None
         primary = getattr(p, 'primary_image', None)
-        url = primary.image.url if primary and getattr(primary, 'image', None) else None
-        return CartProductRef(id=str(p.id), name=p.name, slug=p.slug, primary_image_url=url)
+        img = None
+        if primary and getattr(primary, 'image', None):
+            img = CartImageRef(
+                url=primary.image.url,
+                alt_text=getattr(primary, 'alt_text', '') or '',
+            )
+        return CartProductRef(id=str(p.id), name=p.name, slug=p.slug, primary_image=img)
 
     @strawberry.field
     def variant(self) -> Optional[CartVariantRef]:
