@@ -14,6 +14,20 @@ from django.conf.urls.static import static
 from django.views.generic import RedirectView
 
 
+# Fake admin namespace exposing only `admin:login` — needed because
+# @staff_member_required hardcodes a redirect to that named URL. When
+# DEBUG=False the real admin URLconf isn't mounted, so unauthenticated
+# hits to /dashboard/* would otherwise crash with NoReverseMatch.
+# Internally the alias just bounces to allauth at /auth/login/.
+_admin_alias_patterns = [
+    path(
+        'login/',
+        RedirectView.as_view(url='/auth/login/', permanent=False, query_string=True),
+        name='login',
+    ),
+]
+
+
 urlpatterns = [
     # The Assistant lives in core and mounts at /dashboard/assistant/.
     path('dashboard/assistant/', include('core.assistant.urls', namespace='assistant')),
@@ -37,3 +51,11 @@ if settings.DEBUG:
     urlpatterns.insert(0, path('admin/', admin.site.urls))
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+else:
+    # Production: register a stub `admin` namespace so `reverse('admin:login')`
+    # — used by Django's @staff_member_required decorator — works without the
+    # full admin app being mounted.
+    urlpatterns.insert(
+        0,
+        path('admin/', include((_admin_alias_patterns, 'admin'), namespace='admin')),
+    )
