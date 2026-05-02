@@ -125,7 +125,6 @@
     {% endcomment %}
     <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
     <a href="/dashboard/apps/agent_core/agents/" class="nav-link {% if active_nav == 'agents' %}active{% endif %}"><i data-lucide="bot" class="h-4 w-4"></i> AI agents</a>
-    <a href="{% url 'admin_dashboard:ai_insights' %}" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}"><i data-lucide="bar-chart" class="h-4 w-4"></i> AI insights</a>
 
     <a href="{% url 'admin_dashboard:orders' %}"    class="nav-link {% if active_nav == 'orders' %}active{% endif %}"><i data-lucide="shopping-bag" class="h-4 w-4"></i> Orders</a>
     <a href="{% url 'admin_dashboard:products' %}"  class="nav-link {% if active_nav == 'products' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products</a>
