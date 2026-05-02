@@ -235,6 +235,10 @@ SITE_ID = 1
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+# Point @login_required / @staff_member_required at allauth, not Django admin.
+# When DEBUG=False the admin URL conf isn't mounted, so the default
+# 'admin:login' reverse blows up with NoReverseMatch on unauthenticated hits.
+LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
