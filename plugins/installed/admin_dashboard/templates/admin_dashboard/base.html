@@ -133,12 +133,12 @@
     <a href="{% url 'admin_dashboard:marketing' %}" class="nav-link {% if active_nav == 'marketing' %}active{% endif %}"><i data-lucide="megaphone" class="h-4 w-4"></i> Marketing</a>
     <a href="{% url 'admin_dashboard:analytics' %}" class="nav-link {% if active_nav == 'analytics' %}active{% endif %}"><i data-lucide="bar-chart-2" class="h-4 w-4"></i> Analytics</a>
 
-    <button type="button" class="nav-section-btn" data-section="sales">
-      <span>Sales channels</span><i data-lucide="chevron-down" class="h-3 w-3"></i>
-    </button>
-    <div class="nav-group" data-group="sales">
-      <a href="#" class="nav-link"><i data-lucide="globe" class="h-4 w-4"></i> Online store</a>
-    </div>
+    {% comment %}
+      Sales channels was a top-level collapsible — moved into Settings →
+      Channels (/dashboard/settings/channels/) so the main rail stays
+      focused on daily-use entries. Per-channel configuration (StoreChannel
+      rows, marketplace listings, social) lives there alongside SEO.
+    {% endcomment %}
 
     {# Plugin-contributed pages, grouped by section. Each group is collapsible. #}
     {% for section in sidebar_sections %}
