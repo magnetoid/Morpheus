@@ -139,6 +139,7 @@ urlpatterns = [
     path('apps/<str:plugin>/settings/', plugin_settings_view, name='plugin_settings'),
     path('apps/<str:plugin>/<slug:slug>/', plugin_page_router, name='plugin_page'),
     path('settings/', views.settings_view, name='settings'),
+    path('settings/ai/probe/', views.settings_ai_probe, name='settings_ai_probe'),
     path('settings/<slug:category>/', views.settings_category, name='settings_category'),
     path('ai-insights/', views.ai_insights, name='ai_insights'),
 ]

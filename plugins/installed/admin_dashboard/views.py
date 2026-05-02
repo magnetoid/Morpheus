@@ -1119,6 +1119,44 @@ def _core_form_for(category: str):
 
 
 @staff_member_required
+def settings_ai_probe(request: HttpRequest) -> HttpResponse:
+    """JSON endpoint backing the "Fetch models" + "Test connection" buttons.
+
+    POST body fields:
+        provider — openai | anthropic | gemini | openrouter | ollama
+        api_key  — optional override; falls back to saved plugin config
+        base_url — optional override
+
+    Returns ``{"ok": bool, "models": [{"id", "label"}], "error": str}``.
+    """
+    from morpheus.views import JsonResponse
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+    provider = (request.POST.get('provider') or '').strip()
+    if not provider:
+        return JsonResponse({'ok': False, 'error': 'provider is required'}, status=400)
+
+    api_key = (request.POST.get('api_key') or '').strip()
+    base_url = (request.POST.get('base_url') or '').strip()
+    try:
+        from plugins.registry import plugin_registry
+        ai_plugin = plugin_registry.get('ai_assistant')
+        if ai_plugin is not None:
+            cfg = ai_plugin.get_config()
+            if not api_key:
+                api_key = cfg.get(f'{provider}_api_key') or ''
+            if not base_url:
+                base_url = cfg.get(f'{provider}_base_url') or ''
+    except Exception:  # noqa: BLE001
+        pass
+
+    from plugins.installed.ai_assistant.services.probe import probe
+    result = probe(provider, api_key=api_key, base_url=base_url)
+    return JsonResponse(result)
+
+
+@staff_member_required
 def settings_category(request: HttpRequest, category: str) -> HttpResponse:
     """Render every plugin SettingsPanel that belongs to one category.
 

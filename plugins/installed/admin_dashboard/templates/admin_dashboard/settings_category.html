@@ -148,5 +148,139 @@
     background: var(--surface-2); border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
+  /* AI provider toolbar — fetch models / test connection. */
+  .ai-toolbar { display: inline-flex; gap: .35rem; margin-top: .35rem; }
+  .ai-toolbar .btn { padding: .3rem .55rem; font-size: .75rem; }
+  .ai-toolbar-msg { font-size: .75rem; margin-left: .5rem; align-self: center; }
+  .ai-toolbar-msg.ok { color: var(--success); }
+  .ai-toolbar-msg.fail { color: var(--danger); }
 </style>
+
+{% if category.slug == 'ai' %}
+{% comment %}
+  Progressive enhancement for the AI providers panel. Each provider has
+  three known fields (api_key / base_url / model). We attach a small
+  toolbar under the model field that:
+    * Fetch models  → POST /settings/ai/probe/ → replace the input with
+      a populated <select> on success
+    * Test          → same call, but doesn't replace the field; just
+      reports a green / red status next to the button
+  Uses fetch + form values directly so the merchant doesn't need to
+  Save before testing a key.
+{% endcomment %}
+<script>
+(() => {
+  const PROBE_URL = '{% url "admin_dashboard:settings_ai_probe" %}';
+  const PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'ollama'];
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value
+            || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+  function inputByName(name) {
+    return document.querySelector(`[name="${name}"]`);
+  }
+
+  function buildToolbar(provider) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-toolbar';
+    const fetchBtn = document.createElement('button');
+    fetchBtn.type = 'button';
+    fetchBtn.className = 'btn';
+    fetchBtn.innerHTML = '<i data-lucide="download" class="h-3 w-3"></i> Fetch models';
+    const testBtn = document.createElement('button');
+    testBtn.type = 'button';
+    testBtn.className = 'btn';
+    testBtn.innerHTML = '<i data-lucide="zap" class="h-3 w-3"></i> Test';
+    const msg = document.createElement('span');
+    msg.className = 'ai-toolbar-msg';
+    wrap.append(fetchBtn, testBtn, msg);
+
+    async function probe() {
+      const apiKey = (inputByName(`${provider}_api_key`)?.value || '').trim();
+      const baseUrl = (inputByName(`${provider}_base_url`)?.value || '').trim();
+      const body = new URLSearchParams({ provider, api_key: apiKey, base_url: baseUrl });
+      msg.className = 'ai-toolbar-msg';
+      msg.textContent = 'Checking…';
+      const res = await fetch(PROBE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': csrf,
+        },
+        body,
+      });
+      try {
+        return await res.json();
+      } catch {
+        return { ok: false, error: `HTTP ${res.status}`, models: [] };
+      }
+    }
+
+    fetchBtn.addEventListener('click', async () => {
+      fetchBtn.disabled = true;
+      try {
+        const data = await probe();
+        if (!data.ok) {
+          msg.className = 'ai-toolbar-msg fail';
+          msg.textContent = '✗ ' + (data.error || 'failed');
+          return;
+        }
+        // Replace the model text input with a populated <select>.
+        const modelInput = inputByName(`${provider}_model`);
+        if (modelInput && data.models?.length) {
+          const select = document.createElement('select');
+          select.name = modelInput.name;
+          select.id = modelInput.id;
+          select.className = modelInput.className;
+          const current = modelInput.value;
+          let matched = false;
+          for (const m of data.models) {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.label || m.id;
+            if (m.id === current) { opt.selected = true; matched = true; }
+            select.appendChild(opt);
+          }
+          if (!matched && current) {
+            const opt = document.createElement('option');
+            opt.value = current;
+            opt.textContent = current + '  (not in catalog)';
+            opt.selected = true;
+            select.insertBefore(opt, select.firstChild);
+          }
+          modelInput.replaceWith(select);
+        }
+        msg.className = 'ai-toolbar-msg ok';
+        msg.textContent = `✓ ${data.models?.length || 0} models`;
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    });
+
+    testBtn.addEventListener('click', async () => {
+      testBtn.disabled = true;
+      try {
+        const data = await probe();
+        msg.className = 'ai-toolbar-msg ' + (data.ok ? 'ok' : 'fail');
+        msg.textContent = data.ok
+          ? `✓ connected (${data.models?.length || 0} models)`
+          : '✗ ' + (data.error || 'failed');
+      } finally {
+        testBtn.disabled = false;
+      }
+    });
+
+    return wrap;
+  }
+
+  // Attach a toolbar under each provider's model field.
+  for (const p of PROVIDERS) {
+    const modelInput = inputByName(`${p}_model`);
+    if (!modelInput) continue;
+    const wrap = buildToolbar(p);
+    modelInput.parentNode.appendChild(wrap);
+  }
+  if (window.lucide) lucide.createIcons();
+})();
+</script>
+{% endif %}
 {% endblock %}
