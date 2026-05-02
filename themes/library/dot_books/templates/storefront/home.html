@@ -1,31 +1,9 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% block title %}dot books. — a quieter shelf for louder books{% endblock %}
+{% block title %}dot books{% endblock %}
 
 {% block content %}
 {% storefront_blocks "home_above_grid" %}
-
-<!-- Hero -->
-<section style="padding-top: 3rem; padding-bottom: 3rem;">
-  <div class="wrap" style="display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: end;">
-    <div>
-      <p class="eyebrow">Issue 04 — April</p>
-      <h1 class="display display-xl" style="margin: 1rem 0 1.5rem;">
-        a quieter shelf<br>
-        for <em style="font-style:italic; color: var(--accent);">louder</em> books<span class="text-accent">.</span>
-      </h1>
-      <p class="lede" style="margin-bottom: 2rem;">
-        Hand-picked titles from independent presses around the world. No bestseller charts, no algorithmic shuffling — just the books we want to put in your hands.
-      </p>
-      <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
-        <a href="/products/" class="btn btn-primary">Browse the shelf</a>
-        <a href="#editors-pick" class="btn btn-ghost">Editor's pick</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<hr class="rule">
 
 <!-- Editor's pick -->
 <section id="editors-pick">
