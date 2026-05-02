@@ -117,19 +117,18 @@
   {# ── MAIN NAV (slides out when entering Settings) ─────────────────────── #}
   <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
     <a href="{% url 'admin_dashboard:home' %}"      class="nav-link {% if active_nav == 'home' %}active{% endif %}"><i data-lucide="home" class="h-4 w-4"></i> Home</a>
+    {# AI surface promoted to the top of the rail — these are daily-use entries
+       (the Assistant chat especially) and Morpheus's defining capability, so they
+       sit above the standard ecommerce CRUD instead of behind a collapsible. #}
+    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
+    <a href="/dashboard/apps/agent_core/agents/" class="nav-link {% if active_nav == 'agents' %}active{% endif %}"><i data-lucide="bot" class="h-4 w-4"></i> AI agents</a>
+    <a href="{% url 'admin_dashboard:ai_insights' %}" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}"><i data-lucide="bar-chart" class="h-4 w-4"></i> AI insights</a>
+
     <a href="{% url 'admin_dashboard:orders' %}"    class="nav-link {% if active_nav == 'orders' %}active{% endif %}"><i data-lucide="shopping-bag" class="h-4 w-4"></i> Orders</a>
     <a href="{% url 'admin_dashboard:products' %}"  class="nav-link {% if active_nav == 'products' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products</a>
     <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'customers' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Contacts</a>
     <a href="{% url 'admin_dashboard:marketing' %}" class="nav-link {% if active_nav == 'marketing' %}active{% endif %}"><i data-lucide="megaphone" class="h-4 w-4"></i> Marketing</a>
     <a href="{% url 'admin_dashboard:analytics' %}" class="nav-link {% if active_nav == 'analytics' %}active{% endif %}"><i data-lucide="bar-chart-2" class="h-4 w-4"></i> Analytics</a>
-
-    <button type="button" class="nav-section-btn" data-section="ai">
-      <span>AI &amp; agents</span><i data-lucide="chevron-down" class="h-3 w-3"></i>
-    </button>
-    <div class="nav-group" data-group="ai">
-      <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
-      <a href="{% url 'admin_dashboard:ai_insights' %}" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}"><i data-lucide="bar-chart" class="h-4 w-4"></i> Insights</a>
-    </div>
 
     <button type="button" class="nav-section-btn" data-section="sales">
       <span>Sales channels</span><i data-lucide="chevron-down" class="h-3 w-3"></i>
@@ -152,13 +151,12 @@
     </div>
     {% endfor %}
 
-    <button type="button" class="nav-section-btn" data-section="apps">
-      <span>Apps &amp; settings</span><i data-lucide="chevron-down" class="h-3 w-3"></i>
-    </button>
-    <div class="nav-group" data-group="apps">
-      <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' %}active{% endif %}"><i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps</a>
-      <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" class="nav-link {% if active_nav == 'settings' %}active{% endif %}"><i data-lucide="settings" class="h-4 w-4"></i> Settings</a>
-    </div>
+    {# Settings is the entrypoint to the alternate (settings-mode) sidebar.
+       The Apps page is reachable from inside Settings — keeping it out of
+       the main rail follows Shopify's pattern. #}
+    <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" class="nav-link {% if active_nav == 'settings' %}active{% endif %}">
+      <i data-lucide="settings" class="h-4 w-4"></i> Settings
+    </a>
   </nav>
 
   {# ── SETTINGS NAV (slides in when /dashboard/settings/ is open) ──────── #}

@@ -47,6 +47,37 @@
     {% endfor %}
   </div>
 
+  <!-- AI section — Morpheus's defining surface, surfaced prominently. -->
+  <div class="card overflow-hidden">
+    <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
+      <div class="flex items-center gap-2">
+        <i data-lucide="sparkles" class="h-4 w-4 text-[color:var(--warn)]"></i>
+        <h2 class="font-semibold">AI &amp; agents</h2>
+        <span class="pill pill-neutral">{{ ai_summary.provider|default:"not configured"|title }}</span>
+        {% if not ai_summary.has_keys %}<span class="pill pill-warn">no API keys</span>{% endif %}
+      </div>
+      <a href="{% url 'admin_dashboard:settings_category' category='ai' %}" class="btn btn-ghost text-xs"><i data-lucide="settings" class="h-3.5 w-3.5"></i> Configure</a>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-[color:var(--border)]">
+      <a href="/dashboard/assistant/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
+        <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="message-square" class="h-4 w-4"></i> Assistant</div>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Chat with the kernel agent — ask anything about the store.</p>
+      </a>
+      <a href="/dashboard/apps/agent_core/agents/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
+        <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="bot" class="h-4 w-4"></i> Agents</div>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">{{ ai_summary.agent_count }} active · {{ ai_summary.recent_runs }} runs in last 7d</p>
+      </a>
+      <a href="{% url 'admin_dashboard:ai_insights' %}" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
+        <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="lightbulb" class="h-4 w-4"></i> Insights</div>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">{{ ai_summary.unread_insights }} unread</p>
+      </a>
+      <a href="/dashboard/apps/agent_core/runs/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
+        <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="activity" class="h-4 w-4"></i> Ops console</div>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Background runs, schedules, observability.</p>
+      </a>
+    </div>
+  </div>
+
   <!-- Two-column block: recent orders + insights -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     <!-- Recent orders -->

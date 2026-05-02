@@ -173,11 +173,44 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     except Exception as e:  # noqa: BLE001
         logger.debug('admin_dashboard: insights panel skipped: %s', e)
 
+    # AI summary block: counts of active agents + recent runs + provider in
+    # use. Fail-soft if agent_core / ai_assistant aren't installed.
+    ai_summary: dict[str, Any] = {
+        'agent_count': 0,
+        'recent_runs': 0,
+        'unread_insights': len(insights),
+        'provider': '',
+        'has_keys': False,
+    }
+    try:
+        from plugins.registry import plugin_registry
+        ai_plugin = plugin_registry.get('ai_assistant')
+        if ai_plugin is not None:
+            cfg = ai_plugin.get_config()
+            ai_summary['provider'] = cfg.get('ai_provider') or 'openai'
+            ai_summary['has_keys'] = any(
+                cfg.get(k) for k in (
+                    'openai_api_key', 'anthropic_api_key', 'gemini_api_key',
+                    'openrouter_api_key', 'ollama_api_key',
+                )
+            )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.agent_core.models import Agent, AgentRun
+        ai_summary['agent_count'] = Agent.objects.filter(is_active=True).count()
+        ai_summary['recent_runs'] = AgentRun.objects.filter(
+            created_at__gte=_since(7),
+        ).count()
+    except Exception:  # noqa: BLE001
+        pass
+
     return render(request, 'admin_dashboard/home.html', {
         'metrics': metrics,
         'recent_orders': recent_orders,
         'top_products': top_products,
         'insights': insights,
+        'ai_summary': ai_summary,
         'active_nav': 'home',
         'period': period,
     })

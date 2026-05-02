@@ -10,8 +10,7 @@ This plugin still owns the storefront-side hooks that produce signals
 the agent layer consumes (embedding refresh on product create/update,
 view recording, search logging).
 """
-from morpheus import Plugin
-from morpheus import events
+from morpheus import Plugin, SettingsPanel, events
 
 
 class AIAssistantPlugin(Plugin):
@@ -104,32 +103,107 @@ class AIAssistantPlugin(Plugin):
         return DynamicPricingService.calculate(value, product=product, customer=customer)
 
     def get_config_schema(self):
+        # NB: order of properties drives form-field rendering order in
+        # the dashboard. Providers are grouped together at the top, then
+        # the active selection, then feature toggles.
         return {
             "type": "object",
             "properties": {
-                "ai_provider": {
-                    "type": "string",
-                    "enum": ["openai", "anthropic", "ollama"],
-                    "default": "openai",
-                    "title": "LLM Provider",
-                },
+                # ── OpenAI ────────────────────────────────────────────
                 "openai_api_key": {
                     "type": "string",
-                    "title": "OpenAI API Key",
-                    "description": "Leave blank to use environment variables."
+                    "title": "OpenAI · API Key",
+                    "description": "Leave blank to use the OPENAI_API_KEY env var.",
                 },
+                "openai_base_url": {
+                    "type": "string",
+                    "title": "OpenAI · Base URL",
+                    "description": "Override only if proxying. Default: https://api.openai.com/v1",
+                },
+                "openai_model": {
+                    "type": "string",
+                    "title": "OpenAI · Default model",
+                    "default": "gpt-4o-mini",
+                },
+                # ── Anthropic ─────────────────────────────────────────
                 "anthropic_api_key": {
                     "type": "string",
-                    "title": "Anthropic API Key",
-                    "description": "Leave blank to use environment variables."
+                    "title": "Anthropic · API Key",
+                    "description": "Leave blank to use the ANTHROPIC_API_KEY env var.",
                 },
-                "enable_intent_engine": {"type": "boolean", "default": True},
-                "enable_semantic_search": {"type": "boolean", "default": True},
-                "enable_dynamic_pricing": {"type": "boolean", "default": False},
-                "enable_zero_shot_catalog": {"type": "boolean", "default": True},
-                "enable_autonomous_operator": {"type": "boolean", "default": False},
-                "enable_synthetic_testing": {"type": "boolean", "default": False},
-                "agent_purchase_requires_approval": {"type": "boolean", "default": True},
-                "memory_confidence_decay_days": {"type": "integer", "default": 90},
+                "anthropic_model": {
+                    "type": "string",
+                    "title": "Anthropic · Default model",
+                    "default": "claude-3-5-sonnet-latest",
+                },
+                # ── Google Gemini ─────────────────────────────────────
+                "gemini_api_key": {
+                    "type": "string",
+                    "title": "Gemini · API Key",
+                    "description": "Google AI Studio key (GEMINI_API_KEY).",
+                },
+                "gemini_model": {
+                    "type": "string",
+                    "title": "Gemini · Default model",
+                    "default": "gemini-2.0-flash",
+                },
+                # ── OpenRouter ────────────────────────────────────────
+                "openrouter_api_key": {
+                    "type": "string",
+                    "title": "OpenRouter · API Key",
+                    "description": "Single-key access to many model vendors. https://openrouter.ai/keys",
+                },
+                "openrouter_base_url": {
+                    "type": "string",
+                    "title": "OpenRouter · Base URL",
+                    "default": "https://openrouter.ai/api/v1",
+                },
+                "openrouter_model": {
+                    "type": "string",
+                    "title": "OpenRouter · Default model",
+                    "description": "Format: vendor/model — e.g. anthropic/claude-3.5-sonnet",
+                },
+                # ── Ollama (cloud or self-hosted) ─────────────────────
+                "ollama_base_url": {
+                    "type": "string",
+                    "title": "Ollama · Base URL",
+                    "description": "Self-hosted: http://localhost:11434 · Cloud: https://ollama.com",
+                    "default": "http://localhost:11434",
+                },
+                "ollama_api_key": {
+                    "type": "string",
+                    "title": "Ollama · API Key",
+                    "description": "Required for Ollama Cloud only.",
+                },
+                "ollama_model": {
+                    "type": "string",
+                    "title": "Ollama · Default model",
+                    "default": "llama3.2",
+                },
+                # ── Active provider selector ─────────────────────────
+                "ai_provider": {
+                    "type": "string",
+                    "enum": ["openai", "anthropic", "gemini", "openrouter", "ollama"],
+                    "default": "openai",
+                    "title": "Active provider",
+                    "description": "Which provider the assistant + agent layer call by default.",
+                },
+                # ── Feature toggles ──────────────────────────────────
+                "enable_intent_engine": {"type": "boolean", "default": True, "title": "Enable intent engine"},
+                "enable_semantic_search": {"type": "boolean", "default": True, "title": "Enable semantic search"},
+                "enable_dynamic_pricing": {"type": "boolean", "default": False, "title": "Enable dynamic pricing"},
+                "enable_zero_shot_catalog": {"type": "boolean", "default": True, "title": "Enable zero-shot catalog"},
+                "enable_autonomous_operator": {"type": "boolean", "default": False, "title": "Enable autonomous operator"},
+                "enable_synthetic_testing": {"type": "boolean", "default": False, "title": "Enable synthetic testing"},
+                "agent_purchase_requires_approval": {"type": "boolean", "default": True, "title": "Agent purchases require approval"},
+                "memory_confidence_decay_days": {"type": "integer", "default": 90, "title": "Memory confidence decay (days)"},
             },
         }
+
+    def contribute_settings_panel(self):
+        return SettingsPanel(
+            label='AI providers',
+            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, and Ollama. Pick the active provider with "Active provider".',
+            schema=self.get_config_schema(),
+            category='ai',
+        )
