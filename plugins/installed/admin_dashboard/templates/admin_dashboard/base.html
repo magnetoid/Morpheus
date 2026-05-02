@@ -117,9 +117,12 @@
   {# ── MAIN NAV (slides out when entering Settings) ─────────────────────── #}
   <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
     <a href="{% url 'admin_dashboard:home' %}"      class="nav-link {% if active_nav == 'home' %}active{% endif %}"><i data-lucide="home" class="h-4 w-4"></i> Home</a>
-    {# AI surface promoted to the top of the rail — these are daily-use entries
-       (the Assistant chat especially) and Morpheus's defining capability, so they
-       sit above the standard ecommerce CRUD instead of behind a collapsible. #}
+    {% comment %}
+      AI surface promoted to the top of the rail — these are daily-use
+      entries (the Assistant chat especially) and Morpheus's defining
+      capability, so they sit above the standard ecommerce CRUD instead
+      of behind a collapsible.
+    {% endcomment %}
     <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
     <a href="/dashboard/apps/agent_core/agents/" class="nav-link {% if active_nav == 'agents' %}active{% endif %}"><i data-lucide="bot" class="h-4 w-4"></i> AI agents</a>
     <a href="{% url 'admin_dashboard:ai_insights' %}" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}"><i data-lucide="bar-chart" class="h-4 w-4"></i> AI insights</a>
@@ -151,9 +154,11 @@
     </div>
     {% endfor %}
 
-    {# Settings is the entrypoint to the alternate (settings-mode) sidebar.
-       The Apps page is reachable from inside Settings — keeping it out of
-       the main rail follows Shopify's pattern. #}
+    {% comment %}
+      Settings is the entrypoint to the alternate (settings-mode) sidebar.
+      The Apps page is reachable from inside Settings — keeping it out of
+      the main rail follows Shopify's pattern.
+    {% endcomment %}
     <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" class="nav-link {% if active_nav == 'settings' %}active{% endif %}">
       <i data-lucide="settings" class="h-4 w-4"></i> Settings
     </a>
