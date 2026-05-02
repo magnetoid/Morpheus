@@ -100,24 +100,13 @@ class AdvancedEcommercePlugin(Plugin):
         ]
 
     def contribute_dashboard_pages(self):
-        return [
-            DashboardPage(
-                label='Bulk price edit',
-                slug='bulk-price',
-                view='plugins.installed.advanced_ecommerce.views.bulk_price_view',
-                icon='edit-3',
-                section='plugins',
-                order=10,
-            ),
-            DashboardPage(
-                label='Low-stock alerts',
-                slug='low-stock',
-                view='plugins.installed.advanced_ecommerce.views.low_stock_view',
-                icon='alert-triangle',
-                section='plugins',
-                order=20,
-            ),
-        ]
+        # Both pages (Bulk price edit, Low-stock alerts) used to live as
+        # sidebar entries. They now surface in more contextual places:
+        #   * Bulk price edit  → button on the Products list page.
+        #   * Low-stock alerts → "Stock alerts" section on dashboard home,
+        #     visible only when at least one variant is below threshold.
+        # The underlying URLs still exist for deep-linking.
+        return []
 
     def contribute_settings_panel(self):
         return SettingsPanel(

@@ -145,6 +145,116 @@
       </div>
     </div>
 
+    <details class="card">
+      <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
+        <div>
+          <h2 class="font-semibold text-sm">Search engine optimisation</h2>
+          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Title, description, social cards, robots, and structured-data overrides.</p>
+        </div>
+        <i data-lucide="chevron-down" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+      </summary>
+
+      <div class="card-padded space-y-4">
+        {# Search snippet — meta_title + meta_description + focus keyword. #}
+        <div class="space-y-3">
+          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Search snippet</h3>
+          <div>
+            <label class="block text-sm font-medium mb-1">Meta title</label>
+            <input type="text" name="meta_title" class="input" maxlength="200"
+                   value="{{ form.meta_title.value|default:'' }}"
+                   placeholder="Defaults to product name">
+            <p class="text-xs text-[color:var(--text-muted)] mt-1">~60 characters works best in Google.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Meta description</label>
+            <textarea name="meta_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.meta_description.value|default:'' }}</textarea>
+            <p class="text-xs text-[color:var(--text-muted)] mt-1">~155 characters. Plain text only.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Focus keyword</label>
+              <input type="text" name="focus_keyword" class="input"
+                     value="{{ form.focus_keyword.value|default:'' }}"
+                     placeholder="e.g. handmade leather wallet">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Canonical URL</label>
+              <input type="url" name="canonical_url" class="input"
+                     value="{{ form.canonical_url.value|default:'' }}"
+                     placeholder="Default: /products/{{ product.slug|default:'…' }}/">
+            </div>
+          </div>
+        </div>
+
+        {# Open Graph (Facebook / LinkedIn / Slack). #}
+        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
+          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Open Graph</h3>
+          <div>
+            <label class="block text-sm font-medium mb-1">OG title</label>
+            <input type="text" name="og_title" class="input" maxlength="200"
+                   value="{{ form.og_title.value|default:'' }}"
+                   placeholder="Falls back to meta title">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">OG description</label>
+            <textarea name="og_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.og_description.value|default:'' }}</textarea>
+          </div>
+          <p class="text-xs text-[color:var(--text-muted)]">OG image upload coming next — for now, the product's primary image is used.</p>
+        </div>
+
+        {# Twitter Card. #}
+        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
+          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Twitter Card</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Card type</label>
+              <select name="twitter_card" class="input">
+                {% for value, label in form.fields.twitter_card.choices %}
+                <option value="{{ value }}" {% if form.twitter_card.value == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Twitter title</label>
+              <input type="text" name="twitter_title" class="input" maxlength="200"
+                     value="{{ form.twitter_title.value|default:'' }}"
+                     placeholder="Falls back to OG / meta title">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Twitter description</label>
+            <textarea name="twitter_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.twitter_description.value|default:'' }}</textarea>
+          </div>
+        </div>
+
+        {# Crawler controls. #}
+        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
+          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Indexing</h3>
+          <div class="flex flex-wrap gap-4">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" name="noindex" {% if form.noindex.value %}checked{% endif %}> noindex
+              <span class="text-xs text-[color:var(--text-muted)]">— hide from search engines</span>
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" name="nofollow" {% if form.nofollow.value %}checked{% endif %}> nofollow
+              <span class="text-xs text-[color:var(--text-muted)]">— don't follow links</span>
+            </label>
+          </div>
+        </div>
+
+        {# Extra structured data (JSON-LD overrides). #}
+        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
+          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Structured data overrides</h3>
+          <div>
+            <label class="block text-sm font-medium mb-1">Extra JSON-LD (object)</label>
+            <textarea name="structured_data" rows="6" class="input font-mono text-xs" style="height:auto; padding:.5rem .75rem;" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
+            {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
+            <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
     <div class="flex items-center justify-end gap-2">
       <a href="{% url 'admin_dashboard:products' %}" class="btn">Cancel</a>
       <button type="submit" class="btn btn-primary">

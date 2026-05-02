@@ -64,9 +64,34 @@ class ProductForm(forms.Form):
     )
     weight_unit = forms.CharField(max_length=5, required=False, initial='kg')
 
+    # ── SEO — basic ─────────────────────────────────────────────────────
+    meta_title = forms.CharField(max_length=200, required=False)
+    meta_description = forms.CharField(widget=forms.Textarea, required=False)
+    focus_keyword = forms.CharField(max_length=120, required=False)
+    canonical_url = forms.URLField(required=False)
+    # ── SEO — Open Graph (og_image is uploaded separately) ──────────────
+    og_title = forms.CharField(max_length=200, required=False)
+    og_description = forms.CharField(widget=forms.Textarea, required=False)
+    # ── SEO — Twitter Card ──────────────────────────────────────────────
+    twitter_title = forms.CharField(max_length=200, required=False)
+    twitter_description = forms.CharField(widget=forms.Textarea, required=False)
+    twitter_card = forms.ChoiceField(choices=[
+        ('summary', 'Summary'),
+        ('summary_large_image', 'Summary with large image'),
+    ], required=False, initial='summary_large_image')
+    # ── SEO — crawler controls ──────────────────────────────────────────
+    noindex = forms.BooleanField(required=False)
+    nofollow = forms.BooleanField(required=False)
+    # ── SEO — extra structured data (JSON; loose-typed for flexibility) ─
+    structured_data = forms.CharField(
+        widget=forms.Textarea, required=False,
+        help_text='Optional JSON object merged into auto-generated JSON-LD.',
+    )
+
     def __init__(self, *args, instance=None, **kwargs):
         self.instance = instance
         if instance is not None and 'initial' not in kwargs:
+            import json
             kwargs['initial'] = {
                 'name': instance.name,
                 'sku': instance.sku,
@@ -89,8 +114,37 @@ class ProductForm(forms.Form):
                 'requires_shipping': instance.requires_shipping,
                 'weight': instance.weight,
                 'weight_unit': instance.weight_unit,
+                # SEO
+                'meta_title': instance.meta_title,
+                'meta_description': instance.meta_description,
+                'focus_keyword': getattr(instance, 'focus_keyword', '') or '',
+                'canonical_url': getattr(instance, 'canonical_url', '') or '',
+                'og_title': getattr(instance, 'og_title', '') or '',
+                'og_description': getattr(instance, 'og_description', '') or '',
+                'twitter_title': getattr(instance, 'twitter_title', '') or '',
+                'twitter_description': getattr(instance, 'twitter_description', '') or '',
+                'twitter_card': getattr(instance, 'twitter_card', '') or 'summary_large_image',
+                'noindex': bool(getattr(instance, 'noindex', False)),
+                'nofollow': bool(getattr(instance, 'nofollow', False)),
+                'structured_data': (
+                    json.dumps(instance.structured_data, indent=2)
+                    if getattr(instance, 'structured_data', None) else ''
+                ),
             }
         super().__init__(*args, **kwargs)
+
+    def clean_structured_data(self):
+        raw = (self.cleaned_data.get('structured_data') or '').strip()
+        if not raw:
+            return {}
+        import json
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise forms.ValidationError(f'Not valid JSON: {e}')
+        if not isinstance(value, dict):
+            raise forms.ValidationError('Structured data must be a JSON object.')
+        return value
 
     def clean_sku(self):
         sku = (self.cleaned_data.get('sku') or '').strip()
@@ -124,6 +178,21 @@ class ProductForm(forms.Form):
         product.requires_shipping = bool(cd.get('requires_shipping'))
         product.weight = cd.get('weight')
         product.weight_unit = cd.get('weight_unit') or 'kg'
+
+        # SEO fields — only assign when the model actually has them so
+        # this code keeps working against an older Product schema.
+        for field in (
+            'meta_title', 'meta_description', 'focus_keyword',
+            'canonical_url', 'og_title', 'og_description',
+            'twitter_title', 'twitter_description', 'twitter_card',
+        ):
+            if hasattr(product, field):
+                setattr(product, field, cd.get(field) or '')
+        for flag in ('noindex', 'nofollow'):
+            if hasattr(product, flag):
+                setattr(product, flag, bool(cd.get(flag)))
+        if hasattr(product, 'structured_data'):
+            product.structured_data = cd.get('structured_data') or {}
 
         if cd.get('category'):
             product.category = Category.objects.filter(pk=cd['category']).first()

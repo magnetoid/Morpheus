@@ -205,12 +205,40 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001
         pass
 
+    # Stock alerts — surface on home only when at least one variant is
+    # below threshold. Inventory + advanced_ecommerce both optional.
+    low_stock: list[Any] = []
+    low_stock_threshold = 0
+    try:
+        from plugins.installed.inventory.models import StockLevel
+        from plugins.registry import plugin_registry
+        ae_plugin = plugin_registry.get('advanced_ecommerce')
+        low_stock_threshold = (
+            int(ae_plugin.get_config_value('low_stock_threshold', 5))
+            if ae_plugin else 5
+        )
+        # available_quantity is a Python property; pull a small page and
+        # filter in-memory so we don't need a denormalised column.
+        candidates = list(
+            StockLevel.objects
+            .select_related('variant', 'variant__product', 'warehouse')
+            .filter(quantity__lte=low_stock_threshold + 50)[:200]
+        )
+        low_stock = sorted(
+            (sl for sl in candidates if sl.available_quantity <= low_stock_threshold),
+            key=lambda sl: sl.available_quantity,
+        )[:6]
+    except Exception:  # noqa: BLE001
+        pass
+
     return render(request, 'admin_dashboard/home.html', {
         'metrics': metrics,
         'recent_orders': recent_orders,
         'top_products': top_products,
         'insights': insights,
         'ai_summary': ai_summary,
+        'low_stock': low_stock,
+        'low_stock_threshold': low_stock_threshold,
         'active_nav': 'home',
         'period': period,
     })

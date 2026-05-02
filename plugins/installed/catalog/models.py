@@ -194,9 +194,50 @@ class Product(models.Model):
     weight_unit = models.CharField(max_length=5, default='kg')
     requires_shipping = models.BooleanField(default=True)
 
-    # SEO
+    # SEO — basic
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)
+    focus_keyword = models.CharField(
+        max_length=120, blank=True,
+        help_text='Primary keyword this product targets — used by SEO audits.',
+    )
+    canonical_url = models.URLField(
+        blank=True,
+        help_text='Override the canonical URL. Leave blank to use the default product URL.',
+    )
+
+    # SEO — Open Graph (Facebook, LinkedIn, etc.). Falls back to meta_* / name.
+    og_title = models.CharField(max_length=200, blank=True)
+    og_description = models.TextField(blank=True)
+    og_image = models.ImageField(upload_to='products/og/', blank=True, null=True)
+
+    # SEO — Twitter Card.
+    TWITTER_CARD_CHOICES = [
+        ('summary', 'Summary'),
+        ('summary_large_image', 'Summary with large image'),
+    ]
+    twitter_title = models.CharField(max_length=200, blank=True)
+    twitter_description = models.TextField(blank=True)
+    twitter_image = models.ImageField(upload_to='products/twitter/', blank=True, null=True)
+    twitter_card = models.CharField(
+        max_length=24, choices=TWITTER_CARD_CHOICES, default='summary_large_image', blank=True,
+    )
+
+    # SEO — crawler controls.
+    noindex = models.BooleanField(
+        default=False,
+        help_text='Tell search engines to skip this page.',
+    )
+    nofollow = models.BooleanField(
+        default=False,
+        help_text='Tell search engines not to follow links from this page.',
+    )
+
+    # SEO — extra JSON-LD overrides.
+    structured_data = models.JSONField(
+        default=dict, blank=True,
+        help_text='Extra fields merged into the auto-generated JSON-LD (e.g. brand, gtin, mpn).',
+    )
 
     # Digital
     digital_file = models.FileField(upload_to='digital/', blank=True, null=True)

@@ -78,6 +78,42 @@
     </div>
   </div>
 
+  {% if low_stock %}
+  <!-- Stock alerts — visible only when at least one variant is below threshold. -->
+  <div class="card overflow-hidden">
+    <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" class="h-4 w-4 text-warn"></i>
+        <h2 class="font-semibold">Stock alerts</h2>
+        <span class="pill pill-warn">{{ low_stock|length }} at or below {{ low_stock_threshold }}</span>
+      </div>
+      <a href="/dashboard/apps/advanced_ecommerce/low-stock/" class="btn btn-ghost text-xs">View all <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></a>
+    </div>
+    <table class="morph-table">
+      <thead>
+        <tr><th>Product / Variant</th><th>Warehouse</th><th class="text-right">Available</th><th class="text-right">On hand</th></tr>
+      </thead>
+      <tbody>
+        {% for sl in low_stock %}
+        <tr>
+          <td>
+            <div class="font-medium">{{ sl.variant.product.name }}</div>
+            <div class="text-xs text-[color:var(--text-muted)]">
+              {% if sl.variant.name %}{{ sl.variant.name }} · {% endif %}<code>{{ sl.variant.sku }}</code>
+            </div>
+          </td>
+          <td class="text-[color:var(--text-muted)]">{{ sl.warehouse.name|default:"—" }}</td>
+          <td class="text-right font-medium {% if sl.available_quantity <= 0 %}text-danger{% else %}text-warn{% endif %}">
+            {{ sl.available_quantity }}
+          </td>
+          <td class="text-right text-[color:var(--text-muted)]">{{ sl.quantity }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <!-- Two-column block: recent orders + insights -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     <!-- Recent orders -->
