@@ -462,6 +462,16 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         for user in qs[:100]:
             order_qs = Order.objects.filter(customer=user)
             source = getattr(user, 'source', '') or ''
+            # Prefer the CDP denormalized fields (cheap), fall back to live
+            # aggregation when they aren't populated yet (pre-backfill row).
+            denormalized_count = getattr(user, 'purchase_count', 0) or 0
+            denormalized_ltv = getattr(user, 'lifetime_value', None) or Decimal('0')
+            if denormalized_count:
+                order_count = denormalized_count
+                spent = denormalized_ltv
+            else:
+                order_count = order_qs.count()
+                spent = order_qs.aggregate(total=Sum('total'))['total'] or Decimal('0')
             rows.append({
                 'id': user.pk,
                 'email': getattr(user, 'email', ''),
@@ -473,8 +483,9 @@ def customers_list(request: HttpRequest) -> HttpResponse:
                 'source_display': (
                     user.get_source_display() if hasattr(user, 'get_source_display') and source else ''
                 ),
-                'order_count': order_qs.count(),
-                'spent': order_qs.aggregate(total=Sum('total'))['total'] or Decimal('0'),
+                'order_count': order_count,
+                'spent': spent,
+                'last_order_at': getattr(user, 'last_order_at', None),
                 'date_joined': getattr(user, 'date_joined', None),
             })
         customers = rows

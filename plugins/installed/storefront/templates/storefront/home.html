@@ -39,7 +39,10 @@
         <div class="group relative glass rounded-2xl overflow-hidden hover:-translate-y-2 transition-all duration-300">
             <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-dark-card/50">
                 {% if product.images.first %}
-                    <img src="{{ product.images.first.image.url }}" alt="{{ product.name }}" class="w-full h-full object-center object-cover group-hover:scale-110 transition-transform duration-500">
+                    <picture>
+                        {% if product.images.first.webp_image %}<source srcset="{{ product.images.first.webp_image.url }}" type="image/webp">{% endif %}
+                        <img src="{{ product.images.first.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async" class="w-full h-full object-center object-cover group-hover:scale-110 transition-transform duration-500">
+                    </picture>
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center bg-gray-800 text-gray-500">No Image</div>
                 {% endif %}

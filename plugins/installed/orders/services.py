@@ -27,11 +27,20 @@ class CartService:
 
     @classmethod
     def add_item(
-        cls, cart: Cart, product_id: str, quantity: int = 1, variant_id: Optional[str] = None,
+        cls, cart: Cart, product_id: str, quantity: int = 1,
+        variant_id: Optional[str] = None, currency: Optional[str] = None,
     ) -> CartItem:
+        """Add a line item, picking the buyer-currency override if available.
+
+        ``currency`` is the visitor's chosen display currency (resolved upstream
+        from session/?currency=). When the product or variant has a
+        ``localized_prices[currency]`` override we use that; otherwise we
+        fall back to the default ``MoneyField`` price.
+        """
         product = Product.objects.get(id=product_id)
         variant = ProductVariant.objects.get(id=variant_id) if variant_id else None
-        unit_price = variant.effective_price if variant else product.price
+        target = variant or product
+        unit_price = _resolve_unit_price(target, currency, fallback=product)
 
         item, created = CartItem.objects.get_or_create(
             cart=cart, product=product, variant=variant,
@@ -41,6 +50,31 @@ class CartService:
             item.quantity += quantity
             item.save(update_fields=['quantity'])
         return item
+
+
+def _resolve_unit_price(target, currency: Optional[str], *, fallback) -> Money:
+    """Return a ``Money`` honoring ``target.localized_prices[currency]``
+    when present, else the default MoneyField price."""
+    default_price = (
+        target.effective_price if hasattr(target, 'effective_price') else target.price
+    ) or fallback.price
+
+    if not currency:
+        return default_price
+
+    overrides = getattr(target, 'localized_prices', None) or {}
+    raw = overrides.get(currency) or overrides.get(currency.upper())
+    if raw is None and target is not fallback:
+        # Variant override missing — try the parent product's overrides.
+        overrides = getattr(fallback, 'localized_prices', None) or {}
+        raw = overrides.get(currency) or overrides.get(currency.upper())
+    if raw is None:
+        return default_price
+    try:
+        return Money(Decimal(str(raw)), currency.upper())
+    except Exception:  # noqa: BLE001 — bad data shouldn't break checkout
+        logger.warning('orders: malformed localized_prices entry %r=%r', currency, raw)
+        return default_price
 
 
 class OrderService:

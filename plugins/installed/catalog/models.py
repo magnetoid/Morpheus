@@ -176,6 +176,10 @@ class Product(models.Model):
         null=True, blank=True, help_text='Your cost (not shown to customers)'
     )
 
+    # Enterprise Multi-Currency & Localization
+    localized_prices = models.JSONField(default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}')
+    localized_translations = models.JSONField(default=dict, blank=True, help_text='{"fr": {"name": "Produit", "description": "..."}}')
+
     # Content
     short_description = models.TextField(blank=True)
     description = models.TextField(blank=True)
@@ -311,10 +315,17 @@ class ProductAttribute(models.Model):
 
 
 class ProductImage(models.Model):
-    """Product images with ordering and alt text."""
+    """Product images with ordering and alt text.
+
+    On save we render a WebP variant alongside the original. The storefront
+    template prefers ``webp_image.url`` when available — WebP is ~25-35%
+    smaller than JPEG at equivalent quality and is supported by every modern
+    browser, so this is a free LCP improvement on PDP/PLP.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='products/')
+    webp_image = models.ImageField(upload_to='products/webp/', blank=True, null=True)
     alt_text = models.CharField(max_length=255, blank=True)
     is_primary = models.BooleanField(default=False)
     sort_order = models.PositiveIntegerField(default=0)
@@ -325,6 +336,46 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.product.name}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.image:
+            return
+        # Skip if the source is already WebP, or we already have a variant
+        # for this filename (cheap heuristic — avoids re-encoding on every save).
+        src_name = (self.image.name or '').lower()
+        if src_name.endswith('.webp'):
+            return
+        expected_webp = f'products/webp/{src_name.rsplit("/", 1)[-1].rsplit(".", 1)[0]}.webp'
+        if self.webp_image and self.webp_image.name == expected_webp:
+            return
+        try:
+            from io import BytesIO
+            from django.core.files.base import ContentFile
+            from PIL import Image as PILImage
+
+            self.image.open('rb')
+            try:
+                pil = PILImage.open(self.image)
+                pil.load()
+            finally:
+                self.image.close()
+            if pil.mode in ('P', 'CMYK'):
+                pil = pil.convert('RGB')
+            elif pil.mode == 'RGBA':
+                # Keep alpha — WebP handles it.
+                pass
+            buf = BytesIO()
+            pil.save(buf, format='WEBP', quality=82, method=4)
+            buf.seek(0)
+            base = src_name.rsplit('/', 1)[-1].rsplit('.', 1)[0]
+            self.webp_image.save(f'{base}.webp', ContentFile(buf.read()), save=False)
+            super().save(update_fields=['webp_image'])
+        except Exception:  # noqa: BLE001 — image upload must not fail because of WebP
+            import logging
+            logging.getLogger('morpheus.catalog').warning(
+                'Failed to generate WebP for ProductImage %s', self.pk, exc_info=True,
+            )
 
 
 class ProductVariant(models.Model):
@@ -338,6 +389,9 @@ class ProductVariant(models.Model):
     sku = models.CharField(max_length=100, unique=True)
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
     compare_at_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
+    
+    localized_prices = models.JSONField(default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}')
+    
     cost_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
     attribute_values = models.ManyToManyField(AttributeValue, blank=True)
     image = models.ForeignKey(ProductImage, on_delete=models.SET_NULL, null=True, blank=True)

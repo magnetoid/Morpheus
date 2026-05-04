@@ -92,11 +92,15 @@ class OrdersMutationExtension:
             )
 
             cart = CartService.get_or_create_cart(session_key=session_key, customer=customer)
+            currency = ''
+            if request is not None and hasattr(request, 'session'):
+                currency = (request.session.get('display_currency') or '').strip().upper()
             CartService.add_item(
                 cart=cart,
                 product_id=input.product_id,
                 quantity=max(1, input.quantity),
                 variant_id=input.variant_id,
+                currency=currency or None,
             )
             if request is not None and hasattr(request, 'session') and not request.session.get('cart_id'):
                 request.session['cart_id'] = str(cart.id)

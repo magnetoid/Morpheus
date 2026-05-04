@@ -361,6 +361,11 @@ CORS_ALLOW_CREDENTIALS = True
 # ── GraphQL hardening ─────────────────────────────────────────────────────────
 GRAPHQL_MAX_QUERY_DEPTH = config('GRAPHQL_MAX_QUERY_DEPTH', default=10, cast=int)
 GRAPHQL_MAX_ALIASES = config('GRAPHQL_MAX_ALIASES', default=15, cast=int)
+# Block `__schema` / `__type` discovery in prod. Override only if you need
+# to ship a public IDE.
+GRAPHQL_DISABLE_INTROSPECTION_IN_PROD = config(
+    'GRAPHQL_DISABLE_INTROSPECTION_IN_PROD', default=True, cast=bool,
+)
 
 # ── Crispy Forms ───────────────────────────────────────────────────────────────
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'

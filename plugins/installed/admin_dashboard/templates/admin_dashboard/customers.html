@@ -38,7 +38,7 @@
     {% if customers %}
     <table class="morph-table">
       <thead>
-        <tr><th>Contact</th><th>Source</th><th>Joined</th><th class="text-right">Orders</th><th class="text-right">Spent</th></tr>
+        <tr><th>Contact</th><th>Source</th><th>Joined</th><th>Last order</th><th class="text-right">Orders</th><th class="text-right">Spent</th></tr>
       </thead>
       <tbody>
         {% for c in customers %}
@@ -63,6 +63,7 @@
             {% else %}<span class="pill pill-neutral">—</span>{% endif %}
           </td>
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ c.date_joined|date:"M j, Y" }}</td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if c.last_order_at %}{{ c.last_order_at|date:"M j, Y" }}{% else %}—{% endif %}</td>
           <td class="text-right">{{ c.order_count }}</td>
           <td class="text-right font-medium">${{ c.spent|floatformat:2 }}</td>
         </tr>

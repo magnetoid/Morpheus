@@ -84,9 +84,15 @@ class OpenAIProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         import openai  # lazy import — provider is only loaded when used
-        api_key = getattr(settings, 'OPENAI_API_KEY', '')
-        self._client = openai.OpenAI(api_key=api_key) if api_key else openai.OpenAI()
-        self.model = model or getattr(settings, 'AI_MODEL', 'gpt-4o-mini')
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config('openai')
+        kwargs: dict[str, Any] = {}
+        if cfg.api_key:
+            kwargs['api_key'] = cfg.api_key
+        if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1':
+            kwargs['base_url'] = cfg.base_url
+        self._client = openai.OpenAI(**kwargs) if kwargs else openai.OpenAI()
+        self.model = model or cfg.model or 'gpt-4o-mini'
 
     def _convert_messages(self, messages: list[LLMMessage]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
@@ -160,9 +166,12 @@ class AnthropicProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         import anthropic
-        api_key = getattr(settings, 'ANTHROPIC_API_KEY', '')
-        self._client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
-        self.model = model or getattr(settings, 'AI_MODEL', 'claude-3-5-haiku-latest')
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config('anthropic')
+        self._client = (
+            anthropic.Anthropic(api_key=cfg.api_key) if cfg.api_key else anthropic.Anthropic()
+        )
+        self.model = model or cfg.model or 'claude-3-5-sonnet-latest'
 
     def _convert(self, messages: list[LLMMessage]) -> tuple[str, list[dict[str, Any]]]:
         system_chunks: list[str] = []
@@ -252,9 +261,12 @@ class OllamaProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         import requests
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config('ollama')
         self._requests = requests
-        self.base_url = getattr(settings, 'OLLAMA_BASE_URL', 'http://localhost:11434')
-        self.model = model or getattr(settings, 'AI_MODEL', 'llama3.2')
+        self._api_key = cfg.api_key
+        self.base_url = (cfg.base_url or 'http://localhost:11434').rstrip('/')
+        self.model = model or cfg.model or 'llama3.2'
 
     def respond(
         self,
@@ -273,8 +285,12 @@ class OllamaProvider(LLMProvider):
         if tools:
             tool_specs = '\n'.join(f'- {t.name}: {t.description}' for t in tools)
             prompt += '\n\n[TOOLS AVAILABLE]\n' + tool_specs
+        headers = {'Content-Type': 'application/json'}
+        if self._api_key:
+            headers['Authorization'] = f'Bearer {self._api_key}'
         resp = self._requests.post(
             f'{self.base_url}/api/generate',
+            headers=headers,
             json={
                 'model': self.model,
                 'prompt': prompt,
@@ -286,6 +302,97 @@ class OllamaProvider(LLMProvider):
         resp.raise_for_status()
         data = resp.json()
         return LLMResponse(text=data.get('response', ''), model=self.model, raw=data)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Gemini — REST, no SDK
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class GeminiProvider(LLMProvider):
+    name = 'gemini'
+
+    def __init__(self, model: str | None = None) -> None:
+        import requests
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config('gemini')
+        if not cfg.api_key:
+            raise RuntimeError('Gemini API key not configured')
+        self._requests = requests
+        self._api_key = cfg.api_key
+        self.base_url = (cfg.base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip('/')
+        self.model = model or cfg.model or 'gemini-2.0-flash'
+
+    def respond(
+        self,
+        *,
+        messages: list[LLMMessage],
+        tools: list[Any] | None = None,
+        temperature: float = 0.3,
+        max_tokens: int = 1024,
+    ) -> LLMResponse:
+        # Gemini's tool-calling shape differs from OpenAI; we surface tools
+        # as a description block in the system prompt for now (best-effort).
+        system_chunks: list[str] = []
+        contents: list[dict[str, Any]] = []
+        for m in messages:
+            if m.role == 'system':
+                if m.content:
+                    system_chunks.append(m.content)
+                continue
+            role = 'user' if m.role in ('user', 'tool') else 'model'
+            contents.append({'role': role, 'parts': [{'text': m.content or ''}]})
+        if tools:
+            specs = '\n'.join(f'- {t.name}: {t.description}' for t in tools)
+            system_chunks.append(f'[TOOLS AVAILABLE]\n{specs}')
+
+        body: dict[str, Any] = {
+            'contents': contents,
+            'generationConfig': {
+                'temperature': temperature,
+                'maxOutputTokens': max_tokens,
+            },
+        }
+        if system_chunks:
+            body['systemInstruction'] = {'parts': [{'text': '\n\n'.join(system_chunks)}]}
+
+        url = f'{self.base_url}/models/{self.model}:generateContent?key={self._api_key}'
+        resp = self._requests.post(url, json=body, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        chunks: list[str] = []
+        for cand in data.get('candidates', []) or []:
+            for part in (cand.get('content', {}) or {}).get('parts', []) or []:
+                if 'text' in part:
+                    chunks.append(part['text'])
+        usage = data.get('usageMetadata', {}) or {}
+        return LLMResponse(
+            text=''.join(chunks),
+            prompt_tokens=int(usage.get('promptTokenCount', 0) or 0),
+            completion_tokens=int(usage.get('candidatesTokenCount', 0) or 0),
+            model=self.model,
+            raw=data,
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OpenRouter — OpenAI-compatible, just a different base URL
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class OpenRouterProvider(OpenAIProvider):
+    name = 'openrouter'
+
+    def __init__(self, model: str | None = None) -> None:
+        import openai
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config('openrouter')
+        kwargs: dict[str, Any] = {}
+        if cfg.api_key:
+            kwargs['api_key'] = cfg.api_key
+        kwargs['base_url'] = cfg.base_url or 'https://openrouter.ai/api/v1'
+        self._client = openai.OpenAI(**kwargs)
+        self.model = model or cfg.model or 'anthropic/claude-3.5-sonnet'
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -340,25 +447,33 @@ class MockLLMProvider(LLMProvider):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
+    'openai': OpenAIProvider,
+    'anthropic': AnthropicProvider,
+    'ollama': OllamaProvider,
+    'gemini': GeminiProvider,
+    'openrouter': OpenRouterProvider,
+}
+
+
 def get_llm_provider(name: str | None = None, *, model: str | None = None) -> LLMProvider:
-    """Resolve a provider by name. Falls back to `MockLLMProvider` if unconfigured."""
-    chosen = (name or getattr(settings, 'AI_PROVIDER', '')).strip().lower()
-    if chosen == 'openai':
+    """Resolve the active provider. Reads the ai_assistant plugin config (so
+    keys saved in the dashboard apply immediately, no restart). Falls back
+    to `MockLLMProvider` when nothing is configured."""
+    if name:
+        chosen = name.strip().lower()
+    else:
         try:
-            return OpenAIProvider(model=model)
-        except Exception as e:  # noqa: BLE001
-            logger.warning('openai provider unavailable, using mock: %s', e)
-            return MockLLMProvider()
-    if chosen == 'anthropic':
-        try:
-            return AnthropicProvider(model=model)
-        except Exception as e:  # noqa: BLE001
-            logger.warning('anthropic provider unavailable, using mock: %s', e)
-            return MockLLMProvider()
-    if chosen == 'ollama':
-        try:
-            return OllamaProvider(model=model)
-        except Exception as e:  # noqa: BLE001
-            logger.warning('ollama provider unavailable, using mock: %s', e)
-            return MockLLMProvider()
-    return MockLLMProvider()
+            from plugins.installed.ai_assistant.services.config import get_active_provider_name
+            chosen = get_active_provider_name()
+        except Exception:  # noqa: BLE001 — registry not ready (early boot, tests)
+            chosen = (getattr(settings, 'AI_PROVIDER', '') or '').strip().lower()
+
+    cls = _PROVIDER_CLASSES.get(chosen)
+    if cls is None:
+        return MockLLMProvider()
+    try:
+        return cls(model=model)
+    except Exception as e:  # noqa: BLE001
+        logger.warning('%s provider unavailable, using mock: %s', chosen, e)
+        return MockLLMProvider()

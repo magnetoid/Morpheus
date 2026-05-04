@@ -47,7 +47,8 @@ class MorpheusGraphQLView(GraphQLView):
 
     @staticmethod
     def _validate_complexity(data: dict[str, Any]) -> None:
-        """Reject queries that exceed depth/alias limits before execution."""
+        """Reject queries that exceed depth/alias limits, or — in production —
+        attempt schema introspection. Runs before strawberry parses/executes."""
         from graphql import parse
 
         query = data.get('query')
@@ -56,6 +57,10 @@ class MorpheusGraphQLView(GraphQLView):
 
         max_depth = getattr(settings, 'GRAPHQL_MAX_QUERY_DEPTH', 10)
         max_aliases = getattr(settings, 'GRAPHQL_MAX_ALIASES', 15)
+        block_introspection = (
+            not settings.DEBUG
+            and getattr(settings, 'GRAPHQL_DISABLE_INTROSPECTION_IN_PROD', True)
+        )
 
         try:
             document = parse(query)
@@ -73,12 +78,18 @@ class MorpheusGraphQLView(GraphQLView):
             if not selection_set:
                 return
             for selection in selection_set.selections:
-                if isinstance(selection, FieldNode) and selection.alias is not None:
-                    alias_count += 1
-                    if alias_count > max_aliases:
+                if isinstance(selection, FieldNode):
+                    name = selection.name.value
+                    if block_introspection and name in ('__schema', '__type'):
                         raise GraphQLError(
-                            f"Query exceeds maximum aliases of {max_aliases}",
+                            'GraphQL introspection is disabled in production.',
                         )
+                    if selection.alias is not None:
+                        alias_count += 1
+                        if alias_count > max_aliases:
+                            raise GraphQLError(
+                                f"Query exceeds maximum aliases of {max_aliases}",
+                            )
                 visit(selection, depth + 1)
 
         for definition in document.definitions:

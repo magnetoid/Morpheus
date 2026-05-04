@@ -41,6 +41,21 @@ class Customer(AbstractUser):
         max_length=20, choices=SOURCE_CHOICES, default='other', db_index=True,
     )
     metadata = models.JSONField(default=dict, blank=True)
+
+    # ── Customer Data Platform (denormalized — updated on ORDER_PAID) ─────
+    lifetime_value = models.DecimalField(
+        max_digits=14, decimal_places=2, default=0,
+        help_text='Sum of paid order totals in store currency.',
+    )
+    purchase_count = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of paid orders. Drives loyalty tiers, segments, RFM.',
+    )
+    last_order_at = models.DateTimeField(
+        null=True, blank=True, db_index=True,
+        help_text='When this contact last completed a paid order.',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

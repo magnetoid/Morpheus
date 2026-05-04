@@ -10,6 +10,7 @@ class ImageType:
     url: str
     alt_text: Optional[str] = None
     is_primary: Optional[bool] = None
+    webp_url: Optional[str] = None  # null when no WebP variant exists yet
 
 @strawberry_django.type(models.Category)
 class CategoryType:
@@ -24,6 +25,15 @@ class CategoryType:
         if not self.image:
             return None
         return ImageType(url=self.image.url, alt_text=self.name)
+
+    @strawberry.field(description="Schema.org JSON-LD structured data for SEO")
+    def structured_data(self) -> str:
+        import json
+        from plugins.installed.seo.services import _structured_data_for
+        try:
+            return json.dumps(_structured_data_for(self, title=self.name, description=self.description, image=self.image.url if self.image else ''), ensure_ascii=False)
+        except Exception:
+            return "{}"
 
 @strawberry_django.type(models.AttributeGroup)
 class AttributeGroupType:
@@ -69,6 +79,7 @@ class ProductVariantType:
     name: str = strawberry.field(description="Variant name")
     sku: str = strawberry.field(description="Stock Keeping Unit")
     is_active: bool = strawberry.field(description="Whether this variant is active")
+    localized_prices: strawberry.scalars.JSON = strawberry.field(description="JSON dict of explicit price overrides per currency")
 
     @strawberry.field(description="Price of the variant")
     def price(self) -> Optional[MoneyType]:
@@ -93,12 +104,21 @@ class ProductType:
     discount_percentage: int = strawberry.field(description="Discount percentage if on sale")
     average_rating: Optional[float] = strawberry.field(description="Average rating from reviews")
 
+    # Enterprise Localization
+    localized_prices: strawberry.scalars.JSON = strawberry.field(description="JSON dict of explicit price overrides per currency")
+    localized_translations: strawberry.scalars.JSON = strawberry.field(description="JSON dict of translated strings (name, description) per locale")
+
     @strawberry.field(description="Primary product image")
     def primary_image(self) -> Optional[ImageType]:
         img = self.primary_image
         if not img or not img.image:
             return None
-        return ImageType(url=img.image.url, alt_text=img.alt_text or self.name, is_primary=img.is_primary)
+        return ImageType(
+            url=img.image.url,
+            alt_text=img.alt_text or self.name,
+            is_primary=img.is_primary,
+            webp_url=(img.webp_image.url if getattr(img, 'webp_image', None) else None),
+        )
 
     @strawberry.field(description="All product images")
     def images(self) -> List[ImageType]:
@@ -106,7 +126,12 @@ class ProductType:
         for img in self.images.all():
             if not img.image:
                 continue
-            images.append(ImageType(url=img.image.url, alt_text=img.alt_text or self.name, is_primary=img.is_primary))
+            images.append(ImageType(
+                url=img.image.url,
+                alt_text=img.alt_text or self.name,
+                is_primary=img.is_primary,
+                webp_url=(img.webp_image.url if getattr(img, 'webp_image', None) else None),
+            ))
         return images
 
     @strawberry.field(description="Product tags")
@@ -126,6 +151,15 @@ class ProductType:
         if not self.compare_at_price:
             return None
         return MoneyType(amount=str(self.compare_at_price.amount), currency=str(self.compare_at_price.currency))
+
+    @strawberry.field(description="Schema.org JSON-LD structured data for SEO")
+    def structured_data(self) -> str:
+        import json
+        from plugins.installed.seo.services import product_jsonld
+        try:
+            return json.dumps(product_jsonld(self), ensure_ascii=False)
+        except Exception:
+            return "{}"
 
     @strawberry.field(
         description=(

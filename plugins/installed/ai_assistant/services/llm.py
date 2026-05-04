@@ -1,12 +1,25 @@
 """
 AI Assistant — LLM Gateway
-Swappable provider: OpenAI | Anthropic | Ollama | Plugin-custom
+Swappable provider: OpenAI | Anthropic | Gemini | OpenRouter | Ollama
 Every call is automatically logged to AIInteraction.
+
+All providers source their api keys / base URLs / models from the
+ai_assistant plugin config (dashboard) via
+``plugins.installed.ai_assistant.services.config.get_provider_config``.
+Env vars remain a fallback for local dev.
 """
+import json
 import time
 import logging
 from abc import ABC, abstractmethod
-from django.conf import settings
+
+import requests
+
+from plugins.installed.ai_assistant.services.config import (
+    ProviderConfig,
+    get_active_provider_name,
+    get_provider_config,
+)
 
 logger = logging.getLogger('morpheus.ai.llm')
 
@@ -53,14 +66,18 @@ class LLMGateway(ABC):
 
 
 class OpenAIGateway(LLMGateway):
-    def __init__(self):
+    """OpenAI Chat Completions. Also covers OpenAI-compatible endpoints
+    when a custom base_url is configured (LM Studio, vLLM, etc.)."""
+
+    def __init__(self, cfg: ProviderConfig | None = None):
         import openai
-        from plugins.registry import plugin_registry
-        ai_plugin = plugin_registry.get_plugin('ai_assistant')
-        api_key = ai_plugin.get_config_value('openai_api_key') or settings.OPENAI_API_KEY
-        self.client = openai.OpenAI(api_key=api_key)
-        self.model = settings.AI_MODEL
-        self.embed_model = settings.AI_EMBEDDING_MODEL
+        cfg = cfg or get_provider_config('openai')
+        kwargs = {'api_key': cfg.api_key} if cfg.api_key else {}
+        if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1':
+            kwargs['base_url'] = cfg.base_url
+        self.client = openai.OpenAI(**kwargs) if kwargs else openai.OpenAI()
+        self.model = cfg.model or 'gpt-4o-mini'
+        self.embed_model = cfg.embedding_model
 
     def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
                  max_tokens: int = 1000, **kwargs) -> str:
@@ -77,12 +94,17 @@ class OpenAIGateway(LLMGateway):
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            result = response.choices[0].message.content
+            result = response.choices[0].message.content or ''
             elapsed = int((time.monotonic() - start) * 1000)
             usage = response.usage
-            cost = self._estimate_cost(usage.prompt_tokens, usage.completion_tokens)
+            cost = self._estimate_cost(
+                getattr(usage, 'prompt_tokens', 0) or 0,
+                getattr(usage, 'completion_tokens', 0) or 0,
+            )
             self._log('completion', prompt, result,
-                      usage.prompt_tokens, usage.completion_tokens, cost, elapsed)
+                      getattr(usage, 'prompt_tokens', 0) or 0,
+                      getattr(usage, 'completion_tokens', 0) or 0,
+                      cost, elapsed)
             return result
         except Exception as e:
             elapsed = int((time.monotonic() - start) * 1000)
@@ -95,7 +117,6 @@ class OpenAIGateway(LLMGateway):
         return response.data[0].embedding
 
     def _estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
-        # GPT-4o-mini pricing (update as needed)
         prices = {
             'gpt-4o': (0.005, 0.015),
             'gpt-4o-mini': (0.00015, 0.0006),
@@ -106,13 +127,11 @@ class OpenAIGateway(LLMGateway):
 
 
 class AnthropicGateway(LLMGateway):
-    def __init__(self):
+    def __init__(self, cfg: ProviderConfig | None = None):
         import anthropic
-        from plugins.registry import plugin_registry
-        ai_plugin = plugin_registry.get_plugin('ai_assistant')
-        api_key = ai_plugin.get_config_value('anthropic_api_key') or settings.ANTHROPIC_API_KEY
-        self.client = anthropic.Anthropic(api_key=api_key)
-        self.model = settings.AI_MODEL or 'claude-3-5-haiku-latest'
+        cfg = cfg or get_provider_config('anthropic')
+        self.client = anthropic.Anthropic(api_key=cfg.api_key) if cfg.api_key else anthropic.Anthropic()
+        self.model = cfg.model or 'claude-3-5-sonnet-latest'
 
     def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
                  max_tokens: int = 1000, **kwargs) -> str:
@@ -136,28 +155,126 @@ class AnthropicGateway(LLMGateway):
             raise
 
     def embed(self, text: str) -> list[float]:
-        raise NotImplementedError("Anthropic does not provide embeddings; use OpenAI or Ollama.")
+        # Fall through to OpenAI for embeddings when available.
+        oa = get_provider_config('openai')
+        if oa.api_key:
+            return OpenAIGateway(oa).embed(text)
+        raise NotImplementedError(
+            'Anthropic does not provide embeddings. Configure an OpenAI key '
+            'in AI providers, or use Ollama/Gemini.'
+        )
+
+
+class GeminiGateway(LLMGateway):
+    """Google Gemini via REST. Avoids extra SDK dependency."""
+
+    def __init__(self, cfg: ProviderConfig | None = None):
+        cfg = cfg or get_provider_config('gemini')
+        self.api_key = cfg.api_key
+        self.base_url = (cfg.base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip('/')
+        self.model = cfg.model or 'gemini-2.0-flash'
+
+    def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
+                 max_tokens: int = 1000, **kwargs) -> str:
+        if not self.api_key:
+            raise RuntimeError('Gemini API key not configured.')
+        start = time.monotonic()
+        url = f'{self.base_url}/models/{self.model}:generateContent?key={self.api_key}'
+        body = {
+            'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
+            'generationConfig': {
+                'temperature': temperature,
+                'maxOutputTokens': max_tokens,
+            },
+        }
+        if system:
+            body['systemInstruction'] = {'parts': [{'text': system}]}
+        try:
+            resp = requests.post(url, json=body, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            chunks = []
+            for cand in data.get('candidates', []) or []:
+                for part in (cand.get('content', {}) or {}).get('parts', []) or []:
+                    if 'text' in part:
+                        chunks.append(part['text'])
+            result = ''.join(chunks)
+            elapsed = int((time.monotonic() - start) * 1000)
+            usage = data.get('usageMetadata', {}) or {}
+            self._log(
+                'completion', prompt, result,
+                int(usage.get('promptTokenCount', 0) or 0),
+                int(usage.get('candidatesTokenCount', 0) or 0),
+                0.0, elapsed,
+            )
+            return result
+        except Exception as e:
+            elapsed = int((time.monotonic() - start) * 1000)
+            self._log('completion', prompt, '', 0, 0, 0, elapsed, success=False, error=str(e))
+            raise
+
+    def embed(self, text: str) -> list[float]:
+        if not self.api_key:
+            raise RuntimeError('Gemini API key not configured.')
+        embed_model = 'text-embedding-004'
+        url = f'{self.base_url}/models/{embed_model}:embedContent?key={self.api_key}'
+        resp = requests.post(url, json={
+            'content': {'parts': [{'text': text}]},
+        }, timeout=30)
+        resp.raise_for_status()
+        return list((resp.json().get('embedding') or {}).get('values') or [])
+
+
+class OpenRouterGateway(OpenAIGateway):
+    """OpenRouter is OpenAI-API-compatible — reuse the OpenAI client with
+    a custom base_url."""
+
+    def __init__(self, cfg: ProviderConfig | None = None):
+        cfg = cfg or get_provider_config('openrouter')
+        # OpenRouter has no embeddings — surface that early on .embed().
+        if not cfg.base_url:
+            cfg.base_url = 'https://openrouter.ai/api/v1'
+        super().__init__(cfg)
+
+    def embed(self, text: str) -> list[float]:
+        oa = get_provider_config('openai')
+        if oa.api_key:
+            return OpenAIGateway(oa).embed(text)
+        raise NotImplementedError(
+            'OpenRouter does not provide embeddings. Configure OpenAI or Ollama.'
+        )
 
 
 class OllamaGateway(LLMGateway):
     """Local Ollama instance — full privacy, no data leaves the server."""
 
-    def __init__(self):
-        import requests
-        self.requests = requests
-        self.base_url = settings.OLLAMA_BASE_URL
-        self.model = settings.AI_MODEL or 'llama3.2'
+    def __init__(self, cfg: ProviderConfig | None = None):
+        cfg = cfg or get_provider_config('ollama')
+        self.base_url = (cfg.base_url or 'http://localhost:11434').rstrip('/')
+        self.api_key = cfg.api_key
+        self.model = cfg.model or 'llama3.2'
+
+    def _headers(self) -> dict:
+        h = {'Content-Type': 'application/json'}
+        if self.api_key:
+            h['Authorization'] = f'Bearer {self.api_key}'
+        return h
 
     def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
                  max_tokens: int = 1000, **kwargs) -> str:
         start = time.monotonic()
         try:
-            resp = self.requests.post(f'{self.base_url}/api/generate', json={
-                'model': self.model,
-                'prompt': f"{system}\n\n{prompt}" if system else prompt,
-                'stream': False,
-                'options': {'temperature': temperature, 'num_predict': max_tokens},
-            }, timeout=120)
+            resp = requests.post(
+                f'{self.base_url}/api/generate',
+                headers=self._headers(),
+                json={
+                    'model': self.model,
+                    'prompt': f"{system}\n\n{prompt}" if system else prompt,
+                    'stream': False,
+                    'options': {'temperature': temperature, 'num_predict': max_tokens},
+                },
+                timeout=120,
+            )
             resp.raise_for_status()
             result = resp.json().get('response', '')
             elapsed = int((time.monotonic() - start) * 1000)
@@ -168,22 +285,32 @@ class OllamaGateway(LLMGateway):
             raise
 
     def embed(self, text: str) -> list[float]:
-        resp = self.requests.post(f'{self.base_url}/api/embeddings', json={
-            'model': self.model, 'prompt': text
-        }, timeout=30)
+        resp = requests.post(
+            f'{self.base_url}/api/embeddings',
+            headers=self._headers(),
+            json={'model': self.model, 'prompt': text},
+            timeout=30,
+        )
         resp.raise_for_status()
         return resp.json().get('embedding', [])
 
 
+_GATEWAYS = {
+    'openai': OpenAIGateway,
+    'anthropic': AnthropicGateway,
+    'gemini': GeminiGateway,
+    'openrouter': OpenRouterGateway,
+    'ollama': OllamaGateway,
+}
+
+
 def get_llm() -> LLMGateway:
-    """Factory — returns the configured LLM gateway."""
-    provider = getattr(settings, 'AI_PROVIDER', 'openai')
-    gateways = {
-        'openai': OpenAIGateway,
-        'anthropic': AnthropicGateway,
-        'ollama': OllamaGateway,
-    }
-    cls = gateways.get(provider)
+    """Factory — returns a gateway for the active provider chosen in
+    the AI Providers settings panel (env fallback for legacy installs)."""
+    provider = get_active_provider_name()
+    cls = _GATEWAYS.get(provider)
     if not cls:
-        raise ValueError(f"Unknown AI_PROVIDER: {provider}. Choose: {list(gateways.keys())}")
+        raise ValueError(
+            f"Unknown AI provider: {provider!r}. Choose: {list(_GATEWAYS.keys())}"
+        )
     return cls()
