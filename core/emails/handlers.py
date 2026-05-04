@@ -33,6 +33,7 @@ def register_handlers() -> None:
     hook_registry.register(events.PAYMENT_REFUNDED, on_payment_refunded, priority=70)
     hook_registry.register(events.CUSTOMER_REGISTERED, on_customer_registered, priority=70)
     hook_registry.register(events.CART_ABANDONED, on_cart_abandoned, priority=70)
+    hook_registry.register('digital.tokens_issued', on_digital_tokens_issued, priority=70)
     _REGISTERED = True
 
 
@@ -72,6 +73,36 @@ def on_order_cancelled(order: Any, **kwargs: Any) -> None:
         subject=f'Order #{order.order_number} cancelled',
         to=_order_recipient(order),
         ctx={'order': order},
+    )
+
+
+def on_digital_tokens_issued(order: Any = None, tokens: Any = None, **kwargs: Any) -> None:
+    """Send the customer their download links after payment."""
+    if order is None or not tokens:
+        return
+    to = getattr(order, 'email', None) or getattr(getattr(order, 'customer', None), 'email', None)
+    if not to:
+        return
+    base = ''
+    try:
+        from plugins.installed.seo.services import _site_base_url
+        base = _site_base_url() or ''
+    except Exception:  # noqa: BLE001
+        pass
+    download_links = [
+        {
+            'product_name': t.product.name,
+            'url': f'{base.rstrip("/")}/digital/download/{t.token}/',
+            'expires_at': t.expires_at,
+            'max_downloads': t.max_downloads,
+        }
+        for t in tokens
+    ]
+    _send(
+        template_base='emails/digital_download',
+        subject=f'Your downloads — order #{order.order_number}',
+        to=to,
+        ctx={'order': order, 'links': download_links},
     )
 
 

@@ -1,0 +1,12 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+Your downloads are ready for order #{{ order.order_number }}.
+
+{% for link in links %}- {{ link.product_name }}
+  {{ link.url }}
+  Expires {{ link.expires_at|date:"F j, Y H:i" }} · {{ link.max_downloads }} downloads max
+{% endfor %}
+
+Save the files to your device — the links expire and have a limited number of uses.
+
+— The team

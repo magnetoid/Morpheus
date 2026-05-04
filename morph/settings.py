@@ -73,6 +73,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.draft_orders',
     'plugins.installed.cart_abandonment',
     'plugins.installed.backups',
+    'plugins.installed.digital_products',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────
