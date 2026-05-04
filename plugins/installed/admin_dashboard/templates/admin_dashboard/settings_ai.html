@@ -1,0 +1,282 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}AI · Settings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
+    <i data-lucide="chevron-right" class="h-3 w-3"></i>
+    <span class="font-medium text-[color:var(--text)]">AI</span>
+  </div>
+
+  <div class="flex items-start gap-3">
+    <div class="ai-tile-icon">
+      <i data-lucide="sparkles" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-lg font-semibold tracking-tight">AI providers</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Configure provider API keys, default models, and which one the kernel agent calls.</p>
+    </div>
+  </div>
+
+  {# Active provider — top-of-page picker for the most-used setting. #}
+  <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card card-padded flex items-center justify-between gap-3 flex-wrap">
+    {% csrf_token %}
+    <div class="min-w-0">
+      <label for="ai_provider" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Active provider</label>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Which provider the kernel assistant + built-in agents call by default.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <select name="ai_provider" id="ai_provider" class="input" style="min-width: 180px;">
+        {% for c in cards %}
+        <option value="{{ c.slug }}" {% if c.is_active %}selected{% endif %}>{{ c.label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit"><i data-lucide="check" class="h-4 w-4"></i> Set active</button>
+    </div>
+  </form>
+
+  {# Per-provider cards. #}
+  {% for c in cards %}
+  <div class="card overflow-hidden">
+    <div class="card-padded flex items-center justify-between gap-3 border-b border-[color:var(--border)]">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="ai-tile-icon"><i data-lucide="{{ c.icon }}" class="h-4 w-4"></i></div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="font-semibold">{{ c.label }}</h2>
+            {% if c.is_active %}<span class="pill pill-info">Active</span>{% endif %}
+            {% if c.configured %}
+              <span class="pill pill-success" data-status="ok">Configured</span>
+            {% else %}
+              <span class="pill pill-neutral" data-status="empty">Not configured</span>
+            {% endif %}
+            <span class="ai-test-msg text-xs"></span>
+          </div>
+          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+            <a href="{{ c.help_url }}" target="_blank" rel="noopener" class="hover:underline">Get a key</a> · {{ c.placeholder_model }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card-padded space-y-3" data-provider-form="{{ c.slug }}">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% if 'api_key' in c.fields %}
+        <div class="md:col-span-2">
+          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
+            API key{% if c.api_key_optional %} <span class="font-normal text-[color:var(--text-subtle)] normal-case tracking-normal">— optional for self-hosted</span>{% endif %}
+          </label>
+          <input type="password" name="{{ c.slug }}_api_key" class="input mt-1 font-mono"
+                 value="{{ c.api_key }}"
+                 autocomplete="off" spellcheck="false"
+                 placeholder="{% if c.slug == 'openai' %}sk-...{% elif c.slug == 'anthropic' %}sk-ant-...{% elif c.slug == 'gemini' %}AIza...{% elif c.slug == 'openrouter' %}sk-or-...{% elif c.slug == 'ollama' %}leave blank if self-hosted{% endif %}">
+        </div>
+        {% endif %}
+
+        {% if 'base_url' in c.fields %}
+        <div class="{% if 'api_key' in c.fields %}md:col-span-2{% endif %}">
+          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Base URL</label>
+          <input type="text" name="{{ c.slug }}_base_url" class="input mt-1"
+                 value="{{ c.base_url }}"
+                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
+        </div>
+        {% endif %}
+
+        <div class="md:col-span-2">
+          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Default model</label>
+          <div class="flex items-center gap-2 mt-1">
+            <input type="text" name="{{ c.slug }}_model" class="input flex-1 font-mono"
+                   value="{{ c.model }}"
+                   data-model-input
+                   placeholder="{{ c.placeholder_model }}">
+            <button type="button" class="btn ai-fetch-btn" data-provider="{{ c.slug }}"><i data-lucide="download" class="h-3.5 w-3.5"></i> Fetch</button>
+            <button type="button" class="btn ai-test-btn" data-provider="{{ c.slug }}"><i data-lucide="zap" class="h-3.5 w-3.5"></i> Test</button>
+          </div>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id manually, or click Fetch to pull the live catalog from the provider.</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-3.5 w-3.5"></i> Save {{ c.label }}</button>
+      </div>
+    </form>
+  </div>
+  {% endfor %}
+
+  {# Feature toggles. #}
+  <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card overflow-hidden">
+    {% csrf_token %}
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">AI features</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Toggle which AI surfaces are active across the storefront and dashboard.</p>
+    </div>
+    <div class="card-padded grid grid-cols-1 md:grid-cols-2 gap-3">
+      {% for f in features %}
+      <label class="inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" name="{{ f.key }}" {% if f.value %}checked{% endif %}>
+        {{ f.label }}
+      </label>
+      {% endfor %}
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-3.5 w-3.5"></i> Save features</button>
+    </div>
+  </form>
+
+  {# agent_core schema-driven panel. #}
+  {% if agent_core_card %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">{{ agent_core_card.panel.label }}</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ agent_core_card.panel.description }}</p>
+    </div>
+    {% if agent_core_card.fields %}
+    <form method="post" action="{{ agent_core_card.submit_url }}" class="card-padded space-y-3">
+      {% csrf_token %}
+      {% for field in agent_core_card.fields %}
+      <div class="space-y-1">
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">{{ field.title }}</label>
+        {% if field.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.description }}</p>{% endif %}
+        {% if field.kind == 'boolean' %}
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="{{ field.key }}" {% if field.value %}checked{% endif %}> Enabled
+        </label>
+        {% elif field.kind == 'enum' %}
+        <select name="{{ field.key }}" class="input">
+          {% for option in field.enum %}
+          <option value="{{ option }}" {% if option == field.value %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <input type="{% if field.kind == 'number' or field.kind == 'integer' %}number{% else %}text{% endif %}"
+               name="{{ field.key }}" class="input" value="{{ field.value }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+      <div class="flex justify-end pt-1">
+        <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-3.5 w-3.5"></i> Save Agents</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+  .ai-tile-icon {
+    width: 2.25rem; height: 2.25rem; border-radius: 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .ai-test-msg.ok { color: var(--success); font-weight: 500; }
+  .ai-test-msg.fail { color: var(--danger); font-weight: 500; }
+</style>
+
+<script>
+(() => {
+  const PROBE_URL = '{% url "admin_dashboard:settings_ai_probe" %}';
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value
+            || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+  function getCardForm(provider) {
+    return document.querySelector(`form[data-provider-form="${provider}"]`);
+  }
+  function fieldValue(provider, suffix) {
+    const el = document.querySelector(`[name="${provider}_${suffix}"]`);
+    return (el?.value || '').trim();
+  }
+  function statusEl(provider) {
+    return getCardForm(provider)?.closest('.card')?.querySelector('.ai-test-msg');
+  }
+
+  async function probe(provider) {
+    const body = new URLSearchParams({
+      provider,
+      api_key: fieldValue(provider, 'api_key'),
+      base_url: fieldValue(provider, 'base_url'),
+    });
+    const res = await fetch(PROBE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrf,
+      },
+      body,
+    });
+    try { return await res.json(); }
+    catch { return { ok: false, error: `HTTP ${res.status}` }; }
+  }
+
+  document.querySelectorAll('.ai-fetch-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const p = btn.dataset.provider;
+      const msg = statusEl(p);
+      const form = getCardForm(p);
+      const modelInput = form?.querySelector('[data-model-input]');
+      msg.textContent = 'Fetching…'; msg.className = 'ai-test-msg text-xs';
+      btn.disabled = true;
+      try {
+        const data = await probe(p);
+        if (!data.ok) {
+          msg.className = 'ai-test-msg text-xs fail';
+          msg.textContent = '✗ ' + (data.error || 'failed');
+          return;
+        }
+        if (modelInput && data.models?.length) {
+          const select = document.createElement('select');
+          select.name = modelInput.name;
+          select.className = modelInput.className;
+          select.dataset.modelInput = '';
+          const current = modelInput.value;
+          let matched = false;
+          for (const m of data.models) {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.label || m.id;
+            if (m.id === current) { opt.selected = true; matched = true; }
+            select.appendChild(opt);
+          }
+          if (!matched && current) {
+            const opt = document.createElement('option');
+            opt.value = current;
+            opt.textContent = current + ' (custom)';
+            opt.selected = true;
+            select.insertBefore(opt, select.firstChild);
+          }
+          modelInput.replaceWith(select);
+        }
+        msg.className = 'ai-test-msg text-xs ok';
+        msg.textContent = `✓ ${data.models?.length || 0} models`;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  document.querySelectorAll('.ai-test-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const p = btn.dataset.provider;
+      const msg = statusEl(p);
+      msg.textContent = 'Testing…'; msg.className = 'ai-test-msg text-xs';
+      btn.disabled = true;
+      try {
+        const data = await probe(p);
+        msg.className = 'ai-test-msg text-xs ' + (data.ok ? 'ok' : 'fail');
+        msg.textContent = data.ok
+          ? `✓ connected (${data.models?.length || 0} models)`
+          : '✗ ' + (data.error || 'failed');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  if (window.lucide) lucide.createIcons();
+})();
+</script>
+{% endblock %}

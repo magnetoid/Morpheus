@@ -334,9 +334,11 @@
       });
     });
 
-    // Settings-mode sidebar swap. Trigger ONLY on:
-    //   /dashboard/settings/           — the unified settings hub
-    //   /dashboard/apps/<plugin>/settings/  — a plugin's settings panel
+    // Settings-mode sidebar swap. Trigger on:
+    //   /dashboard/settings/                       — the unified hub
+    //   /dashboard/settings/<category>/            — a category page
+    //   /dashboard/apps/                           — the apps catalog
+    //   /dashboard/apps/<plugin>/settings/         — a plugin's settings
     // Plugin operational pages at /dashboard/apps/<plugin>/<other-slug>/
     // keep the main menu visible (Shopify-style — daily-use pages live in
     // the main sidebar; only persistent configuration switches into
@@ -346,6 +348,7 @@
     const settingsBackRow = document.getElementById('settings-back-row');
     const path = location.pathname;
     const inSettings = path.startsWith('/dashboard/settings/')
+        || path === '/dashboard/apps/' || path === '/dashboard/apps'
         || /^\/dashboard\/apps\/[^/]+\/settings\/?$/.test(path);
     function showSettingsNav() {
       if (!navMain || !navSettings) return;

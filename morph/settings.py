@@ -146,6 +146,7 @@ MIDDLEWARE = [
     'themes.middleware.ThemeMiddleware',
     'plugins.installed.ai_assistant.middleware.AIContextMiddleware',
     'api.permissions.AgentAuthMiddleware',
+    'api.middleware.GraphQLCacheMiddleware',   # Enterprise: GraphQL Query Caching
     'api.rate_limit.RateLimitMiddleware',
     'core.ratelimit.RateLimitMiddleware',
     'plugins.installed.environments.middleware.EnvironmentMiddleware',

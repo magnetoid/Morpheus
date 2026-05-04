@@ -87,29 +87,82 @@ def resolve_meta(
     canonical_url: str = '',
     og_type: str = 'website',
 ) -> ResolvedMeta:
-    """Merge per-object SeoMeta with fallback values into a ResolvedMeta."""
+    """Merge per-object SeoMeta + native model SEO fields + fallbacks.
+
+    Priority order (highest first):
+      1. SeoMeta row (generic-FK overrides — admin can set anything)
+      2. Native model SEO fields (Product.og_title, focus_keyword, …)
+      3. Provided fallbacks (whatever the caller passed)
+    """
     from plugins.installed.seo.models import SeoMeta
 
     meta = SeoMeta.for_obj(obj) if obj is not None else None
 
-    title = (meta.title if meta and meta.title else fallback_title).strip()
-    description = (meta.description if meta and meta.description else fallback_description).strip()
+    def native(name: str, default: str = '') -> str:
+        # Pull a SEO field directly off the model instance, dict-safe.
+        if obj is None:
+            return default
+        if isinstance(obj, dict):
+            return str(obj.get(name) or default)
+        return str(getattr(obj, name, '') or default)
+
+    title = (
+        (meta.title if meta and meta.title else '')
+        or native('meta_title')
+        or fallback_title
+    ).strip()
+    description = (
+        (meta.description if meta and meta.description else '')
+        or native('meta_description')
+        or fallback_description
+    ).strip()
     og_image = (meta.og_image if meta and meta.og_image else fallback_image).strip()
-    canonical = (meta.canonical_url if meta and meta.canonical_url else canonical_url).strip()
-    robots = meta.robots if meta else 'index, follow'
-    keywords = meta.keywords if meta else ''
-    twitter_card = meta.twitter_card if meta else 'summary_large_image'
+    canonical = (
+        (meta.canonical_url if meta and meta.canonical_url else '')
+        or native('canonical_url')
+        or canonical_url
+    ).strip()
+
+    # Robots: SeoMeta wins; else use the model's noindex/nofollow flags.
+    if meta:
+        robots = meta.robots
+    else:
+        flags = []
+        flags.append('noindex' if (obj is not None and (
+            obj.get('noindex') if isinstance(obj, dict) else getattr(obj, 'noindex', False)
+        )) else 'index')
+        flags.append('nofollow' if (obj is not None and (
+            obj.get('nofollow') if isinstance(obj, dict) else getattr(obj, 'nofollow', False)
+        )) else 'follow')
+        robots = ', '.join(flags)
+
+    keywords = (meta.keywords if meta and meta.keywords else '') or native('focus_keyword')
+    twitter_card = (
+        (meta.twitter_card if meta else '')
+        or native('twitter_card')
+        or 'summary_large_image'
+    )
+    og_title = (meta.og_title if meta and meta.og_title else '') or native('og_title')
+    og_description = (
+        (meta.og_description if meta and meta.og_description else '')
+        or native('og_description')
+    )
     type_ = (meta.og_type if meta and meta.og_type else og_type)
 
     structured = _structured_data_for(obj, title=title, description=description, image=og_image)
+    # Merge native model structured_data (Product.structured_data) → SeoMeta (most specific wins).
+    if obj is not None and not isinstance(obj, dict):
+        native_sd = getattr(obj, 'structured_data', None)
+        if isinstance(native_sd, dict) and native_sd:
+            structured = {**structured, **native_sd}
     if meta and meta.structured_data:
         structured = {**structured, **meta.structured_data}
 
     return ResolvedMeta(
         title=title,
         description=description,
-        og_title=meta.og_title if meta else '',
-        og_description=meta.og_description if meta else '',
+        og_title=og_title,
+        og_description=og_description,
         og_image=og_image,
         og_type=type_,
         twitter_card=twitter_card,

@@ -1156,9 +1156,128 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     return JsonResponse(result)
 
 
+_AI_PROVIDERS = [
+    {
+        'slug': 'openai',
+        'label': 'OpenAI',
+        'icon': 'sparkle',
+        'fields': ('api_key', 'base_url', 'model'),
+        'help_url': 'https://platform.openai.com/api-keys',
+        'placeholder_model': 'gpt-4o-mini',
+    },
+    {
+        'slug': 'anthropic',
+        'label': 'Anthropic',
+        'icon': 'sparkle',
+        'fields': ('api_key', 'model'),
+        'help_url': 'https://console.anthropic.com/settings/keys',
+        'placeholder_model': 'claude-3-5-sonnet-latest',
+    },
+    {
+        'slug': 'gemini',
+        'label': 'Google Gemini',
+        'icon': 'sparkle',
+        'fields': ('api_key', 'model'),
+        'help_url': 'https://aistudio.google.com/app/apikey',
+        'placeholder_model': 'gemini-2.0-flash',
+    },
+    {
+        'slug': 'openrouter',
+        'label': 'OpenRouter',
+        'icon': 'route',
+        'fields': ('api_key', 'base_url', 'model'),
+        'help_url': 'https://openrouter.ai/keys',
+        'placeholder_model': 'anthropic/claude-3.5-sonnet',
+    },
+    {
+        'slug': 'ollama',
+        'label': 'Ollama',
+        'icon': 'cpu',
+        'fields': ('base_url', 'api_key', 'model'),
+        'help_url': 'https://ollama.com',
+        'placeholder_model': 'llama3.2',
+        'api_key_optional': True,
+    },
+]
+
+
+@staff_member_required
+def settings_ai(request: HttpRequest) -> HttpResponse:
+    """Custom AI providers settings page — card per provider.
+
+    Replaces the schema-driven render path for the 'ai' category. Each
+    provider gets its own form/card with Fetch / Test buttons and a
+    per-provider Save. The agent_core 'Agents' panel still renders below
+    as a regular schema-driven panel for runtime config.
+    """
+    from plugins.registry import plugin_registry
+    from plugins.installed.admin_dashboard.settings_categories import get_category
+
+    cat = get_category('ai')
+    ai_plugin = plugin_registry.get('ai_assistant')
+    cfg = ai_plugin.get_config() if ai_plugin else {}
+    active = cfg.get('ai_provider') or 'openai'
+
+    # Per-provider card data with current values + status.
+    cards = []
+    for p in _AI_PROVIDERS:
+        api_key = cfg.get(f'{p["slug"]}_api_key', '') or ''
+        base_url = cfg.get(f'{p["slug"]}_base_url', '') or ''
+        model = cfg.get(f'{p["slug"]}_model', '') or p.get('placeholder_model', '')
+        configured = bool(api_key) or p.get('api_key_optional')
+        cards.append({
+            **p,
+            'api_key': api_key,
+            'base_url': base_url,
+            'model': model,
+            'configured': configured,
+            'is_active': p['slug'] == active,
+        })
+
+    # The agent_core panel — render it as a secondary schema-driven card
+    # below the providers (existing template fields helper handles it).
+    agent_core_card = None
+    ac_plugin = plugin_registry.get('agent_core')
+    if ac_plugin is not None and plugin_registry.settings_panel('agent_core') is not None:
+        panel = plugin_registry.settings_panel('agent_core')
+        agent_core_card = {
+            'plugin_name': 'agent_core',
+            'plugin': ac_plugin,
+            'panel': panel,
+            'fields': _build_panel_fields(ac_plugin, panel.schema),
+            'submit_url': '/dashboard/apps/agent_core/settings/',
+        }
+
+    feature_flags = [
+        ('enable_intent_engine', 'Intent engine'),
+        ('enable_semantic_search', 'Semantic search'),
+        ('enable_dynamic_pricing', 'Dynamic pricing'),
+        ('enable_zero_shot_catalog', 'Zero-shot catalog'),
+        ('enable_autonomous_operator', 'Autonomous operator'),
+        ('enable_synthetic_testing', 'Synthetic testing'),
+        ('agent_purchase_requires_approval', 'Agent purchases require approval'),
+    ]
+    features = [
+        {'key': k, 'label': lbl, 'value': bool(cfg.get(k))}
+        for k, lbl in feature_flags
+    ]
+
+    return render(request, 'admin_dashboard/settings_ai.html', {
+        'category': cat,
+        'cards': cards,
+        'active_provider': active,
+        'features': features,
+        'agent_core_card': agent_core_card,
+        'active_nav': 'settings',
+    })
+
+
 @staff_member_required
 def settings_category(request: HttpRequest, category: str) -> HttpResponse:
     """Render every plugin SettingsPanel that belongs to one category.
+
+    The 'ai' category is handled by a dedicated rich view (per-provider
+    cards). Everything else falls through to the schema-driven render.
 
     For categories that map to core ``StoreSettings`` fields ('general',
     'notifications') we additionally render an editable core form at the
@@ -1172,6 +1291,11 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
     """
     from plugins.installed.admin_dashboard.settings_categories import get_category
     from plugins.registry import plugin_registry
+
+    # AI gets a custom render — per-provider cards with Fetch / Test
+    # buttons rather than a single schema-driven form.
+    if category == 'ai':
+        return settings_ai(request)
 
     cat = get_category(category)
     if cat is None:
