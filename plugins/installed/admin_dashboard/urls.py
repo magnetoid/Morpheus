@@ -79,6 +79,12 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
                 except (TypeError, ValueError):
                     continue
             instance.set_config(key, value)
+        # Honor `_next` so a custom landing page (e.g. /dashboard/settings/ai/)
+        # can post into this generic save endpoint and bounce the user
+        # back to itself instead of the legacy plugin-settings page.
+        next_url = (request.POST.get('_next') or '').strip()
+        if next_url.startswith('/'):
+            return redirect(next_url)
         return redirect(request.path)
 
     config = instance.get_config()

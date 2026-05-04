@@ -23,6 +23,7 @@
   {# Active provider — top-of-page picker for the most-used setting. #}
   <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card card-padded flex items-center justify-between gap-3 flex-wrap">
     {% csrf_token %}
+    <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="min-w-0">
       <label for="ai_provider" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Active provider</label>
       <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Which provider the kernel assistant + built-in agents call by default.</p>
@@ -63,6 +64,7 @@
 
     <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card-padded space-y-3" data-provider-form="{{ c.slug }}">
       {% csrf_token %}
+    <input type="hidden" name="_next" value="/dashboard/settings/ai/">
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         {% if 'api_key' in c.fields %}
@@ -110,6 +112,7 @@
   {# Feature toggles. #}
   <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card overflow-hidden">
     {% csrf_token %}
+    <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="card-padded border-b border-[color:var(--border)]">
       <h2 class="font-semibold">AI features</h2>
       <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Toggle which AI surfaces are active across the storefront and dashboard.</p>
@@ -137,6 +140,7 @@
     {% if agent_core_card.fields %}
     <form method="post" action="{{ agent_core_card.submit_url }}" class="card-padded space-y-3">
       {% csrf_token %}
+    <input type="hidden" name="_next" value="/dashboard/settings/ai/">
       {% for field in agent_core_card.fields %}
       <div class="space-y-1">
         <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">{{ field.title }}</label>
