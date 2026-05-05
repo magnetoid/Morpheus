@@ -113,12 +113,25 @@ class Address(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_default:
-            # Unset other defaults for same customer & type
-            Address.objects.filter(
-                customer=self.customer,
-                address_type=self.address_type,
-                is_default=True
-            ).exclude(pk=self.pk).update(is_default=False)
+            # Lock the customer's addresses for this type so two concurrent
+            # "set as default" saves can't both unset and re-set without
+            # seeing each other — without the lock, the later writer's
+            # default flag is silently dropped.
+            from django.db import transaction as _tx
+            with _tx.atomic():
+                (
+                    Address.objects
+                    .select_for_update()
+                    .filter(
+                        customer=self.customer,
+                        address_type=self.address_type,
+                        is_default=True,
+                    )
+                    .exclude(pk=self.pk)
+                    .update(is_default=False)
+                )
+                super().save(*args, **kwargs)
+            return
         super().save(*args, **kwargs)
 
 

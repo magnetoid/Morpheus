@@ -51,13 +51,18 @@ class Cart(models.Model):
 
 
 class CartItem(models.Model):
+    from django.core.validators import MinValueValidator
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('catalog.Product', on_delete=models.CASCADE)
     variant = models.ForeignKey(
         'catalog.ProductVariant', on_delete=models.CASCADE, null=True, blank=True
     )
-    quantity = models.PositiveIntegerField(default=1)
+    quantity = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        help_text='Must be at least 1; UI sends a delete instead when reaching 0.',
+    )
     unit_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
     added_at = models.DateTimeField(auto_now_add=True)
 

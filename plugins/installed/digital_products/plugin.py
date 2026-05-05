@@ -38,6 +38,22 @@ class DigitalProductsPlugin(Plugin):
         )
         self.register_celery_tasks('plugins.installed.digital_products.tasks')
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=80)
+        self._register_beat_schedule()
+
+    def _register_beat_schedule(self) -> None:
+        from django.conf import settings as dj_settings
+        from celery.schedules import crontab
+        schedule = getattr(dj_settings, 'CELERY_BEAT_SCHEDULE', None)
+        if schedule is None:
+            return
+        # Daily at 03:30 — quiet hours, after most order activity.
+        schedule.setdefault(
+            'digital_products.cleanup_expired_tokens',
+            {
+                'task': 'digital_products.cleanup_expired_tokens',
+                'schedule': crontab(hour=3, minute=30),
+            },
+        )
 
     def get_config_schema(self) -> dict:
         return {

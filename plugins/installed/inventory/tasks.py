@@ -92,7 +92,13 @@ def find_abandoned_carts() -> int:
     fired = 0
     for cart in candidates:
         try:
-            hook_registry.fire(MorpheusEvents.CART_ABANDONED, cart=cart)
+            # Standard CART_ABANDONED contract: every fire site passes
+            # both `cart=` AND `email=` so subscribers (recovery email,
+            # CRM, AI) can opt to use either without crashing.
+            email = getattr(getattr(cart, 'customer', None), 'email', '') or ''
+            hook_registry.fire(
+                MorpheusEvents.CART_ABANDONED, cart=cart, email=email or None,
+            )
             fired += 1
         except Exception as e:  # noqa: BLE001
             logger.warning('inventory: cart.abandoned fire failed: %s', e)

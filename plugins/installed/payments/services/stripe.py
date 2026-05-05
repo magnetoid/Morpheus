@@ -87,19 +87,40 @@ class PaymentService:
 
     @classmethod
     def _mark_transaction_success(cls, intent_id):
-        tx = PaymentTransaction.objects.filter(provider_transaction_id=intent_id).first()
-        if tx and tx.status != PaymentTransaction.Status.SUCCEEDED:
+        """Idempotent — the `select_for_update` + status check guarantees
+        ORDER_PAID fires exactly once per payment, even if Stripe retries
+        the webhook concurrently (it does, aggressively)."""
+        from django.db import transaction as db_tx
+        from core.hooks import hook_registry, MorpheusEvents
+
+        with db_tx.atomic():
+            tx = (
+                PaymentTransaction.objects
+                .select_for_update()
+                .filter(provider_transaction_id=intent_id)
+                .first()
+            )
+            if not tx or tx.status == PaymentTransaction.Status.SUCCEEDED:
+                return  # already processed — webhook retry, ignore
+
             tx.status = PaymentTransaction.Status.SUCCEEDED
-            tx.save()
-            
-            # Update order status
+            tx.save(update_fields=['status'])
+
+            # Advance both Order columns. Status was previously left at
+            # 'pending' so the dashboard kept showing paid orders as
+            # unpaid; flip to 'confirmed' so the order list, fulfillment
+            # queue, and analytics all see the correct state.
             order = tx.order
             order.payment_status = 'paid'
-            order.save()
-            
-            # Trigger hooks
-            from core.hooks import hook_registry, MorpheusEvents
-            hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
+            if order.status in ('pending', 'draft'):
+                order.status = 'confirmed'
+                order.save(update_fields=['payment_status', 'status'])
+            else:
+                order.save(update_fields=['payment_status'])
+
+        # Fire AFTER the transaction commits so subscribers see the new
+        # row state and don't have to worry about partial writes.
+        hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
 
     @classmethod
     def _mark_transaction_failed(cls, intent_id, error_msg):

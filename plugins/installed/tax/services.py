@@ -43,16 +43,31 @@ def compute_tax(*, line_items: Iterable[dict], country: str = '', region: str = 
 
     Each line item: {'amount': Decimal|str, 'currency': str, 'category_code': str (optional)}.
     Returns: {'total': Money, 'lines': [{'rate_name', 'rate_percent', 'amount': Money}]}.
+
+    Always returns ``Money(0, <currency>)`` for ``total`` when tax can't
+    be computed (no provider, missing region, no rate). Previously this
+    returned ``None`` and downstream `if total is None` checks were
+    inconsistent — some treated it as zero, others crashed on arithmetic.
     """
     from plugins.installed.tax.models import TaxConfiguration
 
+    # Use first line's currency as the zero-money currency, default USD.
+    fallback_currency = 'USD'
+    for item in line_items:
+        cur = item.get('currency')
+        if cur:
+            fallback_currency = cur
+            break
+    zero = lambda: Money(Decimal('0'), fallback_currency)  # noqa: E731
+
     config = TaxConfiguration.objects.first()
     if config and config.provider == 'none':
-        return {'total': None, 'lines': []}
+        return {'total': zero(), 'lines': []}
 
     tax_region = _resolve_region(country, region)
     if not tax_region:
-        return {'total': None, 'lines': []}
+        logger.debug('tax: no region matched for country=%r region=%r', country, region)
+        return {'total': zero(), 'lines': []}
 
     by_rate: dict[str, dict] = {}
     currency: str | None = None

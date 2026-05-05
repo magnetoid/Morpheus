@@ -15,6 +15,7 @@ class InventoryPlugin(Plugin):
         self.register_hook('order.placed',    self.on_order_placed,    priority=5)
         self.register_hook('order.paid',      self.on_order_paid,      priority=5)
         self.register_hook('order.cancelled', self.on_order_cancelled, priority=5)
+        self.register_hook('return.refunded', self.on_return_refunded, priority=5)
         self.register_celery_tasks('plugins.installed.inventory.tasks')
 
         # Beat schedules: detect abandoned carts every 30 min; apply price
@@ -42,6 +43,21 @@ class InventoryPlugin(Plugin):
         # Release reservations on cancel.
         from plugins.installed.inventory.services import InventoryService
         InventoryService.release_reservation(order)
+
+    def on_return_refunded(self, return_request=None, **kwargs):
+        """Restock the variant rows for items in a refunded return —
+        without this, returned merchandise becomes phantom stock."""
+        if return_request is None:
+            return
+        from plugins.installed.inventory.services import InventoryService
+        try:
+            InventoryService.restock_for_return(return_request)
+        except Exception as e:  # noqa: BLE001 — never break the return flow
+            import logging
+            logging.getLogger('morpheus.inventory').warning(
+                'inventory: restock for rma=%s failed: %s',
+                getattr(return_request, 'rma_number', '?'), e, exc_info=True,
+            )
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.inventory.agent_tools import (

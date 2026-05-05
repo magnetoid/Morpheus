@@ -37,7 +37,14 @@ def update_cdp_metrics(order) -> None:
         logger.debug('customers.cdp: non-decimal total on order %s', getattr(order, 'pk', '?'))
         return
 
-    placed_at = getattr(order, 'created_at', None) or timezone.now()
+    # Order has `placed_at` (set on order create); `created_at` was a typo
+    # that silently fell through to `now()` and clobbered the real placement
+    # time on every paid-order hook fire.
+    placed_at = (
+        getattr(order, 'placed_at', None)
+        or getattr(order, 'created_at', None)
+        or timezone.now()
+    )
     Customer = customer.__class__
     with transaction.atomic():
         (Customer.objects

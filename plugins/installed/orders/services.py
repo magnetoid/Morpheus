@@ -36,9 +36,19 @@ class CartService:
         from session/?currency=). When the product or variant has a
         ``localized_prices[currency]`` override we use that; otherwise we
         fall back to the default ``MoneyField`` price.
+
+        Refuses to add inactive / archived products and zero-or-negative
+        quantities — better to surface the error here than have checkout
+        fail downstream.
         """
+        if quantity is None or int(quantity) < 1:
+            raise ValueError('Quantity must be at least 1.')
         product = Product.objects.get(id=product_id)
+        if getattr(product, 'status', 'active') != 'active':
+            raise ValueError('Product is not available.')
         variant = ProductVariant.objects.get(id=variant_id) if variant_id else None
+        if variant is not None and not getattr(variant, 'is_active', True):
+            raise ValueError('Variant is not available.')
         target = variant or product
         unit_price = _resolve_unit_price(target, currency, fallback=product)
 
@@ -259,17 +269,33 @@ class OrderService:
                 coupon_meta = meta.get('coupon') or {}
                 coupon_discount = Decimal(str(coupon_meta.get('discount_amount') or '0'))
                 if coupon_discount > 0:
-                    if order.customer_id:
-                        usage, created = CouponUsage.objects.get_or_create(
-                            coupon_id=cart.coupon_id,
-                            customer_id=order.customer_id,
-                            order=order,
-                            defaults={'discount_amount': Money(coupon_discount, currency)},
-                        )
-                        if created:
-                            Coupon.objects.filter(id=cart.coupon_id).update(times_used=F('times_used') + 1)
-                    else:
-                        Coupon.objects.filter(id=cart.coupon_id).update(times_used=F('times_used') + 1)
+                    # Lock the Coupon row so two concurrent checkouts can't
+                    # both bypass `usage_limit` (each would otherwise read
+                    # times_used=N, both apply, both increment).
+                    locked = (
+                        Coupon.objects
+                        .select_for_update()
+                        .filter(id=cart.coupon_id)
+                        .first()
+                    )
+                    if locked is not None and (
+                        not locked.usage_limit or locked.times_used < locked.usage_limit
+                    ):
+                        if order.customer_id:
+                            _, created = CouponUsage.objects.get_or_create(
+                                coupon_id=cart.coupon_id,
+                                customer_id=order.customer_id,
+                                order=order,
+                                defaults={'discount_amount': Money(coupon_discount, currency)},
+                            )
+                            if created:
+                                Coupon.objects.filter(id=cart.coupon_id).update(
+                                    times_used=F('times_used') + 1,
+                                )
+                        else:
+                            Coupon.objects.filter(id=cart.coupon_id).update(
+                                times_used=F('times_used') + 1,
+                            )
         except Exception as e:  # noqa: BLE001
             logger.warning('orders: promotions/coupon recording failed: %s', e)
 

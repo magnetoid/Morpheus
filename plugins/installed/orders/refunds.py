@@ -109,18 +109,28 @@ class RefundService:
         cls, *, order, amount: Money, reason: str = 'customer_request',
         notes: str = '', actor=None,
     ) -> 'Refund':  # noqa: F821
-        """Create a Refund row and call the provider. Idempotent on (order, amount, reason)."""
+        """Create a Refund row and call the provider. Idempotent on
+        ``(order, amount, reason)`` — retries reuse the same Refund row
+        (which carries a deterministic Stripe idempotency_key) so the
+        provider can never be billed twice."""
         from plugins.installed.orders.models import Refund
 
-        existing = Refund.objects.filter(
-            order=order, amount=amount, reason=reason, is_processed=True,
-        ).first()
-        if existing:
-            return existing
-
-        refund = Refund.objects.create(
-            order=order, amount=amount, reason=reason, notes=notes,
+        # Dedup regardless of `is_processed` — if a previous attempt
+        # crashed mid-flight it'll be a row with `is_processed=False`,
+        # and we want to RESUME it, not create a sibling.
+        refund = (
+            Refund.objects
+            .select_for_update()
+            .filter(order=order, amount=amount, reason=reason)
+            .first()
         )
+        if refund is None:
+            refund = Refund.objects.create(
+                order=order, amount=amount, reason=reason, notes=notes,
+            )
+        elif refund.is_processed:
+            return refund
+
         provider_ok = cls._provider_refund(order=order, amount=amount, refund=refund)
         if provider_ok:
             refund.is_processed = True

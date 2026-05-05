@@ -203,6 +203,65 @@ class InventoryService:
         return movements
 
 
+    @classmethod
+    def restock_for_return(cls, return_request) -> int:
+        """Add stock back when a return is refunded. Idempotent: a
+        ``return`` movement keyed on the RMA number is written
+        once and only once, even if the hook fires twice.
+        """
+        rma = getattr(return_request, 'rma_number', '') or str(return_request.id)
+        if StockMovement.objects.filter(
+            movement_type='return', reference=rma,
+        ).exists():
+            return 0
+        try:
+            from plugins.installed.orders.models import OrderItem
+        except Exception:  # noqa: BLE001
+            return 0
+        items_by_id = {
+            str(oi.id): oi
+            for oi in OrderItem.objects.filter(order=return_request.order)
+        }
+        movements = 0
+        for entry in (return_request.items or []):
+            oi = items_by_id.get(str(entry.get('order_item_id', '')))
+            if not oi or not getattr(oi, 'variant_id', None):
+                continue
+            qty = int(entry.get('quantity', 0) or 0)
+            if qty <= 0:
+                continue
+            sl = (
+                StockLevel.objects
+                .filter(variant_id=oi.variant_id, warehouse__is_active=True)
+                .order_by('-quantity')
+                .first()
+            )
+            if sl is None:
+                continue
+            try:
+                with transaction.atomic():
+                    sl = StockLevel.objects.select_for_update().get(pk=sl.pk)
+                    before = sl.quantity
+                    sl.quantity = sl.quantity + qty
+                    sl.save(update_fields=['quantity', 'updated_at'])
+                    StockMovement.objects.create(
+                        stock_level=sl,
+                        movement_type='return',
+                        quantity_change=qty,
+                        quantity_before=before,
+                        quantity_after=sl.quantity,
+                        reference=rma,
+                        notes=f'Restocked {qty}× from return {rma}',
+                    )
+                    movements += 1
+            except DatabaseError as e:
+                logger.warning(
+                    'inventory: restock failed rma=%s level=%s: %s',
+                    rma, sl.pk, e, exc_info=True,
+                )
+        return movements
+
+
 def _qty_from_note(note: str) -> int:
     """Parse `Reserved 2× for ABC` style notes back to the qty."""
     if not note:
