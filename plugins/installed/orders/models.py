@@ -310,3 +310,63 @@ class Refund(models.Model):
 # Re-export here so Django's app loader and makemigrations pick it up.
 from plugins.installed.orders.refunds import ReturnRequest  # noqa: F401, E402
 
+
+
+class StoreCredit(models.Model):
+    """Per-customer store-credit balance.
+
+    Balance is a denormalised running total updated by the
+    ``StoreCreditService`` when a transaction is appended; the
+    ``StoreCreditTxn`` table is the immutable ledger so the running
+    total can always be rebuilt. We deliberately keep the balance on
+    one row per customer (rather than aggregating on every read) so
+    cart price calculation stays O(1) per checkout.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.OneToOneField(
+        'customers.Customer', on_delete=models.CASCADE, related_name='store_credit',
+    )
+    balance = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.customer.email}: {self.balance}'
+
+
+class StoreCreditTxn(models.Model):
+    """Immutable ledger of store-credit changes.
+
+    `kind='credit'` adds to the customer's balance (e.g. issued on a
+    return refund); `kind='debit'` deducts (e.g. redeemed at checkout).
+    `reference` is a free-form pointer to the originating object —
+    typically a Refund/ReturnRequest UUID for credits, an Order UUID
+    for debits — so the dashboard can render an audit trail.
+    """
+
+    KIND_CHOICES = [('credit', 'Credit'), ('debit', 'Debit')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey(
+        'customers.Customer', on_delete=models.CASCADE, related_name='store_credit_txns',
+    )
+    kind = models.CharField(max_length=6, choices=KIND_CHOICES, db_index=True)
+    amount = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+    reference = models.CharField(max_length=64, blank=True, db_index=True)
+    note = models.CharField(max_length=300, blank=True)
+    created_by = models.ForeignKey(
+        'customers.Customer',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['customer', '-created_at']),
+        ]
+
+    def __str__(self):
+        sign = '+' if self.kind == 'credit' else '-'
+        return f'{sign}{self.amount} ({self.reference or self.note})'

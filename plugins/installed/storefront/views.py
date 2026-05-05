@@ -71,9 +71,13 @@ def home(request):
 
 
 def product_list(request):
-    """Product list with merchant-friendly facets: category, tag, price range, sort."""
+    """Product list with merchant-friendly facets: category, tag, price range,
+    attribute facets (size/color/brand/...), and sort."""
     from decimal import Decimal, InvalidOperation
-    from plugins.installed.catalog.models import Category, Product
+    from django.db.models import Q
+    from plugins.installed.catalog.models import (
+        Attribute, AttributeValue, Category, Product,
+    )
 
     qs = Product.objects.filter(status='active').select_related('category')
 
@@ -103,6 +107,30 @@ def product_list(request):
     except (InvalidOperation, TypeError):
         pass
 
+    # Attribute facets — `?attr_<slug>=value1,value2` (comma-separated).
+    # We OR within an attribute (red OR blue), AND across attributes
+    # (red shoes AND size 10) — standard ecommerce facet behaviour.
+    selected_attrs: dict[str, list[str]] = {}
+    for key, raw in request.GET.lists():
+        if not key.startswith('attr_'):
+            continue
+        attr_slug = key[len('attr_'):]
+        values = [v for chunk in raw for v in (chunk.split(',') if isinstance(chunk, str) else []) if v]
+        if not values:
+            continue
+        selected_attrs[attr_slug] = values
+        # Each attribute filter narrows the queryset. We match against either
+        # product-level ProductAttribute or variant-level ProductVariant.
+        q_obj = (
+            Q(productattribute__attribute__slug=attr_slug,
+              productattribute__values__slug__in=values)
+            | Q(variants__attribute_values__attribute__slug=attr_slug,
+                variants__attribute_values__slug__in=values)
+        )
+        qs = qs.filter(q_obj)
+
+    qs = qs.distinct()
+
     # Sort
     sort = (request.GET.get('sort') or 'newest').strip()
     sort_map = {
@@ -114,12 +142,48 @@ def product_list(request):
     }
     qs = qs.order_by(sort_map.get(sort, '-created_at'))
 
+    # Build facet panel. For each filterable Attribute, list the values that
+    # actually appear among products matching every OTHER filter (so each
+    # facet stays meaningful when narrowed by other facets).
+    facet_attributes = list(
+        Attribute.objects.filter(is_filterable=True)
+        .order_by('sort_order', 'name')
+    )
+    facets = []
+    for attr in facet_attributes:
+        # Values that appear in the current filtered set, via either
+        # product or variant link. distinct() avoids dupes.
+        value_ids = set(
+            AttributeValue.objects.filter(
+                attribute=attr,
+                productattribute__product__in=qs,
+            ).values_list('id', flat=True)
+        ) | set(
+            AttributeValue.objects.filter(
+                attribute=attr,
+                productvariant__product__in=qs,
+            ).values_list('id', flat=True)
+        )
+        if not value_ids:
+            continue
+        values = list(
+            AttributeValue.objects
+            .filter(id__in=value_ids)
+            .order_by('sort_order', 'name')
+        )
+        facets.append({
+            'attr': attr,
+            'values': values,
+            'selected': set(selected_attrs.get(attr.slug, [])),
+        })
+
     products = list(qs[:60])
     categories = list(Category.objects.filter(parent__isnull=True).order_by('name'))
 
     return render(request, 'storefront/product_list.html', {
         'products': products,
         'categories': categories,
+        'facets': facets,
         'search_query': q,
         'selected_category': cat_slug,
         'selected_tag': tag_slug,
@@ -171,7 +235,43 @@ def product_detail(request, slug):
     if not product:
         from morpheus.views import Http404
         raise Http404
-    return render(request, 'storefront/product_detail.html', {'product': product})
+    related = _related_products(slug)
+    return render(request, 'storefront/product_detail.html', {
+        'product': product,
+        'related_products': related,
+    })
+
+
+def _related_products(current_slug: str, limit: int = 4) -> list[dict]:
+    """AI-driven 'you might also like' for the PDP. Returns dicts shaped
+    like the PRODUCT_LIST_QUERY rows so the template can reuse the card.
+    Fails closed — recs never block the page."""
+    try:
+        from plugins.installed.ai_assistant.services.recommendations import similar_to
+        from plugins.installed.catalog.models import Product
+    except Exception:  # noqa: BLE001
+        return []
+    try:
+        product = Product.objects.filter(slug=current_slug).first()
+        if product is None:
+            return []
+        rows = similar_to(product, limit=limit)
+    except Exception:  # noqa: BLE001 — recs are non-essential
+        return []
+    out = []
+    for p in rows:
+        primary = p.primary_image
+        out.append({
+            'id': str(p.id),
+            'name': p.name,
+            'slug': p.slug,
+            'price': {'amount': str(p.price.amount), 'currency': str(p.price.currency)} if p.price else None,
+            'primaryImage': {
+                'url': primary.image.url if primary and primary.image else '',
+                'altText': (primary.alt_text or p.name) if primary else p.name,
+            } if primary else None,
+        })
+    return out
 
 
 def cart(request):
@@ -180,10 +280,161 @@ def cart(request):
 
 
 def checkout(request):
+    """Step 1 of the server-rendered checkout: contact + shipping address.
+
+    Subsequent steps (`/checkout/shipping/`, `/checkout/review/`) live below.
+    The legacy single-page JS checkout still renders if a theme overrides
+    this template — we just pre-populate values from the visitor's session
+    and an authenticated user when present.
+    """
     if request.method == 'GET':
-        return render(request, 'storefront/checkout.html')
-    # POST — handled via GraphQL mutation from JS
-    return redirect('storefront:cart')
+        ctx = _checkout_base_context(request)
+        return render(request, 'storefront/checkout.html', ctx)
+    # Save contact + shipping address into the session, then advance to
+    # the shipping-method picker.
+    fields = (
+        'email', 'first_name', 'last_name', 'address_line1', 'address_line2',
+        'city', 'state', 'postal_code', 'country', 'phone',
+    )
+    addr = {f: (request.POST.get(f) or '').strip() for f in fields}
+    if not (addr['email'] and addr['address_line1'] and addr['city'] and addr['country']):
+        ctx = _checkout_base_context(request)
+        ctx['error'] = 'Please fill in email, address, city, and country.'
+        ctx['form'] = addr
+        return render(request, 'storefront/checkout.html', ctx)
+    request.session['checkout_address'] = addr
+    return redirect('/checkout/shipping/')
+
+
+def _checkout_base_context(request):
+    """Common context every checkout step uses — cart summary + saved form values."""
+    cart_data = internal_graphql(CART_QUERY, request=request) or {}
+    saved = request.session.get('checkout_address') or {}
+    user = getattr(request, 'user', None)
+    if not saved and user is not None and getattr(user, 'is_authenticated', False):
+        saved = {
+            'email': getattr(user, 'email', '') or '',
+            'first_name': getattr(user, 'first_name', '') or '',
+            'last_name': getattr(user, 'last_name', '') or '',
+        }
+    return {
+        'cart': cart_data.get('cart') or {},
+        'form': saved,
+    }
+
+
+def checkout_shipping(request):
+    """Step 2: pick a shipping rate."""
+    addr = request.session.get('checkout_address')
+    if not addr:
+        return redirect('/checkout/')
+    cart_data = internal_graphql(CART_QUERY, request=request) or {}
+    cart = cart_data.get('cart') or {}
+
+    rates = _available_shipping_rates(request, addr)
+
+    if request.method == 'POST':
+        rate_id = (request.POST.get('shipping_rate_id') or '').strip()
+        if not rate_id and rates:
+            rate_id = str(rates[0]['id'])
+        request.session['checkout_shipping_rate_id'] = rate_id
+        request.session['checkout_shipping_rate_label'] = next(
+            (r['label'] for r in rates if str(r['id']) == rate_id), '',
+        )
+        return redirect('/checkout/review/')
+
+    return render(request, 'storefront/checkout_shipping.html', {
+        'cart': cart,
+        'address': addr,
+        'rates': rates,
+        'selected_rate_id': request.session.get('checkout_shipping_rate_id', ''),
+    })
+
+
+def _available_shipping_rates(request, addr):
+    """Compute shipping rates for the resolved address. Falls back to a
+    single 'Standard — Free' option when the shipping plugin isn't wired."""
+    try:
+        from plugins.installed.shipping.services import compute_rates
+        from plugins.installed.orders.models import Cart
+        cart_id = request.session.get('cart_id')
+        cart = Cart.objects.filter(id=cart_id).first() if cart_id else None
+        if cart is None:
+            return []
+        rates = compute_rates(cart=cart, address=addr) or []
+        return [
+            {
+                'id': r.get('id') or r.get('rate_id') or r.get('name') or 'standard',
+                'label': r.get('name') or r.get('label') or 'Standard',
+                'amount': r.get('amount') or r.get('price') or 0,
+                'currency': r.get('currency') or 'USD',
+            }
+            for r in rates
+        ]
+    except Exception:  # noqa: BLE001 — shipping plugin optional
+        return [{'id': 'standard', 'label': 'Standard delivery', 'amount': 0, 'currency': 'USD'}]
+
+
+def checkout_review(request):
+    """Step 3: final review + place order. POST hits the GraphQL mutation
+    so all the existing server-side validation, hooks, and payments flow
+    still apply — we just frame it in a server-rendered form."""
+    addr = request.session.get('checkout_address')
+    if not addr:
+        return redirect('/checkout/')
+    cart_data = internal_graphql(CART_QUERY, request=request) or {}
+    cart = cart_data.get('cart') or {}
+    rate_label = request.session.get('checkout_shipping_rate_label', 'Standard')
+    rate_id = request.session.get('checkout_shipping_rate_id', '')
+
+    error = ''
+    if request.method == 'POST':
+        cart_id = (cart.get('id') or request.session.get('cart_id') or '').strip()
+        if not cart_id:
+            error = 'Your cart has expired — add items again to continue.'
+        else:
+            mutation = """
+            mutation Complete($input: CompleteOrderInput!) {
+              completeOrder(input: $input) { orderNumber paymentClientSecret errors { code message } }
+            }
+            """
+            shipping_input = {
+                'firstName': addr.get('first_name', ''),
+                'lastName': addr.get('last_name', ''),
+                'addressLine1': addr.get('address_line1', ''),
+                'addressLine2': addr.get('address_line2', ''),
+                'city': addr.get('city', ''),
+                'state': addr.get('state', ''),
+                'postalCode': addr.get('postal_code', ''),
+                'country': addr.get('country', ''),
+                'phone': addr.get('phone', ''),
+            }
+            data = internal_graphql(mutation, variables={
+                'input': {
+                    'cartId': cart_id,
+                    'email': addr.get('email', ''),
+                    'shippingAddress': shipping_input,
+                    'shippingRateId': rate_id or None,
+                },
+            }, request=request) or {}
+            payload = data.get('completeOrder') or {}
+            errs = payload.get('errors') or []
+            if errs:
+                error = '; '.join(e.get('message', 'Order failed.') for e in errs)
+            else:
+                order_no = payload.get('orderNumber') or ''
+                # Clear the session-side checkout state so refresh doesn't
+                # re-fire the order.
+                for k in ('checkout_address', 'checkout_shipping_rate_id', 'checkout_shipping_rate_label'):
+                    request.session.pop(k, None)
+                return redirect(f'/account/orders/{order_no}/' if order_no else '/account/orders/')
+
+    return render(request, 'storefront/checkout_review.html', {
+        'cart': cart,
+        'address': addr,
+        'rate_label': rate_label,
+        'error': error,
+    })
 
 
 def search(request):

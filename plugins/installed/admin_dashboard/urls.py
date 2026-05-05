@@ -118,6 +118,8 @@ urlpatterns = [
     path('orders/<str:order_number>/', views.order_detail, name='order_detail'),
     path('orders/<str:order_number>/action/', views.order_action, name='order_action'),
     path('orders/<str:order_number>/refund/', views.order_refund, name='order_refund'),
+    path('returns/', views.returns_list, name='returns_list'),
+    path('returns/<uuid:rma_id>/', views.return_detail, name='return_detail'),
     path('orders/<str:order_number>/fulfill/', views.order_fulfill, name='order_fulfill'),
     path('products/', views.products_list, name='products'),
     path('products/new/', views.product_new, name='product_new'),
@@ -146,6 +148,8 @@ urlpatterns = [
     path('apps/<str:plugin>/<slug:slug>/', plugin_page_router, name='plugin_page'),
     path('settings/', views.settings_view, name='settings'),
     path('settings/ai/probe/', views.settings_ai_probe, name='settings_ai_probe'),
+    path('settings/email-templates/', views.email_templates_list, name='email_templates_list'),
+    path('settings/email-templates/<str:key>/', views.email_template_edit, name='email_template_edit'),
     path('settings/<slug:category>/', views.settings_category, name='settings_category'),
     path('ai-insights/', views.ai_insights, name='ai_insights'),
 ]

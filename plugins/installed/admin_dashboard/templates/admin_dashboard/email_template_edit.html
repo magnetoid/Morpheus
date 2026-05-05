@@ -1,0 +1,49 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ label }} · Email templates · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">{{ label }}</h1>
+  <a href="/dashboard/settings/email-templates/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; All templates</a>
+</div>
+
+<form method="post" class="card card-padded max-w-3xl space-y-4">
+  {% csrf_token %}
+  <div>
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Subject</label>
+    <input class="input w-full" name="subject" value="{{ subject }}" required>
+    <p class="text-xs text-[color:var(--text-muted)] mt-1">Default: <code>{{ default_subject }}</code></p>
+  </div>
+  <div>
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Plain-text body</label>
+    <textarea class="input w-full" name="body_text" rows="14" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">{{ body_text }}</textarea>
+  </div>
+  <div>
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1">HTML body <span class="text-[color:var(--text-muted)]">(optional — leave blank to send plain text only)</span></label>
+    <textarea class="input w-full" name="body_html" rows="10" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">{{ body_html }}</textarea>
+  </div>
+  <div>
+    <label><input type="checkbox" name="is_active" {% if is_active %}checked{% endif %}> Send this template</label>
+    <p class="text-xs text-[color:var(--text-muted)] mt-1">Uncheck to suppress this transactional email entirely.</p>
+  </div>
+  <div class="flex items-center justify-between pt-2 border-t border-[color:var(--border)]">
+    <button type="submit" class="btn btn-primary">Save</button>
+    {% if is_customised %}
+    <button type="submit" name="action" value="reset" class="btn btn-secondary text-sm" onclick="return confirm('Reset to the default? Your customisations will be lost.');">Reset to default</button>
+    {% endif %}
+  </div>
+</form>
+
+<details class="mt-6 card card-padded max-w-3xl">
+  <summary class="cursor-pointer font-semibold">Available placeholders</summary>
+  <p class="text-sm text-[color:var(--text-muted)] mt-3">Each template has access to its event context. Common placeholders:</p>
+  <ul class="text-sm mt-2 list-disc pl-5 space-y-1">
+    <li><code>{{ "{{ order.order_number }}" }}</code>, <code>{{ "{{ order.email }}" }}</code>, <code>{{ "{{ order.total }}" }}</code></li>
+    <li><code>{{ "{% for item in order.items.all %}{{ item.product.name }}{% endfor %}" }}</code></li>
+    <li><code>{{ "{{ refund.amount }}" }}</code> on the refund template</li>
+    <li><code>{{ "{% for link in links %}{{ link.url }}{% endfor %}" }}</code> on digital downloads</li>
+    <li><code>{{ "{{ customer.first_name }}" }}</code> on welcome</li>
+    <li><code>{{ "{{ cart.item_count }}" }}</code>, <code>{{ "{{ cart.subtotal }}" }}</code> on cart abandoned</li>
+  </ul>
+</details>
+{% endblock %}

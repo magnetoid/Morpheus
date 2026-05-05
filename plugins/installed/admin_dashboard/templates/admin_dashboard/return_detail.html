@@ -1,0 +1,92 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}{{ rr.rma_number }} · Returns · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">{{ rr.rma_number }}</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Order <a href="/dashboard/orders/{{ rr.order.order_number }}/" class="underline">#{{ rr.order.order_number }}</a>
+      · {% if rr.order.customer %}{{ rr.order.customer.email }}{% else %}{{ rr.order.email }}{% endif %}
+      · Created {{ rr.created_at|date:"M j, Y H:i" }}
+    </p>
+  </div>
+  <a href="/dashboard/returns/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Returns</a>
+</div>
+
+{% if error %}<p class="pill pill-danger mb-4">{{ error }}</p>{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    <div class="card card-padded">
+      <h2 class="font-semibold mb-3">Items</h2>
+      {% if line_items %}
+      <table class="morph-table">
+        <thead><tr><th>Product</th><th class="text-right">Qty</th><th class="text-right">Unit price</th></tr></thead>
+        <tbody>
+          {% for li in line_items %}
+          <tr>
+            <td>{{ li.order_item.product_name }} {% if li.order_item.variant_name %}<span class="text-[color:var(--text-muted)]"> · {{ li.order_item.variant_name }}</span>{% endif %}</td>
+            <td class="text-right">{{ li.qty }}</td>
+            <td class="text-right">{{ li.order_item.unit_price|money }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p class="text-[color:var(--text-muted)]">No line items recorded.</p>{% endif %}
+    </div>
+
+    <div class="card card-padded">
+      <h2 class="font-semibold mb-2">Customer note</h2>
+      <pre class="whitespace-pre-wrap text-sm" style="font-family:inherit;">{{ rr.customer_note|default:"(none)" }}</pre>
+      {% if rr.staff_note %}
+      <h3 class="font-semibold mt-4 mb-2">Staff note</h3>
+      <pre class="whitespace-pre-wrap text-sm" style="font-family:inherit;">{{ rr.staff_note }}</pre>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="space-y-4">
+    <div class="card card-padded">
+      <h2 class="font-semibold mb-2">Status</h2>
+      <p class="mb-2">
+        State: <strong>{{ rr.get_state_display }}</strong><br>
+        Reason: {{ rr.get_reason_display }}<br>
+        {% if rr.refund_amount %}Computed refund: <strong>{{ rr.refund_amount|money }}</strong>{% endif %}
+      </p>
+      {% if rr.refund %}
+      <p class="text-xs text-[color:var(--text-muted)]">Refund recorded: {{ rr.refund.amount|money }} on {{ rr.refund.created_at|date:"M j, Y" }}</p>
+      {% endif %}
+    </div>
+
+    {% if rr.state == 'requested' %}
+    <div class="card card-padded">
+      <h2 class="font-semibold mb-3">Decide</h2>
+      <form method="post" class="space-y-2">
+        {% csrf_token %}
+        <button type="submit" name="action" value="approve" class="btn btn-primary w-full">Approve return</button>
+      </form>
+      <details class="mt-3">
+        <summary class="text-sm cursor-pointer">Reject instead</summary>
+        <form method="post" class="space-y-2 mt-2">
+          {% csrf_token %}
+          <textarea class="input w-full" name="staff_note" rows="3" placeholder="Reason shown to customer (optional)"></textarea>
+          <button type="submit" name="action" value="reject" class="btn btn-danger w-full">Reject</button>
+        </form>
+      </details>
+    </div>
+    {% elif rr.state == 'approved' or rr.state == 'received' %}
+    <div class="card card-padded">
+      <h2 class="font-semibold mb-3">Close the return</h2>
+      <form method="post" class="space-y-2">
+        {% csrf_token %}
+        <button type="submit" name="action" value="refund_money" class="btn btn-primary w-full">Refund to original payment</button>
+        <button type="submit" name="action" value="refund_credit" class="btn btn-secondary w-full">Issue store credit</button>
+      </form>
+      <p class="text-xs text-[color:var(--text-muted)] mt-3">Store credit can be redeemed at checkout on a future order — no money moves through the gateway.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

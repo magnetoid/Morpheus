@@ -20,13 +20,46 @@
       </div>
       <select name="category" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
         <option value="">All genres</option>
-        <option value="fiction">Fiction</option>
-        <option value="nonfiction">Non-fiction</option>
-        <option value="poetry">Poetry</option>
-        <option value="essays">Essays</option>
+        {% for c in categories %}
+        <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
       </select>
+      <select name="sort" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+        <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Newest</option>
+        <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Price ↑</option>
+        <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Price ↓</option>
+        <option value="name" {% if selected_sort == 'name' %}selected{% endif %}>Name</option>
+      </select>
+      {# Carry over active facet selections so the search button doesn't drop them #}
+      {% for f in facets %}{% for v in f.selected %}<input type="hidden" name="attr_{{ f.attr.slug }}" value="{{ v }}">{% endfor %}{% endfor %}
       <button class="btn btn-primary" style="height: 44px;">Apply</button>
     </form>
+
+    {% if facets %}
+    <div style="display:flex; flex-wrap:wrap; gap:1.5rem; margin-top:1.5rem; padding:1rem 1.25rem; border:1px solid var(--rule); border-radius:6px; background:var(--paper);">
+      {% for f in facets %}
+      <details style="min-width:180px;" {% if f.selected %}open{% endif %}>
+        <summary style="cursor:pointer; font-weight:600; font-size:.85rem; padding:.25rem 0;">
+          {{ f.attr.name }}{% if f.selected %} <span style="color:var(--muted); font-weight:400;">({{ f.selected|length }})</span>{% endif %}
+        </summary>
+        <div style="margin-top:.5rem; display:flex; flex-direction:column; gap:.4rem;">
+          {% for v in f.values %}
+          <label style="display:flex; align-items:center; gap:.5rem; font-size:.85rem; cursor:pointer;">
+            <input type="checkbox" form="facet-form" name="attr_{{ f.attr.slug }}" value="{{ v.slug }}" {% if v.slug in f.selected %}checked{% endif %} onchange="this.form.submit()">
+            {% if f.attr.input_type == 'color' and v.value %}<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background:{{ v.value }}; border:1px solid var(--rule);"></span>{% endif %}
+            <span>{{ v.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+    <form id="facet-form" method="get">
+      {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+      {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+      {% if selected_sort %}<input type="hidden" name="sort" value="{{ selected_sort }}">{% endif %}
+    </form>
+    {% endif %}
   </div>
 </section>
 

@@ -209,7 +209,20 @@ class ReturnService:
 
     @classmethod
     @transaction.atomic
-    def mark_received_and_refund(cls, rr: ReturnRequest, *, actor=None) -> ReturnRequest:
+    def mark_received_and_refund(
+        cls,
+        rr: ReturnRequest,
+        *,
+        actor=None,
+        as_store_credit: bool = False,
+    ) -> ReturnRequest:
+        """Close out a return.
+
+        ``as_store_credit=True`` issues the refund amount as store credit
+        (no money moves through the gateway) instead of a monetary refund.
+        Customer keeps the value in-store for a future order — better for
+        merchants when the return reason is ``changed_mind``.
+        """
         if rr.state not in ('approved', 'received'):
             raise ValueError(f'Cannot refund from state {rr.state}')
         if rr.state == 'approved':
@@ -218,6 +231,23 @@ class ReturnService:
         amount = rr.refund_amount
         if amount is None or amount.amount <= 0:
             amount = cls._compute_refund(rr)
+
+        if as_store_credit:
+            from plugins.installed.orders import store_credit
+            customer = rr.order.customer
+            if customer is None:
+                raise ValueError('Cannot issue store credit on a guest order; do a money refund.')
+            store_credit.issue(
+                customer, amount=amount,
+                reference=str(rr.id),
+                note=f'Store credit from return {rr.rma_number}',
+                created_by=actor,
+            )
+            rr.state = 'refunded'
+            rr.save(update_fields=['state', 'updated_at'])
+            hook_registry.fire('return.refunded', return_request=rr, refund=None, store_credit=amount)
+            return rr
+
         refund = RefundService.process(
             order=rr.order, amount=amount, reason='customer_request',
             notes=f'RMA {rr.rma_number}', actor=actor,

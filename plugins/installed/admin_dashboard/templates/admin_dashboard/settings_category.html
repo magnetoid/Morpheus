@@ -20,6 +20,17 @@
     </div>
   </div>
 
+  {% if category.slug == 'notifications' %}
+  <a href="/dashboard/settings/email-templates/" class="card card-padded flex items-start gap-3 hover:bg-[color:var(--surface-2)]">
+    <div class="settings-tile-icon"><i data-lucide="mail" class="h-5 w-5"></i></div>
+    <div class="min-w-0 flex-1">
+      <div class="font-medium">Email templates</div>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Edit subject + body of order, refund, welcome, and download emails.</p>
+    </div>
+    <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)] mt-1"></i>
+  </a>
+  {% endif %}
+
   {% if core_card %}
   <div class="card">
     <div class="card-padded border-b border-[color:var(--border)]">

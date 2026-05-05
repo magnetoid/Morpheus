@@ -174,3 +174,49 @@ class FormSubmission(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [models.Index(fields=['form', '-created_at'])]
+
+
+class EmailTemplate(models.Model):
+    """Merchant-editable transactional email template.
+
+    `key` matches the template-base used by ``core.emails.handlers._send``
+    (e.g. 'order_placed', 'order_paid', 'digital_download'). When a row
+    exists for a key the in-DB ``subject`` + ``body_text`` (+ optional
+    ``body_html``) replace the filesystem default; otherwise the filesystem
+    template under ``core/emails/templates/emails/<key>.txt`` is used.
+
+    Bodies are rendered with the Django template engine, so ``{{ order.total }}``,
+    ``{% for ... %}``, etc. all work — same syntax merchants already see in
+    other CMS templates.
+    """
+
+    KEY_CHOICES = [
+        ('order_placed', 'Order placed'),
+        ('order_paid', 'Order paid'),
+        ('order_fulfilled', 'Order fulfilled'),
+        ('order_cancelled', 'Order cancelled'),
+        ('refund_issued', 'Refund issued'),
+        ('digital_download', 'Digital downloads'),
+        ('cart_abandoned', 'Cart abandoned'),
+        ('welcome', 'Welcome'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.CharField(max_length=80, unique=True, choices=KEY_CHOICES)
+    label = models.CharField(max_length=120)
+    subject = models.CharField(max_length=300)
+    body_text = models.TextField(help_text='Plain-text body. Django template syntax allowed.')
+    body_html = models.TextField(blank=True, help_text='Optional HTML body. Falls back to text when blank.')
+    is_active = models.BooleanField(default=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['label']
+
+    def __str__(self):
+        return self.label

@@ -1373,3 +1373,181 @@ def ai_insights(request: HttpRequest) -> HttpResponse:
         'insights': insights,
         'active_nav': 'ai_insights',
     })
+
+
+# ─── Editable transactional email templates ──────────────────────────────────
+
+
+_EMAIL_TEMPLATE_KEYS = [
+    ('order_placed', 'Order placed', 'Order #{{ order.order_number }} received'),
+    ('order_paid', 'Order paid', 'Payment confirmed for order #{{ order.order_number }}'),
+    ('order_fulfilled', 'Order fulfilled', 'Order #{{ order.order_number }} is on its way'),
+    ('order_cancelled', 'Order cancelled', 'Order #{{ order.order_number }} cancelled'),
+    ('refund_issued', 'Refund issued', 'Refund issued for order #{{ order.order_number }}'),
+    ('digital_download', 'Digital downloads', 'Your downloads — order #{{ order.order_number }}'),
+    ('cart_abandoned', 'Cart abandoned', 'You left items in your cart'),
+    ('welcome', 'Welcome', 'Welcome'),
+]
+
+
+def _filesystem_default(key: str) -> str:
+    """Read the shipped default body so the editor can show / restore it."""
+    from pathlib import Path
+    base = Path(__file__).resolve().parent.parent.parent.parent / 'core' / 'emails' / 'templates' / 'emails'
+    fp = base / f'{key}.txt'
+    try:
+        return fp.read_text(encoding='utf-8')
+    except OSError:
+        return ''
+
+
+@staff_member_required
+def email_templates_list(request: HttpRequest) -> HttpResponse:
+    """Show every transactional email template, edited or not."""
+    from plugins.installed.cms.models import EmailTemplate
+
+    existing = {t.key: t for t in EmailTemplate.objects.all()}
+    rows = []
+    for key, label, default_subject in _EMAIL_TEMPLATE_KEYS:
+        tpl = existing.get(key)
+        rows.append({
+            'key': key,
+            'label': label,
+            'subject': tpl.subject if tpl else default_subject,
+            'is_active': tpl.is_active if tpl else False,
+            'updated_at': tpl.updated_at if tpl else None,
+            'is_customised': tpl is not None,
+        })
+    return render(request, 'admin_dashboard/email_templates_list.html', {
+        'rows': rows,
+        'active_nav': 'settings',
+    })
+
+
+@staff_member_required
+def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
+    """Edit one template. Reset = delete the row → falls back to filesystem default."""
+    from morpheus.views import HttpResponseRedirect
+
+    from plugins.installed.cms.models import EmailTemplate
+
+    label_map = {k: lbl for k, lbl, _ in _EMAIL_TEMPLATE_KEYS}
+    default_subject_map = {k: subj for k, _, subj in _EMAIL_TEMPLATE_KEYS}
+    if key not in label_map:
+        from django.http import Http404
+        raise Http404('Unknown template.')
+
+    tpl = EmailTemplate.objects.filter(key=key).first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action') or 'save'
+        if action == 'reset':
+            if tpl:
+                tpl.delete()
+            return HttpResponseRedirect(request.path)
+        subject = (request.POST.get('subject') or '').strip()
+        body_text = request.POST.get('body_text') or ''
+        body_html = request.POST.get('body_html') or ''
+        is_active = request.POST.get('is_active') == 'on'
+        EmailTemplate.objects.update_or_create(
+            key=key,
+            defaults={
+                'label': label_map[key],
+                'subject': subject or default_subject_map[key],
+                'body_text': body_text,
+                'body_html': body_html,
+                'is_active': is_active,
+                'updated_by': request.user if request.user.is_authenticated else None,
+            },
+        )
+        return HttpResponseRedirect('/dashboard/settings/email-templates/')
+
+    return render(request, 'admin_dashboard/email_template_edit.html', {
+        'key': key,
+        'label': label_map[key],
+        'subject': tpl.subject if tpl else default_subject_map[key],
+        'body_text': tpl.body_text if tpl else _filesystem_default(key),
+        'body_html': tpl.body_html if tpl else '',
+        'is_active': tpl.is_active if tpl else True,
+        'is_customised': tpl is not None,
+        'default_subject': default_subject_map[key],
+        'default_body_text': _filesystem_default(key),
+        'active_nav': 'settings',
+    })
+
+
+# ─── Returns / RMA ────────────────────────────────────────────────────────────
+
+
+@staff_member_required
+def returns_list(request: HttpRequest) -> HttpResponse:
+    from plugins.installed.orders.refunds import ReturnRequest
+
+    state = (request.GET.get('state') or '').strip()
+    qs = ReturnRequest.objects.select_related('order', 'order__customer').order_by('-created_at')
+    if state:
+        qs = qs.filter(state=state)
+    rows = list(qs[:200])
+    counts = {
+        s[0]: ReturnRequest.objects.filter(state=s[0]).count()
+        for s in ReturnRequest.STATE_CHOICES
+    }
+    return render(request, 'admin_dashboard/returns_list.html', {
+        'rows': rows,
+        'counts': counts,
+        'state': state,
+        'state_choices': ReturnRequest.STATE_CHOICES,
+        'active_nav': 'orders',
+    })
+
+
+@staff_member_required
+def return_detail(request: HttpRequest, rma_id) -> HttpResponse:
+    from morpheus.views import HttpResponseRedirect
+
+    from plugins.installed.orders.models import OrderItem
+    from plugins.installed.orders.refunds import ReturnRequest, ReturnService
+
+    rr = get_object_or_404(
+        ReturnRequest.objects.select_related('order', 'order__customer'),
+        pk=rma_id,
+    )
+    error = ''
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+        try:
+            if action == 'approve':
+                ReturnService.approve(rr, decided_by=request.user)
+            elif action == 'reject':
+                ReturnService.reject(
+                    rr,
+                    decided_by=request.user,
+                    staff_note=(request.POST.get('staff_note') or '')[:2000],
+                )
+            elif action == 'refund_money':
+                ReturnService.mark_received_and_refund(rr, actor=request.user, as_store_credit=False)
+            elif action == 'refund_credit':
+                ReturnService.mark_received_and_refund(rr, actor=request.user, as_store_credit=True)
+            else:
+                error = 'Unknown action.'
+        except Exception as e:  # noqa: BLE001
+            error = str(e)
+        if not error:
+            return HttpResponseRedirect(request.path)
+        rr.refresh_from_db()
+
+    line_items = []
+    items_by_id = {str(oi.id): oi for oi in OrderItem.objects.filter(order=rr.order)}
+    for entry in (rr.items or []):
+        oi = items_by_id.get(str(entry.get('order_item_id', '')))
+        if oi:
+            line_items.append({
+                'order_item': oi,
+                'qty': int(entry.get('quantity', 0) or 0),
+            })
+    return render(request, 'admin_dashboard/return_detail.html', {
+        'rr': rr,
+        'line_items': line_items,
+        'error': error,
+        'active_nav': 'orders',
+    })

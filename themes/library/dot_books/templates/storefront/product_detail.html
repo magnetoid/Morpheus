@@ -118,4 +118,30 @@
 <style>@media (min-width: 768px) { .reviews-grid { grid-template-columns: repeat(2, 1fr) !important; } }</style>
 {% endif %}
 
+{% if related_products %}
+<section style="padding: 3rem 0 4rem;">
+  <div class="wrap">
+    <p class="eyebrow">You might also like</p>
+    <h2 class="display display-m" style="margin: .75rem 0 2rem;">Readers who picked this also reached for<span class="text-accent">.</span></h2>
+    <div class="grid-books">
+      {% for p in related_products %}
+      <a href="/products/{{ p.slug }}/" class="book">
+        <div class="cover-wrap">
+          {% if p.primaryImage and p.primaryImage.url %}
+            <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}">
+          {% else %}
+            <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
+          {% endif %}
+        </div>
+        <div>
+          <p class="title">{{ p.name }}</p>
+          <p class="price">{{ p.price|money }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 {% endblock %}

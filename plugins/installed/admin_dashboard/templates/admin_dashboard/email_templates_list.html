@@ -1,0 +1,32 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Email templates · Settings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">Email templates</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Customise the wording your customers see in transactional emails. Django template syntax (e.g. <code>{{ "{{" }} order.total }}</code>) is supported.</p>
+  </div>
+  <a href="/dashboard/settings/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Settings</a>
+</div>
+
+<div class="card overflow-hidden">
+  <table class="morph-table">
+    <thead><tr><th>Template</th><th>Subject</th><th>Last edited</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <span class="font-medium">{{ r.label }}</span>
+          {% if r.is_customised and not r.is_active %}<span class="pill pill-neutral ml-2">Disabled</span>{% endif %}
+          {% if r.is_customised %}<span class="pill pill-info ml-2">Customised</span>{% else %}<span class="pill pill-neutral ml-2">Default</span>{% endif %}
+        </td>
+        <td class="text-[color:var(--text-muted)]">{{ r.subject|truncatechars:80 }}</td>
+        <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if r.updated_at %}{{ r.updated_at|date:"M j, Y H:i" }}{% else %}—{% endif %}</td>
+        <td class="text-right"><a class="btn btn-secondary text-xs" href="/dashboard/settings/email-templates/{{ r.key }}/">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

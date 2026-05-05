@@ -163,15 +163,28 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
     if not from_email:
         logger.debug('emails: DEFAULT_FROM_EMAIL not set, skipping %s', template_base)
         return
-    try:
-        text_body = render_to_string(f'{template_base}.txt', ctx)
-    except Exception as e:  # noqa: BLE001 — missing template is a soft failure
-        logger.warning('emails: text template %s missing: %s', template_base, e)
-        return
-    try:
-        html_body = render_to_string(f'{template_base}.html', ctx)
-    except Exception:  # noqa: BLE001 — HTML version is optional
-        html_body = None
+
+    # Dashboard-editable override wins. The merchant edits subject/body in
+    # /dashboard/settings/emails/, gets stored on cms.EmailTemplate, and
+    # we render with the standard Django template engine so all the
+    # `{{ order.total }}` placeholders keep working.
+    db_subject, db_text, db_html = _db_override(template_base, ctx)
+    if db_subject is not None:
+        subject = db_subject
+    text_body = db_text
+    html_body = db_html
+
+    if text_body is None:
+        try:
+            text_body = render_to_string(f'{template_base}.txt', ctx)
+        except Exception as e:  # noqa: BLE001 — missing template is a soft failure
+            logger.warning('emails: text template %s missing: %s', template_base, e)
+            return
+    if html_body is None:
+        try:
+            html_body = render_to_string(f'{template_base}.html', ctx)
+        except Exception:  # noqa: BLE001 — HTML version is optional
+            html_body = None
 
     try:
         msg = EmailMultiAlternatives(subject, text_body, from_email, [to])
@@ -180,3 +193,31 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
         msg.send(fail_silently=True)
     except Exception as e:  # noqa: BLE001
         logger.warning('emails: send for %s to %s failed: %s', template_base, to, e)
+
+
+def _db_override(template_base: str, ctx: dict) -> tuple[str | None, str | None, str | None]:
+    """Look up an active EmailTemplate by key. Returns
+    ``(subject, body_text, body_html)`` or ``(None, None, None)`` when
+    nothing matches — caller falls back to the filesystem template.
+
+    Renders subject + bodies through the Django engine so the same
+    ``{{ order.... }}`` placeholders work in DB-stored copy.
+    """
+    key = template_base.split('/', 1)[-1]
+    try:
+        from django.template import Context, Template
+        from plugins.installed.cms.models import EmailTemplate
+        tpl = EmailTemplate.objects.filter(key=key, is_active=True).first()
+    except Exception:  # noqa: BLE001 — model not migrated, app not loaded, etc.
+        return (None, None, None)
+    if tpl is None:
+        return (None, None, None)
+    try:
+        d_ctx = Context(ctx, autoescape=False)
+        rendered_subject = Template(tpl.subject or '').render(d_ctx) if tpl.subject else None
+        rendered_text = Template(tpl.body_text or '').render(d_ctx) if tpl.body_text else None
+        rendered_html = Template(tpl.body_html).render(Context(ctx, autoescape=True)) if tpl.body_html else None
+    except Exception as e:  # noqa: BLE001 — bad merchant template shouldn't kill the send
+        logger.warning('emails: DB override %s render failed: %s', key, e)
+        return (None, None, None)
+    return (rendered_subject, rendered_text, rendered_html)

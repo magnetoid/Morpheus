@@ -1,0 +1,46 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Returns · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">Returns</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Customer-initiated RMAs. Approve, receive, and issue a refund or store credit.</p>
+  </div>
+</div>
+
+<div class="flex flex-wrap gap-2 mb-4 text-sm">
+  <a href="?" class="pill {% if not state %}pill-info{% else %}pill-neutral{% endif %}">All</a>
+  {% for value, label in state_choices %}
+  <a href="?state={{ value }}" class="pill {% if state == value %}pill-info{% else %}pill-neutral{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="card overflow-hidden">
+  {% if rows %}
+  <table class="morph-table">
+    <thead><tr><th>RMA</th><th>Order</th><th>Customer</th><th>State</th><th>Reason</th><th>Created</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><a href="/dashboard/returns/{{ r.id }}/" class="font-medium hover:underline">{{ r.rma_number }}</a></td>
+        <td><a href="/dashboard/orders/{{ r.order.order_number }}/" class="hover:underline">#{{ r.order.order_number }}</a></td>
+        <td class="text-[color:var(--text-muted)]">{% if r.order.customer %}{{ r.order.customer.email }}{% else %}{{ r.order.email }}{% endif %}</td>
+        <td>
+          {% if r.state == 'requested' %}<span class="pill pill-warning">{{ r.get_state_display }}</span>
+          {% elif r.state == 'approved' or r.state == 'received' %}<span class="pill pill-info">{{ r.get_state_display }}</span>
+          {% elif r.state == 'refunded' %}<span class="pill pill-success">{{ r.get_state_display }}</span>
+          {% elif r.state == 'rejected' %}<span class="pill pill-danger">{{ r.get_state_display }}</span>
+          {% else %}<span class="pill pill-neutral">{{ r.get_state_display }}</span>{% endif %}
+        </td>
+        <td class="text-[color:var(--text-muted)]">{{ r.get_reason_display }}</td>
+        <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ r.created_at|date:"M j, Y" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="card-padded text-center py-16 text-[color:var(--text-muted)]">No returns yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

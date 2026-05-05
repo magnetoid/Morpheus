@@ -8,6 +8,8 @@ urlpatterns = [
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),
     path('cart/', views.cart, name='cart'),
     path('checkout/', views.checkout, name='checkout'),
+    path('checkout/shipping/', views.checkout_shipping, name='checkout_shipping'),
+    path('checkout/review/', views.checkout_review, name='checkout_review'),
     path('search/', views.search, name='search'),
 
     # Content / static
