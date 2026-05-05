@@ -80,8 +80,10 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       ALLOWED_HOSTS: ${SERVICE_FQDN_WEB},${ALLOWED_HOSTS:-},localhost,127.0.0.1
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://${SERVICE_FQDN_WEB}}
-      # Route Django through PgBouncer for Enterprise Connection Pooling
-      DATABASE_URL: postgres://morpheus:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/morpheus
+      # Direct Postgres until pgbouncer auth_type is wired for SCRAM. The
+      # service stays in the compose file so it can be re-enabled by
+      # swapping the host back to `pgbouncer` once configured.
+      DATABASE_URL: postgres://morpheus:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/morpheus
       DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-disable}
       REDIS_URL: redis://default:${SERVICE_PASSWORD_REDIS}@redis:6379/0
       # ── Gunicorn knobs (override per environment) ────────────────────────
@@ -144,8 +146,8 @@ services:
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
       ALLOWED_HOSTS: ${SERVICE_FQDN_WEB},${ALLOWED_HOSTS:-},localhost,127.0.0.1
-      # Route Celery Worker through PgBouncer
-      DATABASE_URL: postgres://morpheus:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/morpheus
+      # Direct Postgres (see web service note re: pgbouncer auth)
+      DATABASE_URL: postgres://morpheus:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/morpheus
       DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-disable}
       REDIS_URL: redis://default:${SERVICE_PASSWORD_REDIS}@redis:6379/0
       CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-4}
@@ -182,8 +184,8 @@ services:
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
       ALLOWED_HOSTS: ${SERVICE_FQDN_WEB},${ALLOWED_HOSTS:-},localhost,127.0.0.1
-      # Route Celery Beat through PgBouncer
-      DATABASE_URL: postgres://morpheus:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/morpheus
+      # Direct Postgres (see web service note re: pgbouncer auth)
+      DATABASE_URL: postgres://morpheus:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/morpheus
       DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-disable}
       REDIS_URL: redis://default:${SERVICE_PASSWORD_REDIS}@redis:6379/0
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
