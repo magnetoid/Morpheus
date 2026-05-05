@@ -2,7 +2,15 @@
 {% block title %}Ops console · Morpheus admin{% endblock %}
 
 {% block content %}
-<h1 class="text-xl font-semibold mb-2">Ops console</h1>
+<div class="flex items-center justify-between mb-2">
+  <h1 class="text-xl font-semibold">Ops console</h1>
+  {% if active_model %}
+  <span class="text-xs text-[color:var(--text-muted)]">
+    Using <code>{{ active_provider }}</code> · <code>{{ active_model }}</code>
+    · <a href="/dashboard/settings/ai/" class="underline">change</a>
+  </span>
+  {% endif %}
+</div>
 <p class="text-sm text-[color:var(--text-muted)] mb-4">
   Talk to Merchant Ops. Ask it to query analytics, surface low-stock items, draft copy.
 </p>

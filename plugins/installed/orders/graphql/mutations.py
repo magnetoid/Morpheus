@@ -8,6 +8,7 @@ import strawberry
 from core.graphql.types import ErrorType
 from plugins.installed.orders.graphql.types import CartType
 from plugins.installed.orders.services import CartService
+from plugins.installed.orders.graphql.inputs import AddressInput
 
 
 # ── Inputs ─────────────────────────────────────────────────────────────────────
@@ -39,24 +40,18 @@ class ApplyCouponInput:
 
 
 @strawberry.input
-class AddressInput:
-    first_name: str = ''
-    last_name: str = ''
-    line1: str = ''
-    line2: str = ''
-    city: str = ''
-    state: str = ''
-    postal_code: str = ''
-    country: str = ''
-    phone: str = ''
-
-
-@strawberry.input
 class CompleteOrderInput:
     cart_id: str
     email: str
     shipping_address: AddressInput
     billing_address: Optional[AddressInput] = None
+    shipping_rate_id: Optional[str] = None
+
+
+@strawberry.input
+class SetShippingRateInput:
+    cart_id: str
+    shipping_rate_id: str
 
 
 # ── Payloads ───────────────────────────────────────────────────────────────────
@@ -80,6 +75,19 @@ class OrderPayload:
 
 @strawberry.type
 class OrdersMutationExtension:
+
+    @strawberry.mutation(description='Select a shipping rate for a cart (stores it on the cart).')
+    def set_shipping_rate(self, input: SetShippingRateInput) -> CartPayload:
+        from plugins.installed.orders.models import Cart
+        try:
+            cart = Cart.objects.get(pk=input.cart_id)
+        except Cart.DoesNotExist:
+            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+
+        cart.metadata = dict(cart.metadata or {})
+        cart.metadata['shipping_rate_id'] = (input.shipping_rate_id or '').strip()
+        cart.save(update_fields=['metadata', 'updated_at'])
+        return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Add an item to a cart (creates the cart if needed).')
     def add_to_cart(self, info: strawberry.Info, input: AddToCartInput) -> CartPayload:
@@ -163,7 +171,7 @@ class OrdersMutationExtension:
         return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Complete checkout: create the order, fire order.placed, return the Stripe client_secret.')
-    def complete_order(self, input: CompleteOrderInput) -> OrderPayload:
+    def complete_order(self, info: strawberry.Info, input: CompleteOrderInput) -> OrderPayload:
         from django.db import transaction
         from plugins.installed.orders.models import Cart
         from plugins.installed.orders.services import OrderService
@@ -181,8 +189,23 @@ class OrdersMutationExtension:
         if not input.email or '@' not in input.email:
             return OrderPayload(errors=[ErrorType(code='INVALID_EMAIL', message='A valid email is required.')])
 
+        request = info.context.get('request') if isinstance(info.context, dict) else getattr(info.context, 'request', None)
         ship = _address_dict(input.shipping_address)
         bill = _address_dict(input.billing_address) if input.billing_address else ship
+
+        try:
+            affiliate_code = ''
+            if request is not None:
+                affiliate_code = (request.COOKIES.get('morph_aff') or '').strip()
+            if affiliate_code:
+                ship['affiliate_code'] = affiliate_code
+        except Exception:
+            pass
+
+        if input.shipping_rate_id:
+            cart.metadata = dict(cart.metadata or {})
+            cart.metadata['shipping_rate_id'] = (input.shipping_rate_id or '').strip()
+            cart.save(update_fields=['metadata', 'updated_at'])
 
         try:
             with transaction.atomic():

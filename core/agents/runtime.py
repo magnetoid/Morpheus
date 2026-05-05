@@ -132,7 +132,7 @@ class AgentRuntime:
                     max_tokens=self.agent.max_tokens,
                 )
             except Exception as e:  # noqa: BLE001 — provider failure aborts the run
-                return self._fail(trace, run_id, context, f'provider_error: {e}')
+                return self._fail(trace, run_id, context, _humanise_provider_error(e))
 
             trace.prompt_tokens += response.prompt_tokens
             trace.completion_tokens += response.completion_tokens
@@ -296,3 +296,37 @@ class AgentRuntime:
             self.agent.on_run_end(run=run_id, context=context, result=result)
         except Exception as e:  # noqa: BLE001
             logger.warning('agent %s: on_run_end failed: %s', self.agent.name, e)
+
+
+def _humanise_provider_error(exc: Exception) -> str:
+    """Turn a raw provider exception into a short, actionable chat message.
+
+    Most calls land here from openai-compat clients (OpenAI, OpenRouter)
+    or our REST wrappers (Gemini, Ollama). We unwrap the upstream JSON
+    body when it carries a useful detail (rate-limited, model not
+    found, bad key) and fall back to the exception text otherwise.
+    """
+    s = str(exc) or exc.__class__.__name__
+    low = s.lower()
+    if 'rate-limit' in low or 'rate limit' in low or '429' in low:
+        return (
+            'The selected model is rate-limited upstream. '
+            'Pick a different model in Settings → AI providers, or add a '
+            'paid OpenRouter key for higher limits.'
+        )
+    if '401' in low or 'invalid api key' in low or 'incorrect api key' in low:
+        return (
+            'The provider rejected the API key. Re-check it in Settings '
+            '→ AI providers and click Save.'
+        )
+    if 'model_not_found' in low or 'no such model' in low or '404' in low:
+        return (
+            'The selected model is not available on this provider. '
+            'Pick a different one in Settings → AI providers.'
+        )
+    if 'connection' in low or 'timed out' in low or 'timeout' in low:
+        return (
+            'Connection to the AI provider failed. Check the base URL '
+            'in Settings → AI providers (or your network) and retry.'
+        )
+    return f'AI provider error: {s[:300]}'

@@ -236,8 +236,19 @@ def run_detail_view(request, run_id: str):
 @staff_member_required
 def merchant_ops_chat_view(request):
     """The Merchant Ops chat console (admin only)."""
+    active_provider = ''
+    active_model = ''
+    try:
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config()
+        active_provider = cfg.provider
+        active_model = cfg.model
+    except Exception:  # noqa: BLE001
+        pass
     return render(request, 'agent_core/dashboard/console.html', {
         'agent_name': 'merchant_ops',
+        'active_provider': active_provider,
+        'active_model': active_model,
         'active_nav': 'agents',
     })
 

@@ -80,6 +80,88 @@ def _resolve_unit_price(target, currency: Optional[str], *, fallback) -> Money:
 class OrderService:
 
     @classmethod
+    def calculate_cart_breakdown(
+        cls,
+        *,
+        cart: Cart,
+        address: Dict | None = None,
+        billing_address: Dict | None = None,
+        shipping_rate_id: str = '',
+    ) -> dict:
+        if not cart.items.exists():
+            return {
+                'currency': 'USD',
+                'subtotal': Money(Decimal('0'), 'USD'),
+                'shipping': Money(Decimal('0'), 'USD'),
+                'tax': Money(Decimal('0'), 'USD'),
+                'discount': Money(Decimal('0'), 'USD'),
+                'total': Money(Decimal('0'), 'USD'),
+                'meta': {},
+            }
+
+        items = list(cart.items.select_related('product', 'variant').all())
+        currency = str(items[0].unit_price.currency)
+        subtotal = Money(
+            sum((Decimal(it.unit_price.amount) * it.quantity for it in items), Decimal('0')),
+            currency,
+        )
+
+        breakdown = {
+            'currency': currency,
+            'subtotal': subtotal,
+            'shipping': Money(Decimal('0'), currency),
+            'tax': Money(Decimal('0'), currency),
+            'discount': Money(Decimal('0'), currency),
+            'total': subtotal,
+            'meta': {},
+        }
+
+        coupon_code = getattr(getattr(cart, 'coupon', None), 'code', '') or ''
+
+        try:
+            adjusted = hook_registry.filter(
+                MorpheusEvents.CART_CALCULATE_BREAKDOWN,
+                value=breakdown,
+                cart=cart,
+                address=(address or {}),
+                billing_address=(billing_address or {}),
+                shipping_rate_id=(shipping_rate_id or ''),
+                coupon=coupon_code or None,
+                channel=None,
+                customer=cart.customer,
+            )
+            if isinstance(adjusted, dict):
+                breakdown = adjusted
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cart.calculate_breakdown filter error: %s', e, exc_info=True)
+
+        def _m(key: str) -> Money:
+            v = breakdown.get(key)
+            if isinstance(v, Money):
+                return v
+            return Money(Decimal('0'), currency)
+
+        subtotal_m = _m('subtotal')
+        shipping_m = _m('shipping')
+        tax_m = _m('tax')
+        discount_m = _m('discount')
+        total_m = breakdown.get('total')
+        if not isinstance(total_m, Money):
+            total_m = subtotal_m + shipping_m + tax_m - discount_m
+        if total_m.amount < 0:
+            total_m = Money(Decimal('0'), currency)
+
+        breakdown['subtotal'] = subtotal_m
+        breakdown['shipping'] = shipping_m
+        breakdown['tax'] = tax_m
+        breakdown['discount'] = discount_m
+        breakdown['total'] = total_m
+        breakdown['currency'] = currency
+        breakdown.setdefault('meta', {})
+
+        return breakdown
+
+    @classmethod
     @transaction.atomic
     def create_from_cart(
         cls, cart: Cart, email: str,
@@ -95,32 +177,27 @@ class OrderService:
             currency,
         )
 
-        # Run subtotal through the cart-total filter so tax / shipping /
-        # promotions plug in. Each handler returns Money or a dict with
-        # adjustments; we accumulate component totals to persist on the Order.
-        tax_total = Money(Decimal('0'), currency)
-        shipping_total = Money(Decimal('0'), currency)
-        discount_total = Money(Decimal('0'), currency)
-        try:
-            adjusted = hook_registry.filter(
-                MorpheusEvents.CART_CALCULATE_TOTAL,
-                value=subtotal,
-                cart=cart,
-                shipping_address=shipping_address,
-                billing_address=billing_address,
-            )
-            if isinstance(adjusted, dict):
-                tax_total = adjusted.get('tax', tax_total) or tax_total
-                shipping_total = adjusted.get('shipping', shipping_total) or shipping_total
-                discount_total = adjusted.get('discount', discount_total) or discount_total
-                final_total = adjusted.get('total', subtotal) or subtotal
-            elif isinstance(adjusted, Money):
-                final_total = adjusted
-            else:
-                final_total = subtotal
-        except Exception as e:  # noqa: BLE001 — hook chain shouldn't block checkout
-            logger.warning('cart.calculate_total filter error: %s', e, exc_info=True)
-            final_total = subtotal
+        shipping_rate_id = str((cart.metadata or {}).get('shipping_rate_id') or '')
+        breakdown = cls.calculate_cart_breakdown(
+            cart=cart,
+            address=shipping_address,
+            billing_address=billing_address,
+            shipping_rate_id=shipping_rate_id,
+        )
+
+        tax_total = breakdown['tax']
+        shipping_total = breakdown['shipping']
+        discount_total = breakdown['discount']
+        final_total = breakdown['total']
+
+        coupon_code = getattr(getattr(cart, 'coupon', None), 'code', '') or ''
+        shipping_method = str((breakdown.get('meta') or {}).get('shipping_rate_name') or '')
+        source = 'web'
+        affiliate_code = ''
+        if isinstance(shipping_address, dict):
+            affiliate_code = str(shipping_address.get('affiliate_code') or '')
+        if affiliate_code:
+            source = f'affiliate:{affiliate_code}'
 
         order = Order.objects.create(
             customer=cart.customer,
@@ -132,6 +209,9 @@ class OrderService:
             shipping_total=shipping_total,
             discount_total=discount_total,
             total=final_total,
+            coupon_code=coupon_code,
+            shipping_method=shipping_method,
+            source=source,
         )
 
         for cart_item in items:
@@ -147,7 +227,57 @@ class OrderService:
                 total_price=cart_item.total_price,
             )
 
+        try:
+            meta = breakdown.get('meta') or {}
+
+            applied_promos = meta.get('applied_promotions') or []
+            if applied_promos:
+                from plugins.installed.promotions.services import AppliedPromotion, record_application
+                for p in applied_promos:
+                    try:
+                        ap = AppliedPromotion(
+                            promotion_id=str(p.get('promotion_id') or ''),
+                            promotion_name=str(p.get('promotion_name') or ''),
+                            rule_id=str(p.get('rule_id') or '') or None,
+                            discount_amount=Decimal(str(p.get('discount_amount') or '0')),
+                            free_shipping=bool(p.get('free_shipping')),
+                            gift_product_id=str(p.get('gift_product_id') or '') or None,
+                            note=str(p.get('note') or ''),
+                        )
+                        record_application(
+                            ap,
+                            order_id=str(order.id),
+                            customer_id=str(order.customer_id or ''),
+                            currency=currency,
+                        )
+                    except Exception:  # noqa: BLE001
+                        continue
+
+            if cart.coupon_id:
+                from django.db.models import F
+                from plugins.installed.marketing.models import CouponUsage, Coupon
+                coupon_meta = meta.get('coupon') or {}
+                coupon_discount = Decimal(str(coupon_meta.get('discount_amount') or '0'))
+                if coupon_discount > 0:
+                    if order.customer_id:
+                        usage, created = CouponUsage.objects.get_or_create(
+                            coupon_id=cart.coupon_id,
+                            customer_id=order.customer_id,
+                            order=order,
+                            defaults={'discount_amount': Money(coupon_discount, currency)},
+                        )
+                        if created:
+                            Coupon.objects.filter(id=cart.coupon_id).update(times_used=F('times_used') + 1)
+                    else:
+                        Coupon.objects.filter(id=cart.coupon_id).update(times_used=F('times_used') + 1)
+        except Exception as e:  # noqa: BLE001
+            logger.warning('orders: promotions/coupon recording failed: %s', e)
+
         cart.items.all().delete()
+        if cart.coupon_id or (cart.metadata or {}).get('shipping_rate_id'):
+            cart.coupon = None
+            cart.metadata = {k: v for k, v in (cart.metadata or {}).items() if k != 'shipping_rate_id'}
+            cart.save(update_fields=['coupon', 'metadata', 'updated_at'])
 
         hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)
         return order
