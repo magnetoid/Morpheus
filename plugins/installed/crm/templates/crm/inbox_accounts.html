@@ -1,0 +1,111 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Mail accounts · CRM · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Mail accounts</h1>
+  <a href="/dashboard/crm/inbox/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Inbox</a>
+</div>
+
+{% if accounts %}
+<div class="card overflow-hidden mb-6">
+  <table class="morph-table">
+    <thead><tr><th>Label</th><th>Address</th><th>Last sync</th><th>Last error</th><th></th></tr></thead>
+    <tbody>
+      {% for a in accounts %}
+      <tr>
+        <td>{{ a.label }} {% if not a.is_active %}<span class="pill pill-neutral">Inactive</span>{% endif %}</td>
+        <td>{{ a.email_address }}</td>
+        <td class="whitespace-nowrap text-[color:var(--text-muted)]">{% if a.last_polled_at %}{{ a.last_polled_at|date:"M j, H:i" }}{% else %}—{% endif %}</td>
+        <td class="text-xs text-[color:var(--danger)]">{{ a.last_error|truncatechars:80 }}</td>
+        <td class="text-right">
+          <form method="post" class="inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="sync">
+            <input type="hidden" name="id" value="{{ a.id }}">
+            <button class="btn btn-secondary text-xs">Sync</button>
+          </form>
+          <form method="post" class="inline" onsubmit="return confirm('Delete this account?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{ a.id }}">
+            <button class="btn btn-danger text-xs">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card card-padded max-w-3xl">
+  <h2 class="font-semibold mb-3">Add mail account</h2>
+  {% if error %}<p class="pill pill-danger mb-3">{{ error }}</p>{% endif %}
+  <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% csrf_token %}
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">Label</label>
+      <input class="input w-full" name="label" required placeholder="e.g. Support inbox">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">Email address</label>
+      <input class="input w-full" name="email_address" type="email" required placeholder="support@example.com">
+    </div>
+
+    <div class="md:col-span-2"><h3 class="text-sm font-semibold mt-2">IMAP (incoming)</h3></div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP host</label>
+      <input class="input w-full" name="imap_host" required placeholder="imap.gmail.com">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP port</label>
+      <input class="input w-full" name="imap_port" type="number" value="993">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP username</label>
+      <input class="input w-full" name="imap_username">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP password</label>
+      <input class="input w-full" name="imap_password" type="password">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP folder</label>
+      <input class="input w-full" name="imap_folder" value="INBOX">
+    </div>
+    <div class="flex items-center gap-2 pt-6">
+      <label><input type="checkbox" name="imap_use_ssl" checked> Use SSL/TLS</label>
+    </div>
+
+    <div class="md:col-span-2"><h3 class="text-sm font-semibold mt-2">SMTP (outgoing)</h3></div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP host</label>
+      <input class="input w-full" name="smtp_host" required placeholder="smtp.gmail.com">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP port</label>
+      <input class="input w-full" name="smtp_port" type="number" value="465">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP username</label>
+      <input class="input w-full" name="smtp_username">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP password</label>
+      <input class="input w-full" name="smtp_password" type="password">
+    </div>
+    <div class="flex items-center gap-2 pt-6">
+      <label><input type="checkbox" name="smtp_use_ssl" checked> SSL (port 465)</label>
+      <label class="ml-3"><input type="checkbox" name="smtp_use_tls"> STARTTLS (port 587)</label>
+    </div>
+    <div class="flex items-center gap-2 pt-6">
+      <label><input type="checkbox" name="is_active" checked> Active</label>
+    </div>
+
+    <div class="md:col-span-2 mt-2">
+      <button type="submit" class="btn btn-primary">Save account</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

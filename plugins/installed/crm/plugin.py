@@ -34,6 +34,21 @@ class CrmPlugin(Plugin):
         self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=70)
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=70)
         self.register_hook(events.CART_ABANDONED, self.on_cart_abandoned, priority=70)
+        self._register_beat_schedule()
+
+    def _register_beat_schedule(self) -> None:
+        from django.conf import settings
+        from celery.schedules import crontab
+        schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
+        if schedule is None:
+            return
+        schedule.setdefault(
+            'crm.poll_mailboxes',
+            {
+                'task': 'crm.poll_mailboxes',
+                'schedule': crontab(minute='*/5'),
+            },
+        )
 
     # ── Hooks ─────────────────────────────────────────────────────────────────
 
@@ -136,6 +151,14 @@ class CrmPlugin(Plugin):
                 icon='users-round',
                 section='crm',
                 order=10,
+            ),
+            DashboardPage(
+                label='Inbox',
+                slug='inbox',
+                view='plugins.installed.crm.views.inbox_list',
+                icon='inbox',
+                section='crm',
+                order=20,
             ),
             DashboardPage(
                 label='Pipeline',

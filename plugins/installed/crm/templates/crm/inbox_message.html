@@ -1,0 +1,57 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ message.subject|default:"(no subject)" }} · Inbox{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <a href="/dashboard/crm/inbox/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Inbox</a>
+  {% if message.customer %}
+  <a href="/dashboard/customers/{{ message.customer.id }}/" class="text-sm hover:underline">View contact: {{ message.customer.email }}</a>
+  {% endif %}
+</div>
+
+<h1 class="text-xl font-semibold mb-2">{{ message.subject|default:"(no subject)" }}</h1>
+<p class="text-sm text-[color:var(--text-muted)] mb-6">
+  {{ message.account.label }} ·
+  {% if message.direction == 'in' %}from {{ message.from_address }}{% else %}to {{ message.to_addresses }}{% endif %}
+  · {{ message.occurred_at|date:"M j, Y H:i" }}
+</p>
+
+{% if thread %}
+<div class="space-y-3 mb-6">
+  {% for t in thread %}
+  <div class="card card-padded {% if t.id == message.id %}ring-2 ring-[color:var(--brand)]{% endif %}">
+    <div class="flex items-center justify-between mb-2 text-sm">
+      <span>
+        {% if t.direction == 'in' %}<span class="pill pill-info">Received</span>{% else %}<span class="pill pill-neutral">Sent</span>{% endif %}
+        <span class="font-medium ml-1">{{ t.from_address }}</span>
+        <span class="text-[color:var(--text-muted)]">→ {{ t.to_addresses|truncatechars:60 }}</span>
+      </span>
+      <span class="text-[color:var(--text-muted)]">{{ t.occurred_at|date:"M j, H:i" }}</span>
+    </div>
+    <pre class="whitespace-pre-wrap text-sm" style="font-family:inherit;">{{ t.body_text|default:t.body_html|striptags }}</pre>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card card-padded">
+  <h2 class="font-semibold mb-3">Reply</h2>
+  {% if error %}<p class="pill pill-danger mb-3">{{ error }}</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">To</label>
+      <input class="input w-full" name="to" value="{{ message.from_address }}">
+    </div>
+    <div class="mb-3">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">Subject</label>
+      <input class="input w-full" name="subject" value="Re: {{ message.subject }}">
+    </div>
+    <div class="mb-3">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">Message</label>
+      <textarea class="input w-full" name="body" rows="6" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Send reply</button>
+  </form>
+</div>
+{% endblock %}

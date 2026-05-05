@@ -1,0 +1,79 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Inbox · CRM · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Inbox</h1>
+  <div class="flex items-center gap-2">
+    <a href="/dashboard/crm/inbox/accounts/" class="btn btn-secondary text-sm">Mail accounts</a>
+    <a href="/dashboard/crm/inbox/compose/" class="btn btn-primary text-sm">Compose</a>
+    <form method="post" class="inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="sync">
+      <button type="submit" class="btn btn-secondary text-sm">Sync now</button>
+    </form>
+  </div>
+</div>
+
+<form method="get" class="card card-padded mb-4 flex flex-wrap gap-2 items-end">
+  <div class="flex-1 min-w-[200px]">
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Search</label>
+    <input type="text" name="q" value="{{ search }}" placeholder="Subject, sender, body…" class="input w-full">
+  </div>
+  <div>
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Account</label>
+    <select name="account" class="input">
+      <option value="">All</option>
+      {% for a in accounts %}<option value="{{ a.id }}" {% if account_id == a.id|stringformat:'s' %}selected{% endif %}>{{ a.label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Direction</label>
+    <select name="dir" class="input">
+      <option value="" {% if not direction %}selected{% endif %}>Both</option>
+      <option value="in" {% if direction == 'in' %}selected{% endif %}>Received</option>
+      <option value="out" {% if direction == 'out' %}selected{% endif %}>Sent</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-secondary text-sm">Filter</button>
+</form>
+
+<div class="card overflow-hidden">
+  {% if messages %}
+  <table class="morph-table">
+    <thead>
+      <tr>
+        <th>From / To</th><th>Subject</th><th>Account</th><th>When</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in messages %}
+      <tr style="{% if m.direction == 'in' and not m.is_read %}font-weight:600;{% endif %}">
+        <td class="whitespace-nowrap">
+          <a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">
+            {% if m.direction == 'in' %}
+              <span class="pill pill-info">In</span> {{ m.from_address }}
+            {% else %}
+              <span class="pill pill-neutral">Out</span> {{ m.to_addresses|truncatechars:60 }}
+            {% endif %}
+            {% if m.customer %}<span class="text-xs text-[color:var(--text-muted)] ml-1">· {{ m.customer.email }}</span>{% endif %}
+          </a>
+        </td>
+        <td><a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">{{ m.subject|default:"(no subject)" }}</a></td>
+        <td class="text-[color:var(--text-muted)]">{{ m.account.label }}</td>
+        <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ m.occurred_at|date:"M j, H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="card-padded text-center py-16 text-[color:var(--text-muted)]">
+    {% if accounts %}
+      No messages yet. Click <em>Sync now</em> to fetch from your mailbox.
+    {% else %}
+      No mail accounts configured. <a href="/dashboard/crm/inbox/accounts/" class="underline">Add one</a> to start receiving mail.
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

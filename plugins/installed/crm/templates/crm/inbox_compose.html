@@ -1,0 +1,41 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Compose · Inbox · CRM{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Compose email</h1>
+  <a href="/dashboard/crm/inbox/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Inbox</a>
+</div>
+
+{% if not accounts %}
+<p class="card card-padded text-[color:var(--text-muted)]">
+  Configure a mail account first: <a href="/dashboard/crm/inbox/accounts/" class="underline">Mail accounts</a>.
+</p>
+{% else %}
+<div class="card card-padded max-w-2xl">
+  {% if error %}<p class="pill pill-danger mb-3">{{ error }}</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">From account</label>
+      <select name="account" class="input w-full" required>
+        {% for a in accounts %}<option value="{{ a.id }}">{{ a.label }} &lt;{{ a.email_address }}&gt;</option>{% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">To (comma-separated)</label>
+      <input class="input w-full" name="to" required>
+    </div>
+    <div class="mb-3">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">Subject</label>
+      <input class="input w-full" name="subject">
+    </div>
+    <div class="mb-3">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">Message</label>
+      <textarea class="input w-full" name="body" rows="10" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Send</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

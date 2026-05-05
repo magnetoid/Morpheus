@@ -307,6 +307,119 @@ class CrmTask(models.Model):
         return self.is_open and self.due_at < timezone.now()
 
 
+class MailAccount(models.Model):
+    """An IMAP/SMTP mailbox the merchant connects so support email lands in
+    the CRM inbox.
+
+    Passwords are stored as-is in this column; production deploys must keep
+    the database encrypted at rest (Postgres TDE / disk encryption / managed
+    secret manager). Keeping this simple deliberately — a fancier encrypted
+    field can land later without changing the call sites.
+    """
+
+    PROVIDER_CHOICES = [
+        ('imap', 'IMAP / SMTP (generic)'),
+        ('gmail', 'Gmail (IMAP)'),
+        ('outlook', 'Outlook / Office 365 (IMAP)'),
+        ('fastmail', 'Fastmail (IMAP)'),
+        ('other', 'Other'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=120, help_text='How merchants refer to this mailbox.')
+    email_address = models.EmailField(
+        unique=True, help_text='The full address — used as the From header on outbound mail.',
+    )
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='imap')
+
+    imap_host = models.CharField(max_length=255)
+    imap_port = models.PositiveIntegerField(default=993)
+    imap_use_ssl = models.BooleanField(default=True)
+    imap_username = models.CharField(max_length=255)
+    imap_password = models.CharField(max_length=255)
+    imap_folder = models.CharField(max_length=80, default='INBOX')
+
+    smtp_host = models.CharField(max_length=255)
+    smtp_port = models.PositiveIntegerField(default=465)
+    smtp_use_ssl = models.BooleanField(default=True)
+    smtp_use_tls = models.BooleanField(default=False)
+    smtp_username = models.CharField(max_length=255)
+    smtp_password = models.CharField(max_length=255)
+
+    is_active = models.BooleanField(default=True)
+    last_polled_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+    # Highest IMAP UID we've already imported per account. Polling resumes
+    # from `last_uid + 1` so we never reprocess the same message.
+    last_uid = models.PositiveBigIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['label']
+
+    def __str__(self):
+        return f'{self.label} <{self.email_address}>'
+
+
+class MailMessage(models.Model):
+    """A single email — inbound (fetched via IMAP) or outbound (sent via SMTP).
+
+    `customer` is set when the message's From/To matches a Customer email,
+    so the CRM contact view can show their full mail history alongside
+    interactions, deals, and tasks.
+    """
+
+    DIRECTION_CHOICES = [('in', 'Received'), ('out', 'Sent')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(MailAccount, on_delete=models.CASCADE, related_name='messages')
+    direction = models.CharField(max_length=3, choices=DIRECTION_CHOICES, db_index=True)
+
+    message_id = models.CharField(
+        max_length=255, blank=True, db_index=True,
+        help_text='RFC822 Message-ID — used to dedupe inbound messages.',
+    )
+    in_reply_to = models.CharField(max_length=255, blank=True, db_index=True)
+    thread_key = models.CharField(
+        max_length=255, blank=True, db_index=True,
+        help_text='Normalised subject + counterparty — groups a thread.',
+    )
+
+    from_address = models.CharField(max_length=320, db_index=True)
+    to_addresses = models.TextField(blank=True, help_text='Comma-separated.')
+    cc_addresses = models.TextField(blank=True)
+    subject = models.CharField(max_length=500, blank=True)
+    body_text = models.TextField(blank=True)
+    body_html = models.TextField(blank=True)
+
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='crm_mail_messages',
+    )
+
+    is_read = models.BooleanField(default=False, db_index=True)
+    sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    received_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-received_at', '-sent_at', '-created_at']
+        indexes = [
+            models.Index(fields=['account', '-received_at']),
+            models.Index(fields=['customer', '-received_at']),
+        ]
+
+    def __str__(self):
+        return f'[{self.get_direction_display()}] {self.subject or "(no subject)"}'
+
+    @property
+    def occurred_at(self):
+        return self.received_at or self.sent_at or self.created_at
+
+
 class CustomerNote(models.Model):
     """Quick freeform note attached to a customer (separate from Interaction
     for cases where the merchant wants persistent context rather than a log
