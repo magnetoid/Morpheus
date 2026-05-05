@@ -94,7 +94,11 @@ def plugin_context(request):
             panels_by_cat[cat] = panels_by_cat.get(cat, 0) + 1
         settings_category_nav = [
             c for c in SETTINGS_CATEGORIES
-            if panels_by_cat.get(c.slug) or c.slug in ('general', 'apps')
+            # 'general', 'apps', 'notifications' always render: 'general'
+            # carries store basics, 'apps' is the long-tail bucket, and
+            # 'notifications' carries the editable email templates link
+            # (which lives in the template, not a SettingsPanel).
+            if panels_by_cat.get(c.slug) or c.slug in ('general', 'apps', 'notifications')
         ]
     except Exception:  # noqa: BLE001 — never fail the page on missing module
         settings_category_nav = []

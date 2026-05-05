@@ -67,13 +67,11 @@
     </tbody>
   </table>
   {% else %}
-  <div class="card-padded text-center py-16 text-[color:var(--text-muted)]">
     {% if accounts %}
-      No messages yet. Click <em>Sync now</em> to fetch from your mailbox.
+      {% include "admin_dashboard/_empty_state.html" with icon="inbox" title="No messages yet" hint="Click Sync now to fetch from your mailbox." %}
     {% else %}
-      No mail accounts configured. <a href="/dashboard/crm/inbox/accounts/" class="underline">Add one</a> to start receiving mail.
+      {% include "admin_dashboard/_empty_state.html" with icon="inbox" title="No mail accounts configured" hint="Connect an IMAP/SMTP mailbox to start receiving customer mail in the CRM." action_url="/dashboard/crm/inbox/accounts/" action_label="Add a mail account" %}
     {% endif %}
-  </div>
   {% endif %}
 </div>
 {% endblock %}

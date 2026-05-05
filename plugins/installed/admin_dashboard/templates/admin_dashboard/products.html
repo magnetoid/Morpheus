@@ -68,14 +68,8 @@
       </tbody>
     </table>
     {% else %}
-    <div class="card-padded text-center py-16">
-      <i data-lucide="package" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">No products yet</h3>
-      <p class="text-sm text-[color:var(--text-muted)] mt-1">Add your first product to start selling.</p>
-      <a href="{% url 'admin_dashboard:product_new' %}" class="btn btn-primary mt-4 inline-flex">
-        <i data-lucide="plus" class="h-4 w-4"></i> Add product
-      </a>
-    </div>
+    {% url 'admin_dashboard:product_new' as add_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="package" title="No products yet" hint="Add your first product to start selling." action_url=add_url action_label="Add a product" %}
     {% endif %}
   </div>
 

@@ -1,17 +1,17 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Contacts · Morpheus{% endblock %}
+{% block title %}Customers · Morpheus{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-4">
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold tracking-tight">Contacts</h1>
+      <h1 class="text-xl font-semibold tracking-tight">Customers</h1>
       <p class="text-sm text-[color:var(--text-muted)]">Customers, leads, signups — one unified table. Most recent 100.</p>
     </div>
     <div class="flex items-center gap-2">
       <a href="/dashboard/apps/importers/csv/" class="btn"><i data-lucide="download" class="h-4 w-4"></i> Export</a>
-      <a href="{% url 'admin_dashboard:customer_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add contact</a>
+      <a href="{% url 'admin_dashboard:customer_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add customer</a>
     </div>
   </div>
 
@@ -38,7 +38,7 @@
     {% if customers %}
     <table class="morph-table">
       <thead>
-        <tr><th>Contact</th><th>Source</th><th>Joined</th><th>Last order</th><th class="text-right">Orders</th><th class="text-right">Spent</th></tr>
+        <tr><th>Customer</th><th>Source</th><th>Joined</th><th>Last order</th><th class="text-right">Orders</th><th class="text-right">Spent</th></tr>
       </thead>
       <tbody>
         {% for c in customers %}
@@ -71,13 +71,8 @@
       </tbody>
     </table>
     {% else %}
-    <div class="card-padded text-center py-16">
-      <i data-lucide="users" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">No contacts yet</h3>
-      <a href="{% url 'admin_dashboard:customer_new' %}" class="btn btn-primary mt-4 inline-flex">
-        <i data-lucide="plus" class="h-4 w-4"></i> Add contact
-      </a>
-    </div>
+    {% url 'admin_dashboard:customer_new' as add_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="users" title="No customers yet" hint="They'll appear here after their first order, signup, or lead capture." action_url=add_url action_label="Add a customer" %}
     {% endif %}
   </div>
 

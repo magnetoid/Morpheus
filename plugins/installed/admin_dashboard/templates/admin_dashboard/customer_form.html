@@ -1,20 +1,20 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}{% if customer %}{{ customer.email }}{% else %}New contact{% endif %} · Morpheus{% endblock %}
+{% block title %}{% if customer %}{{ customer.email }}{% else %}New customer{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
 
   <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Contacts</a>
+    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Customers</a>
     <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
     <span class="font-medium text-[color:var(--text)]">
-      {% if customer %}{{ customer.email }}{% else %}New contact{% endif %}
+      {% if customer %}{{ customer.email }}{% else %}New customer{% endif %}
     </span>
   </div>
 
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-semibold">
-      {% if customer %}{{ customer.full_name }}{% else %}Add contact{% endif %}
+      {% if customer %}{{ customer.full_name }}{% else %}Add customer{% endif %}
     </h1>
     <div class="flex items-center gap-2">
       {% if customer and not customer.is_staff and not customer.is_superuser %}

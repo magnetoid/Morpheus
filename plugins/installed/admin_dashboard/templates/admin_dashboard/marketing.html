@@ -47,14 +47,8 @@
       </tbody>
     </table>
     {% else %}
-    <div class="card-padded text-center py-16">
-      <i data-lucide="megaphone" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">No coupons yet</h3>
-      <p class="text-sm text-[color:var(--text-muted)] mt-1">Create your first coupon to get started.</p>
-      <a href="{% url 'admin_dashboard:coupon_new' %}" class="btn btn-primary mt-4 inline-flex">
-        <i data-lucide="plus" class="h-4 w-4"></i> New coupon
-      </a>
-    </div>
+    {% url 'admin_dashboard:coupon_new' as add_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="megaphone" title="No coupons yet" hint="Create your first coupon to get started." action_url=add_url action_label="New coupon" %}
     {% endif %}
   </div>
 </div>

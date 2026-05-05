@@ -169,10 +169,12 @@
     <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products</a>
     <div class="nav-children {% if active_nav == 'products' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' %}active{% endif %}">All products</a>
+      {% if 'advanced_ecommerce' in active_plugins %}
       <a href="/dashboard/apps/advanced_ecommerce/bulk-price/" class="nav-link">Bulk price edit</a>
+      {% endif %}
     </div>
 
-    <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'customers' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Contacts</a>
+    <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'customers' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Customers</a>
     <a href="{% url 'admin_dashboard:marketing' %}" class="nav-link {% if active_nav == 'marketing' %}active{% endif %}"><i data-lucide="megaphone" class="h-4 w-4"></i> Marketing</a>
     <a href="{% url 'admin_dashboard:analytics' %}" class="nav-link {% if active_nav == 'analytics' %}active{% endif %}"><i data-lucide="bar-chart-2" class="h-4 w-4"></i> Analytics</a>
 

@@ -66,8 +66,8 @@ class Customer(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
     class Meta:
-        verbose_name = 'Contact'
-        verbose_name_plural = 'Contacts'
+        verbose_name = 'Customer'
+        verbose_name_plural = 'Customers'
         ordering = ['-created_at']
 
     def __str__(self):
