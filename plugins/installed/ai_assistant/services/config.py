@@ -47,12 +47,25 @@ _DEFAULT_MODELS = {
 
 
 def _plugin():
-    """Return the ai_assistant plugin instance, or None if it isn't loaded."""
+    """Return the ai_assistant plugin instance, or None if it isn't loaded.
+
+    The registry historically exposed both ``get`` and ``get_plugin`` —
+    different builds in flight have only one. Try both before giving up.
+    """
     try:
         from plugins.registry import plugin_registry
-        return plugin_registry.get_plugin('ai_assistant')
-    except Exception:  # noqa: BLE001 — registry not ready in early boot or tests
+    except Exception:  # noqa: BLE001
         return None
+    for attr in ('get', 'get_plugin'):
+        fn = getattr(plugin_registry, attr, None)
+        if callable(fn):
+            try:
+                p = fn('ai_assistant')
+            except Exception:  # noqa: BLE001
+                continue
+            if p is not None:
+                return p
+    return None
 
 
 def _cfg(plugin, key: str) -> str:

@@ -471,9 +471,41 @@ def get_llm_provider(name: str | None = None, *, model: str | None = None) -> LL
 
     cls = _PROVIDER_CLASSES.get(chosen)
     if cls is None:
-        return MockLLMProvider()
+        return _make_unconfigured_mock(
+            f'No AI provider selected. Open Settings → AI providers and pick one.'
+        )
     try:
         return cls(model=model)
     except Exception as e:  # noqa: BLE001
         logger.warning('%s provider unavailable, using mock: %s', chosen, e)
-        return MockLLMProvider()
+        return _make_unconfigured_mock(
+            f'AI provider {chosen!r} is selected but its API key is missing or '
+            f'invalid. Open Settings → AI providers, paste a real key, and click '
+            f'Save. (Underlying error: {e})'
+        )
+
+
+class _UnconfiguredProvider(LLMProvider):
+    """Returns a fixed help message every time. Used when the real provider
+    can't be constructed — surfaces config guidance to the dashboard chat
+    instead of echoing the user's input."""
+
+    name = 'unconfigured'
+
+    def __init__(self, message: str) -> None:
+        self.model = 'unconfigured'
+        self._message = message
+
+    def respond(
+        self,
+        *,
+        messages: list[LLMMessage],
+        tools: list[Any] | None = None,
+        temperature: float = 0.3,
+        max_tokens: int = 1024,
+    ) -> LLMResponse:
+        return LLMResponse(text=self._message, model=self.model)
+
+
+def _make_unconfigured_mock(message: str) -> LLMProvider:
+    return _UnconfiguredProvider(message)
