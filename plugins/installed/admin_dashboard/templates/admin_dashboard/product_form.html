@@ -37,10 +37,10 @@
   </div>
   {% endif %}
 
-  <form method="post" id="product-form" class="space-y-4">
+  <form method="post" id="product-form" class="space-y-4" enctype="multipart/form-data">
     {% csrf_token %}
 
-    <div class="card card-padded space-y-3">
+    <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
       <h2 class="font-semibold text-sm">Basics</h2>
       <div>
         <label class="block text-sm font-medium mb-1">Name</label>
@@ -89,7 +89,7 @@
       </div>
     </div>
 
-    <div class="card card-padded space-y-3">
+    <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
       <h2 class="font-semibold text-sm">Pricing</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
@@ -108,7 +108,10 @@
       </div>
     </div>
 
-    <div class="card card-padded space-y-3">
+    {# Inventory & shipping — full section visible for physical products
+       (simple, variable, bundle). For digital we render a slim "Delivery"
+       card below instead, since weight + shipping don't apply. #}
+    <div class="card card-padded space-y-3" data-pt-show="simple,variable,bundle">
       <h2 class="font-semibold text-sm">Inventory &amp; shipping</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
@@ -145,7 +148,62 @@
       </div>
     </div>
 
-    <details class="card">
+    {# Digital delivery — only when product_type == 'digital'. Replaces
+       weight/shipping with the file the customer downloads. #}
+    <div class="card card-padded space-y-3" data-pt-show="digital">
+      <h2 class="font-semibold text-sm">Digital delivery</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Customers receive an email with a token-protected download link after the
+        order is paid. Token TTL + max-downloads-per-token are configured in
+        <a href="/dashboard/settings/general/" class="underline">Settings → Digital downloads</a>.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Vendor</label>
+          <select name="vendor" class="input">
+            <option value="">— None —</option>
+            {% for v in vendors %}
+            <option value="{{ v.id }}" {% if form.vendor.value == v.id %}selected{% endif %}>{{ v.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Downloadable file</label>
+        {% if product and product.digital_file %}
+        <p class="text-sm mb-2 flex items-center gap-2">
+          <i data-lucide="file" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+          <a href="{{ product.digital_file.url }}" class="underline" target="_blank" rel="noopener">
+            {{ product.digital_file.name }}
+          </a>
+        </p>
+        <label class="inline-flex items-center gap-2 text-xs text-[color:var(--text-muted)] mb-2">
+          <input type="checkbox" name="digital_file_clear"> Remove the current file
+        </label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-2">Upload a new file below to replace the current one.</p>
+        {% endif %}
+        <input type="file" name="digital_file" class="input" style="padding:.4rem .55rem;">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">
+          Common formats: PDF, EPUB, ZIP, MP3, MP4, JPG. Stored encrypted at rest;
+          merchants serve via short-lived tokens, never a public URL.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-4 pt-1">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable (digital sales tax / VAT)
+        </label>
+      </div>
+      {# Hidden shadow inputs ensure the form payload still includes the
+         physical-only fields with safe defaults — otherwise removing the
+         section would drop them entirely on save. #}
+      <input type="hidden" name="track_inventory" value="">
+      <input type="hidden" name="requires_shipping" value="">
+    </div>
+
+    <details class="card" data-pt-show="simple,variable,digital,bundle">
       <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
         <div>
           <h2 class="font-semibold text-sm">Search engine optimisation</h2>
@@ -322,7 +380,7 @@
     </form>
   </div>
 
-  <div class="card">
+  <div class="card" data-pt-show="variable,bundle">
     <div class="card-padded flex items-center justify-between">
       <div>
         <h2 class="font-semibold text-sm">Variants</h2>
@@ -367,4 +425,28 @@
   {% endif %}
 
 </div>
+
+<script>
+(function () {
+  // Show / hide product-form sections based on the current product_type.
+  // Each section opts in via `data-pt-show="comma,separated,types"`.
+  // Sections without the attribute always render.
+  var sel = document.querySelector('select[name="product_type"]');
+  if (!sel) return;
+  var sections = document.querySelectorAll('[data-pt-show]');
+  function apply() {
+    var current = (sel.value || 'simple').trim();
+    sections.forEach(function (el) {
+      var allowed = (el.getAttribute('data-pt-show') || '').split(',').map(function (s) { return s.trim(); });
+      el.hidden = allowed.indexOf(current) === -1;
+    });
+    // Re-render lucide icons in case any were just unhidden.
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+  sel.addEventListener('change', apply);
+  apply();
+})();
+</script>
 {% endblock %}

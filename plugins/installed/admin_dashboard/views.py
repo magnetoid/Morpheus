@@ -375,7 +375,7 @@ def _product_form_choices():
 @staff_member_required
 def product_new(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
-        form = ProductForm(request.POST)
+        form = ProductForm(request.POST, files=request.FILES)
         if form.is_valid():
             product = form.save()
             messages.success(request, f'Product "{product.name}" created.')
@@ -397,7 +397,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
     product = get_object_or_404(Product, pk=product_id)
     if request.method == 'POST':
-        form = ProductForm(request.POST, instance=product)
+        form = ProductForm(request.POST, files=request.FILES, instance=product)
         if form.is_valid():
             form.save()
             messages.success(request, 'Product saved.')

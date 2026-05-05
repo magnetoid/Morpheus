@@ -64,6 +64,12 @@ class ProductForm(forms.Form):
     )
     weight_unit = forms.CharField(max_length=5, required=False, initial='kg')
 
+    # Digital products: file upload + delivery toggles. Only persisted
+    # when product_type == 'digital'; the front-end hides this section
+    # for non-digital products.
+    digital_file = forms.FileField(required=False)
+    digital_file_clear = forms.BooleanField(required=False)
+
     # ── SEO — basic ─────────────────────────────────────────────────────
     meta_title = forms.CharField(max_length=200, required=False)
     meta_description = forms.CharField(widget=forms.Textarea, required=False)
@@ -202,6 +208,26 @@ class ProductForm(forms.Form):
             product.vendor = Vendor.objects.filter(pk=cd['vendor']).first()
         else:
             product.vendor = None
+
+        # Digital products don't ship — force the related flags off so a
+        # merchant can't accidentally save a digital product as needing
+        # shipping (and so tax/shipping calculation paths skip them).
+        if cd['product_type'] == 'digital':
+            product.requires_shipping = False
+            product.weight = None
+            product.weight_unit = ''
+
+        # Digital file: upload, clear, or leave alone. Only meaningful
+        # when the product is digital — otherwise we ignore it (so
+        # toggling type doesn't unexpectedly drop the file).
+        if hasattr(product, 'digital_file') and cd['product_type'] == 'digital':
+            if cd.get('digital_file_clear'):
+                if product.digital_file:
+                    product.digital_file.delete(save=False)
+                product.digital_file = None
+            new_file = self.files.get('digital_file') if hasattr(self, 'files') else None
+            if new_file:
+                product.digital_file = new_file
 
         if not product.slug:
             product.slug = slugify(product.name)[:300] or 'product'
