@@ -40,19 +40,37 @@
     <button class="btn btn-primary">Apply</button>
   </form>
 
+  {# Bulk POST form. Lives outside the GET filter form; row checkboxes #}
+  {# escape to it via form="bulk-form" so HTML5 lets them post here. #}
+  <form id="bulk-form" method="post" action="{% url 'admin_dashboard:orders_bulk' %}" style="display:none;">
+    {% csrf_token %}
+  </form>
+  <div data-bulk-bar
+       data-bulk-form-id="bulk-form" data-bulk-entity="order" data-bulk-entity-plural="orders"
+       hidden
+       class="card card-padded flex flex-wrap items-center justify-between gap-3"
+       style="position: sticky; top: 0; z-index: 30; background: var(--surface); border-color: var(--border-strong);">
+    <span class="text-sm font-medium" data-bulk-count>0 selected</span>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" class="btn text-sm" data-bulk-action="mark_paid" disabled>Mark paid</button>
+      <button type="button" class="btn btn-danger text-sm" data-bulk-action="cancel" data-bulk-danger disabled>Cancel</button>
+      <button type="button" class="btn text-sm" data-bulk-action="export" disabled>Export</button>
+    </div>
+  </div>
+
   <div class="card overflow-hidden">
     {% if orders %}
     <table class="morph-table">
       <thead>
         <tr>
-          <th class="w-8"><input type="checkbox" class="rounded border-[color:var(--border)]"></th>
+          <th class="w-8"><input type="checkbox" data-bulk-all class="rounded border-[color:var(--border)]"></th>
           <th>Order</th><th>Date</th><th>Customer</th><th>Status</th><th>Payment</th><th class="text-right">Total</th>
         </tr>
       </thead>
       <tbody>
         {% for o in orders %}
         <tr>
-          <td><input type="checkbox" class="rounded border-[color:var(--border)]"></td>
+          <td><input type="checkbox" name="ids" value="{{ o.id }}" form="bulk-form" data-bulk-row class="rounded border-[color:var(--border)]"></td>
           <td><a href="{% url 'admin_dashboard:order_detail' o.order_number %}" class="font-medium hover:underline">#{{ o.order_number }}</a></td>
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ o.placed_at|date:"M j, Y H:i" }}</td>
           <td class="text-[color:var(--text-muted)]">{{ o.email|default:o.customer.email|default:"—" }}</td>

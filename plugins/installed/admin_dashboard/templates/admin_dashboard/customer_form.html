@@ -19,7 +19,7 @@
     <div class="flex items-center gap-2">
       {% if customer and not customer.is_staff and not customer.is_superuser %}
       <form method="post" action="{% url 'admin_dashboard:customer_delete' customer_id=customer.id %}"
-            onsubmit="return confirm('Delete this contact? This cannot be undone.');">
+            data-confirm="Delete this customer? This cannot be undone." data-confirm-title="Delete customer" data-confirm-cta="Delete" data-confirm-danger>
         {% csrf_token %}
         <button type="submit" class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
       </form>

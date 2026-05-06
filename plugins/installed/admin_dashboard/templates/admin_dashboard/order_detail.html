@@ -75,7 +75,7 @@
           </a>
           {% if order.status != 'cancelled' and order.status != 'refunded' %}
           <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}"
-                onsubmit="return confirm('Cancel this order?');">
+                data-confirm="Cancel this order? This will release any reserved inventory." data-confirm-title="Cancel order" data-confirm-cta="Cancel order" data-confirm-danger>
             {% csrf_token %}<input type="hidden" name="action" value="cancel">
             <button class="dropdown-item dropdown-item-danger"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel order</button>
           </form>

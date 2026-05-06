@@ -19,7 +19,7 @@
     <div class="flex items-center gap-2">
       {% if coupon %}
       <form method="post" action="{% url 'admin_dashboard:coupon_delete' coupon_id=coupon.id %}"
-            onsubmit="return confirm('Delete this coupon?');">
+            data-confirm="Delete this coupon?" data-confirm-title="Delete coupon" data-confirm-cta="Delete" data-confirm-danger>
         {% csrf_token %}
         <button class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
       </form>

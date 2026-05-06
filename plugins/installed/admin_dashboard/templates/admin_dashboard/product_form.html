@@ -19,7 +19,7 @@
     <div class="flex items-center gap-2">
       {% if product %}
       <form method="post" action="{% url 'admin_dashboard:product_delete' product_id=product.id %}"
-            onsubmit="return confirm('Delete this product? This cannot be undone.');">
+            data-confirm="Delete this product? This cannot be undone." data-confirm-title="Delete product" data-confirm-cta="Delete" data-confirm-danger>
         {% csrf_token %}
         <button type="submit" class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
       </form>
@@ -348,7 +348,7 @@
             </form>
             {% endif %}
             <form method="post" action="{% url 'admin_dashboard:image_delete' product_id=product.id image_id=img.id %}"
-                  onsubmit="return confirm('Delete this image?');">
+                  data-confirm="Delete this image?" data-confirm-cta="Delete" data-confirm-danger>
               {% csrf_token %}
               <button class="btn btn-ghost p-1" aria-label="Delete"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
             </form>

@@ -7,6 +7,7 @@
 <title>{% block title %}Morpheus admin{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
+<script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
 <style>
   :root {
     --bg:           #f6f6f7;
@@ -281,6 +282,9 @@
     {% block content %}{% endblock %}
   </main>
 </div>
+
+{# Singleton modal — Morph.confirm() opens it via dashboard.js. #}
+{% include "admin_dashboard/_confirm_modal.html" %}
 
 <script>
   lucide.createIcons();

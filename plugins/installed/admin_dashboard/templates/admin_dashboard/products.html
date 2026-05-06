@@ -30,19 +30,36 @@
     <button class="btn btn-primary">Apply</button>
   </form>
 
+  <form id="bulk-form" method="post" action="{% url 'admin_dashboard:products_bulk' %}" style="display:none;">
+    {% csrf_token %}
+  </form>
+  <div data-bulk-bar
+       data-bulk-form-id="bulk-form" data-bulk-entity="product" data-bulk-entity-plural="products"
+       hidden
+       class="card card-padded flex flex-wrap items-center justify-between gap-3"
+       style="position: sticky; top: 0; z-index: 30; background: var(--surface); border-color: var(--border-strong);">
+    <span class="text-sm font-medium" data-bulk-count>0 selected</span>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" class="btn text-sm" data-bulk-action="activate" disabled>Activate</button>
+      <button type="button" class="btn text-sm" data-bulk-action="draft" disabled>Mark draft</button>
+      <button type="button" class="btn text-sm" data-bulk-action="archive" disabled>Archive</button>
+      <button type="button" class="btn btn-danger text-sm" data-bulk-action="delete" data-bulk-danger disabled>Delete</button>
+    </div>
+  </div>
+
   <div class="card overflow-hidden">
     {% if products %}
     <table class="morph-table">
       <thead>
         <tr>
-          <th class="w-8"><input type="checkbox" class="rounded border-[color:var(--border)]"></th>
+          <th class="w-8"><input type="checkbox" data-bulk-all class="rounded border-[color:var(--border)]"></th>
           <th>Product</th><th>SKU</th><th>Category</th><th>Vendor</th><th>Status</th><th class="text-right">Price</th>
         </tr>
       </thead>
       <tbody>
         {% for p in products %}
         <tr>
-          <td><input type="checkbox" class="rounded border-[color:var(--border)]"></td>
+          <td><input type="checkbox" name="ids" value="{{ p.id }}" form="bulk-form" data-bulk-row class="rounded border-[color:var(--border)]"></td>
           <td>
             <a href="{% url 'admin_dashboard:product_edit' product_id=p.id %}" class="flex items-center gap-3">
               <div class="h-9 w-9 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] flex items-center justify-center">

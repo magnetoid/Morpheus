@@ -1,0 +1,32 @@
+{# Sticky 'N selected' action bar. Wired by Morph.bulk.init in #}
+{# dashboard.js. Hidden until at least one row is checked. #}
+{# #}
+{# Caller renders a sibling <form id="{form_id}" method="post" action="…"> #}
+{# (outside the GET filter form), and row checkboxes use #}
+{# `form="{form_id}"` + `data-bulk-row` so they post to it. #}
+{# #}
+{# Params: #}
+{#   form_id          — the form's HTML id (default "bulk-form") #}
+{#   entity           — singular noun for copy ("order", "product", "customer") #}
+{#   entity_plural    — plural form (defaults to entity + "s") #}
+{#   actions          — list of dicts: {value, label, danger (bool, optional), #}
+{#                       confirm_message (optional)} #}
+<div data-bulk-bar
+     data-bulk-form-id="{{ form_id|default:'bulk-form' }}"
+     data-bulk-entity="{{ entity|default:'item' }}"
+     data-bulk-entity-plural="{{ entity_plural|default:'' }}"
+     hidden
+     class="card card-padded flex flex-wrap items-center justify-between gap-3"
+     style="position: sticky; top: 0; z-index: 30; background: var(--surface); border-color: var(--border-strong);">
+  <span class="text-sm font-medium" data-bulk-count>0 selected</span>
+  <div class="flex flex-wrap items-center gap-2">
+    {% for a in actions %}
+    <button type="button"
+            class="btn{% if a.danger %} btn-danger{% endif %} text-sm"
+            data-bulk-action="{{ a.value }}"
+            {% if a.danger %}data-bulk-danger{% endif %}
+            {% if a.confirm_message %}data-bulk-confirm-message="{{ a.confirm_message }}"{% endif %}
+            disabled>{{ a.label }}</button>
+    {% endfor %}
+  </div>
+</div>

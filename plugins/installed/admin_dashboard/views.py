@@ -1551,3 +1551,136 @@ def return_detail(request: HttpRequest, rma_id) -> HttpResponse:
         'error': error,
         'active_nav': 'orders',
     })
+
+
+# ─── Bulk actions on list pages ───────────────────────────────────────────────
+
+
+def _bulk_ids(request: HttpRequest, field: str = 'ids') -> list[str]:
+    """Extract a sanitised list of UUID-like ids from POST.
+
+    Caps at 500 so a runaway script can't ask us to delete 50k rows in
+    one shot. Filters empty entries.
+    """
+    raw = request.POST.getlist(field)
+    out = [s.strip() for s in raw if s and s.strip()]
+    return out[:500]
+
+
+@staff_member_required
+def orders_bulk(request: HttpRequest) -> HttpResponse:
+    """Bulk action endpoint for the orders list page.
+
+    Supported actions: ``mark_paid`` (flip payment_status to paid),
+    ``cancel`` (transition to cancelled, fires the cancel hook),
+    ``export`` (redirect to the importers/csv export with a pre-filtered
+    set — placeholder; falls back to the full export).
+    """
+    if request.method != 'POST':
+        return redirect('admin_dashboard:orders')
+    from plugins.installed.orders.models import Order
+
+    action = (request.POST.get('action') or '').strip()
+    ids = _bulk_ids(request)
+    if not ids:
+        messages.warning(request, 'No orders selected.')
+        return redirect('admin_dashboard:orders')
+
+    qs = Order.objects.filter(pk__in=ids)
+    count = qs.count()
+    if count == 0:
+        messages.warning(request, 'No matching orders found.')
+        return redirect('admin_dashboard:orders')
+
+    if action == 'mark_paid':
+        qs.update(payment_status='paid')
+        messages.success(request, f'Marked {count} order(s) as paid.')
+    elif action == 'cancel':
+        # Transition each order — FSM is per-instance so we loop.
+        ok = 0
+        for o in qs:
+            try:
+                o.status = 'cancelled'
+                o.save(update_fields=['status'])
+                ok += 1
+            except Exception:  # noqa: BLE001
+                continue
+        messages.success(request, f'Cancelled {ok} order(s).')
+    elif action == 'export':
+        return redirect('/dashboard/apps/importers/csv/')
+    else:
+        messages.warning(request, f'Unknown action: {action!r}.')
+    return redirect('admin_dashboard:orders')
+
+
+@staff_member_required
+def products_bulk(request: HttpRequest) -> HttpResponse:
+    """Bulk action endpoint for the products list page.
+
+    Supported: ``activate`` / ``draft`` / ``archive`` (status switches),
+    ``delete`` (hard delete).
+    """
+    if request.method != 'POST':
+        return redirect('admin_dashboard:products')
+    from plugins.installed.catalog.models import Product
+
+    action = (request.POST.get('action') or '').strip()
+    ids = _bulk_ids(request)
+    if not ids:
+        messages.warning(request, 'No products selected.')
+        return redirect('admin_dashboard:products')
+
+    qs = Product.objects.filter(pk__in=ids)
+    count = qs.count()
+    if count == 0:
+        messages.warning(request, 'No matching products found.')
+        return redirect('admin_dashboard:products')
+
+    status_map = {'activate': 'active', 'draft': 'draft', 'archive': 'archived'}
+    if action in status_map:
+        qs.update(status=status_map[action])
+        messages.success(request, f'Updated {count} product(s) to {status_map[action]}.')
+    elif action == 'delete':
+        qs.delete()
+        messages.success(request, f'Deleted {count} product(s).')
+    else:
+        messages.warning(request, f'Unknown action: {action!r}.')
+    return redirect('admin_dashboard:products')
+
+
+@staff_member_required
+def customers_bulk(request: HttpRequest) -> HttpResponse:
+    """Bulk action endpoint for the customers list page.
+
+    Supported: ``mark_marketing_yes`` / ``mark_marketing_no`` (toggle
+    accepts_marketing), ``delete`` (hard delete — guarded by the modal).
+    """
+    if request.method != 'POST':
+        return redirect('admin_dashboard:customers')
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    action = (request.POST.get('action') or '').strip()
+    ids = _bulk_ids(request)
+    if not ids:
+        messages.warning(request, 'No customers selected.')
+        return redirect('admin_dashboard:customers')
+
+    qs = User.objects.filter(pk__in=ids)
+    count = qs.count()
+    if count == 0:
+        messages.warning(request, 'No matching customers found.')
+        return redirect('admin_dashboard:customers')
+
+    if action == 'mark_marketing_yes':
+        qs.update(accepts_marketing=True)
+        messages.success(request, f'{count} customer(s) opted in to marketing.')
+    elif action == 'mark_marketing_no':
+        qs.update(accepts_marketing=False)
+        messages.success(request, f'{count} customer(s) opted out of marketing.')
+    elif action == 'delete':
+        qs.delete()
+        messages.success(request, f'Deleted {count} customer(s).')
+    else:
+        messages.warning(request, f'Unknown action: {action!r}.')
+    return redirect('admin_dashboard:customers')

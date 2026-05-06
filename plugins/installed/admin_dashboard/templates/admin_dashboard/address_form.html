@@ -21,7 +21,7 @@
     <div class="flex items-center gap-2">
       {% if address %}
       <form method="post" action="{% url 'admin_dashboard:address_delete' customer_id=customer.id address_id=address.id %}"
-            onsubmit="return confirm('Delete this address?');">
+            data-confirm="Delete this address?" data-confirm-title="Delete address" data-confirm-cta="Delete" data-confirm-danger>
         {% csrf_token %}
         <button class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
       </form>

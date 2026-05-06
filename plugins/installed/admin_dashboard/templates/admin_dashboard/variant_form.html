@@ -21,7 +21,7 @@
     <div class="flex items-center gap-2">
       {% if variant %}
       <form method="post" action="{% url 'admin_dashboard:variant_delete' product_id=product.id variant_id=variant.id %}"
-            onsubmit="return confirm('Delete this variant?');">
+            data-confirm="Delete this variant?" data-confirm-title="Delete variant" data-confirm-cta="Delete" data-confirm-danger>
         {% csrf_token %}
         <button class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
       </form>

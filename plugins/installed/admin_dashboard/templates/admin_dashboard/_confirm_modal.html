@@ -1,0 +1,20 @@
+{# Singleton confirm modal driven by Morph.confirm in dashboard.js. #}
+{# Attach `data-confirm="message"` to any <form> to route its submit #}
+{# through this modal instead of window.confirm(). Optional attrs: #}
+{#   data-confirm-title  data-confirm-cta  data-confirm-danger #}
+<div id="morph-confirm-modal" hidden class="fixed inset-0 z-50 flex items-center justify-center"
+     style="font-family:inherit;">
+  <div data-mc-backdrop class="absolute inset-0" style="background:rgba(0,0,0,.45);"></div>
+  <div role="dialog" aria-modal="true" aria-labelledby="mc-title"
+       class="card relative" style="max-width:420px;width:calc(100% - 2rem);">
+    <div class="card-padded space-y-3">
+      <h2 id="mc-title" data-mc-title class="font-semibold text-base">Are you sure?</h2>
+      <p data-mc-message class="text-sm text-[color:var(--text-muted)]"></p>
+    </div>
+    <div class="card-padded flex items-center justify-end gap-2"
+         style="border-top:1px solid var(--border);">
+      <button type="button" data-mc-cancel class="btn">Cancel</button>
+      <button type="button" data-mc-confirm class="btn btn-primary">Confirm</button>
+    </div>
+  </div>
+</div>

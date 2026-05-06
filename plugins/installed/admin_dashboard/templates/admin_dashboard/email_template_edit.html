@@ -28,11 +28,17 @@
   </div>
   <div class="flex items-center justify-between pt-2 border-t border-[color:var(--border)]">
     <button type="submit" class="btn btn-primary">Save</button>
-    {% if is_customised %}
-    <button type="submit" name="action" value="reset" class="btn btn-secondary text-sm" onclick="return confirm('Reset to the default? Your customisations will be lost.');">Reset to default</button>
-    {% endif %}
   </div>
 </form>
+{% if is_customised %}
+<form method="post" class="max-w-3xl flex justify-end mt-2"
+      data-confirm="Reset to the default? Your customisations will be lost."
+      data-confirm-title="Reset email template" data-confirm-cta="Reset" data-confirm-danger>
+  {% csrf_token %}
+  <input type="hidden" name="action" value="reset">
+  <button type="submit" class="btn btn-secondary text-sm">Reset to default</button>
+</form>
+{% endif %}
 
 <details class="mt-6 card card-padded max-w-3xl">
   <summary class="cursor-pointer font-semibold">Available placeholders</summary>
