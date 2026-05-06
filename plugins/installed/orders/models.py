@@ -19,6 +19,11 @@ class Cart(models.Model):
     coupon = models.ForeignKey(
         'marketing.Coupon', on_delete=models.SET_NULL, null=True, blank=True
     )
+    gift_card = models.ForeignKey(
+        'gift_cards.GiftCard', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+        help_text='Customer-applied gift card; redeemed against the cart at order time.',
+    )
     notes = models.TextField(blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

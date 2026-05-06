@@ -56,6 +56,27 @@
           <span>Subtotal</span>
           <span>{{ cart.subtotal|money }}</span>
         </div>
+
+        {# Gift card row — applied chip if present, input form if not. #}
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule);">
+          {% if cart.giftCard %}
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:.5rem; font-size:.9rem;">
+            <span><strong>Gift card</strong> <code style="font-size:.85em;">{{ cart.giftCard.code }}</code></span>
+            <form method="post" action="/checkout/gift-card/remove/" style="margin:0;">{% csrf_token %}<button class="btn btn-ghost text-xs" style="padding:.2rem .4rem;">Remove</button></form>
+          </div>
+          <p class="meta" style="margin-top:.3rem;">Balance: {{ cart.giftCard.balance }} {{ cart.giftCard.currency }}. Applied at order time.</p>
+          {% else %}
+          <details>
+            <summary style="cursor:pointer; font-size:.9rem; color:var(--ink-2);">Have a gift card?</summary>
+            <form method="post" action="/checkout/gift-card/apply/" style="display:flex; gap:.5rem; margin-top:.65rem;">
+              {% csrf_token %}
+              <input name="code" placeholder="Enter code" class="ck-input" style="flex:1; height:40px;" maxlength="24" required>
+              <button class="btn btn-secondary" style="height:40px; padding:0 1.2rem;">Apply</button>
+            </form>
+          </details>
+          {% endif %}
+        </div>
+
         <p class="meta" style="margin-top: .8rem;">Shipping + tax calculated next.</p>
         {% else %}
         <p class="meta" style="margin: 1rem 0;">Your cart is empty.</p>

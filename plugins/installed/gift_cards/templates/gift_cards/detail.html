@@ -1,0 +1,89 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}{{ card.code }} · Gift cards · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'gift_cards:list' %}" class="hover:underline">Gift cards</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]"><code>{{ card.code }}</code></span>
+  </div>
+
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <h1 class="text-xl font-semibold"><code>{{ card.code }}</code></h1>
+      {% if card.state == 'active' %}<span class="pill pill-success">Active</span>
+      {% elif card.state == 'disabled' %}<span class="pill pill-neutral">Disabled</span>
+      {% else %}<span class="pill pill-warn">{{ card.get_state_display }}</span>{% endif %}
+    </div>
+    <div class="flex items-center gap-2">
+      {% if card.state == 'active' %}
+      <form method="post"
+            data-confirm="Disable this gift card? It can't be redeemed until you reactivate it."
+            data-confirm-title="Disable card" data-confirm-cta="Disable" data-confirm-danger>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="disable">
+        <button class="btn"><i data-lucide="lock" class="h-4 w-4"></i> Disable</button>
+      </form>
+      {% elif card.state == 'disabled' %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reactivate">
+        <button class="btn btn-primary"><i data-lucide="check" class="h-4 w-4"></i> Reactivate</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Initial value</p>
+      <p class="text-2xl font-semibold mt-1">{{ card.initial_value|money }}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Current balance</p>
+      <p class="text-2xl font-semibold mt-1">{{ card.balance|money }}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Issued</p>
+      <p class="text-sm mt-1">{{ card.created_at|date:"M j, Y H:i" }}</p>
+      {% if card.expires_at %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">Expires {{ card.expires_at|date:"M j, Y" }}</p>{% endif %}
+    </div>
+  </div>
+
+  {% if card.issued_to_email or card.note %}
+  <div class="card card-padded space-y-2">
+    {% if card.issued_to_email %}<p class="text-sm"><span class="text-[color:var(--text-muted)]">Recipient:</span> {{ card.issued_to_email }}</p>{% endif %}
+    {% if card.note %}<p class="text-sm"><span class="text-[color:var(--text-muted)]">Note:</span> {{ card.note }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold text-sm">Ledger</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Append-only audit trail of every balance change.</p>
+    </div>
+    {% if ledger %}
+    <table class="morph-table">
+      <thead><tr><th>When</th><th>Kind</th><th class="text-right">Change</th><th class="text-right">Balance after</th><th>Reference</th></tr></thead>
+      <tbody>
+        {% for l in ledger %}
+        <tr>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ l.created_at|date:"M j, Y H:i" }}</td>
+          <td>{{ l.get_kind_display }}</td>
+          <td class="text-right {% if l.kind == 'redeem' or l.kind == 'expire' %}text-[color:var(--danger)]{% else %}text-[color:var(--success)]{% endif %}">{{ l.amount_change|money }}</td>
+          <td class="text-right">{{ l.balance_after|money }}</td>
+          <td class="text-[color:var(--text-muted)]"><code class="text-xs">{{ l.reference|default:"—" }}</code></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No ledger entries yet.</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -299,11 +299,42 @@ class OrderService:
         except Exception as e:  # noqa: BLE001
             logger.warning('orders: promotions/coupon recording failed: %s', e)
 
+        # Redeem the applied gift card. Wrapped tightly: a race (card
+        # disabled between cart-apply and order-create) must not break
+        # checkout — the order stands; the merchant gets a flagged
+        # warning in observability instead.
+        gift_card_meta = (breakdown.get('meta') or {}).get('gift_card') or {}
+        if gift_card_meta and getattr(cart, 'gift_card_id', None):
+            try:
+                from plugins.installed.gift_cards.services import redeem as gc_redeem
+                applied_amount = Money(
+                    Decimal(str(gift_card_meta.get('amount') or '0')),
+                    currency,
+                )
+                if applied_amount.amount > 0:
+                    gc_redeem(
+                        code=gift_card_meta.get('code') or '',
+                        amount=applied_amount,
+                        reference=order.order_number,
+                        actor=cart.customer,
+                    )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    'orders: gift-card redeem failed for order %s: %s — '
+                    'order proceeded without gift-card discount',
+                    order.order_number, e, exc_info=True,
+                )
+
         cart.items.all().delete()
-        if cart.coupon_id or (cart.metadata or {}).get('shipping_rate_id'):
+        if (
+            cart.coupon_id
+            or getattr(cart, 'gift_card_id', None)
+            or (cart.metadata or {}).get('shipping_rate_id')
+        ):
             cart.coupon = None
+            cart.gift_card = None
             cart.metadata = {k: v for k, v in (cart.metadata or {}).items() if k != 'shipping_rate_id'}
-            cart.save(update_fields=['coupon', 'metadata', 'updated_at'])
+            cart.save(update_fields=['coupon', 'gift_card', 'metadata', 'updated_at'])
 
         hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)
         return order

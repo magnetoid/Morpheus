@@ -1,0 +1,66 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}Gift cards · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold">Gift cards</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Issue, audit, and disable gift cards. Codes are 16-character A–Z 2–9 (no easily-confused chars).</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'gift_cards:new' %}" class="btn btn-primary">
+        <i data-lucide="plus" class="h-4 w-4"></i> Issue gift card
+      </a>
+    </div>
+  </div>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+      <input name="q" value="{{ search }}" placeholder="Code prefix or full code" class="input input-search">
+    </div>
+    <select name="state" class="input max-w-[180px]">
+      <option value="">All states</option>
+      <option value="active"   {% if state == 'active' %}selected{% endif %}>Active</option>
+      <option value="disabled" {% if state == 'disabled' %}selected{% endif %}>Disabled</option>
+      <option value="expired"  {% if state == 'expired' %}selected{% endif %}>Expired</option>
+    </select>
+    <button class="btn btn-primary">Apply</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    {% if cards %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>Code</th><th>State</th><th class="text-right">Initial</th><th class="text-right">Balance</th><th>Issued to</th><th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in cards %}
+        <tr>
+          <td><a href="{% url 'gift_cards:detail' card_id=c.id %}" class="font-medium hover:underline"><code>{{ c.code }}</code></a></td>
+          <td>
+            {% if c.state == 'active' %}<span class="pill pill-success">Active</span>
+            {% elif c.state == 'disabled' %}<span class="pill pill-neutral">Disabled</span>
+            {% else %}<span class="pill pill-warn">{{ c.get_state_display }}</span>{% endif %}
+          </td>
+          <td class="text-right">{{ c.initial_value|money }}</td>
+          <td class="text-right font-medium">{{ c.balance|money }}</td>
+          <td class="text-[color:var(--text-muted)]">{{ c.issued_to_email|default:"—" }}</td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ c.created_at|date:"M j, Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {% url 'gift_cards:new' as add_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="gift" title="No gift cards yet" hint="Issue a gift card to send a recipient or to test the redemption flow." action_url=add_url action_label="Issue gift card" %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

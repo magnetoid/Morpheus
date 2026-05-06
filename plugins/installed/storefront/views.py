@@ -43,6 +43,7 @@ query Cart {
       variant { name sku }
     }
     coupon { code discountType discountValue }
+    giftCard { code balance currency }
   }
 }
 """
@@ -304,6 +305,48 @@ def checkout(request):
         return render(request, 'storefront/checkout.html', ctx)
     request.session['checkout_address'] = addr
     return redirect('/checkout/shipping/')
+
+
+def checkout_apply_gift_card(request):
+    """POST /checkout/gift-card/apply/ — runs the applyGiftCard mutation
+    and bounces back to whichever step the user came from."""
+    if request.method != 'POST':
+        return redirect('/checkout/')
+    code = (request.POST.get('code') or '').strip().upper()
+    cart_id = request.session.get('cart_id') or ''
+    if cart_id and code:
+        mutation = """
+        mutation Apply($input: ApplyGiftCardInput!) {
+          applyGiftCard(input: $input) { errors { code message } }
+        }
+        """
+        internal_graphql(
+            mutation,
+            variables={'input': {'cartId': cart_id, 'code': code}},
+            request=request,
+        )
+    back = request.META.get('HTTP_REFERER', '/checkout/') or '/checkout/'
+    return redirect(back)
+
+
+def checkout_remove_gift_card(request):
+    """POST /checkout/gift-card/remove/ — clears the applied card."""
+    if request.method != 'POST':
+        return redirect('/checkout/')
+    cart_id = request.session.get('cart_id') or ''
+    if cart_id:
+        mutation = """
+        mutation Remove($input: ApplyGiftCardInput!) {
+          removeGiftCard(input: $input) { errors { code message } }
+        }
+        """
+        internal_graphql(
+            mutation,
+            variables={'input': {'cartId': cart_id, 'code': ''}},
+            request=request,
+        )
+    back = request.META.get('HTTP_REFERER', '/checkout/') or '/checkout/'
+    return redirect(back)
 
 
 def _checkout_base_context(request):

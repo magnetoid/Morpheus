@@ -40,6 +40,12 @@ class ApplyCouponInput:
 
 
 @strawberry.input
+class ApplyGiftCardInput:
+    cart_id: str
+    code: str
+
+
+@strawberry.input
 class CompleteOrderInput:
     cart_id: str
     email: str
@@ -168,6 +174,51 @@ class OrdersMutationExtension:
             pass  # marketing optional
         except Exception:  # noqa: BLE001 — coupon model not yet migrated
             pass
+        return CartPayload(cart=cart, errors=[])
+
+    @strawberry.mutation(description='Apply a gift card to a cart. Discount is applied at order time.')
+    def apply_gift_card(self, input: ApplyGiftCardInput) -> CartPayload:
+        from plugins.installed.orders.models import Cart
+
+        try:
+            cart = Cart.objects.get(pk=input.cart_id)
+        except Cart.DoesNotExist:
+            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+
+        code = (input.code or '').strip().upper()
+        if not code:
+            return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Enter a gift card code.')])
+
+        try:
+            from plugins.installed.gift_cards.services import lookup
+            from django.utils import timezone
+            card = lookup(code)
+            if card is None:
+                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card not found.')])
+            if card.state != 'active':
+                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card is not active.')])
+            if card.expires_at and card.expires_at < timezone.now():
+                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card has expired.')])
+            if card.balance.amount <= 0:
+                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card has no balance left.')])
+            cart.gift_card = card
+            cart.save(update_fields=['gift_card', 'updated_at'])
+        except ImportError:
+            return CartPayload(cart=cart, errors=[ErrorType(code='UNAVAILABLE', message='Gift cards plugin is not installed.')])
+        except Exception as e:  # noqa: BLE001
+            return CartPayload(cart=cart, errors=[ErrorType(code='APPLY_FAILED', message=str(e))])
+        return CartPayload(cart=cart, errors=[])
+
+    @strawberry.mutation(description='Remove the applied gift card from a cart.')
+    def remove_gift_card(self, input: ApplyGiftCardInput) -> CartPayload:
+        # `input.code` is ignored; we just need the cart_id.
+        from plugins.installed.orders.models import Cart
+        try:
+            cart = Cart.objects.get(pk=input.cart_id)
+        except Cart.DoesNotExist:
+            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+        cart.gift_card = None
+        cart.save(update_fields=['gift_card', 'updated_at'])
         return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Complete checkout: create the order, fire order.placed, return the Stripe client_secret.')

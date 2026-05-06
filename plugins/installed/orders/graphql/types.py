@@ -45,6 +45,24 @@ class CartCouponRef:
     discount_value: str
 
 
+@strawberry.type
+class CartGiftCardRef:
+    code: str
+    balance: str
+    currency: str
+
+
+@strawberry.type
+class CartTotalsType:
+    subtotal: MoneyType
+    shipping: MoneyType
+    tax: MoneyType
+    discount: MoneyType
+    total: MoneyType
+    shipping_rate_id: str = ''
+    shipping_rate_name: str = ''
+
+
 @strawberry_django.type(models.OrderItem)
 class OrderItemType:
     id: strawberry.ID
@@ -145,4 +163,15 @@ class CartType:
             code=c.code,
             discount_type=c.discount_type,
             discount_value=str(c.discount_value),
+        )
+
+    @strawberry.field
+    def gift_card(self) -> Optional[CartGiftCardRef]:
+        gc = getattr(self, 'gift_card', None)
+        if gc is None:
+            return None
+        return CartGiftCardRef(
+            code=gc.code,
+            balance=str(gc.balance.amount),
+            currency=str(gc.balance.currency),
         )

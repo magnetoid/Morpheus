@@ -1,0 +1,56 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Issue gift card · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'gift_cards:list' %}" class="hover:underline">Gift cards</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">Issue new card</span>
+  </div>
+
+  <h1 class="text-xl font-semibold">Issue gift card</h1>
+
+  <form method="post" class="card card-padded space-y-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <p class="pill pill-danger">{{ form.non_field_errors }}</p>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Amount</label>
+        <input type="number" name="amount" step="0.01" min="0.01" class="input" required value="{{ form.amount.value|default:'' }}">
+        {% if form.amount.errors %}<p class="field-error">{{ form.amount.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Currency</label>
+        <input type="text" name="currency" class="input" maxlength="3" value="{{ form.currency.value|default:'USD' }}">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Recipient email <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+      <input type="email" name="issued_to_email" class="input" value="{{ form.issued_to_email.value|default:'' }}">
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">Stored on the card so you can search by recipient. Email delivery is a follow-up.</p>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Internal note <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+      <textarea name="note" class="input" rows="2" style="height:auto; padding:.5rem .75rem;">{{ form.note.value|default:'' }}</textarea>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Expires on <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+      <input type="date" name="expires_at" class="input" value="{{ form.expires_at.value|default:'' }}">
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2 border-t border-[color:var(--border)]">
+      <a href="{% url 'gift_cards:list' %}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">Issue card</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
