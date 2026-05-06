@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
 {% block title %}Products · Morpheus{% endblock %}
 
 {% block content %}
@@ -29,6 +30,8 @@
     </select>
     <button class="btn btn-primary">Apply</button>
   </form>
+
+  {% filter_chips q="Search" status="Status" %}
 
   <form id="bulk-form" method="post" action="{% url 'admin_dashboard:products_bulk' %}" style="display:none;">
     {% csrf_token %}

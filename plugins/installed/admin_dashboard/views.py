@@ -289,6 +289,13 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001
         pass
 
+    # First-run checklist — only shown for empty/very-new stores so it
+    # doesn't get in the way once the merchant is rolling. We compute
+    # each step on the fly; cheap counts only. When everything's done
+    # the template hides the whole card.
+    setup_steps = _compute_setup_steps()
+    setup_all_done = all(s['done'] for s in setup_steps) if setup_steps else True
+
     return render(request, 'admin_dashboard/home.html', {
         'metrics': metrics,
         'recent_orders': recent_orders,
@@ -297,9 +304,74 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         'ai_summary': ai_summary,
         'low_stock': low_stock,
         'low_stock_threshold': low_stock_threshold,
+        'setup_steps': setup_steps,
+        'setup_all_done': setup_all_done,
         'active_nav': 'home',
         'period': period,
     })
+
+
+def _compute_setup_steps() -> list:
+    """Build the first-time merchant setup checklist.
+
+    Returns a list of dicts (key, label, hint, url, done). Skipped from
+    the home page entirely when every step is done — see template
+    guard. Cheap: 4 small COUNT queries; runs only on the home view.
+    """
+    steps = []
+    # 1) at least one product
+    has_product = False
+    try:
+        from plugins.installed.catalog.models import Product
+        has_product = Product.objects.exists()
+    except Exception:  # noqa: BLE001
+        pass
+    steps.append({
+        'key': 'product',
+        'label': 'Add your first product',
+        'hint': 'Create a product to put on the shelf.',
+        'url': '/dashboard/products/new/',
+        'done': has_product,
+    })
+    # 2) at least one order (test or real)
+    has_order = False
+    try:
+        from plugins.installed.orders.models import Order
+        has_order = Order.objects.exists()
+    except Exception:  # noqa: BLE001
+        pass
+    steps.append({
+        'key': 'order',
+        'label': 'Receive a test order',
+        'hint': 'Place an order through the storefront, or use Draft orders.',
+        'url': '/dashboard/orders/',
+        'done': has_order,
+    })
+    # 3) AI provider configured
+    ai_done = False
+    try:
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        ai_done = bool(get_provider_config().api_key)
+    except Exception:  # noqa: BLE001
+        pass
+    steps.append({
+        'key': 'ai',
+        'label': 'Connect an AI provider',
+        'hint': 'OpenAI / Anthropic / Gemini / OpenRouter / Ollama.',
+        'url': '/dashboard/settings/ai/',
+        'done': ai_done,
+    })
+    # 4) email sender configured (DEFAULT_FROM_EMAIL)
+    from django.conf import settings as dj_settings
+    email_done = bool(getattr(dj_settings, 'DEFAULT_FROM_EMAIL', '') or '')
+    steps.append({
+        'key': 'email',
+        'label': 'Set a sending email',
+        'hint': 'So order confirmations and receipts can go out.',
+        'url': '/dashboard/settings/general/',
+        'done': email_done,
+    })
+    return steps
 
 
 # ── Orders ────────────────────────────────────────────────────────────────────
@@ -1760,3 +1832,90 @@ def customers_bulk(request: HttpRequest) -> HttpResponse:
     else:
         messages.warning(request, f'Unknown action: {action!r}.')
     return redirect('admin_dashboard:customers')
+
+
+# ─── Cmd+K command palette ────────────────────────────────────────────────────
+
+
+@staff_member_required
+def palette_search(request: HttpRequest) -> HttpResponse:
+    """JSON endpoint backing the Cmd+K palette.
+
+    Returns up to ~12 hits across orders / products / customers plus a
+    fixed list of nav targets and settings categories. Hits are
+    annotated with `kind`, `label`, `hint`, `url`, and `icon` so the
+    front-end can render them uniformly.
+    """
+    from django.http import JsonResponse
+    from django.contrib.auth import get_user_model
+
+    q = (request.GET.get('q') or '').strip()
+    out: list[dict] = []
+
+    # Fixed nav targets — always show top-of-list, filtered by name.
+    NAV = [
+        ('home', 'Home', 'Dashboard overview', '/dashboard/', 'home'),
+        ('orders', 'All orders', 'Open the orders list', '/dashboard/orders/', 'shopping-bag'),
+        ('orders_new', 'New order', 'Create a draft order', '/dashboard/orders/new/', 'plus'),
+        ('products', 'All products', 'Open the products list', '/dashboard/products/', 'package'),
+        ('product_new', 'New product', 'Create a product', '/dashboard/products/new/', 'plus'),
+        ('customers', 'Customers', 'Open the customers list', '/dashboard/customers/', 'users'),
+        ('customer_new', 'New customer', 'Create a customer', '/dashboard/customers/new/', 'plus'),
+        ('returns', 'Returns', 'RMAs awaiting approval', '/dashboard/returns/', 'undo-2'),
+        ('crm_inbox', 'CRM inbox', 'IMAP / SMTP mail', '/dashboard/crm/inbox/', 'inbox'),
+        ('settings', 'Settings', 'Store configuration', '/dashboard/settings/', 'settings'),
+        ('ai_settings', 'AI providers', 'Configure provider + models', '/dashboard/settings/ai/', 'sparkles'),
+        ('email_templates', 'Email templates', 'Edit transactional emails', '/dashboard/settings/email-templates/', 'mail'),
+        ('insights', 'AI insights', 'Read pending insights', '/dashboard/ai-insights/', 'lightbulb'),
+        ('apps', 'Apps', 'All installed plugins', '/dashboard/apps/', 'grid-3x3'),
+    ]
+    ql = q.lower()
+    for slug, label, hint, url, icon in NAV:
+        if not q or ql in label.lower() or ql in hint.lower():
+            out.append({'kind': 'nav', 'label': label, 'hint': hint, 'url': url, 'icon': icon})
+        if len(out) >= 14:
+            break
+
+    if not q:
+        return JsonResponse({'hits': out[:14]})
+
+    # Live entity matches — small per-kind cap so a generic word doesn't
+    # flood the panel with one entity type.
+    try:
+        from plugins.installed.orders.models import Order
+        for o in Order.objects.filter(order_number__icontains=q)[:4]:
+            out.append({
+                'kind': 'order', 'label': f'#{o.order_number}',
+                'hint': f'{o.email or "—"} · {o.get_status_display()}',
+                'url': f'/dashboard/orders/{o.order_number}/',
+                'icon': 'shopping-bag',
+            })
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.catalog.models import Product
+        for p in Product.objects.filter(name__icontains=q)[:5]:
+            out.append({
+                'kind': 'product', 'label': p.name,
+                'hint': p.sku or '—',
+                'url': f'/dashboard/products/{p.id}/',
+                'icon': 'package',
+            })
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        User = get_user_model()
+        for u in User.objects.filter(email__icontains=q)[:5]:
+            out.append({
+                'kind': 'customer', 'label': u.email,
+                'hint': (
+                    (getattr(u, 'first_name', '') + ' ' + getattr(u, 'last_name', '')).strip()
+                    or '—'
+                ),
+                'url': f'/dashboard/customers/{u.id}/',
+                'icon': 'user',
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
+    return JsonResponse({'hits': out[:25]})

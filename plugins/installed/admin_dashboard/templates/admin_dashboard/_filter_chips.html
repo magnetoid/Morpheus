@@ -1,0 +1,17 @@
+{# Active-filter chips. Pass `chips` — list of dicts: {label, value, remove_url}. #}
+{# Renders as removable pills above the results so the user always sees what's #}
+{# narrowing the list. `remove_url` is the URL to navigate to when × is clicked #}
+{# (typically the current page with that one filter param dropped). #}
+{% if chips %}
+<div class="flex flex-wrap items-center gap-2 mb-3 text-xs">
+  <span class="text-[color:var(--text-muted)] uppercase tracking-wide font-medium">Active filters</span>
+  {% for c in chips %}
+  <a href="{{ c.remove_url }}"
+     class="inline-flex items-center gap-1 pill pill-info"
+     title="Remove this filter">
+    <span><strong>{{ c.label }}:</strong> {{ c.value }}</span>
+    <span style="font-size: 1rem; line-height: 1; opacity: .7;">×</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}

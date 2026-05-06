@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
 {% block title %}Orders · Morpheus{% endblock %}
 
 {% block content %}
@@ -39,6 +40,8 @@
     </select>
     <button class="btn btn-primary">Apply</button>
   </form>
+
+  {% filter_chips q="Search" status="Status" %}
 
   {# Bulk POST form. Lives outside the GET filter form; row checkboxes #}
   {# escape to it via form="bulk-form" so HTML5 lets them post here. #}

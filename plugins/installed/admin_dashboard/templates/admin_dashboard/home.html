@@ -20,6 +20,37 @@
     </div>
   </div>
 
+  {# First-run checklist. Hidden once every step is done so the home #}
+  {# stays clean for established stores. #}
+  {% if setup_steps and not setup_all_done %}
+  <div class="card card-padded">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h2 class="font-semibold text-sm">Set up your store</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">A few quick steps before your first real sale.</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+      {% for s in setup_steps %}
+      <a href="{{ s.url }}" class="flex items-start gap-3 p-3 rounded-md hover:bg-[color:var(--surface-2)]"
+         style="border: 1px solid var(--border); {% if s.done %}opacity:.6;{% endif %}">
+        <span class="inline-flex items-center justify-center"
+              style="width: 1.6rem; height: 1.6rem; border-radius: 999px; flex-shrink: 0;
+                     {% if s.done %}background: var(--success-bg); color: var(--success); border: 1px solid var(--success);
+                     {% else %}background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border);{% endif %}">
+          {% if s.done %}<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          {% else %}{{ forloop.counter }}{% endif %}
+        </span>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium {% if s.done %}line-through text-[color:var(--text-muted)]{% endif %}">{{ s.label }}</div>
+          <div class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ s.hint }}</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Metric tiles -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
     {% for m in metrics %}

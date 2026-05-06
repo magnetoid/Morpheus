@@ -1,13 +1,15 @@
 """Dashboard-specific template helpers.
 
-Right now: a single inclusion tag, ``{% sparkline series stroke="…" %}``,
-that renders a tiny SVG line chart from a list of numbers. Used on
-the home dashboard's KPI tiles. Skipped silently when the series is
-empty / all zeros.
+Two inclusion tags:
+- ``{% sparkline series stroke=… %}`` — tiny SVG line chart for KPI tiles.
+- ``{% filter_chips request param=label … %}`` — renders an "Active
+  filters" row of removable pills based on the current ``request.GET``.
+  Each chip's × link drops just that one param while keeping the rest.
 """
 from __future__ import annotations
 
 from django import template
+from django.http import QueryDict
 
 register = template.Library()
 
@@ -48,3 +50,38 @@ def sparkline(series, width: int = 120, height: int = 28, stroke: str = ''):
         'height': height,
         'stroke': stroke_color,
     }
+
+
+@register.inclusion_tag('admin_dashboard/_filter_chips.html', takes_context=True)
+def filter_chips(context, **labels):
+    """Render chips for any request.GET param that has a non-empty value.
+
+    Usage::
+
+        {% filter_chips q="Search" status="Status" source="Source" %}
+
+    Each kwarg maps a query-string key → display label. Display value
+    comes from ``request.GET[key]`` verbatim. The "remove" link
+    rebuilds the URL without that one param, preserving the rest.
+    """
+    request = context.get('request')
+    if request is None:
+        return {'chips': []}
+    chips = []
+    for key, label in labels.items():
+        raw = (request.GET.get(key) or '').strip()
+        if not raw:
+            continue
+        # Build remove URL: same path + GET minus this key.
+        rest = QueryDict(mutable=True)
+        for k, v in request.GET.items():
+            if k != key and v:
+                rest[k] = v
+        qs = rest.urlencode()
+        remove_url = request.path + (('?' + qs) if qs else '')
+        chips.append({
+            'label': label,
+            'value': raw,
+            'remove_url': remove_url,
+        })
+    return {'chips': chips}

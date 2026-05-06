@@ -149,6 +149,7 @@ urlpatterns = [
     path('apps/', views.apps_view, name='apps'),
     path('apps/<str:plugin>/settings/', plugin_settings_view, name='plugin_settings'),
     path('apps/<str:plugin>/<slug:slug>/', plugin_page_router, name='plugin_page'),
+    path('palette/search/', views.palette_search, name='palette_search'),
     path('settings/', views.settings_view, name='settings'),
     path('settings/ai/probe/', views.settings_ai_probe, name='settings_ai_probe'),
     path('settings/email-templates/', views.email_templates_list, name='email_templates_list'),

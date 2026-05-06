@@ -193,11 +193,152 @@
     buffered.forEach(function (m) { Morph.toast(m.message, m.level); });
   }
 
+  // ── Cmd+K command palette ─────────────────────────────────────────────
+  Morph.palette = {
+    open: function () {
+      const root = document.getElementById('morph-palette');
+      if (!root) return;
+      root.hidden = false;
+      document.body.style.overflow = 'hidden';
+      const input = root.querySelector('#mp-input');
+      input.value = '';
+      this._render([]);
+      this._fetch('');
+      input.focus();
+    },
+    close: function () {
+      const root = document.getElementById('morph-palette');
+      if (!root) return;
+      root.hidden = true;
+      document.body.style.overflow = '';
+    },
+    toggle: function () {
+      const root = document.getElementById('morph-palette');
+      if (!root) return;
+      if (root.hidden) this.open(); else this.close();
+    },
+    _activeIdx: 0,
+    _hits: [],
+    _debounce: null,
+    _fetch: function (q) {
+      clearTimeout(this._debounce);
+      const self = this;
+      this._debounce = setTimeout(function () {
+        fetch('/dashboard/palette/search/?q=' + encodeURIComponent(q), {
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) { self._render(data.hits || []); })
+          .catch(function () { self._render([]); });
+      }, 120);
+    },
+    _render: function (hits) {
+      const root = document.getElementById('morph-palette');
+      if (!root) return;
+      this._hits = hits;
+      this._activeIdx = 0;
+      const out = root.querySelector('#mp-results');
+      if (hits.length === 0) {
+        out.innerHTML = '<div class="mp-empty">No matches.</div>';
+        return;
+      }
+      // Group by kind; nav targets first.
+      const order = ['nav', 'order', 'product', 'customer'];
+      const titles = { nav: 'Go to', order: 'Orders', product: 'Products', customer: 'Customers' };
+      const groups = {};
+      hits.forEach(function (h) { (groups[h.kind] || (groups[h.kind] = [])).push(h); });
+      let html = '';
+      let flatIdx = 0;
+      order.forEach(function (k) {
+        if (!groups[k]) return;
+        html += '<div class="mp-section-title">' + (titles[k] || k) + '</div>';
+        groups[k].forEach(function (h) {
+          html += (
+            '<div class="mp-row" data-kind="' + h.kind + '" data-idx="' + flatIdx + '" data-url="' + h.url + '">'
+            + '<span class="mp-icon-wrap"><i data-lucide="' + (h.icon || 'circle') + '" class="h-3.5 w-3.5"></i></span>'
+            + '<div style="flex:1; min-width:0;">'
+            + '<div class="mp-label">' + escapeHtml(h.label) + '</div>'
+            + (h.hint ? '<div class="mp-hint">' + escapeHtml(h.hint) + '</div>' : '')
+            + '</div></div>'
+          );
+          flatIdx++;
+        });
+      });
+      out.innerHTML = html;
+      if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+      this._highlight(0);
+      const self = this;
+      out.querySelectorAll('.mp-row').forEach(function (row) {
+        row.addEventListener('mouseenter', function () { self._highlight(parseInt(row.dataset.idx)); });
+        row.addEventListener('click', function () {
+          window.location.href = row.dataset.url;
+        });
+      });
+    },
+    _highlight: function (idx) {
+      const root = document.getElementById('morph-palette');
+      if (!root) return;
+      this._activeIdx = idx;
+      const rows = root.querySelectorAll('.mp-row');
+      rows.forEach(function (r, i) { r.classList.toggle('is-active', i === idx); });
+      const active = rows[idx];
+      if (active) active.scrollIntoView({ block: 'nearest' });
+    },
+    _step: function (delta) {
+      if (!this._hits.length) return;
+      let next = this._activeIdx + delta;
+      if (next < 0) next = this._hits.length - 1;
+      if (next >= this._hits.length) next = 0;
+      this._highlight(next);
+    },
+    _activate: function () {
+      const root = document.getElementById('morph-palette');
+      if (!root) return;
+      const rows = root.querySelectorAll('.mp-row');
+      const active = rows[this._activeIdx];
+      if (active) window.location.href = active.dataset.url;
+    },
+  };
+
+  function escapeHtml(s) {
+    return String(s).replace(/[<>&"]/g, function (c) {
+      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c];
+    });
+  }
+
+  function attachPalette() {
+    const root = document.getElementById('morph-palette');
+    if (!root) return;
+    const input = root.querySelector('#mp-input');
+    input.addEventListener('input', function () {
+      Morph.palette._fetch(input.value);
+    });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); Morph.palette._step(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); Morph.palette._step(-1); }
+      else if (e.key === 'Enter') { e.preventDefault(); Morph.palette._activate(); }
+      else if (e.key === 'Escape') { e.preventDefault(); Morph.palette.close(); }
+    });
+    root.querySelector('[data-mp-backdrop]').addEventListener('click', function () {
+      Morph.palette.close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        Morph.palette.toggle();
+      }
+    });
+    const opener = document.getElementById('palette-open');
+    if (opener) opener.addEventListener('click', function () { Morph.palette.open(); });
+  }
+
   // ── Bootstrap on DOMContentLoaded ─────────────────────────────────────
   function boot() {
     attachConfirmDelegation();
     Morph.bulk.init();
     drainToasts();
+    attachPalette();
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

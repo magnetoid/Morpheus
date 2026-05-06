@@ -190,6 +190,7 @@ class MorpheusEvents:
 
     # Filters
     CART_CALCULATE_TOTAL = 'cart.calculate_total'   # filter
+    CART_CALCULATE_BREAKDOWN = 'cart.calculate_breakdown'  # filter
     PRODUCT_CALCULATE_PRICE = 'product.calculate_price'  # filter
 
     # Catalog
