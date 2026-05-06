@@ -22,9 +22,61 @@ class ShippingPlugin(Plugin):
 
     def ready(self) -> None:
         from morpheus import events
+        self.register_graphql_extension('plugins.installed.shipping.graphql.queries')
         # Tax must run BEFORE shipping (so shipping doesn't get taxed unless
         # we explicitly want that). Tax uses priority 20; we use 30.
-        self.register_hook(events.CART_CALCULATE_TOTAL, self.on_cart_total, priority=30)
+        # CART_CALCULATE_TOTAL is deprecated — the canonical event is
+        # CART_CALCULATE_BREAKDOWN, fired from OrderService since 2026-04.
+        self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=30)
+
+    def on_cart_breakdown(self, value, cart=None, address=None, shipping_rate_id=None, **kwargs):
+        if cart is None or not isinstance(value, dict):
+            return value
+        if not shipping_rate_id:
+            return value
+        try:
+            meta = value.get('meta') or {}
+            free_shipping = bool(meta.get('free_shipping'))
+
+            from plugins.installed.shipping.services import quote_rate
+            country = (address or {}).get('country', '') if address else ''
+            region = (address or {}).get('region', '') if address else ''
+            quote = quote_rate(cart=cart, rate_id=shipping_rate_id, country=country, region=region)
+            if not quote:
+                return value
+
+            amount = quote.get('amount')
+            if free_shipping:
+                from djmoney.money import Money
+                from decimal import Decimal
+                currency = str(value.get('currency') or getattr(value.get('subtotal'), 'currency', 'USD'))
+                amount = Money(Decimal('0'), currency)
+
+            if amount is not None:
+                value['shipping'] = amount
+                meta['shipping_rate_name'] = quote.get('name') or ''
+                value['meta'] = meta
+
+            subtotal = value.get('subtotal')
+            shipping = value.get('shipping')
+            tax = value.get('tax')
+            discount = value.get('discount')
+            currency = str(value.get('currency') or getattr(subtotal, 'currency', 'USD'))
+            from decimal import Decimal
+            from djmoney.money import Money
+            subtotal_a = Decimal(str(getattr(subtotal, 'amount', 0) or 0))
+            shipping_a = Decimal(str(getattr(shipping, 'amount', 0) or 0))
+            tax_a = Decimal(str(getattr(tax, 'amount', 0) or 0))
+            discount_a = Decimal(str(getattr(discount, 'amount', 0) or 0))
+            total_a = subtotal_a + shipping_a + tax_a - discount_a
+            if total_a < 0:
+                total_a = Decimal('0')
+            value['total'] = Money(total_a.quantize(Decimal('0.01')), currency)
+
+            return value
+        except Exception as e:  # noqa: BLE001
+            logger.warning('shipping: on_cart_breakdown failed: %s', e, exc_info=True)
+            return value
 
     def on_cart_total(self, value, cart=None, address=None, shipping_rate_id=None, **kwargs):
         """Add the chosen shipping rate's amount to the cart total."""

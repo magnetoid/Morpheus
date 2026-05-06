@@ -23,7 +23,8 @@ class PromotionsPlugin(Plugin):
 
     def ready(self) -> None:
         from morpheus import events
-        self.register_hook(events.CART_CALCULATE_TOTAL, self.on_cart_total, priority=10)
+        # CART_CALCULATE_TOTAL is deprecated — the canonical event is
+        # CART_CALCULATE_BREAKDOWN, fired from OrderService since 2026-04.
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=10)
         self.register_urls(
             'plugins.installed.promotions.urls',

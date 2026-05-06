@@ -17,7 +17,8 @@ class Function(models.Model):
     """A merchant-defined function that runs at a specific extension point."""
 
     TARGET_CHOICES = [
-        ('cart.calculate_total', 'Cart Total'),
+        ('cart.calculate_breakdown', 'Cart Breakdown'),
+        ('cart.calculate_total', 'Cart Total (deprecated)'),
         ('product.calculate_price', 'Product Price'),
         ('order.validate', 'Order Validation'),
         ('shipping.rate', 'Shipping Rate'),

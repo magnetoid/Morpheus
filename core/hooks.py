@@ -166,50 +166,131 @@ class HookRegistry:
 hook_registry = HookRegistry()
 
 
-# ── Standard Morph events (for IDE autocompletion & discoverability) ──────────
+# ── Standard Morph events ─────────────────────────────────────────────────────
+#
+# The catalogue below is the canonical contract for every built-in hook
+# event: when it fires, what kwargs flow through, and (for filter events)
+# what `value` is. Subscribers depend on these names + payload shapes —
+# don't rename in place, deprecate and add new constants.
+#
+# Two flavours:
+#   * **fire** events     — fan-out, no return value used.
+#                            Subscribers run for side effects only.
+#   * **filter** events   — pipeline, each handler returns a (possibly
+#                            modified) `value` that's passed to the next.
+#
+# String value is the over-the-wire name (also used by webhooks, NATS,
+# and remote plugins) — that's the stable bit. The Python attribute on
+# this class is just a typed alias.
+
 
 class MorpheusEvents:
     """Catalogue of all built-in hook events."""
 
-    # Orders
+    # ── Orders (fire) ──────────────────────────────────────────────────────
+    # ORDER_PLACED      — kwargs: order=Order. Customer's order has been
+    #                      created from cart. Inventory reserved. Payment
+    #                      not yet captured.
+    # ORDER_CONFIRMED   — kwargs: order=Order. Reserved. Currently unused.
+    # ORDER_PAID        — kwargs: order=Order. Payment captured. Fired
+    #                      EXACTLY ONCE per order via the select_for_update
+    #                      gate in payments.services.stripe. Subscribers:
+    #                      inventory commit, CDP rollups, digital token
+    #                      mint, transactional email, webhook fanout.
+    # ORDER_CANCELLED   — kwargs: order=Order. Releases stock reservation.
+    # ORDER_FULFILLED   — kwargs: order=Order, fulfillment=Fulfillment.
     ORDER_PLACED = 'order.placed'
     ORDER_CONFIRMED = 'order.confirmed'
     ORDER_PAID = 'order.paid'
     ORDER_CANCELLED = 'order.cancelled'
     ORDER_FULFILLED = 'order.fulfilled'
 
-    # Payments
+    # ── Payments (fire) ────────────────────────────────────────────────────
+    # PAYMENT_CAPTURED  — kwargs: payment=Payment.
+    # PAYMENT_FAILED    — kwargs: payment=Payment, error=str.
+    # PAYMENT_REFUNDED  — kwargs: refund=Refund, order=Order, amount=Money,
+    #                     actor=User|None. Fired by RefundService.process()
+    #                     for every refund (admin-initiated OR return-driven).
     PAYMENT_CAPTURED = 'payment.captured'
     PAYMENT_FAILED = 'payment.failed'
     PAYMENT_REFUNDED = 'payment.refunded'
 
-    # Cart
+    # ── Cart (fire) ────────────────────────────────────────────────────────
+    # CART_CREATED      — kwargs: cart=Cart.
+    # CART_UPDATED      — kwargs: cart=Cart.
+    # CART_ABANDONED    — kwargs: cart=Cart, email=str|None. Fired by
+    #                     cart_abandonment/tasks.py and inventory/tasks.py
+    #                     after a configurable idle period. Subscribers
+    #                     handle recovery email, AI cart-summary,
+    #                     CRM follow-up tasks. `email` is None when the
+    #                     cart has no customer and no captured email.
     CART_CREATED = 'cart.created'
     CART_UPDATED = 'cart.updated'
     CART_ABANDONED = 'cart.abandoned'
 
-    # Filters
-    CART_CALCULATE_TOTAL = 'cart.calculate_total'   # filter
+    # ── Filters ───────────────────────────────────────────────────────────
+    # CART_CALCULATE_BREAKDOWN — value=dict (subtotal/shipping/tax/discount/
+    #                            total/currency/meta), kwargs: cart, address,
+    #                            billing_address, shipping_rate_id, coupon,
+    #                            channel, customer. CANONICAL cart pricing
+    #                            event. Subscribers (promotions, shipping,
+    #                            tax) layer their components onto the dict.
+    # PRODUCT_CALCULATE_PRICE  — value=Money, kwargs: product, customer.
+    #                            Lets AI dynamic pricing / B2B price lists
+    #                            adjust the displayed price.
+    # CART_CALCULATE_TOTAL     — DEPRECATED. Predecessor to BREAKDOWN.
+    #                            Retained as a constant for any external
+    #                            plugin still subscribed; OrderService no
+    #                            longer fires it. Will be removed once the
+    #                            in-tree subscribers are migrated (done).
     CART_CALCULATE_BREAKDOWN = 'cart.calculate_breakdown'  # filter
-    PRODUCT_CALCULATE_PRICE = 'product.calculate_price'  # filter
+    PRODUCT_CALCULATE_PRICE = 'product.calculate_price'    # filter
+    CART_CALCULATE_TOTAL = 'cart.calculate_total'          # DEPRECATED — use CART_CALCULATE_BREAKDOWN
 
-    # Catalog
+    # ── Catalog (fire) ────────────────────────────────────────────────────
+    # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,
+    #                     session_key=str. Fires from the storefront PDP.
+    # PRODUCT_CREATED   — kwargs: product=Product.
+    # PRODUCT_UPDATED   — kwargs: product=Product.
+    # CATEGORY_UPDATED  — kwargs: category=Category.
     PRODUCT_VIEWED = 'product.viewed'
     PRODUCT_CREATED = 'product.created'
     PRODUCT_UPDATED = 'product.updated'
     CATEGORY_UPDATED = 'category.updated'
 
-    # Customers
+    # ── Customers (fire) ──────────────────────────────────────────────────
+    # CUSTOMER_REGISTERED — kwargs: customer=Customer.
+    # CUSTOMER_LOGIN      — kwargs: customer=Customer.
     CUSTOMER_REGISTERED = 'customer.registered'
     CUSTOMER_LOGIN = 'customer.login'
 
-    # Inventory
+    # ── Inventory (fire) ──────────────────────────────────────────────────
     PRODUCT_LOW_STOCK = 'product.low_stock'
     PRODUCT_OUT_OF_STOCK = 'product.out_of_stock'
 
-    # Search
+    # ── Returns (fire) ────────────────────────────────────────────────────
+    # 'return.requested'  — kwargs: return_request=ReturnRequest.
+    # 'return.approved'   — kwargs: return_request=ReturnRequest.
+    # 'return.rejected'   — kwargs: return_request=ReturnRequest.
+    # 'return.refunded'   — kwargs: return_request=ReturnRequest,
+    #                       refund=Refund|None, store_credit=Money|None.
+    #                       Fired ONCE the return is fully closed (either
+    #                       money refund OR store-credit issued). Distinct
+    #                       from PAYMENT_REFUNDED — that fires per refund
+    #                       (including direct admin refunds, no RMA);
+    #                       'return.refunded' fires per RMA closure.
+    #                       Inventory subscribes to restock the items.
+    # 'refund.processed'  — kwargs: refund=Refund, order=Order, amount=Money,
+    #                       actor=User|None. Same payload as
+    #                       PAYMENT_REFUNDED — they're aliases for now.
+    #                       New code SHOULD subscribe to PAYMENT_REFUNDED.
+
+    # ── Search (fire) ─────────────────────────────────────────────────────
     SEARCH_PERFORMED = 'search.performed'
 
-    # AI
+    # ── AI (fire) ─────────────────────────────────────────────────────────
     AI_DESCRIPTION_GENERATED = 'ai.description_generated'
     AI_RECOMMENDATION_REQUESTED = 'ai.recommendation_requested'
+
+    # ── Digital products (fire) ───────────────────────────────────────────
+    # 'digital.tokens_issued' — kwargs: order=Order, tokens=list[DownloadToken].
