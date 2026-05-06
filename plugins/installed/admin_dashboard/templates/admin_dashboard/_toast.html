@@ -1,0 +1,47 @@
+{# Toast container — fixed top-right. Morph.toast(...) renders into here. #}
+{# A tiny inline script transfers Django messages framework messages into #}
+{# the queue on page load so success/error redirects feel instant. #}
+<div id="morph-toast-container" aria-live="polite" aria-atomic="true"
+     class="fixed top-4 right-4 z-50 flex flex-col items-end gap-2"
+     style="pointer-events:none;"></div>
+
+<style>
+  .morph-toast {
+    pointer-events: auto;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.12);
+    padding: .65rem .9rem;
+    font-size: .875rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    min-width: 240px;
+    max-width: 360px;
+    transform: translateX(20px);
+    opacity: 0;
+    transition: transform .18s ease-out, opacity .18s ease-out;
+  }
+  .morph-toast.is-shown { transform: translateX(0); opacity: 1; }
+  .morph-toast-success { border-color: var(--success); color: var(--success); }
+  .morph-toast-error   { border-color: var(--danger);  color: var(--danger); }
+  .morph-toast-warn    { border-color: var(--warn);    color: var(--warn); }
+  .morph-toast-close { background: none; border: 0; color: inherit; cursor: pointer; padding: 0 .15rem; line-height: 1; font-size: 1.05rem; opacity: .55; }
+  .morph-toast-close:hover { opacity: 1; }
+</style>
+
+<script>
+(function () {
+  // Drain any messages already pushed into Morph's queue (e.g. by the
+  // server-side messages framework block below) once the renderer exists.
+  if (window.Morph && Array.isArray(window.Morph._toastQueue)) {
+    var queued = window.Morph._toastQueue.splice(0);
+    document.addEventListener('DOMContentLoaded', function () {
+      queued.forEach(function (m) {
+        if (typeof window.Morph.toast === 'function') window.Morph.toast(m.message, m.level);
+      });
+    });
+  }
+})();
+</script>

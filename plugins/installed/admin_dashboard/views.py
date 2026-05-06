@@ -69,6 +69,30 @@ class Metric:
     delta: str = ''
     trend: str = 'flat'  # 'up' | 'down' | 'flat'
     icon: str = 'activity'
+    series: list = None  # last-14-days numeric series for sparkline
+
+
+def _sparkline_points(series: list, width: int = 120, height: int = 28) -> tuple:
+    """Convert a numeric series into an SVG `<polyline>` `points` string,
+    plus the max value (used by the template to skip rendering on
+    all-zero series). Caller passes `series` as a list of numbers oldest
+    → newest. Returns ``("x1,y1 x2,y2 …", max_value)``.
+    """
+    if not series:
+        return ('', 0)
+    nums = [float(x or 0) for x in series]
+    mx = max(nums)
+    if mx <= 0 or len(nums) < 2:
+        return ('', 0)
+    n = len(nums)
+    step = width / (n - 1)
+    pts = []
+    for i, v in enumerate(nums):
+        x = round(i * step, 2)
+        # Invert y because SVG origin is top-left. Add 2px top/bottom padding.
+        y = round(height - 2 - (v / mx) * (height - 4), 2)
+        pts.append(f'{x},{y}')
+    return (' '.join(pts), mx)
 
 
 def _trend(now, before) -> str:
@@ -103,6 +127,8 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     insights: list[Any] = []
 
     try:
+        from django.db.models import Count
+        from django.db.models.functions import TruncDate
         from plugins.installed.orders.models import Order
 
         orders_qs = Order.objects.filter(placed_at__gte=since)
@@ -117,6 +143,35 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         prev_count = prev_orders.count()
         prev_revenue = prev_orders.aggregate(total=Sum('total'))['total'] or Decimal('0')
 
+        # 14-day daily series for the sparklines on each KPI tile. One
+        # aggregate query each — cheap. We fill in zero for missing days
+        # so the visual stays comparable across stores at any volume.
+        spark_since = _since(14)
+        from datetime import date as _date, timedelta as _td
+        today = timezone.now().date()
+        keys = [(today - _td(days=i)) for i in range(13, -1, -1)]
+        rev_by_day = {
+            row['day']: row['v']
+            for row in (Order.objects
+                .filter(placed_at__gte=spark_since)
+                .annotate(day=TruncDate('placed_at'))
+                .values('day')
+                .annotate(v=Sum('total'))
+            )
+        }
+        cnt_by_day = {
+            row['day']: row['v']
+            for row in (Order.objects
+                .filter(placed_at__gte=spark_since)
+                .annotate(day=TruncDate('placed_at'))
+                .values('day')
+                .annotate(v=Count('id'))
+            )
+        }
+        rev_series = [float(rev_by_day.get(k, 0) or 0) for k in keys]
+        cnt_series = [float(cnt_by_day.get(k, 0) or 0) for k in keys]
+        aov_series = [(rev_series[i] / cnt_series[i]) if cnt_series[i] else 0 for i in range(len(keys))]
+
         metrics.extend([
             Metric(
                 label='Total sales',
@@ -124,6 +179,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
                 delta=_pct_delta(revenue, prev_revenue),
                 trend=_trend(revenue, prev_revenue),
                 icon='dollar-sign',
+                series=rev_series,
             ),
             Metric(
                 label='Orders',
@@ -131,11 +187,13 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
                 delta=_pct_delta(order_count, prev_count),
                 trend=_trend(order_count, prev_count),
                 icon='shopping-bag',
+                series=cnt_series,
             ),
             Metric(
                 label='Average order',
                 value=f'${avg_order:,.2f}' if order_count else '—',
                 icon='trending-up',
+                series=aov_series,
             ),
         ])
 
@@ -319,10 +377,28 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
             )
         except Exception:  # noqa: BLE001
             pass
+    # Status stepper — happy-path stages a healthy order walks through.
+    # `cancelled` / `refunded` aren't on this rail; they get a separate
+    # red pill in the header.
+    happy_path = ['pending', 'confirmed', 'processing', 'fulfilled', 'delivered']
+    labels = {'pending': 'Pending', 'confirmed': 'Confirmed', 'processing': 'Processing',
+              'fulfilled': 'Fulfilled', 'delivered': 'Delivered'}
+    cur_status = getattr(order, 'status', '') if order else ''
+    cur_idx = happy_path.index(cur_status) if cur_status in happy_path else -1
+    status_steps = [
+        {
+            'key': k,
+            'label': labels[k],
+            'done': cur_idx > i,
+            'current': cur_idx == i,
+        }
+        for i, k in enumerate(happy_path)
+    ]
     return render(request, 'admin_dashboard/order_detail.html', {
         'order': order,
         'refunds': refunds,
         'refunded_total': refunded_total,
+        'status_steps': status_steps,
         'fulfillments': fulfillments,
         'active_nav': 'orders',
     })

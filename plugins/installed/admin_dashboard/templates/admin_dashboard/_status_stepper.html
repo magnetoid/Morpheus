@@ -1,0 +1,24 @@
+{# Horizontal status stepper. Pass `steps` — list of dicts: #}
+{#   {key, label, done (bool), current (bool)} #}
+{# Used for any FSM (orders, returns, fulfillments). Skipped silently #}
+{# when the list is empty. #}
+{% if steps %}
+<div class="flex items-center flex-wrap gap-1.5 text-xs">
+  {% for s in steps %}
+  <div class="flex items-center gap-1.5">
+    <span class="inline-flex items-center justify-center"
+          style="width: 1.4rem; height: 1.4rem; border-radius: 999px; font-weight: 600;
+                 {% if s.done %}background: var(--success-bg); color: var(--success); border: 1px solid var(--success);
+                 {% elif s.current %}background: var(--info-bg); color: var(--info); border: 1px solid var(--info);
+                 {% else %}background: var(--surface-2); color: var(--text-subtle); border: 1px solid var(--border);{% endif %}">
+      {% if s.done %}<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      {% else %}{{ forloop.counter }}{% endif %}
+    </span>
+    <span class="{% if s.current %}font-semibold text-[color:var(--text)]{% elif s.done %}text-[color:var(--text)]{% else %}text-[color:var(--text-muted)]{% endif %}">{{ s.label }}</span>
+  </div>
+  {% if not forloop.last %}
+  <span style="width: 18px; height: 1px; background: {% if s.done %}var(--success){% else %}var(--border){% endif %};"></span>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}

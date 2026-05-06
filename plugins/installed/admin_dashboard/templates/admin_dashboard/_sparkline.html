@@ -1,0 +1,15 @@
+{# Tiny inline-SVG sparkline. Pass a `series` (list of numbers) and #}
+{# optionally `width` / `height` / `stroke`. No axes, just a path. #}
+{# Falls through silently when the series is empty or all-zeros. #}
+{% if series and series_max %}
+<svg width="{{ width|default:'120' }}" height="{{ height|default:'28' }}"
+     viewBox="0 0 {{ width|default:'120' }} {{ height|default:'28' }}"
+     class="block" style="overflow:visible;" aria-hidden="true">
+  <polyline points="{{ series_points }}"
+            fill="none"
+            stroke="{{ stroke|default:'var(--text-muted)' }}"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+</svg>
+{% endif %}

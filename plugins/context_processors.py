@@ -103,9 +103,12 @@ def plugin_context(request):
     except Exception:  # noqa: BLE001 — never fail the page on missing module
         settings_category_nav = []
 
+    nav_badges = _compute_nav_badges(request)
+
     return {
         'active_plugins': plugin_registry._active,
         'plugin_registry': plugin_registry,
+        'nav_badges': nav_badges,
         'dashboard_pages': pages,                          # back-compat flat list
         'sidebar_sections': _group_by_section(main_pages),  # main sidebar
         'settings_sections': _group_by_section(settings_pages),  # settings sidebar
@@ -114,3 +117,32 @@ def plugin_context(request):
         # Settings categories shown in the settings-mode sidebar.
         'settings_category_nav': settings_category_nav,
     }
+
+
+def _compute_nav_badges(request) -> dict:
+    """Per-request small counts that the sidebar surfaces as pills.
+
+    Memoised on `request._morph_nav_badges` so the same context_processor
+    triggered twice in one request (rare, but possible with included
+    templates) doesn't re-query. Fail-soft — any plugin missing or
+    DB error returns 0.
+    """
+    cached = getattr(request, '_morph_nav_badges', None)
+    if cached is not None:
+        return cached
+    badges = {'returns': 0, 'insights': 0}
+    try:
+        from plugins.installed.orders.refunds import ReturnRequest
+        badges['returns'] = ReturnRequest.objects.filter(state='requested').count()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.ai_assistant.models import MerchantInsight
+        badges['insights'] = MerchantInsight.objects.filter(is_read=False).count()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        request._morph_nav_badges = badges
+    except Exception:  # noqa: BLE001 — request might not allow attr set in tests
+        pass
+    return badges

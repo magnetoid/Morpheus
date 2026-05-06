@@ -85,6 +85,12 @@
     </div>
   </div>
 
+  {% if status_steps and order.status != 'cancelled' and order.status != 'refunded' %}
+  <div class="card card-padded">
+    {% include "admin_dashboard/_status_stepper.html" with steps=status_steps %}
+  </div>
+  {% endif %}
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     <div class="lg:col-span-2 space-y-4">
       <div class="card">

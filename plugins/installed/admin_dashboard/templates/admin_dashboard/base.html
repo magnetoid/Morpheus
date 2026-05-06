@@ -153,6 +153,10 @@
     {% endcomment %}
     <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
     <a href="/dashboard/apps/agent_core/agents/" class="nav-link {% if active_nav == 'agents' %}active{% endif %}"><i data-lucide="bot" class="h-4 w-4"></i> AI agents</a>
+    <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">
+      <i data-lucide="lightbulb" class="h-4 w-4"></i> Insights
+      {% if nav_badges.insights %}<span class="pill pill-info" style="margin-left:auto;">{{ nav_badges.insights }}</span>{% endif %}
+    </a>
 
     {% comment %}
       Each top-level entry below renders an indented submenu when the
@@ -161,10 +165,16 @@
       filled dot — Shopify-style.
     {% endcomment %}
 
-    <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}"><i data-lucide="shopping-bag" class="h-4 w-4"></i> Orders</a>
+    <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}">
+      <i data-lucide="shopping-bag" class="h-4 w-4"></i> Orders
+    </a>
     <div class="nav-children {% if active_nav == 'orders' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}">All orders</a>
       <a href="/dashboard/draft-orders/" class="nav-link {% if active_nav == 'drafts' %}active{% endif %}">Drafts</a>
+      <a href="/dashboard/returns/" class="nav-link {% if active_nav == 'returns' %}active{% endif %}">
+        Returns
+        {% if nav_badges.returns %}<span class="pill pill-warn" style="margin-left:.4rem;">{{ nav_badges.returns }}</span>{% endif %}
+      </a>
     </div>
 
     <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products</a>
@@ -269,21 +279,26 @@
 
   <main class="flex-1 overflow-y-auto p-3 lg:p-5">
     {% if messages %}
-    <div class="max-w-7xl mx-auto mb-3 space-y-2">
+    {# Pipe Django messages framework into the toast queue. Morph.toast is #}
+    {# defined in dashboard.js (loaded with `defer`) so we buffer onto its #}
+    {# queue and the container drains them on DOMContentLoaded. #}
+    <script>
+      window.Morph = window.Morph || {};
+      window.Morph._toastQueue = window.Morph._toastQueue || [];
       {% for m in messages %}
-      <div class="card card-padded text-sm" style="
-          border-color: {% if 'error' in m.tags %}var(--danger){% elif 'success' in m.tags %}var(--success){% else %}var(--border){% endif %};
-          color: {% if 'error' in m.tags %}var(--danger){% elif 'success' in m.tags %}var(--success){% else %}var(--text){% endif %};">
-        {{ m.message }}
-      </div>
+      window.Morph._toastQueue.push({
+        message: "{{ m.message|escapejs }}",
+        level: {% if 'error' in m.tags %}'error'{% elif 'success' in m.tags %}'success'{% elif 'warning' in m.tags %}'warn'{% else %}'info'{% endif %},
+      });
       {% endfor %}
-    </div>
+    </script>
     {% endif %}
     {% block content %}{% endblock %}
   </main>
 </div>
 
-{# Singleton modal — Morph.confirm() opens it via dashboard.js. #}
+{# Toast container + singleton modal — Morph.toast() / .confirm() in dashboard.js. #}
+{% include "admin_dashboard/_toast.html" %}
 {% include "admin_dashboard/_confirm_modal.html" %}
 
 <script>

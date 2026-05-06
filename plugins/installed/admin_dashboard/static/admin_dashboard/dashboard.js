@@ -152,19 +152,52 @@
     },
   };
 
-  // ── Toast queue (commit 2 drains this) ────────────────────────────────
+  // ── Toasts ────────────────────────────────────────────────────────────
   Morph._toastQueue = Morph._toastQueue || [];
   Morph.toast = function (message, level) {
-    Morph._toastQueue.push({ message: String(message || ''), level: level || 'info' });
-    if (typeof Morph._renderToast === 'function') {
-      Morph._renderToast(Morph._toastQueue.shift());
+    const entry = { message: String(message || ''), level: level || 'info' };
+    const container = document.getElementById('morph-toast-container');
+    if (!container) {
+      // Container not in DOM yet — buffer until `_renderQueued` drains.
+      Morph._toastQueue.push(entry);
+      return;
     }
+    const el = document.createElement('div');
+    el.className = 'morph-toast morph-toast-' + entry.level;
+    const text = document.createElement('div');
+    text.style.flex = '1';
+    text.textContent = entry.message;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'morph-toast-close';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.innerHTML = '&times;';
+    el.appendChild(text);
+    el.appendChild(close);
+    container.appendChild(el);
+    // Force reflow so the transition fires.
+    void el.offsetWidth;
+    el.classList.add('is-shown');
+    function dismiss() {
+      el.classList.remove('is-shown');
+      setTimeout(function () { el.remove(); }, 220);
+    }
+    close.addEventListener('click', dismiss);
+    setTimeout(dismiss, 4200);
   };
+
+  // Drain any messages buffered before the renderer was ready.
+  function drainToasts() {
+    if (!document.getElementById('morph-toast-container')) return;
+    const buffered = Morph._toastQueue.splice(0);
+    buffered.forEach(function (m) { Morph.toast(m.message, m.level); });
+  }
 
   // ── Bootstrap on DOMContentLoaded ─────────────────────────────────────
   function boot() {
     attachConfirmDelegation();
     Morph.bulk.init();
+    drainToasts();
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
