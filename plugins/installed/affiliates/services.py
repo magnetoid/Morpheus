@@ -94,10 +94,12 @@ def attribute_order(*, order, affiliate_code: str) -> Optional['AffiliateConvers
 
 
 def _calculate_commission(*, program, order) -> Money:
+    from core.money import apply_pct, money
+
+    currency = str(order.total.currency)
     if program.commission_type == 'fixed':
-        return Money(Decimal(program.commission_value), str(order.total.currency))
-    pct = Decimal(program.commission_value) / Decimal('100')
-    return Money(order.total.amount * pct, str(order.total.currency))
+        return money(program.commission_value, currency)
+    return apply_pct(order.total, program.commission_value)
 
 
 def approve_conversion(conversion) -> None:

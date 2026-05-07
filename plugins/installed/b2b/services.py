@@ -46,7 +46,8 @@ def create_quote(*, account, contact, owner, lines: Iterable[dict],
             qty = int(line.get('quantity', 1) or 1)
             unit_price = line['unit_price']  # Money
             currency = str(unit_price.currency)
-            line_total = Money(Decimal(unit_price.amount) * qty, currency)
+            from core.money import mul
+            line_total = mul(unit_price, qty)
             QuoteLine.objects.create(
                 quote=quote,
                 product=line.get('product'),

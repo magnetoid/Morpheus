@@ -29,6 +29,8 @@ def redeem(*, code: str, amount: Money, reference: str = '', actor=None) -> 'Gif
     """Subtract `amount` from the card's balance. Raises if insufficient."""
     from plugins.installed.gift_cards.models import GiftCard, GiftCardLedger
 
+    from core.money import assert_same_currency, money, sub
+
     with transaction.atomic():
         card = GiftCard.objects.select_for_update().get(code=code)
         if card.state != 'active':
@@ -37,15 +39,15 @@ def redeem(*, code: str, amount: Money, reference: str = '', actor=None) -> 'Gif
             card.state = 'expired'
             card.save(update_fields=['state'])
             raise ValueError(f'Gift card {code} has expired.')
-        if str(card.balance.currency) != str(amount.currency):
-            raise ValueError('Currency mismatch.')
+        assert_same_currency(card.balance, amount)
         if card.balance.amount < amount.amount:
             raise ValueError(f'Insufficient balance: {card.balance} < {amount}')
-        new_balance = Money(card.balance.amount - amount.amount, str(amount.currency))
+        new_balance = sub(card.balance, amount)
         card.balance = new_balance
         card.save(update_fields=['balance', 'updated_at'])
         GiftCardLedger.objects.create(
-            card=card, kind='redeem', amount_change=Money(-amount.amount, str(amount.currency)),
+            card=card, kind='redeem',
+            amount_change=money(-amount.amount, str(amount.currency)),
             balance_after=new_balance, reference=reference[:100], actor=actor,
         )
     return card

@@ -34,8 +34,15 @@ class DynamicPricingService:
         if customer and getattr(customer, 'is_vip', False):
             customer_discount = Decimal('0.9500')
 
-        final_amount = base_money.amount * multiplier * customer_discount
-        return Money(final_amount, base_money.currency)
+        from core.money import money
+
+        # multiplier and customer_discount are Decimals, base_money is Money;
+        # money() quantizes the chain so the DB never sees ``19.99750000…``
+        # arithmetic noise.
+        return money(
+            Decimal(str(base_money.amount)) * multiplier * customer_discount,
+            str(base_money.currency),
+        )
 
     @classmethod
     def evaluate_product_price(cls, product):
