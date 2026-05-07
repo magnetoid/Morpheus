@@ -151,6 +151,34 @@
   </div>
   {% endif %}
 
+  {% if activity %}
+  <div class="card">
+    <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
+      <div>
+        <h2 class="font-semibold">Activity</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Recent platform events — orders, returns, agent runs.</p>
+      </div>
+    </div>
+    <ul class="divide-y divide-[color:var(--border)]" style="list-style:none; margin:0; padding:0;">
+      {% for a in activity %}
+      <li>
+        <a href="{{ a.url }}" class="flex items-start gap-3 px-4 py-2.5 hover:bg-[color:var(--surface-2)]">
+          <span class="inline-flex items-center justify-center"
+                style="width: 1.6rem; height: 1.6rem; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); flex-shrink: 0;">
+            <i data-lucide="{{ a.icon }}" class="h-3.5 w-3.5"></i>
+          </span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">{{ a.label }}</div>
+            {% if a.hint %}<div class="text-xs text-[color:var(--text-muted)] truncate">{{ a.hint }}</div>{% endif %}
+          </div>
+          <div class="text-xs text-[color:var(--text-muted)] whitespace-nowrap">{{ a.when|timesince }} ago</div>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   <!-- Two-column block: recent orders + insights -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     <!-- Recent orders -->

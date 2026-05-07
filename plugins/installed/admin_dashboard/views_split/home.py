@@ -203,6 +203,9 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     setup_steps = _compute_setup_steps()
     setup_all_done = all(s['done'] for s in setup_steps) if setup_steps else True
 
+    # Activity feed — what happened lately, across all event sources.
+    activity = _compute_activity_feed(limit=20)
+
     return render(request, 'admin_dashboard/home.html', {
         'metrics': metrics,
         'recent_orders': recent_orders,
@@ -213,9 +216,89 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         'low_stock_threshold': low_stock_threshold,
         'setup_steps': setup_steps,
         'setup_all_done': setup_all_done,
+        'activity': activity,
         'active_nav': 'home',
         'period': period,
     })
+
+
+def _compute_activity_feed(limit: int = 20) -> list:
+    """Recent platform events as a single chronological list.
+
+    Pulls from three sources without coupling them together — each is
+    a separate fail-soft try block:
+
+      * orders.OrderEvent          (placed, paid, fulfilled, cancelled)
+      * orders.ReturnRequest       (state transitions)
+      * agent_core.AgentRun        (recent agent runs)
+
+    Each entry is a uniform dict — kind, label, hint, url, icon, when —
+    so the template renders them with one component. Sorted newest first.
+    """
+    items: list[dict] = []
+
+    try:
+        from plugins.installed.orders.models import OrderEvent
+        for ev in (
+            OrderEvent.objects
+            .select_related('order')
+            .order_by('-created_at')[: limit * 2]
+        ):
+            verb = (ev.event_type or 'updated').replace('_', ' ').replace('.', ' ')
+            items.append({
+                'kind': 'order',
+                'icon': 'shopping-bag',
+                'label': f'Order #{ev.order.order_number} — {verb}',
+                'hint': ev.message or '',
+                'url': f'/dashboard/orders/{ev.order.order_number}/',
+                'when': ev.created_at,
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from plugins.installed.orders.refunds import ReturnRequest
+        for rr in (
+            ReturnRequest.objects
+            .select_related('order')
+            .order_by('-updated_at')[: limit]
+        ):
+            items.append({
+                'kind': 'return',
+                'icon': 'undo-2',
+                'label': f'RMA {rr.rma_number} — {rr.get_state_display()}',
+                'hint': f'Order #{rr.order.order_number}',
+                'url': f'/dashboard/returns/{rr.id}/',
+                'when': rr.updated_at,
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from plugins.installed.agent_core.models import AgentRun
+        for run in (
+            AgentRun.objects
+            .order_by('-started_at')[: limit]
+        ):
+            label = f'Agent: {run.agent_name}'
+            if run.state == 'failed':
+                label += ' — failed'
+            elif run.state == 'awaiting_approval':
+                label += ' — needs approval'
+            items.append({
+                'kind': 'agent',
+                'icon': 'bot',
+                'label': label,
+                'hint': (run.user_message or '')[:80],
+                'url': f'/dashboard/agents/runs/{run.id}/',
+                'when': run.started_at,
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Sort newest first, drop the trailing items past the cap.
+    items.sort(key=lambda it: it['when'], reverse=True)
+    return items[:limit]
 
 
 def _compute_setup_steps() -> list:
