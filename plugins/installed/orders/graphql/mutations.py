@@ -172,8 +172,8 @@ class OrdersMutationExtension:
             cart.save(update_fields=['coupon', 'updated_at'])
         except ImportError:
             pass  # marketing optional
-        except Exception:  # noqa: BLE001 — coupon model not yet migrated
-            pass
+        except Exception as e:  # noqa: BLE001 — coupon model not yet migrated
+            import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
         return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Apply a gift card to a cart. Discount is applied at order time.')
@@ -251,7 +251,7 @@ class OrdersMutationExtension:
             if affiliate_code:
                 ship['affiliate_code'] = affiliate_code
         except Exception:
-            pass
+            import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
 
         if input.shipping_rate_id:
             cart.metadata = dict(cart.metadata or {})
@@ -270,8 +270,8 @@ class OrdersMutationExtension:
                 pi = PaymentService.create_payment_intent(order)
                 if pi.get('success'):
                     client_secret = pi.get('client_secret') or ''
-            except Exception:  # noqa: BLE001 — order placed even if payment provider is offline
-                pass
+            except Exception as e:  # noqa: BLE001 — order placed even if payment provider is offline
+                import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
             return OrderPayload(
                 order_number=order.order_number,
                 payment_client_secret=client_secret,

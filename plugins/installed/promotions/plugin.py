@@ -150,7 +150,7 @@ class PromotionsPlugin(Plugin):
                 new_total = Decimal('0')
             value['total'] = Money(new_total.quantize(Decimal('0.01')), currency)
         except Exception:
-            pass
+            import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
 
         return value
 
@@ -174,8 +174,8 @@ class PromotionsPlugin(Plugin):
                 if amount_attr is not None:
                     new_amount = max(Decimal('0'), Decimal(str(amount_attr)) - discount)
                     return type(value)(new_amount, value.currency)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as e:  # noqa: BLE001
+                import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
             return value
         except Exception as e:  # noqa: BLE001
             logger.warning('promotions: on_cart_total failed: %s', e, exc_info=True)

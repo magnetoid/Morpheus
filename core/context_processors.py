@@ -29,7 +29,7 @@ def cart_context(request):
                 if cart:
                     count = cart.item_count
     except Exception:
-        pass
+        import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
     return {'cart_item_count': count}
 
 
