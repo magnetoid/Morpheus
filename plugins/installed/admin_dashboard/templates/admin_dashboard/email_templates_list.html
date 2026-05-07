@@ -23,7 +23,7 @@
         </td>
         <td class="text-[color:var(--text-muted)]">{{ r.subject|truncatechars:80 }}</td>
         <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if r.updated_at %}{{ r.updated_at|date:"M j, Y H:i" }}{% else %}—{% endif %}</td>
-        <td class="text-right"><a class="btn btn-secondary text-xs" href="/dashboard/settings/email-templates/{{ r.key }}/">Edit</a></td>
+        <td class="text-right"><a class="btn text-xs" href="/dashboard/settings/email-templates/{{ r.key }}/">Edit</a></td>
       </tr>
       {% endfor %}
     </tbody>

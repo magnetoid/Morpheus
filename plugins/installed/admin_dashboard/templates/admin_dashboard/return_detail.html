@@ -82,7 +82,7 @@
       <form method="post" class="space-y-2">
         {% csrf_token %}
         <button type="submit" name="action" value="refund_money" class="btn btn-primary w-full">Refund to original payment</button>
-        <button type="submit" name="action" value="refund_credit" class="btn btn-secondary w-full">Issue store credit</button>
+        <button type="submit" name="action" value="refund_credit" class="btn w-full">Issue store credit</button>
       </form>
       <p class="text-xs text-[color:var(--text-muted)] mt-3">Store credit can be redeemed at checkout on a future order — no money moves through the gateway.</p>
     </div>

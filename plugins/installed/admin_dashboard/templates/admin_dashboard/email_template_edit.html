@@ -53,7 +53,7 @@
       data-confirm-title="Reset email template" data-confirm-cta="Reset" data-confirm-danger>
   {% csrf_token %}
   <input type="hidden" name="action" value="reset">
-  <button type="submit" class="btn btn-secondary text-sm">Reset to default</button>
+  <button type="submit" class="btn btn-danger text-sm">Reset to default</button>
 </form>
 {% endif %}
 
