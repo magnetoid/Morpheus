@@ -112,7 +112,38 @@ def _matches(predicates: dict, *, cart, channel, customer, country, coupon) -> b
     return True
 
 
-def _apply_action(action: dict, *, subtotal: Decimal) -> tuple[Decimal, bool, Optional[str]]:
+def _apply_action(
+    action: dict, *, subtotal: Decimal, cart: Any = None,
+) -> tuple[Decimal, bool, Optional[str]]:
+    """Compute the discount amount + flags for one rule action.
+
+    Returns ``(discount, free_shipping, gift_product_id)`` where the
+    discount is positive (caller subtracts).
+
+    Supported kinds:
+
+    - ``percent_off`` ``{"kind": "percent_off", "value": 10}`` —
+      flat 10% off subtotal.
+    - ``fixed_off`` ``{"kind": "fixed_off", "value": 5}`` — flat $5 off.
+    - ``free_shipping`` ``{"kind": "free_shipping"}``.
+    - ``gift`` ``{"kind": "gift", "product_id": "…"}`` — customer gets
+      a free product (caller adds the line item).
+    - ``bogo`` ``{"kind": "bogo", "buy_qty": 2, "free_qty": 1,
+      "product_ids": ["…"]}`` — for every ``buy_qty`` of any listed
+      product, ``free_qty`` of the cheapest line item among them is
+      free. Defaults: buy 2 free 1, all products eligible if no
+      product_ids supplied.
+    - ``tiered`` ``{"kind": "tiered", "tiers": [
+        {"min_qty": 3, "percent": 10},
+        {"min_qty": 5, "percent": 15},
+      ]}`` — buy-more-save-more; matches the highest-min_qty tier
+      whose threshold the cart satisfies. ``min_qty`` is total cart
+      item count.
+
+    Threshold ("free shipping over $X") is expressible today via the
+    rule's `predicates.min_subtotal` + a `free_shipping` action — no
+    new kind needed.
+    """
     kind = (action or {}).get('kind')
     if kind == 'percent_off':
         pct = Decimal(str(action.get('value', 0)))
@@ -123,7 +154,78 @@ def _apply_action(action: dict, *, subtotal: Decimal) -> tuple[Decimal, bool, Op
         return Decimal('0'), True, None
     if kind == 'gift':
         return Decimal('0'), False, str(action.get('product_id') or '')
+    if kind == 'bogo':
+        return _apply_bogo(action, cart=cart), False, None
+    if kind == 'tiered':
+        return _apply_tiered(action, subtotal=subtotal, cart=cart), False, None
     return Decimal('0'), False, None
+
+
+def _apply_bogo(action: dict, *, cart: Any) -> Decimal:
+    """Buy ``buy_qty`` get ``free_qty`` free across the eligible product set.
+
+    Algorithm:
+      1. Filter cart line items to those in ``product_ids`` (or all if
+         the list is empty/missing).
+      2. Expand each line into per-unit prices (cheaper units come
+         first so the customer doesn't get gamed by ordering).
+      3. Total qualifying units = sum of quantities.
+      4. Sets = total // (buy_qty + free_qty); the cheapest
+         ``sets * free_qty`` units are discounted at full price.
+
+    Cart-less call (e.g. tests) returns 0.
+    """
+    if cart is None:
+        return Decimal('0')
+    buy_qty = max(1, int(action.get('buy_qty', 2) or 2))
+    free_qty = max(1, int(action.get('free_qty', 1) or 1))
+    eligible_ids = {str(x) for x in (action.get('product_ids') or [])}
+
+    units: list[Decimal] = []
+    try:
+        items = cart.items.all() if hasattr(cart, 'items') else []
+    except Exception:  # noqa: BLE001
+        items = []
+    for it in items:
+        pid = str(getattr(getattr(it, 'product', None), 'id', '') or '')
+        if eligible_ids and pid not in eligible_ids:
+            continue
+        unit = Decimal(str(getattr(it.unit_price, 'amount', it.unit_price)))
+        for _ in range(int(it.quantity)):
+            units.append(unit)
+    if not units:
+        return Decimal('0')
+    units.sort()  # cheapest first
+    bundle_size = buy_qty + free_qty
+    sets = len(units) // bundle_size
+    if sets == 0:
+        return Decimal('0')
+    free_units = sets * free_qty
+    discount = sum(units[:free_units], Decimal('0'))
+    return discount.quantize(Decimal('0.01'))
+
+
+def _apply_tiered(action: dict, *, subtotal: Decimal, cart: Any) -> Decimal:
+    """Find the highest tier whose `min_qty` the cart satisfies and
+    apply its percent off the subtotal."""
+    tiers = action.get('tiers') or []
+    if not tiers:
+        return Decimal('0')
+    total_qty = 0
+    try:
+        for it in (cart.items.all() if cart and hasattr(cart, 'items') else []):
+            total_qty += int(it.quantity)
+    except Exception:  # noqa: BLE001
+        total_qty = 0
+    best_pct = Decimal('0')
+    for tier in tiers:
+        min_qty = int(tier.get('min_qty', 0) or 0)
+        pct = Decimal(str(tier.get('percent', 0)))
+        if total_qty >= min_qty and pct > best_pct:
+            best_pct = pct
+    if best_pct <= 0:
+        return Decimal('0')
+    return (subtotal * best_pct / Decimal('100')).quantize(Decimal('0.01'))
 
 
 def evaluate(
@@ -155,7 +257,9 @@ def evaluate(
             if not _matches(rule.predicates or {}, cart=cart, channel=channel,
                             customer=customer, country=country, coupon=coupon):
                 continue
-            amount, free_ship, gift_pid = _apply_action(rule.action or {}, subtotal=subtotal)
+            amount, free_ship, gift_pid = _apply_action(
+                rule.action or {}, subtotal=subtotal, cart=cart,
+            )
             out.append(AppliedPromotion(
                 promotion_id=str(promo.id),
                 promotion_name=promo.name,

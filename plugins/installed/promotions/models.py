@@ -74,6 +74,13 @@ class PromotionRule(models.Model):
     #   {"kind": "fixed_off", "value": 5, "currency": "USD"}
     #   {"kind": "free_shipping"}
     #   {"kind": "gift", "product_id": "..."}
+    #   {"kind": "bogo", "buy_qty": 2, "free_qty": 1, "product_ids": [...]}
+    #   {"kind": "tiered", "tiers": [
+    #       {"min_qty": 3, "percent": 10},
+    #       {"min_qty": 5, "percent": 15},
+    #     ]}
+    # Threshold ("free shipping over $X") = predicates.min_subtotal=X
+    # plus action `free_shipping` — no new kind needed.
     action = models.JSONField(default=dict)
 
     class Meta:
