@@ -94,14 +94,8 @@
       </tbody>
     </table>
     {% else %}
-    <div class="card-padded text-center py-16">
-      <i data-lucide="shopping-bag" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">No orders yet</h3>
-      <p class="text-sm text-[color:var(--text-muted)] mt-1">When customers place orders, they'll appear here.</p>
-      <a href="{% url 'admin_dashboard:order_new' %}" class="btn btn-primary mt-4 inline-flex">
-        <i data-lucide="plus" class="h-4 w-4"></i> Create order
-      </a>
-    </div>
+    {% url 'admin_dashboard:order_new' as order_new_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="shopping-bag" title="No orders yet" hint="When customers place orders, they'll appear here." action_url=order_new_url action_label="Create order" action_icon="plus" %}
     {% endif %}
   </div>
 

@@ -38,11 +38,7 @@
       </tbody>
     </table>
     {% else %}
-    <div class="card-padded text-center py-16">
-      <i data-lucide="sparkles" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">No AI insights yet</h3>
-      <p class="text-sm text-[color:var(--text-muted)] mt-1">The AI assistant will populate this view as it analyzes your store.</p>
-    </div>
+    {% include "admin_dashboard/_empty_state.html" with icon="sparkles" title="No AI insights yet" hint="The AI assistant will populate this view as it analyzes your store." %}
     {% endif %}
   </div>
 </div>

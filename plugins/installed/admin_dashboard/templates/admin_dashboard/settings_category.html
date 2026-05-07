@@ -138,15 +138,9 @@
     {% endfor %}
   {% else %}
     {% if not core_card %}
-    <div class="card card-padded text-center py-16">
-      <i data-lucide="{{ category.icon }}" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-      <h3 class="font-medium">Nothing configured here yet</h3>
-      <p class="text-sm text-[color:var(--text-muted)] mt-1">
-        Install a plugin in this category to surface its settings.
-      </p>
-      <a href="{% url 'admin_dashboard:apps' %}" class="btn mt-4 inline-flex">
-        <i data-lucide="grid-3x3" class="h-4 w-4"></i> Browse apps
-      </a>
+    {% url 'admin_dashboard:apps' as apps_url %}
+    <div class="card">
+      {% include "admin_dashboard/_empty_state.html" with icon=category.icon title="Nothing configured here yet" hint="Install a plugin in this category to surface its settings." action_url=apps_url action_label="Browse apps" action_icon="grid-3x3" %}
     </div>
     {% endif %}
   {% endif %}

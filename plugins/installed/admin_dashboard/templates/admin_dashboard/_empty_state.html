@@ -5,6 +5,7 @@ Reusable empty-state block for list pages. Pass via {% include %} with:
   hint         — sub-line ("They'll appear here after their first order.")
   action_url   — optional link
   action_label — button copy ("Add a customer")
+  action_icon  — optional lucide icon name to render inside the CTA
 Renders inside an existing `card` container.
 {% endcomment %}
 <div class="card-padded text-center py-16">
@@ -12,6 +13,9 @@ Renders inside an existing `card` container.
   <p class="font-medium">{{ title|default:"Nothing here yet" }}</p>
   {% if hint %}<p class="text-sm text-[color:var(--text-muted)] mt-1 max-w-md mx-auto">{{ hint }}</p>{% endif %}
   {% if action_url and action_label %}
-  <a href="{{ action_url }}" class="btn btn-primary text-sm mt-4 inline-flex">{{ action_label }}</a>
+  <a href="{{ action_url }}" class="btn btn-primary text-sm mt-4 inline-flex">
+    {% if action_icon %}<i data-lucide="{{ action_icon }}" class="h-4 w-4"></i>{% endif %}
+    {{ action_label }}
+  </a>
   {% endif %}
 </div>
