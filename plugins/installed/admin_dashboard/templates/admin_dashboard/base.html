@@ -9,6 +9,12 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
 <style>
+  /* Tailwind utilities like `flex` set display via class and out-rank
+     the [hidden] attribute's UA-stylesheet `display: none`. Without
+     this override, Tailwind-styled overlays (confirm modal, Cmd+K
+     palette) render visible by default. */
+  [hidden] { display: none !important; }
+
   :root {
     --bg:           #f6f6f7;
     --content-bg:   #ffffff;
