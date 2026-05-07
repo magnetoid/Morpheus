@@ -32,6 +32,8 @@ urlpatterns = [
     path('account/addresses/<uuid:address_id>/edit/', views.account_address_form, name='account_address_edit'),
     path('account/addresses/<uuid:address_id>/delete/', views.account_address_delete, name='account_address_delete'),
     path('account/returns/', views.account_returns, name='account_returns'),
+    path('account/credits/', views.account_credits, name='account_credits'),
+    path('account/downloads/', views.account_downloads, name='account_downloads'),
 
     # Order confirmation (post-checkout)
     path('order/confirmation/<str:order_number>/', views.order_confirmation, name='order_confirmation'),

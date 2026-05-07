@@ -1,4 +1,5 @@
 {% extends "storefront/base.html" %}
+{% load morph %}
 {% block title %}Account — dot books{% endblock %}
 
 {% block content %}
@@ -14,7 +15,7 @@
 
     <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;" class="account-grid">
       <a href="/account/orders/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-        <p class="title">Order history</p>
+        <p class="title">Order history{% if summary.orders_count %} <span style="color:var(--muted); font-weight:400;">({{ summary.orders_count }})</span>{% endif %}</p>
         <p class="meta" style="margin-top: .35rem;">Past orders, status, receipts.</p>
       </a>
       <a href="/account/addresses/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
@@ -22,9 +23,23 @@
         <p class="meta" style="margin-top: .35rem;">Saved shipping &amp; billing addresses.</p>
       </a>
       <a href="/account/returns/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-        <p class="title">Returns</p>
+        <p class="title">Returns{% if summary.pending_returns %} <span style="color:var(--muted); font-weight:400;">({{ summary.pending_returns }} open)</span>{% endif %}</p>
         <p class="meta" style="margin-top: .35rem;">Open and past return requests.</p>
       </a>
+      {% if summary.store_credit_balance or summary.gift_card_count %}
+      <a href="/account/credits/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Store credit &amp; gift cards</p>
+        <p class="meta" style="margin-top: .35rem;">
+          {% if summary.store_credit_balance %}Credit: {{ summary.store_credit_balance|money }}{% endif %}{% if summary.store_credit_balance and summary.gift_card_count %} · {% endif %}{% if summary.gift_card_count %}{{ summary.gift_card_count }} gift card{{ summary.gift_card_count|pluralize }}{% endif %}.
+        </p>
+      </a>
+      {% endif %}
+      {% if summary.download_count %}
+      <a href="/account/downloads/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Downloads <span style="color:var(--muted); font-weight:400;">({{ summary.download_count }})</span></p>
+        <p class="meta" style="margin-top: .35rem;">Active digital download links.</p>
+      </a>
+      {% endif %}
       <a href="/account/profile/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
         <p class="title">Profile</p>
         <p class="meta" style="margin-top: .35rem;">Name, email, contact preferences.</p>

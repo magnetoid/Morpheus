@@ -1,0 +1,75 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}Store credit &amp; gift cards — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">Account</p>
+    <h1 class="display display-l" style="margin: 1.25rem 0 .5rem;">
+      Store credit &amp; gift cards<span class="text-accent">.</span>
+    </h1>
+    <p class="meta" style="margin-bottom: 2rem;">
+      <a href="/account/" style="text-decoration: underline;">&larr; Back to account</a>
+    </p>
+
+    {# ── Store credit ─────────────────────────────────────────────── #}
+    <h2 class="display display-s" style="margin-top: 2rem; margin-bottom: 1rem;">Store credit</h2>
+    {% if store_credit and store_credit.amount %}
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem; background: var(--paper);">
+      <p style="font-size: 2rem; font-weight: 700; margin: 0;">{{ store_credit|money }}</p>
+      <p class="meta" style="margin-top: .35rem;">Available balance — applied automatically at checkout.</p>
+    </div>
+    {% if txns %}
+    <h3 class="eyebrow" style="margin-top: 2rem;">History</h3>
+    <table style="width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: .9rem;">
+      <thead style="text-align: left; color: var(--muted);">
+        <tr><th style="padding: .5rem 0;">When</th><th>Kind</th><th style="text-align:right;">Amount</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        {% for t in txns %}
+        <tr style="border-top: 1px solid var(--rule);">
+          <td style="padding: .65rem 0; color: var(--muted);">{{ t.created_at|date:"M j, Y" }}</td>
+          <td>{% if t.kind == 'credit' %}<span style="color: var(--accent-ink);">Credit</span>{% else %}Debit{% endif %}</td>
+          <td style="text-align: right;">{% if t.kind == 'credit' %}+{% else %}−{% endif %}{{ t.amount|money }}</td>
+          <td style="color: var(--muted);">{{ t.note|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% else %}
+    <p class="meta" style="padding: 2rem; border: 1px dashed var(--rule); border-radius: 6px; text-align: center;">
+      No store credit yet. You'll earn it from refunded returns when you choose "store credit" instead of money back.
+    </p>
+    {% endif %}
+
+    {# ── Gift cards ───────────────────────────────────────────────── #}
+    <h2 class="display display-s" style="margin-top: 3rem; margin-bottom: 1rem;">Gift cards</h2>
+    {% if cards %}
+    <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
+      {% for c in cards %}
+      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem;">
+        <div style="display:flex; justify-content:space-between; gap: 1rem; align-items:flex-start; flex-wrap:wrap;">
+          <div>
+            <p class="meta" style="margin: 0;">Code</p>
+            <p style="font-family:ui-monospace,monospace; font-size: 1rem; margin: .15rem 0 0;">{{ c.code }}</p>
+          </div>
+          <div style="text-align: right;">
+            <p class="meta" style="margin: 0;">Balance</p>
+            <p style="font-size: 1.25rem; font-weight: 700; margin: .15rem 0 0;">{{ c.balance|money }}</p>
+          </div>
+        </div>
+        {% if c.expires_at %}<p class="meta" style="margin-top: .65rem;">Expires {{ c.expires_at|date:"M j, Y" }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <p class="meta" style="margin-top: 1rem;">Apply at checkout — paste the code into the "Have a gift card?" field.</p>
+    {% else %}
+    <p class="meta" style="padding: 2rem; border: 1px dashed var(--rule); border-radius: 6px; text-align: center;">
+      No gift cards on this account yet.
+    </p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

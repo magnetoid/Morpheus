@@ -614,8 +614,133 @@ def account_home(request):
     if not request.user.is_authenticated:
         from morpheus.views import redirect
         return redirect('/auth/login/?next=/account/')
+    summary = _account_summary(request.user)
     return render(request, 'storefront/account_home.html', {
         'user': request.user,
+        'summary': summary,
+    })
+
+
+def _account_summary(user) -> dict:
+    """Cheap counts + balances for the account home dashboard.
+
+    Each lookup is fail-soft — a missing plugin shouldn't break the
+    account page; the customer just sees that section as zero.
+    """
+    s: dict = {
+        'orders_count': 0,
+        'pending_returns': 0,
+        'store_credit_balance': None,
+        'gift_card_count': 0,
+        'gift_card_total': None,
+        'download_count': 0,
+    }
+    try:
+        from plugins.installed.orders.models import Order
+        s['orders_count'] = Order.objects.filter(customer=user).count()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.orders.refunds import ReturnRequest
+        s['pending_returns'] = ReturnRequest.objects.filter(
+            order__customer=user, state__in=('requested', 'approved', 'received'),
+        ).count()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.orders import store_credit as _sc
+        s['store_credit_balance'] = _sc.balance(user)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.gift_cards.models import GiftCard
+        from decimal import Decimal
+        cards = GiftCard.objects.filter(
+            issued_to_customer=user, state='active',
+        )
+        s['gift_card_count'] = cards.count()
+        if cards.exists():
+            total = sum(
+                (Decimal(str(c.balance.amount)) for c in cards),
+                Decimal('0'),
+            )
+            currency = str(cards.first().balance.currency)
+            from djmoney.money import Money
+            s['gift_card_total'] = Money(total, currency)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.digital_products.models import DownloadToken
+        from django.utils import timezone
+        s['download_count'] = DownloadToken.objects.filter(
+            order__customer=user,
+            expires_at__gt=timezone.now(),
+            revoked_at__isnull=True,
+        ).count()
+    except Exception:  # noqa: BLE001
+        pass
+    return s
+
+
+def account_credits(request):
+    """Combined view: store-credit balance + ledger + active gift cards."""
+    if not request.user.is_authenticated:
+        from morpheus.views import redirect
+        return redirect('/auth/login/?next=/account/credits/')
+    store_credit = None
+    txns: list = []
+    cards: list = []
+    try:
+        from plugins.installed.orders import store_credit as _sc
+        from plugins.installed.orders.models import StoreCreditTxn
+        store_credit = _sc.balance(request.user)
+        txns = list(
+            StoreCreditTxn.objects.filter(customer=request.user)
+            .order_by('-created_at')[:30]
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.gift_cards.models import GiftCard
+        cards = list(
+            GiftCard.objects
+            .filter(issued_to_customer=request.user, state='active')
+            .order_by('-created_at')
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return render(request, 'storefront/account_credits.html', {
+        'store_credit': store_credit,
+        'txns': txns,
+        'cards': cards,
+    })
+
+
+def account_downloads(request):
+    """Active digital download links — token-protected, time-bound."""
+    if not request.user.is_authenticated:
+        from morpheus.views import redirect
+        return redirect('/auth/login/?next=/account/downloads/')
+    tokens: list = []
+    try:
+        from plugins.installed.digital_products.models import DownloadToken
+        from django.utils import timezone
+        tokens = list(
+            DownloadToken.objects
+            .filter(order__customer=request.user, revoked_at__isnull=True)
+            .select_related('product', 'order')
+            .order_by('-created_at')[:50]
+        )
+        # Hide ones already past expiry — user can still see them but
+        # we tag them so the template renders the button as disabled.
+        now = timezone.now()
+        for t in tokens:
+            t.is_expired = bool(t.expires_at and t.expires_at <= now)
+            t.is_exhausted = t.downloads_used >= t.max_downloads
+    except Exception:  # noqa: BLE001
+        pass
+    return render(request, 'storefront/account_downloads.html', {
+        'tokens': tokens,
     })
 
 
