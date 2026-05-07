@@ -165,9 +165,11 @@
       </div>
     </div>
 
-    {# Inventory & shipping — full section visible for physical products
-       (simple, variable, bundle). For digital we render a slim "Delivery"
-       card below instead, since weight + shipping don't apply. #}
+    {% comment %}
+    Inventory & shipping — full section visible for physical products
+    (simple, variable, bundle). For digital we render a slim "Delivery"
+    card below instead, since weight + shipping don't apply.
+    {% endcomment %}
     <div class="card card-padded space-y-3" data-pt-show="simple,variable,bundle">
       <h2 class="font-semibold text-sm">Inventory &amp; shipping</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">

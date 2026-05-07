@@ -353,10 +353,34 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
 # ── AI insights (kept for back-compat with old URL) ──────────────────────────
 
 
+# Master list of transactional email keys + labels + default subjects.
+# Drives both the list page (rows) and the edit page (label / default
+# subject lookup). When adding a new transactional email, register it
+# here AND ship a default body at core/emails/templates/emails/<key>.txt.
+_EMAIL_TEMPLATE_KEYS = [
+    ('order_placed', 'Order placed', 'Order #{{ order.order_number }} received'),
+    ('order_paid', 'Order paid', 'Payment confirmed for order #{{ order.order_number }}'),
+    ('order_fulfilled', 'Order fulfilled', 'Order #{{ order.order_number }} is on its way'),
+    ('order_cancelled', 'Order cancelled', 'Order #{{ order.order_number }} cancelled'),
+    ('refund_issued', 'Refund issued', 'Refund issued for order #{{ order.order_number }}'),
+    ('digital_download', 'Digital downloads', 'Your downloads — order #{{ order.order_number }}'),
+    ('cart_abandoned', 'Cart abandoned', 'You left items in your cart'),
+    ('welcome', 'Welcome', 'Welcome'),
+]
+
+
 def _filesystem_default(key: str) -> str:
-    """Read the shipped default body so the editor can show / restore it."""
+    """Read the shipped default body so the editor can show / restore it.
+
+    Path traversal: this file lives at
+    ``plugins/installed/admin_dashboard/views_split/settings.py`` — five
+    `.parent` hops to reach the project root, then `core/emails/...`
+    """
     from pathlib import Path
-    base = Path(__file__).resolve().parent.parent.parent.parent / 'core' / 'emails' / 'templates' / 'emails'
+    base = (
+        Path(__file__).resolve().parent.parent.parent.parent.parent
+        / 'core' / 'emails' / 'templates' / 'emails'
+    )
     fp = base / f'{key}.txt'
     try:
         return fp.read_text(encoding='utf-8')
