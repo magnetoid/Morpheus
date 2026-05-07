@@ -11,12 +11,29 @@
   {% csrf_token %}
   <div>
     <label class="text-xs text-[color:var(--text-muted)] block mb-1">Subject</label>
-    <input class="input w-full" name="subject" value="{{ subject }}" required>
+    <input id="et-subject" class="input w-full" name="subject" value="{{ subject }}" required>
     <p class="text-xs text-[color:var(--text-muted)] mt-1">Default: <code>{{ default_subject }}</code></p>
   </div>
   <div>
-    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Plain-text body</label>
-    <textarea class="input w-full" name="body_text" rows="14" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">{{ body_text }}</textarea>
+    <div class="flex items-center justify-between mb-1">
+      <label class="text-xs text-[color:var(--text-muted)]">Plain-text body</label>
+      <div class="flex items-center gap-2">
+        <select id="et-tone" class="input text-xs" style="height: auto; padding: .15rem .4rem;">
+          <option value="friendly">Friendly</option>
+          <option value="formal">Formal</option>
+          <option value="warm">Warm</option>
+          <option value="brief">Brief</option>
+        </select>
+        <button type="button" id="ai-rewrite-email" class="btn btn-ghost text-xs"
+                style="padding:.2rem .5rem;" data-csrf="{{ csrf_token }}">
+          <i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Rewrite with AI
+        </button>
+      </div>
+    </div>
+    <textarea id="et-body" class="input w-full" name="body_text" rows="14" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">{{ body_text }}</textarea>
+    <p class="text-xs text-[color:var(--text-muted)] mt-1">
+      Django template placeholders like <code>{% verbatim %}{{ order.order_number }}{% endverbatim %}</code> are preserved verbatim by the AI.
+    </p>
   </div>
   <div>
     <label class="text-xs text-[color:var(--text-muted)] block mb-1">HTML body <span class="text-[color:var(--text-muted)]">(optional — leave blank to send plain text only)</span></label>
@@ -52,4 +69,52 @@
     <li><code>{{ "{{ cart.item_count }}" }}</code>, <code>{{ "{{ cart.subtotal }}" }}</code> on cart abandoned</li>
   </ul>
 </details>
+
+<script>
+(function () {
+  var btn = document.getElementById('ai-rewrite-email');
+  var subj = document.getElementById('et-subject');
+  var body = document.getElementById('et-body');
+  var tone = document.getElementById('et-tone');
+  if (!btn || !body || !subj) return;
+  btn.addEventListener('click', function () {
+    if (!body.value.trim()) {
+      if (window.Morph && Morph.toast) Morph.toast('Body is empty — nothing to rewrite.', 'warn');
+      return;
+    }
+    btn.disabled = true;
+    var original = btn.innerHTML;
+    btn.innerHTML = 'Rewriting…';
+    fetch('/dashboard/ai/rewrite-email/', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': btn.dataset.csrf },
+      body: JSON.stringify({
+        subject: subj.value || '',
+        body_text: body.value || '',
+        tone: tone ? tone.value : 'friendly',
+      }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        btn.innerHTML = original;
+        if (window.lucide) window.lucide.createIcons();
+        if (!res.ok || res.data.error) {
+          if (window.Morph && Morph.toast) Morph.toast(res.data.error || 'Rewrite failed.', 'error');
+          return;
+        }
+        if (res.data.subject) subj.value = res.data.subject;
+        if (res.data.body_text) body.value = res.data.body_text;
+        if (window.Morph && Morph.toast) Morph.toast('Rewritten — review before saving.', 'success');
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.innerHTML = original;
+        if (window.lucide) window.lucide.createIcons();
+        if (window.Morph && Morph.toast) Morph.toast('Connection error.', 'error');
+      });
+  });
+})();
+</script>
 {% endblock %}

@@ -21,3 +21,4 @@ from plugins.installed.admin_dashboard.views_split.apps import *      # noqa: F4
 from plugins.installed.admin_dashboard.views_split.settings import *  # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.returns import *   # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.palette import *   # noqa: F401, F403
+from plugins.installed.admin_dashboard.views_split.ai_writers import * # noqa: F401, F403

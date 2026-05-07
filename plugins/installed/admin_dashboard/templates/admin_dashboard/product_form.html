@@ -84,10 +84,67 @@
         <textarea name="short_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.short_description.value|default:'' }}</textarea>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Description</label>
-        <textarea name="description" rows="6" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.description.value|default:'' }}</textarea>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-sm font-medium">Description</label>
+          <button type="button" id="ai-draft-description"
+                  class="btn btn-ghost text-xs"
+                  style="padding:.2rem .5rem;"
+                  data-csrf="{{ csrf_token }}">
+            <i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Draft with AI
+          </button>
+        </div>
+        <textarea id="product-description" name="description" rows="6" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.description.value|default:'' }}</textarea>
       </div>
     </div>
+
+    <script>
+    (function () {
+      var btn = document.getElementById('ai-draft-description');
+      var ta  = document.getElementById('product-description');
+      if (!btn || !ta) return;
+      var nameInput = document.querySelector('input[name="name"]');
+      var catSelect = document.querySelector('select[name="category"]');
+      btn.addEventListener('click', function () {
+        var name = (nameInput && nameInput.value || '').trim();
+        if (!name) {
+          if (window.Morph && Morph.toast) Morph.toast('Add a product name first.', 'warn');
+          return;
+        }
+        btn.disabled = true;
+        var original = btn.innerHTML;
+        btn.innerHTML = 'Drafting…';
+        var category = catSelect ? (catSelect.options[catSelect.selectedIndex].text || '') : '';
+        if (category === '— None —') category = '';
+        fetch('/dashboard/ai/draft-description/', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': btn.dataset.csrf,
+          },
+          body: JSON.stringify({ name: name, category: category, short: ta.value || '' }),
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (res) {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            if (window.lucide) window.lucide.createIcons();
+            if (!res.ok || res.data.error) {
+              if (window.Morph && Morph.toast) Morph.toast(res.data.error || 'AI draft failed.', 'error');
+              return;
+            }
+            ta.value = res.data.text || '';
+            if (window.Morph && Morph.toast) Morph.toast('Draft inserted — review before saving.', 'success');
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            if (window.lucide) window.lucide.createIcons();
+            if (window.Morph && Morph.toast) Morph.toast('Connection error.', 'error');
+          });
+      });
+    })();
+    </script>
 
     <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
       <h2 class="font-semibold text-sm">Pricing</h2>

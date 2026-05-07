@@ -92,3 +92,27 @@ def _bulk_ids(request: HttpRequest, field: str = 'ids') -> list[str]:
     raw = request.POST.getlist(field)
     out = [s.strip() for s in raw if s and s.strip()]
     return out[:500]
+
+
+def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str, str]:
+    """Single source of truth for "ask the configured AI provider for some
+    text" from dashboard endpoints.
+
+    Returns ``(text, error)``. On success, ``error`` is ''. On any failure
+    (no provider configured, network glitch, gateway error) returns
+    ``('', friendly_message)`` so the caller can return a clean JSON
+    payload without needing per-route try/except.
+    """
+    try:
+        from plugins.installed.ai_assistant.services.llm import get_llm
+        gateway = get_llm()
+    except Exception as e:  # noqa: BLE001 — provider not wired
+        return ('', f'AI provider not configured: {e}')
+    try:
+        text = gateway.complete(
+            prompt=prompt, system=system,
+            temperature=0.6, max_tokens=max_tokens,
+        )
+    except Exception as e:  # noqa: BLE001
+        return ('', f'AI provider error: {e}')
+    return (text or '').strip(), ''
