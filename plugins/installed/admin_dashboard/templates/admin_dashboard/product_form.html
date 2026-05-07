@@ -81,7 +81,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Short description</label>
-        <textarea name="short_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.short_description.value|default:'' }}</textarea>
+        <textarea name="short_description" rows="2" class="input">{{ form.short_description.value|default:'' }}</textarea>
       </div>
       <div>
         <div class="flex items-center justify-between mb-1">
@@ -93,7 +93,7 @@
             <i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Draft with AI
           </button>
         </div>
-        <textarea id="product-description" name="description" rows="6" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.description.value|default:'' }}</textarea>
+        <textarea id="product-description" name="description" rows="6" class="input">{{ form.description.value|default:'' }}</textarea>
       </div>
     </div>
 
@@ -284,7 +284,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Meta description</label>
-            <textarea name="meta_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.meta_description.value|default:'' }}</textarea>
+            <textarea name="meta_description" rows="2" class="input">{{ form.meta_description.value|default:'' }}</textarea>
             <p class="text-xs text-[color:var(--text-muted)] mt-1">~155 characters. Plain text only.</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -314,7 +314,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">OG description</label>
-            <textarea name="og_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.og_description.value|default:'' }}</textarea>
+            <textarea name="og_description" rows="2" class="input">{{ form.og_description.value|default:'' }}</textarea>
           </div>
           <p class="text-xs text-[color:var(--text-muted)]">OG image upload coming next — for now, the product's primary image is used.</p>
         </div>
@@ -340,7 +340,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Twitter description</label>
-            <textarea name="twitter_description" rows="2" class="input" style="height:auto; padding:.5rem .75rem;">{{ form.twitter_description.value|default:'' }}</textarea>
+            <textarea name="twitter_description" rows="2" class="input">{{ form.twitter_description.value|default:'' }}</textarea>
           </div>
         </div>
 
@@ -364,7 +364,7 @@
           <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Structured data overrides</h3>
           <div>
             <label class="block text-sm font-medium mb-1">Extra JSON-LD (object)</label>
-            <textarea name="structured_data" rows="6" class="input font-mono text-xs" style="height:auto; padding:.5rem .75rem;" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
+            <textarea name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
             {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
             <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>
           </div>
