@@ -280,6 +280,73 @@ def cart(request):
     return render(request, 'storefront/cart.html', {'cart': (data or {}).get('cart', {})})
 
 
+def cart_add(request, product_id):
+    """Add a product to the cart.
+
+    Returns JSON when called as ``X-Requested-With: fetch`` (the cart
+    drawer drains the response into the slide-out). Falls back to a
+    plain POST + redirect for users without JS or for the rare server
+    fetch that fails.
+    """
+    from django.http import JsonResponse
+    from morpheus.views import HttpResponseNotAllowed
+
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    quantity = max(1, int((request.POST.get('quantity') or '1').strip() or 1))
+    variant_id = (request.POST.get('variant_id') or '').strip() or None
+
+    is_xhr = (
+        request.headers.get('X-Requested-With', '').lower() == 'fetch'
+        or 'application/json' in request.headers.get('Accept', '')
+    )
+
+    mutation = """
+    mutation Add($input: AddToCartInput!) {
+      addToCart(input: $input) {
+        cart {
+          id itemCount subtotal { amount currency }
+          items {
+            id quantity
+            unitPrice { amount currency }
+            totalPrice { amount currency }
+            product { name slug primaryImage { url } }
+            variant { name }
+          }
+        }
+        errors { code message }
+      }
+    }
+    """
+    variables = {
+        'input': {
+            'productId': str(product_id),
+            'quantity': quantity,
+            'variantId': variant_id,
+            'sessionKey': request.session.session_key or '',
+        },
+    }
+    data = internal_graphql(mutation, variables=variables, request=request) or {}
+    payload = (data or {}).get('addToCart') or {}
+    errors = payload.get('errors') or []
+
+    if is_xhr:
+        if errors:
+            return JsonResponse(
+                {'ok': False, 'error': errors[0].get('message', 'Add failed.')},
+                status=400,
+            )
+        return JsonResponse({'ok': True, 'cart': payload.get('cart') or {}})
+
+    if errors:
+        # No JS: fall back to the cart page so the customer at least
+        # sees what's there. Could surface the message via messages
+        # framework once that's wired storefront-side.
+        return redirect('/cart/')
+    return redirect('/cart/')
+
+
 def checkout(request):
     """Step 1 of the server-rendered checkout: contact + shipping address.
 
