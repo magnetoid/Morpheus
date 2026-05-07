@@ -419,9 +419,12 @@ def _available_shipping_rates(request, addr):
 
 
 def checkout_review(request):
-    """Step 3: final review + place order. POST hits the GraphQL mutation
-    so all the existing server-side validation, hooks, and payments flow
-    still apply — we just frame it in a server-rendered form."""
+    """Step 3: final review + place order.
+
+    POST creates the Order via the existing GraphQL mutation, captures
+    the Stripe ``payment_client_secret`` it returns, and redirects to
+    ``/checkout/payment/`` where the customer enters their card.
+    """
     addr = request.session.get('checkout_address')
     if not addr:
         return redirect('/checkout/')
@@ -466,17 +469,52 @@ def checkout_review(request):
                 error = '; '.join(e.get('message', 'Order failed.') for e in errs)
             else:
                 order_no = payload.get('orderNumber') or ''
-                # Clear the session-side checkout state so refresh doesn't
-                # re-fire the order.
+                client_secret = payload.get('paymentClientSecret') or ''
+                # Stash for the payment step; clear address/shipping
+                # so a back-button refresh doesn't re-place the order.
+                request.session['checkout_order_number'] = order_no
+                request.session['checkout_client_secret'] = client_secret
                 for k in ('checkout_address', 'checkout_shipping_rate_id', 'checkout_shipping_rate_label'):
                     request.session.pop(k, None)
-                return redirect(f'/account/orders/{order_no}/' if order_no else '/account/orders/')
+                # If the order is fully zero-totalled (gift card +
+                # store credit covers everything), Stripe doesn't
+                # issue a client_secret. Skip the payment step.
+                if not client_secret:
+                    return redirect(f'/order/confirmation/{order_no}/' if order_no else '/account/orders/')
+                return redirect('/checkout/payment/')
 
     return render(request, 'storefront/checkout_review.html', {
         'cart': cart,
         'address': addr,
         'rate_label': rate_label,
         'error': error,
+    })
+
+
+def checkout_payment(request):
+    """Step 4: Stripe Payment Element.
+
+    Renders Stripe.js + the Element keyed to the ``client_secret`` the
+    review step stashed. On successful confirmation Stripe redirects
+    the browser to ``return_url`` (the order confirmation page); the
+    real source of truth for "paid" is the webhook in
+    ``payments.services.stripe`` which already transitions the order
+    atomically.
+    """
+    from django.conf import settings as dj_settings
+
+    order_no = request.session.get('checkout_order_number') or ''
+    client_secret = request.session.get('checkout_client_secret') or ''
+    if not (order_no and client_secret):
+        return redirect('/checkout/')
+    publishable = getattr(dj_settings, 'STRIPE_PUBLIC_KEY', '') or ''
+    return render(request, 'storefront/checkout_payment.html', {
+        'order_number': order_no,
+        'client_secret': client_secret,
+        'stripe_publishable_key': publishable,
+        'return_url': request.build_absolute_uri(
+            f'/order/confirmation/{order_no}/'
+        ),
     })
 
 
@@ -774,13 +812,26 @@ def account_order_detail(request, order_number):
 
 def order_confirmation(request, order_number):
     """Public order confirmation — accessible by order_number alone (signed link).
-    Future: token-protect to prevent enumeration."""
+    Future: token-protect to prevent enumeration.
+
+    Stripe redirects here after a successful confirmPayment, so this is
+    also the natural place to clear any leftover checkout session state.
+    The actual "paid" transition happens via the Stripe webhook in
+    payments.services.stripe — this page just shows the order.
+    """
     from morpheus.views import get_object_or_404
     from plugins.installed.orders.models import Order
     order = get_object_or_404(
         Order.objects.prefetch_related('items'), order_number=order_number,
     )
-    return render(request, 'storefront/order_confirmation.html', {'order': order})
+    # Clean up so the Back button doesn't re-confirm.
+    for k in ('checkout_order_number', 'checkout_client_secret'):
+        request.session.pop(k, None)
+    redirect_status = (request.GET.get('redirect_status') or '').lower()
+    return render(request, 'storefront/order_confirmation.html', {
+        'order': order,
+        'payment_status': redirect_status,  # 'succeeded' / 'processing' / 'requires_payment_method'
+    })
 
 
 def coming_soon(request, slug=None):

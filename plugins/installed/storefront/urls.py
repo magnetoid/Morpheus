@@ -10,6 +10,7 @@ urlpatterns = [
     path('checkout/', views.checkout, name='checkout'),
     path('checkout/shipping/', views.checkout_shipping, name='checkout_shipping'),
     path('checkout/review/', views.checkout_review, name='checkout_review'),
+    path('checkout/payment/', views.checkout_payment, name='checkout_payment'),
     path('checkout/gift-card/apply/', views.checkout_apply_gift_card, name='checkout_apply_gift_card'),
     path('checkout/gift-card/remove/', views.checkout_remove_gift_card, name='checkout_remove_gift_card'),
     path('search/', views.search, name='search'),
