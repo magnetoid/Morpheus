@@ -32,6 +32,16 @@ from core.assistant.tools.ecommerce import (
     products_search_tool,
     settings_list_tool,
 )
+from core.assistant.tools.ecommerce_writes import (
+    cms_publish_page_tool,
+    cms_unpublish_page_tool,
+    customers_add_note_tool,
+    orders_add_note_tool,
+    orders_cancel_tool,
+    orders_update_status_tool,
+    products_update_price_tool,
+    products_update_status_tool,
+)
 from core.assistant.tools.filesystem import (
     list_dir_tool,
     read_file_tool,
@@ -76,6 +86,15 @@ def get_default_tools() -> list:
         email_templates_tool,
         # Configuration
         settings_list_tool,
+        # Write operations — gated by confirmed=True; LLM must ask user first
+        orders_update_status_tool,
+        orders_cancel_tool,
+        orders_add_note_tool,
+        products_update_status_tool,
+        products_update_price_tool,
+        customers_add_note_tool,
+        cms_publish_page_tool,
+        cms_unpublish_page_tool,
         # Logs
         recent_errors_tool,
         search_logs_tool,
