@@ -1,0 +1,123 @@
+{% comment %}
+Reusable date-range picker. Drop into any dashboard page header that
+has a `date_range` and `date_presets` context value.
+
+Trigger: shows the current label + dropdown chevron.
+Panel: preset rail on the left, custom-range form on the right.
+
+Each preset is a real `<a>` so it works without JS too — clicking
+navigates to `?preset=<key>`. The custom range posts via GET to
+`?from=YYYY-MM-DD&to=YYYY-MM-DD`. Either way, the page reloads with
+fresh stats. JS only handles open/close + outside-click dismissal +
+syncing the from/to inputs when a preset is hovered (preview).
+
+Params (all read from the surrounding view context):
+  date_range    — DateRange dataclass (from _shared._resolve_date_range)
+  date_presets  — list of (key, label, days) tuples
+  picker_target — optional URL to navigate to (default: current path)
+{% endcomment %}
+<div class="dropdown" data-dropdown id="date-range-picker"
+     style="position: relative;">
+  <button type="button" data-dropdown-toggle aria-expanded="false"
+          class="btn text-xs"
+          style="display: inline-flex; align-items: center; gap: .5rem;">
+    <i data-lucide="calendar" class="h-3.5 w-3.5"></i>
+    <span data-dr-label>{{ date_range.label }}</span>
+    <span style="color: var(--text-muted); font-size: .7rem;">
+      {{ date_range.from_str }} → {{ date_range.to_str }}
+    </span>
+    <i data-lucide="chevron-down" class="h-3 w-3" style="color: var(--text-muted);"></i>
+  </button>
+
+  <div class="dropdown-menu fadein" hidden
+       style="min-width: 460px; padding: 0; right: 0; top: calc(100% + .35rem); display: flex; flex-wrap: wrap;">
+    {# Preset rail #}
+    <ul style="list-style: none; margin: 0; padding: .35rem; min-width: 200px; border-right: 1px solid var(--border);">
+      {% for key, label, _ in date_presets %}
+      <li>
+        <a href="?preset={{ key }}"
+           class="dropdown-item {% if date_range.preset == key %}is-active{% endif %}"
+           data-dr-preset="{{ key }}"
+           style="font-size: .8125rem;
+                  {% if date_range.preset == key %}background: var(--surface-2); font-weight: 600;{% endif %}">
+          {{ label }}
+          {% if date_range.preset == key %}<i data-lucide="check" class="h-3.5 w-3.5" style="margin-left: auto; color: var(--success);"></i>{% endif %}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {# Custom range #}
+    <form method="get" style="flex: 1; min-width: 220px; padding: .85rem;"
+          data-dr-form>
+      <p style="font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
+                color: var(--text-subtle); font-weight: 600; margin: 0 0 .55rem;">
+        Custom range
+      </p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-bottom: .65rem;">
+        <label style="display: flex; flex-direction: column; gap: .2rem;">
+          <span style="font-size: .7rem; color: var(--text-muted);">From</span>
+          <input type="date" name="from" class="input" data-dr-from
+                 value="{{ date_range.from_str }}"
+                 max="{{ date_range.to_str }}"
+                 style="font-size: .8rem;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: .2rem;">
+          <span style="font-size: .7rem; color: var(--text-muted);">To</span>
+          <input type="date" name="to" class="input" data-dr-to
+                 value="{{ date_range.to_str }}"
+                 style="font-size: .8rem;">
+        </label>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: .5rem;">
+        <p style="font-size: .7rem; color: var(--text-muted); margin: 0;" data-dr-summary>
+          {{ date_range.days }} day{{ date_range.days|pluralize }}
+        </p>
+        <div style="display: flex; gap: .35rem;">
+          <button type="button" class="btn text-xs" data-dr-cancel>Cancel</button>
+          <button type="submit" class="btn btn-primary text-xs">Apply</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const root = document.getElementById('date-range-picker');
+  if (!root || root.dataset.drInit === '1') return;
+  root.dataset.drInit = '1';
+
+  const fromInput = root.querySelector('[data-dr-from]');
+  const toInput = root.querySelector('[data-dr-to]');
+  const summary = root.querySelector('[data-dr-summary]');
+  const cancelBtn = root.querySelector('[data-dr-cancel]');
+  const menu = root.querySelector('.dropdown-menu');
+
+  function diffDays() {
+    if (!fromInput.value || !toInput.value) return 0;
+    const a = new Date(fromInput.value);
+    const b = new Date(toInput.value);
+    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+  }
+  function refreshSummary() {
+    const n = diffDays();
+    if (summary) summary.textContent = n + ' day' + (n === 1 ? '' : 's');
+  }
+  function clampMax() {
+    if (fromInput.value) toInput.min = fromInput.value;
+    if (toInput.value) fromInput.max = toInput.value;
+  }
+  fromInput?.addEventListener('change', () => { clampMax(); refreshSummary(); });
+  toInput?.addEventListener('change', () => { clampMax(); refreshSummary(); });
+
+  cancelBtn?.addEventListener('click', () => {
+    if (menu) menu.hidden = true;
+    const t = root.querySelector('[data-dropdown-toggle]');
+    if (t) t.setAttribute('aria-expanded', 'false');
+  });
+
+  refreshSummary();
+})();
+</script>

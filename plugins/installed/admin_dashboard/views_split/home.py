@@ -20,13 +20,16 @@ from plugins.installed.admin_dashboard.forms import (
     VariantForm,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
+    DATE_PRESETS, Metric, _bulk_ids, _period, _pct_delta, _resolve_date_range,
+    _since, _sparkline_points, _trend, logger,
 )
 
 @staff_member_required
 def dashboard_home(request: HttpRequest) -> HttpResponse:
-    period, days = _period(request)
-    since = _since(days)
+    date_range = _resolve_date_range(request)
+    period = date_range.preset or 'custom'
+    days = date_range.days
+    since = date_range.start
 
     metrics: list[Metric] = []
     recent_orders: list[Any] = []
@@ -38,14 +41,17 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         from django.db.models.functions import TruncDate
         from plugins.installed.orders.models import Order
 
-        orders_qs = Order.objects.filter(placed_at__gte=since)
+        orders_qs = Order.objects.filter(
+            placed_at__gte=date_range.start,
+            placed_at__lt=date_range.end,
+        )
         order_count = orders_qs.count()
         revenue = orders_qs.aggregate(total=Sum('total'))['total'] or Decimal('0')
         avg_order = (revenue / order_count) if order_count else Decimal('0')
 
         prev_orders = Order.objects.filter(
-            placed_at__gte=_since(days * 2),
-            placed_at__lt=since,
+            placed_at__gte=date_range.prev_start,
+            placed_at__lt=date_range.prev_end,
         )
         prev_count = prev_orders.count()
         prev_revenue = prev_orders.aggregate(total=Sum('total'))['total'] or Decimal('0')
@@ -219,6 +225,8 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         'activity': activity,
         'active_nav': 'home',
         'period': period,
+        'date_range': date_range,
+        'date_presets': DATE_PRESETS,
     })
 
 

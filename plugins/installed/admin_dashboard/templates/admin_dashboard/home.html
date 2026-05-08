@@ -11,13 +11,7 @@
       <h1 class="text-xl font-semibold tracking-tight">Home</h1>
       <p class="text-sm text-[color:var(--text-muted)]">Hi {{ request.user.email }} — here's what's happening in your store.</p>
     </div>
-    <div class="flex items-center gap-1 card p-0.5">
-      {% for key, label in "today,Today|7d,Last 7 days|30d,Last 30 days|90d,Last 90 days"|cut:" "|cut:""|slice:":0" %}{% endfor %}
-      <a href="?period=today" class="btn btn-ghost {% if period == 'today' %}btn-primary{% endif %} text-xs">Today</a>
-      <a href="?period=7d"    class="btn btn-ghost {% if period == '7d'    %}btn-primary{% endif %} text-xs">Last 7 days</a>
-      <a href="?period=30d"   class="btn btn-ghost {% if period == '30d'   %}btn-primary{% endif %} text-xs">Last 30 days</a>
-      <a href="?period=90d"   class="btn btn-ghost {% if period == '90d'   %}btn-primary{% endif %} text-xs">Last 90 days</a>
-    </div>
+    {% include "admin_dashboard/_date_range_picker.html" %}
   </div>
 
   {# First-run checklist. Hidden once every step is done so the home #}
