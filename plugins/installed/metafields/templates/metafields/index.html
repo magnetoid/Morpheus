@@ -1,0 +1,88 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
+{% block title %}Metafields · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Metafields</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Custom <code>(namespace, key, value)</code> triples on any
+        record. Use them for product attributes, customer preferences,
+        order custom data, plugin-private state.
+        {% if page_obj %} {{ page_obj.paginator.count }} stored.{% endif %}
+      </p>
+    </div>
+    <a href="{% url 'metafields:create' %}" class="btn btn-primary">
+      <i data-lucide="plus" class="h-4 w-4"></i> Add metafield
+    </a>
+  </div>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    <select name="namespace" class="input max-w-[200px]">
+      <option value="">All namespaces</option>
+      {% for ns in namespaces %}
+      <option value="{{ ns }}" {% if namespace == ns %}selected{% endif %}>{{ ns }}</option>
+      {% endfor %}
+    </select>
+    <input name="key" value="{{ key }}" placeholder="Key contains…" class="input max-w-[200px]">
+    <input name="model" value="{{ model_label }}" placeholder="app.model"
+           class="input max-w-[180px]">
+    <button class="btn btn-primary">Apply</button>
+  </form>
+
+  {% filter_chips namespace="Namespace" key="Key" model="Model" %}
+
+  <div class="card overflow-hidden">
+    {% if metafields %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Target</th>
+          <th>Type</th>
+          <th>Value</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in metafields %}
+        <tr>
+          <td>
+            <a href="{% url 'metafields:edit' m.id %}" class="font-medium hover:underline font-mono text-xs">{{ m.full_key }}</a>
+            {% if m.description %}<div class="text-xs text-[color:var(--text-muted)]">{{ m.description }}</div>{% endif %}
+          </td>
+          <td class="text-[color:var(--text-muted)]">
+            <code>{{ m.content_type.app_label }}.{{ m.content_type.model }}</code>
+            <div class="text-xs font-mono">{{ m.object_id|truncatechars:18 }}</div>
+          </td>
+          <td><span class="pill pill-neutral">{{ m.get_value_type_display }}</span></td>
+          <td>
+            <code class="text-xs" style="word-break:break-all;">{{ m.value|truncatechars:80|default:"—" }}</code>
+          </td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap text-xs">{{ m.updated_at|date:"M j, H:i" }}</td>
+          <td class="text-right" style="width:1px;white-space:nowrap;">
+            <a href="{% url 'metafields:edit' m.id %}" class="btn text-xs">Edit</a>
+            <form method="post" action="{% url 'metafields:delete' m.id %}"
+                  data-confirm="Delete this metafield?"
+                  data-confirm-cta="Delete" data-confirm-danger style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger text-xs">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
+    {% else %}
+    {% url 'metafields:create' as add_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="braces" title="No metafields yet" hint="Attach custom (namespace, key, value) triples to any product, customer, order, or page." action_url=add_url action_label="Add metafield" action_icon="plus" %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

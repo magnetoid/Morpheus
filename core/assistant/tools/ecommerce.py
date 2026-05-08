@@ -691,7 +691,7 @@ def settings_list_tool() -> ToolResult:
         },
     },
 )
-def media_search_tool(*, kind: str = '', filename: str = '', tag: str = '',
+def media_search_tool(*, kind: str = '', filename: str = '', tag: str = '',  # noqa: PLR0913
                      limit: int = 20) -> ToolResult:
     try:
         from plugins.installed.media.models import MediaAsset
@@ -722,6 +722,57 @@ def media_search_tool(*, kind: str = '', filename: str = '', tag: str = '',
     ]
     return ToolResult(output={'assets': rows, 'count': len(rows)},
                       display=f'{len(rows)} asset(s)')
+
+
+# ── Metafields ──────────────────────────────────────────────────────────
+
+
+@tool(
+    name='metafields.list_for',
+    description=(
+        'List every metafield on a record. Pass `model` as '
+        '`app_label.ModelName` and `object_id` (string pk). Returns a '
+        'flat dict keyed by `namespace.key`.'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'model': {'type': 'string'},
+            'object_id': {'type': 'string'},
+        },
+        'required': ['model', 'object_id'],
+    },
+)
+def metafields_list_for_tool(*, model: str, object_id: str) -> ToolResult:
+    from django.apps import apps
+    from django.contrib.contenttypes.models import ContentType
+    try:
+        from plugins.installed.metafields.models import Metafield
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'metafields plugin unavailable: {e}') from e
+    try:
+        app_label, model_name = model.split('.', 1)
+        m = apps.get_model(app_label, model_name)
+    except (ValueError, LookupError) as e:
+        raise ToolError(f'unknown model: {model}') from e
+    ct = ContentType.objects.get_for_model(m)
+    rows = list(Metafield.objects.filter(content_type=ct, object_id=str(object_id)))
+    return ToolResult(output={
+        'model': f'{app_label}.{model_name}',
+        'object_id': str(object_id),
+        'metafields': [
+            {
+                'namespace': mf.namespace,
+                'key': mf.key,
+                'full_key': mf.full_key,
+                'value': mf.value,
+                'value_type': mf.value_type,
+                'description': mf.description,
+            }
+            for mf in rows
+        ],
+    }, display=f'{len(rows)} metafield(s)')
 
 
 # ── Schema introspection ────────────────────────────────────────────────

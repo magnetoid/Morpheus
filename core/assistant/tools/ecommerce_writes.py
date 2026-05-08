@@ -345,6 +345,105 @@ def customers_add_note_tool(*, note: str, id: str = '', email: str = '',
                       display=f'note added to {u.email}')
 
 
+# ── Metafields ─────────────────────────────────────────────────────────
+
+
+@tool(
+    name='metafields.set',
+    description=(
+        'Set or update a metafield on a record. Pass `model` as '
+        '`app_label.ModelName`, `object_id` (string pk), `namespace` '
+        '(optional, defaults to ""), `key`, `value`, and an optional '
+        '`value_type` hint (string/integer/number/boolean/json/date/'
+        'url/email/file_id). Idempotent — re-setting the same '
+        '`(model, object_id, namespace, key)` overwrites.'
+    ),
+    scopes=['system.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'model': {'type': 'string'},
+            'object_id': {'type': 'string'},
+            'namespace': {'type': 'string', 'default': ''},
+            'key': {'type': 'string'},
+            'value': {'type': 'string'},
+            'value_type': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['model', 'object_id', 'key', 'value'],
+    },
+    requires_approval=True,
+)
+def metafields_set_tool(*, model: str, object_id: str, key: str, value: str,
+                        namespace: str = '', value_type: str = 'string',
+                        confirmed: bool = False) -> ToolResult:
+    _require_confirmed(confirmed)
+    from django.apps import apps
+    try:
+        from plugins.installed.metafields.models import Metafield
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'metafields plugin unavailable: {e}') from e
+    try:
+        app_label, model_name = model.split('.', 1)
+        m = apps.get_model(app_label, model_name)
+    except (ValueError, LookupError) as e:
+        raise ToolError(f'unknown model: {model}') from e
+    instance = m.objects.filter(pk=object_id).first()
+    if instance is None:
+        raise ToolError(f'{model} not found: {object_id}')
+    obj = Metafield.objects.set(
+        instance, namespace=namespace, key=key,
+        value=value, value_type=value_type,
+    )
+    return ToolResult(output={
+        'id': str(obj.id),
+        'full_key': obj.full_key,
+        'value': obj.value,
+        'value_type': obj.value_type,
+    }, display=f'set {obj.full_key} on {model}#{object_id}')
+
+
+@tool(
+    name='metafields.delete',
+    description=(
+        'Delete a metafield. Pass `model`, `object_id`, `namespace` '
+        '(default ""), and `key`. Requires `confirmed=True`.'
+    ),
+    scopes=['system.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'model': {'type': 'string'},
+            'object_id': {'type': 'string'},
+            'namespace': {'type': 'string', 'default': ''},
+            'key': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['model', 'object_id', 'key'],
+    },
+    requires_approval=True,
+)
+def metafields_delete_tool(*, model: str, object_id: str, key: str,
+                           namespace: str = '', confirmed: bool = False) -> ToolResult:
+    _require_confirmed(confirmed)
+    from django.apps import apps
+    try:
+        from plugins.installed.metafields.models import Metafield
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'metafields plugin unavailable: {e}') from e
+    try:
+        app_label, model_name = model.split('.', 1)
+        m = apps.get_model(app_label, model_name)
+    except (ValueError, LookupError) as e:
+        raise ToolError(f'unknown model: {model}') from e
+    instance = m.objects.filter(pk=object_id).first()
+    if instance is None:
+        raise ToolError(f'{model} not found: {object_id}')
+    n = Metafield.objects.delete_for(instance, namespace=namespace, key=key)
+    return ToolResult(output={'deleted': n},
+                      display=f'deleted {n} metafield(s) on {model}#{object_id}')
+
+
 # ── CMS ────────────────────────────────────────────────────────────────
 
 

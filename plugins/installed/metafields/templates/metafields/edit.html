@@ -1,0 +1,91 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if metafield %}Edit metafield{% else %}New metafield{% endif %} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'metafields:index' %}" class="hover:underline">Metafields</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">
+      {% if metafield %}Edit{% else %}New{% endif %}
+    </span>
+  </div>
+
+  <form method="post" class="card card-padded space-y-4" data-morph-dirty>
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Target type</label>
+        <select name="content_type" class="input"
+                {% if metafield %}disabled{% endif %} required>
+          {% for c in content_types %}
+          <option value="{{ c.id }}"
+                  {% if metafield and metafield.content_type_id == c.id %}selected{% endif %}>
+            {{ c.label }}
+          </option>
+          {% endfor %}
+        </select>
+        {% if metafield %}
+        <input type="hidden" name="content_type" value="{{ metafield.content_type_id }}">
+        {% endif %}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Which model the metafield attaches to.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Object id</label>
+        <input type="text" name="object_id" class="input" required
+               value="{{ metafield.object_id|default:'' }}"
+               {% if metafield %}readonly{% endif %}>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">UUID or integer pk of the target record.</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Namespace</label>
+        <input type="text" name="namespace" class="input" maxlength="80"
+               value="{{ metafield.namespace|default:'' }}"
+               placeholder="Optional. e.g. catalog, custom, my_plugin">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Key <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="key" class="input" maxlength="120" required
+               value="{{ metafield.key|default:'' }}"
+               placeholder="snake_case_identifier">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Type</label>
+      <select name="value_type" class="input max-w-[280px]">
+        {% for v, label in value_types %}
+        <option value="{{ v }}" {% if metafield.value_type == v %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Drives the editor + how downstream code decodes the stored value. Pick `file_id` to reference a media asset.
+      </p>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Value</label>
+      <textarea name="value" rows="3" class="input font-mono text-xs"
+                placeholder="Stored as text — JSON-serialised when type is JSON.">{{ metafield.value|default:'' }}</textarea>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Description</label>
+      <input type="text" name="description" class="input" maxlength="300"
+             value="{{ metafield.description|default:'' }}"
+             placeholder="Optional — what this metafield means.">
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2">
+      <a href="{% url 'metafields:index' %}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
