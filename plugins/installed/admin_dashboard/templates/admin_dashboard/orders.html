@@ -8,7 +8,7 @@
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Orders</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Showing the most recent 100.</p>
+      {% if page_obj %}<p class="text-sm text-[color:var(--text-muted)]">{{ page_obj.paginator.count }} order{{ page_obj.paginator.count|pluralize }}.</p>{% endif %}
     </div>
     <div class="flex items-center gap-2">
       {% if drafts_url %}
@@ -60,7 +60,12 @@
       <thead>
         <tr>
           <th class="w-8"><input type="checkbox" data-bulk-all class="rounded border-[color:var(--border)]"></th>
-          <th>Order</th><th>Date</th><th>Customer</th><th>Status</th><th>Payment</th><th class="text-right">Total</th>
+          <th>{% sort_link "order_number" "Order" %}</th>
+          <th>{% sort_link "placed_at" "Date" %}</th>
+          <th>{% sort_link "email" "Customer" %}</th>
+          <th>{% sort_link "status" "Status" %}</th>
+          <th>Payment</th>
+          <th class="text-right">{% sort_link "total" "Total" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -90,6 +95,7 @@
     {% url 'admin_dashboard:order_new' as order_new_url %}
     {% include "admin_dashboard/_empty_state.html" with icon="shopping-bag" title="No orders yet" hint="When customers place orders, they'll appear here." action_url=order_new_url action_label="Create order" action_icon="plus" %}
     {% endif %}
+    {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
   </div>
 
 </div>

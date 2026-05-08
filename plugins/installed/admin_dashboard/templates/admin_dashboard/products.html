@@ -8,7 +8,7 @@
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Products</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Most recent 100.</p>
+      {% if page_obj %}<p class="text-sm text-[color:var(--text-muted)]">{{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}.</p>{% endif %}
     </div>
     <div class="flex items-center gap-2">
       <a href="/dashboard/apps/importers/csv/" class="btn"><i data-lucide="upload" class="h-4 w-4"></i> Import</a>
@@ -53,7 +53,12 @@
       <thead>
         <tr>
           <th class="w-8"><input type="checkbox" data-bulk-all class="rounded border-[color:var(--border)]"></th>
-          <th>Product</th><th>SKU</th><th>Category</th><th>Vendor</th><th>Status</th><th class="text-right">Price</th>
+          <th>{% sort_link "name" "Product" %}</th>
+          <th>SKU</th>
+          <th>Category</th>
+          <th>Vendor</th>
+          <th>{% sort_link "status" "Status" %}</th>
+          <th class="text-right">{% sort_link "price" "Price" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -88,6 +93,7 @@
     {% url 'admin_dashboard:product_new' as add_url %}
     {% include "admin_dashboard/_empty_state.html" with icon="package" title="No products yet" hint="Add your first product to start selling." action_url=add_url action_label="Add a product" %}
     {% endif %}
+    {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
   </div>
 
 </div>

@@ -20,7 +20,8 @@ from plugins.installed.admin_dashboard.forms import (
     VariantForm,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
+    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points,
+    _trend, logger, paginate_and_sort,
 )
 
 ORDER_STATUS_CHOICES = (
@@ -42,6 +43,7 @@ def orders_list(request: HttpRequest) -> HttpResponse:
     search = request.GET.get('q', '').strip()[:80]
     orders: list[Any] = []
     status_counts: dict[str, int] = {}
+    paging_ctx: dict[str, Any] = {}
     try:
         from django.db.models import Count
         from plugins.installed.orders.models import Order
@@ -55,13 +57,17 @@ def orders_list(request: HttpRequest) -> HttpResponse:
         qs = (
             Order.objects
             .select_related('customer', 'channel')
-            .order_by('-placed_at')
         )
         if status_filter:
             qs = qs.filter(status=status_filter)
         if search:
             qs = qs.filter(order_number__icontains=search) | qs.filter(email__icontains=search)
-        orders = list(qs[:100])
+        page_obj, paging_ctx = paginate_and_sort(
+            request, qs,
+            default_sort='-placed_at',
+            allowed_sorts=('placed_at', 'order_number', 'total', 'status', 'email'),
+        )
+        orders = list(page_obj.object_list)
     except Exception:  # noqa: BLE001
         orders = []
     # Drafts surface inside the Orders page rather than as a separate
@@ -84,6 +90,7 @@ def orders_list(request: HttpRequest) -> HttpResponse:
         'draft_count': draft_count,
         'drafts_url': drafts_url,
         'active_nav': 'orders',
+        **paging_ctx,
     })
 
 

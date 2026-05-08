@@ -20,7 +20,8 @@ from plugins.installed.admin_dashboard.forms import (
     VariantForm,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
+    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points,
+    _trend, logger, paginate_and_sort,
 )
 
 PRODUCT_STATUS_CHOICES = (
@@ -37,6 +38,7 @@ def products_list(request: HttpRequest) -> HttpResponse:
     search = request.GET.get('q', '').strip()[:80]
     products: list[Any] = []
     status_counts: dict[str, int] = {}
+    paging_ctx: dict[str, Any] = {}
     try:
         from django.db.models import Count
         from plugins.installed.catalog.models import Product
@@ -51,13 +53,17 @@ def products_list(request: HttpRequest) -> HttpResponse:
             Product.objects
             .select_related('category', 'vendor')
             .prefetch_related('images')
-            .order_by('-created_at')
         )
         if status:
             qs = qs.filter(status=status)
         if search:
             qs = qs.filter(name__icontains=search) | qs.filter(sku__icontains=search)
-        products = list(qs[:100])
+        page_obj, paging_ctx = paginate_and_sort(
+            request, qs,
+            default_sort='-created_at',
+            allowed_sorts=('name', 'created_at', 'status', 'price'),
+        )
+        products = list(page_obj.object_list)
     except Exception:  # noqa: BLE001
         products = []
     return render(request, 'admin_dashboard/products.html', {
@@ -67,6 +73,7 @@ def products_list(request: HttpRequest) -> HttpResponse:
         'status_counts': status_counts,
         'search': search,
         'active_nav': 'products',
+        **paging_ctx,
     })
 
 

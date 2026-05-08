@@ -9,6 +9,8 @@ from typing import Any
 
 from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
 from morpheus.views import get_object_or_404, redirect, render
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.http import QueryDict
 from django.utils import timezone
 
 logger = logging.getLogger('morpheus.admin')
@@ -202,6 +204,74 @@ def _pct_delta(now, before) -> str:
     diff = (Decimal(now) - Decimal(before)) / Decimal(before) * Decimal('100')
     sign = '+' if diff >= 0 else ''
     return f'{sign}{diff:.1f}%'
+
+
+_ALLOWED_PAGE_SIZES = (25, 50, 100)
+
+
+def paginate_and_sort(
+    request: HttpRequest,
+    qs,
+    *,
+    default_sort: str,
+    allowed_sorts: tuple[str, ...] = (),
+    default_per_page: int = 25,
+):
+    """Apply ?sort=&dir=&page=&per_page= to a queryset.
+
+    Returns ``(page, ctx)`` where ``page`` is a `django.core.paginator.Page`
+    and ``ctx`` is a dict ready to splat into the template context:
+    ``{page_obj, sort, dir, allowed_sorts, qs_without_page, qs_without_sort}``.
+
+    `default_sort` is a Django order-by string (e.g. ``"-placed_at"``);
+    `allowed_sorts` is the whitelist of bare field names a user can ask for
+    via ``?sort=``. Anything outside the whitelist falls back silently.
+    """
+    sort = (request.GET.get('sort') or '').strip()
+    direction = (request.GET.get('dir') or '').strip().lower()
+    if sort and sort in allowed_sorts:
+        order = sort if direction != 'desc' else f'-{sort}'
+    else:
+        sort = default_sort.lstrip('-')
+        direction = 'desc' if default_sort.startswith('-') else 'asc'
+        order = default_sort
+    qs = qs.order_by(order)
+
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+    except (TypeError, ValueError):
+        per_page = default_per_page
+    if per_page not in _ALLOWED_PAGE_SIZES:
+        per_page = default_per_page
+
+    paginator = Paginator(qs, per_page)
+    raw_page = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(raw_page)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.page(1)
+
+    base = QueryDict(mutable=True)
+    for k, v in request.GET.lists():
+        for vv in v:
+            base.appendlist(k, vv)
+    qs_without_page = base.copy()
+    qs_without_page.pop('page', None)
+    qs_without_sort = qs_without_page.copy()
+    qs_without_sort.pop('sort', None)
+    qs_without_sort.pop('dir', None)
+
+    return page_obj, {
+        'page_obj': page_obj,
+        'paginator': paginator,
+        'per_page': per_page,
+        'allowed_page_sizes': _ALLOWED_PAGE_SIZES,
+        'sort': sort,
+        'dir': direction,
+        'allowed_sorts': allowed_sorts,
+        'qs_without_page': qs_without_page.urlencode(),
+        'qs_without_sort': qs_without_sort.urlencode(),
+    }
 
 
 def _bulk_ids(request: HttpRequest, field: str = 'ids') -> list[str]:

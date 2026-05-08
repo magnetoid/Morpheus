@@ -20,7 +20,8 @@ from plugins.installed.admin_dashboard.forms import (
     VariantForm,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
+    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points,
+    _trend, logger, paginate_and_sort,
 )
 
 CUSTOMER_SOURCE_CHOICES = (
@@ -44,6 +45,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
     source_filter = request.GET.get('source', '').strip()[:20]
     customers: list[Any] = []
     source_counts: dict[str, int] = {}
+    paging_ctx: dict[str, Any] = {}
     try:
         from django.contrib.auth import get_user_model
         from django.db.models import Count, Q
@@ -60,7 +62,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             (row['source'] or ''): row['c']
             for row in unfiltered.values('source').annotate(c=Count('id'))
         }
-        qs = User.objects.order_by('-date_joined')
+        qs = User.objects.all()
         if search:
             qs = qs.filter(
                 Q(email__icontains=search)
@@ -69,8 +71,16 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             )
         if source_filter:
             qs = qs.filter(source=source_filter)
+        # Paginate first, then enrich the page's rows. This keeps the
+        # Python loop over a bounded slice no matter how many users exist.
+        page_obj, paging_ctx = paginate_and_sort(
+            request, qs,
+            default_sort='-date_joined',
+            allowed_sorts=('email', 'date_joined', 'last_order_at',
+                           'lifetime_value', 'purchase_count'),
+        )
         rows = []
-        for user in qs[:100]:
+        for user in page_obj.object_list:
             order_qs = Order.objects.filter(customer=user)
             source = getattr(user, 'source', '') or ''
             # Prefer the CDP denormalized fields (cheap), fall back to live
@@ -109,6 +119,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         'source_choices': CUSTOMER_SOURCE_CHOICES,
         'source_counts': source_counts,
         'active_nav': 'customers',
+        **paging_ctx,
     })
 
 

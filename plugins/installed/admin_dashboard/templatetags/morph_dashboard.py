@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from django import template
 from django.http import QueryDict
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -50,6 +51,52 @@ def sparkline(series, width: int = 120, height: int = 28, stroke: str = ''):
         'height': height,
         'stroke': stroke_color,
     }
+
+
+@register.simple_tag(takes_context=True)
+def sort_link(context, field, label):
+    """Render a sortable column header.
+
+    Usage in a `<th>`::
+
+        <th>{% sort_link "total" "Total" %}</th>
+
+    The link's URL flips ``?dir=`` if `field` already matches the current
+    sort, otherwise sets ``?sort=field&dir=asc``. Always drops `page=`
+    so changing sort returns to page 1. The chevron next to the label
+    reflects the current direction (▲ asc, ▼ desc, faded ⇅ when
+    inactive).
+    """
+    request = context.get('request')
+    cur_sort = context.get('sort') or ''
+    cur_dir = context.get('dir') or 'asc'
+
+    base = QueryDict(mutable=True)
+    if request is not None:
+        for k, v in request.GET.lists():
+            for vv in v:
+                base.appendlist(k, vv)
+    base.pop('page', None)
+    base['sort'] = field
+    if cur_sort == field:
+        base['dir'] = 'asc' if cur_dir == 'desc' else 'desc'
+    else:
+        base['dir'] = 'asc'
+    href = (request.path if request else '') + '?' + base.urlencode()
+
+    if cur_sort == field:
+        chevron = '▲' if cur_dir == 'asc' else '▼'
+        chev_color = 'var(--text)'
+    else:
+        chevron = '⇅'
+        chev_color = 'var(--text-subtle)'
+
+    return mark_safe(
+        f'<a href="{href}" class="inline-flex items-center gap-1" '
+        f'style="color: inherit;">'
+        f'{label}<span style="font-size:.75em; color:{chev_color};">{chevron}</span>'
+        f'</a>'
+    )
 
 
 @register.inclusion_tag('admin_dashboard/_tabs.html', takes_context=True)

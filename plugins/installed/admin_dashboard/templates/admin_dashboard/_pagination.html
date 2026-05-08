@@ -1,0 +1,37 @@
+{# Pagination footer — Prev / "Page N of M" / Next plus a per-page select. #}
+{# Driven by the context dict that `paginate_and_sort()` returns. All hrefs #}
+{# preserve every other GET param via `qs_without_page`. #}
+{% if page_obj.paginator.num_pages > 1 or per_page != 25 %}
+<div class="card-padded flex flex-wrap items-center justify-between gap-3"
+     style="border-top: 1px solid var(--border);">
+  <div class="text-xs text-[color:var(--text-muted)]">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+  </div>
+  <div class="flex items-center gap-2">
+    <label class="text-xs text-[color:var(--text-muted)] flex items-center gap-1">
+      Per page
+      <select onchange="window.location.href = this.value" class="input" style="height: 1.75rem; width: auto; padding: 0 .55rem; font-size: .75rem;">
+        {% for size in allowed_page_sizes %}
+        <option value="?{{ qs_without_page }}{% if qs_without_page %}&{% endif %}per_page={{ size }}"
+                {% if size == per_page %}selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if page_obj.has_previous %}
+    <a href="?{{ qs_without_page }}{% if qs_without_page %}&{% endif %}page={{ page_obj.previous_page_number }}"
+       class="btn text-xs"><i data-lucide="chevron-left" class="h-3.5 w-3.5"></i> Prev</a>
+    {% else %}
+    <span class="btn text-xs" style="opacity: .4; pointer-events: none;"><i data-lucide="chevron-left" class="h-3.5 w-3.5"></i> Prev</span>
+    {% endif %}
+    <span class="text-xs tabular-nums text-[color:var(--text-muted)]">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+    {% if page_obj.has_next %}
+    <a href="?{{ qs_without_page }}{% if qs_without_page %}&{% endif %}page={{ page_obj.next_page_number }}"
+       class="btn text-xs">Next <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i></a>
+    {% else %}
+    <span class="btn text-xs" style="opacity: .4; pointer-events: none;">Next <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i></span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
