@@ -417,6 +417,10 @@
       </p>
     </div>
 
+    {% if product %}
+    {% include "metafields/_inline_editor.html" with object_model="catalog.product" object_id=product.id %}
+    {% endif %}
+
     <div class="card card-padded space-y-2" id="product-seo-snapshot">
       <div class="flex items-center justify-between">
         <h2 class="font-semibold text-sm">SEO at a glance</h2>

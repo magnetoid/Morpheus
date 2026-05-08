@@ -5,19 +5,22 @@ metafields. The dashboard surfaces every record with at least one
 metafield, lets staff search by namespace/key, and edit/delete each
 triple individually.
 
-Per-resource pickers (e.g. "edit metafields on this product") are
-expected to live alongside the record's main edit form and use this
-plugin's `MetafieldManager` API directly. Adding those is a follow-up;
-this dashboard is the universal escape hatch.
+The inline editor partial (templates/metafields/_inline_editor.html)
+is the per-record UX dropped into product/customer/order edit pages;
+it talks to the JSON API at the bottom of this file.
 """
 from __future__ import annotations
 
+import json
 import logging
 
+from django.apps import apps
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_http_methods
 
 from morpheus.views import staff_member_required
 from plugins.installed.metafields.models import Metafield
@@ -141,6 +144,100 @@ def _save_from_form(request: HttpRequest, *, metafield) -> HttpResponse:
         logger.warning('metafields: save failed: %s', e, exc_info=True)
         messages.error(request, f'Save failed: {e}')
     return redirect('metafields:index')
+
+
+# ── JSON API used by the inline editor partial ──────────────────────────
+
+
+def _resolve_target(request: HttpRequest):
+    """Helper: pull `(model, object_id)` from request and validate.
+
+    Returns (instance, content_type) or raises a JSON-shaped ValueError.
+    """
+    if request.method == 'GET':
+        model = (request.GET.get('model') or '').strip()
+        object_id = (request.GET.get('object_id') or '').strip()
+    else:
+        model = (request.POST.get('model') or '').strip()
+        object_id = (request.POST.get('object_id') or '').strip()
+    if not model or not object_id or '.' not in model:
+        raise ValueError('model + object_id required')
+    try:
+        app_label, model_name = model.split('.', 1)
+        m = apps.get_model(app_label, model_name)
+    except (ValueError, LookupError):
+        raise ValueError(f'unknown model: {model}')
+    instance = m.objects.filter(pk=object_id).first()
+    if instance is None:
+        raise ValueError(f'{model} not found: {object_id}')
+    ct = ContentType.objects.get_for_model(m)
+    return instance, ct
+
+
+@staff_member_required
+@require_http_methods(['GET'])
+def api_list(request: HttpRequest) -> JsonResponse:
+    try:
+        instance, ct = _resolve_target(request)
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    rows = list(Metafield.objects.filter(content_type=ct, object_id=str(instance.pk)))
+    return JsonResponse({'metafields': [
+        {
+            'id': str(m.id),
+            'namespace': m.namespace,
+            'key': m.key,
+            'full_key': m.full_key,
+            'value': m.value,
+            'value_type': m.value_type,
+            'description': m.description,
+        }
+        for m in rows
+    ]})
+
+
+@staff_member_required
+@csrf_protect
+@require_http_methods(['POST'])
+def api_set(request: HttpRequest) -> JsonResponse:
+    try:
+        instance, ct = _resolve_target(request)
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    namespace = (request.POST.get('namespace') or '').strip()[:80]
+    key = (request.POST.get('key') or '').strip()[:120]
+    value = request.POST.get('value', '').strip()
+    value_type = (request.POST.get('value_type') or 'string').strip()
+    description = (request.POST.get('description') or '').strip()[:300]
+    if not key:
+        return JsonResponse({'error': 'key required'}, status=400)
+    obj = Metafield.objects.set(
+        instance, namespace=namespace, key=key,
+        value=value, value_type=value_type,
+    )
+    if description and obj.description != description:
+        obj.description = description
+        obj.save(update_fields=['description', 'updated_at'])
+    return JsonResponse({
+        'id': str(obj.id),
+        'namespace': obj.namespace,
+        'key': obj.key,
+        'full_key': obj.full_key,
+        'value': obj.value,
+        'value_type': obj.value_type,
+        'description': obj.description,
+    })
+
+
+@staff_member_required
+@csrf_protect
+@require_http_methods(['POST'])
+def api_delete(request: HttpRequest) -> JsonResponse:
+    metafield_id = (request.POST.get('id') or '').strip()
+    if not metafield_id:
+        return JsonResponse({'error': 'id required'}, status=400)
+    deleted, _ = Metafield.objects.filter(pk=metafield_id).delete()
+    return JsonResponse({'deleted': deleted})
 
 
 def _content_type_choices():

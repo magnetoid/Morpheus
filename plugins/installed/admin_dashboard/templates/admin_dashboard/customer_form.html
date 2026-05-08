@@ -97,6 +97,9 @@
     </form>
 
     <aside class="space-y-4">
+      {% if customer %}
+      {% include "metafields/_inline_editor.html" with object_model="customers.customer" object_id=customer.id %}
+      {% endif %}
       {% if customer and order_summary %}
       <div class="card card-padded">
         <h3 class="font-semibold text-sm">Lifetime</h3>

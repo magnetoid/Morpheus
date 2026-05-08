@@ -1,0 +1,195 @@
+{% comment %}
+Per-record metafield editor — drop into any edit form's sidebar.
+
+Usage::
+
+    {% include "metafields/_inline_editor.html" with object_model="catalog.product" object_id=product.id %}
+
+The partial renders a self-contained card that loads the record's
+metafields via the JSON API on mount, lets staff add / edit / delete
+triples inline, and saves each change individually. No host-form
+coupling — it's a fully separate JS-driven surface so adding it
+beside an existing `<form data-morph-dirty>` doesn't trip dirty
+detection on the host form.
+{% endcomment %}
+<div class="card card-padded space-y-2"
+     data-mf-editor
+     data-mf-model="{{ object_model }}"
+     data-mf-object-id="{{ object_id }}">
+  <div class="flex items-center justify-between">
+    <h2 class="font-semibold text-sm">Metafields</h2>
+    <button type="button" class="btn btn-ghost text-xs" data-mf-add>
+      <i data-lucide="plus" class="h-3.5 w-3.5"></i> Add
+    </button>
+  </div>
+  <p class="text-xs text-[color:var(--text-muted)]">
+    Custom <code>(namespace, key, value)</code> data on this record. Saved
+    individually as you edit.
+  </p>
+
+  <div data-mf-list class="space-y-1.5"></div>
+
+  <template data-mf-row-template>
+    <div data-mf-row class="space-y-1.5" style="border:1px solid var(--border); border-radius:6px; padding:.55rem;">
+      <div class="flex items-center gap-1.5">
+        <input data-mf-namespace type="text" class="input flex-1"
+               placeholder="namespace (optional)" maxlength="80"
+               style="font-size:.75rem; height:1.7rem;">
+        <span class="text-xs text-[color:var(--text-muted)]">.</span>
+        <input data-mf-key type="text" class="input flex-1"
+               placeholder="key" maxlength="120" required
+               style="font-size:.75rem; height:1.7rem;">
+      </div>
+      <div class="flex items-center gap-1.5">
+        <select data-mf-type class="input" style="font-size:.75rem; height:1.7rem; max-width:7.5rem;">
+          <option value="string">String</option>
+          <option value="text">Long text</option>
+          <option value="integer">Integer</option>
+          <option value="number">Number</option>
+          <option value="boolean">Boolean</option>
+          <option value="json">JSON</option>
+          <option value="date">Date</option>
+          <option value="url">URL</option>
+          <option value="email">Email</option>
+          <option value="color">Colour</option>
+          <option value="file_id">Media id</option>
+        </select>
+        <input data-mf-value type="text" class="input flex-1"
+               placeholder="value" style="font-size:.75rem; height:1.7rem;">
+      </div>
+      <div class="flex items-center justify-between gap-2 pt-0.5">
+        <span data-mf-status style="font-size:.7rem; color:var(--text-muted);"></span>
+        <div class="flex items-center gap-1">
+          <button type="button" class="btn text-xs" data-mf-save
+                  style="padding:.2rem .55rem;">Save</button>
+          <button type="button" class="btn btn-danger text-xs" data-mf-delete
+                  style="padding:.2rem .55rem;">
+            <i data-lucide="trash-2" class="h-3 w-3"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+(function () {
+  function initEditor(root) {
+    if (root.dataset.mfInit === '1') return;
+    root.dataset.mfInit = '1';
+
+    var model = root.dataset.mfModel;
+    var objectId = root.dataset.mfObjectId;
+    var list = root.querySelector('[data-mf-list]');
+    var template = root.querySelector('[data-mf-row-template]');
+
+    function csrf() {
+      var c = document.cookie.split(';').map(s => s.trim()).find(c => c.startsWith('csrftoken='));
+      return c ? c.split('=')[1] : '';
+    }
+
+    function setStatus(row, msg, level) {
+      var el = row.querySelector('[data-mf-status]');
+      if (!el) return;
+      el.textContent = msg || '';
+      var color = 'var(--text-muted)';
+      if (level === 'error') color = 'var(--danger)';
+      if (level === 'success') color = 'var(--success)';
+      el.style.color = color;
+    }
+
+    function renderRow(mf) {
+      var row = template.content.firstElementChild.cloneNode(true);
+      if (mf) {
+        row.dataset.mfId = mf.id || '';
+        row.querySelector('[data-mf-namespace]').value = mf.namespace || '';
+        row.querySelector('[data-mf-key]').value = mf.key || '';
+        row.querySelector('[data-mf-type]').value = mf.value_type || 'string';
+        row.querySelector('[data-mf-value]').value = mf.value || '';
+      }
+      row.querySelector('[data-mf-save]').addEventListener('click', function () {
+        save(row);
+      });
+      row.querySelector('[data-mf-delete]').addEventListener('click', function () {
+        del(row);
+      });
+      list.appendChild(row);
+      if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+      return row;
+    }
+
+    function save(row) {
+      var fd = new FormData();
+      fd.append('model', model);
+      fd.append('object_id', objectId);
+      fd.append('namespace', row.querySelector('[data-mf-namespace]').value || '');
+      fd.append('key', row.querySelector('[data-mf-key]').value || '');
+      fd.append('value', row.querySelector('[data-mf-value]').value || '');
+      fd.append('value_type', row.querySelector('[data-mf-type]').value || 'string');
+      setStatus(row, 'Saving…', '');
+      fetch('/dashboard/metafields/api/set/', {
+        method: 'POST', credentials: 'same-origin', body: fd,
+        headers: { 'X-CSRFToken': csrf() },
+      }).then(r => r.json()).then(function (data) {
+        if (data && data.error) {
+          setStatus(row, data.error, 'error');
+          return;
+        }
+        if (data && data.id) row.dataset.mfId = data.id;
+        setStatus(row, 'Saved', 'success');
+        setTimeout(function () { setStatus(row, ''); }, 1800);
+        if (window.Morph && window.Morph.toast) {
+          window.Morph.toast('Metafield saved.', 'success');
+        }
+      }).catch(function (err) {
+        setStatus(row, String(err), 'error');
+      });
+    }
+
+    function del(row) {
+      var id = row.dataset.mfId;
+      if (!id) {
+        // Never persisted — just remove the DOM row.
+        row.remove();
+        return;
+      }
+      var doDelete = function () {
+        var fd = new FormData();
+        fd.append('id', id);
+        fetch('/dashboard/metafields/api/delete/', {
+          method: 'POST', credentials: 'same-origin', body: fd,
+          headers: { 'X-CSRFToken': csrf() },
+        }).then(r => r.json()).then(function () {
+          row.remove();
+          if (window.Morph && window.Morph.toast) {
+            window.Morph.toast('Metafield deleted.', 'info');
+          }
+        });
+      };
+      if (window.Morph && window.Morph.confirm) {
+        window.Morph.confirm({
+          title: 'Delete metafield?',
+          message: 'This metafield will be removed from the record.',
+          danger: true, cta: 'Delete',
+        }).then(function (ok) { if (ok) doDelete(); });
+      } else if (window.confirm('Delete metafield?')) {
+        doDelete();
+      }
+    }
+
+    // Initial load.
+    fetch('/dashboard/metafields/api/list/?model=' + encodeURIComponent(model)
+          + '&object_id=' + encodeURIComponent(objectId), {
+      credentials: 'same-origin',
+    }).then(r => r.json()).then(function (data) {
+      (data.metafields || []).forEach(function (mf) { renderRow(mf); });
+    });
+
+    root.querySelector('[data-mf-add]').addEventListener('click', function () {
+      renderRow(null);
+    });
+  }
+
+  document.querySelectorAll('[data-mf-editor]').forEach(initEditor);
+})();
+</script>
