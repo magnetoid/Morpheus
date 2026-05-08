@@ -10,17 +10,35 @@
     {% if returns %}
     <div style="display: grid; gap: 1rem;">
       {% for r in returns %}
-      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem;">
-        <div style="display:flex; justify-content:space-between; gap:1rem;">
+      <a href="/account/returns/{{ r.id }}/"
+         style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem;
+                color: var(--ink); display:block; transition: border-color .15s, box-shadow .15s;"
+         onmouseover="this.style.borderColor='var(--ink)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,.06)';"
+         onmouseout="this.style.borderColor='var(--rule)'; this.style.boxShadow='none';">
+        <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center;">
           <div>
-            <p style="font-family: var(--serif); font-size: 1.1rem;">{{ r.rma_number }}</p>
+            <p style="font-family: var(--serif); font-size: 1.1rem; margin:0;">{{ r.rma_number }}</p>
             <p class="meta" style="margin-top: .25rem;">
-              Order #{{ r.order.order_number }} · {{ r.created_at|date:"M j, Y" }} · {{ r.reason }}
+              Order #{{ r.order.order_number }} · {{ r.created_at|date:"M j, Y" }} · {{ r.get_reason_display }}
             </p>
           </div>
-          <span class="meta">{{ r.state }}</span>
+          {% if r.state == 'refunded' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#d6f3e3; color:#1f7a4d; font-size:.72rem; font-weight:600;">Refunded</span>
+          {% elif r.state == 'received' or r.state == 'approved' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#dbeafe; color:#1d4ed8; font-size:.72rem; font-weight:600;">{{ r.get_state_display }}</span>
+          {% elif r.state == 'requested' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#ffeacc; color:#b86e00; font-size:.72rem; font-weight:600;">Requested</span>
+          {% elif r.state == 'rejected' or r.state == 'cancelled' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#fde7e9; color:#b3261e; font-size:.72rem; font-weight:600;">{{ r.get_state_display }}</span>
+          {% else %}
+          <span class="meta">{{ r.get_state_display }}</span>
+          {% endif %}
         </div>
-      </div>
+      </a>
       {% endfor %}
     </div>
     {% else %}

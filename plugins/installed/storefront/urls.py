@@ -34,6 +34,7 @@ urlpatterns = [
     path('account/addresses/<uuid:address_id>/edit/', views.account_address_form, name='account_address_edit'),
     path('account/addresses/<uuid:address_id>/delete/', views.account_address_delete, name='account_address_delete'),
     path('account/returns/', views.account_returns, name='account_returns'),
+    path('account/returns/<uuid:rma_id>/', views.account_return_status, name='account_return_status'),
     path('account/credits/', views.account_credits, name='account_credits'),
     path('account/downloads/', views.account_downloads, name='account_downloads'),
 

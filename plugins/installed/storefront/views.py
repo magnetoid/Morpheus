@@ -1016,6 +1016,56 @@ def account_returns(request):
     return render(request, 'storefront/account_returns.html', {'returns': rrs})
 
 
+def account_return_status(request, rma_id):
+    """Per-RMA status page — what the customer comes back to after submitting.
+
+    Renders the same `state` field as a four-step pill row so the customer
+    can see at a glance where their return is in the lifecycle, without
+    having to email support.
+    """
+    redirect_resp = _login_required(request, f'/account/returns/{rma_id}/')
+    if redirect_resp is not None:
+        return redirect_resp
+    from django.shortcuts import get_object_or_404
+    from plugins.installed.orders.refunds import ReturnRequest
+    rr = get_object_or_404(
+        ReturnRequest.objects.select_related('order'),
+        pk=rma_id, order__customer=request.user,
+    )
+
+    happy_path = ['requested', 'approved', 'received', 'refunded']
+    labels = {
+        'requested': 'Requested', 'approved': 'Approved',
+        'received': 'Received', 'refunded': 'Refunded',
+    }
+    cur_idx = happy_path.index(rr.state) if rr.state in happy_path else -1
+    status_steps = [
+        {'key': k, 'label': labels[k],
+         'done': cur_idx > i, 'current': cur_idx == i}
+        for i, k in enumerate(happy_path)
+    ]
+
+    from plugins.installed.orders.models import OrderItem
+    items_by_id = {str(o.pk): o for o in OrderItem.objects.filter(order=rr.order)}
+    line_items = []
+    for entry in (rr.items or []):
+        oi = items_by_id.get(str(entry.get('order_item_id', '')))
+        if oi is None:
+            continue
+        line_items.append({
+            'name': oi.product_name, 'sku': oi.sku,
+            'quantity': entry.get('quantity', 0),
+            'unit_price': oi.unit_price,
+        })
+
+    return render(request, 'storefront/account_return_status.html', {
+        'rma': rr, 'order': rr.order,
+        'status_steps': status_steps,
+        'line_items': line_items,
+        'is_terminal': rr.state in ('refunded', 'cancelled', 'rejected'),
+    })
+
+
 def account_order_return(request, order_number):
     redirect_resp = _login_required(request, f'/account/orders/{order_number}/return/')
     if redirect_resp is not None:
@@ -1034,11 +1084,14 @@ def account_order_return(request, order_number):
             if qty > 0:
                 items.append({'order_item_id': str(item.id), 'quantity': min(qty, item.quantity)})
         if items:
-            ReturnService.create_request(
+            rr = ReturnService.create_request(
                 order=order, items=items,
                 reason=request.POST.get('reason', 'other'),
                 customer_note=(request.POST.get('note', '') or '')[:2000],
                 requested_by=request.user,
             )
+            # Land on the new status page so the customer sees the request
+            # they just made + can come back to track it later.
+            return _redirect('storefront:account_return_status', rma_id=rr.id)
         return _redirect('storefront:account_returns')
     return render(request, 'storefront/account_order_return.html', {'order': order})
