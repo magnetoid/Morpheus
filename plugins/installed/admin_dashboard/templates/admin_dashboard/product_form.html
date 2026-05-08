@@ -37,7 +37,9 @@
   </div>
   {% endif %}
 
-  <form method="post" id="product-form" class="space-y-4" enctype="multipart/form-data" data-morph-dirty>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+  <form method="post" id="product-form" class="space-y-4 lg:col-span-2" enctype="multipart/form-data" data-morph-dirty>
     {% csrf_token %}
 
     <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
@@ -52,14 +54,6 @@
           <label class="block text-sm font-medium mb-1">SKU</label>
           <input type="text" name="sku" class="input" value="{{ form.sku.value|default:'' }}">
           {% if form.sku.errors %}<p class="field-error">{{ form.sku.errors.0 }}</p>{% endif %}
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Status</label>
-          <select name="status" class="input">
-            {% for value, label in form.fields.status.choices %}
-            <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Type</label>
@@ -262,7 +256,7 @@
       <input type="hidden" name="requires_shipping" value="">
     </div>
 
-    <details class="card" data-pt-show="simple,variable,digital,bundle">
+    <details class="card" id="product-seo-details" data-pt-show="simple,variable,digital,bundle">
       <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
         <div>
           <h2 class="font-semibold text-sm">Search engine optimisation</h2>
@@ -373,6 +367,97 @@
     </details>
 
   </form>
+
+  {# ── Right sidebar — Status / Organization / Channels / SEO snapshot ── #}
+  <aside class="space-y-4">
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Status</h2>
+      <select name="status" form="product-form" class="input">
+        {% for value, label in form.fields.status.choices %}
+        <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Active products are visible on the storefront. Drafts and archived
+        products are hidden from shoppers.
+      </p>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Organization</h2>
+      <div class="space-y-2 text-sm">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[color:var(--text-muted)]">Category</span>
+          <span class="font-medium text-right truncate">{% if product.category %}{{ product.category.name }}{% else %}<span class="text-[color:var(--text-subtle)]">— None —</span>{% endif %}</span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[color:var(--text-muted)]">Vendor</span>
+          <span class="font-medium text-right truncate">{% if product.vendor %}{{ product.vendor.name }}{% else %}<span class="text-[color:var(--text-subtle)]">— None —</span>{% endif %}</span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[color:var(--text-muted)]">Type</span>
+          <span class="font-medium text-right">{{ form.product_type.value|default:"simple"|title }}</span>
+        </div>
+      </div>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Edit category, vendor, and type from the Basics card on the left.
+      </p>
+    </div>
+
+    <div class="card card-padded space-y-2">
+      <h2 class="font-semibold text-sm">Sales channels</h2>
+      <div class="flex items-center gap-2 text-sm">
+        <span class="pill pill-success">Online store</span>
+        <span class="text-xs text-[color:var(--text-muted)]">default</span>
+      </div>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Multi-channel selling will surface here once additional channels
+        are configured.
+      </p>
+    </div>
+
+    <div class="card card-padded space-y-2" id="product-seo-snapshot">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-sm">SEO at a glance</h2>
+        <a href="#product-seo-details"
+           onclick="var d=document.getElementById('product-seo-details'); if(d){d.open=true; d.scrollIntoView({behavior:'smooth', block:'start'});} return false;"
+           class="text-xs text-[color:var(--text-muted)] hover:underline">Open editor</a>
+      </div>
+      <ul class="text-xs space-y-1.5">
+        <li class="flex items-center justify-between gap-2">
+          <span class="text-[color:var(--text-muted)]">Title length</span>
+          <span class="tabular-nums font-medium" data-seo-len="meta_title">—</span>
+        </li>
+        <li class="flex items-center justify-between gap-2">
+          <span class="text-[color:var(--text-muted)]">Description length</span>
+          <span class="tabular-nums font-medium" data-seo-len="meta_description">—</span>
+        </li>
+      </ul>
+      <script>
+      (function () {
+        function refresh(name) {
+          var input = document.querySelector('[name="' + name + '"]');
+          var slot = document.querySelector('[data-seo-len="' + name + '"]');
+          if (!input || !slot) return;
+          var len = (input.value || '').length;
+          var max = name === 'meta_title' ? 60 : 160;
+          slot.textContent = len + ' / ' + max;
+          slot.style.color = len > max ? 'var(--danger)' : (len > 0 ? 'var(--success)' : 'var(--text-muted)');
+        }
+        ['meta_title', 'meta_description'].forEach(function (n) {
+          var el = document.querySelector('[name="' + n + '"]');
+          if (!el) return;
+          el.addEventListener('input', function () { refresh(n); });
+          refresh(n);
+        });
+      })();
+      </script>
+    </div>
+
+  </aside>
+
+  </div>{# /lg:grid-cols-3 #}
 
   {% if product %}
   <div class="card card-padded">
