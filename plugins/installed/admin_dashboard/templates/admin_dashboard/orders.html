@@ -66,6 +66,7 @@
           <th>{% sort_link "status" "Status" %}</th>
           <th>Payment</th>
           <th class="text-right">{% sort_link "total" "Total" %}</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -87,6 +88,7 @@
             {% else %}<span class="pill pill-neutral">{{ o.payment_status }}</span>{% endif %}
           </td>
           <td class="text-right font-medium">{{ o.total }}</td>
+          {% order_row_actions o %}
         </tr>
         {% endfor %}
       </tbody>

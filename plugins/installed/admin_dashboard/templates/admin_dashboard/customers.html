@@ -57,6 +57,7 @@
           <th>{% sort_link "last_order_at" "Last order" %}</th>
           <th class="text-right">{% sort_link "purchase_count" "Orders" %}</th>
           <th class="text-right">{% sort_link "lifetime_value" "Spent" %}</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -86,6 +87,7 @@
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if c.last_order_at %}{{ c.last_order_at|date:"M j, Y" }}{% else %}—{% endif %}</td>
           <td class="text-right">{{ c.order_count }}</td>
           <td class="text-right font-medium">${{ c.spent|floatformat:2 }}</td>
+          {% customer_row_actions c %}
         </tr>
         {% endfor %}
       </tbody>

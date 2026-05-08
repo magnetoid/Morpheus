@@ -149,6 +149,84 @@ def index_tabs(context, param, choices, counts=None):
     return {'tabs': tabs}
 
 
+@register.inclusion_tag('admin_dashboard/_row_actions.html', takes_context=True)
+def order_row_actions(context, order):
+    """Per-row overflow menu for an Order. Reuses `orders_bulk` for
+    state transitions so we don't double-implement the FSM logic.
+    """
+    from django.urls import reverse
+    detail_url = reverse('admin_dashboard:order_detail', args=[order.order_number])
+    bulk_url = reverse('admin_dashboard:orders_bulk')
+    actions = [
+        {'label': 'View', 'url': detail_url, 'icon': 'eye'},
+    ]
+    if getattr(order, 'payment_status', '') != 'paid':
+        actions.append({
+            'label': 'Mark paid', 'url': bulk_url, 'method': 'post',
+            'icon': 'check', 'confirm': f'Mark order #{order.order_number} as paid?',
+            'hidden_inputs': {'action': 'mark_paid', 'ids': str(order.id)},
+        })
+    if getattr(order, 'status', '') not in ('cancelled', 'refunded'):
+        actions.append({
+            'label': 'Cancel', 'url': bulk_url, 'method': 'post',
+            'icon': 'x', 'danger': True,
+            'confirm': f'Cancel order #{order.order_number}? This can\'t be undone.',
+            'hidden_inputs': {'action': 'cancel', 'ids': str(order.id)},
+        })
+    return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
+
+
+@register.inclusion_tag('admin_dashboard/_row_actions.html', takes_context=True)
+def product_row_actions(context, product):
+    """Per-row overflow menu for a Product."""
+    from django.urls import reverse
+    edit_url = reverse('admin_dashboard:product_edit', args=[product.id])
+    bulk_url = reverse('admin_dashboard:products_bulk')
+    actions = [
+        {'label': 'Edit', 'url': edit_url, 'icon': 'pencil'},
+    ]
+    if getattr(product, 'status', '') != 'archived':
+        actions.append({
+            'label': 'Archive', 'url': bulk_url, 'method': 'post',
+            'icon': 'archive',
+            'confirm': f'Archive "{product.name}"? It won\'t be visible on the storefront.',
+            'hidden_inputs': {'action': 'archive', 'ids': str(product.id)},
+        })
+    actions.append({
+        'label': 'Delete', 'url': bulk_url, 'method': 'post',
+        'icon': 'trash-2', 'danger': True,
+        'confirm': f'Delete "{product.name}"? This can\'t be undone.',
+        'hidden_inputs': {'action': 'delete', 'ids': str(product.id)},
+    })
+    return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
+
+
+@register.inclusion_tag('admin_dashboard/_row_actions.html', takes_context=True)
+def customer_row_actions(context, customer):
+    """Per-row overflow menu for a Customer/contact row.
+
+    `customer` is the dict shape produced by `customers_list` (id, email,
+    …) — not a Customer model instance — so we read fields via dict get.
+    """
+    from django.urls import reverse
+    cid = customer.get('id') if isinstance(customer, dict) else customer.id
+    email = customer.get('email') if isinstance(customer, dict) else customer.email
+    edit_url = reverse('admin_dashboard:customer_edit', args=[cid])
+    bulk_url = reverse('admin_dashboard:customers_bulk')
+    actions = [
+        {'label': 'Edit', 'url': edit_url, 'icon': 'pencil'},
+    ]
+    if email:
+        actions.append({'label': 'Email', 'url': f'mailto:{email}', 'icon': 'mail'})
+    actions.append({
+        'label': 'Delete', 'url': bulk_url, 'method': 'post',
+        'icon': 'trash-2', 'danger': True,
+        'confirm': f'Delete {email or "this contact"}? This can\'t be undone.',
+        'hidden_inputs': {'action': 'delete', 'ids': str(cid)},
+    })
+    return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
+
+
 @register.inclusion_tag('admin_dashboard/_filter_chips.html', takes_context=True)
 def filter_chips(context, **labels):
     """Render chips for any request.GET param that has a non-empty value.
