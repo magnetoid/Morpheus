@@ -670,6 +670,60 @@ def settings_list_tool() -> ToolResult:
                       display=f'{len(out)} plugin config(s)')
 
 
+# ── Media library ───────────────────────────────────────────────────────
+
+
+@tool(
+    name='media.search',
+    description=(
+        'Search the media library. Filter by kind (image/video/audio/'
+        'document/other), filename substring, or tag. Returns up to '
+        '`limit` assets, newest first.'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'kind': {'type': 'string'},
+            'filename': {'type': 'string'},
+            'tag': {'type': 'string'},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20},
+        },
+    },
+)
+def media_search_tool(*, kind: str = '', filename: str = '', tag: str = '',
+                     limit: int = 20) -> ToolResult:
+    try:
+        from plugins.installed.media.models import MediaAsset
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'media plugin unavailable: {e}') from e
+    qs = MediaAsset.objects.all()
+    if kind:
+        qs = qs.filter(kind=kind)
+    if filename:
+        qs = qs.filter(filename__icontains=filename)
+    if tag:
+        qs = qs.filter(tags__contains=[tag])
+    qs = qs.order_by('-created_at')[: max(1, min(int(limit or 20), 50))]
+    rows = [
+        {
+            'id': str(a.id),
+            'filename': a.filename,
+            'kind': a.kind,
+            'mime_type': a.mime_type,
+            'size_bytes': a.size_bytes,
+            'width': a.width,
+            'height': a.height,
+            'alt_text': a.alt_text,
+            'tags': list(a.tags or []),
+            'url': a.url,
+        }
+        for a in qs
+    ]
+    return ToolResult(output={'assets': rows, 'count': len(rows)},
+                      display=f'{len(rows)} asset(s)')
+
+
 # ── Schema introspection ────────────────────────────────────────────────
 
 

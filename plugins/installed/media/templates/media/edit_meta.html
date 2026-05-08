@@ -1,0 +1,106 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Edit asset · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'media:library' %}" class="hover:underline">Media library</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)] truncate">{{ asset.filename|default:"asset" }}</span>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    <div class="lg:col-span-2 space-y-4">
+      <div class="card overflow-hidden" style="display:flex; align-items:center; justify-content:center;
+                  background: var(--surface-2); min-height: 320px;">
+        {% if asset.is_image %}
+        <img src="{{ asset.url }}" alt="{{ asset.alt_text|default:asset.filename }}"
+             style="max-width: 100%; max-height: 480px; object-fit: contain;">
+        {% else %}
+        <div class="text-center p-6">
+          <i data-lucide="{% if asset.kind == 'video' %}film{% elif asset.kind == 'audio' %}music{% elif asset.kind == 'document' %}file-text{% else %}file{% endif %}"
+             class="h-16 w-16 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
+          <p class="font-medium">{{ asset.filename }}</p>
+          <p class="text-sm text-[color:var(--text-muted)]">{{ asset.mime_type|default:"unknown type" }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <form method="post" class="card card-padded space-y-3" data-morph-dirty>
+        {% csrf_token %}
+        <div>
+          <label class="block text-sm font-medium mb-1">Alt text</label>
+          <input type="text" name="alt_text" class="input" maxlength="300"
+                 value="{{ asset.alt_text|default:'' }}"
+                 placeholder="Used by screen readers and as fallback when the image fails to load.">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Tags</label>
+          <input type="text" name="tags" class="input"
+                 value="{{ tags_str }}"
+                 placeholder="hero, summer, lifestyle">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Comma-separated. Used for filtering the library.</p>
+        </div>
+        <div class="flex items-center justify-between gap-2 pt-2">
+          <a href="{% url 'media:library' %}" class="btn">Back</a>
+          <div class="flex items-center gap-2">
+            <form method="post" action="{% url 'media:delete' asset.id %}"
+                  data-confirm="Delete this asset? Anything referencing it will lose the file."
+                  data-confirm-cta="Delete" data-confirm-danger style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">
+                <i data-lucide="trash-2" class="h-4 w-4"></i> Delete
+              </button>
+            </form>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <aside class="space-y-4">
+      <div class="card card-padded space-y-2">
+        <h2 class="font-semibold text-sm">Details</h2>
+        <dl class="text-sm space-y-1.5">
+          <div class="flex items-center justify-between gap-2">
+            <dt class="text-[color:var(--text-muted)]">Kind</dt>
+            <dd class="font-medium">{{ asset.get_kind_display }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <dt class="text-[color:var(--text-muted)]">Size</dt>
+            <dd class="font-medium tabular-nums">{{ asset.human_size }}</dd>
+          </div>
+          {% if asset.width %}
+          <div class="flex items-center justify-between gap-2">
+            <dt class="text-[color:var(--text-muted)]">Dimensions</dt>
+            <dd class="font-medium tabular-nums">{{ asset.width }} × {{ asset.height }}</dd>
+          </div>
+          {% endif %}
+          <div class="flex items-center justify-between gap-2">
+            <dt class="text-[color:var(--text-muted)]">MIME</dt>
+            <dd class="font-mono text-xs">{{ asset.mime_type|default:"—" }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <dt class="text-[color:var(--text-muted)]">Uploaded</dt>
+            <dd class="text-xs">{{ asset.created_at|date:"M j, Y H:i" }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="card card-padded space-y-2">
+        <h2 class="font-semibold text-sm">Direct URL</h2>
+        <input type="text" class="input font-mono text-xs" readonly
+               value="{{ asset.url }}"
+               onclick="this.select()">
+        <p class="text-xs text-[color:var(--text-muted)]">
+          Paste anywhere — emails, themes, plugin configs.
+        </p>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+{% endblock %}

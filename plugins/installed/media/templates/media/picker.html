@@ -1,0 +1,95 @@
+{% load static %}<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pick media</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  body { background: #fbfbfb; color: #1a1a1a; font-family: 'Inter', system-ui, sans-serif; font-size: .8125rem; margin: 0; padding: 0; }
+  .grid-tile { aspect-ratio: 1/1; background: #f3f3f3; cursor: pointer;
+               border: 1px solid #e1e3e5; border-radius: 6px; overflow: hidden;
+               position: relative; transition: border-color .15s, box-shadow .15s; }
+  .grid-tile:hover { border-color: #1a1a1a; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  .grid-tile img { width: 100%; height: 100%; object-fit: cover; }
+  .upload-zone { border: 2px dashed #c9cccf; padding: .65rem 1rem; border-radius: 6px;
+                 text-align: center; color: #616161; }
+  .upload-zone.is-dragover { border-color: #1a1a1a; background: #f6f6f7; }
+</style>
+</head>
+<body>
+
+<div class="p-3 space-y-3">
+
+  <form method="get" class="flex items-center gap-2">
+    <select name="kind" onchange="this.form.submit()" class="border rounded px-2 py-1">
+      <option value="">All kinds</option>
+      <option value="image" {% if kind == 'image' %}selected{% endif %}>Images</option>
+      <option value="video" {% if kind == 'video' %}selected{% endif %}>Videos</option>
+      <option value="document" {% if kind == 'document' %}selected{% endif %}>Documents</option>
+    </select>
+    <input type="text" name="q" value="{{ search }}" placeholder="Search filename / alt"
+           class="border rounded px-2 py-1 flex-1">
+    <button type="submit" class="border rounded px-3 py-1 bg-black text-white">Search</button>
+  </form>
+
+  <label class="upload-zone block" id="picker-upload">
+    <input type="file" id="picker-file" hidden accept="image/*">
+    <span>Drop a new file here or click to upload</span>
+  </label>
+
+  <div class="grid grid-cols-3 gap-2">
+    {% for a in assets %}
+    <div class="grid-tile" data-asset='{"id": "{{ a.id }}", "url": "{{ a.url }}", "filename": "{{ a.filename|escapejs }}", "alt_text": "{{ a.alt_text|escapejs }}", "kind": "{{ a.kind }}"}'>
+      {% if a.is_image %}
+      <img src="{{ a.url }}" alt="{{ a.alt_text|default:a.filename }}">
+      {% else %}
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;">
+        <i data-lucide="file" style="width:32px;height:32px;color:#8a8a8a;"></i>
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <p class="col-span-3 text-center py-8 text-[color:#8a8a8a]">No assets match.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+  // Click → tell the parent window which asset was picked.
+  document.querySelectorAll('.grid-tile').forEach(function (el) {
+    el.addEventListener('click', function () {
+      try {
+        var asset = JSON.parse(el.dataset.asset);
+        window.parent.postMessage({ type: 'media:picked', asset: asset }, '*');
+      } catch (_) { /* ignore */ }
+    });
+  });
+  // Inline upload — POSTs to api_upload, then re-broadcasts the result.
+  var zone = document.getElementById('picker-upload');
+  var input = document.getElementById('picker-file');
+  function uploadFile(f) {
+    var fd = new FormData();
+    fd.append('file', f);
+    var csrf = document.cookie.split(';').map(s => s.trim()).find(c => c.startsWith('csrftoken='));
+    fetch('/dashboard/media/api/upload/', {
+      method: 'POST', credentials: 'same-origin', body: fd,
+      headers: csrf ? { 'X-CSRFToken': csrf.split('=')[1] } : {},
+    }).then(r => r.json()).then(function (asset) {
+      if (asset && asset.id) {
+        window.parent.postMessage({ type: 'media:picked', asset: asset }, '*');
+      }
+    }).catch(function () {});
+  }
+  input.addEventListener('change', function () { if (input.files[0]) uploadFile(input.files[0]); });
+  zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('is-dragover'); });
+  zone.addEventListener('dragleave', function () { zone.classList.remove('is-dragover'); });
+  zone.addEventListener('drop', function (e) {
+    e.preventDefault(); zone.classList.remove('is-dragover');
+    if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
+  });
+</script>
+
+</body>
+</html>

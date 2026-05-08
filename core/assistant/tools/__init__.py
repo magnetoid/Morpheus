@@ -26,6 +26,7 @@ from core.assistant.tools.ecommerce import (
     customers_search_tool,
     db_describe_model_tool,
     email_templates_tool,
+    media_search_tool,
     orders_get_tool,
     orders_search_tool,
     products_get_tool,
@@ -84,6 +85,7 @@ def get_default_tools() -> list:
         # Content
         cms_pages_tool,
         email_templates_tool,
+        media_search_tool,
         # Configuration
         settings_list_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first

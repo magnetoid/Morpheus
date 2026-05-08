@@ -14,7 +14,7 @@ env/
 *.sqlite3
 *.sqlite3-journal
 db.sqlite3
-media/
+/media/
 staticfiles/
 local_settings.py
 
