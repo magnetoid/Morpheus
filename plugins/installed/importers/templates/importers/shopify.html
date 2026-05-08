@@ -1,0 +1,125 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Migrate from Shopify · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Migrate from Shopify</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Pull products, customers, and orders from your Shopify store into Morpheus.
+      Re-running is safe — every record is upserted by Shopify ID, so the same
+      import twice produces the same result.
+    </p>
+  </div>
+
+  {% if error %}
+  <div class="card card-padded form-error-banner">
+    <strong>Import failed.</strong>
+    <p class="text-sm mt-1">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  {% if summary %}
+  <div class="card card-padded" style="border-color: var(--success);">
+    <div class="flex items-center gap-2 mb-2">
+      <i data-lucide="check-circle" class="h-5 w-5" style="color: var(--success);"></i>
+      <strong>Import finished.</strong>
+    </div>
+    <table class="morph-table" style="margin-top:.5rem;">
+      <thead><tr><th>Entity</th><th class="text-right">Imported</th></tr></thead>
+      <tbody>
+        {% for k, v in summary.counts.items %}
+        <tr><td>{{ k|title }}</td><td class="text-right tabular-nums">{{ v }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if summary.errors %}
+    <details class="mt-3">
+      <summary class="text-sm font-medium cursor-pointer">{{ summary.errors|length }} error(s)</summary>
+      <ul class="text-xs mt-2 space-y-1" style="color: var(--danger);">
+        {% for e in summary.errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card card-padded">
+    <h2 class="font-semibold text-sm mb-3">Connect your Shopify store</h2>
+    <form method="post" class="space-y-3">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium mb-1">Shopify shop name</label>
+        <div class="flex items-center gap-1">
+          <input type="text" name="shop" required class="input"
+                 placeholder="my-store"
+                 value="{{ form_data.shop }}">
+          <span class="text-sm text-[color:var(--text-muted)] whitespace-nowrap">.myshopify.com</span>
+        </div>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">
+          Just the subdomain — paste either the bare name or the full URL,
+          we'll strip the rest.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Admin API access token</label>
+        <input type="password" name="token" required class="input"
+               placeholder="shpat_xxx…"
+               autocomplete="off">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">
+          Create a custom app in your Shopify admin under
+          <em>Settings → Apps and sales channels → Develop apps</em>,
+          grant <code>read_products</code>, <code>read_customers</code>,
+          <code>read_orders</code>, and copy the Admin API access token.
+          The token is used once for this import — it isn't stored.
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <p class="text-sm font-medium">What to import</p>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="import_products"
+                 {% if form_data.import_products %}checked{% endif %}>
+          Products (and their variants + images)
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="import_customers"
+                 {% if form_data.import_customers %}checked{% endif %}>
+          Customers (email + name only — no PII beyond that)
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="import_orders"
+                 {% if form_data.import_orders %}checked{% endif %}>
+          Orders (existing orders are skipped on re-run)
+        </label>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button type="submit" class="btn btn-primary">
+          <i data-lucide="download" class="h-4 w-4"></i> Start import
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold text-sm mb-2">What runs underneath</h2>
+    <ul class="text-sm space-y-1.5 text-[color:var(--text-muted)]">
+      <li>• Idempotent upserts via the <code>SourceMapping</code> table — every
+        Shopify ID maps to a stable Morpheus record.</li>
+      <li>• Products preserve handles as slugs, variants by SKU, images
+        sorted with the first as primary.</li>
+      <li>• Customers store only email + first/last name — no addresses or
+        payment data are pulled.</li>
+      <li>• Orders import as <code>status=pending</code> with
+        <code>source=import</code>; their original payment status flows
+        through to <code>payment_status</code>.</li>
+      <li>• If the import fails halfway, re-running picks up where it left
+        off — safe to retry.</li>
+    </ul>
+  </div>
+
+</div>
+{% endblock %}

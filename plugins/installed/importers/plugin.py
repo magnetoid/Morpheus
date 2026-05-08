@@ -33,4 +33,13 @@ class ImportersPlugin(Plugin):
                 order=10,
                 nav='settings',
             ),
+            DashboardPage(
+                slug='shopify',
+                label='Migrate from Shopify',
+                section='data',
+                icon='download',
+                view='plugins.installed.importers.views.shopify_index',
+                order=20,
+                nav='settings',
+            ),
         ]
