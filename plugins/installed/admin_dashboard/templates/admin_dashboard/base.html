@@ -271,7 +271,38 @@
     {# Inline AI affordance — context-aware "Ask the Assistant" button. #}
     {% morph_ask %}
     <a href="{% url 'admin_dashboard:settings' %}" class="btn btn-ghost p-1.5" aria-label="Settings"><i data-lucide="settings" class="h-4 w-4"></i></a>
-    <button class="btn btn-ghost p-1.5" aria-label="Notifications"><i data-lucide="bell" class="h-4 w-4"></i></button>
+    <div data-dropdown id="notif-bell" style="position: relative;">
+      <button data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
+              class="btn btn-ghost p-1.5" aria-label="Notifications"
+              style="position: relative;">
+        <i data-lucide="bell" class="h-4 w-4"></i>
+        {% if nav_badges.notifications %}
+        <span style="position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px;
+                     padding: 0 3px; border-radius: 999px; background: var(--danger);
+                     color: var(--primary-fg); font-size: 9px; font-weight: 700; line-height: 14px;
+                     text-align: center; box-shadow: 0 0 0 2px var(--bg);">{{ nav_badges.notifications }}</span>
+        {% endif %}
+      </button>
+      <div class="dropdown-menu" hidden role="menu"
+           style="min-width: 320px; max-width: 380px; padding: 0; right: 0; top: calc(100% + .35rem);">
+        <div style="padding: .65rem .85rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+          <strong style="font-size: .85rem;">Notifications</strong>
+          {% if nav_badges.notifications %}<span class="pill pill-info" style="font-size: .65rem;">{{ nav_badges.notifications }} unread</span>{% endif %}
+        </div>
+        <div data-notif-list style="max-height: 360px; overflow-y: auto; padding: .25rem;">
+          <p style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: .8rem; margin: 0;">Loading…</p>
+        </div>
+        <div style="padding: .35rem .55rem; border-top: 1px solid var(--border); display: flex; gap: .35rem;">
+          <a href="/dashboard/notifications/" class="btn text-xs" style="flex: 1; justify-content: center;">View all</a>
+          {% if nav_badges.notifications %}
+          <form method="post" action="/dashboard/notifications/mark-all-read/" style="display: contents;">
+            {% csrf_token %}
+            <button type="submit" class="btn text-xs" style="flex: 1; justify-content: center;">Mark all read</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
     {# User menu — top-right. Click to open dropdown. #}
     <div id="user-menu" style="position: relative;">
       <button id="user-menu-toggle" type="button" aria-label="Account" style="
@@ -360,6 +391,70 @@
         }
       });
     });
+
+    // Notification bell — fetch the latest 10 the first time the
+    // dropdown opens. Cheap: one GET, max 10 rows.
+    (function () {
+      const bell = document.getElementById('notif-bell');
+      if (!bell) return;
+      const list = bell.querySelector('[data-notif-list]');
+      const toggle = bell.querySelector('[data-dropdown-toggle]');
+      if (!list || !toggle) return;
+      let loaded = false;
+      function escapeHtml(s) {
+        return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+      }
+      function renderItem(n) {
+        const href = n.action_url ? escapeHtml(n.action_url) : '#';
+        const unreadBg = n.read ? 'transparent' : 'var(--info-bg)';
+        const titleWeight = n.read ? '500' : '600';
+        return `
+          <a href="${href}" data-notif-id="${escapeHtml(n.id)}"
+             style="display: block; padding: .55rem .75rem; border-radius: var(--radius-sm);
+                    background: ${unreadBg}; color: var(--text); margin-bottom: .15rem;
+                    text-decoration: none;">
+            <div style="display: flex; align-items: flex-start; gap: .55rem;">
+              <span style="display: inline-flex; width: 1.5rem; height: 1.5rem;
+                           border-radius: 4px; background: var(--surface-2); align-items: center;
+                           justify-content: center; color: var(--text-muted); flex-shrink: 0;">
+                <i data-lucide="${escapeHtml(n.icon || 'bell')}" class="h-3.5 w-3.5"></i>
+              </span>
+              <div style="flex: 1; min-width: 0;">
+                <p style="font-size: .8rem; font-weight: ${titleWeight}; margin: 0; line-height: 1.3;">
+                  ${escapeHtml(n.title)}
+                </p>
+                ${n.body ? `<p style="font-size:.7rem; color: var(--text-muted); margin: .15rem 0 0; line-height: 1.3;">${escapeHtml(n.body).slice(0, 90)}</p>` : ''}
+              </div>
+            </div>
+          </a>
+        `;
+      }
+      function load() {
+        if (loaded) return;
+        loaded = true;
+        fetch('/dashboard/notifications/api/latest/', { credentials: 'same-origin' })
+          .then(r => r.json())
+          .then(data => {
+            const items = (data.notifications || []);
+            if (items.length === 0) {
+              list.innerHTML = '<p style="padding:1.25rem;text-align:center;color:var(--text-muted);font-size:.8rem;margin:0;">No notifications yet.</p>';
+            } else {
+              list.innerHTML = items.map(renderItem).join('');
+              if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+            }
+          })
+          .catch(() => {
+            list.innerHTML = '<p style="padding:1rem;text-align:center;color:var(--danger);font-size:.8rem;">Couldn\'t load.</p>';
+          });
+      }
+      // Lazy-load on first open of the bell dropdown.
+      toggle.addEventListener('click', () => {
+        // The generic dropdown handler runs first and toggles `.hidden`;
+        // by this point the menu is either freshly opened or closed.
+        const menu = bell.querySelector('.dropdown-menu');
+        if (menu && !menu.hidden) load();
+      });
+    })();
 
     // Collapsible sidebar sections — Shopify-style. State persisted per-section in localStorage.
     document.querySelectorAll('.nav-section-btn').forEach(btn => {

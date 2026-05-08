@@ -161,7 +161,7 @@ def _compute_nav_badges(request) -> dict:
     cached = getattr(request, '_morph_nav_badges', None)
     if cached is not None:
         return cached
-    badges = {'returns': 0, 'insights': 0}
+    badges = {'returns': 0, 'insights': 0, 'notifications': 0}
     try:
         from plugins.installed.orders.refunds import ReturnRequest
         badges['returns'] = ReturnRequest.objects.filter(state='requested').count()
@@ -170,6 +170,11 @@ def _compute_nav_badges(request) -> dict:
     try:
         from plugins.installed.ai_assistant.models import MerchantInsight
         badges['insights'] = MerchantInsight.objects.filter(is_read=False).count()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.notifications_center.services import unread_count_for
+        badges['notifications'] = unread_count_for(getattr(request, 'user', None))
     except Exception:  # noqa: BLE001
         pass
     try:

@@ -1,0 +1,88 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
+{% block title %}Notifications · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Notifications</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        {% if page_obj %}{{ page_obj.paginator.count }} total{% endif %}
+        {% if unread_total %} · <strong style="color: var(--text);">{{ unread_total }} unread</strong>{% endif %}
+      </p>
+    </div>
+    {% if unread_total %}
+    <form method="post" action="{% url 'notifications_center:mark_all_read' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="btn">
+        <i data-lucide="check-check" class="h-4 w-4"></i> Mark all read
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <nav class="flex items-center gap-1 overflow-x-auto" style="border-bottom: 1px solid var(--border);">
+    <a href="?show=all"
+       class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
+       style="border-bottom: 2px solid {% if show != 'unread' %}var(--text){% else %}transparent{% endif %};
+              color: {% if show != 'unread' %}var(--text){% else %}var(--text-muted){% endif %};
+              font-weight: {% if show != 'unread' %}600{% else %}500{% endif %};
+              margin-bottom: -1px;">
+      All
+    </a>
+    <a href="?show=unread"
+       class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
+       style="border-bottom: 2px solid {% if show == 'unread' %}var(--text){% else %}transparent{% endif %};
+              color: {% if show == 'unread' %}var(--text){% else %}var(--text-muted){% endif %};
+              font-weight: {% if show == 'unread' %}600{% else %}500{% endif %};
+              margin-bottom: -1px;">
+      Unread
+      {% if unread_total %}<span class="pill pill-warn" style="font-size:.68rem; padding:.05rem .4rem;">{{ unread_total }}</span>{% endif %}
+    </a>
+  </nav>
+
+  <div class="card overflow-hidden">
+    {% if notifications %}
+    <ul style="list-style: none; margin: 0; padding: 0;">
+      {% for n in notifications %}
+      <li style="border-bottom: 1px solid var(--border);">
+        <form method="post" action="{% url 'notifications_center:mark_read' n.id %}" style="margin: 0;">
+          {% csrf_token %}
+          <button type="submit"
+                  style="width: 100%; text-align: left; background: {% if n.is_unread %}var(--info-bg){% else %}transparent{% endif %};
+                         padding: .85rem 1.1rem; border: 0; cursor: pointer;
+                         display: flex; align-items: flex-start; gap: .75rem; color: var(--text);">
+            <span style="display: inline-flex; align-items: center; justify-content: center;
+                         width: 2rem; height: 2rem; border-radius: var(--radius-sm);
+                         background: var(--surface-2); color: var(--text-muted); flex-shrink: 0;">
+              <i data-lucide="{{ n.icon|default:'bell' }}" class="h-4 w-4"></i>
+            </span>
+            <div style="flex: 1; min-width: 0;">
+              <div class="text-sm" style="font-weight: {% if n.is_unread %}600{% else %}500{% endif %};">
+                {{ n.title }}
+                {% if n.is_unread %}<span class="pill pill-info" style="margin-left:.45rem; font-size:.65rem; padding:.05rem .4rem;">new</span>{% endif %}
+              </div>
+              {% if n.body %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ n.body|truncatechars:200 }}</p>{% endif %}
+              <p class="text-xs text-[color:var(--text-muted)] mt-1">
+                <span style="font-family: monospace; font-size: .68rem;">{{ n.kind }}</span>
+                · {{ n.created_at|timesince }} ago
+              </p>
+            </div>
+            {% if n.action_url %}
+            <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)]" style="flex-shrink: 0;"></i>
+            {% endif %}
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
+    {% else %}
+    {% include "admin_dashboard/_empty_state.html" with icon="bell-off" title="No notifications" hint="Activity that needs your attention — pending returns, low-stock alerts, agent failures — will land here." %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

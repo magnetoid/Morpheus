@@ -191,6 +191,19 @@ class ReturnService:
             customer_note=customer_note, requested_by=requested_by,
         )
         hook_registry.fire('return.requested', return_request=rr, order=order)
+        # Fan-out to the staff notifications center so the dashboard bell
+        # shows it on the next page load. Optional plugin — fail-soft.
+        try:
+            from plugins.installed.notifications_center.services import notify_all_staff
+            notify_all_staff(
+                kind='returns.requested',
+                title=f'Return requested — {rr.rma_number}',
+                body=f'Order #{order.order_number} · reason: {rr.get_reason_display()}',
+                action_url=f'/dashboard/returns/{rr.id}/',
+                icon='undo-2',
+            )
+        except Exception:  # noqa: BLE001 — notifications optional
+            pass
         return rr
 
     @classmethod
