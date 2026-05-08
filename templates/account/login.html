@@ -39,5 +39,12 @@
     <a href="{% url 'account_reset_password' %}">{% trans "Forgot password?" %}</a>
     <a href="{% url 'account_signup' %}">{% trans "Create account" %}</a>
   </div>
+
+  <div style="border-top:1px solid var(--border); padding-top:.85rem; margin-top:.5rem; text-align:center;">
+    <a href="{% url 'core_auth:otp_request' %}{% if redirect_field_value %}?next={{ redirect_field_value }}{% endif %}"
+       class="text-sm" style="color: var(--text);">
+      {% trans "Email me a code instead" %} →
+    </a>
+  </div>
 </form>
 {% endblock %}

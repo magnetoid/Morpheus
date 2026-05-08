@@ -1,0 +1,35 @@
+{% extends "account/base.html" %}
+
+{% block head_title %}Enter your sign-in code{% endblock %}
+{% block heading %}Enter the 6-digit code{% endblock %}
+{% block subheading %}<p class="text-sm" style="color:var(--text-muted);">If <strong>{{ email }}</strong> is on file, your code is on its way. Check your inbox.</p>{% endblock %}
+
+{% block content %}
+<form method="post" class="space-y-3">
+  {% csrf_token %}
+
+  {% if error %}
+  <div style="border:1px solid var(--danger); color:var(--danger); padding:.55rem .65rem; border-radius:6px; font-size:.85rem;">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <div>
+    <label for="id_code">Verification code</label>
+    <input id="id_code" name="code" inputmode="numeric" autocomplete="one-time-code"
+           pattern="[0-9 \-]*" maxlength="12" required autofocus
+           placeholder="000000"
+           style="font-family: Menlo, monospace; font-size: 1.4rem; letter-spacing: .35em; text-align: center;">
+    <p class="text-xs" style="color: var(--text-muted); margin-top:.35rem;">Codes expire after 10 minutes.</p>
+  </div>
+
+  <input type="hidden" name="next" value="{{ next|default:'/account/' }}">
+
+  <button type="submit" class="btn btn-primary">Verify and sign in</button>
+
+  <div class="flex justify-between text-xs pt-2" style="color: var(--text-muted);">
+    <a href="{% url 'core_auth:otp_request' %}{% if next %}?next={{ next }}{% endif %}">Use a different email</a>
+    <a href="{% url 'account_login' %}{% if next %}?next={{ next }}{% endif %}">Use password instead</a>
+  </div>
+</form>
+{% endblock %}

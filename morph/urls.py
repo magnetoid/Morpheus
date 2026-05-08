@@ -34,6 +34,8 @@ urlpatterns = [
     path('', include('api.urls')),          # GraphQL at /graphql/
     # Auth lives at /auth/. /accounts/* is kept as a 301-redirect for any
     # external bookmark or third-party doc that still references it.
+    # Passwordless OTP lives at /auth/otp/ alongside allauth's flows.
+    path('auth/otp/', include('core.auth.urls', namespace='core_auth')),
     path('auth/', include('allauth.urls')),
     re_path(
         r'^accounts/(?P<rest>.*)$',
