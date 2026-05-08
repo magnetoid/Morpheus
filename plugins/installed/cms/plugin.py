@@ -24,6 +24,18 @@ class CmsPlugin(Plugin):
     def ready(self) -> None:
         self.register_urls('plugins.installed.cms.urls', prefix='', namespace='cms')
         self.register_hook('cms.form_submitted', self.on_form_submitted, priority=50)
+        # Theme sections register on import. Pull the active theme's
+        # section bundle so the section_registry is populated before
+        # any page render tries to look up a section_id. Other themes
+        # can opt in the same way; CMS doesn't care which theme is
+        # active — it just imports whichever module exists.
+        try:
+            import importlib
+            from django.conf import settings as dj_settings
+            theme = getattr(dj_settings, 'MORPHEUS_ACTIVE_THEME', 'dot_books')
+            importlib.import_module(f'themes.library.{theme}.sections')
+        except Exception as exc:  # noqa: BLE001 — theme may not ship sections
+            logger.debug('cms: no sections module for theme: %s', exc)
 
     def on_form_submitted(self, form, submission, **kwargs):
         """Bridge to CRM if installed: form submission → Lead + Interaction."""

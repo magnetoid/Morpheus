@@ -1,7 +1,15 @@
 {% extends "storefront/base.html" %}
+{% load cms %}
 {% block title %}{{ page.title }}{% endblock %}
 
 {% block content %}
+{# If the page has any PageSection rows, the section composition takes #}
+{# over and the legacy `page.body` is suppressed — merchants who built #}
+{# the page in the theme builder shouldn't see their old body bleed in. #}
+{% render_page_sections page as sections_html %}
+{% if sections_html %}
+{{ sections_html }}
+{% else %}
 <article style="padding: 4rem 0 5rem;">
   <div class="wrap" style="max-width: 720px;">
     {% if page.excerpt %}<p class="eyebrow">{{ page.excerpt }}</p>{% endif %}
@@ -11,4 +19,5 @@
     </div>
   </div>
 </article>
+{% endif %}
 {% endblock %}

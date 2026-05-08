@@ -159,4 +159,10 @@ urlpatterns = [
     path('settings/email-templates/<str:key>/', views.email_template_edit, name='email_template_edit'),
     path('settings/<slug:category>/', views.settings_category, name='settings_category'),
     path('ai-insights/', views.ai_insights, name='ai_insights'),
+    # Theme builder — section composer + live preview for CMS pages.
+    path('pages/<uuid:page_id>/builder/', views.theme_builder_views.builder, name='theme_builder'),
+    path('pages/<uuid:page_id>/builder/add/', views.theme_builder_views.api_add, name='theme_builder_add'),
+    path('pages/<uuid:page_id>/builder/reorder/', views.theme_builder_views.api_reorder, name='theme_builder_reorder'),
+    path('pages/<uuid:page_id>/builder/<uuid:row_id>/update/', views.theme_builder_views.api_update, name='theme_builder_update'),
+    path('pages/<uuid:page_id>/builder/<uuid:row_id>/delete/', views.theme_builder_views.api_delete, name='theme_builder_delete'),
 ]

@@ -68,6 +68,44 @@ class Page(models.Model):
         return True
 
 
+class PageSection(models.Model):
+    """Composable section of a Page.
+
+    Pages can either be rendered classically from `Page.body` (back-compat
+    with v1 CMS pages) or composed of ordered `PageSection` rows. The
+    storefront's `{% render_page_sections page %}` template tag prefers
+    the section path when at least one row exists.
+
+    `section_id` references a Section registered in `themes.sections.
+    section_registry` (e.g. 'hero', 'featured_products', 'rich_text').
+    `settings` is a free-form JSON dict per the section's declared
+    schema; merged on render with the section's `defaults`.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name='sections')
+    section_id = models.CharField(
+        max_length=80, db_index=True,
+        help_text='Identifier registered in themes.sections.section_registry.',
+    )
+    sort_order = models.PositiveIntegerField(default=0, db_index=True)
+    settings = models.JSONField(
+        default=dict, blank=True,
+        help_text='Per-instance settings; merged with the section defaults at render time.',
+    )
+    is_visible = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+        indexes = [
+            models.Index(fields=['page', 'sort_order']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.section_id} #{self.sort_order} on {self.page.slug}'
+
+
 class Block(models.Model):
     """Named, reusable content snippet (banner, callout, hero, etc.)."""
 

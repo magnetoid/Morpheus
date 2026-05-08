@@ -1,0 +1,294 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Theme builder — {{ page.title }} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-[1600px] mx-auto space-y-3">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="/dashboard/cms/pages/" class="hover:underline">Pages</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)] truncate">{{ page.title }}</span>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span>Theme builder</span>
+  </div>
+
+  <div class="flex items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ page.title }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Compose this page out of sections — drag to reorder, click "+ Add section" below the list to drop a new one in.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ preview_url }}" target="_preview" class="btn">
+        <i data-lucide="external-link" class="h-4 w-4"></i> Open in new tab
+      </a>
+      <button type="button" id="tb-refresh-preview" class="btn">
+        <i data-lucide="refresh-cw" class="h-4 w-4"></i> Refresh preview
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3" style="min-height: 70vh;">
+
+    {# ── LEFT: section composer ─────────────────────────────────── #}
+    <div class="card overflow-hidden flex flex-col" style="min-height: 70vh;">
+      <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between">
+        <h2 class="font-semibold text-sm">Sections</h2>
+        <div class="text-xs text-[color:var(--text-muted)]" id="tb-status">Ready.</div>
+      </div>
+
+      <ol id="tb-rows" class="space-y-2 p-3 flex-1 overflow-y-auto" style="list-style: none; margin: 0;"></ol>
+
+      <div class="card-padded border-t border-[color:var(--border)]">
+        <details>
+          <summary class="cursor-pointer text-sm font-medium" style="display: list-item;">+ Add section</summary>
+          <div id="tb-add-grid" class="grid grid-cols-2 gap-2 mt-3"></div>
+        </details>
+      </div>
+    </div>
+
+    {# ── RIGHT: live-preview iframe ─────────────────────────────── #}
+    <div class="card overflow-hidden flex flex-col" style="min-height: 70vh;">
+      <div class="card-padded border-b border-[color:var(--border)] text-xs text-[color:var(--text-muted)]">
+        Preview · refreshes after each save
+      </div>
+      <iframe id="tb-preview" src="{{ preview_url }}"
+              style="border: 0; flex: 1; width: 100%; background: var(--surface);"></iframe>
+    </div>
+
+  </div>
+</div>
+
+<template id="tb-row-template">
+  <li data-row class="card card-padded" style="cursor: move;" draggable="true">
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex items-start gap-2 flex-1 min-w-0">
+        <span data-drag class="text-[color:var(--text-muted)] cursor-grab" style="flex-shrink: 0; padding-top: 2px;">
+          <i data-lucide="grip-vertical" class="h-4 w-4"></i>
+        </span>
+        <div style="flex: 1; min-width: 0;">
+          <div class="flex items-center gap-2">
+            <i data-lucide="" data-row-icon class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+            <strong data-row-label class="text-sm">section</strong>
+            <code data-row-section-id class="text-xs text-[color:var(--text-muted)]"></code>
+          </div>
+          <details class="mt-2">
+            <summary class="text-xs text-[color:var(--text-muted)] cursor-pointer">Settings (JSON)</summary>
+            <textarea data-settings rows="6" class="input mt-2 font-mono text-xs"
+                      style="width: 100%;"></textarea>
+            <div class="flex items-center justify-end mt-2">
+              <button type="button" class="btn btn-primary text-xs" data-save>Save settings</button>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div class="flex items-center gap-1" style="flex-shrink: 0;">
+        <button type="button" class="btn btn-ghost text-xs" data-toggle title="Show / hide">
+          <i data-lucide="eye" class="h-3.5 w-3.5"></i>
+        </button>
+        <button type="button" class="btn btn-danger text-xs" data-remove
+                title="Remove section"
+                data-confirm="Remove this section from the page? Settings will be lost."
+                data-confirm-cta="Remove" data-confirm-danger>
+          <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
+        </button>
+      </div>
+    </div>
+  </li>
+</template>
+
+<script>
+(function () {
+  const PAGE_ID = '{{ page.id }}';
+  const SECTIONS = {{ available_sections_json|safe }};
+  const initialRows = {{ rows_json|safe }};
+
+  const list = document.getElementById('tb-rows');
+  const addGrid = document.getElementById('tb-add-grid');
+  const tpl = document.getElementById('tb-row-template');
+  const status = document.getElementById('tb-status');
+  const previewFrame = document.getElementById('tb-preview');
+  const refreshBtn = document.getElementById('tb-refresh-preview');
+
+  function csrf() {
+    const c = document.cookie.split(';').map(s => s.trim()).find(c => c.startsWith('csrftoken='));
+    return c ? c.split('=')[1] : '';
+  }
+
+  function setStatus(msg, level) {
+    status.textContent = msg;
+    status.style.color = level === 'error' ? 'var(--danger)'
+                       : level === 'success' ? 'var(--success)'
+                       : 'var(--text-muted)';
+  }
+
+  function refreshPreview() {
+    try {
+      previewFrame.contentWindow.location.reload();
+    } catch (_) {
+      previewFrame.src = previewFrame.src;
+    }
+  }
+  refreshBtn.addEventListener('click', refreshPreview);
+
+  function findSection(id) {
+    return SECTIONS.find(s => s.id === id);
+  }
+
+  function renderRow(row) {
+    const li = tpl.content.firstElementChild.cloneNode(true);
+    li.dataset.id = row.id;
+    li.dataset.sectionId = row.section_id;
+    const def = findSection(row.section_id) || { label: row.section_id, icon: 'square' };
+    li.querySelector('[data-row-label]').textContent = def.label;
+    li.querySelector('[data-row-section-id]').textContent = '(' + row.section_id + ')';
+    li.querySelector('[data-row-icon]').setAttribute('data-lucide', def.icon || 'square');
+    li.querySelector('[data-settings]').value = JSON.stringify(row.settings || {}, null, 2);
+
+    if (!row.is_visible) li.style.opacity = '.55';
+
+    li.querySelector('[data-save]').addEventListener('click', () => saveSettings(li));
+    li.querySelector('[data-remove]').addEventListener('click', () => deleteRow(li));
+    li.querySelector('[data-toggle]').addEventListener('click', () => toggleVisible(li));
+
+    // Drag-drop reorder.
+    li.addEventListener('dragstart', (e) => {
+      li.style.opacity = '.4';
+      e.dataTransfer.setData('text/plain', row.id);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    li.addEventListener('dragend', () => { li.style.opacity = row.is_visible ? '1' : '.55'; });
+    li.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+    li.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData('text/plain');
+      const dragged = list.querySelector(`[data-id="${draggedId}"]`);
+      if (!dragged || dragged === li) return;
+      const target = e.currentTarget;
+      const rect = target.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2;
+      if (after) target.after(dragged); else target.before(dragged);
+      persistOrder();
+    });
+
+    list.appendChild(li);
+    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  }
+
+  function buildAddGrid() {
+    addGrid.innerHTML = '';
+    SECTIONS.forEach(s => {
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'card card-padded text-left';
+      tile.style.cssText = 'cursor: pointer; transition: border-color .15s, box-shadow .15s; padding: .65rem .85rem;';
+      tile.addEventListener('mouseenter', () => { tile.style.borderColor = 'var(--text)'; });
+      tile.addEventListener('mouseleave', () => { tile.style.borderColor = ''; });
+      tile.innerHTML = `
+        <div style="display:flex; align-items:center; gap:.55rem; margin-bottom:.25rem;">
+          <i data-lucide="${s.icon || 'square'}" class="h-4 w-4"></i>
+          <strong style="font-size: .85rem;">${s.label}</strong>
+        </div>
+        <p style="font-size: .75rem; color: var(--text-muted); margin: 0;">${s.description || ''}</p>
+      `;
+      tile.addEventListener('click', () => addSection(s.id));
+      addGrid.appendChild(tile);
+    });
+    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  }
+
+  function addSection(sectionId) {
+    setStatus('Adding…');
+    const fd = new FormData();
+    fd.append('section_id', sectionId);
+    fetch(`/dashboard/pages/${PAGE_ID}/builder/add/`, {
+      method: 'POST', credentials: 'same-origin', body: fd,
+      headers: { 'X-CSRFToken': csrf() },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { setStatus(data.error, 'error'); return; }
+        renderRow(data.row);
+        setStatus('Added.', 'success');
+        refreshPreview();
+      })
+      .catch(err => setStatus(String(err), 'error'));
+  }
+
+  function persistOrder() {
+    const ids = Array.from(list.querySelectorAll('[data-row]')).map(li => li.dataset.id);
+    setStatus('Reordering…');
+    const fd = new FormData();
+    ids.forEach(id => fd.append('ids[]', id));
+    fetch(`/dashboard/pages/${PAGE_ID}/builder/reorder/`, {
+      method: 'POST', credentials: 'same-origin', body: fd,
+      headers: { 'X-CSRFToken': csrf() },
+    })
+      .then(r => r.json())
+      .then(() => { setStatus('Saved order.', 'success'); refreshPreview(); })
+      .catch(err => setStatus(String(err), 'error'));
+  }
+
+  function saveSettings(li) {
+    const ta = li.querySelector('[data-settings]');
+    setStatus('Saving…');
+    const fd = new FormData();
+    fd.append('settings', ta.value);
+    fetch(`/dashboard/pages/${PAGE_ID}/builder/${li.dataset.id}/update/`, {
+      method: 'POST', credentials: 'same-origin', body: fd,
+      headers: { 'X-CSRFToken': csrf() },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { setStatus(data.error, 'error'); return; }
+        setStatus('Saved.', 'success');
+        refreshPreview();
+      })
+      .catch(err => setStatus(String(err), 'error'));
+  }
+
+  function toggleVisible(li) {
+    const willHide = li.style.opacity !== '.55';
+    const fd = new FormData();
+    fd.append('is_visible', willHide ? '0' : '1');
+    fetch(`/dashboard/pages/${PAGE_ID}/builder/${li.dataset.id}/update/`, {
+      method: 'POST', credentials: 'same-origin', body: fd,
+      headers: { 'X-CSRFToken': csrf() },
+    })
+      .then(r => r.json())
+      .then(() => { li.style.opacity = willHide ? '.55' : '1'; refreshPreview(); });
+  }
+
+  function deleteRow(li) {
+    // The data-confirm modal is wired by dashboard.js — but we need to
+    // intercept the click rather than a submit (no form here). Use the
+    // same Morph.confirm helper directly.
+    const doDelete = () => {
+      fetch(`/dashboard/pages/${PAGE_ID}/builder/${li.dataset.id}/delete/`, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'X-CSRFToken': csrf() },
+      }).then(() => {
+        li.remove();
+        setStatus('Removed.', 'success');
+        refreshPreview();
+      });
+    };
+    if (window.Morph && window.Morph.confirm) {
+      window.Morph.confirm({
+        title: 'Remove this section?',
+        message: 'Settings for this section will be lost.',
+        cta: 'Remove', danger: true,
+      }).then(ok => { if (ok) doDelete(); });
+    } else if (confirm('Remove this section?')) {
+      doDelete();
+    }
+  }
+
+  // Bootstrap.
+  buildAddGrid();
+  initialRows.forEach(renderRow);
+  if (initialRows.length === 0) {
+    setStatus('No sections yet — pick one from "+ Add section" below.', '');
+  }
+})();
+</script>
+{% endblock %}
