@@ -18,6 +18,20 @@ from core.assistant.tools.delegate import (
     invoke_agent_tool,
     list_available_agents_tool,
 )
+from core.assistant.tools.ecommerce import (
+    analytics_summary_tool,
+    analytics_top_products_tool,
+    cms_pages_tool,
+    customers_get_tool,
+    customers_search_tool,
+    db_describe_model_tool,
+    email_templates_tool,
+    orders_get_tool,
+    orders_search_tool,
+    products_get_tool,
+    products_search_tool,
+    settings_list_tool,
+)
 from core.assistant.tools.filesystem import (
     list_dir_tool,
     read_file_tool,
@@ -42,10 +56,26 @@ def get_default_tools() -> list:
         read_file_tool,
         list_dir_tool,
         search_files_tool,
-        # Database
+        # Database — generic
         list_models_tool,
         count_rows_tool,
+        db_describe_model_tool,
+        # Ecommerce — orders / products / customers
+        orders_search_tool,
+        orders_get_tool,
         recent_orders_tool,
+        products_search_tool,
+        products_get_tool,
+        customers_search_tool,
+        customers_get_tool,
+        # Analytics
+        analytics_summary_tool,
+        analytics_top_products_tool,
+        # Content
+        cms_pages_tool,
+        email_templates_tool,
+        # Configuration
+        settings_list_tool,
         # Logs
         recent_errors_tool,
         search_logs_tool,
