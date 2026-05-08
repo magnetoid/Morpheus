@@ -16,23 +16,15 @@
     </div>
   </div>
 
+  {% index_tabs param="source" choices=source_choices counts=source_counts %}
+
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    {% if source_filter %}<input type="hidden" name="source" value="{{ source_filter }}">{% endif %}
     <div class="relative flex-1 min-w-[200px]">
       <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
       <input name="q" value="{{ search }}" placeholder="Email or name" class="input input-search">
     </div>
-    <select name="source" class="input max-w-[180px]">
-      <option value="">All sources</option>
-      <option value="order"      {% if source_filter == 'order' %}selected{% endif %}>Order</option>
-      <option value="signup"     {% if source_filter == 'signup' %}selected{% endif %}>Signup</option>
-      <option value="lead_form"  {% if source_filter == 'lead_form' %}selected{% endif %}>Lead form</option>
-      <option value="newsletter" {% if source_filter == 'newsletter' %}selected{% endif %}>Newsletter</option>
-      <option value="import"     {% if source_filter == 'import' %}selected{% endif %}>Import</option>
-      <option value="manual"     {% if source_filter == 'manual' %}selected{% endif %}>Manual entry</option>
-      <option value="agent"      {% if source_filter == 'agent' %}selected{% endif %}>Agent</option>
-      <option value="referral"   {% if source_filter == 'referral' %}selected{% endif %}>Referral</option>
-    </select>
-    <button class="btn btn-primary">Apply</button>
+    <button class="btn btn-primary">Search</button>
   </form>
 
   {% filter_chips q="Search" source="Source" %}

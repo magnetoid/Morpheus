@@ -23,13 +23,35 @@ from plugins.installed.admin_dashboard.views_split._shared import (
     Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
 )
 
+ORDER_STATUS_CHOICES = (
+    ('', 'All'),
+    ('pending', 'Pending'),
+    ('confirmed', 'Confirmed'),
+    ('processing', 'Processing'),
+    ('fulfilled', 'Fulfilled'),
+    ('shipped', 'Shipped'),
+    ('delivered', 'Delivered'),
+    ('cancelled', 'Cancelled'),
+    ('refunded', 'Refunded'),
+)
+
+
 @staff_member_required
 def orders_list(request: HttpRequest) -> HttpResponse:
     status_filter = request.GET.get('status', '')
     search = request.GET.get('q', '').strip()[:80]
     orders: list[Any] = []
+    status_counts: dict[str, int] = {}
     try:
+        from django.db.models import Count
         from plugins.installed.orders.models import Order
+        unfiltered = Order.objects.all()
+        if search:
+            unfiltered = unfiltered.filter(order_number__icontains=search) | unfiltered.filter(email__icontains=search)
+        status_counts = {
+            row['status']: row['c']
+            for row in unfiltered.values('status').annotate(c=Count('id'))
+        }
         qs = (
             Order.objects
             .select_related('customer', 'channel')
@@ -56,6 +78,8 @@ def orders_list(request: HttpRequest) -> HttpResponse:
     return render(request, 'admin_dashboard/orders.html', {
         'orders': orders,
         'status_filter': status_filter,
+        'status_choices': ORDER_STATUS_CHOICES,
+        'status_counts': status_counts,
         'search': search,
         'draft_count': draft_count,
         'drafts_url': drafts_url,

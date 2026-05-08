@@ -22,26 +22,19 @@
     </div>
   </div>
 
+  {% index_tabs param="status" choices=status_choices counts=status_counts %}
+
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    {# Preserve the current status tab when submitting the search form. #}
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
     <div class="relative flex-1 min-w-[200px]">
       <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
       <input name="q" value="{{ search }}" placeholder="Order # or email" class="input input-search">
     </div>
-    <select name="status" class="input max-w-[180px]">
-      <option value="">All statuses</option>
-      <option value="pending"    {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
-      <option value="confirmed"  {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
-      <option value="processing" {% if status_filter == 'processing' %}selected{% endif %}>Processing</option>
-      <option value="fulfilled"  {% if status_filter == 'fulfilled' %}selected{% endif %}>Fulfilled</option>
-      <option value="shipped"    {% if status_filter == 'shipped' %}selected{% endif %}>Shipped</option>
-      <option value="delivered"  {% if status_filter == 'delivered' %}selected{% endif %}>Delivered</option>
-      <option value="cancelled"  {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
-      <option value="refunded"   {% if status_filter == 'refunded' %}selected{% endif %}>Refunded</option>
-    </select>
-    <button class="btn btn-primary">Apply</button>
+    <button class="btn btn-primary">Search</button>
   </form>
 
-  {% filter_chips q="Search" status="Status" %}
+  {% filter_chips q="Search" %}
 
   {# Bulk POST form. Lives outside the GET filter form; row checkboxes #}
   {# escape to it via form="bulk-form" so HTML5 lets them post here. #}

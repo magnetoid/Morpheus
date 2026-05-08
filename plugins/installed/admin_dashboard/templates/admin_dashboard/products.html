@@ -17,21 +17,18 @@
     </div>
   </div>
 
+  {% index_tabs param="status" choices=status_choices counts=status_counts %}
+
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
     <div class="relative flex-1 min-w-[200px]">
       <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
       <input name="q" value="{{ search }}" placeholder="Name or SKU" class="input input-search">
     </div>
-    <select name="status" class="input max-w-[180px]">
-      <option value="">All statuses</option>
-      <option value="active"   {% if status_filter == 'active' %}selected{% endif %}>Active</option>
-      <option value="draft"    {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
-      <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
-    </select>
-    <button class="btn btn-primary">Apply</button>
+    <button class="btn btn-primary">Search</button>
   </form>
 
-  {% filter_chips q="Search" status="Status" %}
+  {% filter_chips q="Search" %}
 
   <form id="bulk-form" method="post" action="{% url 'admin_dashboard:products_bulk' %}" style="display:none;">
     {% csrf_token %}

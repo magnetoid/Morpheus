@@ -23,13 +23,30 @@ from plugins.installed.admin_dashboard.views_split._shared import (
     Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
 )
 
+PRODUCT_STATUS_CHOICES = (
+    ('', 'All'),
+    ('active', 'Active'),
+    ('draft', 'Drafts'),
+    ('archived', 'Archived'),
+)
+
+
 @staff_member_required
 def products_list(request: HttpRequest) -> HttpResponse:
     status = request.GET.get('status', '')
     search = request.GET.get('q', '').strip()[:80]
     products: list[Any] = []
+    status_counts: dict[str, int] = {}
     try:
+        from django.db.models import Count
         from plugins.installed.catalog.models import Product
+        unfiltered = Product.objects.all()
+        if search:
+            unfiltered = unfiltered.filter(name__icontains=search) | unfiltered.filter(sku__icontains=search)
+        status_counts = {
+            row['status']: row['c']
+            for row in unfiltered.values('status').annotate(c=Count('id'))
+        }
         qs = (
             Product.objects
             .select_related('category', 'vendor')
@@ -46,6 +63,8 @@ def products_list(request: HttpRequest) -> HttpResponse:
     return render(request, 'admin_dashboard/products.html', {
         'products': products,
         'status_filter': status,
+        'status_choices': PRODUCT_STATUS_CHOICES,
+        'status_counts': status_counts,
         'search': search,
         'active_nav': 'products',
     })

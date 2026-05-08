@@ -23,6 +23,15 @@ from plugins.installed.admin_dashboard.views_split._shared import (
     Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
 )
 
+CUSTOMER_SOURCE_CHOICES = (
+    ('', 'All'),
+    ('order', 'Customers'),
+    ('lead_form', 'Leads'),
+    ('signup', 'Signups'),
+    ('newsletter', 'Newsletter'),
+)
+
+
 @staff_member_required
 def customers_list(request: HttpRequest) -> HttpResponse:
     """Unified Contacts list — customers, leads, signups in one table.
@@ -34,11 +43,23 @@ def customers_list(request: HttpRequest) -> HttpResponse:
     search = request.GET.get('q', '').strip()[:80]
     source_filter = request.GET.get('source', '').strip()[:20]
     customers: list[Any] = []
+    source_counts: dict[str, int] = {}
     try:
         from django.contrib.auth import get_user_model
-        from django.db.models import Q
+        from django.db.models import Count, Q
         from plugins.installed.orders.models import Order
         User = get_user_model()
+        unfiltered = User.objects.all()
+        if search:
+            unfiltered = unfiltered.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+        source_counts = {
+            (row['source'] or ''): row['c']
+            for row in unfiltered.values('source').annotate(c=Count('id'))
+        }
         qs = User.objects.order_by('-date_joined')
         if search:
             qs = qs.filter(
@@ -85,6 +106,8 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         'customers': customers,
         'search': search,
         'source_filter': source_filter,
+        'source_choices': CUSTOMER_SOURCE_CHOICES,
+        'source_counts': source_counts,
         'active_nav': 'customers',
     })
 

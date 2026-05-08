@@ -52,6 +52,56 @@ def sparkline(series, width: int = 120, height: int = 28, stroke: str = ''):
     }
 
 
+@register.inclusion_tag('admin_dashboard/_tabs.html', takes_context=True)
+def index_tabs(context, param, choices, counts=None):
+    """Render an underlined tab strip for an index page status filter.
+
+    Usage::
+
+        {% index_tabs param="status" choices=status_choices counts=status_counts %}
+
+    `param` is the GET key the tabs control (e.g. "status").
+    `choices` is an iterable of `(value, label)` pairs. The first entry is
+    typically `("", "All")` — the empty value means "no filter".
+    `counts` is an optional `{value: int}` dict used to render a small
+    pill next to each label. Pass `None` to omit counts.
+
+    Each tab's href clones `request.GET`, replaces `param`, and **drops
+    `page=`** — so flipping tabs returns to page 1 instead of stranding
+    the user on page 17 of a now-shorter list.
+    """
+    request = context.get('request')
+    tabs = []
+    current = (request.GET.get(param, '') if request else '') or ''
+    base_get = QueryDict(mutable=True)
+    if request is not None:
+        for k, v in request.GET.lists():
+            for vv in v:
+                base_get.appendlist(k, vv)
+    for value, label in choices:
+        params = base_get.copy()
+        params.pop('page', None)
+        if value:
+            params[param] = value
+        else:
+            params.pop(param, None)
+        qs = params.urlencode()
+        href = (request.path if request else '') + (('?' + qs) if qs else '')
+        count = None
+        if counts is not None and value:
+            count = counts.get(value, 0)
+        elif counts is not None and not value:
+            count = sum(counts.values()) if counts else 0
+        tabs.append({
+            'label': label,
+            'value': value,
+            'count': count,
+            'active': current == value,
+            'href': href,
+        })
+    return {'tabs': tabs}
+
+
 @register.inclusion_tag('admin_dashboard/_filter_chips.html', takes_context=True)
 def filter_chips(context, **labels):
     """Render chips for any request.GET param that has a non-empty value.
