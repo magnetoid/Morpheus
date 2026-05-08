@@ -1,32 +1,240 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
 {% block title %}Analytics · Morpheus{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-4">
-  <div class="flex items-end justify-between gap-3">
+<div class="max-w-7xl mx-auto space-y-5">
+
+  <!-- Header + date range -->
+  <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Analytics</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Hourly rollups powered by the observability plugin.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Revenue, orders, customers, and traffic patterns over the selected window.
+      </p>
     </div>
-    <div class="flex items-center gap-1 card p-0.5">
-      <a href="?period=7d"  class="btn btn-ghost {% if period == '7d'  %}btn-primary{% endif %} text-xs">7d</a>
-      <a href="?period=30d" class="btn btn-ghost {% if period == '30d' %}btn-primary{% endif %} text-xs">30d</a>
-      <a href="?period=90d" class="btn btn-ghost {% if period == '90d' %}btn-primary{% endif %} text-xs">90d</a>
+    {% include "admin_dashboard/_date_range_picker.html" %}
+  </div>
+
+  <!-- KPI tiles -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    {% for m in metrics %}
+    <div class="card card-padded">
+      <div class="flex items-center justify-between text-[color:var(--text-muted)]">
+        <span class="text-xs uppercase tracking-wide font-medium">{{ m.label }}</span>
+        <i data-lucide="{{ m.icon }}" class="h-4 w-4"></i>
+      </div>
+      <div class="mt-2 flex items-end justify-between gap-2">
+        <div class="text-2xl font-semibold">{{ m.value }}</div>
+        {% if m.series %}{% sparkline m.series stroke=m.trend %}{% endif %}
+      </div>
+      {% if m.delta %}
+      <div class="mt-1 text-xs flex items-center gap-1
+        {% if m.trend == 'up' %}text-[color:var(--success)]
+        {% elif m.trend == 'down' %}text-[color:var(--danger)]
+        {% else %}text-[color:var(--text-muted)]{% endif %}">
+        {% if m.trend == 'up' %}<i data-lucide="trending-up" class="h-3.5 w-3.5"></i>
+        {% elif m.trend == 'down' %}<i data-lucide="trending-down" class="h-3.5 w-3.5"></i>
+        {% else %}<i data-lucide="minus" class="h-3.5 w-3.5"></i>{% endif %}
+        {{ m.delta }} <span class="text-[color:var(--text-muted)]">vs previous</span>
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="col-span-full card card-padded text-center text-[color:var(--text-muted)] text-sm">
+      No data yet — once you ship your first order, summaries will appear here.
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Daily revenue chart -->
+  <div class="card overflow-hidden">
+    <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
+      <div>
+        <h2 class="font-semibold">Revenue over time</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">
+          Daily totals for {{ date_range.label|lower }} — {{ daily_series|length }} day{{ daily_series|length|pluralize }}.
+        </p>
+      </div>
+    </div>
+    <div class="card-padded">
+      {% if chart_points %}
+      <svg viewBox="0 0 {{ chart_w }} {{ chart_h }}" preserveAspectRatio="none"
+           style="width: 100%; height: {{ chart_h }}px; display: block;">
+        <!-- Y-axis tick lines -->
+        {% for t in chart_yticks %}
+        <line x1="{{ chart_pad_l }}" y1="{{ t.y }}" x2="{{ chart_w }}" y2="{{ t.y }}"
+              stroke="var(--border)" stroke-dasharray="2 4" stroke-width="1"></line>
+        <text x="{{ chart_pad_l|add:'-8' }}" y="{{ t.y|add:'4' }}" text-anchor="end"
+              style="font-size: 10px; fill: var(--text-muted);">{{ t.label }}</text>
+        {% endfor %}
+        <!-- Filled area under the line -->
+        <polygon points="{{ chart_area }}" fill="var(--info-bg)" opacity="0.55"></polygon>
+        <!-- Trend line -->
+        <polyline points="{{ chart_polyline }}" fill="none" stroke="var(--info)"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <!-- Data dots with native tooltip -->
+        {% for x, y, d in chart_points %}
+        <circle cx="{{ x }}" cy="{{ y }}" r="2.5" fill="var(--info)" opacity="0.85">
+          <title>{{ d.day|date:"M j, Y" }} — ${{ d.rev|floatformat:2 }} · {{ d.cnt }} order{{ d.cnt|pluralize }}</title>
+        </circle>
+        {% endfor %}
+      </svg>
+      {% else %}
+      <p class="text-sm text-[color:var(--text-muted)] py-12 text-center">
+        Not enough data in this window yet — try a wider range or wait for the first orders.
+      </p>
+      {% endif %}
     </div>
   </div>
 
-  <div class="card card-padded">
-    <h2 class="font-semibold">Orders placed</h2>
-    {% if series %}
-    <div class="mt-4 h-32 flex items-end gap-1">
-      {% for pt in series %}
-      <div class="flex-1 bg-[color:var(--primary)] opacity-70 rounded-t" style="height: {% widthratio pt.value 100 100 %}%; min-height: 2px;" title="{{ pt.bucket }} — {{ pt.value }}"></div>
-      {% endfor %}
+  <!-- Two-column block: top products + status breakdown -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    <!-- Top products by revenue -->
+    <div class="lg:col-span-2 card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Top products</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">By revenue, in window.</p>
+      </div>
+      {% if top_products %}
+      <table class="morph-table">
+        <thead>
+          <tr><th>Product</th><th class="text-right">Units</th><th class="text-right">Revenue</th></tr>
+        </thead>
+        <tbody>
+          {% for p in top_products %}
+          <tr>
+            <td>
+              <div class="font-medium">{{ p.product_name|default:"—" }}</div>
+            </td>
+            <td class="text-right text-[color:var(--text-muted)]">{{ p.units|default:0 }}</td>
+            <td class="text-right font-medium">${{ p.rev|default:0|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)] text-center py-10">
+        No product sales in this window.
+      </div>
+      {% endif %}
     </div>
-    <p class="mt-3 text-xs text-[color:var(--text-muted)]">{{ series|length }} buckets</p>
-    {% else %}
-    <p class="mt-2 text-sm text-[color:var(--text-muted)]">No data yet. The observability plugin runs hourly and daily rollups via Celery beat.</p>
-    {% endif %}
+
+    <!-- Order status distribution -->
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Order status</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Distribution in window.</p>
+      </div>
+      {% if status_breakdown %}
+      <ul style="list-style: none; margin: 0; padding: 0;">
+        {% for s in status_breakdown %}
+        <li class="px-4 py-2 flex items-center justify-between border-b border-[color:var(--border)] last:border-b-0">
+          <span class="flex items-center gap-2 text-sm">
+            {% if s.status == 'paid' or s.status == 'fulfilled' or s.status == 'delivered' %}<span class="pill pill-success">{{ s.status|title }}</span>
+            {% elif s.status == 'pending' or s.status == 'processing' %}<span class="pill pill-warn">{{ s.status|title }}</span>
+            {% elif s.status == 'cancelled' or s.status == 'refunded' %}<span class="pill pill-danger">{{ s.status|title }}</span>
+            {% else %}<span class="pill pill-neutral">{{ s.status|title }}</span>{% endif %}
+          </span>
+          <span class="font-medium tabular-nums">{{ s.n }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)] text-center py-10">
+        No orders in this window.
+      </div>
+      {% endif %}
+    </div>
   </div>
+
+  <!-- Two-column: weekday + hour patterns -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- Day of week pattern -->
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Sales by day of week</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Order count, Mon–Sun.</p>
+      </div>
+      <div class="card-padded">
+        {% if weekday_pattern %}
+        <div class="grid grid-cols-7 gap-2 items-end" style="height: 140px;">
+          {% for w in weekday_pattern %}
+          <div class="flex flex-col items-center justify-end gap-1 h-full">
+            <div class="w-full rounded-t" title="{{ w.label }}: {{ w.cnt }} orders, ${{ w.rev|floatformat:2 }}"
+                 style="background: var(--primary); opacity: .82;
+                        height: {% widthratio w.cnt weekday_max 100 %}%;
+                        min-height: 2px;"></div>
+            <span class="text-[10px] text-[color:var(--text-muted)]">{{ w.label }}</span>
+            <span class="text-[11px] font-medium tabular-nums">{{ w.cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-[color:var(--text-muted)] text-center py-10">No data.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Hour pattern -->
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Sales by hour</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Order count, 0–23 (server timezone).</p>
+      </div>
+      <div class="card-padded">
+        {% if hour_pattern %}
+        <div class="items-end" style="height: 140px; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 1px;">
+          {% for h in hour_pattern %}
+          <div class="flex flex-col items-center justify-end gap-0.5 h-full">
+            <div class="w-full" title="{{ h.h }}:00 — {{ h.cnt }} orders"
+                 style="background: var(--info); opacity: .8; border-radius: 2px 2px 0 0;
+                        height: {% widthratio h.cnt hour_max 100 %}%;
+                        min-height: 2px;"></div>
+            {% if forloop.counter0|divisibleby:6 %}
+            <span class="text-[9px] text-[color:var(--text-muted)]">{{ h.h }}</span>
+            {% else %}
+            <span class="text-[9px]">&nbsp;</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-[color:var(--text-muted)] text-center py-10">No data.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top customers -->
+  {% if top_customers %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Top customers</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">By spend in window.</p>
+    </div>
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th class="text-right">Orders</th>
+          <th class="text-right">Spend</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in top_customers %}
+        <tr>
+          <td>{{ c.email|default:"—" }}</td>
+          <td class="text-right text-[color:var(--text-muted)]">{{ c.orders }}</td>
+          <td class="text-right font-medium">${{ c.spend|default:0|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
