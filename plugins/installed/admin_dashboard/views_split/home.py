@@ -207,7 +207,9 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     # each step on the fly; cheap counts only. When everything's done
     # the template hides the whole card.
     setup_steps = _compute_setup_steps()
-    setup_all_done = all(s['done'] for s in setup_steps) if setup_steps else True
+    setup_done = sum(1 for s in setup_steps if s['done'])
+    setup_total = len(setup_steps)
+    setup_all_done = setup_total > 0 and setup_done == setup_total
 
     # Activity feed — what happened lately, across all event sources.
     activity = _compute_activity_feed(limit=20)
@@ -221,6 +223,8 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         'low_stock': low_stock,
         'low_stock_threshold': low_stock_threshold,
         'setup_steps': setup_steps,
+        'setup_done': setup_done,
+        'setup_total': setup_total,
         'setup_all_done': setup_all_done,
         'activity': activity,
         'active_nav': 'home',

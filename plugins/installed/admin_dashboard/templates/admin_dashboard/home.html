@@ -18,11 +18,20 @@
   {# stays clean for established stores. #}
   {% if setup_steps and not setup_all_done %}
   <div class="card card-padded">
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center justify-between mb-2">
       <div>
         <h2 class="font-semibold text-sm">Set up your store</h2>
         <p class="text-xs text-[color:var(--text-muted)]">A few quick steps before your first real sale.</p>
       </div>
+      <span class="text-xs font-medium tabular-nums text-[color:var(--text-muted)]">
+        {{ setup_done }} of {{ setup_total }} complete
+      </span>
+    </div>
+    <div style="height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-bottom: 1rem;">
+      <div style="height: 100%;
+                  width: calc({{ setup_done }} / {{ setup_total }} * 100%);
+                  background: var(--success);
+                  transition: width .25s ease-out;"></div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
       {% for s in setup_steps %}
