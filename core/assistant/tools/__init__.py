@@ -26,6 +26,7 @@ from core.assistant.tools.ecommerce import (
     customers_search_tool,
     db_describe_model_tool,
     email_templates_tool,
+    markets_list_tool,
     media_search_tool,
     metafields_list_for_tool,
     orders_get_tool,
@@ -93,6 +94,7 @@ def get_default_tools() -> list:
         metafields_list_for_tool,
         # Configuration
         settings_list_tool,
+        markets_list_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first
         orders_update_status_tool,
         orders_cancel_tool,

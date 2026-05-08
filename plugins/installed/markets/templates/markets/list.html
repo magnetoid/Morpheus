@@ -1,0 +1,81 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Markets · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Markets</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        One market per region you sell to — currency, locale, price
+        adjustment. Visitors are routed automatically by their
+        country (Cloudflare CF-IPCountry header by default).
+      </p>
+    </div>
+    <a href="{% url 'markets:create' %}" class="btn btn-primary">
+      <i data-lucide="plus" class="h-4 w-4"></i> Add market
+    </a>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if markets %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Code</th>
+          <th>Currency</th>
+          <th>Locale</th>
+          <th>Countries</th>
+          <th class="text-right">Adjustment</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in markets %}
+        <tr>
+          <td>
+            <a href="{% url 'markets:edit' m.id %}" class="font-medium hover:underline">{{ m.label }}</a>
+            {% if m.is_default %}<span class="pill pill-info" style="margin-left:.4rem;">Default</span>{% endif %}
+          </td>
+          <td><code class="text-xs">{{ m.code }}</code></td>
+          <td>{{ m.currency }}</td>
+          <td><code class="text-xs">{{ m.default_locale }}</code></td>
+          <td class="text-[color:var(--text-muted)]" style="font-size:.78rem;">
+            {% for c in m.country_codes %}<code>{{ c }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}
+          </td>
+          <td class="text-right tabular-nums">
+            {% if m.base_price_adjustment_pct %}
+            {{ m.base_price_adjustment_pct|floatformat:0 }}%
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if m.is_active %}
+            <span class="pill pill-success">Active</span>
+            {% else %}
+            <span class="pill pill-neutral">Disabled</span>
+            {% endif %}
+          </td>
+          <td class="text-right" style="width:1px;white-space:nowrap;">
+            <a href="{% url 'markets:edit' m.id %}" class="btn text-xs">Edit</a>
+            <form method="post" action="{% url 'markets:delete' m.id %}"
+                  data-confirm="Delete market {{ m.label }}? Per-product price overrides for this market will also be lost."
+                  data-confirm-cta="Delete" data-confirm-danger style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger text-xs">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {% url 'markets:create' as add_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="globe" title="No markets yet" hint="Create one per region — e.g. United States (USD), European Union (EUR), United Kingdom (GBP)." action_url=add_url action_label="Add market" action_icon="plus" %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

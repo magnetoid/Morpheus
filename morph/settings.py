@@ -146,6 +146,7 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
     'plugins.middleware.PluginMiddleware',
     'themes.middleware.ThemeMiddleware',
+    'plugins.installed.markets.middleware.MarketMiddleware',
     'plugins.installed.ai_assistant.middleware.AIContextMiddleware',
     'api.permissions.AgentAuthMiddleware',
     'api.middleware.GraphQLCacheMiddleware',   # Enterprise: GraphQL Query Caching
@@ -176,6 +177,7 @@ TEMPLATES = [
                 'core.context_processors.channel_context',
                 'themes.context_processors.theme_context',
                 'plugins.context_processors.plugin_context',
+                'plugins.installed.markets.services.market_context',
             ],
             'loaders': [
                 'themes.loaders.ThemeLoader',

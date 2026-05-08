@@ -1,0 +1,90 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if market %}Edit{% else %}New{% endif %} market · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'markets:index' %}" class="hover:underline">Markets</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">
+      {% if market %}{{ market.label }}{% else %}New{% endif %}
+    </span>
+  </div>
+
+  <form method="post" class="card card-padded space-y-4" data-morph-dirty>
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Label <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="label" class="input" maxlength="120" required
+               value="{{ market.label|default:'' }}"
+               placeholder="European Union">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Code <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="code" class="input" maxlength="40" required
+               value="{{ market.code|default:'' }}"
+               placeholder="eu" pattern="[a-z0-9_-]+"
+               {% if market %}readonly{% endif %}>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">
+          Stable identifier; lowercase, no spaces. Used in URLs.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Currency <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="currency" class="input" maxlength="3" required
+               value="{{ market.currency|default:'USD' }}"
+               placeholder="EUR" style="text-transform:uppercase;">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">ISO 4217.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Default locale</label>
+        <input type="text" name="default_locale" class="input" maxlength="10"
+               value="{{ market.default_locale|default:'en' }}"
+               placeholder="en">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Price adjustment %</label>
+        <input type="number" name="base_price_adjustment_pct" class="input" step="0.01"
+               value="{{ market.base_price_adjustment_pct|default:0 }}"
+               placeholder="10">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">+10% bumps every product 10% in this market.</p>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Countries</label>
+      <textarea name="country_codes" rows="3" class="input"
+                placeholder="DE, FR, IT, ES, NL, BE">{{ country_codes_str }}</textarea>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Comma-separated ISO 3166-1 alpha-2 codes. Visitors with these
+        country codes (per CF-IPCountry header) land in this market.
+      </p>
+    </div>
+
+    <div class="space-y-2">
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="is_active"
+               {% if market is None or market.is_active %}checked{% endif %}>
+        Active
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="is_default"
+               {% if market.is_default %}checked{% endif %}>
+        Default — fall back to this market when no country match found.
+      </label>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2">
+      <a href="{% url 'markets:index' %}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save market</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

@@ -775,6 +775,41 @@ def metafields_list_for_tool(*, model: str, object_id: str) -> ToolResult:
     }, display=f'{len(rows)} metafield(s)')
 
 
+# ── Markets ─────────────────────────────────────────────────────────────
+
+
+@tool(
+    name='markets.list',
+    description=(
+        'List configured Markets — region/code/currency/locale + active '
+        'flag + per-market price adjustment. Use this to answer "where '
+        'are we selling and at what currency?".'
+    ),
+    scopes=['system.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def markets_list_tool() -> ToolResult:
+    try:
+        from plugins.installed.markets.models import Market
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'markets plugin unavailable: {e}') from e
+    rows = [
+        {
+            'code': m.code,
+            'label': m.label,
+            'currency': m.currency,
+            'locale': m.default_locale,
+            'countries': list(m.country_codes or []),
+            'price_adjustment_pct': str(m.base_price_adjustment_pct or 0),
+            'is_active': m.is_active,
+            'is_default': m.is_default,
+        }
+        for m in Market.objects.all()
+    ]
+    return ToolResult(output={'markets': rows, 'count': len(rows)},
+                      display=f'{len(rows)} market(s)')
+
+
 # ── Schema introspection ────────────────────────────────────────────────
 
 
