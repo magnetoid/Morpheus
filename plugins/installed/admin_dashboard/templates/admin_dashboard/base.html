@@ -218,10 +218,13 @@
 
   {# ── SETTINGS NAV (slides in when /dashboard/settings/ is open) ──────── #}
   <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0" style="display:none;">
-    <a href="{% url 'admin_dashboard:settings' %}" class="nav-link {% if active_nav == 'settings' %}active{% endif %}">
+    {# Overview link: active only on the bare /dashboard/settings/ root, #}
+    {# never on a category sub-page. #}
+    <a href="{% url 'admin_dashboard:settings' %}" class="nav-link {% if active_nav == 'settings' and not active_settings_category %}active{% endif %}">
       <i data-lucide="settings" class="h-4 w-4"></i> Settings overview
     </a>
-    <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' %}active{% endif %}">
+    {# Apps link: active on /dashboard/apps/ but NOT on a specific plugin page. #}
+    <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' and not active_apps_slug %}active{% endif %}">
       <i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps
     </a>
 
@@ -231,13 +234,15 @@
       between; the right-hand pane already names what you're looking at.
     {% endcomment %}
     {% for cat in settings_category_nav %}
-    <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}" class="nav-link">
+    <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}"
+       class="nav-link {% if active_settings_category == cat.slug %}active{% endif %}">
       <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> {{ cat.label }}
     </a>
     {% endfor %}
 
     {% for section in settings_sections %}{% for page in section.pages %}
-    <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/" class="nav-link">
+    <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/"
+       class="nav-link {% if active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
       <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
     </a>
     {% endfor %}{% endfor %}

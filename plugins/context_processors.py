@@ -108,6 +108,29 @@ def plugin_context(request):
 
     nav_badges = _compute_nav_badges(request)
 
+    # Derive active-state slugs from `request.path` so the settings sidebar
+    # can highlight the right entry without every view setting context vars.
+    #   /dashboard/settings/                      → active_settings_category=''
+    #   /dashboard/settings/<category>/[...]      → active_settings_category=<category>
+    #   /dashboard/settings/email-templates/[...] → active_settings_category='notifications'
+    #     (email templates live under the 'notifications' category visually)
+    #   /dashboard/apps/<plugin>/settings/        → active_apps_slug='<plugin>/settings'
+    #   /dashboard/apps/<plugin>/<slug>/          → active_apps_slug='<plugin>/<slug>'
+    path = getattr(request, 'path', '') or ''
+    active_settings_category = ''
+    active_apps_slug = ''
+    if path.startswith('/dashboard/settings/'):
+        rest = path[len('/dashboard/settings/'):].strip('/').split('/', 1)
+        head = rest[0] if rest and rest[0] else ''
+        if head == 'email-templates':
+            active_settings_category = 'notifications'
+        else:
+            active_settings_category = head
+    elif path.startswith('/dashboard/apps/'):
+        rest = path[len('/dashboard/apps/'):].strip('/').split('/')
+        if len(rest) >= 2 and rest[0]:
+            active_apps_slug = f'{rest[0]}/{rest[1]}'
+
     return {
         'active_plugins': plugin_registry._active,
         'plugin_registry': plugin_registry,
@@ -119,6 +142,11 @@ def plugin_context(request):
         'plugin_settings_panels': plugin_registry.all_settings_panels(),
         # Settings categories shown in the settings-mode sidebar.
         'settings_category_nav': settings_category_nav,
+        # Per-page active slugs the sidebar template uses to mark the right
+        # link active when the user is inside a settings category or a
+        # plugin-contributed dashboard page.
+        'active_settings_category': active_settings_category,
+        'active_apps_slug': active_apps_slug,
     }
 
 
