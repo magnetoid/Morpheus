@@ -1,0 +1,117 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Your account · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Your account</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Personal settings for {{ account_user.email|default:"your staff account" }}.
+      Looking for the store-wide settings instead?
+      <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline" style="color: var(--text);">Open store settings →</a>
+    </p>
+  </div>
+
+  <!-- Profile card -->
+  <div class="card card-padded">
+    <div class="flex items-center gap-3">
+      <span class="h-10 w-10 rounded-full bg-[color:var(--primary)] text-[color:var(--primary-fg)] flex items-center justify-center text-sm font-bold">
+        {{ account_user.email|slice:":1"|upper }}
+      </span>
+      <div class="flex-1 min-w-0">
+        <p class="font-medium">{{ account_user.get_full_name|default:account_user.email|default:"Staff" }}</p>
+        <p class="text-xs text-[color:var(--text-muted)]">{{ account_user.email }}</p>
+      </div>
+      {% if account_user.is_superuser %}
+        <span class="pill pill-info">Superuser</span>
+      {% elif account_user.is_staff %}
+        <span class="pill pill-neutral">Staff</span>
+      {% endif %}
+    </div>
+    <dl class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm">
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Username</dt>
+        <dd class="font-medium">{{ account_user.get_username|default:"—" }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Last sign-in</dt>
+        <dd class="font-medium">{% if account_user.last_login %}{{ account_user.last_login|date:"M j, Y H:i" }}{% else %}—{% endif %}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Joined</dt>
+        <dd class="font-medium">{% if account_user.date_joined %}{{ account_user.date_joined|date:"M j, Y" }}{% else %}—{% endif %}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-[color:var(--text-muted)]">Account ID</dt>
+        <dd class="font-medium font-mono text-xs">{{ account_user.pk }}</dd>
+      </div>
+    </dl>
+  </div>
+
+  <!-- Password change -->
+  <div class="card card-padded">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h2 class="font-semibold">Change password</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">You'll stay signed in on this device after changing it.</p>
+      </div>
+    </div>
+    <form method="post" class="space-y-3 max-w-md">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="change_password">
+      <div>
+        <label class="block text-sm font-medium mb-1">{{ pwd_form.old_password.label }}</label>
+        {{ pwd_form.old_password }}
+        {% if pwd_form.old_password.errors %}
+          {% for err in pwd_form.old_password.errors %}<p class="field-error">{{ err }}</p>{% endfor %}
+        {% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">{{ pwd_form.new_password1.label }}</label>
+        {{ pwd_form.new_password1 }}
+        {% if pwd_form.new_password1.help_text %}
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">{{ pwd_form.new_password1.help_text|safe }}</p>
+        {% endif %}
+        {% if pwd_form.new_password1.errors %}
+          {% for err in pwd_form.new_password1.errors %}<p class="field-error">{{ err }}</p>{% endfor %}
+        {% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">{{ pwd_form.new_password2.label }}</label>
+        {{ pwd_form.new_password2 }}
+        {% if pwd_form.new_password2.errors %}
+          {% for err in pwd_form.new_password2.errors %}<p class="field-error">{{ err }}</p>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="flex justify-end">
+        <button type="submit" class="btn btn-primary">Update password</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Sessions / sign-out -->
+  <div class="card card-padded">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="font-semibold">Sessions</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Sign out of this browser. Other devices stay signed in.</p>
+      </div>
+      <a href="/auth/logout/" class="btn btn-danger">
+        <i data-lucide="log-out" class="h-4 w-4"></i> Sign out
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  /* Django renders the password fields without our .input class — patch them
+     to match the rest of the dashboard inputs without touching the form. */
+  form input[type="password"] { width: 100%; height: 2rem; padding: 0 .65rem;
+    font-size: .8125rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); }
+  form input[type="password"]:focus { outline: none; border-color: var(--text);
+    box-shadow: 0 0 0 2px rgba(0,0,0,.08); }
+</style>
+{% endblock %}

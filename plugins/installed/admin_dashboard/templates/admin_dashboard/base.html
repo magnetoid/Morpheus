@@ -279,7 +279,8 @@
         <p style="padding:.5rem .65rem; font-size:.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); margin-bottom:.25rem;">
           Signed in as<br><strong style="color:var(--text);">{{ request.user.email|default:"Staff" }}</strong>
         </p>
-        <a href="{% url 'admin_dashboard:settings' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="settings" class="h-4 w-4"></i> Settings</a>
+        <a href="{% url 'admin_dashboard:my_account' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="user" class="h-4 w-4"></i> Your account</a>
+        <a href="{% url 'admin_dashboard:settings' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="settings" class="h-4 w-4"></i> Store settings</a>
         <a href="/auth/logout/" class="nav-link" style="font-size:.85rem;"><i data-lucide="log-out" class="h-4 w-4"></i> Sign out</a>
       </div>
     </div>
