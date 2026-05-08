@@ -72,11 +72,26 @@ def list_available_rates(*, cart, country: str, region: str = ''):
     currency = str(items[0].unit_price.currency)
     subtotal = Money(subtotal_amount, currency)
 
+    def _weight_kg(product) -> Decimal:
+        w = getattr(product, 'weight', None)
+        if w is None:
+            return Decimal('0')
+        unit = (getattr(product, 'weight_unit', 'kg') or 'kg').lower()
+        try:
+            w_d = Decimal(str(w))
+        except Exception:  # noqa: BLE001
+            return Decimal('0')
+        if unit in ('kg', 'kgs'):
+            return w_d
+        if unit in ('g', 'gram', 'grams'):
+            return (w_d / Decimal('1000'))
+        if unit in ('lb', 'lbs', 'pound', 'pounds'):
+            return (w_d * Decimal('0.453592'))
+        return w_d
+
     total_weight_kg = Decimal('0')
     for i in items:
-        weight = getattr(i.product, 'weight_kg', None)
-        if weight is not None:
-            total_weight_kg += Decimal(str(weight)) * i.quantity
+        total_weight_kg += _weight_kg(i.product) * i.quantity
 
     out = []
     seen_zones = set()

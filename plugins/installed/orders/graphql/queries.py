@@ -7,7 +7,8 @@ from api.graphql_permissions import (
     has_scope,
     require_authenticated,
 )
-from plugins.installed.orders.graphql.types import CartType, OrderType
+from plugins.installed.orders.graphql.types import CartType, OrderType, CartTotalsType
+from plugins.installed.orders.graphql.inputs import AddressInput
 from plugins.installed.orders.models import Cart, Order
 
 _ORDER_RELATED = (
@@ -101,3 +102,56 @@ class OrdersQueryExtension:
                     del request.session['cart_id']
                     return None
         return None
+
+    @strawberry.field(description="Calculate cart totals (shipping/tax/discount) for an address")
+    def cart_totals(
+        self,
+        info: strawberry.Info,
+        cart_id: strawberry.ID,
+        address: Optional[AddressInput] = None,
+        shipping_rate_id: Optional[str] = None,
+    ) -> Optional[CartTotalsType]:
+        from plugins.installed.orders.services import OrderService
+        from core.graphql.types import MoneyType
+
+        cart = self.cart(info, id=cart_id)
+        if cart is None:
+            return None
+
+        addr = {}
+        if address is not None:
+            addr = {
+                'first_name': address.first_name or '',
+                'last_name': address.last_name or '',
+                'line1': address.line1 or '',
+                'line2': address.line2 or '',
+                'city': address.city or '',
+                'state': address.state or '',
+                'postal_code': address.postal_code or '',
+                'country': address.country or '',
+                'phone': address.phone or '',
+            }
+
+        rate_id = (shipping_rate_id or '').strip() or str((cart.metadata or {}).get('shipping_rate_id') or '')
+        breakdown = OrderService.calculate_cart_breakdown(
+            cart=cart,
+            address=addr,
+            billing_address={},
+            shipping_rate_id=rate_id,
+        )
+
+        def m(x):
+            if hasattr(x, 'amount'):
+                return MoneyType(amount=str(x.amount), currency=str(x.currency))
+            return MoneyType(amount='0', currency=str(breakdown.get('currency') or 'USD'))
+
+        meta = breakdown.get('meta') or {}
+        return CartTotalsType(
+            subtotal=m(breakdown.get('subtotal')),
+            shipping=m(breakdown.get('shipping')),
+            tax=m(breakdown.get('tax')),
+            discount=m(breakdown.get('discount')),
+            total=m(breakdown.get('total')),
+            shipping_rate_id=rate_id,
+            shipping_rate_name=str(meta.get('shipping_rate_name') or ''),
+        )
