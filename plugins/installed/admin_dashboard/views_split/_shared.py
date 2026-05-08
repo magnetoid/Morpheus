@@ -289,11 +289,22 @@ def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str,
     """Single source of truth for "ask the configured AI provider for some
     text" from dashboard endpoints.
 
+    Automatically prepends the merchant's brand-voice config (set in
+    `/dashboard/settings/ai/`) to the system prompt so every AI
+    generation in the platform sounds the same. Falls through cleanly
+    when no brand voice is set.
+
     Returns ``(text, error)``. On success, ``error`` is ''. On any failure
     (no provider configured, network glitch, gateway error) returns
     ``('', friendly_message)`` so the caller can return a clean JSON
     payload without needing per-route try/except.
     """
+    try:
+        from plugins.installed.ai_content.services import with_brand_voice
+        system = with_brand_voice(system)
+    except Exception as e:  # noqa: BLE001 — ai_content plugin optional
+        import logging
+        logging.getLogger(__name__).debug('brand voice unavailable: %s', e)
     try:
         from plugins.installed.ai_assistant.services.llm import get_llm
         gateway = get_llm()

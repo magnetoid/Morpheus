@@ -1,4 +1,4 @@
-from morpheus import Plugin
+from morpheus import Plugin, SettingsPanel
 from morpheus import events
 import logging
 
@@ -7,8 +7,8 @@ logger = logging.getLogger('morpheus.ai_content')
 class AIContentPlugin(Plugin):
     name = "ai_content"
     label = "AI Content & Assets Studio"
-    version = "1.0.0"
-    description = "Autonomously generates high-converting product descriptions, SEO tags, and even product lifestyle images."
+    version = "1.1.0"
+    description = "Autonomously generates high-converting product descriptions, SEO tags, and lifestyle images. Carries the brand voice config that every AI generation in the platform reads from."
     has_models = False
     requires = ["catalog", "ai_assistant"]
 
@@ -30,27 +30,73 @@ class AIContentPlugin(Plugin):
 
     def get_config_schema(self):
         """
-        By defining this JSON schema, the Morpheus Admin Dashboard can dynamically
-        render a Settings Form for this plugin!
+        Settings rendered into `/dashboard/settings/ai/` (category=ai).
+
+        The brand-voice fields (`brand_name`, `brand_audience`,
+        `brand_tone`, `brand_voice_guidelines`) feed every AI
+        generation in the platform via `services.get_brand_voice()`,
+        so a single store-wide style edit propagates everywhere
+        — product descriptions, email rewrites, SEO drafts.
         """
         return {
             "type": "object",
             "properties": {
+                # ── Brand voice — the merchant's style preserved across all AI
+                # generation in the platform.
+                "brand_name": {
+                    "type": "string",
+                    "default": "",
+                    "title": "Brand name",
+                    "description": "How AI-written copy should refer to your store. Leave blank to fall back to the platform store name.",
+                },
+                "brand_audience": {
+                    "type": "string",
+                    "default": "",
+                    "title": "Target audience",
+                    "description": "One short line — e.g. 'Independent bookstore shoppers, mid-30s, design-conscious'.",
+                },
+                "brand_tone": {
+                    "type": "string",
+                    "default": "professional, warm, concrete",
+                    "title": "Tone keywords",
+                    "description": "Comma-separated adjectives the AI should hit. e.g. 'playful, irreverent, technical'.",
+                },
+                "brand_voice_guidelines": {
+                    "type": "string",
+                    "default": "",
+                    "title": "Voice guidelines",
+                    "description": "Free-form rules: words to avoid, signature phrases, sentence length, formality. Prepended to every AI prompt as a system message.",
+                },
+                # ── Auto-generation toggles (Celery-backed) ─────────────
                 "auto_generate_text": {
                     "type": "boolean",
                     "default": True,
-                    "title": "Auto-Generate Product Descriptions & SEO"
+                    "title": "Auto-generate product descriptions on create",
                 },
                 "auto_generate_images": {
                     "type": "boolean",
                     "default": False,
-                    "title": "Auto-Generate Lifestyle Images (Requires Stable Diffusion API)"
+                    "title": "Auto-generate lifestyle images (requires image API)",
                 },
+                # Legacy field — kept for back-compat. New copy uses brand_tone.
                 "tone_of_voice": {
                     "type": "string",
                     "enum": ["professional", "playful", "luxury", "minimalist"],
                     "default": "luxury",
-                    "title": "Brand Tone of Voice"
-                }
-            }
+                    "title": "Legacy preset tone",
+                    "description": "Kept for back-compat with older code paths. Prefer `brand_tone` for new generation.",
+                },
+            },
         }
+
+    def contribute_settings_panel(self):
+        return SettingsPanel(
+            label='Brand voice & AI content',
+            description=(
+                "Store-wide brand voice that every AI generation in the "
+                "platform reads from — product descriptions, email "
+                "rewrites, SEO drafts. Edit once, propagate everywhere."
+            ),
+            schema=self.get_config_schema(),
+            category='ai',
+        )
