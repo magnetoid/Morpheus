@@ -8,11 +8,14 @@ from collections import OrderedDict
 # Sections not in this list fall through to alphabetical order at the bottom.
 _SECTION_ORDER = [
     # Main sidebar (daily-use)
-    'ai',           # AI & agents — Morpheus's defining surface; goes at the top
+    # Marketing sits first so its section header lands right under the
+    # static daily-use links (Home / Assistant / Insights / Orders /
+    # Products / Customers) instead of getting buried near the bottom.
+    'marketing',    # Campaigns, Promotions, Coupons
+    'ai',           # AI & agents — Morpheus's defining surface
     'sales',        # Orders (drafts surface inline)
     'catalog',      # Products, Categories, Collections
     'crm',          # Leads, Accounts, Deals, Tasks
-    'marketing',    # Campaigns, Promotions, Coupons
     'cms',          # Pages, Blocks, Menus, Forms
     'analytics',    # Sessions, Events, Funnels
     'seo',          # SEO audit, redirects, JSON-LD config

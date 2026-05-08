@@ -160,7 +160,6 @@
       of behind a collapsible.
     {% endcomment %}
     <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
-    <a href="/dashboard/apps/agent_core/agents/" class="nav-link {% if active_nav == 'agents' %}active{% endif %}"><i data-lucide="bot" class="h-4 w-4"></i> AI agents</a>
     <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">
       <i data-lucide="lightbulb" class="h-4 w-4"></i> Insights
       {% if nav_badges.insights %}<span class="pill pill-info" style="margin-left:auto;">{{ nav_badges.insights }}</span>{% endif %}
@@ -194,8 +193,6 @@
     </div>
 
     <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'customers' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Customers</a>
-    <a href="{% url 'admin_dashboard:marketing' %}" class="nav-link {% if active_nav == 'marketing' %}active{% endif %}"><i data-lucide="megaphone" class="h-4 w-4"></i> Marketing</a>
-    <a href="{% url 'admin_dashboard:analytics' %}" class="nav-link {% if active_nav == 'analytics' %}active{% endif %}"><i data-lucide="bar-chart-2" class="h-4 w-4"></i> Analytics</a>
 
     {% comment %}
       Plugin-contributed pages, grouped by section. Headers are flat
