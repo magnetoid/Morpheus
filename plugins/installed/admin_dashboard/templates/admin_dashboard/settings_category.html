@@ -37,7 +37,7 @@
       <h2 class="font-semibold">{{ core_card.title }}</h2>
       <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ core_card.description }}</p>
     </div>
-    <form method="post" class="card-padded space-y-4">
+    <form method="post" class="card-padded space-y-4" data-morph-dirty>
       {% csrf_token %}
       <input type="hidden" name="_form" value="core">
 
@@ -93,7 +93,7 @@
       </div>
 
       {% if c.fields %}
-      <form method="post" action="{{ c.submit_url }}" class="card-padded space-y-4">
+      <form method="post" action="{{ c.submit_url }}" class="card-padded space-y-4" data-morph-dirty>
         {% csrf_token %}
         {% for field in c.fields %}
         <div class="space-y-1">

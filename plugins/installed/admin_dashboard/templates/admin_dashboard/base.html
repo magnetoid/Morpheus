@@ -136,6 +136,9 @@
   .dropdown-item-danger:hover { background: var(--danger-bg); }
   @keyframes fadein { from {opacity:0; transform:translateY(2px)} to {opacity:1; transform:none} }
   .fadein { animation: fadein .12s ease-out both; }
+  /* Body class toggled by Morph.dirty so the sticky save bar doesn't
+     overlap the last form rows when it's visible. */
+  body.has-save-bar main { padding-bottom: 4.5rem; }
 </style>
 </head>
 <body class="min-h-screen flex">
@@ -310,6 +313,7 @@
 {% include "admin_dashboard/_toast.html" %}
 {% include "admin_dashboard/_confirm_modal.html" %}
 {% include "admin_dashboard/_palette.html" %}
+{% include "admin_dashboard/_save_bar.html" %}
 
 <script>
   lucide.createIcons();

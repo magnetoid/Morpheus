@@ -1,0 +1,20 @@
+{# Sticky save/discard bar — driven by `Morph.dirty` in dashboard.js. #}
+{# Hidden by default. Auto-attaches to any `<form data-morph-dirty>`; #}
+{# whichever form goes dirty first becomes the bar's target form. #}
+<div id="morph-save-bar" data-save-bar hidden
+     class="fadein"
+     style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+            background: var(--surface); border-top: 1px solid var(--border-strong);
+            box-shadow: 0 -4px 12px rgba(0,0,0,.06);
+            padding: .65rem 1rem;
+            display: flex; align-items: center; justify-content: flex-end;
+            gap: .5rem;">
+  <span style="margin-right: auto; font-size: .85rem; color: var(--text-muted);
+               display: inline-flex; align-items: center; gap: .5rem;">
+    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--warn); display: inline-block;"></span>
+    <strong style="color: var(--text); font-weight: 600;">Unsaved changes</strong>
+    <span data-save-bar-summary style="color: var(--text-subtle);"></span>
+  </span>
+  <button type="button" class="btn" data-save-bar-discard>Discard</button>
+  <button type="button" class="btn btn-primary" data-save-bar-save>Save</button>
+</div>

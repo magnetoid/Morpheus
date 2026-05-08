@@ -152,6 +152,117 @@
     },
   };
 
+  // ── Dirty-form detection + sticky save/discard bar ────────────────────
+  // Snapshots form state on attach; on every input/change, compares the
+  // current FormData serialization to the snapshot and toggles the
+  // [data-save-bar] partial included in base.html. Discard reverts via
+  // form.reset() + restoring snapshot values for any inputs whose
+  // defaults don't match the snapshot (e.g. selects that were edited
+  // server-side after page load). beforeunload guards tab close.
+  //
+  // Auto-attaches to `<form data-morph-dirty>` on DOMContentLoaded;
+  // explicit `Morph.dirty.attach(formEl, opts)` is also exposed.
+  Morph.dirty = {
+    _activeForm: null,
+    _snapshot: null,
+    _bar: null,
+    attach: function (form, opts) {
+      if (!form || form.dataset.morphDirtyInit === '1') return;
+      form.dataset.morphDirtyInit = '1';
+      opts = opts || {};
+      const self = this;
+      const bar = self._bar = self._bar || document.querySelector('[data-save-bar]');
+      if (!bar) return;
+
+      function snapshot() {
+        try { return new URLSearchParams(new FormData(form)).toString(); }
+        catch (_) { return ''; }
+      }
+
+      let snap = snapshot();
+
+      function check() {
+        const dirty = snapshot() !== snap;
+        if (dirty) {
+          self._activeForm = form;
+          self._snapshot = snap;
+          bar.hidden = false;
+          document.body.classList.add('has-save-bar');
+        } else if (self._activeForm === form) {
+          bar.hidden = true;
+          self._activeForm = null;
+          document.body.classList.remove('has-save-bar');
+        }
+      }
+
+      form.addEventListener('input', check);
+      form.addEventListener('change', check);
+      // After a successful submit the page reloads; the new snapshot
+      // matches the server's authoritative state on the next attach.
+      form.addEventListener('submit', () => { snap = snapshot(); check(); });
+
+      window.addEventListener('beforeunload', function (e) {
+        if (self._activeForm !== form) return;
+        // Save button clicks submit the form; the submit handler above
+        // resets the snapshot so we don't trip our own warning.
+        if (snapshot() === snap) return;
+        e.preventDefault();
+        e.returnValue = '';
+      });
+    },
+    // Discard: revert to the snapshot the form had on attach. Calling
+    // form.reset() goes back to HTML defaults, which may differ from
+    // what the server rendered. Decode the snapshot string back into
+    // field values so the page lands exactly where it loaded.
+    discardActive: function () {
+      const form = this._activeForm;
+      if (!form) return;
+      const params = new URLSearchParams(this._snapshot || '');
+      // Clear textareas / inputs / selects that aren't named in the
+      // snapshot (e.g. unchecked checkboxes — FormData omits those).
+      Array.from(form.elements).forEach(function (el) {
+        if (!el.name) return;
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          el.checked = params.getAll(el.name).includes(el.value);
+        } else if (el.tagName === 'SELECT' && el.multiple) {
+          const wanted = params.getAll(el.name);
+          Array.from(el.options).forEach(o => { o.selected = wanted.includes(o.value); });
+        } else if (el.type !== 'file') {
+          // Use the LAST occurrence so multi-input fields snap back to
+          // the same final value the snapshot saw.
+          const vals = params.getAll(el.name);
+          el.value = vals.length ? vals[vals.length - 1] : '';
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      this._bar.hidden = true;
+      this._activeForm = null;
+      document.body.classList.remove('has-save-bar');
+    },
+    saveActive: function () {
+      if (this._activeForm) this._activeForm.submit();
+    },
+  };
+
+  function attachSaveBarHandlers() {
+    const bar = document.querySelector('[data-save-bar]');
+    if (!bar || bar.dataset.morphSaveBarInit === '1') return;
+    bar.dataset.morphSaveBarInit = '1';
+    bar.querySelector('[data-save-bar-discard]').addEventListener('click', function () {
+      Morph.confirm({
+        title: 'Discard changes?',
+        message: 'You\'ll lose any edits you made on this page.',
+        cta: 'Discard',
+        danger: true,
+      }).then(function (ok) {
+        if (ok) Morph.dirty.discardActive();
+      });
+    });
+    bar.querySelector('[data-save-bar-save]').addEventListener('click', function () {
+      Morph.dirty.saveActive();
+    });
+  }
+
   // ── Toasts ────────────────────────────────────────────────────────────
   Morph._toastQueue = Morph._toastQueue || [];
   Morph.toast = function (message, level) {
@@ -339,6 +450,10 @@
     Morph.bulk.init();
     drainToasts();
     attachPalette();
+    attachSaveBarHandlers();
+    document.querySelectorAll('form[data-morph-dirty]').forEach(function (f) {
+      Morph.dirty.attach(f);
+    });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

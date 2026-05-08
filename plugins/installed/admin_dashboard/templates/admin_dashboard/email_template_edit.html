@@ -7,7 +7,7 @@
   <a href="/dashboard/settings/email-templates/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; All templates</a>
 </div>
 
-<form method="post" class="card card-padded max-w-3xl space-y-4">
+<form method="post" class="card card-padded max-w-3xl space-y-4" data-morph-dirty>
   {% csrf_token %}
   <div>
     <label class="text-xs text-[color:var(--text-muted)] block mb-1">Subject</label>
