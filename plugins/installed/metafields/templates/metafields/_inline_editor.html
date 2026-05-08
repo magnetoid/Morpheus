@@ -56,6 +56,12 @@ detection on the host form.
         </select>
         <input data-mf-value type="text" class="input flex-1"
                placeholder="value" style="font-size:.75rem; height:1.7rem;">
+        <button type="button" data-mf-pick title="Pick from media library"
+                style="display:none; font-size:.7rem; padding:.2rem .45rem;
+                       border:1px solid var(--border); border-radius: var(--radius-sm);
+                       background: var(--surface); cursor: pointer;">
+          <i data-lucide="image" class="h-3.5 w-3.5" style="display:inline-block; vertical-align:middle;"></i>
+        </button>
       </div>
       <div class="flex items-center justify-between gap-2 pt-0.5">
         <span data-mf-status style="font-size:.7rem; color:var(--text-muted);"></span>
@@ -98,6 +104,43 @@ detection on the host form.
       el.style.color = color;
     }
 
+    function syncPickButton(row) {
+      var typeSel = row.querySelector('[data-mf-type]');
+      var pick = row.querySelector('[data-mf-pick]');
+      if (!typeSel || !pick) return;
+      pick.style.display = (typeSel.value === 'file_id') ? 'inline-block' : 'none';
+    }
+
+    function openPicker(row) {
+      // Spawn an iframe-backed media picker; once a file is chosen,
+      // postMessage flows back here and we drop the new asset's id
+      // into the value input.
+      var backdrop = document.createElement('div');
+      backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;display:flex;align-items:center;justify-content:center;';
+      var frame = document.createElement('iframe');
+      frame.src = '/dashboard/media/picker/?kind=image';
+      frame.style.cssText = 'width:min(560px, 90vw); height:min(640px, 85vh); background:#fff; border:0; border-radius:8px; box-shadow:0 12px 24px rgba(0,0,0,.18);';
+      var close = document.createElement('button');
+      close.textContent = '✕';
+      close.style.cssText = 'position:absolute; top:24px; right:24px; width:36px; height:36px; border-radius:999px; border:0; background:#fff; cursor:pointer; font-size:18px;';
+      backdrop.appendChild(frame);
+      backdrop.appendChild(close);
+      document.body.appendChild(backdrop);
+      function dismiss() {
+        window.removeEventListener('message', onMsg);
+        document.body.removeChild(backdrop);
+      }
+      function onMsg(e) {
+        if (!e.data || e.data.type !== 'media:picked' || !e.data.asset) return;
+        row.querySelector('[data-mf-value]').value = e.data.asset.id;
+        setStatus(row, 'Picked ' + (e.data.asset.filename || e.data.asset.id), 'success');
+        dismiss();
+      }
+      window.addEventListener('message', onMsg);
+      close.addEventListener('click', dismiss);
+      backdrop.addEventListener('click', function (e) { if (e.target === backdrop) dismiss(); });
+    }
+
     function renderRow(mf) {
       var row = template.content.firstElementChild.cloneNode(true);
       if (mf) {
@@ -113,7 +156,14 @@ detection on the host form.
       row.querySelector('[data-mf-delete]').addEventListener('click', function () {
         del(row);
       });
+      row.querySelector('[data-mf-type]').addEventListener('change', function () {
+        syncPickButton(row);
+      });
+      row.querySelector('[data-mf-pick]').addEventListener('click', function () {
+        openPicker(row);
+      });
       list.appendChild(row);
+      syncPickButton(row);
       if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
       return row;
     }

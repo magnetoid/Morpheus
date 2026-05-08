@@ -107,7 +107,9 @@ class MorpheusAgent:
         Each opted-in Skill prepends its `system_prompt_prelude` (if any)
         before the base prompt — so a Concierge that opts into the
         `storefront_concierge` skill picks up that skill's preamble for
-        free.
+        free. The merchant's brand voice (configured under
+        `/dashboard/settings/ai/`) lands at the very top so every
+        agent's writing matches the store's tone.
         """
         from core.agents.skills import skill_registry
         skills = skill_registry.resolve(self.uses_skills or ())
@@ -123,7 +125,17 @@ class MorpheusAgent:
             except KeyError:
                 base = self.description or f'You are the {self.label} agent.'
 
-        return '\n\n'.join([*preludes, base]).strip()
+        # Brand voice lands first so it frames everything else; ai_content
+        # is optional, fall through silently when not installed.
+        brand: str = ''
+        try:
+            from plugins.installed.ai_content.services import get_brand_voice
+            brand = get_brand_voice()
+        except Exception:  # noqa: BLE001
+            brand = ''
+
+        chunks = [c for c in [brand, *preludes, base] if c]
+        return '\n\n'.join(chunks).strip()
 
     def get_tools(self) -> list[Tool]:
         """Return the tools this agent can call.
