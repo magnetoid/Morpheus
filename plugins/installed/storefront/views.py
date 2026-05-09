@@ -220,10 +220,26 @@ def product_list(request):
     products = list(qs[:60])
     categories = list(Category.objects.filter(parent__isnull=True).order_by('name'))
 
+    # Author facet — distinct values from book.author metafields, alphabetised.
+    # Cheap on this catalog size; defer to a cached top-N query if it grows.
+    available_authors: list[str] = []
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.metafields.models import Metafield
+        ct = ContentType.objects.get_for_model(Product)
+        available_authors = sorted(set(
+            Metafield.objects.filter(content_type=ct, namespace='book', key='author')
+            .exclude(value='')
+            .values_list('value', flat=True)
+        ))
+    except Exception:  # noqa: BLE001
+        pass
+
     return render(request, 'storefront/product_list.html', {
         'products': products,
         'categories': categories,
         'facets': facets,
+        'available_authors': available_authors,
         'search_query': q,
         'selected_category': cat_slug,
         'selected_category_obj': next((c for c in categories if c.slug == cat_slug), None),
@@ -311,10 +327,11 @@ def product_detail(request, slug):
 
 
 # Book-specific metafields rendered as a clean Specifications card on the PDP.
-# Order is the display order; missing keys are skipped silently. The third
-# tuple element is a query-string key to link the value to the product list
-# as a filter (e.g. Author → /products/?author=Hanna+Rieder); falsy means
-# render plain text.
+# Order is the display order; missing keys are skipped silently.
+# The third tuple element controls how the value is linked:
+#   'author'    → /author/<slugify(value)>/  (dedicated landing)
+#   'publisher' → /products/?publisher=...
+#   ''          → plain text, no link
 _BOOK_SPEC_FIELDS = (
     ('author',         'Author',     'author'),
     ('publisher',      'Publisher',  'publisher'),
@@ -342,14 +359,17 @@ def _book_specs(slug: str) -> list[dict]:
     except Exception:  # noqa: BLE001
         return []
     from urllib.parse import urlencode
+    from django.utils.text import slugify
     out = []
-    for key, label, query_key in _BOOK_SPEC_FIELDS:
+    for key, label, link_kind in _BOOK_SPEC_FIELDS:
         value = meta.get(f'book.{key}') or meta.get(key)
         if value in (None, ''):
             continue
         spec = {'label': label, 'value': str(value), 'link': ''}
-        if query_key:
-            spec['link'] = '/products/?' + urlencode({query_key: str(value)})
+        if link_kind == 'author':
+            spec['link'] = f'/author/{slugify(str(value))}/'
+        elif link_kind == 'publisher':
+            spec['link'] = '/products/?' + urlencode({'publisher': str(value)})
         out.append(spec)
     return out
 
@@ -834,6 +854,106 @@ def category_detail(request, slug):
         'seo_title':       f'{category.name} — dot books',
         'seo_description': category.description or intro.get('lede', '')[:160],
         'seo_og_type':     'website',
+    })
+
+
+def newsletter_subscribe(request):
+    """Capture a footer newsletter signup as a CRM Lead with source='newsletter'.
+
+    Returns JSON when called as fetch (footer JS uses this), HTML render
+    falls back to a minimal thank-you page so users without JS still get
+    confirmation.
+    """
+    from django.http import JsonResponse
+    from morpheus.views import HttpResponseNotAllowed
+
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    email = (request.POST.get('email') or '').strip().lower()
+    is_xhr = (
+        request.headers.get('X-Requested-With', '').lower() == 'fetch'
+        or 'application/json' in request.headers.get('Accept', '')
+    )
+
+    if not email or '@' not in email:
+        if is_xhr:
+            return JsonResponse({'ok': False, 'error': 'Please enter a valid email.'}, status=400)
+        return render(request, 'storefront/newsletter_thanks.html', {
+            'email': '', 'error': 'Please enter a valid email.',
+        })
+
+    try:
+        from plugins.installed.crm.services import upsert_lead
+        upsert_lead(email=email, source='newsletter')
+    except Exception:  # noqa: BLE001 — CRM is optional; capture is best-effort
+        pass
+
+    if is_xhr:
+        return JsonResponse({'ok': True, 'email': email})
+    return render(request, 'storefront/newsletter_thanks.html', {'email': email, 'error': ''})
+
+
+def author_detail(request, slug):
+    """Author landing page — bibliography + optional bio.
+
+    Slug is the author name run through Django's slugify. Resolution:
+      1. Look up books whose `book.author` metafield, slugified, matches.
+      2. Optionally pull a CMS Page tagged metadata.category='author' and
+         metadata.author_slug==slug for bio + photo.
+    Falls back to a minimal page (just the bibliography) when no Page exists.
+    """
+    from morpheus.views import Http404
+    from django.utils.text import slugify
+
+    # Find the canonical author name by reverse-lookup against metafields.
+    author_name = ''
+    bibliography = []
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.metafields.models import Metafield
+        ct = ContentType.objects.get_for_model(Product)
+        names = (Metafield.objects
+                 .filter(content_type=ct, namespace='book', key='author')
+                 .exclude(value='')
+                 .values_list('value', flat=True).distinct())
+        match = next((n for n in names if slugify(n) == slug), None)
+        if match is None:
+            raise Http404
+        author_name = match
+        product_ids = list(Metafield.objects.filter(
+            content_type=ct, namespace='book', key='author', value__iexact=match,
+        ).values_list('object_id', flat=True))
+        bibliography = list(
+            Product.objects.filter(id__in=product_ids, status='active')
+            .order_by('-is_featured', '-created_at')
+        )
+    except Http404:
+        raise
+    except Exception:  # noqa: BLE001
+        raise Http404
+
+    # Optional bio Page from cms — by convention slug='author-<author_slug>'
+    bio_page = None
+    try:
+        from plugins.installed.cms.models import Page
+        bio_page = (Page.objects
+                    .filter(slug=f'author-{slug}', state='published',
+                            metadata__category='author')
+                    .first())
+    except Exception:  # noqa: BLE001
+        pass
+
+    return render(request, 'storefront/author_detail.html', {
+        'author_name': author_name,
+        'author_slug': slug,
+        'bibliography': bibliography,
+        'bio_page': bio_page,
+        'seo_title':       f'{author_name} — dot books',
+        'seo_description': (bio_page.excerpt if bio_page and bio_page.excerpt
+                            else f'Books by {author_name}, on the dot books shelf.')[:160],
+        'seo_og_type':     'profile',
     })
 
 

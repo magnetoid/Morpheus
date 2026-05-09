@@ -23,6 +23,8 @@ urlpatterns = [
     path('journal/<slug:slug>/', views.journal_detail, name='journal_detail'),
     path('categories/', views.categories, name='categories'),
     path('category/<slug:slug>/', views.category_detail, name='category_detail'),
+    path('author/<slug:slug>/', views.author_detail, name='author_detail'),
+    path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
 
     # Customer account
     path('account/', views.account_home, name='account_home'),
