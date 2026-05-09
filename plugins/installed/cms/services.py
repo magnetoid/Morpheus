@@ -21,6 +21,40 @@ def get_live_page(slug: str):
     return page
 
 
+def _journal_dict(page) -> dict:
+    pub = page.publish_at or page.updated_at or page.created_at
+    return {
+        'slug': page.slug,
+        'title': page.title,
+        'date_label': pub.strftime('%B · %-d min read') if pub else '',
+        'excerpt': page.excerpt or '',
+        'body': page.body or '',
+        'published_at': pub,
+    }
+
+
+def list_journal_entries(*, limit: int = 50) -> list[dict]:
+    """Published CMS pages tagged with metadata.category == 'journal'."""
+    from plugins.installed.cms.models import Page
+
+    qs = (Page.objects
+          .filter(state='published', metadata__category='journal')
+          .exclude(publish_at__gt=timezone.now())
+          .order_by('-publish_at', '-created_at')[:limit])
+    return [_journal_dict(p) for p in qs]
+
+
+def get_journal_entry(slug: str) -> dict | None:
+    """Single published journal entry by slug, or None."""
+    from plugins.installed.cms.models import Page
+
+    page = (Page.objects
+            .filter(slug=slug, state='published', metadata__category='journal')
+            .exclude(publish_at__gt=timezone.now())
+            .first())
+    return _journal_dict(page) if page else None
+
+
 def render_block(key: str) -> dict | None:
     from plugins.installed.cms.models import Block
 

@@ -3,11 +3,16 @@
 {% block content %}
 <h1 class="text-xl font-semibold mb-4">Pages</h1>
 <div class="card"><table class="morph-table">
-<thead><tr><th>Slug</th><th>Title</th><th>State</th><th>Updated</th></tr></thead>
+<thead><tr><th>Slug</th><th>Title</th><th>Category</th><th>State</th><th>Updated</th></tr></thead>
 <tbody>{% for r in rows %}
-<tr><td><a href="/p/{{ r.slug }}/" target="_blank"><code>/p/{{ r.slug }}/</code></a></td>
-<td>{{ r.title }}</td><td><span class="pill {% if r.state == 'published' %}pill-success{% else %}pill-neutral{% endif %}">{{ r.state }}</span></td>
-<td>{{ r.updated_at|date:"M j" }}</td></tr>
-{% empty %}<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No pages yet — create via Django admin or the agent.</td></tr>
+<tr>
+  <td>{% if r.metadata.category == 'journal' %}<a href="/journal/{{ r.slug }}/" target="_blank"><code>/journal/{{ r.slug }}/</code></a>{% else %}<a href="/p/{{ r.slug }}/" target="_blank"><code>/p/{{ r.slug }}/</code></a>{% endif %}</td>
+  <td>{{ r.title }}</td>
+  <td>{% with cat=r.metadata.category|default:"page" %}<span class="pill {% if cat == 'journal' %}pill-info{% else %}pill-neutral{% endif %}">{{ cat }}</span>{% endwith %}</td>
+  <td><span class="pill {% if r.state == 'published' %}pill-success{% else %}pill-neutral{% endif %}">{{ r.state }}</span></td>
+  <td>{{ r.updated_at|date:"M j" }}</td>
+</tr>
+{% empty %}<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No pages yet — create via Django admin or the agent.</td></tr>
 {% endfor %}</tbody></table></div>
+<p class="meta mt-3">Set a page's category to <code>journal</code> in metadata to publish it under <code>/journal/</code>.</p>
 {% endblock %}

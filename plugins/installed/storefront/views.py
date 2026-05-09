@@ -691,12 +691,27 @@ def contact(request):
 
 
 def journal_index(request):
-    return render(request, 'storefront/journal_index.html', {'entries': _JOURNAL_ENTRIES})
+    # Prefer CMS pages (metadata.category=='journal'); fall back to the
+    # baked-in seed entries until a merchant publishes anything in the dashboard.
+    try:
+        from plugins.installed.cms.services import list_journal_entries
+        cms_entries = list_journal_entries()
+    except Exception:  # noqa: BLE001 — CMS not installed / db not migrated
+        cms_entries = []
+    entries = cms_entries or _JOURNAL_ENTRIES
+    return render(request, 'storefront/journal_index.html', {'entries': entries})
 
 
 def journal_detail(request, slug):
     from morpheus.views import Http404
-    entry = next((e for e in _JOURNAL_ENTRIES if e['slug'] == slug), None)
+    entry = None
+    try:
+        from plugins.installed.cms.services import get_journal_entry
+        entry = get_journal_entry(slug)
+    except Exception:  # noqa: BLE001
+        pass
+    if entry is None:
+        entry = next((e for e in _JOURNAL_ENTRIES if e['slug'] == slug), None)
     if entry is None:
         raise Http404
     return render(request, 'storefront/journal_detail.html', {'entry': entry})
