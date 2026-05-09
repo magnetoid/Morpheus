@@ -331,16 +331,15 @@ def _published_reviews(slug: str, limit: int = 4) -> list[dict]:
     """Return ``[{stars, body, author_name, created_at}, ...]`` for the PDP.
     Pre-computes the star string + author display so the template stays simple."""
     try:
-        from plugins.installed.catalog.models import Product
-        from plugins.installed.reviews.models import Review
-    except Exception:  # noqa: BLE001 — reviews plugin not installed
+        from plugins.installed.catalog.models import Product, Review
+    except Exception:  # noqa: BLE001 — catalog plugin not installed
         return []
     try:
         product = Product.objects.filter(slug=slug).first()
         if product is None:
             return []
         rows = (Review.objects
-                .filter(product=product, status='published')
+                .filter(product=product, is_approved=True)
                 .select_related('customer')
                 .order_by('-created_at')[:limit])
     except Exception:  # noqa: BLE001

@@ -1,4 +1,4 @@
-"""Storefront-facing endpoints for reviews."""
+"""Storefront-facing endpoints for reviews — operates on catalog.Review."""
 from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
@@ -9,10 +9,9 @@ from django.views.decorators.http import require_POST
 @login_required
 @require_POST
 def add_review(request, product_id):
-    """Submit a review for a product. Auto-publishes — moderation deferred
+    """Submit a review for a product. Auto-approves — moderation deferred
     until the merchant actually asks for it. Redirects back to the PDP."""
-    from plugins.installed.catalog.models import Product
-    from plugins.installed.reviews.models import Review
+    from plugins.installed.catalog.models import Product, Review
 
     product = Product.objects.filter(id=product_id).first()
     if product is None:
@@ -26,8 +25,8 @@ def add_review(request, product_id):
         rating = 5
 
     if body:
-        Review.objects.create(
+        Review.objects.update_or_create(
             product=product, customer=request.user,
-            rating=rating, body=body[:5000], status='published',
+            defaults={'rating': rating, 'body': body[:5000], 'is_approved': True},
         )
     return redirect(f'/products/{product.slug}/#reviews')

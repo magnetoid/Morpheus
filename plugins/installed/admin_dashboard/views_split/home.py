@@ -309,7 +309,7 @@ def _compute_activity_feed(limit: int = 20) -> list:
         pass
 
     try:
-        from plugins.installed.reviews.models import Review
+        from plugins.installed.catalog.models import Review
         for r in (
             Review.objects.select_related('product', 'customer')
             .order_by('-created_at')[: limit]
@@ -320,7 +320,7 @@ def _compute_activity_feed(limit: int = 20) -> list:
                 'icon': 'star',
                 'label': f'New review on {r.product.name} ({r.rating}/5)',
                 'hint': f'by {who}',
-                'url': f'/admin/reviews/review/{r.id}/change/',
+                'url': f'/admin/catalog/review/{r.id}/change/',
                 'when': r.created_at,
             })
     except Exception:  # noqa: BLE001
