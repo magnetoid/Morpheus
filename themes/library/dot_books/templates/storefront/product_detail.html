@@ -80,6 +80,19 @@
           <p class="meta">Free shipping over $40 · Independent press · Always read first</p>
         </div>
 
+        {% if book_specs %}
+        <hr class="rule">
+        <div style="margin: 1.5rem 0;">
+          <p class="eyebrow" style="margin-bottom: 0.75rem;">About this edition</p>
+          <dl style="display:grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; font-size: 0.92rem; color: var(--ink-2); line-height: 1.5;">
+            {% for label, value in book_specs %}
+            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ label }}</dt>
+            <dd style="margin: 0;">{{ value }}</dd>
+            {% endfor %}
+          </dl>
+        </div>
+        {% endif %}
+
         <div style="margin-top: 2rem; line-height: 1.7; color: var(--ink-2); font-size: 1rem; max-width: 60ch;">
           {{ product.description|safe }}
         </div>

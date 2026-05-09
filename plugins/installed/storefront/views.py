@@ -240,7 +240,46 @@ def product_detail(request, slug):
     return render(request, 'storefront/product_detail.html', {
         'product': product,
         'related_products': related,
+        'book_specs': _book_specs(slug),
     })
+
+
+# Book-specific metafields rendered as a clean Specifications card on the PDP.
+# Order is the display order; missing keys are skipped silently. Add a key here
+# (and store a Metafield with namespace='book') to surface a new field.
+_BOOK_SPEC_FIELDS = (
+    ('author', 'Author'),
+    ('publisher', 'Publisher'),
+    ('published_year', 'Year'),
+    ('format', 'Format'),
+    ('pages', 'Pages'),
+    ('language', 'Language'),
+    ('isbn', 'ISBN'),
+)
+
+
+def _book_specs(slug: str) -> list[tuple[str, str]]:
+    """Return ``[(label, value), ...]`` of book metafields for the PDP.
+    Fails closed — bad data never breaks the page."""
+    try:
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.metafields.models import Metafield
+    except Exception:  # noqa: BLE001 — plugin not installed
+        return []
+    try:
+        product = Product.objects.filter(slug=slug).first()
+        if product is None:
+            return []
+        meta = Metafield.objects.for_obj(product, ns='book')
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for key, label in _BOOK_SPEC_FIELDS:
+        value = meta.get(f'book.{key}') or meta.get(key)
+        if value in (None, ''):
+            continue
+        out.append((label, str(value)))
+    return out
 
 
 def _related_products(current_slug: str, limit: int = 4) -> list[dict]:

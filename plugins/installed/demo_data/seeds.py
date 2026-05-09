@@ -221,3 +221,67 @@ BOOKS = [
         False,
     ),
 ]
+
+
+# Book-specific metadata, indexed by slug. Written as Metafields with
+# namespace='book' during seeding — picked up by the storefront PDP
+# "About this edition" card. Only the seven fields below are surfaced;
+# add more here + in storefront.views._BOOK_SPEC_FIELDS to render them.
+BOOK_METADATA = {
+    'on-quiet-hours': {
+        'author': 'Hanna Rieder', 'publisher': 'Pelican Press', 'published_year': 2024,
+        'format': 'Paperback', 'pages': 224, 'language': 'English', 'isbn': '978-1-911557-24-1',
+    },
+    'last-letter-home': {
+        'author': 'Theo Marlow', 'publisher': 'Lantern Books', 'published_year': 2023,
+        'format': 'Paperback', 'pages': 312, 'language': 'English', 'isbn': '978-1-913665-02-7',
+    },
+    'unfinished-light': {
+        'author': 'Ines Cabral', 'publisher': 'Foxglove Editions', 'published_year': 2024,
+        'format': 'Paperback', 'pages': 96, 'language': 'English', 'isbn': '978-1-908009-44-3',
+    },
+    'small-history-listening': {
+        'author': 'Daniel Eshun', 'publisher': 'Pelican Press', 'published_year': 2023,
+        'format': 'Hardback', 'pages': 384, 'language': 'English', 'isbn': '978-1-911557-31-9',
+    },
+    'rooms-we-didnt-choose': {
+        'author': 'Mira Lazlo', 'publisher': 'Foxglove Editions', 'published_year': 2024,
+        'format': 'Paperback', 'pages': 256, 'language': 'English', 'isbn': '978-1-908009-51-1',
+    },
+    'how-to-read-building': {
+        'author': 'Adrian Pell', 'publisher': 'Pelican Press', 'published_year': 2022,
+        'format': 'Hardback', 'pages': 248, 'language': 'English', 'isbn': '978-1-911557-08-1',
+    },
+    'borrowed-garden': {
+        'author': 'Caro Spence', 'publisher': 'Lantern Books', 'published_year': 2023,
+        'format': 'Paperback', 'pages': 196, 'language': 'English', 'isbn': '978-1-913665-15-7',
+    },
+    'archive-of-almost': {
+        'author': 'Yusra Hamdan', 'publisher': 'Foxglove Editions', 'published_year': 2024,
+        'format': 'Paperback', 'pages': 178, 'language': 'English', 'isbn': '978-1-908009-58-0',
+    },
+    'river-light': {
+        'author': 'Otto Renn', 'publisher': 'Lantern Books', 'published_year': 2023,
+        'format': 'Pamphlet', 'pages': 32, 'language': 'English', 'isbn': '978-1-913665-22-5',
+    },
+    'map-we-carried': {
+        'author': 'Lucia Mendel', 'publisher': 'Pelican Press', 'published_year': 2024,
+        'format': 'Paperback', 'pages': 288, 'language': 'English', 'isbn': '978-1-911557-40-1',
+    },
+    'field-notes-calmer': {
+        'author': 'Dr. R. Asante', 'publisher': 'Lantern Books', 'published_year': 2023,
+        'format': 'Paperback', 'pages': 208, 'language': 'English', 'isbn': '978-1-913665-09-6',
+    },
+    'nine-letters': {
+        'author': 'Eleanor Vines', 'publisher': 'Pelican Press', 'published_year': 2022,
+        'format': 'Paperback', 'pages': 144, 'language': 'English', 'isbn': '978-1-911557-15-9',
+    },
+    'rain-on-the-train': {
+        'author': 'Sam Beck', 'publisher': 'Lantern Books', 'published_year': 2023,
+        'format': 'Picture book', 'pages': 32, 'language': 'English', 'isbn': '978-1-913665-30-0',
+    },
+    'fold-out-cookbook': {
+        'author': 'Park & Reid', 'publisher': 'Foxglove Editions', 'published_year': 2024,
+        'format': 'Hardback', 'pages': 64, 'language': 'English', 'isbn': '978-1-908009-66-5',
+    },
+}

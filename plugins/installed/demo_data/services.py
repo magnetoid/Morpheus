@@ -133,6 +133,21 @@ def _seed_books(
             product.collections.add(pick_collection)
         if featured_collection is not None:
             product.collections.add(featured_collection)
+        _seed_book_metafields(product, slug)
+
+
+def _seed_book_metafields(product, slug: str) -> None:
+    """Write book.* metafields for the seeded book — fails closed so the
+    metafields plugin being absent never breaks the catalog seed."""
+    meta = seeds.BOOK_METADATA.get(slug)
+    if not meta:
+        return
+    try:
+        from plugins.installed.metafields.models import Metafield
+    except Exception:  # noqa: BLE001
+        return
+    for key, value in meta.items():
+        Metafield.objects.set(product, namespace='book', key=key, value=value)
 
 
 def _seed_customers(summary: SeedSummary) -> None:
