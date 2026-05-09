@@ -74,6 +74,15 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.cart_abandonment',
     'plugins.installed.backups',
     'plugins.installed.digital_products',
+    # Phase-1+2 plugins added later in development. Each ships its own
+    # migrations; keep registered so models.* tables exist + plugin
+    # manifests get discovered.
+    'plugins.installed.markets',
+    'plugins.installed.media',
+    'plugins.installed.metafields',
+    'plugins.installed.notifications_center',
+    'plugins.installed.workflows',
+    'plugins.installed.agent_mcp',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

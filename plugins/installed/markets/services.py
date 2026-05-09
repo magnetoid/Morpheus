@@ -89,8 +89,16 @@ def price_for(*, product, market) -> Any:
 def market_context(request) -> dict:
     """Used as a Django context processor — adds `active_market` and a
     light-weight `market_currency` to every storefront template.
+
+    Wrapped in a broad except so that a missing table or any other
+    transient DB issue can't take the entire storefront down via a
+    failing context processor. Returns blank values on error.
     """
-    m = resolve_market(request)
+    try:
+        m = resolve_market(request)
+    except Exception as e:  # noqa: BLE001
+        logger.debug('market_context: resolve_market failed: %s', e)
+        m = None
     return {
         'active_market': m,
         'market_currency': m.currency if m is not None else '',
