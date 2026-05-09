@@ -697,21 +697,24 @@ def search(request):
     q = request.GET.get('q', '').strip()
     use_semantic = request.GET.get('mode') == 'semantic'
 
-    if use_semantic and q:
-        data = internal_graphql("""
-            query SemanticSearch($query: String!) {
-              semanticSearch(query: $query) {
-                products { id name slug price { amount currency } primaryImage { url } }
-                explanation
-              }
-            }
-        """, variables={'query': q}, request=request)
-        result = (data or {}).get('semanticSearch', {})
-    else:
-        data = internal_graphql(PRODUCT_LIST_QUERY, variables={
-            'first': 24, 'search': q, 'category': ''
-        }, request=request)
-        result = {'products': (data or {}).get('products', []), 'explanation': None}
+    # Semantic mode keeps its dedicated AI-powered explanation page.
+    # Plain keyword search bounces to /products/?q=…  — that path runs
+    # through _apply_search (which unions in metafield matches), so
+    # author/publisher/ISBN queries land on the rich faceted list UI.
+    if not use_semantic:
+        from django.shortcuts import redirect as _redirect
+        target = f'/products/?q={q}' if q else '/products/'
+        return _redirect(target)
+
+    data = internal_graphql("""
+        query SemanticSearch($query: String!) {
+          semanticSearch(query: $query) {
+            products { id name slug price { amount currency } primaryImage { url } }
+            explanation
+          }
+        }
+    """, variables={'query': q}, request=request) if q else None
+    result = (data or {}).get('semanticSearch', {}) if data else {'products': [], 'explanation': None}
 
     return render(request, 'storefront/search.html', {
         'query': q, 'result': result, 'semantic': use_semantic
