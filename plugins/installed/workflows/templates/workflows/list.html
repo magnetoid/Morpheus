@@ -1,0 +1,72 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Workflows · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Workflows</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        No-code automation. Pick a trigger event, set a condition,
+        fire one or more actions — including invoking an AI agent
+        skill. {{ workflows|length }} configured.
+      </p>
+    </div>
+    <a href="{% url 'workflows:create' %}" class="btn btn-primary">
+      <i data-lucide="plus" class="h-4 w-4"></i> New workflow
+    </a>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if workflows %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th class="text-right">Runs</th>
+          <th>Last run</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in workflows %}
+        <tr>
+          <td>
+            <a href="{% url 'workflows:edit' w.id %}" class="font-medium hover:underline">{{ w.name }}</a>
+            {% if w.last_error %}<div class="text-xs" style="color:var(--danger);">{{ w.last_error|truncatechars:80 }}</div>{% endif %}
+          </td>
+          <td><code class="text-xs">{{ w.trigger }}</code></td>
+          <td class="text-right tabular-nums">{{ w.run_count }}</td>
+          <td class="text-[color:var(--text-muted)] text-xs whitespace-nowrap">
+            {% if w.last_ran_at %}{{ w.last_ran_at|date:"M j, H:i" }}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if w.is_active %}<span class="pill pill-success">Active</span>
+            {% else %}<span class="pill pill-neutral">Paused</span>{% endif %}
+          </td>
+          <td class="text-right" style="width:1px; white-space:nowrap;">
+            <a href="{% url 'workflows:runs' w.id %}" class="btn text-xs">Runs</a>
+            <a href="{% url 'workflows:test' w.id %}" class="btn text-xs">Test</a>
+            <a href="{% url 'workflows:edit' w.id %}" class="btn text-xs">Edit</a>
+            <form method="post" action="{% url 'workflows:delete' w.id %}"
+                  data-confirm="Delete workflow {{ w.name }}? Audit history is also removed."
+                  data-confirm-cta="Delete" data-confirm-danger style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger text-xs">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {% url 'workflows:create' as add_url %}
+    {% include "admin_dashboard/_empty_state.html" with icon="git-branch" title="No workflows yet" hint="Build your first one — e.g. 'when an order is placed for over $200, notify staff and tag the customer as a VIP'." action_url=add_url action_label="New workflow" action_icon="plus" %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

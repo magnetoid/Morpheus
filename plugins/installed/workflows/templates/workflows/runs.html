@@ -1,0 +1,68 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ workflow.name }} · Runs · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'workflows:index' %}" class="hover:underline">Workflows</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <a href="{% url 'workflows:edit' workflow.id %}" class="hover:underline">{{ workflow.name }}</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span>Runs</span>
+  </div>
+
+  <h1 class="text-xl font-semibold tracking-tight">{{ workflow.name }} — runs</h1>
+
+  <div class="card overflow-hidden">
+    {% if runs %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>State</th>
+          <th class="text-right">Duration</th>
+          <th>Actions taken</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in runs %}
+        <tr>
+          <td class="whitespace-nowrap text-xs">{{ r.created_at|date:"M j, Y H:i:s" }}</td>
+          <td>
+            {% if r.state == 'matched' %}<span class="pill pill-success">Matched</span>
+            {% elif r.state == 'skipped' %}<span class="pill pill-neutral">Skipped</span>
+            {% elif r.state == 'failed' %}<span class="pill pill-danger">Failed</span>
+            {% else %}<span class="pill pill-neutral">{{ r.state }}</span>{% endif %}
+          </td>
+          <td class="text-right tabular-nums text-xs">{{ r.duration_ms }} ms</td>
+          <td>
+            {% if r.actions_taken %}
+            <ul style="font-size:.75rem; margin:0; padding:0; list-style:none;">
+              {% for a in r.actions_taken %}
+              <li style="display:flex; gap:.4rem; align-items:center;">
+                {% if a.ok %}<span style="color:var(--success);">✓</span>
+                {% else %}<span style="color:var(--danger);">✗</span>{% endif %}
+                <code>{{ a.kind }}</code>
+                <span class="text-[color:var(--text-muted)]">— {{ a.message|truncatechars:80 }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <span class="text-[color:var(--text-muted)] text-xs">—</span>
+            {% endif %}
+            {% if r.error %}
+            <p class="text-xs" style="color:var(--danger); margin-top:.25rem;">{{ r.error|truncatechars:200 }}</p>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {% include "admin_dashboard/_empty_state.html" with icon="play-circle" title="No runs yet" hint="When the trigger event fires, run history will appear here." %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

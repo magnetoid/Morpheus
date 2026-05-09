@@ -1,0 +1,97 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if workflow %}Edit{% else %}New{% endif %} workflow · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'workflows:index' %}" class="hover:underline">Workflows</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span class="font-medium text-[color:var(--text)]">
+      {% if workflow %}{{ workflow.name }}{% else %}New{% endif %}
+    </span>
+  </div>
+
+  <form method="post" class="space-y-4" data-morph-dirty>
+    {% csrf_token %}
+
+    <div class="card card-padded space-y-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Name <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="name" class="input" maxlength="200" required
+               value="{{ workflow.name|default:'' }}"
+               placeholder="VIP customer notification">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Description</label>
+        <textarea name="description" rows="2" class="input">{{ workflow.description|default:'' }}</textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Trigger event <span style="color:var(--danger);">*</span></label>
+        <select name="trigger" class="input">
+          {% for v, label in triggers %}
+          <option value="{{ v }}" {% if workflow.trigger == v %}selected{% endif %}>{{ label }} <code>({{ v }})</code></option>
+          {% endfor %}
+        </select>
+      </div>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="is_active"
+               {% if workflow is None or workflow.is_active %}checked{% endif %}>
+        Active — fires on matching events
+      </label>
+    </div>
+
+    <div class="card card-padded space-y-2">
+      <h2 class="font-semibold text-sm">Condition <span class="text-[color:var(--text-muted)] font-normal">(optional)</span></h2>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        JSON AST. Empty = run every time. Operators:
+        <code>all</code>, <code>any</code>, <code>not</code>, <code>==</code>,
+        <code>!=</code>, <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>,
+        <code>&lt;=</code>, <code>in</code>, <code>contains</code>.
+        Dotted strings resolve against the event payload (e.g.
+        <code>order.total.amount</code>); literals are bare values.
+      </p>
+      <pre class="text-xs" style="background:var(--surface-2); padding:.65rem; border-radius:6px; margin:0;">// example: only fire on paid orders over $200
+{
+  "all": [
+    {"==": ["order.payment_status", "paid"]},
+    {">": ["order.total.amount", 200]}
+  ]
+}</pre>
+      <textarea name="condition" rows="6" class="input font-mono text-xs"
+                placeholder="{}">{{ condition_str }}</textarea>
+    </div>
+
+    <div class="card card-padded space-y-2">
+      <h2 class="font-semibold text-sm">Actions</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        JSON list of <code>{kind, ...kwargs}</code> objects.
+        Kinds: <code>notify_staff</code> · <code>add_order_note</code> ·
+        <code>tag_customer</code> · <code>webhook_post</code> ·
+        <code>agent_skill</code>.
+      </p>
+      <pre class="text-xs" style="background:var(--surface-2); padding:.65rem; border-radius:6px; margin:0;">[
+  {"kind": "notify_staff",
+   "title": "VIP order placed",
+   "body": "Order #{{ '{{ order.order_number }}' }} — over $200",
+   "icon": "star"},
+  {"kind": "tag_customer", "tag": "vip"},
+  {"kind": "agent_skill", "agent": "merchant_ops",
+   "message": "Send a thank-you note to this VIP customer."}
+]</pre>
+      <textarea name="actions" rows="10" class="input font-mono text-xs"
+                placeholder="[]">{{ actions_str }}</textarea>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2">
+      <a href="{% url 'workflows:index' %}" class="btn">Cancel</a>
+      {% if workflow %}
+      <a href="{% url 'workflows:test' workflow.id %}" class="btn">Test</a>
+      <a href="{% url 'workflows:runs' workflow.id %}" class="btn">View runs</a>
+      {% endif %}
+      <button type="submit" class="btn btn-primary">Save workflow</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

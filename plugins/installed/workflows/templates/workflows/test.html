@@ -1,0 +1,63 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Test {{ workflow.name }} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+    <a href="{% url 'workflows:index' %}" class="hover:underline">Workflows</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <a href="{% url 'workflows:edit' workflow.id %}" class="hover:underline">{{ workflow.name }}</a>
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+    <span>Test</span>
+  </div>
+
+  <h1 class="text-xl font-semibold tracking-tight">Dry-run "{{ workflow.name }}"</h1>
+  <p class="text-sm text-[color:var(--text-muted)]">
+    Paste a sample event payload below. The condition is evaluated and
+    each action is checked, but nothing is actually executed against
+    the platform — safe to run on a live workflow.
+  </p>
+
+  <form method="post" class="card card-padded space-y-3">
+    {% csrf_token %}
+    <div>
+      <label class="block text-sm font-medium mb-1">Sample payload (JSON)</label>
+      <textarea name="payload" rows="10" class="input font-mono text-xs">{{ payload_str }}</textarea>
+    </div>
+    <div class="flex items-center justify-end gap-2">
+      <a href="{% url 'workflows:edit' workflow.id %}" class="btn">Back</a>
+      <button type="submit" class="btn btn-primary">Run dry-run</button>
+    </div>
+  </form>
+
+  {% if result %}
+  <div class="card card-padded space-y-2">
+    <h2 class="font-semibold text-sm">Result</h2>
+    <p class="text-sm">
+      State:
+      {% if result.state == 'matched' %}<span class="pill pill-success">Matched</span>
+      {% elif result.state == 'skipped' %}<span class="pill pill-neutral">Skipped (condition false)</span>
+      {% elif result.state == 'failed' %}<span class="pill pill-danger">Failed</span>{% endif %}
+      <span class="text-xs text-[color:var(--text-muted)]">— {{ result.duration_ms }} ms</span>
+    </p>
+    {% if result.actions_taken %}
+    <ul style="font-size:.85rem; margin:0; padding:0; list-style:none;">
+      {% for a in result.actions_taken %}
+      <li style="display:flex; gap:.5rem; align-items:flex-start; padding:.35rem 0;">
+        {% if a.ok %}<span style="color:var(--success);">✓</span>
+        {% else %}<span style="color:var(--danger);">✗</span>{% endif %}
+        <code>{{ a.kind }}</code>
+        <span class="text-[color:var(--text-muted)]">— {{ a.message }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if result.error %}
+    <p class="text-sm" style="color:var(--danger);">{{ result.error }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
