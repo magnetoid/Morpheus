@@ -28,8 +28,13 @@ local_settings.py
 .DS_Store
 .idea/
 .vscode/
+.trae/
 *.swp
 *.swo
+
+# IDE / one-off scripts that don't belong in the repo
+*.bak
+fix_exceptions.py
 
 # Tooling caches
 .pytest_cache/
