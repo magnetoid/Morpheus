@@ -419,8 +419,7 @@ def cart_add(request, product_id):
     plain POST + redirect for users without JS or for the rare server
     fetch that fails.
     """
-    from django.http import JsonResponse
-    from morpheus.views import HttpResponseNotAllowed
+    from django.http import HttpResponseNotAllowed, JsonResponse
 
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
@@ -864,8 +863,7 @@ def newsletter_subscribe(request):
     falls back to a minimal thank-you page so users without JS still get
     confirmation.
     """
-    from django.http import JsonResponse
-    from morpheus.views import HttpResponseNotAllowed
+    from django.http import HttpResponseNotAllowed, JsonResponse
 
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
