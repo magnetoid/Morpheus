@@ -110,18 +110,20 @@
   </div>
 </section>
 
-<!-- Curated row 2 -->
+<!-- Staff picks rail (Curated row 2) -->
+{% if staff_picks %}
 <section>
   <div class="wrap">
     <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;">
       <div>
-        <p class="eyebrow">By season</p>
-        <h2 class="display display-m" style="margin-top: 0.6rem;">Reading the spring<span class="text-accent">.</span></h2>
+        <p class="eyebrow">From the editor</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">Staff picks<span class="text-accent">.</span></h2>
+        {% if staff_picks_collection.description %}<p class="meta" style="margin-top: 0.5rem; max-width: 50ch;">{{ staff_picks_collection.description }}</p>{% endif %}
       </div>
-      <a href="/products/" class="btn-link">See all</a>
+      <a href="/staff-picks/" class="btn-link">All picks</a>
     </div>
     <div class="grid-books">
-      {% for product in seasonal_products|default:featured_products %}
+      {% for product in staff_picks %}
       <a href="/products/{{ product.slug }}/" class="book">
         <div class="cover-wrap">
           {% if product.primary_image %}
@@ -140,6 +142,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <hr class="rule">
 

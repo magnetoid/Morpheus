@@ -68,6 +68,23 @@ def home(request):
     # Templates use snake_case; GraphQL returns camelCase. Normalise.
     data.setdefault('featured_products', data.get('featuredProducts', []) or [])
     data.setdefault('seasonal_products', data.get('featured_products', []))
+
+    # Staff picks rail — same fallback chain as the dedicated /staff-picks/ page.
+    try:
+        from plugins.installed.catalog.models import Collection, Product
+        sp_collection = (
+            Collection.objects.filter(slug='staff-picks', is_active=True).first()
+            or Collection.objects.filter(slug='editors-pick-april', is_active=True).first()
+        )
+        sp_products = list(
+            Product.objects.filter(status='active', collections=sp_collection)
+            .order_by('-is_featured', '-created_at')[:8]
+        ) if sp_collection else []
+    except Exception:  # noqa: BLE001
+        sp_collection, sp_products = None, []
+    data['staff_picks_collection'] = sp_collection
+    data['staff_picks'] = sp_products
+
     return render(request, 'storefront/home.html', data)
 
 
@@ -96,6 +113,28 @@ def product_list(request):
     tag_slug = (request.GET.get('tag') or '').strip()
     if tag_slug:
         qs = qs.filter(tags__name__iexact=tag_slug)
+
+    # Book metafield filters — `?author=Hanna Rieder`, `?publisher=Pelican Press`.
+    # We narrow the queryset to products whose Metafield in namespace 'book'
+    # matches the requested value (case-insensitive). Any failure (plugin
+    # missing, table absent) is swallowed — the filter just becomes a no-op.
+    book_filter = {}
+    for qk in ('author', 'publisher'):
+        v = (request.GET.get(qk) or '').strip()
+        if v:
+            book_filter[qk] = v
+    if book_filter:
+        try:
+            from django.contrib.contenttypes.models import ContentType
+            from plugins.installed.metafields.models import Metafield
+            ct = ContentType.objects.get_for_model(Product)
+            for qk, v in book_filter.items():
+                ids = Metafield.objects.filter(
+                    content_type=ct, namespace='book', key=qk, value__iexact=v,
+                ).values_list('object_id', flat=True)
+                qs = qs.filter(id__in=list(ids))
+        except Exception:  # noqa: BLE001
+            pass
 
     # Price range
     pmin = request.GET.get('price_min')
@@ -200,9 +239,15 @@ def _apply_search(qs, q: str):
     Builds a SearchVector over name + short_description + tags and orders
     by SearchRank. Falls back to ILIKE on non-Postgres backends so the
     storefront still works in dev sqlite without crashing.
+
+    Also unions in product IDs whose `book.*` metafields (author /
+    publisher / isbn) match the query — so "Hanna Rieder" and a 13-digit
+    ISBN both find the right title.
     """
     from django.db import connection
     from django.db.models import Q
+
+    metafield_ids = _metafield_search_ids(q)
 
     if connection.vendor == 'postgresql':
         try:
@@ -217,7 +262,7 @@ def _apply_search(qs, q: str):
             search_q = SearchQuery(q, search_type='websearch')
             return (
                 qs.annotate(_rank=SearchRank(vector, search_q))
-                .filter(Q(_rank__gt=0) | Q(sku__iexact=q))
+                .filter(Q(_rank__gt=0) | Q(sku__iexact=q) | Q(id__in=metafield_ids))
                 .order_by('-_rank', '-created_at')
             )
         except Exception:  # noqa: BLE001 — fall through to LIKE
@@ -227,7 +272,25 @@ def _apply_search(qs, q: str):
         Q(name__icontains=q)
         | Q(short_description__icontains=q)
         | Q(sku__iexact=q)
+        | Q(id__in=metafield_ids)
     )
+
+
+def _metafield_search_ids(q: str) -> list:
+    """Return product IDs whose book.author/publisher/isbn metafield contains q.
+    Returns [] silently if metafields plugin is absent or queries fail."""
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.metafields.models import Metafield
+        ct = ContentType.objects.get_for_model(Product)
+        return list(Metafield.objects.filter(
+            content_type=ct, namespace='book',
+            key__in=('author', 'publisher', 'isbn'),
+            value__icontains=q,
+        ).values_list('object_id', flat=True))
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def product_detail(request, slug):
@@ -245,21 +308,23 @@ def product_detail(request, slug):
 
 
 # Book-specific metafields rendered as a clean Specifications card on the PDP.
-# Order is the display order; missing keys are skipped silently. Add a key here
-# (and store a Metafield with namespace='book') to surface a new field.
+# Order is the display order; missing keys are skipped silently. The third
+# tuple element is a query-string key to link the value to the product list
+# as a filter (e.g. Author → /products/?author=Hanna+Rieder); falsy means
+# render plain text.
 _BOOK_SPEC_FIELDS = (
-    ('author', 'Author'),
-    ('publisher', 'Publisher'),
-    ('published_year', 'Year'),
-    ('format', 'Format'),
-    ('pages', 'Pages'),
-    ('language', 'Language'),
-    ('isbn', 'ISBN'),
+    ('author',         'Author',     'author'),
+    ('publisher',      'Publisher',  'publisher'),
+    ('published_year', 'Year',       ''),
+    ('format',         'Format',     ''),
+    ('pages',          'Pages',      ''),
+    ('language',       'Language',   ''),
+    ('isbn',           'ISBN',       ''),
 )
 
 
-def _book_specs(slug: str) -> list[tuple[str, str]]:
-    """Return ``[(label, value), ...]`` of book metafields for the PDP.
+def _book_specs(slug: str) -> list[dict]:
+    """Return ``[{label, value, link?}, ...]`` of book metafields for the PDP.
     Fails closed — bad data never breaks the page."""
     try:
         from plugins.installed.catalog.models import Product
@@ -273,12 +338,16 @@ def _book_specs(slug: str) -> list[tuple[str, str]]:
         meta = Metafield.objects.for_obj(product, ns='book')
     except Exception:  # noqa: BLE001
         return []
+    from urllib.parse import urlencode
     out = []
-    for key, label in _BOOK_SPEC_FIELDS:
+    for key, label, query_key in _BOOK_SPEC_FIELDS:
         value = meta.get(f'book.{key}') or meta.get(key)
         if value in (None, ''):
             continue
-        out.append((label, str(value)))
+        spec = {'label': label, 'value': str(value), 'link': ''}
+        if query_key:
+            spec['link'] = '/products/?' + urlencode({query_key: str(value)})
+        out.append(spec)
     return out
 
 
@@ -698,6 +767,86 @@ _JOURNAL_ENTRIES = [
 
 def about(request):
     return render(request, 'storefront/about.html')
+
+
+# Editorial intros for genre landing pages. The merchant can override any of
+# these by giving the matching Category a non-empty `description` — that wins.
+_CATEGORY_INTROS = {
+    'fiction': {
+        'eyebrow': 'On the shelf — fiction',
+        'lede':    'Contemporary literary novels we couldn\'t put down. Slow-burn debuts, '
+                   'patient experiments in form, and the occasional re-read of something we still mean.',
+    },
+    'nonfiction': {
+        'eyebrow': 'On the shelf — non-fiction',
+        'lede':    'Subject-matter we wanted to live with for a week. Cultural history, science writing '
+                   'that earns its metaphors, and ideas books that don\'t mistake length for depth.',
+    },
+    'poetry': {
+        'eyebrow': 'On the shelf — poetry',
+        'lede':    'Pamphlets, debut collections, and chapbook-thin volumes you can finish in a sitting '
+                   'and reopen for years. Read aloud at least once.',
+    },
+    'essays': {
+        'eyebrow': 'On the shelf — essays',
+        'lede':    'Long-form personal and cultural essays. The kind that show up in an annual best-of '
+                   'and earn the placement.',
+    },
+    'art-design': {
+        'eyebrow': 'On the shelf — art & design',
+        'lede':    'Monographs and field guides. Books that teach you how to look, then make you want to.',
+    },
+    'children': {
+        'eyebrow': 'On the shelf — children',
+        'lede':    'Picture books, board books, and early-reader stories that hold up to the 200-times test.',
+    },
+}
+
+
+def category_detail(request, slug):
+    """Category landing — products in the category plus editorial framing.
+    Falls back to hardcoded intros when the merchant hasn't written a
+    Category.description yet."""
+    from morpheus.views import Http404
+    from plugins.installed.catalog.models import Category, Product
+
+    category = Category.objects.filter(slug=slug).first()
+    if category is None:
+        raise Http404
+    products = list(
+        Product.objects.filter(status='active', category=category)
+        .select_related('category')
+        .order_by('-is_featured', '-created_at')[:60]
+    )
+    intro = _CATEGORY_INTROS.get(slug, {})
+    return render(request, 'storefront/category_detail.html', {
+        'category': category,
+        'products': products,
+        'intro_eyebrow': category.description and 'On the shelf' or intro.get('eyebrow', 'On the shelf'),
+        'intro_lede':    category.description or intro.get('lede', ''),
+    })
+
+
+def staff_picks(request):
+    """Curated staff picks — uses the 'staff-picks' Collection if one exists,
+    falling back to 'editors-pick-april' (seeded by demo_data) so a fresh
+    install is not empty."""
+    from plugins.installed.catalog.models import Collection, Product
+
+    collection = (
+        Collection.objects.filter(slug='staff-picks', is_active=True).first()
+        or Collection.objects.filter(slug='editors-pick-april', is_active=True).first()
+    )
+    products = []
+    if collection is not None:
+        products = list(
+            Product.objects.filter(status='active', collections=collection)
+            .order_by('-is_featured', '-created_at')[:30]
+        )
+    return render(request, 'storefront/staff_picks.html', {
+        'collection': collection,
+        'products': products,
+    })
 
 
 def contact(request):

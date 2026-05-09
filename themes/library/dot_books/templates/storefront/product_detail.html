@@ -85,9 +85,11 @@
         <div style="margin: 1.5rem 0;">
           <p class="eyebrow" style="margin-bottom: 0.75rem;">About this edition</p>
           <dl style="display:grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; font-size: 0.92rem; color: var(--ink-2); line-height: 1.5;">
-            {% for label, value in book_specs %}
-            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ label }}</dt>
-            <dd style="margin: 0;">{{ value }}</dd>
+            {% for spec in book_specs %}
+            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ spec.label }}</dt>
+            <dd style="margin: 0;">
+              {% if spec.link %}<a href="{{ spec.link }}" style="border-bottom: 1px dotted var(--rule);">{{ spec.value }}</a>{% else %}{{ spec.value }}{% endif %}
+            </dd>
             {% endfor %}
           </dl>
         </div>

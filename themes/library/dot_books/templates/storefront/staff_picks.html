@@ -1,0 +1,48 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}Staff picks — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">Editor's notebook</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      Staff picks<span class="text-accent">.</span>
+    </h1>
+    <p class="lede">
+      {% if collection.description %}{{ collection.description }}{% else %}A small rotating shelf of titles we'd hand a friend without hesitation. Updated when there's a reason — never on a schedule.{% endif %}
+    </p>
+  </div>
+</section>
+
+<section style="padding-top: 1.5rem; padding-bottom: 5rem;">
+  <div class="wrap">
+    {% if products %}
+    <div class="grid-books">
+      {% for p in products %}
+      <a href="/products/{{ p.slug }}/" class="book">
+        <div class="cover-wrap">
+          {% if p.primary_image %}
+            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}">
+          {% else %}
+            <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
+          {% endif %}
+          {% if p.is_on_sale %}<span class="ribbon">{{ p.discount_percentage }}% off</span>{% endif %}
+        </div>
+        <div>
+          <p class="title">{{ p.name }}</p>
+          <p class="author">{{ p.short_description|truncatewords:8 }}</p>
+          <p class="price">{{ p.price|money }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 6rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="display display-m" style="margin: 0 0 1rem;">No picks live yet<span class="text-accent">.</span></p>
+      <p class="lede" style="margin: 0 auto;">The editor is still drafting. Check the <a href="/products/" style="border-bottom: 1px dotted var(--rule);">full shelf</a> for what's currently in.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

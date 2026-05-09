@@ -12,7 +12,7 @@
     {% if categories %}
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem;">
       {% for cat in categories %}
-      <a href="/products/?category={{ cat.slug }}" class="book" style="display: block; text-decoration: none;">
+      <a href="/category/{{ cat.slug }}/" class="book" style="display: block; text-decoration: none;">
         <div class="cover-wrap" style="aspect-ratio: 16/9; border-radius: 6px;">
           {% if cat.image %}
             <img src="{{ cat.image.url }}" alt="{{ cat.name }}">

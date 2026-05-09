@@ -22,6 +22,7 @@ urlpatterns = [
     path('journal/', views.journal_index, name='journal_index'),
     path('journal/<slug:slug>/', views.journal_detail, name='journal_detail'),
     path('categories/', views.categories, name='categories'),
+    path('category/<slug:slug>/', views.category_detail, name='category_detail'),
 
     # Customer account
     path('account/', views.account_home, name='account_home'),
@@ -43,7 +44,7 @@ urlpatterns = [
 
     # Generic placeholder pages (footer links without first-class content yet)
     path('stockists/', views.coming_soon, {'slug': 'stockists'}, name='stockists'),
-    path('staff-picks/', views.coming_soon, {'slug': 'staff-picks'}, name='staff_picks'),
+    path('staff-picks/', views.staff_picks, name='staff_picks'),
     path('shipping/', views.coming_soon, {'slug': 'shipping'}, name='shipping'),
     path('returns/', views.coming_soon, {'slug': 'returns'}, name='returns'),
 ]
