@@ -1,16 +1,36 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% block title %}All books — dot books{% endblock %}
+{% block title %}{% if selected_author %}Books by {{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }} titles{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif search_query %}Search: {{ search_query }}{% else %}All books{% endif %} — dot books{% endblock %}
 
 {% block content %}
 <section style="padding: 3rem 0 2rem;">
   <div class="wrap">
     <p class="eyebrow">The shelf</p>
     <h1 class="display display-l" style="margin: 1rem 0;">
-      {% if search_query %}Results for "<em>{{ search_query }}</em>"<span class="text-accent">.</span>
+      {% if selected_author %}Books by {{ selected_author }}<span class="text-accent">.</span>
+      {% elif selected_publisher %}{{ selected_publisher }} titles<span class="text-accent">.</span>
+      {% elif selected_category_obj %}{{ selected_category_obj.name }}<span class="text-accent">.</span>
+      {% elif search_query %}Results for "<em>{{ search_query }}</em>"<span class="text-accent">.</span>
       {% else %}Every book on the shelf<span class="text-accent">.</span>{% endif %}
     </h1>
-    <p class="lede">Independent, modern, hand-curated. Filter by genre or publisher. The shelf rotates every Tuesday.</p>
+    <p class="lede">{% if selected_author %}Every title we shelf by {{ selected_author }}.{% elif selected_publisher %}From {{ selected_publisher }} — only the editions we'd hand a friend.{% else %}Independent, modern, hand-curated. Filter by genre or publisher. The shelf rotates every Tuesday.{% endif %}</p>
+
+    {# Active filter chips — clickable to remove. Shown when any filter is active. #}
+    {% if selected_author or selected_publisher or selected_category or selected_tag or search_query %}
+    <div style="display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.25rem;">
+      {% if search_query %}<a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Search: {{ search_query }} ✕</a>{% endif %}
+      {% if selected_author %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Author: {{ selected_author }} ✕</a>{% endif %}
+      {% if selected_publisher %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Publisher: {{ selected_publisher }} ✕</a>{% endif %}
+      {% if selected_category %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Genre: {{ selected_category_obj.name|default:selected_category }} ✕</a>{% endif %}
+      {% if selected_tag %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}" class="chip">Tag: {{ selected_tag }} ✕</a>{% endif %}
+      <a href="/products/" class="chip chip-clear">Clear all</a>
+    </div>
+    <style>
+      .chip { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .8rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper); font-size:.8rem; color:var(--ink-2); transition:border-color .15s, color .15s; }
+      .chip:hover { border-color:var(--ink); color:var(--ink); }
+      .chip-clear { color:var(--accent); border-style:dashed; }
+    </style>
+    {% endif %}
 
     <form method="get" style="display:flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem; align-items: center;">
       <div style="position: relative; flex: 1; min-width: 240px; max-width: 480px;">

@@ -226,7 +226,10 @@ def product_list(request):
         'facets': facets,
         'search_query': q,
         'selected_category': cat_slug,
+        'selected_category_obj': next((c for c in categories if c.slug == cat_slug), None),
         'selected_tag': tag_slug,
+        'selected_author': book_filter.get('author', ''),
+        'selected_publisher': book_filter.get('publisher', ''),
         'selected_sort': sort,
         'price_min': pmin or '',
         'price_max': pmax or '',
@@ -827,6 +830,10 @@ def category_detail(request, slug):
         'products': products,
         'intro_eyebrow': category.description and 'On the shelf' or intro.get('eyebrow', 'On the shelf'),
         'intro_lede':    category.description or intro.get('lede', ''),
+        # SEO meta — picked up by base.html's seo_meta tag.
+        'seo_title':       f'{category.name} — dot books',
+        'seo_description': category.description or intro.get('lede', '')[:160],
+        'seo_og_type':     'website',
     })
 
 
@@ -846,9 +853,16 @@ def staff_picks(request):
             Product.objects.filter(status='active', collections=collection)
             .order_by('-is_featured', '-created_at')[:30]
         )
+    description = (
+        collection.description if collection and collection.description
+        else 'A small rotating shelf of titles we’d hand a friend without hesitation.'
+    )
     return render(request, 'storefront/staff_picks.html', {
         'collection': collection,
         'products': products,
+        'seo_title':       'Staff picks — dot books',
+        'seo_description': description[:160],
+        'seo_og_type':     'website',
     })
 
 
@@ -890,7 +904,12 @@ def journal_index(request):
     except Exception:  # noqa: BLE001 — CMS not installed / db not migrated
         cms_entries = []
     entries = cms_entries or _JOURNAL_ENTRIES
-    return render(request, 'storefront/journal_index.html', {'entries': entries})
+    return render(request, 'storefront/journal_index.html', {
+        'entries': entries,
+        'seo_title':       'Journal — dot books',
+        'seo_description': 'Notes, essays, short pieces from the booksellers. Updated when there\'s something to say.',
+        'seo_og_type':     'website',
+    })
 
 
 def journal_detail(request, slug):
@@ -905,7 +924,12 @@ def journal_detail(request, slug):
         entry = next((e for e in _JOURNAL_ENTRIES if e['slug'] == slug), None)
     if entry is None:
         raise Http404
-    return render(request, 'storefront/journal_detail.html', {'entry': entry})
+    return render(request, 'storefront/journal_detail.html', {
+        'entry': entry,
+        'seo_title':       f'{entry["title"]} — Journal — dot books',
+        'seo_description': entry.get('excerpt', '')[:160],
+        'seo_og_type':     'article',
+    })
 
 
 def categories(request):

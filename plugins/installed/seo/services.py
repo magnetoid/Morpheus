@@ -239,7 +239,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
             }
         for c in Category.objects.filter(is_active=True).only('slug', 'updated_at'):
             yield {
-                'loc': urljoin(base, f'/products/?category={c.slug}'),
+                'loc': urljoin(base, f'/category/{c.slug}/'),
                 'lastmod': c.updated_at.isoformat() if c.updated_at else '',
                 'changefreq': 'weekly',
                 'priority': '0.6',
@@ -253,6 +253,26 @@ def iter_sitemap_entries() -> Iterable[dict]:
             }
     except Exception as e:  # noqa: BLE001 — catalog plugin is optional
         logger.debug('seo: sitemap catalog skipped: %s', e)
+
+    # Static editorial routes shipped by the storefront plugin. These don't
+    # have model rows so they're hard-coded here; cheap and stable.
+    for path in ('/products/', '/staff-picks/', '/about/', '/contact/', '/journal/'):
+        yield {'loc': urljoin(base, path), 'changefreq': 'weekly', 'priority': '0.7'}
+
+    # Journal entries — pulled from cms.Page rows tagged metadata.category=='journal'.
+    try:
+        from plugins.installed.cms.models import Page
+        for j in (Page.objects
+                  .filter(state='published', metadata__category='journal')
+                  .only('slug', 'updated_at')):
+            yield {
+                'loc': urljoin(base, f'/journal/{j.slug}/'),
+                'lastmod': j.updated_at.isoformat() if j.updated_at else '',
+                'changefreq': 'monthly',
+                'priority': '0.5',
+            }
+    except Exception as e:  # noqa: BLE001 — cms plugin is optional
+        logger.debug('seo: sitemap journal skipped: %s', e)
 
     try:
         from plugins.installed.seo.models import SitemapEntry
