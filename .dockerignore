@@ -17,8 +17,10 @@ dist/
 .idea/
 .vscode/
 db.sqlite3
-media/
-staticfiles/
+# Anchor with leading slash so we only drop Django's top-level MEDIA_ROOT
+# and STATIC_ROOT, not e.g. plugins/installed/media/.
+/media/
+/staticfiles/
 *.log
 .env
 
