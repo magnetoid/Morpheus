@@ -118,5 +118,32 @@ class ShippingPlugin(Plugin):
                     'type': 'boolean', 'default': False,
                     'title': 'Apply tax to shipping cost',
                 },
+                # ── Carrier credentials ────────────────────────────
+                # Used by carrier_shippo / carrier_easypost rate types.
+                # Origin address is supplied as JSON so it can hold
+                # the full {name, street1, city, state, zip, country}
+                # shape both adapters expect.
+                'shippo_api_key': {
+                    'type': 'string', 'default': '',
+                    'title': 'Shippo · API key',
+                    'description': 'Live rates + label printing via goshippo.com. '
+                                   'ShippoToken from your dashboard.',
+                },
+                'shippo_default_address': {
+                    'type': 'object', 'default': {},
+                    'title': 'Shippo · Origin address',
+                    'description': 'Where parcels ship from. JSON object with '
+                                   'street1, city, state, zip, country.',
+                },
+                'easypost_api_key': {
+                    'type': 'string', 'default': '',
+                    'title': 'EasyPost · API key',
+                    'description': 'Live rates + labels via easypost.com.',
+                },
+                'easypost_default_address': {
+                    'type': 'object', 'default': {},
+                    'title': 'EasyPost · Origin address',
+                    'description': 'Falls back to Shippo origin if blank.',
+                },
             },
         }

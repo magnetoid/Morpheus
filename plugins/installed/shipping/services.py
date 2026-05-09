@@ -56,9 +56,220 @@ def _tier_amount(tiers: list, value: Decimal, currency: str) -> Optional[Money]:
 
 
 def _carrier_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
-    """Stub for carrier integrations. Return None if the adapter isn't configured."""
-    logger.debug('shipping: carrier %s not yet implemented; treating as no-quote', rate.computation)
+    """Carrier-API quote. Routes by rate.computation:
+
+      * carrier_shippo   → Shippo (https://goshippo.com)
+      * carrier_easypost → EasyPost (https://easypost.com)
+      * any other        → no quote (returns None)
+
+    All adapters fail-soft — missing API key, network error, malformed
+    response → log + return None. The caller treats no-quote as "this
+    rate is unavailable for this cart" and skips it.
+
+    Carrier credentials come from the shipping plugin's config:
+      shipping.config:
+        shippo_api_key, shippo_default_address (origin),
+        easypost_api_key, easypost_default_address.
+    """
+    if rate.computation == 'carrier_shippo':
+        return _shippo_quote(rate, subtotal=subtotal, total_weight_kg=total_weight_kg)
+    if rate.computation == 'carrier_easypost':
+        return _easypost_quote(rate, subtotal=subtotal, total_weight_kg=total_weight_kg)
+    logger.debug('shipping: unknown carrier rule %s', rate.computation)
     return None
+
+
+def _shipping_config() -> dict:
+    """Resolve the shipping plugin's PluginConfig.config_data, fail-soft."""
+    try:
+        from plugins.models import PluginConfig
+        cfg = PluginConfig.objects.filter(plugin_name='shipping').first()
+        return dict(cfg.config_data or {}) if cfg else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _shippo_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
+    """Live rate from Shippo's REST API. ~1 RTT, cached at the cart layer.
+
+    Each ShippingRate row carries the Shippo `servicelevel.token` it
+    represents (e.g. ``usps_priority``) in `metadata`. We send a single
+    Shipment to Shippo and return the matching rate. If the row's token
+    is empty, we return the cheapest available rate from any carrier.
+    """
+    cfg = _shipping_config()
+    api_key = (cfg.get('shippo_api_key') or '').strip()
+    if not api_key:
+        logger.debug('shippo: no api key configured')
+        return None
+    origin = cfg.get('shippo_default_address') or {}
+    if not (origin.get('country') and origin.get('zip')):
+        logger.debug('shippo: origin address missing country/zip')
+        return None
+
+    metadata = getattr(rate, 'metadata', None) or {}
+    token = (metadata.get('shippo_servicelevel') or '').strip()
+
+    try:
+        import requests
+    except ImportError:
+        logger.warning('shippo: `requests` not installed')
+        return None
+
+    # Customer address must come from the cart shipping address; we
+    # accept either pre-resolved on the cart metadata or a fallback to
+    # the rate's zone country (cheap, but a real rate needs an actual
+    # postcode + city).
+    cart_meta = getattr(getattr(rate, '_cart', None), 'metadata', None) or {}
+    dest = cart_meta.get('shipping_address') or {}
+    if not (dest.get('country') and dest.get('zip', dest.get('postal_code'))):
+        logger.debug('shippo: destination missing country + zip')
+        return None
+
+    weight_kg = max(total_weight_kg, Decimal('0.05'))  # Shippo rejects 0
+    weight_g = int(weight_kg * Decimal('1000'))
+
+    payload = {
+        'address_from': {
+            'name': origin.get('name', 'Warehouse'),
+            'street1': origin.get('street1', origin.get('line1', '')),
+            'city': origin.get('city', ''),
+            'state': origin.get('state', ''),
+            'zip': origin.get('zip', origin.get('postal_code', '')),
+            'country': origin.get('country', 'US'),
+        },
+        'address_to': {
+            'name': dest.get('name', 'Customer'),
+            'street1': dest.get('street1', dest.get('line1', '')),
+            'city': dest.get('city', ''),
+            'state': dest.get('state', ''),
+            'zip': dest.get('zip', dest.get('postal_code', '')),
+            'country': dest.get('country', ''),
+        },
+        'parcels': [{
+            'length': '10', 'width': '10', 'height': '10',
+            'distance_unit': 'cm',
+            'weight': str(weight_g), 'mass_unit': 'g',
+        }],
+        'async': False,
+    }
+    try:
+        resp = requests.post(
+            'https://api.goshippo.com/shipments/',
+            json=payload,
+            headers={'Authorization': f'ShippoToken {api_key}'},
+            timeout=8,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:  # noqa: BLE001 — log + soft-fail
+        logger.warning('shippo: API call failed: %s', e)
+        return None
+
+    rates_returned = data.get('rates') or []
+    if not rates_returned:
+        return None
+
+    # Filter to the merchant-selected service level if one is bound.
+    if token:
+        rates_returned = [
+            r for r in rates_returned
+            if (r.get('servicelevel') or {}).get('token') == token
+        ]
+        if not rates_returned:
+            return None
+
+    cheapest = min(rates_returned, key=lambda r: Decimal(str(r.get('amount') or '0')))
+    try:
+        amount = Decimal(str(cheapest.get('amount') or '0'))
+    except Exception:  # noqa: BLE001
+        return None
+    currency = (cheapest.get('currency') or str(subtotal.currency))
+    return Money(amount, currency)
+
+
+def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
+    """Live rate from EasyPost. Mirrors Shippo's shape — same envelope,
+    different endpoint + auth.
+    """
+    cfg = _shipping_config()
+    api_key = (cfg.get('easypost_api_key') or '').strip()
+    if not api_key:
+        return None
+    origin = cfg.get('easypost_default_address') or cfg.get('shippo_default_address') or {}
+    if not (origin.get('country') and origin.get('zip', origin.get('postal_code'))):
+        return None
+
+    try:
+        import requests
+    except ImportError:
+        return None
+
+    cart_meta = getattr(getattr(rate, '_cart', None), 'metadata', None) or {}
+    dest = cart_meta.get('shipping_address') or {}
+    if not (dest.get('country') and dest.get('zip', dest.get('postal_code'))):
+        return None
+
+    weight_kg = max(total_weight_kg, Decimal('0.05'))
+    weight_oz = float(weight_kg * Decimal('35.274'))
+
+    metadata = getattr(rate, 'metadata', None) or {}
+    target_carrier = (metadata.get('easypost_carrier') or '').strip().lower()
+    target_service = (metadata.get('easypost_service') or '').strip().lower()
+
+    try:
+        resp = requests.post(
+            'https://api.easypost.com/v2/shipments',
+            auth=(api_key, ''),
+            json={
+                'shipment': {
+                    'to_address': {
+                        'street1': dest.get('street1', dest.get('line1', '')),
+                        'city': dest.get('city', ''),
+                        'state': dest.get('state', ''),
+                        'zip': dest.get('zip', dest.get('postal_code', '')),
+                        'country': dest.get('country', ''),
+                    },
+                    'from_address': {
+                        'street1': origin.get('street1', origin.get('line1', '')),
+                        'city': origin.get('city', ''),
+                        'state': origin.get('state', ''),
+                        'zip': origin.get('zip', origin.get('postal_code', '')),
+                        'country': origin.get('country', 'US'),
+                    },
+                    'parcel': {
+                        'length': 6, 'width': 4, 'height': 2,
+                        'weight': weight_oz,
+                    },
+                },
+            },
+            timeout=8,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:  # noqa: BLE001
+        logger.warning('easypost: API call failed: %s', e)
+        return None
+
+    rates_returned = data.get('rates') or []
+    if not rates_returned:
+        return None
+    if target_carrier:
+        rates_returned = [r for r in rates_returned
+                          if (r.get('carrier') or '').lower() == target_carrier]
+    if target_service:
+        rates_returned = [r for r in rates_returned
+                          if (r.get('service') or '').lower() == target_service]
+    if not rates_returned:
+        return None
+
+    cheapest = min(rates_returned, key=lambda r: Decimal(str(r.get('rate') or '0')))
+    try:
+        amount = Decimal(str(cheapest.get('rate') or '0'))
+    except Exception:  # noqa: BLE001
+        return None
+    currency = (cheapest.get('currency') or str(subtotal.currency))
+    return Money(amount, currency)
 
 
 def list_available_rates(*, cart, country: str, region: str = ''):
