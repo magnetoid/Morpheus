@@ -72,9 +72,13 @@
             <code data-row-section-id class="text-xs text-[color:var(--text-muted)]"></code>
           </div>
           <details class="mt-2">
-            <summary class="text-xs text-[color:var(--text-muted)] cursor-pointer">Settings (JSON)</summary>
-            <textarea data-settings rows="6" class="input mt-2 font-mono text-xs"
-                      style="width: 100%;"></textarea>
+            <summary class="text-xs text-[color:var(--text-muted)] cursor-pointer">Settings</summary>
+            <div data-settings-fields class="mt-2 space-y-2"></div>
+            <details class="mt-2">
+              <summary class="text-[10px] text-[color:var(--text-subtle)] cursor-pointer">Raw JSON</summary>
+              <textarea data-settings-json rows="5" class="input mt-2 font-mono text-xs"
+                        style="width: 100%;"></textarea>
+            </details>
             <div class="flex items-center justify-end mt-2">
               <button type="button" class="btn btn-primary text-xs" data-save>Save settings</button>
             </div>
@@ -134,15 +138,115 @@
     return SECTIONS.find(s => s.id === id);
   }
 
+  function buildFields(container, def, settings) {
+    container.innerHTML = '';
+    const fields = (def.schema && def.schema.fields) || [];
+    if (!fields.length) {
+      container.innerHTML = '<p style="font-size:.7rem; color: var(--text-muted); margin: 0;">This section has no configurable fields.</p>';
+      return;
+    }
+    fields.forEach(f => {
+      const wrap = document.createElement('div');
+      const label = document.createElement('label');
+      label.className = 'block text-xs font-medium mb-1';
+      label.textContent = (f.label || f.name) + (f.required ? ' *' : '');
+      wrap.appendChild(label);
+
+      const value = settings && Object.prototype.hasOwnProperty.call(settings, f.name)
+                  ? settings[f.name] : '';
+      let input;
+      if (f.type === 'text') {
+        input = document.createElement('textarea');
+        input.rows = 3;
+        input.className = 'input';
+        input.style.cssText = 'font-size:.75rem;';
+        input.value = (value == null) ? '' : String(value);
+      } else if (f.type === 'integer' || f.type === 'number') {
+        input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'input';
+        input.style.fontSize = '.75rem';
+        if (f.min != null) input.min = f.min;
+        if (f.max != null) input.max = f.max;
+        if (f.type === 'integer') input.step = '1';
+        input.value = (value == null) ? '' : String(value);
+      } else if (f.type === 'enum') {
+        input = document.createElement('select');
+        input.className = 'input';
+        input.style.fontSize = '.75rem';
+        (f.options || []).forEach(opt => {
+          const o = document.createElement('option');
+          o.value = String(opt);
+          o.textContent = String(opt);
+          if (String(value) === String(opt)) o.selected = true;
+          input.appendChild(o);
+        });
+      } else if (f.type === 'boolean') {
+        input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = !!value;
+      } else if (f.type === 'json') {
+        input = document.createElement('textarea');
+        input.rows = 5;
+        input.className = 'input font-mono';
+        input.style.cssText = 'font-size:.7rem;';
+        try { input.value = JSON.stringify(value || [], null, 2); }
+        catch (_) { input.value = '[]'; }
+      } else {
+        // string / url / image / file_id — plain text input.
+        input = document.createElement('input');
+        input.type = (f.type === 'url') ? 'url' : 'text';
+        input.className = 'input';
+        input.style.fontSize = '.75rem';
+        input.value = (value == null) ? '' : String(value);
+      }
+      input.dataset.fieldName = f.name;
+      input.dataset.fieldType = f.type || 'string';
+      wrap.appendChild(input);
+      if (f.help) {
+        const hint = document.createElement('p');
+        hint.className = 'text-xs';
+        hint.style.cssText = 'font-size:.65rem; color:var(--text-muted); margin:.2rem 0 0;';
+        hint.textContent = f.help;
+        wrap.appendChild(hint);
+      }
+      container.appendChild(wrap);
+    });
+  }
+
+  function readFields(container) {
+    const out = {};
+    container.querySelectorAll('[data-field-name]').forEach(input => {
+      const name = input.dataset.fieldName;
+      const t = input.dataset.fieldType;
+      if (t === 'integer') {
+        const v = input.value.trim();
+        out[name] = v === '' ? null : parseInt(v, 10);
+      } else if (t === 'number') {
+        const v = input.value.trim();
+        out[name] = v === '' ? null : parseFloat(v);
+      } else if (t === 'boolean') {
+        out[name] = !!input.checked;
+      } else if (t === 'json') {
+        try { out[name] = JSON.parse(input.value || 'null'); }
+        catch (_) { out[name] = input.value; }  // surface raw on parse error
+      } else {
+        out[name] = input.value;
+      }
+    });
+    return out;
+  }
+
   function renderRow(row) {
     const li = tpl.content.firstElementChild.cloneNode(true);
     li.dataset.id = row.id;
     li.dataset.sectionId = row.section_id;
-    const def = findSection(row.section_id) || { label: row.section_id, icon: 'square' };
+    const def = findSection(row.section_id) || { label: row.section_id, icon: 'square', schema: { fields: [] } };
     li.querySelector('[data-row-label]').textContent = def.label;
     li.querySelector('[data-row-section-id]').textContent = '(' + row.section_id + ')';
     li.querySelector('[data-row-icon]').setAttribute('data-lucide', def.icon || 'square');
-    li.querySelector('[data-settings]').value = JSON.stringify(row.settings || {}, null, 2);
+    buildFields(li.querySelector('[data-settings-fields]'), def, row.settings || {});
+    li.querySelector('[data-settings-json]').value = JSON.stringify(row.settings || {}, null, 2);
 
     if (!row.is_visible) li.style.opacity = '.55';
 
@@ -229,10 +333,29 @@
   }
 
   function saveSettings(li) {
-    const ta = li.querySelector('[data-settings]');
+    // Read every typed field, then layer the raw-JSON escape hatch on
+    // top so power users can still add un-schema'd keys.
+    const fieldsCt = li.querySelector('[data-settings-fields]');
+    const ta = li.querySelector('[data-settings-json]');
+    const merged = readFields(fieldsCt);
+    if (ta && ta.value.trim()) {
+      try {
+        const raw = JSON.parse(ta.value);
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          // Keys present in `merged` win — typed fields are the source
+          // of truth. JSON textarea adds extra keys + un-schema'd values.
+          Object.keys(raw).forEach(k => {
+            if (!(k in merged)) merged[k] = raw[k];
+          });
+        }
+      } catch (e) {
+        setStatus('JSON escape hatch: ' + e.message, 'error');
+        return;
+      }
+    }
     setStatus('Saving…');
     const fd = new FormData();
-    fd.append('settings', ta.value);
+    fd.append('settings', JSON.stringify(merged));
     fetch(`/dashboard/pages/${PAGE_ID}/builder/${li.dataset.id}/update/`, {
       method: 'POST', credentials: 'same-origin', body: fd,
       headers: { 'X-CSRFToken': csrf() },
@@ -240,6 +363,9 @@
       .then(r => r.json())
       .then(data => {
         if (data.error) { setStatus(data.error, 'error'); return; }
+        // Re-sync the JSON textarea with the canonical saved value so
+        // the two views stay in lockstep.
+        if (data.row && ta) ta.value = JSON.stringify(data.row.settings || {}, null, 2);
         setStatus('Saved.', 'success');
         refreshPreview();
       })
