@@ -15,7 +15,7 @@
       <a href="/category/{{ cat.slug }}/" class="book" style="display: block; text-decoration: none;">
         <div class="cover-wrap" style="aspect-ratio: 16/9; border-radius: 6px;">
           {% if cat.image %}
-            <img src="{{ cat.image.url }}" alt="{{ cat.name }}">
+            <img src="{{ cat.image.url }}" alt="{{ cat.name }}" loading="lazy" decoding="async">
           {% else %}
             <div class="placeholder">{{ cat.name }}</div>
           {% endif %}

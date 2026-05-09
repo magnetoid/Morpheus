@@ -23,7 +23,7 @@
       <a href="/products/{{ p.slug }}/" class="book">
         <div class="cover-wrap">
           {% if p.primary_image %}
-            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}">
+            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}" loading="lazy" decoding="async">
           {% else %}
             <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
           {% endif %}

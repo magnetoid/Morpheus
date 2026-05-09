@@ -83,6 +83,8 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.notifications_center',
     'plugins.installed.workflows',
     'plugins.installed.agent_mcp',
+    'plugins.installed.reviews',
+    'plugins.installed.loyalty_points',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

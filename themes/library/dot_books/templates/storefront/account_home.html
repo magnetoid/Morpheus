@@ -40,6 +40,16 @@
         <p class="meta" style="margin-top: .35rem;">Active digital download links.</p>
       </a>
       {% endif %}
+      <a href="/wishlist/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Wishlist</p>
+        <p class="meta" style="margin-top: .35rem;">Saved titles you'd come back to.</p>
+      </a>
+      {% if summary.loyalty_points %}
+      <div class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Reader points <span style="color:var(--accent); font-weight:500;">{{ summary.loyalty_points }}</span></p>
+        <p class="meta" style="margin-top: .35rem;">One point per dollar, earned on every paid order.</p>
+      </div>
+      {% endif %}
       <a href="/account/profile/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
         <p class="title">Profile</p>
         <p class="meta" style="margin-top: .35rem;">Name, email, contact preferences.</p>

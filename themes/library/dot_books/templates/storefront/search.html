@@ -44,7 +44,7 @@
       <a href="/products/{{ p.slug }}/" class="book">
         <div class="cover-wrap">
           {% if p.primaryImage %}
-            <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}">
+            <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}" loading="lazy" decoding="async">
           {% else %}
             <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
           {% endif %}

@@ -308,6 +308,60 @@ def _compute_activity_feed(limit: int = 20) -> list:
     except Exception:  # noqa: BLE001
         pass
 
+    try:
+        from plugins.installed.reviews.models import Review
+        for r in (
+            Review.objects.select_related('product', 'customer')
+            .order_by('-created_at')[: limit]
+        ):
+            who = (r.customer.email if r.customer else 'a reader')
+            items.append({
+                'kind': 'review',
+                'icon': 'star',
+                'label': f'New review on {r.product.name} ({r.rating}/5)',
+                'hint': f'by {who}',
+                'url': f'/admin/reviews/review/{r.id}/change/',
+                'when': r.created_at,
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from plugins.installed.loyalty_points.models import PointsTransaction
+        for tx in (
+            PointsTransaction.objects.select_related('customer')
+            .filter(reason='earn_order')
+            .order_by('-created_at')[: limit]
+        ):
+            who = tx.customer.email if tx.customer else 'a reader'
+            items.append({
+                'kind': 'loyalty',
+                'icon': 'award',
+                'label': f'+{tx.points} reader points to {who}',
+                'hint': tx.note or f'Order #{tx.order_number}',
+                'url': f'/dashboard/customers/?q={who}',
+                'when': tx.created_at,
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from plugins.installed.crm.models import Lead
+        for lead in (
+            Lead.objects.filter(source='newsletter')
+            .order_by('-created_at')[: limit]
+        ):
+            items.append({
+                'kind': 'newsletter',
+                'icon': 'mail',
+                'label': f'Newsletter signup: {lead.email}',
+                'hint': '',
+                'url': f'/dashboard/crm/leads/{lead.id}/',
+                'when': lead.created_at,
+            })
+    except Exception:  # noqa: BLE001
+        pass
+
     # Sort newest first, drop the trailing items past the cap.
     items.sort(key=lambda it: it['when'], reverse=True)
     return items[:limit]

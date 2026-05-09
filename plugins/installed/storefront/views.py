@@ -323,7 +323,40 @@ def product_detail(request, slug):
         'product': product,
         'related_products': related,
         'book_specs': _book_specs(slug),
+        'reviews': _published_reviews(slug),
     })
+
+
+def _published_reviews(slug: str, limit: int = 4) -> list[dict]:
+    """Return ``[{stars, body, author_name, created_at}, ...]`` for the PDP.
+    Pre-computes the star string + author display so the template stays simple."""
+    try:
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.reviews.models import Review
+    except Exception:  # noqa: BLE001 — reviews plugin not installed
+        return []
+    try:
+        product = Product.objects.filter(slug=slug).first()
+        if product is None:
+            return []
+        rows = (Review.objects
+                .filter(product=product, status='published')
+                .select_related('customer')
+                .order_by('-created_at')[:limit])
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for r in rows:
+        full_name = ''
+        if r.customer is not None:
+            full_name = (r.customer.get_full_name() or r.customer.email.split('@')[0]).strip()
+        out.append({
+            'stars': '★' * r.rating + '☆' * (5 - r.rating),
+            'body': r.body,
+            'author_name': full_name or 'A reader',
+            'created_at': r.created_at,
+        })
+    return out
 
 
 # Book-specific metafields rendered as a clean Specifications card on the PDP.
@@ -1087,7 +1120,13 @@ def _account_summary(user) -> dict:
         'gift_card_count': 0,
         'gift_card_total': None,
         'download_count': 0,
+        'loyalty_points': 0,
     }
+    try:
+        from plugins.installed.loyalty_points.services import get_balance as _lb
+        s['loyalty_points'] = _lb(user)
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from plugins.installed.orders.models import Order
         s['orders_count'] = Order.objects.filter(customer=user).count()

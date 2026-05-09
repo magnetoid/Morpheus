@@ -1,0 +1,19 @@
+{# PDP block: write-a-review form (signed-in users only). #}
+{% if request.user.is_authenticated %}
+<details style="margin-top: 1rem;">
+  <summary style="cursor:pointer; font-size:.85rem; color:var(--ink-2); padding:.5rem 0;">★ Write a review</summary>
+  <form method="post" action="/reviews/add/{{ product.id }}/" style="margin-top: .75rem; display: grid; gap: .75rem;">
+    {% csrf_token %}
+    <select name="rating" style="height:40px; padding:0 .9rem; border:1px solid var(--rule); border-radius:8px; background:var(--paper); font-family:var(--sans); font-size:.85rem; max-width:160px;">
+      <option value="5">★★★★★ Loved it</option>
+      <option value="4">★★★★ Good</option>
+      <option value="3">★★★ Okay</option>
+      <option value="2">★★ Meh</option>
+      <option value="1">★ Didn't connect</option>
+    </select>
+    <textarea name="body" rows="3" required placeholder="What did you take from it?"
+              style="width:100%; padding:.6rem .9rem; border:1px solid var(--rule); border-radius:8px; background:var(--paper); font-family:var(--sans); font-size:.92rem;"></textarea>
+    <button type="submit" class="btn btn-ghost" style="font-size:.85rem; align-self:flex-start;">Post review</button>
+  </form>
+</details>
+{% endif %}

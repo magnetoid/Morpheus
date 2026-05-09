@@ -35,7 +35,7 @@
         <a href="/products/{{ pick.slug }}/" class="book" style="max-width: 380px; margin: 0 auto;">
           <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
             {% if pick.primary_image %}
-              <img src="{{ pick.primary_image.image.url }}" alt="{{ pick.name }}">
+              <img src="{{ pick.primary_image.image.url }}" alt="{{ pick.name }}" loading="lazy" decoding="async">
             {% else %}
               <div class="placeholder">{{ pick.name }}</div>
             {% endif %}
@@ -72,7 +72,7 @@
       <a href="/products/{{ product.slug }}/" class="book">
         <div class="cover-wrap">
           {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}">
+            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}
@@ -127,7 +127,7 @@
       <a href="/products/{{ product.slug }}/" class="book">
         <div class="cover-wrap">
           {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}">
+            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}
