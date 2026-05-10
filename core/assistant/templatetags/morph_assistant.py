@@ -5,9 +5,9 @@ Usage in any admin template:
     {% load morph_assistant %}
     {% morph_ask context_label="this order" prefill="investigate order #1234" %}
 
-Renders a small "Ask the Assistant" button. Click → opens the floating
-Assistant panel with the prefill pre-typed in. Pre-fills are URL-aware
-when the templatetag is invoked without args:
+Renders a small "Ask Linda" button. Click → opens the floating Linda
+panel with the prefill pre-typed in. Pre-fills are URL-aware when the
+templatetag is invoked without args:
 
     {% morph_ask %}      ← auto-derives context from request.path
 """
@@ -57,7 +57,7 @@ def morph_ask(context, context_label: str = '', prefill: str = '', label: str = 
         auto_label, auto_prefill = _auto_prefill(request)
         context_label = context_label or auto_label
         prefill = prefill or auto_prefill
-    label = label or 'Ask the Assistant'
+    label = label or 'Ask Linda'
 
     # The button posts a custom event the floating widget listens for.
     return mark_safe(

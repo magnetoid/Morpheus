@@ -5,4 +5,4 @@ class AssistantConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'core.assistant'
     label = 'assistant'
-    verbose_name = 'Morpheus Assistant'
+    verbose_name = 'Linda AI Assistant'

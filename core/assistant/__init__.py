@@ -1,5 +1,5 @@
 """
-core.assistant — the hard-coded Morpheus Assistant.
+core.assistant — Linda, the hard-coded staff AI assistant.
 
 Distinct from `core.agents`. The agents kernel is a programming surface
 that plugins can contribute to. The Assistant is a single, always-available

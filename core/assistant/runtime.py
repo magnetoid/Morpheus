@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from core.assistant.persistence import StoredMessage, get_default_store
-from core.assistant.prompts import ASSISTANT_SYSTEM_PROMPT
+from core.assistant.prompts import build_system_prompt
 from core.assistant.providers import get_default_provider
 
 logger = logging.getLogger('morpheus.assistant')
@@ -41,6 +41,22 @@ class AssistantRunResult:
     duration_ms: int = 0
 
 
+def _format_recent_memories() -> str:
+    """Compact bullet list of remembered facts, prepended each turn.
+    Empty string when nothing's remembered (or the model isn't migrated yet)."""
+    try:
+        from core.assistant.tools.memory import get_recent_memories
+        rows = get_recent_memories(limit=50)
+    except Exception:  # noqa: BLE001
+        return ''
+    if not rows:
+        return ''
+    lines = ['REMEMBERED FACTS — apply silently unless asked:']
+    for r in rows:
+        lines.append(f'  • [{r["scope"]}] {r["key"]}: {r["value"]}')
+    return '\n'.join(lines)
+
+
 def _to_llm_messages(history: list[StoredMessage], user_message: str) -> list[Any]:
     """Convert stored history + new user msg → LLMMessage objects from agents.llm.
 
@@ -58,7 +74,12 @@ def _to_llm_messages(history: list[StoredMessage], user_message: str) -> list[An
             tool_calls: list = field(default_factory=list)
             name: str | None = None
 
-    msgs = [LLMMessage(role='system', content=ASSISTANT_SYSTEM_PROMPT)]
+    msgs = [LLMMessage(role='system', content=build_system_prompt())]
+    # Inject remembered facts (top of turn) so Linda recalls preferences
+    # across sessions without an explicit memory.recall call.
+    memo = _format_recent_memories()
+    if memo:
+        msgs.append(LLMMessage(role='system', content=memo))
     for h in history:
         if h.role == 'tool':
             msgs.append(LLMMessage(
@@ -72,13 +93,13 @@ def _to_llm_messages(history: list[StoredMessage], user_message: str) -> list[An
 
 
 class Assistant:
-    """The hardcoded Morpheus Assistant.
+    """Linda — the hardcoded staff AI assistant.
 
     Construct with optional overrides; call `.run(message, key=...)` to chat.
     """
 
     name = 'assistant'
-    label = 'Morpheus Assistant'
+    label = 'Linda AI Assistant'
     max_steps = 8
 
     def __init__(self, *, provider=None, tools=None, store=None,

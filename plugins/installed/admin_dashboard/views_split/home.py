@@ -214,6 +214,17 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     # Activity feed — what happened lately, across all event sources.
     activity = _compute_activity_feed(limit=20)
 
+    # Linda's Pulse — top-5 ranked unread insight cards.
+    pulse: list = []
+    try:
+        from plugins.installed.ai_assistant.models import MerchantInsight
+        _PRIO = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+        rows = list(MerchantInsight.objects.filter(is_read=False))
+        rows.sort(key=lambda r: (_PRIO.get(r.priority, 9), -r.created_at.timestamp()))
+        pulse = rows[:5]
+    except Exception:  # noqa: BLE001
+        pass
+
     return render(request, 'admin_dashboard/home.html', {
         'metrics': metrics,
         'recent_orders': recent_orders,
@@ -227,11 +238,40 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         'setup_total': setup_total,
         'setup_all_done': setup_all_done,
         'activity': activity,
+        'pulse': pulse,
         'active_nav': 'home',
         'period': period,
         'date_range': date_range,
         'date_presets': DATE_PRESETS,
     })
+
+
+@staff_member_required
+def pulse_refresh(request: HttpRequest) -> HttpResponse:
+    """Force a Pulse regeneration on demand. Sync — small enough to not need a task."""
+    if request.method != 'POST':
+        return redirect('/dashboard/')
+    try:
+        from plugins.installed.ai_assistant.services.pulse import generate_pulse_insights
+        generate_pulse_insights()
+    except Exception as e:  # noqa: BLE001
+        messages.error(request, f"Pulse refresh failed: {e}")
+    else:
+        messages.success(request, "Pulse refreshed.")
+    return redirect('/dashboard/')
+
+
+@staff_member_required
+def pulse_dismiss(request: HttpRequest, insight_id: str) -> HttpResponse:
+    """Mark a Pulse card read so it falls off the panel."""
+    if request.method != 'POST':
+        return redirect('/dashboard/')
+    try:
+        from plugins.installed.ai_assistant.models import MerchantInsight
+        MerchantInsight.objects.filter(id=insight_id).update(is_read=True)
+    except Exception:  # noqa: BLE001
+        pass
+    return redirect('/dashboard/')
 
 
 def _compute_activity_feed(limit: int = 20) -> list:

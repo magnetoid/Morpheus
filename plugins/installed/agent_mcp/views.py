@@ -54,6 +54,10 @@ _PUBLIC_TOOL_NAMES = {
     'analytics.summary', 'analytics.top_products',
     'cms.pages',
     'db.describe_model', 'db.count_rows', 'db.list_models',
+    # Linda's memory layer is read-safe — external agents can recall the
+    # store's stable preferences (e.g. "ships from EU"). Writes
+    # (memory.remember / memory.forget) stay internal to Linda.
+    'memory.recall',
 }
 
 

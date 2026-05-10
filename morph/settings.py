@@ -123,7 +123,7 @@ THIRD_PARTY_APPS = [
 # Engine apps (no business logic — just infrastructure)
 MORPHEUS_ENGINE_APPS = [
     'core',
-    'core.assistant',  # Hard-coded Morpheus Assistant
+    'core.assistant',  # Hard-coded Linda AI Assistant
     'core.auth',       # Passwordless email-OTP login (parallel to allauth)
     'core.i18n',       # Translation kernel — generic-FK Translation rows
     'core.audit',      # Security-grade audit log

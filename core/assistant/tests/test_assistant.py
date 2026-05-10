@@ -1,4 +1,4 @@
-"""Tests for the hard-coded Morpheus Assistant."""
+"""Tests for Linda — the hard-coded staff AI assistant."""
 from __future__ import annotations
 
 from django.test import TestCase

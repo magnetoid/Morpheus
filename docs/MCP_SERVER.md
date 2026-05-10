@@ -90,7 +90,7 @@ curl -s -X POST https://YOUR-MORPHEUS-DOMAIN/mcp/v1/ \
 
 ## Tool whitelist
 
-The server exposes 12 read-only tools (no writes, no admin). Updated
+The server exposes 13 read-only tools (no writes, no admin). Updated
 in `plugins/installed/agent_mcp/views.py:_PUBLIC_TOOL_NAMES`:
 
 | Tool | Purpose |
@@ -107,6 +107,7 @@ in `plugins/installed/agent_mcp/views.py:_PUBLIC_TOOL_NAMES`:
 | `db.list_models` | Schema introspection — model names |
 | `db.describe_model` | Field-level schema for one model |
 | `db.count_rows` | Count rows in a model |
+| `memory.recall` | Linda's stored merchant preferences (read-only here) |
 
 Admin tools (`fs.*`, `logs.*`, `plugins.*`, `settings.*`) and write
 tools are **never** exposed here. The MCP server is read-only by

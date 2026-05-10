@@ -1,12 +1,12 @@
-{# Floating Assistant chat widget — included by admin_dashboard/base.html. #}
+{# Floating Linda chat widget — included by admin_dashboard/base.html. #}
 {% load static %}
 <div id="morph-assistant" style="position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 9000; font-family: 'Inter', system-ui, sans-serif;">
-  <button id="morph-assistant-toggle" type="button" aria-label="Open Assistant" style="
+  <button id="morph-assistant-toggle" type="button" aria-label="Open Linda" style="
       border: none; background: var(--primary, #1a1a1a); color: var(--primary-fg, #fff);
       border-radius: 999px; padding: .75rem 1.1rem; font-size: .85rem; font-weight: 500;
       box-shadow: 0 8px 24px rgba(0,0,0,.18); cursor: pointer; display: inline-flex;
       align-items: center; gap: .5rem;">
-    <i data-lucide="sparkles" style="width:14px;height:14px;"></i> Assistant
+    <i data-lucide="sparkles" style="width:14px;height:14px;"></i> Linda
   </button>
   <div id="morph-assistant-panel" style="
       display: none; position: absolute; right: 0; bottom: 3.5rem;
@@ -15,7 +15,7 @@
       border-radius: 12px; box-shadow: 0 24px 48px rgba(0,0,0,.18);
       flex-direction: column; overflow: hidden;">
     <div style="padding: .75rem 1rem; border-bottom: 1px solid var(--border, #e3e3e3); display: flex; justify-content: space-between; align-items: center;">
-      <strong style="font-size: .9rem;">Assistant</strong>
+      <strong style="font-size: .9rem;">Linda</strong>
       <div style="display:flex; gap:.5rem;">
         <a href="/dashboard/assistant/" style="font-size:.75rem; color:var(--text-muted, #6b7280); text-decoration:underline;">Open full</a>
         <button id="morph-assistant-close" type="button" aria-label="Close" style="border:none;background:transparent;cursor:pointer;font-size:1.1rem;color:var(--text-muted,#6b7280);">×</button>
@@ -23,7 +23,7 @@
     </div>
     <div id="morph-assistant-log" style="flex:1; padding: .75rem; overflow-y:auto; font-size:.85rem;"></div>
     <form id="morph-assistant-form" style="display:flex; gap:.5rem; padding: .65rem; border-top: 1px solid var(--border, #e3e3e3);">
-      <input type="text" name="message" placeholder="Ask the Assistant…"
+      <input type="text" name="message" placeholder="Ask Linda…"
         autocomplete="off" required style="flex:1; padding:.5rem .75rem; border: 1px solid var(--border, #e3e3e3); border-radius: 6px; font-size:.85rem;">
       <button type="submit" style="border:none; background: var(--primary, #1a1a1a); color: var(--primary-fg, #fff); border-radius: 6px; padding:.5rem .85rem; font-size:.85rem; cursor:pointer;">Send</button>
     </form>
@@ -46,7 +46,7 @@
     div.style.cssText = `margin: .4rem 0; padding: .55rem .65rem; border-radius: 8px;
       background: ${isUser ? 'var(--surface-2,#fafafa)' : isTool ? 'rgba(0,150,255,0.06)' : 'var(--surface,#fff)'};
       border: ${isUser ? 'none' : '1px solid var(--border,#e3e3e3)'}; font-size: .85rem;`;
-    const label = isTool ? `🔧 ${toolName || 'tool'}` : isUser ? 'You' : 'Assistant';
+    const label = isTool ? `🔧 ${toolName || 'tool'}` : isUser ? 'You' : 'Linda';
     div.innerHTML = `<strong style="font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#6b7280);">${label}</strong>
       <div style="margin-top:.2rem;white-space:pre-wrap;">${text.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[m])}</div>`;
     log.appendChild(div); log.scrollTop = log.scrollHeight;
@@ -85,7 +85,7 @@
     .catch(() => { thinking.remove(); pushLine('assistant', 'connection error'); });
   });
 
-  // Inline-affordance bridge: any "Ask the Assistant" button on a dashboard
+  // Inline-affordance bridge: any "Ask Linda" button on a dashboard
   // page dispatches `morph:ask` with a prefill string. We open the panel,
   // pre-load history, and seed the input.
   window.addEventListener('morph:ask', function(e) {

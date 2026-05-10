@@ -45,6 +45,36 @@ class AIAssistantPlugin(Plugin):
         # Price filter — AI can influence pricing
         self.register_hook(events.PRODUCT_CALCULATE_PRICE, self.on_calculate_price, priority=50)
 
+        # Linda's Pulse — daily proactive insight refresh + event-driven nudges.
+        self._register_pulse_schedule()
+        self.register_hook(events.PRODUCT_LOW_STOCK, self._pulse_event_nudge, priority=70)
+        self.register_hook('return.requested', self._pulse_event_nudge, priority=70)
+        self.register_hook(events.CART_ABANDONED, self._pulse_event_nudge, priority=70)
+
+    def _register_pulse_schedule(self) -> None:
+        from django.conf import settings
+        from celery.schedules import crontab
+        schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
+        if schedule is None:
+            return
+        schedule.setdefault(
+            'ai_assistant.pulse_daily_refresh',
+            {
+                'task': 'plugins.installed.ai_assistant.tasks.pulse_daily_refresh',
+                'schedule': crontab(hour=6, minute=0),
+            },
+        )
+
+    def _pulse_event_nudge(self, **_kwargs) -> None:
+        """Trigger a Pulse refresh on key events so the dashboard panel
+        catches a low-stock / RMA / abandoned-cart card without waiting
+        for the daily cron. Async via Celery; never blocks the hook."""
+        try:
+            from plugins.installed.ai_assistant.tasks import pulse_daily_refresh
+            pulse_daily_refresh.delay()
+        except Exception:  # noqa: BLE001
+            pass
+
     def on_order_placed(self, order, **kwargs):
         """Update recommendation model after purchase."""
         from plugins.installed.ai_assistant.tasks import update_recommendations_after_order

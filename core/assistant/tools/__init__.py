@@ -47,31 +47,25 @@ from core.assistant.tools.ecommerce_writes import (
     products_update_price_tool,
     products_update_status_tool,
 )
-from core.assistant.tools.filesystem import (
-    list_dir_tool,
-    read_file_tool,
-    search_files_tool,
-)
-from core.assistant.tools.logs import recent_errors_tool, search_logs_tool
-from core.assistant.tools.plugins import (
-    disable_plugin_tool,
-    enable_plugin_tool,
-    list_plugins_tool,
-)
-from core.assistant.tools.system import (
-    disk_usage_tool,
-    git_log_tool,
-    server_info_tool,
-)
 
 
 def get_default_tools() -> list:
+    """Linda's primary tool catalog — commerce + content + memory + delegate.
+
+    The diagnostics tools (filesystem, logs, system, plugin lifecycle) are
+    intentionally NOT here — they live behind ``delegate.invoke_agent(
+    'diagnostics', ...)`` so Linda's selection space stays small. See
+    plugins/installed/agent_core/agents/diagnostics.py.
+    """
+    # Local import — keeps `memory.py` lazy so failed imports don't break
+    # tool resolution at construct time.
+    from core.assistant.tools.memory import (
+        memory_forget_tool,
+        memory_recall_tool,
+        memory_remember_tool,
+    )
     return [
-        # Filesystem
-        read_file_tool,
-        list_dir_tool,
-        search_files_tool,
-        # Database — generic
+        # Database — schema introspection
         list_models_tool,
         count_rows_tool,
         db_describe_model_tool,
@@ -95,6 +89,10 @@ def get_default_tools() -> list:
         # Configuration
         settings_list_tool,
         markets_list_tool,
+        # Memory — cross-session preferences
+        memory_recall_tool,
+        memory_remember_tool,
+        memory_forget_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first
         orders_update_status_tool,
         orders_cancel_tool,
@@ -106,18 +104,7 @@ def get_default_tools() -> list:
         cms_unpublish_page_tool,
         metafields_set_tool,
         metafields_delete_tool,
-        # Logs
-        recent_errors_tool,
-        search_logs_tool,
-        # Plugins
-        list_plugins_tool,
-        enable_plugin_tool,
-        disable_plugin_tool,
-        # System
-        server_info_tool,
-        disk_usage_tool,
-        git_log_tool,
-        # Delegate
+        # Delegate — diagnostics, content writer, pricing, merchant ops, etc.
         list_available_agents_tool,
         invoke_agent_tool,
     ]

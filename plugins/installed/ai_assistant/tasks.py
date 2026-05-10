@@ -50,6 +50,24 @@ def refresh_product_embedding(self, product_id):
 
 
 @shared_task
+def pulse_daily_refresh():
+    """Linda's Pulse — refresh proactive insight cards on the dashboard.
+
+    Runs once a day (06:00 server TZ) plus on event triggers
+    (low_stock, return.requested, cart_abandoned). Each pass evaluates
+    six signals and upserts the resulting MerchantInsight rows; the
+    dashboard panel renders the top-5 unread cards.
+    """
+    logger.info('AI Task: refreshing Linda\'s Pulse insights')
+    try:
+        from plugins.installed.ai_assistant.services.pulse import generate_pulse_insights
+        out = generate_pulse_insights()
+        logger.info('Pulse: %d insight(s) emitted', len(out))
+    except Exception as e:  # noqa: BLE001
+        logger.warning('Pulse: refresh failed: %s', e, exc_info=True)
+
+
+@shared_task
 def evaluate_all_product_prices():
     """
     Periodic task (e.g., hourly) to re-evaluate prices for all active products 

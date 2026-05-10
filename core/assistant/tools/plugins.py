@@ -52,16 +52,27 @@ def enable_plugin_tool(*, name: str) -> ToolResult:
 
 @tool(
     name='plugins.disable',
-    description='Disable a plugin (writes PluginConfig.is_enabled=False).',
+    description=(
+        'Disable a plugin (writes PluginConfig.is_enabled=False). HARD-GATED — '
+        'pass `hard_gate_ack="YES"` AND `echo` (user types plugin name back).'
+    ),
     scopes=['system.write'],
     schema={
         'type': 'object',
-        'properties': {'name': {'type': 'string'}},
+        'properties': {
+            'name': {'type': 'string'},
+            'hard_gate_ack': {'type': 'string'},
+            'echo': {'type': 'string'},
+        },
         'required': ['name'],
     },
     requires_approval=True,
 )
-def disable_plugin_tool(*, name: str) -> ToolResult:
+def disable_plugin_tool(*, name: str,
+                        hard_gate_ack: str = '', echo: str = '') -> ToolResult:
+    # Hard-gated — second confirmation + name echo required.
+    from core.assistant.tools.ecommerce_writes import _require_hard_gate
+    _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=name, echo=echo)
     try:
         from plugins.models import PluginConfig
         from plugins.registry import plugin_registry

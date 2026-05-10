@@ -154,6 +154,55 @@
   </div>
   {% endif %}
 
+  {% if pulse %}
+  <div class="card" style="margin-bottom: 1rem;">
+    <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
+      <div>
+        <h2 class="font-semibold flex items-center gap-2">
+          <i data-lucide="sparkles" class="h-4 w-4" style="color:var(--accent,#7c3aed);"></i>
+          Linda's Pulse
+        </h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Top-5 ranked things to look at — refreshed daily and on key events.</p>
+      </div>
+      <form method="post" action="{% url 'admin_dashboard:pulse_refresh' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost text-xs">Refresh now</button>
+      </form>
+    </div>
+    <ul class="divide-y divide-[color:var(--border)]" style="list-style:none; margin:0; padding:0;">
+      {% for p in pulse %}
+      <li class="px-4 py-3 hover:bg-[color:var(--surface-2)]">
+        <div class="flex items-start gap-3">
+          <span class="inline-flex items-center justify-center text-xs font-semibold"
+                style="width: 1.7rem; height: 1.7rem; border-radius: 999px;
+                       background: {% if p.priority == 'critical' or p.priority == 'high' %}rgba(239,68,68,.12){% elif p.priority == 'medium' %}rgba(234,179,8,.12){% else %}rgba(34,197,94,.12){% endif %};
+                       color: {% if p.priority == 'critical' or p.priority == 'high' %}#dc2626{% elif p.priority == 'medium' %}#a16207{% else %}#16a34a{% endif %};
+                       flex-shrink: 0;">
+            {{ forloop.counter }}
+          </span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium">{{ p.title }}</div>
+            <div class="text-xs text-[color:var(--text-muted)]">{{ p.body }}</div>
+            {% if p.estimated_impact %}<div class="text-xs italic mt-1" style="color:var(--text-muted);">{{ p.estimated_impact }}</div>{% endif %}
+          </div>
+          <div class="flex flex-col gap-1 items-end">
+            {% if p.suggested_action.url %}
+            <a href="{{ p.suggested_action.url }}" class="btn btn-primary text-xs whitespace-nowrap">
+              {{ p.suggested_action.label|default:"Open" }} →
+            </a>
+            {% endif %}
+            <form method="post" action="{% url 'admin_dashboard:pulse_dismiss' insight_id=p.id %}" class="m-0">
+              {% csrf_token %}
+              <button type="submit" class="text-xs text-[color:var(--text-muted)] hover:underline">Dismiss</button>
+            </form>
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   {% if activity %}
   <div class="card">
     <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">

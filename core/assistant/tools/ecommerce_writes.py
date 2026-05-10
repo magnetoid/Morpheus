@@ -29,11 +29,42 @@ _NEEDS_CONFIRM = (
     'this is a write operation — re-call with `confirmed=True` once the '
     'user has explicitly approved.'
 )
+_NEEDS_HARD_GATE = (
+    'this action is destructive — after the user approves once, you must '
+    'ALSO pass `hard_gate_ack="YES"` AND ask the user to type the affected '
+    'name back to you. Both must match before re-calling.'
+)
 
 
 def _require_confirmed(confirmed: bool) -> None:
     if not confirmed:
         raise ToolError(_NEEDS_CONFIRM)
+
+
+def _require_hard_gate(*, hard_gate_ack: str, target_name: str,
+                       echo: str) -> None:
+    """Enforce the second-tier confirmation for destructive actions.
+
+    The LLM must collect both:
+      * ``hard_gate_ack="YES"`` — the magic acknowledgement string.
+      * ``echo`` — the user's typed-back identifier (must match
+        ``target_name`` case-insensitively).
+    A row is written to ``AgentApprovalRequest`` for the audit trail.
+    """
+    if (hard_gate_ack or '').strip().upper() != 'YES':
+        raise ToolError(_NEEDS_HARD_GATE)
+    if (echo or '').strip().lower() != (target_name or '').strip().lower():
+        raise ToolError(
+            f'echo mismatch — user typed {echo!r} but the target is {target_name!r}.'
+        )
+    try:
+        from plugins.installed.agent_core.models import AgentApprovalRequest
+        AgentApprovalRequest.objects.create(
+            agent_name='assistant', state='approved',
+            payload={'tool_target': target_name, 'echo': echo},
+        )
+    except Exception:  # noqa: BLE001 — audit row is best-effort
+        pass
 
 
 # ── Orders ──────────────────────────────────────────────────────────────
@@ -407,7 +438,9 @@ def metafields_set_tool(*, model: str, object_id: str, key: str, value: str,
     name='metafields.delete',
     description=(
         'Delete a metafield. Pass `model`, `object_id`, `namespace` '
-        '(default ""), and `key`. Requires `confirmed=True`.'
+        '(default ""), and `key`. HARD-GATED — pass `confirmed=True`, '
+        '`hard_gate_ack="YES"`, AND `echo` (user types the metafield key '
+        'back to confirm).'
     ),
     scopes=['system.write'],
     schema={
@@ -418,14 +451,18 @@ def metafields_set_tool(*, model: str, object_id: str, key: str, value: str,
             'namespace': {'type': 'string', 'default': ''},
             'key': {'type': 'string'},
             'confirmed': {'type': 'boolean', 'default': False},
+            'hard_gate_ack': {'type': 'string', 'description': 'Must equal "YES".'},
+            'echo': {'type': 'string', 'description': 'User-typed key for confirmation.'},
         },
         'required': ['model', 'object_id', 'key'],
     },
     requires_approval=True,
 )
 def metafields_delete_tool(*, model: str, object_id: str, key: str,
-                           namespace: str = '', confirmed: bool = False) -> ToolResult:
+                           namespace: str = '', confirmed: bool = False,
+                           hard_gate_ack: str = '', echo: str = '') -> ToolResult:
     _require_confirmed(confirmed)
+    _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=key, echo=echo)
     from django.apps import apps
     try:
         from plugins.installed.metafields.models import Metafield

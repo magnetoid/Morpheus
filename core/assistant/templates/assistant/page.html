@@ -1,13 +1,14 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Assistant · Morpheus admin{% endblock %}
+{% block title %}Linda · Morpheus admin{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-3">
   <div>
-    <h1 class="text-xl font-semibold">Assistant</h1>
+    <h1 class="text-xl font-semibold">Linda</h1>
     <p class="text-sm text-[color:var(--text-muted)]">
-      The Morpheus Assistant lives in core. It knows the platform, can read the
-      filesystem, query the database, search logs, and delegate to any agent.
+      Linda is the staff AI assistant, hard-coded into the platform core.
+      She knows the whole store, takes action on your behalf with explicit
+      approval, and remembers what you tell her across sessions.
     </p>
   </div>
 </div>
@@ -19,7 +20,7 @@
                 background: {% if m.role == 'user' %}var(--surface-2){% elif m.role == 'tool' %}rgba(0,150,255,0.06){% else %}var(--surface){% endif %};
                 border: {% if m.role == 'user' %}none{% else %}1px solid var(--border){% endif %};">
       <strong style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">
-        {% if m.role == 'tool' %}🔧 {{ m.tool_name }}{% elif m.role == 'user' %}You{% else %}Assistant{% endif %}
+        {% if m.role == 'tool' %}🔧 {{ m.tool_name }}{% elif m.role == 'user' %}You{% else %}Linda{% endif %}
       </strong>
       <div style="margin-top:.25rem; white-space: pre-wrap;">{{ m.content }}</div>
     </div>
@@ -46,7 +47,7 @@
     div.style.cssText = `margin: .65rem 0; padding: .65rem .85rem; border-radius: 8px;
       background: ${isUser ? 'var(--surface-2)' : isTool ? 'rgba(0,150,255,0.06)' : 'var(--surface)'};
       border: ${isUser ? 'none' : '1px solid var(--border)'};`;
-    const label = isTool ? `🔧 ${toolName || 'tool'}` : isUser ? 'You' : 'Assistant';
+    const label = isTool ? `🔧 ${toolName || 'tool'}` : isUser ? 'You' : 'Linda';
     div.innerHTML = `<strong style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">${label}</strong>
       <div style="margin-top:.25rem;white-space:pre-wrap;">${text.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[m])}</div>`;
     log.appendChild(div);
