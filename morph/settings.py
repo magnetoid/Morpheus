@@ -158,6 +158,7 @@ MIDDLEWARE = [
     'plugins.middleware.PluginMiddleware',
     'themes.middleware.ThemeMiddleware',
     'plugins.installed.markets.middleware.MarketMiddleware',
+    'plugins.installed.agent_mcp.middleware.TrustedAgentMiddleware',
     'plugins.installed.ai_assistant.middleware.AIContextMiddleware',
     'api.permissions.AgentAuthMiddleware',
     'api.middleware.GraphQLCacheMiddleware',   # Enterprise: GraphQL Query Caching

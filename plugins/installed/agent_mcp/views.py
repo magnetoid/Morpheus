@@ -62,13 +62,32 @@ _PUBLIC_TOOL_NAMES = {
 
 
 def _public_tools() -> list:
-    """Resolve the curated tool whitelist into actual tool objects."""
+    """Resolve the curated tool whitelist into actual tool objects.
+
+    Three modes:
+      * Cluster server with explicit names → exact-name filter on the
+        full Linda tool catalog. Used by storefront/cart/checkout.
+      * Cluster server set to "all" → no filter; admin sees everything.
+      * No cluster active (legacy ``/mcp/v1/``) → filter by the
+        backward-compatible ``_PUBLIC_TOOL_NAMES`` set.
+    """
     try:
         from core.assistant.tools import get_default_tools
     except Exception as e:  # noqa: BLE001
         logger.warning('agent_mcp: tool resolution failed: %s', e)
         return []
-    return [t for t in get_default_tools() if t.name in _PUBLIC_TOOL_NAMES]
+    all_tools = get_default_tools()
+    try:
+        from plugins.installed.agent_mcp.servers import active_cluster
+        cluster = active_cluster()
+        if cluster is not None:
+            names = cluster.get('names')
+            if names is None:  # admin — all tools
+                return all_tools
+            return [t for t in all_tools if t.name in names]
+    except Exception:  # noqa: BLE001
+        pass
+    return [t for t in all_tools if t.name in _PUBLIC_TOOL_NAMES]
 
 
 def _api_keys() -> set[str]:

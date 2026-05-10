@@ -10,12 +10,15 @@ logger = logging.getLogger('morpheus.agent_mcp')
 
 class AgentMcpPlugin(Plugin):
     name = 'agent_mcp'
-    label = 'Agent MCP server'
-    version = '0.1.0'
+    label = 'Agent gateway'
+    version = '0.2.0'
     description = (
-        'JSON-RPC server that speaks the Model Context Protocol. Lets '
-        'external AI agents (Claude, ChatGPT, Perplexity) discover this '
-        'store\'s catalog and tools without per-vendor integrations.'
+        'Multi-protocol agent gateway. Four Shopify-shaped MCP servers '
+        '(storefront / cart / checkout / admin), Universal Commerce '
+        'Protocol discovery manifest, and Trusted Agent Protocol / '
+        'Mastercard Verifiable Intent middleware for Cloudflare-signed '
+        'agent traffic. External AI clients (Claude, ChatGPT, Comet, '
+        'Gemini) discover and transact without per-vendor integrations.'
     )
     has_models = False
 
@@ -24,4 +27,9 @@ class AgentMcpPlugin(Plugin):
             'plugins.installed.agent_mcp.urls',
             prefix='mcp/',
             namespace='agent_mcp',
+        )
+        self.register_urls(
+            'plugins.installed.agent_mcp.urls_well_known',
+            prefix='.well-known/',
+            namespace='agent_mcp_well_known',
         )
