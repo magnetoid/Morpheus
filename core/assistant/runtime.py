@@ -21,6 +21,50 @@ from core.assistant.providers import get_default_provider
 logger = logging.getLogger('morpheus.assistant')
 
 
+_RETRIABLE_NEEDLES = ('429', 'rate limit', 'rate-limit', 'overloaded',
+                      'temporarily', '502', '503', '504', 'timeout',
+                      'timed out', 'connection reset')
+
+
+def _is_retriable(msg: str) -> bool:
+    m = (msg or '').lower()
+    return any(n in m for n in _RETRIABLE_NEEDLES)
+
+
+def _friendly_provider_error(raw: str) -> str:
+    """Translate a raw provider exception into a user-readable line.
+
+    The dashboard surfaces the assistant's text directly, so a stack
+    trace or 200-char JSON blob feels like the platform crashed. Map
+    common cases to a short note + a concrete next step.
+    """
+    text = (raw or '').lower()
+    if not text:
+        return ('Sorry — I couldn\'t reach the AI provider just now. '
+                'Try again in a moment.')
+    if '429' in text or 'rate' in text:
+        return ('I hit the provider\'s rate limit (the free model is '
+                'busy). Try again in ~30s, switch the provider/model in '
+                '/dashboard/settings/ai/, or paste your own API key '
+                'there to lift the limit.')
+    if 'invalid_api_key' in text or 'unauthorized' in text or '401' in text:
+        return ('The configured AI key was rejected. Open '
+                '/dashboard/settings/ai/ and check the active provider\'s '
+                'key.')
+    if '402' in text or 'quota' in text or 'insufficient' in text:
+        return ('The AI provider says quota / billing is exhausted. '
+                'Top it up or switch providers in '
+                '/dashboard/settings/ai/.')
+    if 'no provider' in text or 'not configured' in text:
+        return ('No AI provider is configured yet. Add a key in '
+                '/dashboard/settings/ai/ and I\'ll be online.')
+    if any(n in text for n in ('502', '503', '504', 'timeout', 'overloaded')):
+        return ('The AI provider returned a transient error. Try again '
+                'in a moment; if it persists, switch model in '
+                '/dashboard/settings/ai/.')
+    return f'AI provider error — please try again. ({raw[:140]})'
+
+
 @dataclass(slots=True)
 class AssistantMessage:
     role: str            # 'user' | 'assistant' | 'system' | 'tool'
@@ -178,20 +222,35 @@ class Assistant:
         tool_calls = 0
 
         for _step in range(max(1, self.max_steps)):
-            try:
-                resp = self.provider.respond(
-                    messages=msgs, tools=tools or None,
-                    temperature=0.2, max_tokens=1500,
-                )
-            except Exception as e:  # noqa: BLE001
-                logger.error('assistant: provider failed: %s', e, exc_info=True)
-                err = f'provider_error: {e}'
+            resp = None
+            err: str = ''
+            for attempt in (0, 1):  # one retry for transient errors
+                try:
+                    resp = self.provider.respond(
+                        messages=msgs, tools=tools or None,
+                        temperature=0.2, max_tokens=1500,
+                    )
+                    err = ''
+                    break
+                except Exception as e:  # noqa: BLE001
+                    err = str(e)
+                    logger.warning(
+                        'assistant: provider attempt %d failed: %s',
+                        attempt + 1, err,
+                    )
+                    if attempt == 0 and _is_retriable(err):
+                        time.sleep(1.0)
+                        continue
+                    break
+
+            if resp is None:
+                friendly = _friendly_provider_error(err)
                 self.store.append(
                     conversation_key=conversation_key,
-                    message=StoredMessage(role='assistant', content=f'(error) {err}'),
+                    message=StoredMessage(role='assistant', content=friendly),
                 )
                 yield {'type': 'error', 'result': AssistantRunResult(
-                    text='', state='failed', error=err,
+                    text=friendly, state='failed', error=err,
                     prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
                     tool_call_count=tool_calls,
                     duration_ms=int((time.monotonic() - started) * 1000),
