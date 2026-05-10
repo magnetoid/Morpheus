@@ -134,6 +134,7 @@ def _seed_books(
         if featured_collection is not None:
             product.collections.add(featured_collection)
         _seed_book_metafields(product, slug)
+        _seed_book_cover(product, slug)
 
 
 def _seed_book_metafields(product, slug: str) -> None:
@@ -148,6 +149,34 @@ def _seed_book_metafields(product, slug: str) -> None:
         return
     for key, value in meta.items():
         Metafield.objects.set(product, namespace='book', key=key, value=value)
+
+
+def _seed_book_cover(product, slug: str) -> None:
+    """Download the Project Gutenberg cover and attach as a ProductImage.
+
+    Idempotent: skips download when the product already has any image.
+    Fails closed — a network blip can't break catalog seeding.
+    """
+    if product.images.exists():
+        return
+    meta = seeds.BOOK_METADATA.get(slug) or {}
+    gid = meta.get('gutenberg_id')
+    if not gid:
+        return
+    url = f'https://www.gutenberg.org/cache/epub/{gid}/pg{gid}.cover.medium.jpg'
+    try:
+        import urllib.request
+        from django.core.files.base import ContentFile
+        from plugins.installed.catalog.models import ProductImage
+        req = urllib.request.Request(url, headers={'User-Agent': 'Morpheus-DemoSeed/1.0'})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = resp.read()
+        if not data or len(data) < 1024:  # small/empty = Gutenberg returned a miss
+            return
+        img = ProductImage(product=product, alt_text=product.name, is_primary=True, sort_order=0)
+        img.image.save(f'gutenberg-{gid}.jpg', ContentFile(data), save=True)
+    except Exception as e:  # noqa: BLE001 — never block seed on a failed cover
+        logger.debug('demo_data: cover fetch failed for %s (gid=%s): %s', slug, gid, e)
 
 
 def _seed_customers(summary: SeedSummary) -> None:
@@ -215,7 +244,8 @@ def _wipe_demo(summary: SeedSummary) -> None:
     from plugins.installed.orders.models import Order
 
     book_slugs = [b[1] for b in seeds.BOOKS]
-    Product.objects.filter(slug__in=book_slugs).delete()
+    legacy_slugs = list(getattr(seeds, 'LEGACY_BOOK_SLUGS', []) or [])
+    Product.objects.filter(slug__in=book_slugs + legacy_slugs).delete()
     Collection.objects.filter(slug__in=[c['slug'] for c in seeds.COLLECTIONS]).delete()
     Category.objects.filter(slug__in=[c['slug'] for c in seeds.CATEGORIES]).delete()
     Vendor.objects.filter(slug__in=[v['slug'] for v in seeds.VENDORS]).delete()

@@ -74,7 +74,7 @@ def _api_keys() -> set[str]:
         cfg = PluginConfig.objects.filter(plugin_name='agent_mcp').first()
         if cfg is None:
             return set()
-        keys = (cfg.config_data or {}).get('public_keys') or []
+        keys = (cfg.config or {}).get('public_keys') or []
         return {str(k).strip() for k in keys if k}
     except Exception as e:  # noqa: BLE001
         logger.warning('agent_mcp: api-key lookup failed: %s', e)

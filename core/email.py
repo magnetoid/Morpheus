@@ -1,21 +1,25 @@
-from django.core.mail.backends.smtp import EmailBackend
+from django.core.mail.backends.console import EmailBackend as ConsoleBackend
+from django.core.mail.backends.smtp import EmailBackend as SmtpBackend
 from django.conf import settings
+
 from core.models import StoreSettings
 
-class MorpheusEmailBackend(EmailBackend):
+
+class MorpheusEmailBackend:
+    """Composite email backend.
+
+    Reads SMTP config from ``StoreSettings`` (admin-editable singleton), falling
+    back to ``EMAIL_*`` environment variables. When neither path resolves a host
+    we drop to the console backend so dev work and unconfigured installs see
+    every outbound message in stdout instead of silently failing or 500-ing.
     """
-    A custom email backend that reads SMTP configuration from the StoreSettings singleton 
-    (the Dashboard) rather than environment variables, allowing admins to change email providers on the fly.
-    """
+
     def __init__(self, fail_silently=False, **kwargs):
-        # Default to settings.py
         host = getattr(settings, 'EMAIL_HOST', '')
         port = getattr(settings, 'EMAIL_PORT', 587)
         username = getattr(settings, 'EMAIL_HOST_USER', '')
         password = getattr(settings, 'EMAIL_HOST_PASSWORD', '')
         use_tls = getattr(settings, 'EMAIL_USE_TLS', True)
-        
-        # Attempt to override from Database
         try:
             store_settings = StoreSettings.objects.first()
             if store_settings and store_settings.smtp_host:
@@ -25,15 +29,19 @@ class MorpheusEmailBackend(EmailBackend):
                 password = store_settings.smtp_password
             if store_settings and store_settings.default_from_email:
                 settings.DEFAULT_FROM_EMAIL = store_settings.default_from_email
-        except Exception:
-            pass # DB might not be ready yet
+        except Exception:  # noqa: BLE001 — DB may not be ready at startup
+            pass
 
-        super().__init__(
-            host=host, 
-            port=port, 
-            username=username, 
-            password=password, 
-            use_tls=use_tls, 
-            fail_silently=fail_silently, 
-            **kwargs
-        )
+        if host:
+            self._backend = SmtpBackend(
+                host=host, port=port, username=username, password=password,
+                use_tls=use_tls, fail_silently=fail_silently, **kwargs,
+            )
+        else:
+            # No SMTP configured — log every outbound email to stdout so
+            # devs and merchants can see what was attempted before they
+            # wire a real provider.
+            self._backend = ConsoleBackend(fail_silently=fail_silently, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._backend, name)
