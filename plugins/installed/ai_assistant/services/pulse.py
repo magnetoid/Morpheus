@@ -36,12 +36,13 @@ logger = logging.getLogger('morpheus.pulse')
 _PRIORITY = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
 
 
-def generate_pulse_insights() -> list:
+def generate_pulse_insights(*, humanize: bool = True) -> list:
     """Evaluate every signal, write/update MerchantInsight rows, return them.
 
-    Each signal is wrapped so a missing plugin or bad data never breaks
-    the whole pulse pass — the merchant gets *some* insights even when a
-    subsystem is degraded.
+    When ``humanize`` is True (default), each rule-based card is passed
+    through ``call_llm()`` so the title/body match the merchant's brand
+    voice. Failures are silent — falls back to rule-written copy so
+    Pulse still works without an AI provider configured.
     """
     from plugins.installed.ai_assistant.models import MerchantInsight
 
@@ -56,9 +57,56 @@ def generate_pulse_insights() -> list:
             continue
         if insight is None:
             continue
+        if humanize:
+            _humanize_signal(insight)
         out.append(_upsert(insight))
     out.sort(key=lambda i: (_PRIORITY.get(i.priority, 9), -i.created_at.timestamp()))
     return out
+
+
+def _humanize_signal(payload: dict) -> None:
+    """Rewrite title + body via the configured LLM in the merchant's brand voice.
+
+    Mutates the signal in place. Failures (no provider, parse miss,
+    network blip) leave the rule copy untouched.
+    """
+    try:
+        from plugins.installed.admin_dashboard.views_split._shared import call_llm
+    except Exception:  # noqa: BLE001
+        return
+    facts = {
+        'priority':   payload.get('priority', 'medium'),
+        'kind':       payload.get('insight_type', ''),
+        'rule_title': payload.get('title', ''),
+        'rule_body':  payload.get('body', ''),
+        'impact':     payload.get('estimated_impact', ''),
+    }
+    system = (
+        "You are Linda, the operator's staff AI. Rewrite a single Pulse "
+        "insight card so it sounds like a sharp ops manager, not a rules "
+        "engine. Output STRICT JSON only — no prose around it. Schema:\n"
+        '{"title": "<≤80 chars>", "body": "<≤220 chars>", '
+        '"estimated_impact": "<≤120 chars or empty>"}\n'
+        'Rules: keep every numeric fact. Be specific. No "great news" / '
+        '"unfortunately". Body should start with one concrete next-step verb.'
+    )
+    import json as _json
+    text, err = call_llm(_json.dumps(facts), system=system, max_tokens=400)
+    if err or not text:
+        return
+    text = text.strip()
+    if text.startswith('```'):
+        text = text.strip('`').lstrip('json').strip()
+    try:
+        decoded = _json.loads(text)
+    except Exception:  # noqa: BLE001
+        return
+    if not isinstance(decoded, dict):
+        return
+    for k in ('title', 'body', 'estimated_impact'):
+        v = decoded.get(k)
+        if isinstance(v, str) and v.strip():
+            payload[k] = v.strip()[:240]
 
 
 def _upsert(payload: dict):

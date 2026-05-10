@@ -9,7 +9,7 @@ import json
 import logging
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseBadRequest, JsonResponse
+from django.http import HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
@@ -33,11 +33,32 @@ def _conversation_key(request) -> str:
 
 @staff_member_required
 def assistant_page(request):
-    """Standalone Assistant page (full-screen chat)."""
+    """Standalone Linda page — full-screen chat with sidebar."""
     store = get_default_store()
     history = store.history(conversation_key=_conversation_key(request), limit=50)
+
+    # Surface remembered facts in the sidebar so the operator can see at
+    # a glance what Linda's carrying across sessions. Fail-soft: empty
+    # list when LindaMemory isn't migrated yet.
+    memories: list = []
+    try:
+        from core.assistant.models import LindaMemory
+        memories = list(LindaMemory.objects.all()[:20])
+    except Exception:  # noqa: BLE001
+        pass
+
+    starters = [
+        "Show me a snapshot of the store right now",
+        "Which products are low on stock?",
+        "Top 5 customers by lifetime spend",
+        "Pending returns I need to look at",
+        "Summarise this week vs last week",
+    ]
+
     return render(request, 'assistant/page.html', {
         'history': history,
+        'memories': memories,
+        'starters': starters,
         'active_nav': 'assistant',
     })
 
@@ -78,6 +99,65 @@ def assistant_invoke(request):
             'prompt': result.prompt_tokens, 'completion': result.completion_tokens,
         },
     })
+
+
+@staff_member_required
+@csrf_protect
+@require_http_methods(['POST'])
+def assistant_stream(request):
+    """POST {message: str} → text/event-stream of run events.
+
+    Yields newline-terminated SSE blocks. Each event:
+
+      data: {"type": "tool_call_started", "name": "...", "arguments": {...}}\\n\\n
+      data: {"type": "tool_call_finished", "name": "...", "output": ..., "error": "..."}\\n\\n
+      data: {"type": "assistant_text", "text": "..."}\\n\\n
+      data: {"type": "final", "text": "...", "state": "completed", ...}\\n\\n
+
+    Falls through to the JSON variant when the client doesn't request
+    SSE — same Linda runtime under the hood.
+    """
+    try:
+        body = json.loads(request.body or b'{}') if request.content_type == 'application/json' \
+            else dict(request.POST.items())
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest('Invalid JSON.')
+    message = (body.get('message') or '').strip()
+    if not message:
+        return HttpResponseBadRequest('Missing `message`.')
+
+    user = getattr(request, 'user', None)
+    conv_key = _conversation_key(request)
+
+    def _event_stream():
+        # Outer try: a crash anywhere should still close the stream cleanly.
+        try:
+            for ev in Assistant().stream(
+                message=message[:10_000],
+                conversation_key=conv_key,
+                context={'user': user},
+            ):
+                # Final/error events carry an AssistantRunResult which isn't
+                # JSON-serialisable — flatten to dict before sending.
+                if ev.get('type') in ('final', 'error') and ev.get('result') is not None:
+                    r = ev['result']
+                    payload = {
+                        'type': ev['type'],
+                        'text': r.text, 'state': r.state, 'error': r.error,
+                        'tool_calls': r.tool_call_count,
+                        'duration_ms': r.duration_ms,
+                    }
+                else:
+                    payload = ev
+                yield f'data: {json.dumps(payload, default=str)}\n\n'
+        except Exception as e:  # noqa: BLE001
+            logger.error('assistant: stream crashed: %s', e, exc_info=True)
+            yield f'data: {json.dumps({"type": "error", "error": str(e), "state": "failed", "text": ""})}\n\n'
+
+    response = StreamingHttpResponse(_event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'  # nginx: don't buffer SSE
+    return response
 
 
 @staff_member_required

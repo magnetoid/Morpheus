@@ -130,7 +130,38 @@ class Assistant:
         conversation_key: str,
         context: dict[str, Any] | None = None,
     ) -> AssistantRunResult:
-        """Run one user turn; persist the exchange; return the result."""
+        """Run one user turn; persist the exchange; return the result.
+
+        Implemented as a thin consumer of :meth:`stream` so the JSON
+        endpoint keeps working without duplicating loop logic.
+        """
+        result = AssistantRunResult(text='', state='failed', error='no_events')
+        for event in self.stream(message=message,
+                                 conversation_key=conversation_key, context=context):
+            kind = event.get('type')
+            if kind == 'final':
+                result = event['result']
+            elif kind == 'error':
+                result = event['result']
+        return result
+
+    def stream(
+        self,
+        *,
+        message: str,
+        conversation_key: str,
+        context: dict[str, Any] | None = None,
+    ):
+        """Generator that yields events as the turn progresses.
+
+        Event types (each is a dict):
+          * ``{type: 'tool_call_started', name, arguments}``
+          * ``{type: 'tool_call_finished', name, output, error?}``
+          * ``{type: 'assistant_text', text}`` — interim assistant text
+            (per-step, not per-token; provider-side streaming arrives later).
+          * ``{type: 'final', result: AssistantRunResult}``
+          * ``{type: 'error', result: AssistantRunResult}``
+        """
         started = time.monotonic()
         history = self.store.history(conversation_key=conversation_key, limit=30)
         self.store.append(
@@ -159,12 +190,13 @@ class Assistant:
                     conversation_key=conversation_key,
                     message=StoredMessage(role='assistant', content=f'(error) {err}'),
                 )
-                return AssistantRunResult(
+                yield {'type': 'error', 'result': AssistantRunResult(
                     text='', state='failed', error=err,
                     prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
                     tool_call_count=tool_calls,
                     duration_ms=int((time.monotonic() - started) * 1000),
-                )
+                )}
+                return
 
             prompt_tokens += getattr(resp, 'prompt_tokens', 0) or 0
             completion_tokens += getattr(resp, 'completion_tokens', 0) or 0
@@ -175,12 +207,18 @@ class Assistant:
                     conversation_key=conversation_key,
                     message=StoredMessage(role='assistant', content=final[:50_000]),
                 )
-                return AssistantRunResult(
+                yield {'type': 'final', 'result': AssistantRunResult(
                     text=final, state='completed',
                     prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
                     tool_call_count=tool_calls,
                     duration_ms=int((time.monotonic() - started) * 1000),
-                )
+                )}
+                return
+
+            # Interim assistant text (when a model says something before its
+            # tool call — pre-tool reasoning).
+            if (resp.text or '').strip():
+                yield {'type': 'assistant_text', 'text': resp.text}
 
             # Append the assistant turn (tool-calling), then dispatch each tool.
             try:
@@ -193,25 +231,44 @@ class Assistant:
             ))
             for tc in resp.tool_calls:
                 tool_calls += 1
-                self._dispatch_tool(
+                tc_name = getattr(tc, 'name', '') or (
+                    tc.get('name') if isinstance(tc, dict) else ''
+                )
+                tc_args = getattr(tc, 'arguments', None) or (
+                    tc.get('arguments') if isinstance(tc, dict) else {}
+                )
+                yield {
+                    'type': 'tool_call_started',
+                    'name': tc_name, 'arguments': tc_args or {},
+                }
+                tool_output, tool_error = self._dispatch_tool(
                     tc=tc, tools_by_name=tools_by_name, msgs=msgs,
                     conversation_key=conversation_key, context=context,
                 )
+                yield {
+                    'type': 'tool_call_finished',
+                    'name': tc_name,
+                    'output': tool_output,
+                    'error': tool_error,
+                }
 
         # Loop exhausted.
         self.store.append(
             conversation_key=conversation_key,
             message=StoredMessage(role='assistant', content='(stopped: max steps)'),
         )
-        return AssistantRunResult(
+        yield {'type': 'error', 'result': AssistantRunResult(
             text='', state='failed', error='max_steps_exceeded',
             prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
             tool_call_count=tool_calls,
             duration_ms=int((time.monotonic() - started) * 1000),
-        )
+        )}
 
     def _dispatch_tool(self, *, tc, tools_by_name, msgs, conversation_key, context):
-        """Invoke a single tool call, persist the result, append to LLM context."""
+        """Invoke a single tool call, persist the result, append to LLM context.
+        Returns ``(output, error_message)`` so :meth:`stream` can echo the
+        outcome out to the SSE client.
+        """
         tool_name = getattr(tc, 'name', '')
         args = getattr(tc, 'arguments', {}) or {}
         tool = tools_by_name.get(tool_name)
@@ -229,13 +286,15 @@ class Assistant:
                 message=StoredMessage(role='tool', tool_name=tool_name,
                                       tool_args=args, tool_output=payload),
             )
-            return
+            return payload, payload['error']
 
+        error_msg = ''
         try:
             result = tool.invoke(args, agent=self, context=context or {})
             output = result.output if hasattr(result, 'output') else result
         except Exception as e:  # noqa: BLE001 — never let a tool failure kill the run
             output = {'error': f'{type(e).__name__}: {e}'}
+            error_msg = output['error']
         payload = output if isinstance(output, (dict, list, str, int, float, bool)) else str(output)
         msgs.append(LLMMessage(
             role='tool', tool_call_id=getattr(tc, 'id', ''),
@@ -246,6 +305,7 @@ class Assistant:
             message=StoredMessage(role='tool', tool_name=tool_name,
                                   tool_args=args, tool_output=payload),
         )
+        return payload, error_msg
 
 
 def run_assistant(*, message: str, conversation_key: str = 'default',

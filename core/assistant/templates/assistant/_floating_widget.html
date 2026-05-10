@@ -50,6 +50,13 @@
     div.innerHTML = `<strong style="font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#6b7280);">${label}</strong>
       <div style="margin-top:.2rem;white-space:pre-wrap;">${text.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[m])}</div>`;
     log.appendChild(div); log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c];
+    });
   }
 
   function loadHistory() {
@@ -65,24 +72,86 @@
   });
   closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
 
+  function pushToolCard(name, args) {
+    var card = document.createElement('details');
+    card.className = 'morph-tool-card';
+    card.style.cssText = 'margin:.4rem 0; padding:.45rem .55rem; border:1px solid var(--border,#e3e3e3); border-radius:6px; background:rgba(0,150,255,0.04); font-size:.8rem;';
+    var summary = document.createElement('summary');
+    summary.style.cssText = 'cursor:pointer; color:var(--text-muted,#6b7280); display:flex; align-items:center; gap:.4rem;';
+    summary.innerHTML = '<span class="morph-tool-icon">⋯</span> <span class="morph-tool-name"><strong>' + escapeHtml(name) + '</strong> <span class="morph-tool-status">running…</span></span>';
+    var body = document.createElement('div');
+    body.className = 'morph-tool-body';
+    body.style.cssText = 'margin-top:.4rem; padding-top:.4rem; border-top:1px dotted var(--border,#e3e3e3); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.7rem; color:var(--text-muted,#6b7280); white-space:pre-wrap; word-break:break-word;';
+    body.textContent = JSON.stringify(args || {}, null, 2);
+    card.appendChild(summary); card.appendChild(body);
+    log.appendChild(card); log.scrollTop = log.scrollHeight;
+    return card;
+  }
+
   form.addEventListener('submit', e => {
     e.preventDefault();
     const input = form.querySelector('input[name=message]');
     const text = (input.value || '').trim();
     if (!text) return;
     pushLine('user', text); input.value = '';
-    const thinking = document.createElement('div');
-    thinking.style.cssText = 'margin:.4rem 0; color:var(--text-muted,#6b7280); font-style:italic; font-size:.85rem;';
-    thinking.textContent = '…';
-    log.appendChild(thinking);
-    fetch('/dashboard/assistant/invoke/', {
+
+    // Stream events from /stream/. Render tool calls as collapsed cards
+    // and the final assistant text as a normal line. Falls back to the
+    // JSON /invoke/ endpoint if the stream errors.
+    var pendingCards = {};
+    var assistantTextEl = null;
+
+    fetch('/dashboard/assistant/stream/', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
       body: JSON.stringify({message: text}),
-    })
-    .then(r => r.json())
-    .then(data => { thinking.remove(); pushLine('assistant', data.text || data.error || '(no reply)'); })
-    .catch(() => { thinking.remove(); pushLine('assistant', 'connection error'); });
+    }).then(function(resp) {
+      if (!resp.ok || !resp.body) throw new Error('stream HTTP ' + resp.status);
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      function pump() {
+        return reader.read().then(function(chunk) {
+          if (chunk.done) return;
+          buf += decoder.decode(chunk.value, {stream: true});
+          var blocks = buf.split('\n\n');
+          buf = blocks.pop();
+          blocks.forEach(function(block) {
+            var line = block.split('\n').filter(function(l) { return l.indexOf('data: ') === 0; })[0];
+            if (!line) return;
+            var raw = line.slice(6);
+            try {
+              var ev = JSON.parse(raw);
+            } catch (_) { return; }
+            if (ev.type === 'tool_call_started') {
+              pendingCards[ev.name] = pushToolCard(ev.name, ev.arguments);
+            } else if (ev.type === 'tool_call_finished') {
+              var card = pendingCards[ev.name];
+              if (card) {
+                var icon = card.querySelector('.morph-tool-icon');
+                var status = card.querySelector('.morph-tool-status');
+                if (icon) icon.outerHTML = ev.error ? '✖' : '✓';
+                if (status) status.textContent = ev.error ? 'error' : 'done';
+                var body = card.querySelector('.morph-tool-body');
+                if (body) body.textContent = ev.error || JSON.stringify(ev.output, null, 2);
+                delete pendingCards[ev.name];
+              }
+            } else if (ev.type === 'assistant_text') {
+              if (!assistantTextEl) assistantTextEl = pushLine('assistant', ev.text);
+              else assistantTextEl.querySelector('div').textContent = (assistantTextEl.querySelector('div').textContent + '\n' + ev.text).trim();
+            } else if (ev.type === 'final') {
+              pushLine('assistant', ev.text || '(no reply)');
+            } else if (ev.type === 'error') {
+              pushLine('assistant', ev.error || '(error)');
+            }
+          });
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function() {
+      pushLine('assistant', 'connection error');
+    });
   });
 
   // Inline-affordance bridge: any "Ask Linda" button on a dashboard
