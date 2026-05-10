@@ -1,0 +1,74 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Subscriptions · Morpheus admin{% endblock %}
+
+{% block content %}
+<h1 class="text-xl font-semibold mb-3">Subscriptions</h1>
+<p class="text-sm text-[color:var(--text-muted)] mb-4">
+  Plans + active subscriptions. Read-only — full lifecycle (rebills,
+  Stripe Billing) ships in a future commit.
+</p>
+
+<div class="card">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">Plans</h2>
+  </div>
+  <table class="morph-table">
+    <thead><tr><th>Plan</th><th>Price</th><th>Interval</th><th>Provider</th><th>Active</th></tr></thead>
+    <tbody>
+      {% for p in plans %}
+      <tr>
+        <td><strong>{{ p.name }}</strong> <code style="color:var(--text-muted);">/{{ p.slug }}</code></td>
+        <td>{{ p.price }}</td>
+        <td>every {{ p.interval_count }} {{ p.interval }}{{ p.interval_count|pluralize }}</td>
+        <td><span class="pill pill-neutral">{{ p.get_provider_display }}</span></td>
+        <td>{% if p.is_active %}<span class="pill pill-success">Yes</span>{% else %}<span class="pill pill-neutral">No</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No plans yet — create one via Django admin.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card mt-4">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">Active subscriptions <span class="text-[color:var(--text-muted)] font-normal text-sm">({{ subscriptions|length }})</span></h2>
+  </div>
+  <table class="morph-table">
+    <thead><tr><th>Customer</th><th>Plan</th><th>Status</th><th>Next renewal</th></tr></thead>
+    <tbody>
+      {% for s in subscriptions %}
+      <tr>
+        <td>{{ s.customer.email|default:"—" }}</td>
+        <td>{{ s.plan.name }}</td>
+        <td><span class="pill {% if s.status == 'active' %}pill-success{% else %}pill-neutral{% endif %}">{{ s.get_status_display|default:s.status }}</span></td>
+        <td>{{ s.current_period_end|date:"M j, Y"|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No subscriptions yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if invoices %}
+<div class="card mt-4">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">Recent invoices</h2>
+  </div>
+  <table class="morph-table">
+    <thead><tr><th>Issued</th><th>Customer</th><th>Amount</th><th>State</th></tr></thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td>{{ inv.created_at|date:"M j" }}</td>
+        <td>{{ inv.subscription.customer.email|default:"—" }}</td>
+        <td>{{ inv.amount }}</td>
+        <td><span class="pill pill-neutral">{{ inv.state|default:"—" }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

@@ -64,6 +64,16 @@ class AIAssistantPlugin(Plugin):
                 'schedule': crontab(hour=6, minute=0),
             },
         )
+        # Dynamic-pricing re-evaluation. The task short-circuits when
+        # `enable_dynamic_pricing` is False, so scheduling it is safe
+        # even on stores that don't use AI pricing.
+        schedule.setdefault(
+            'ai_assistant.evaluate_all_product_prices',
+            {
+                'task': 'plugins.installed.ai_assistant.tasks.evaluate_all_product_prices',
+                'schedule': crontab(minute=0),  # hourly
+            },
+        )
 
     def _pulse_event_nudge(self, **_kwargs) -> None:
         """Trigger a Pulse refresh on key events so the dashboard panel

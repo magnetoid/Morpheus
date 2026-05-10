@@ -70,13 +70,21 @@ def pulse_daily_refresh():
 @shared_task
 def evaluate_all_product_prices():
     """
-    Periodic task (e.g., hourly) to re-evaluate prices for all active products 
-    using the Dynamic Pricing Engine.
+    Periodic task (e.g., hourly) to re-evaluate prices for all active products
+    using the Dynamic Pricing Engine. No-ops when dynamic pricing is
+    disabled in plugin config so scheduling is safe by default.
     """
+    try:
+        from plugins.registry import plugin_registry
+        plugin = plugin_registry.get('ai_assistant')
+        if plugin is None or not plugin.get_config_value('enable_dynamic_pricing', False):
+            return
+    except Exception:  # noqa: BLE001
+        return
     logger.info("AI Task: Starting global dynamic price evaluation...")
     from plugins.installed.catalog.models import Product
     from plugins.installed.ai_assistant.services.pricing import DynamicPricingService
-    
+
     products = Product.objects.filter(status='active')
     for product in products:
         DynamicPricingService.evaluate_product_price(product)
