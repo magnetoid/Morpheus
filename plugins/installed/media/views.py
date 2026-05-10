@@ -1,10 +1,17 @@
-"""Media library views — browse / upload / edit / delete."""
+"""Asset library views — browse / upload / edit / delete.
+
+Single page with tabs across every asset type the merchant might care
+about: images, video, audio, PDFs, spreadsheets, Word docs, other
+documents, plus a special tab for *digital products* (Product rows
+with ``product_type='digital'`` and an attached ``digital_file``).
+"""
 from __future__ import annotations
 
-import json
+import json  # noqa: F401 — re-exported for picker callers
 import logging
 
 from django.contrib import messages
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_protect
@@ -16,57 +23,143 @@ from plugins.installed.media.models import MediaAsset
 logger = logging.getLogger('morpheus.media.views')
 
 
+# Mime → "view" classifier for fine-grained tabs within the document kind.
+# Order is significant — first match wins.
+_DOC_VIEWS = (
+    ('pdf',         'PDFs',         'file-text', ('pdf',)),
+    ('spreadsheet', 'Spreadsheets', 'sheet',     ('spreadsheet', 'excel', 'csv', '.xls', '.xlsx', '.numbers')),
+    ('word',        'Word docs',    'file-text', ('word', 'wordprocessingml', '.doc', '.docx', '.rtf')),
+)
+
+
+def _filter_for_view(qs, view: str):
+    """Narrow ``qs`` to a single tab. Returns the same queryset when view='all'."""
+    if view == 'image':
+        return qs.filter(kind=MediaAsset.KIND_IMAGE)
+    if view == 'video':
+        return qs.filter(kind=MediaAsset.KIND_VIDEO)
+    if view == 'audio':
+        return qs.filter(kind=MediaAsset.KIND_AUDIO)
+    if view == 'document':
+        narrowed = qs.filter(kind=MediaAsset.KIND_DOCUMENT)
+        for _, _, _, needles in _DOC_VIEWS:
+            for n in needles:
+                narrowed = narrowed.exclude(
+                    Q(mime_type__icontains=n) | Q(filename__icontains=n)
+                )
+        return narrowed
+    if view == 'other':
+        return qs.filter(kind=MediaAsset.KIND_OTHER)
+    for key, _, _, needles in _DOC_VIEWS:
+        if view == key:
+            q = Q()
+            for n in needles:
+                q |= Q(mime_type__icontains=n) | Q(filename__icontains=n)
+            return qs.filter(kind=MediaAsset.KIND_DOCUMENT).filter(q)
+    return qs
+
+
+def _build_tabs(view: str) -> list[dict]:
+    """Pre-counted tab list rendered into the template."""
+    base = MediaAsset.objects.all()
+    tabs = [{
+        'key': 'all', 'label': 'All', 'icon': 'layers',
+        'count': base.count(),
+        'active': view in ('all', ''),
+    }]
+    for key, label, icon in (
+        ('image', 'Images', 'image'),
+        ('video', 'Videos', 'film'),
+        ('audio', 'Audio',  'music'),
+    ):
+        tabs.append({
+            'key': key, 'label': label, 'icon': icon,
+            'count': base.filter(kind=key).count(),
+            'active': view == key,
+        })
+    for key, label, icon, _ in _DOC_VIEWS:
+        tabs.append({
+            'key': key, 'label': label, 'icon': icon,
+            'count': _filter_for_view(base, key).count(),
+            'active': view == key,
+        })
+    tabs.append({
+        'key': 'document', 'label': 'Other docs', 'icon': 'file',
+        'count': _filter_for_view(base, 'document').count(),
+        'active': view == 'document',
+    })
+    tabs.append({
+        'key': 'other', 'label': 'Other', 'icon': 'box',
+        'count': base.filter(kind=MediaAsset.KIND_OTHER).count(),
+        'active': view == 'other',
+    })
+    digital_count = 0
+    try:
+        from plugins.installed.catalog.models import Product
+        digital_count = Product.objects.filter(product_type='digital').count()
+    except Exception:  # noqa: BLE001
+        pass
+    tabs.append({
+        'key': 'digital_products', 'label': 'Digital products', 'icon': 'download',
+        'count': digital_count,
+        'active': view == 'digital_products',
+    })
+    return tabs
+
+
 @staff_member_required
 def library(request: HttpRequest) -> HttpResponse:
-    """Browse the library — paginated grid with kind / tag / search filters."""
-    qs = MediaAsset.objects.all()
-    kind = (request.GET.get('kind') or '').strip()
-    if kind:
-        qs = qs.filter(kind=kind)
+    """Browse the asset library — single page with tabs across every type."""
+    view = (request.GET.get('view') or 'all').strip().lower() or 'all'
+
+    # Special branch — digital products live in the catalog Product table.
+    if view == 'digital_products':
+        digital_products: list = []
+        try:
+            from plugins.installed.catalog.models import Product
+            digital_products = list(
+                Product.objects.filter(product_type='digital')
+                .order_by('-updated_at')[:200]
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('media.library: digital products query failed: %s', e)
+        return render(request, 'media/library.html', {
+            'view': view,
+            'kind_tabs': _build_tabs(view),
+            'digital_products': digital_products,
+            'active_nav': 'assets',
+        })
+
+    qs = _filter_for_view(MediaAsset.objects.all(), view)
     search = (request.GET.get('q') or '').strip()
     if search:
-        qs = qs.filter(filename__icontains=search) | qs.filter(alt_text__icontains=search)
+        qs = qs.filter(
+            Q(filename__icontains=search) | Q(alt_text__icontains=search)
+        )
     tag = (request.GET.get('tag') or '').strip()
     if tag:
         qs = qs.filter(tags__contains=[tag])
 
-    # Pagination — reuse the dashboard helper from earlier today.
     try:
         from plugins.installed.admin_dashboard.views_split._shared import paginate_and_sort
         page_obj, paging_ctx = paginate_and_sort(
             request, qs,
             default_sort='-created_at',
             allowed_sorts=('created_at', 'filename', 'size_bytes', 'kind'),
-            default_per_page=50,
+            default_per_page=60,
         )
         assets = list(page_obj.object_list)
-    except Exception:  # noqa: BLE001 — admin_dashboard may not be loaded
+    except Exception:  # noqa: BLE001
         paging_ctx = {}
         assets = list(qs[:200])
 
-    # Build a pre-rendered tab list so the template doesn't need a
-    # custom dict-getter filter. First entry is the "All" pseudo-tab.
-    kind_tabs = [{
-        'key': '',
-        'label': 'All',
-        'count': MediaAsset.objects.count(),
-        'active': not kind,
-    }]
-    for kind_key, kind_label in MediaAsset.KIND_CHOICES:
-        kind_tabs.append({
-            'key': kind_key,
-            'label': kind_label,
-            'count': MediaAsset.objects.filter(kind=kind_key).count(),
-            'active': kind == kind_key,
-        })
-
     return render(request, 'media/library.html', {
         'assets': assets,
-        'kind': kind,
+        'view': view,
         'search': search,
         'tag': tag,
-        'kind_tabs': kind_tabs,
-        'active_nav': 'media',
+        'kind_tabs': _build_tabs(view),
+        'active_nav': 'assets',
         **paging_ctx,
     })
 

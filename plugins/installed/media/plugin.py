@@ -10,13 +10,14 @@ logger = logging.getLogger('morpheus.media')
 
 class MediaPlugin(Plugin):
     name = 'media'
-    label = 'Media library'
-    version = '0.1.0'
+    label = 'Asset manager'
+    version = '0.2.0'
     description = (
-        'Central asset library — upload images, documents, and other '
-        'files once and reference them across products, CMS pages, '
-        'email templates, themes, and metafields. Per-asset alt text + '
-        'tags + search; soft references rather than orphaning.'
+        'Unified asset manager — images, video, audio, PDFs, '
+        'spreadsheets, Word docs, and digital downloadable products. '
+        'Tabbed library with per-type counts; uploads land in MediaAsset, '
+        'digital products live alongside as catalog rows with attached '
+        'files. Per-asset alt text + tags + search.'
     )
     has_models = True
 
@@ -31,9 +32,9 @@ class MediaPlugin(Plugin):
         return [
             DashboardPage(
                 slug='library',
-                label='Media library',
+                label='Assets',
                 section='cms',
-                icon='image',
+                icon='layers',
                 view='plugins.installed.media.views.library',
                 order=20,
                 nav='main',

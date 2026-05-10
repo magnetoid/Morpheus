@@ -1,44 +1,97 @@
 {% extends "admin_dashboard/base.html" %}
 {% load morph_dashboard %}
-{% block title %}Media library · Morpheus{% endblock %}
+{% block title %}Assets · Morpheus{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-4">
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold tracking-tight">Media library</h1>
-      {% if page_obj %}
-      <p class="text-sm text-[color:var(--text-muted)]">{{ page_obj.paginator.count }} asset{{ page_obj.paginator.count|pluralize }}.</p>
-      {% endif %}
+      <h1 class="text-xl font-semibold tracking-tight">Asset manager</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        One place for every file the store touches — covers, banners, videos,
+        downloadable PDFs, spreadsheets, and the digital products you sell.
+      </p>
     </div>
+    {% if view != 'digital_products' %}
     <form method="post" action="{% url 'media:upload' %}" enctype="multipart/form-data" class="flex items-center gap-2">
       {% csrf_token %}
       <input type="file" name="files" multiple class="input"
-             accept="image/*,video/*,audio/*,application/pdf"
+             accept="image/*,video/*,audio/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
              style="height: auto; padding: .35rem .5rem;">
       <button type="submit" class="btn btn-primary">
         <i data-lucide="upload" class="h-4 w-4"></i> Upload
       </button>
     </form>
+    {% else %}
+    <a href="/dashboard/products/new/?type=digital" class="btn btn-primary">
+      <i data-lucide="plus" class="h-4 w-4"></i> New digital product
+    </a>
+    {% endif %}
   </div>
 
   <nav class="flex items-center gap-1 overflow-x-auto" style="border-bottom: 1px solid var(--border);">
     {% for t in kind_tabs %}
-    <a href="?{% if t.key %}kind={{ t.key }}{% endif %}"
+    <a href="?view={{ t.key }}"
        class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
        style="border-bottom: 2px solid {% if t.active %}var(--text){% else %}transparent{% endif %};
               color: {% if t.active %}var(--text){% else %}var(--text-muted){% endif %};
               font-weight: {% if t.active %}600{% else %}500{% endif %};
               margin-bottom: -1px;">
+      <i data-lucide="{{ t.icon }}" class="h-3.5 w-3.5"></i>
       {{ t.label }}
-      {% if t.count %}<span class="pill pill-neutral" style="font-size:.68rem; padding:.05rem .4rem;">{{ t.count }}</span>{% endif %}
+      <span class="pill {% if t.active %}pill-success{% else %}pill-neutral{% endif %}" style="font-size:.68rem; padding:.05rem .4rem;">{{ t.count }}</span>
     </a>
     {% endfor %}
   </nav>
 
+  {# ── Digital products tab ────────────────────────────────────────── #}
+  {% if view == 'digital_products' %}
+    {% if digital_products %}
+    <div class="card">
+      <table class="morph-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Price</th>
+            <th>File</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in digital_products %}
+          <tr>
+            <td><strong>{{ p.name }}</strong> <code style="color:var(--text-muted);">/{{ p.slug }}</code></td>
+            <td>{{ p.sku|default:"—" }}</td>
+            <td>{{ p.price }}</td>
+            <td>
+              {% if p.digital_file %}
+                <a href="{{ p.digital_file.url }}" target="_blank" style="text-decoration: underline;">
+                  <i data-lucide="download" class="h-3.5 w-3.5" style="display:inline-block; vertical-align:middle;"></i>
+                  {{ p.digital_file.name|cut:"digital/" }}
+                </a>
+              {% else %}
+                <span class="pill pill-neutral">No file attached</span>
+              {% endif %}
+            </td>
+            <td>{{ p.updated_at|date:"M j, Y" }}</td>
+            <td>
+              <a href="/dashboard/products/{{ p.id }}/" class="btn btn-ghost" style="font-size:.75rem;">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {% include "admin_dashboard/_empty_state.html" with icon="download" title="No digital products yet" hint="Create a product with type='digital' and attach a downloadable file. Customers receive a token-protected download link after purchase." %}
+    {% endif %}
+  {# ── Search bar (other tabs) ─────────────────────────────────────── #}
+  {% else %}
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
-    {% if kind %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
+    {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
     <div class="relative flex-1 min-w-[200px]">
       <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
       <input name="q" value="{{ search }}" placeholder="Filename or alt text" class="input input-search">
@@ -46,19 +99,24 @@
     <button class="btn btn-primary">Search</button>
   </form>
 
-  {% filter_chips q="Search" kind="Kind" tag="Tag" %}
+  {% filter_chips q="Search" tag="Tag" %}
 
   {% if assets %}
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
     {% for a in assets %}
     <div class="card overflow-hidden" style="position: relative;">
-      <a href="{% url 'media:edit_meta' a.id %}" class="block" style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+      <a href="{% url 'media:edit_meta' a.id %}" class="block" style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;">
         {% if a.is_image %}
         <img src="{{ a.url }}" alt="{{ a.alt_text|default:a.filename }}"
              style="width: 100%; height: 100%; object-fit: cover;">
         {% else %}
-        <i data-lucide="{% if a.kind == 'video' %}film{% elif a.kind == 'audio' %}music{% elif a.kind == 'document' %}file-text{% else %}file{% endif %}"
+        <i data-lucide="{% if a.kind == 'video' %}film{% elif a.kind == 'audio' %}music{% elif 'pdf' in a.mime_type or 'pdf' in a.filename %}file-text{% elif 'spreadsheet' in a.mime_type or 'excel' in a.mime_type or 'csv' in a.mime_type %}sheet{% elif 'word' in a.mime_type %}file-text{% elif a.kind == 'document' %}file-text{% else %}file{% endif %}"
            class="h-10 w-10 text-[color:var(--text-subtle)]"></i>
+        {% endif %}
+        {% if a.mime_type %}
+        <span style="position: absolute; bottom: .25rem; right: .25rem; background: rgba(14,14,14,.65); color: white; font-size: .55rem; padding: .1rem .35rem; border-radius: 3px; text-transform: uppercase; letter-spacing: .04em;">
+          {{ a.mime_type|cut:"application/"|cut:"image/"|cut:"video/"|cut:"audio/"|truncatechars:14 }}
+        </span>
         {% endif %}
       </a>
       <div class="px-2 py-1.5">
@@ -73,14 +131,9 @@
   </div>
   {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
   {% else %}
-  {% include "admin_dashboard/_empty_state.html" with icon="image" title="No media yet" hint="Upload images, videos, or PDFs to reuse them across the platform." %}
+  {% include "admin_dashboard/_empty_state.html" with icon="image" title="No assets in this view" hint="Upload images, videos, PDFs, or spreadsheets to reuse them across the platform." %}
+  {% endif %}
   {% endif %}
 
 </div>
-
-<script>
-  // Tiny filter helper used by the kind tabs above. Django doesn't ship a
-  // dict-get filter; fall back to nothing if morph_dashboard hasn't
-  // exposed `get_item` yet.
-</script>
 {% endblock %}
