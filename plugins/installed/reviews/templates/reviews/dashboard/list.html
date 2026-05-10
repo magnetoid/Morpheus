@@ -1,0 +1,78 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Reviews · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-3">
+  <div>
+    <h1 class="text-xl font-semibold">Reviews</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Approve / hide reviews and post a public response. Auto-approved on submit
+      &mdash; flip <em>hidden</em> to remove from the storefront.
+    </p>
+  </div>
+</div>
+
+<div style="display:flex; gap:.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+  <a href="?filter=all"      class="btn {% if selected_filter == 'all' %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:.8rem;">All <span style="opacity:.7;">({{ counts.all }})</span></a>
+  <a href="?filter=approved" class="btn {% if selected_filter == 'approved' %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:.8rem;">Approved <span style="opacity:.7;">({{ counts.approved }})</span></a>
+  <a href="?filter=hidden"   class="btn {% if selected_filter == 'hidden' %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:.8rem;">Hidden <span style="opacity:.7;">({{ counts.hidden }})</span></a>
+  <a href="?filter=low_star" class="btn {% if selected_filter == 'low_star' %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:.8rem;">1–2 stars <span style="opacity:.7;">({{ counts.low_star }})</span></a>
+</div>
+
+<div class="card">
+  <table class="morph-table">
+    <thead>
+      <tr>
+        <th style="width: 80px;">Rating</th>
+        <th>Product</th>
+        <th>Customer</th>
+        <th>Body</th>
+        <th>Posted</th>
+        <th>Status</th>
+        <th style="width: 220px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><span style="letter-spacing:.1em; font-size:.95rem;">{% for _ in "12345" %}{% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}{% endfor %}</span></td>
+        <td><a href="/products/{{ r.product.slug }}/" target="_blank" style="text-decoration:underline;">{{ r.product.name }}</a></td>
+        <td>{{ r.customer.email|default:"&mdash;" }}</td>
+        <td style="max-width: 360px;"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);">{{ r.body|truncatechars:140 }}</div></td>
+        <td>{{ r.created_at|date:"M j, Y" }}</td>
+        <td>
+          {% if r.is_approved %}
+            <span class="pill pill-success">Approved</span>
+          {% else %}
+            <span class="pill pill-neutral">Hidden</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{% url 'reviews_dashboard:action' review_id=r.id %}" style="display:inline-flex; gap:.3rem; margin:0;">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="?filter={{ selected_filter }}">
+            {% if r.is_approved %}
+              <button name="action" value="hide" class="btn btn-ghost" style="font-size:.75rem;">Hide</button>
+            {% else %}
+              <button name="action" value="approve" class="btn btn-ghost" style="font-size:.75rem;">Approve</button>
+            {% endif %}
+          </form>
+          <details style="display:inline-block; margin-left:.4rem;">
+            <summary style="cursor:pointer; font-size:.75rem; color:var(--text-muted);">Respond</summary>
+            <form method="post" action="{% url 'reviews_dashboard:respond' review_id=r.id %}" style="margin-top:.4rem; display:flex; flex-direction:column; gap:.3rem;">
+              {% csrf_token %}
+              <textarea name="body" rows="2" required placeholder="Public reply…" style="width:240px; padding:.3rem; border:1px solid var(--border); border-radius:4px; font-size:.75rem;"></textarea>
+              <button type="submit" class="btn btn-primary" style="font-size:.7rem; padding:.3rem .6rem;">Post reply</button>
+            </form>
+          </details>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center; padding:3rem; color:var(--text-muted);">
+        No reviews in this filter yet.
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

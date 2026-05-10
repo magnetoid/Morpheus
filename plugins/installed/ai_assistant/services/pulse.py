@@ -289,7 +289,7 @@ def _poor_review_signal() -> dict | None:
         'estimated_impact': '',
         'suggested_action': {
             'kind': 'open_view',
-            'url': '/dashboard/reviews/?rating_lte=2',
+            'url': '/dashboard/reviews/?filter=low_star',
             'label': 'Read reviews',
         },
     }
