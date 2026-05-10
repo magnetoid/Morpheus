@@ -54,6 +54,15 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 else:
+    # Production: serve uploaded media through Django so the volume-backed
+    # /app/media/ files are reachable at /media/<path>. Cloudflare/CDN
+    # caches them in front; gunicorn only sees the cold misses. Add a real
+    # static-asset edge (Plesk alias, S3, R2) when traffic justifies it.
+    from django.views.static import serve as _serve
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', _serve,
+                {'document_root': settings.MEDIA_ROOT}),
+    ]
     # Production: register a stub `admin` namespace so `reverse('admin:login')`
     # — used by Django's @staff_member_required decorator — works without the
     # full admin app being mounted.
