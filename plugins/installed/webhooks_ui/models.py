@@ -15,6 +15,7 @@ class WebhookDelivery(models.Model):
         ('delivered', 'Delivered'),
         ('failed', 'Failed'),
         ('retrying', 'Retrying'),
+        ('dlq', 'Dead-letter (max retries)'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

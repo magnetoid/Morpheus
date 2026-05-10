@@ -67,10 +67,11 @@ def deliveries_list(request):
 
 @staff_member_required
 def delivery_replay(request, delivery_id):
-    """Re-enqueue a failed delivery."""
+    """Re-enqueue a failed / DLQ'd delivery in-place — resets attempts to 0
+    and re-runs through the retry chain. POST-only."""
     from plugins.installed.webhooks_ui.models import WebhookDelivery
-    from plugins.installed.webhooks_ui.services import enqueue_delivery
+    from plugins.installed.webhooks_ui.tasks import replay_delivery
     d = get_object_or_404(WebhookDelivery, id=delivery_id)
     if request.method == 'POST':
-        enqueue_delivery(endpoint=d.endpoint, event_name=d.event_name, payload=d.payload)
+        replay_delivery.delay(str(d.id))
     return redirect('webhooks_ui:deliveries_list')

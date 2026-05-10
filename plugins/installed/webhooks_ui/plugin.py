@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, events
-from morpheus import DashboardPage
+from morpheus import DashboardPage, Plugin, events
 
 logger = logging.getLogger('morpheus.webhooks_ui')
 
@@ -26,6 +25,36 @@ _FANOUT_EVENTS = (
     events.PRODUCT_LOW_STOCK,
     events.PRODUCT_OUT_OF_STOCK,
 )
+
+
+def _flatten(value):
+    """Best-effort serializable representation of a domain object.
+
+    For Django model instances we surface a few common identifying fields
+    (pk, str, plus order_number / sku / email if present). Subscribers
+    expect external IDs, not full record dumps.
+    """
+    if value is None or isinstance(value, (str, int, float, bool, list, dict)):
+        return value
+    out = {'_type': type(value).__name__}
+    pk = getattr(value, 'pk', None)
+    if pk is not None:
+        out['id'] = str(pk)
+    for attr in ('order_number', 'sku', 'email', 'name', 'slug', 'status'):
+        v = getattr(value, attr, None)
+        if v is not None and isinstance(v, (str, int, float, bool)):
+            out[attr] = v
+    return out
+
+
+def _make_fanout(event_name: str):
+    """Build a named handler closure — hook registry needs `__qualname__`."""
+    def handler(**payload):
+        WebhooksUiPlugin._fanout(event_name, **payload)
+    safe = event_name.replace('.', '_')
+    handler.__name__ = f'fanout_{safe}'
+    handler.__qualname__ = f'WebhooksUiPlugin.fanout_{safe}'
+    return handler
 
 
 class WebhooksUiPlugin(Plugin):
@@ -54,19 +83,14 @@ class WebhooksUiPlugin(Plugin):
         for event in _FANOUT_EVENTS:
             self.register_hook(event, _make_fanout(event), priority=90)
 
-
-def _make_fanout(event_name: str):
-    """Build a named handler closure — hook registry needs `__qualname__`."""
-    def handler(**payload):
-        WebhooksUiPlugin._fanout(event_name, **payload)
-    safe = event_name.replace('.', '_')
-    handler.__name__ = f'fanout_{safe}'
-    handler.__qualname__ = f'WebhooksUiPlugin.fanout_{safe}'
-    return handler
-
     @staticmethod
     def _fanout(event_name: str, **payload) -> None:
-        """Find every WebhookEndpoint subscribed to `event_name` and queue."""
+        """Find every WebhookEndpoint subscribed to `event_name` and queue.
+
+        Previously this method was accidentally nested inside _make_fanout
+        (wrong indentation) — every fanout call raised AttributeError. The
+        method is now a real classmember on the plugin.
+        """
         try:
             from core.models import WebhookEndpoint
             from plugins.installed.webhooks_ui.services import enqueue_delivery
@@ -86,27 +110,8 @@ def _make_fanout(event_name: str):
             try:
                 enqueue_delivery(endpoint=ep, event_name=event_name, payload=flat)
             except Exception as e:  # noqa: BLE001
-                logger.warning('webhooks_ui: enqueue %s for %s failed: %s', event_name, ep.id, e)
-
-
-def _flatten(value):
-    """Best-effort serializable representation of a domain object.
-
-    For Django model instances we surface a few common identifying fields
-    (pk, str, plus order_number / sku / email if present). Subscribers
-    expect external IDs, not full record dumps.
-    """
-    if value is None or isinstance(value, (str, int, float, bool, list, dict)):
-        return value
-    out = {'_type': type(value).__name__}
-    pk = getattr(value, 'pk', None)
-    if pk is not None:
-        out['id'] = str(pk)
-    for attr in ('order_number', 'sku', 'email', 'name', 'slug', 'status'):
-        v = getattr(value, attr, None)
-        if v is not None and isinstance(v, (str, int, float, bool)):
-            out[attr] = v
-    return out
+                logger.warning('webhooks_ui: enqueue %s for %s failed: %s',
+                               event_name, ep.id, e)
 
     def contribute_dashboard_pages(self) -> list:
         return [

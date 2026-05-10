@@ -28,6 +28,12 @@ class InventoryPlugin(Plugin):
             'task': 'inventory.apply_price_schedules',
             'schedule': 60 * 5,
         })
+        # Redis fast-path: drift reconciliation every 5 min. No-ops if
+        # no `stock:*` keys exist in Redis (i.e. fast-path not in use).
+        self.register_celery_beat('inventory:reconcile_redis_stock', {
+            'task': 'inventory.reconcile_redis_stock',
+            'schedule': 60 * 5,
+        })
 
     def on_order_placed(self, order, **kwargs):
         # Reserve stock when the order is created (before payment).

@@ -75,6 +75,23 @@ def apply_price_schedules() -> int:
     return applied
 
 
+@app.task(name='inventory.reconcile_redis_stock', ignore_result=True,
+          time_limit=60, soft_time_limit=30)
+def reconcile_redis_stock() -> dict:
+    """Compare Redis stock counters to Postgres source of truth.
+
+    Only runs when the Redis fast-path is in use — when no
+    ``stock:*`` keys exist in Redis, returns empty stats and exits.
+    Drift > 1% logs a warning at WARNING level.
+    """
+    try:
+        from plugins.installed.inventory.services_redis import reconcile_stock
+        return reconcile_stock()
+    except Exception as e:  # noqa: BLE001
+        logger.debug('inventory: redis reconcile skipped: %s', e)
+        return {'checked': 0, 'in_sync': 0, 'drift': []}
+
+
 @app.task(name='inventory.find_abandoned_carts', ignore_result=True, time_limit=120, soft_time_limit=60)
 def find_abandoned_carts() -> int:
     """Mark carts > 1h old as abandoned and fire the cart.abandoned event."""
