@@ -102,7 +102,42 @@
     content: ''; position: absolute; left: -.95rem; top: 50%; width: 4px; height: 4px;
     border-radius: 50%; background: var(--text); transform: translateY(-50%);
   }
-  /* Section headers — flat uppercase labels, no collapse toggle. */
+  /* Section headers — Shopify-style collapsible parent with children
+     indented underneath. The button is `nav-link`-shaped so it visually
+     matches the standalone top-level entries (Home / Orders / Products).
+     A chevron rotates when expanded. */
+  .nav-section-btn {
+    display: flex; align-items: center; gap: .5rem; width: 100%;
+    padding: .28rem .55rem; border-radius: var(--radius-sm);
+    color: var(--text); font-size: .8125rem; font-weight: 500;
+    line-height: 1.25; background: transparent; border: none;
+    cursor: pointer; text-align: left; position: relative;
+  }
+  .nav-section-btn:hover { background: var(--nav-hover-bg); }
+  .nav-section-btn.has-active { font-weight: 600; }
+  .nav-section-btn .chev {
+    margin-left: auto;
+    transition: transform .15s ease;
+    color: var(--text-muted);
+  }
+  .nav-section-btn.collapsed .chev { transform: rotate(-90deg); }
+  .nav-group {
+    padding-left: 1.55rem;
+    margin: .1rem 0 .35rem;
+    display: block;
+    overflow: hidden;
+  }
+  .nav-group.collapsed { display: none; }
+  .nav-group .nav-link { font-weight: 400; padding: .3rem .6rem; font-size: .8125rem; color: var(--text-muted); }
+  .nav-group .nav-link:hover { color: var(--text); }
+  .nav-group .nav-link.active { color: var(--text); background: transparent; font-weight: 600; }
+  .nav-group .nav-link.active::before { display: none; }
+  .nav-group .nav-link.active::after {
+    content: ''; position: absolute; left: -.95rem; top: 50%; width: 4px; height: 4px;
+    border-radius: 50%; background: var(--text); transform: translateY(-50%);
+  }
+  /* Legacy flat-section styling — retained for any caller still emitting
+     <div class="nav-section"> directly. Phasing out. */
   .nav-section {
     padding: 1rem .6rem .35rem;
     font-size: .68rem; font-weight: 600; color: var(--text-subtle);
@@ -198,17 +233,29 @@
     <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'customers' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Customers</a>
 
     {% comment %}
-      Plugin-contributed pages, grouped by section. Headers are flat
-      labels now — no collapsible. Sections that the user is currently
-      inside expand inline; others stay compact above.
+      Plugin-contributed pages, grouped by section. Each section is a
+      Shopify-style collapsible: the parent button toggles the indented
+      children below; auto-opens when a child is active. State persists
+      per-section in localStorage (see <script> at the bottom).
     {% endcomment %}
     {% for section in sidebar_sections %}
-    <div class="nav-section">{{ section.label }}</div>
-    {% for page in section.pages %}
-    <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/" class="nav-link">
-      <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
-    </a>
-    {% endfor %}
+    {% with first_page=section.pages.0 %}
+    <button type="button" class="nav-section-btn {% if section.is_active %}has-active{% endif %}"
+            data-section="{{ section.key }}"
+            data-first-href="/dashboard/apps/{{ first_page.plugin }}/{{ first_page.slug }}/">
+      <i data-lucide="{{ section.icon|default:'folder' }}" class="h-4 w-4"></i>
+      <span>{{ section.label }}</span>
+      <i data-lucide="chevron-down" class="chev h-3 w-3"></i>
+    </button>
+    <div class="nav-group {% if not section.is_active %}collapsed{% endif %}" data-group="{{ section.key }}">
+      {% for page in section.pages %}
+      <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/"
+         class="nav-link {% if active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
+        <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
+      </a>
+      {% endfor %}
+    </div>
+    {% endwith %}
     {% endfor %}
 
     <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" class="nav-link {% if active_nav == 'settings' %}active{% endif %}" style="margin-top: .5rem;">
@@ -456,12 +503,28 @@
       });
     })();
 
-    // Collapsible sidebar sections — Shopify-style. State persisted per-section in localStorage.
+    // Collapsible sidebar sections — Shopify-style. State persisted per
+    // section in localStorage; the section containing the active page
+    // overrides the persisted state and stays open. Clicking the section
+    // button toggles open/closed without navigating; shift-click or
+    // double-click jumps straight to the first child page so power users
+    // can open a section's home in one motion.
     document.querySelectorAll('.nav-section-btn').forEach(btn => {
-      const key = 'nav.collapsed.' + btn.dataset.section;
-      const group = document.querySelector(`.nav-group[data-group="${btn.dataset.section}"]`);
-      if (localStorage.getItem(key) === '1') { btn.classList.add('collapsed'); group?.classList.add('collapsed'); }
-      btn.addEventListener('click', () => {
+      const sec = btn.dataset.section;
+      const key = 'nav.collapsed.' + sec;
+      const group = document.querySelector(`.nav-group[data-group="${sec}"]`);
+      const hasActiveChild = btn.classList.contains('has-active');
+      const persisted = localStorage.getItem(key) === '1';
+      if (persisted && !hasActiveChild) {
+        btn.classList.add('collapsed');
+        group?.classList.add('collapsed');
+      }
+      btn.addEventListener('click', (e) => {
+        if (e.shiftKey || e.detail >= 2) {
+          const href = btn.dataset.firstHref;
+          if (href) location.href = href;
+          return;
+        }
         const willCollapse = !btn.classList.contains('collapsed');
         btn.classList.toggle('collapsed', willCollapse);
         group?.classList.toggle('collapsed', willCollapse);

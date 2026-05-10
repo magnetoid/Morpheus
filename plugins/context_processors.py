@@ -36,6 +36,7 @@ _SECTION_LABELS = {
     'sales': 'Sales',
     'catalog': 'Catalog',
     'crm': 'Customers & CRM',
+    'customers': 'Customers',
     'marketing': 'Marketing',
     'cms': 'Content',
     'analytics': 'Analytics',
@@ -51,8 +52,36 @@ _SECTION_LABELS = {
 }
 
 
-def _group_by_section(pages):
-    """Group + order pages by section the same way for any sidebar."""
+# Lucide icon for each known section. Falls through to 'folder' for
+# anything not listed — matches the template default.
+_SECTION_ICONS = {
+    'ai':          'sparkles',
+    'sales':       'shopping-cart',
+    'catalog':     'package',
+    'crm':         'users',
+    'customers':   'users',
+    'marketing':   'megaphone',
+    'cms':         'book-open',
+    'analytics':   'bar-chart-3',
+    'seo':         'search',
+    'growth':      'trending-up',
+    'marketplace': 'store',
+    'plugins':     'puzzle',
+    'developer':   'terminal',
+    'access':      'shield',
+    'data':        'database',
+    'settings':    'settings',
+    'apps':        'grid-3x3',
+}
+
+
+def _group_by_section(pages, *, active_apps_slug: str = ''):
+    """Group + order pages by section the same way for any sidebar.
+
+    ``active_apps_slug`` is the current `plugin/slug` (computed elsewhere
+    in this module) — when supplied, the matching section is marked
+    ``is_active=True`` so the template can pre-expand it.
+    """
     by_section: dict[str, list] = {}
     for page in pages:
         by_section.setdefault(page.section or 'plugins', []).append(page)
@@ -64,14 +93,22 @@ def _group_by_section(pages):
     for key in sorted(by_section.keys()):
         grouped[key] = by_section[key]
 
-    return [
-        {
+    out = []
+    for key, pages_in_section in grouped.items():
+        is_active = False
+        if active_apps_slug:
+            for p in pages_in_section:
+                if f'{p.plugin}/{p.slug}' == active_apps_slug:
+                    is_active = True
+                    break
+        out.append({
             'key': key,
             'label': _SECTION_LABELS.get(key, key.replace('_', ' ').title()),
+            'icon':  _SECTION_ICONS.get(key, 'folder'),
             'pages': pages_in_section,
-        }
-        for key, pages_in_section in grouped.items()
-    ]
+            'is_active': is_active,
+        })
+    return out
 
 
 def plugin_context(request):
@@ -107,6 +144,8 @@ def plugin_context(request):
         settings_category_nav = []
 
     nav_badges = _compute_nav_badges(request)
+    active_apps_slug = ''
+    active_settings_category = ''
 
     # Derive active-state slugs from `request.path` so the settings sidebar
     # can highlight the right entry without every view setting context vars.
@@ -117,8 +156,6 @@ def plugin_context(request):
     #   /dashboard/apps/<plugin>/settings/        → active_apps_slug='<plugin>/settings'
     #   /dashboard/apps/<plugin>/<slug>/          → active_apps_slug='<plugin>/<slug>'
     path = getattr(request, 'path', '') or ''
-    active_settings_category = ''
-    active_apps_slug = ''
     if path.startswith('/dashboard/settings/'):
         rest = path[len('/dashboard/settings/'):].strip('/').split('/', 1)
         head = rest[0] if rest and rest[0] else ''
@@ -136,8 +173,8 @@ def plugin_context(request):
         'plugin_registry': plugin_registry,
         'nav_badges': nav_badges,
         'dashboard_pages': pages,                          # back-compat flat list
-        'sidebar_sections': _group_by_section(main_pages),  # main sidebar
-        'settings_sections': _group_by_section(settings_pages),  # settings sidebar
+        'sidebar_sections': _group_by_section(main_pages, active_apps_slug=active_apps_slug),
+        'settings_sections': _group_by_section(settings_pages, active_apps_slug=active_apps_slug),
         # Schema-driven settings panels (form-based).
         'plugin_settings_panels': plugin_registry.all_settings_panels(),
         # Settings categories shown in the settings-mode sidebar.
