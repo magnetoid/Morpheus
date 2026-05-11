@@ -1,5 +1,7 @@
 # Morpheus — house rules for AI-assisted work
 
+> Companion rulesets: [`vendor/vibe-skills/llm-rules/claude.md`](vendor/vibe-skills/llm-rules/claude.md) (Claude-specific) and [`vendor/vibe-skills/AGENTS.md`](vendor/vibe-skills/AGENTS.md) (cross-IDE). See [`AGENTS.md`](AGENTS.md) for the full map.
+
 This file is **only for things you can't discover from `grep`, `find`, or
 `manage.py`.** Stack, file layout, lint config — read the code. Things
 written below are the rules, the landmines, and the conventions that

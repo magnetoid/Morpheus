@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {"type": "command", "command": ".claude/hooks/no_migration_writes.sh"}
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {"type": "command", "command": ".claude/hooks/ruff_changed.sh"},
+          {"type": "command", "command": ".claude/hooks/verify_deps.sh"}
+        ]
+      }
+    ]
+  }
+}

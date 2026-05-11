@@ -24,6 +24,10 @@ local_settings.py
 !.env.example
 !.env.coolify.example
 
+# Claude Code per-user permissions (may contain SSH passwords / secrets).
+# The shared settings.json + hooks + skills + agents ARE checked in.
+.claude/settings.local.json
+
 # OS / editor
 .DS_Store
 .idea/
