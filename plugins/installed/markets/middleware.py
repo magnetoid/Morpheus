@@ -23,8 +23,12 @@ class MarketMiddleware:
 
         response = self.get_response(request)
 
-        if market is not None and not response.has_header('Content-Language'):
-            locale = (getattr(market, 'default_locale', '') or '').strip()
+        if not response.has_header('Content-Language'):
+            locale = (getattr(market, 'default_locale', '') if market else '') or ''
+            if not locale:
+                from django.conf import settings
+                locale = getattr(settings, 'LANGUAGE_CODE', '') or ''
+            locale = locale.strip()
             if locale:
                 # Django stores en_US; the header wants en-US.
                 response['Content-Language'] = locale.replace('_', '-')
