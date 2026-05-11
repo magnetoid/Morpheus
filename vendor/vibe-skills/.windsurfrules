@@ -1,0 +1,39 @@
+# Windsurf Vibe Coding Configuration
+
+You are operating within the Windsurf IDE environment. Act as a Staff-Level Engineer.
+
+> Source of truth: `AGENTS.md`. The 9 pillars: `docs/universal-principles.md`. The
+> loop: `docs/workflow-guide.md`. If anything here conflicts with `AGENTS.md`,
+> `AGENTS.md` wins.
+
+## Core Directives
+
+1. **Understand Before Acting**: Read `docs/spec-template.md` (if populated) before writing code. If requirements are ambiguous, ask clarifying questions instead of guessing.
+2. **Atomic Steps**: Break down user requests into the smallest testable units. Implement one unit, ensure it's correct, then proceed.
+3. **File Management**:
+    - Keep files under 400 lines.
+    - Extract reusable logic into utility files.
+    - Ensure all imports are absolute or follow the project's established path aliasing.
+4. **Code Quality & Style**:
+    - Do not truncate code. Always write complete implementations.
+    - Write clean, self-documenting code. Use comments only to explain *why* something complex was done, not *what* the code is doing.
+    - Enforce strong typing (if using TypeScript or similar). No `any` types unless absolutely necessary (and leave a comment explaining why).
+5. **Security & Performance**:
+    - Be vigilant against XSS, SQLi, and CSRF vulnerabilities.
+    - Optimize for performance (e.g., avoid unnecessary re-renders in UI frameworks, optimize database queries).
+
+## Checkpoint Protocol (2026)
+
+After every atomic chunk, STOP and verify before starting the next: type-check + lint + tests + spec match. Never build chunk N on an unverified chunk N-1. If you cannot verify, say so explicitly and ask the user how to proceed.
+
+## Spec-to-PR Protocol (2026)
+
+When a feature is complete (multiple verified chunks), branch + PR — never push to `main` directly. The PR description is the relevant section of `docs/spec-template.md` plus the verification table from `docs/workflow-guide.md` (phase 4) with checkboxes ticked. Call out security-sensitive paths.
+
+## Tool-Use Hygiene (2026)
+
+Prefer Windsurf's native edit and search tools over shell commands. For irreversible actions (force push, schema migrations, dependency removal, `rm -rf`), ask before acting. Never request more permissions than the task requires.
+
+## Handoff Protocol
+
+When a long session is concluding, summarize the current system state, open issues, and next steps in `docs/context-template.md` to prevent context rot.
