@@ -89,6 +89,21 @@ def _persist_step(*, run, seq: int, step: TraceStep) -> None:
         metadata=step.metadata or {},
     )
 
+    if step.kind == 'tool_call':
+        from core.audit.services import record_ai_decision
+        record_ai_decision(
+            agent=getattr(run, 'agent_name', '') or '',
+            tool=step.name or '',
+            run_id=str(run.pk),
+            args=step.arguments or {},
+            output=output if isinstance(output, (dict, list, str, int, float, bool)) else str(output),
+            duration_ms=(step.metadata or {}).get('duration_ms'),
+            model=(step.metadata or {}).get('model', ''),
+            provider=(step.metadata or {}).get('provider', ''),
+            actor=getattr(run, 'customer', None),
+            target=f'agent_run/{run.pk}',
+        )
+
 
 def run_agent(
     *,

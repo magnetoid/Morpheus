@@ -11,6 +11,7 @@ from plugins.installed.ai_assistant.services.embeddings import (
     embed,
 )
 from plugins.installed.ai_assistant.services.search import (
+    hybrid_search,
     semantic_search,
     upsert_product_embedding,
 )
@@ -69,3 +70,49 @@ class SemanticSearchTests(TestCase):
         upsert_product_embedding(self.p1)
         second = ProductEmbedding.objects.get(product=self.p1)
         self.assertEqual(first.updated_at, second.updated_at)
+
+
+class HybridSearchTests(TestCase):
+    """Golden queries for BM25 + dense + RRF fusion."""
+
+    def setUp(self) -> None:
+        self.blender = Product.objects.create(
+            name='Pro Blender', slug='pro-blender', sku='B1',
+            short_description='powerful kitchen blender',
+            description='professional grade blender for smoothies',
+            price=Money(75, 'USD'), status='active',
+        )
+        self.toaster = Product.objects.create(
+            name='Toaster', slug='toaster', sku='T1',
+            short_description='2-slice toaster',
+            description='wide slot toaster for bread',
+            price=Money(25, 'USD'), status='active',
+        )
+        self.kettle = Product.objects.create(
+            name='Kettle', slug='kettle', sku='K1',
+            short_description='1.7L electric kettle',
+            description='fast-boil cordless kettle',
+            price=Money(40, 'USD'), status='active',
+        )
+
+    def test_hybrid_falls_back_when_query_empty(self):
+        results = hybrid_search('', top_k=5)
+        # Empty query → keyword fallback returns a list (may include featured).
+        self.assertIsInstance(results, list)
+
+    def test_hybrid_keyword_match_without_embeddings(self):
+        # No ProductEmbedding rows → dense pass returns []; BM25 alone (or
+        # keyword fallback on sqlite) must still surface the blender.
+        results = hybrid_search('blender', top_k=5)
+        self.assertIn(self.blender, results)
+        self.assertNotIn(self.toaster, results)
+
+    def test_hybrid_dense_pass_surfaces_semantic_match(self):
+        upsert_product_embedding(self.blender)
+        upsert_product_embedding(self.toaster)
+        upsert_product_embedding(self.kettle)
+        # "smoothie" appears in the blender's description; the dense pass
+        # should put it at rank 1 of the fused result.
+        results = hybrid_search('smoothie', top_k=3)
+        self.assertGreater(len(results), 0)
+        self.assertEqual(results[0], self.blender)

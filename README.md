@@ -22,7 +22,22 @@
 
 Every commerce platform built before 2024 — Shopify, WooCommerce, Magento, Spree, Saleor, Medusa — treats AI as a *third-party API consumer*. You bolt OpenAI onto a checkbox in settings, hope the prompt is good, and pay an integration tax forever.
 
-**Morpheus inverts that.** AI agents are the *primary audience*. Every model, hook, dashboard, and state transition is designed to be machine-actionable first and human-pretty second. The Assistant is not a chatbot tab — it's a hard-coded operator in `core/` that survives plugin failure, has system-level scopes, **20+ tools spanning read and gated writes**, and can delegate to specialised agents that other plugins contribute. External AI clients reach the platform over a real **Model Context Protocol** server at `/mcp/v1/`, with brand voice config that propagates to every generation in the system.
+**Morpheus is the only self-hostable, agent-native commerce stack.** Saleor, Medusa, and Vendure are excellent platforms — but none ship the multi-protocol agent gateway that Shopify Sidekick, Adobe Commerce, and BigCommerce are racing toward. Morpheus already does.
+
+| Capability | Morpheus | Saleor | Medusa | Vendure |
+|---|:---:|:---:|:---:|:---:|
+| MCP server cluster (storefront / cart / checkout / admin) | ✅ | — | — | — |
+| Universal Commerce Protocol (`/.well-known/ucp.json`) | ✅ | — | — | — |
+| Visa TAP + Mastercard VI acceptance (`/.well-known/agent.json`) | ✅ | — | — | — |
+| Always-on hard-coded merchant assistant (Linda) | ✅ | — | — | — |
+| Hybrid retrieval (BM25 + dense + RRF) on storefront search | ✅ | — | — | — |
+| EU AI Act decision-provenance audit trail | ✅ | — | — | — |
+| Plugin-isolated runtime + first-party plugin catalog | ✅ | ✱ | ✱ | ✱ |
+| GraphQL + signed webhook fanout | ✅ | ✅ | ✅ | ✅ |
+
+(✱ = extension framework exists, no plugin-isolation guarantees comparable to Morpheus's `safe_db` + crash-isolation contract.)
+
+**Morpheus inverts the integration tax.** AI agents are the *primary audience*. Every model, hook, dashboard, and state transition is designed to be machine-actionable first and human-pretty second. The Assistant is not a chatbot tab — it's a hard-coded operator in `core/` that survives plugin failure, has system-level scopes, **20+ tools spanning read and gated writes**, and can delegate to specialised agents that other plugins contribute. External AI clients reach the platform over a real **Model Context Protocol** server at `/mcp/v1/`, with brand voice config that propagates to every generation in the system.
 
 What you get:
 
@@ -335,21 +350,32 @@ Schedule any registered agent to run autonomously on a fixed interval. Backed by
 
 External AI clients (Claude, ChatGPT, Perplexity, Copilot) can transact through Morpheus without per-vendor integrations.
 
-### MCP server (`/mcp/v1/`)
+### MCP server cluster (4 endpoints, Shopify-shape)
 
-The [`agent_mcp`](plugins/installed/agent_mcp/) plugin stands up a JSON-RPC 2.0 endpoint compatible with the [Model Context Protocol](https://modelcontextprotocol.io):
+The [`agent_mcp`](plugins/installed/agent_mcp/) plugin stands up a JSON-RPC 2.0 endpoint compatible with the [Model Context Protocol](https://modelcontextprotocol.io). One dispatcher, four audience-scoped endpoints:
 
 ```text
-POST /mcp/v1/                — JSON-RPC: initialize, tools/list, tools/call,
-                                resources/list, resources/read, ping
-GET  /mcp/v1/health/         — liveness probe
-GET  /mcp/v1/manifest.json   — ChatGPT-style plugin manifest for OpenAI-format
-                                clients that don't speak JSON-RPC first
+POST /mcp/storefront/v1/  — anonymous catalog reads (no auth)
+POST /mcp/cart/v1/        — same + cart manipulation
+POST /mcp/checkout/v1/    — same + checkout
+POST /mcp/admin/v1/       — Linda's full tool catalog (Bearer auth)
+POST /mcp/v1/             — legacy curated-reads alias (backward-compat)
 ```
 
-**Curated tool surface.** Only the assistant's read tools that are safe for a public AI agent (search/fetch products, orders, customers, analytics, content) are exposed. Write tools and admin reads (`settings.list`, `fs.*`, `logs.*`, `plugins.*`) are **never** reachable here.
+Each cluster scopes the tool whitelist to its audience via thread-local state, so the same dispatcher serves all four with per-request safety.
 
-**Auth** via `Authorization: Bearer <key>` against `PluginConfig['agent_mcp']['public_keys']`. Unauthenticated callers see a redacted `tools/list` (names + descriptions, no schema) so they can negotiate before getting a key.
+### UCP + Trusted Agent discovery
+
+```text
+GET /.well-known/ucp.json     — Universal Commerce Protocol manifest
+                                (Google / Shopify / Stripe / Etsy / Walmart)
+GET /.well-known/agent.json   — Visa Trusted Agent Protocol + Mastercard
+                                Verifiable Intent acceptance
+```
+
+The `TrustedAgentMiddleware` reads `X-Verified-Agent-*` headers (set by Cloudflare's Web Bot Auth at the edge), attaches `request.trusted_agent`, and stamps `Order.metadata.agent_id` at checkout — so merchants get an auditable trail of which agent placed which order.
+
+**Curated tool surface (legacy `/mcp/v1/`).** Only read tools safe for a public AI agent (search/fetch products, orders, analytics, content). Write tools and admin reads are **never** reachable here.
 
 **Resources.** Three pre-defined entry-point URIs MCP clients can hit without learning the tool catalog:
 
@@ -358,6 +384,8 @@ morpheus://catalog/featured   — featured products
 morpheus://catalog/recent     — newest 20 products
 morpheus://analytics/today    — today's revenue + orders summary
 ```
+
+Full integration guide: [`docs/AGENT_PROTOCOLS.md`](docs/AGENT_PROTOCOLS.md).
 
 ### Brand voice config
 

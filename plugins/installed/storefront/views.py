@@ -253,45 +253,42 @@ def product_list(request):
 
 
 def _apply_search(qs, q: str):
-    """Postgres full-text search with relevance ranking.
+    """Hybrid retrieval (BM25 + dense embeddings, RRF-fused) with a
+    metafield + SKU union for book-specific identifiers.
 
-    Builds a SearchVector over name + short_description + tags and orders
-    by SearchRank. Falls back to ILIKE on non-Postgres backends so the
-    storefront still works in dev sqlite without crashing.
+    The ``hybrid_search`` service handles BM25 / dense fusion and
+    gracefully falls back to keyword search on non-Postgres setups or
+    when no embeddings exist. We then union in metafield matches
+    (``book.author`` / ``publisher`` / ``isbn``) and exact-SKU matches
+    so identifier-style queries still resolve.
 
-    Also unions in product IDs whose `book.*` metafields (author /
-    publisher / isbn) match the query — so "Hanna Rieder" and a 13-digit
-    ISBN both find the right title.
+    Ranking: products in the hybrid result preserve their fused rank;
+    metafield/SKU-only matches sit after them ordered by ``-created_at``.
     """
-    from django.db import connection
-    from django.db.models import Q
+    from django.db.models import Case, IntegerField, Q, When
+    from plugins.installed.ai_assistant.services.search import hybrid_search
 
-    metafield_ids = _metafield_search_ids(q)
+    metafield_ids = list(_metafield_search_ids(q))
+    hybrid_products = hybrid_search(q, top_k=80)
+    hybrid_ids = [p.pk for p in hybrid_products]
 
-    if connection.vendor == 'postgresql':
-        try:
-            from django.contrib.postgres.search import (
-                SearchQuery, SearchRank, SearchVector,
-            )
-            vector = (
-                SearchVector('name', weight='A')
-                + SearchVector('short_description', weight='B')
-                + SearchVector('description', weight='C')
-            )
-            search_q = SearchQuery(q, search_type='websearch')
-            return (
-                qs.annotate(_rank=SearchRank(vector, search_q))
-                .filter(Q(_rank__gt=0) | Q(sku__iexact=q) | Q(id__in=metafield_ids))
-                .order_by('-_rank', '-created_at')
-            )
-        except Exception:  # noqa: BLE001 — fall through to LIKE
-            pass
+    union_ids = list(dict.fromkeys(hybrid_ids + metafield_ids))
+    if not union_ids:
+        return qs.filter(Q(sku__iexact=q))
 
-    return qs.filter(
-        Q(name__icontains=q)
-        | Q(short_description__icontains=q)
-        | Q(sku__iexact=q)
-        | Q(id__in=metafield_ids)
+    filtered = qs.filter(Q(id__in=union_ids) | Q(sku__iexact=q))
+    if not hybrid_ids:
+        return filtered.order_by('-created_at')
+
+    rank_cases = [When(pk=pid, then=idx) for idx, pid in enumerate(hybrid_ids)]
+    return (
+        filtered
+        .annotate(_hybrid_rank=Case(
+            *rank_cases,
+            default=len(hybrid_ids) + 1,
+            output_field=IntegerField(),
+        ))
+        .order_by('_hybrid_rank', '-created_at')
     )
 
 
