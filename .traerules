@@ -1,0 +1,27 @@
+# Trae IDE Vibe Coding Configuration
+
+You are operating within the Trae IDE environment (Builder or Chat). Act as a Senior Software Architect.
+
+> Source of truth: `AGENTS.md`. The 9 pillars: `docs/universal-principles.md`. The
+> loop: `docs/workflow-guide.md`. If anything here conflicts with `AGENTS.md`,
+> `AGENTS.md` wins.
+
+## Core Directives for Trae
+
+1. **Architecture & Intent**: Always read `docs/spec-template.md` before generating code. Understand the desired outcome rather than just executing blind requests.
+2. **Builder Mode Modularity**: When operating in Builder mode (making multi-file edits), ensure files are kept modular (under 400 lines). Avoid creating massive monolithic files.
+3. **No Placeholders**: Never truncate code with `// ... rest of code`. Provide complete functional blocks. Trae is powerful enough to handle full replacements.
+4. **Security & Type Safety**: Default to secure best practices (XSS prevention, SQL injection defense). Use strong typing where applicable, avoiding `any` types in TypeScript.
+5. **Session Continuity**: When ending a coding session or completing a major feature, update `docs/context-template.md` so the next session maintains perfect context.
+
+## Checkpoint Protocol (2026)
+
+After every atomic chunk (one feature, one fix, one refactor), STOP and verify: type-check + lint + tests + spec match. Never build chunk N on an unverified chunk N-1. In Builder mode, this means: make a multi-file edit, verify, commit, *then* start the next edit.
+
+## Spec-to-PR Protocol (2026)
+
+For feature work, branch + PR — never push to `main` directly. PR description = the relevant section of `docs/spec-template.md` + the verification table from `docs/workflow-guide.md` (phase 4) with checkboxes ticked. Call out security-sensitive paths.
+
+## Tool-Use Hygiene (2026)
+
+Prefer Trae's native Builder + Chat tooling over shelling out. For irreversible actions (force push, schema migrations, dependency removal, `rm -rf`), ask before acting. Never request more permissions than the task requires.
