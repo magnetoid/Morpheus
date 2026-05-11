@@ -589,7 +589,16 @@ def checkout_remove_gift_card(request):
 
 
 def _checkout_base_context(request):
-    """Common context every checkout step uses — cart summary + saved form values."""
+    """Common context every checkout step uses — cart summary + saved form values.
+
+    Pre-fill priority (highest first):
+      1. ``request.session['checkout_address']`` — what they just typed.
+      2. The authenticated user's default Address (or most recent shipping
+         Address). Without this, logged-in shoppers see an empty form
+         and silent HTML5 validation kills the submit when they only
+         tweak one field.
+      3. Just their email + name from the User row.
+    """
     cart_data = internal_graphql(CART_QUERY, request=request) or {}
     saved = request.session.get('checkout_address') or {}
     user = getattr(request, 'user', None)
@@ -599,6 +608,27 @@ def _checkout_base_context(request):
             'first_name': getattr(user, 'first_name', '') or '',
             'last_name': getattr(user, 'last_name', '') or '',
         }
+        try:
+            addr = (
+                user.addresses
+                .filter(address_type__in=('shipping', 'both'))
+                .order_by('-is_default', '-updated_at', '-created_at')
+                .first()
+            )
+            if addr is not None:
+                saved.update({
+                    'first_name': saved.get('first_name') or addr.first_name or '',
+                    'last_name': saved.get('last_name') or addr.last_name or '',
+                    'address_line1': addr.address_line1 or '',
+                    'address_line2': addr.address_line2 or '',
+                    'city': addr.city or '',
+                    'state': addr.state or '',
+                    'postal_code': addr.postal_code or '',
+                    'country': addr.country or 'US',
+                    'phone': addr.phone or '',
+                })
+        except Exception:  # noqa: BLE001 — never break checkout over a prefill miss
+            pass
     return {
         'cart': cart_data.get('cart') or {},
         'form': saved,
