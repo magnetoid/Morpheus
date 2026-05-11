@@ -173,6 +173,49 @@ form post + redirect when JS is off.
     if (e.key === 'Escape' && !drawer.hidden) close();
   });
 
+  // Fly-to-cart animation: clone the nearest product image, spring it
+  // toward the cart icon, then bump the cart-count badge. Respects
+  // reduced-motion (skips the clone, just bumps the badge).
+  function flyToCart(form) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+    var card = form.closest('[data-product-card]') || form.closest('article') || form.closest('.book') || form.parentElement;
+    var srcImg = card && card.querySelector('img');
+    var target = document.getElementById('cart-icon-link');
+    if (!srcImg || !target || !window.__motion) return Promise.resolve();
+    var rs = srcImg.getBoundingClientRect();
+    var rt = target.getBoundingClientRect();
+    var clone = srcImg.cloneNode(true);
+    clone.className = 'fly-cart-clone';
+    clone.style.left = rs.left + 'px';
+    clone.style.top = rs.top + 'px';
+    clone.style.width = rs.width + 'px';
+    clone.style.height = rs.height + 'px';
+    document.body.appendChild(clone);
+    var dx = (rt.left + rt.width / 2) - (rs.left + rs.width / 2);
+    var dy = (rt.top + rt.height / 2) - (rs.top + rs.height / 2);
+    return window.__motion.animate(
+      clone,
+      { transform: ['translate(0,0) scale(1)', 'translate(' + dx + 'px,' + dy + 'px) scale(0.18)'],
+        opacity: [1, 0.4] },
+      { duration: 0.55, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+    ).finished.then(function () { clone.remove(); }).catch(function () { clone.remove(); });
+  }
+
+  function bumpBadge(count) {
+    var badge = document.getElementById('cart-badge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.hidden = false;
+      badge.style.animation = 'none';
+      // Force reflow so the next assignment restarts the animation.
+      void badge.offsetWidth;
+      badge.style.animation = 'ko-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1)';
+    } else {
+      badge.hidden = true;
+    }
+  }
+
   // Intercept any form posting to /cart/add/<id>/ — fetch the JSON
   // version, then open the drawer with the response.
   document.addEventListener('submit', function (e) {
@@ -188,6 +231,8 @@ form post + redirect when JS is off.
       btn.dataset._origText = btn.dataset._origText || btn.textContent;
       btn.textContent = 'Adding…';
     }
+    // Kick the visual immediately — defer the network for parallel feel.
+    var flying = flyToCart(form);
     fetch(action, {
       method: 'POST',
       credentials: 'same-origin',
@@ -206,8 +251,15 @@ form post + redirect when JS is off.
           alert((res.data && res.data.error) || 'Sorry — couldn\'t add that.');
           return;
         }
-        render((res.data && res.data.cart) || {});
-        open();
+        var cart = (res.data && res.data.cart) || {};
+        var count = (cart.items || []).reduce(function (n, it) { return n + (it.quantity || 0); }, 0);
+        // Wait for the clone to land before bumping + opening, so the
+        // user's eye follows: image → badge → drawer.
+        flying.then(function () {
+          bumpBadge(count);
+          render(cart);
+          open();
+        });
       })
       .catch(function () {
         if (btn) {

@@ -96,10 +96,10 @@
     {% if products %}
     <div class="grid-books">
       {% for p in products %}
-      <a href="/products/{{ p.slug }}/" class="book">
+      <a href="/products/{{ p.slug }}/" class="book ko-reveal-on-scroll" data-product-card>
         <div class="cover-wrap">
           {% if p.primary_image %}
-            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}" loading="lazy" decoding="async">
+            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ p.slug|slugify }};">
           {% else %}
             <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
           {% endif %}

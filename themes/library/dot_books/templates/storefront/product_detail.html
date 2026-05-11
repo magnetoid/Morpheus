@@ -28,7 +28,7 @@
         <div class="book" style="max-width: 480px;">
           <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
             {% if product.primary_image %}
-              <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
+              <img id="pdp-hero-img" src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }}; transition: opacity var(--motion-med) var(--ease-out);">
             {% else %}
               <div class="placeholder">{{ product.name }}</div>
             {% endif %}
@@ -36,13 +36,35 @@
           </div>
         </div>
         {% if product.images.all|length > 1 %}
-        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-top: 1.25rem; max-width: 480px;">
+        <div id="pdp-thumbs" style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-top: 1.25rem; max-width: 480px;">
           {% for img in product.images.all|slice:":4" %}
-          <div class="cover-wrap" style="aspect-ratio: 1; border-radius: 4px;">
-            <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" decoding="async">
-          </div>
+          <button type="button" class="pdp-thumb" data-full-src="{{ img.image.url }}" data-full-alt="{{ img.alt_text|default:product.name }}" style="all: unset; cursor: pointer;">
+            <div class="cover-wrap" style="aspect-ratio: 1; border-radius: 4px;">
+              <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:product.name }}" loading="lazy" decoding="async">
+            </div>
+          </button>
           {% endfor %}
         </div>
+        <script>
+          (function () {
+            var hero = document.getElementById('pdp-hero-img');
+            var thumbs = document.getElementById('pdp-thumbs');
+            if (!hero || !thumbs) return;
+            thumbs.addEventListener('click', function (e) {
+              var btn = e.target.closest('.pdp-thumb');
+              if (!btn) return;
+              var src = btn.dataset.fullSrc;
+              var alt = btn.dataset.fullAlt;
+              if (!src || src === hero.src) return;
+              hero.style.opacity = '0';
+              setTimeout(function () {
+                hero.src = src;
+                hero.alt = alt || hero.alt;
+                requestAnimationFrame(function () { hero.style.opacity = '1'; });
+              }, 240);
+            });
+          })();
+        </script>
         {% endif %}
       </div>
 

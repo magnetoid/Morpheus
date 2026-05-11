@@ -25,6 +25,82 @@
     --max:          1240px;
     --serif: 'Fraunces', 'Georgia', 'Times New Roman', serif;
     --sans:  'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --motion-fast: 140ms;
+    --motion-med:  240ms;
+    --motion-slow: 420ms;
+    --ease-out:    cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* Damped spring approximation — drawer/dialog/reveal entrances. */
+    --spring: linear(0, 0.009, 0.141 4.4%, 0.55 10.1%, 1.124,
+      1.367 21.5%, 1.397, 1.318 31.2%, 1.043 39.8%, 0.838,
+      0.798 56.4%, 0.91 65%, 1.029 76.4%, 1);
+  }
+  /* Reusable motion keyframes. transform + opacity only — never reflow. */
+  @keyframes ko-reveal-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes ko-pop       { 0% { transform: scale(1); } 30% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes ko-breathe   { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+  @keyframes ko-shimmer   { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .ko-reveal { animation: ko-reveal-up var(--motion-med) var(--ease-out) both; }
+  @supports (animation-timeline: view()) {
+    .ko-reveal-on-scroll {
+      animation: ko-reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+      view-transition-name: none !important;
+    }
+    .ko-fade { transition-duration: 120ms !important; }
+  }
+  /* Cross-document View Transitions for PLP→PDP cover morph. */
+  @view-transition { navigation: auto; }
+  /* Cart badge — sits on the cart icon, populated + animated by JS. */
+  .cart-icon { position: relative; }
+  .cart-badge {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 999px; background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700; line-height: 16px;
+    text-align: center; display: inline-flex; align-items: center; justify-content: center;
+    transform-origin: center;
+  }
+  .cart-badge[hidden] { display: none; }
+  /* Image clone for fly-to-cart. Positioned absolute via JS. */
+  .fly-cart-clone {
+    position: fixed; z-index: 1000; pointer-events: none;
+    border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    will-change: transform, opacity;
+  }
+  /* Float-label fields. Wrap with .field; input must have placeholder=" "
+     so :placeholder-shown stays true while empty. Label sits inside the
+     input visually until focus or input. */
+  .field { position: relative; }
+  .field > input,
+  .field > textarea {
+    padding-top: 1.25rem;
+  }
+  .field > label {
+    position: absolute;
+    top: 50%; left: 1rem;
+    transform: translateY(-50%);
+    transform-origin: 0 50%;
+    color: var(--muted);
+    pointer-events: none;
+    transition: transform var(--motion-fast) var(--ease-out),
+                color var(--motion-fast) var(--ease-out);
+    font-size: 0.95rem;
+  }
+  .field > input:focus + label,
+  .field > textarea:focus + label,
+  .field > input:not(:placeholder-shown) + label,
+  .field > textarea:not(:placeholder-shown) + label {
+    transform: translateY(-150%) scale(0.78);
+    color: var(--ink);
   }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { background: var(--paper); color: var(--ink); }
@@ -131,6 +207,13 @@
 {% seo_website_jsonld %}
 {% seo_verification_metas %}
 {% seo_llms_link %}
+
+{# Motion One — ~3kb vanilla animator with spring built-in. Exposed as window.__motion #}
+<script type="module">
+  import { animate, stagger } from 'https://cdn.jsdelivr.net/npm/motion@10/+esm';
+  window.__motion = { animate, stagger };
+  window.dispatchEvent(new CustomEvent('motion:ready'));
+</script>
 </head>
 <body>
 
@@ -162,8 +245,9 @@
       <a href="/account/" class="icon-btn" aria-label="Account">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       </a>
-      <a href="/cart/" class="icon-btn" aria-label="Cart">
+      <a href="/cart/" class="icon-btn cart-icon" aria-label="Cart" id="cart-icon-link">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        <span class="cart-badge" id="cart-badge" hidden></span>
       </a>
       <button id="drawer-open" class="icon-btn md:hidden" style="display:none" aria-label="Menu">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>

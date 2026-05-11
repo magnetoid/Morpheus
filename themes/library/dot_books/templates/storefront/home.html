@@ -69,10 +69,10 @@
     </div>
     <div class="grid-books">
       {% for product in featured_products %}
-      <a href="/products/{{ product.slug }}/" class="book">
+      <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
         <div class="cover-wrap">
           {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
+            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}
@@ -124,10 +124,10 @@
     </div>
     <div class="grid-books">
       {% for product in staff_picks %}
-      <a href="/products/{{ product.slug }}/" class="book">
+      <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
         <div class="cover-wrap">
           {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
+            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}

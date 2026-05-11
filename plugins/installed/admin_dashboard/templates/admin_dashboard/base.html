@@ -43,6 +43,27 @@
     --radius-sm:    6px;
     --shadow-card:  0 0 0 1px var(--border), 0 1px 0 rgba(0,0,0,.04);
     --shadow-pop:   0 12px 24px -8px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+    --motion-fast:  140ms;
+    --motion-med:   240ms;
+    --motion-slow:  420ms;
+    --ease-out:     cubic-bezier(0.2, 0.8, 0.2, 1);
+    --spring: linear(0, 0.009, 0.141 4.4%, 0.55 10.1%, 1.124,
+      1.367 21.5%, 1.397, 1.318 31.2%, 1.043 39.8%, 0.838,
+      0.798 56.4%, 0.91 65%, 1.029 76.4%, 1);
+  }
+  @keyframes ko-reveal-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes ko-pop       { 0% { transform: scale(1); } 30% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes ko-pulse     { 0%, 100% { box-shadow: 0 0 0 0 var(--primary); } 50% { box-shadow: 0 0 0 6px transparent; } }
+  .ko-reveal { animation: ko-reveal-up var(--motion-med) var(--ease-out) both; }
+  .ko-pulse-once { animation: ko-pulse 1s ease-out 1; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .ko-fade { transition-duration: 120ms !important; }
   }
   body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: .8125rem; }
   .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-card); }
@@ -92,8 +113,23 @@
   }
   /* Submenus: indented children under a parent. Render only when the
      parent group is active so the rail stays compact otherwise. */
-  .nav-children { padding-left: 1.55rem; margin: .15rem 0 .35rem; display: none; }
-  .nav-children.open { display: block; }
+  /* Submenu slide: max-height transitions are bulletproof across browsers.
+     Effective max generous enough for the longest submenu (~8 items). */
+  .nav-children {
+    padding-left: 1.55rem;
+    margin: 0;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height var(--motion-med) var(--ease-out),
+                opacity var(--motion-fast) var(--ease-out),
+                margin var(--motion-med) var(--ease-out);
+  }
+  .nav-children.open {
+    max-height: 420px;
+    opacity: 1;
+    margin: .15rem 0 .35rem;
+  }
   .nav-children .nav-link { font-weight: 400; padding: .3rem .6rem; font-size: .8125rem; color: var(--text-muted); }
   .nav-children .nav-link:hover { color: var(--text); }
   .nav-children .nav-link.active { color: var(--text); background: transparent; font-weight: 600; }
