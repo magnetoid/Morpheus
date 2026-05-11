@@ -4,6 +4,9 @@
 
 {% block extra_head %}
 {% seo_product_jsonld product %}
+{% if product.category %}
+  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endif %}
 {% endblock %}
 
 {% block content %}

@@ -316,11 +316,24 @@ def product_detail(request, slug):
         from morpheus.views import Http404
         raise Http404
     related = _related_products(slug)
+    breadcrumb_items = [{'name': 'Home', 'url': request.build_absolute_uri('/')}]
+    breadcrumb_items.append({'name': 'All books', 'url': request.build_absolute_uri('/products/')})
+    cat = (product or {}).get('category') or {}
+    if cat.get('slug'):
+        breadcrumb_items.append({
+            'name': cat.get('name') or cat['slug'],
+            'url': request.build_absolute_uri(f"/products/?category={cat['slug']}"),
+        })
+    breadcrumb_items.append({
+        'name': product.get('name') or slug,
+        'url': request.build_absolute_uri(request.path),
+    })
     return render(request, 'storefront/product_detail.html', {
         'product': product,
         'related_products': related,
         'book_specs': _book_specs(slug),
         'reviews': _published_reviews(slug),
+        'breadcrumb_items': breadcrumb_items,
     })
 
 
@@ -873,11 +886,17 @@ def category_detail(request, slug):
         .order_by('-is_featured', '-created_at')[:60]
     )
     intro = _CATEGORY_INTROS.get(slug, {})
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+        {'name': category.name, 'url': request.build_absolute_uri(request.path)},
+    ]
     return render(request, 'storefront/category_detail.html', {
         'category': category,
         'products': products,
         'intro_eyebrow': category.description and 'On the shelf' or intro.get('eyebrow', 'On the shelf'),
         'intro_lede':    category.description or intro.get('lede', ''),
+        'breadcrumb_items': breadcrumb_items,
         # SEO meta — picked up by base.html's seo_meta tag.
         'seo_title':       f'{category.name} — dot books',
         'seo_description': category.description or intro.get('lede', '')[:160],

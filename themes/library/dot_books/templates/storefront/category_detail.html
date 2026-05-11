@@ -1,6 +1,8 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
+{% load seo %}
 {% block title %}{{ category.name }} — dot books{% endblock %}
+{% block extra_head %}{% seo_breadcrumb_jsonld items=breadcrumb_items %}{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">

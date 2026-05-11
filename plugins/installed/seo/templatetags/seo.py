@@ -22,6 +22,43 @@ from plugins.installed.seo.services import resolve_meta
 register = template.Library()
 
 
+def _canonical_from_request(request) -> tuple[str, bool]:
+    """Build the canonical URL from a request, stripping query params that
+    `SiteSeoSettings.noindex_query_params` marks as duplicate-content
+    generators (page, sort, ref, gclid, …).
+
+    Returns ``(canonical_url, had_noindex_param)``. The flag lets the
+    caller bump robots to ``noindex, follow`` so faceted SERPs don't
+    dilute ranking signals.
+    """
+    from urllib.parse import urlencode, urlsplit, urlunsplit
+    if request is None:
+        return '', False
+    try:
+        absolute = request.build_absolute_uri()
+    except Exception:  # noqa: BLE001
+        return '', False
+
+    try:
+        from plugins.installed.seo.services import site_settings
+        blocklist = set(site_settings().noindex_query_params or [])
+    except Exception:  # noqa: BLE001 — settings may not be migrated yet
+        blocklist = set()
+    if not blocklist:
+        return absolute, False
+
+    parts = urlsplit(absolute)
+    if not parts.query:
+        return absolute, False
+
+    from urllib.parse import parse_qsl
+    pairs = parse_qsl(parts.query, keep_blank_values=True)
+    had_blocked = any(k in blocklist for k, _ in pairs)
+    kept = [(k, v) for k, v in pairs if k not in blocklist]
+    rebuilt = urlunsplit(parts._replace(query=urlencode(kept)))
+    return rebuilt, had_blocked
+
+
 @register.simple_tag(takes_context=True)
 def seo_meta(
     context,
@@ -33,11 +70,9 @@ def seo_meta(
     og_type: str = 'website',
 ):
     request = context.get('request')
-    if not canonical_url and request is not None:
-        try:
-            canonical_url = request.build_absolute_uri()
-        except Exception:  # noqa: BLE001 — request may not have a host configured
-            canonical_url = ''
+    had_noindex_qp = False
+    if not canonical_url:
+        canonical_url, had_noindex_qp = _canonical_from_request(request)
 
     meta = resolve_meta(
         obj=object,
@@ -47,6 +82,10 @@ def seo_meta(
         canonical_url=canonical_url,
         og_type=og_type,
     )
+    if had_noindex_qp and 'noindex' not in meta.robots:
+        # Faceted/paginated SERPs: keep crawl signal (follow) but stop
+        # indexing the duplicate URL.
+        meta.robots = 'noindex, follow'
     return mark_safe(meta.to_html())
 
 
@@ -103,6 +142,40 @@ def seo_verification_metas():
     for name, content in pairs:
         if content:
             out.append(f'<meta name="{name}" content="{content}">')
+    return mark_safe('\n'.join(out))
+
+
+@register.simple_tag(takes_context=True)
+def seo_pagination_links(context, page_obj=None):
+    """Emit <link rel="prev"> + <link rel="next"> for a Django Paginator
+    page. Improves crawl efficiency for paginated PLPs.
+
+    Pass a `page_obj` that exposes `.has_previous`, `.has_next`,
+    `.previous_page_number`, `.next_page_number`. No-op if either is
+    absent or there's only one page.
+    """
+    if page_obj is None:
+        return ''
+    request = context.get('request')
+    if request is None:
+        return ''
+    from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
+    try:
+        parts = urlsplit(request.build_absolute_uri())
+    except Exception:  # noqa: BLE001
+        return ''
+    base_pairs = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != 'page']
+
+    def _link_for(page_num: int) -> str:
+        pairs = list(base_pairs) + [('page', str(page_num))]
+        href = urlunsplit(parts._replace(query=urlencode(pairs)))
+        return href
+
+    out = []
+    if getattr(page_obj, 'has_previous', lambda: False)():
+        out.append(f'<link rel="prev" href="{_link_for(page_obj.previous_page_number())}">')
+    if getattr(page_obj, 'has_next', lambda: False)():
+        out.append(f'<link rel="next" href="{_link_for(page_obj.next_page_number())}">')
     return mark_safe('\n'.join(out))
 
 
