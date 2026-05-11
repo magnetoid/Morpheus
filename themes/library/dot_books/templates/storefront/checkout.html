@@ -16,7 +16,7 @@
       <div class="stack-6">
         <fieldset style="border: 0; padding: 0; margin: 0;">
           <legend class="eyebrow" style="margin-bottom: 1rem;">Contact</legend>
-          <input type="email" name="email" value="{{ form.email|default:'' }}" placeholder="you@example.com" required class="ck-input">
+          <input type="email" name="email" value="{{ form.email|default:'' }}" placeholder="you@example.com" autocomplete="email" class="ck-input">
         </fieldset>
 
         <fieldset style="border: 0; padding: 0; margin: 0;">
@@ -25,15 +25,15 @@
             <input name="first_name" value="{{ form.first_name|default:'' }}" placeholder="First name" class="ck-input">
             <input name="last_name" value="{{ form.last_name|default:'' }}" placeholder="Last name" class="ck-input">
           </div>
-          <input name="address_line1" value="{{ form.address_line1|default:'' }}" placeholder="Address" style="margin-top: 0.75rem;" class="ck-input" required>
+          <input name="address_line1" value="{{ form.address_line1|default:'' }}" placeholder="Address" style="margin-top: 0.75rem;" autocomplete="address-line1" class="ck-input">
           <input name="address_line2" value="{{ form.address_line2|default:'' }}" placeholder="Apt, suite, etc. (optional)" style="margin-top: 0.75rem;" class="ck-input">
           <div style="display:grid; gap: 0.75rem; grid-template-columns: 2fr 1fr 1fr; margin-top: 0.75rem;">
-            <input name="city" value="{{ form.city|default:'' }}" placeholder="City" class="ck-input" required>
+            <input name="city" value="{{ form.city|default:'' }}" placeholder="City" autocomplete="address-level2" class="ck-input">
             <input name="state" value="{{ form.state|default:'' }}" placeholder="State / Region" class="ck-input">
             <input name="postal_code" value="{{ form.postal_code|default:'' }}" placeholder="Postal code" class="ck-input">
           </div>
           <div style="display:grid; gap: 0.75rem; grid-template-columns: 1fr 1fr; margin-top: 0.75rem;">
-            <input name="country" value="{{ form.country|default:'US' }}" placeholder="Country (ISO code)" class="ck-input" required>
+            <input name="country" value="{{ form.country|default:'US' }}" placeholder="Country (ISO code)" autocomplete="country" maxlength="2" class="ck-input">
             <input name="phone" value="{{ form.phone|default:'' }}" placeholder="Phone (optional)" class="ck-input">
           </div>
         </fieldset>

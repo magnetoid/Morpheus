@@ -316,6 +316,10 @@ def product_detail(request, slug):
         from morpheus.views import Http404
         raise Http404
     related = _related_products(slug)
+    # The GraphQL `images` field is a flat list of {url, altText, isPrimary}.
+    # Resolve the hero image once so the template can stay simple.
+    images = product.get('images') or []
+    hero_image = next((i for i in images if i.get('isPrimary')), None) or (images[0] if images else None)
     breadcrumb_items = [{'name': 'Home', 'url': request.build_absolute_uri('/')}]
     breadcrumb_items.append({'name': 'All books', 'url': request.build_absolute_uri('/products/')})
     cat = (product or {}).get('category') or {}
@@ -330,6 +334,7 @@ def product_detail(request, slug):
     })
     return render(request, 'storefront/product_detail.html', {
         'product': product,
+        'hero_image': hero_image,
         'related_products': related,
         'book_specs': _book_specs(slug),
         'reviews': _published_reviews(slug),
