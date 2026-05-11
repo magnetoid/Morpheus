@@ -12,7 +12,6 @@ from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from graphql import GraphQLError
 from graphql.language.ast import FieldNode
@@ -27,15 +26,11 @@ class MorpheusGraphQLView(GraphQLView):
     agent_only = False
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        if self.agent_only:
-            # Bearer-token route: skip CSRF (no session cookie used) so
-            # external agents can POST without a cookie round-trip.
-            request._dont_enforce_csrf_checks = True
-            if not getattr(request, 'agent_capabilities', None):
-                return JsonResponse(
-                    {'error': 'Unauthorized: missing or invalid Agent Token'},
-                    status=401,
-                )
+        if self.agent_only and not getattr(request, 'agent_capabilities', None):
+            return JsonResponse(
+                {'error': 'Unauthorized: missing or invalid Agent Token'},
+                status=401,
+            )
 
         # Pre-validate body before strawberry parses/executes the query.
         if request.method == 'POST' and request.content_type == 'application/json':
@@ -109,6 +104,14 @@ class MorpheusGraphQLView(GraphQLView):
 
 
 def morpheus_graphql_view(agent_only: bool = False):
-    """Factory used from urls.py to wire the singleton schema into a view."""
+    """Factory used from urls.py to wire the singleton schema into a view.
+
+    The agent-auth route is wrapped in ``csrf_exempt`` — it uses Bearer
+    tokens, never session cookies, so the CSRF middleware would just
+    block legitimate external clients (Lumina, Claude Desktop, etc.).
+    """
     from api.schema import get_schema
-    return MorpheusGraphQLView.as_view(schema=get_schema(), agent_only=agent_only)
+    view = MorpheusGraphQLView.as_view(schema=get_schema(), agent_only=agent_only)
+    if agent_only:
+        view = csrf_exempt(view)
+    return view
