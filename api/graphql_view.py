@@ -12,6 +12,8 @@ from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from graphql import GraphQLError
 from graphql.language.ast import FieldNode
 from strawberry.django.views import GraphQLView
@@ -25,11 +27,15 @@ class MorpheusGraphQLView(GraphQLView):
     agent_only = False
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        if self.agent_only and not getattr(request, 'agent_capabilities', None):
-            return JsonResponse(
-                {'error': 'Unauthorized: missing or invalid Agent Token'},
-                status=401,
-            )
+        if self.agent_only:
+            # Bearer-token route: skip CSRF (no session cookie used) so
+            # external agents can POST without a cookie round-trip.
+            request._dont_enforce_csrf_checks = True
+            if not getattr(request, 'agent_capabilities', None):
+                return JsonResponse(
+                    {'error': 'Unauthorized: missing or invalid Agent Token'},
+                    status=401,
+                )
 
         # Pre-validate body before strawberry parses/executes the query.
         if request.method == 'POST' and request.content_type == 'application/json':
@@ -39,16 +45,21 @@ class MorpheusGraphQLView(GraphQLView):
                 body = None
             if isinstance(body, dict):
                 try:
-                    self._validate_complexity(body)
+                    self._validate_complexity(body, allow_introspection=self.agent_only)
                 except GraphQLError as e:
                     return JsonResponse({'errors': [{'message': str(e)}]}, status=400)
 
         return super().dispatch(request, *args, **kwargs)
 
     @staticmethod
-    def _validate_complexity(data: dict[str, Any]) -> None:
+    def _validate_complexity(data: dict[str, Any], *, allow_introspection: bool = False) -> None:
         """Reject queries that exceed depth/alias limits, or — in production —
-        attempt schema introspection. Runs before strawberry parses/executes."""
+        attempt schema introspection. Runs before strawberry parses/executes.
+
+        ``allow_introspection=True`` (set by the agent-auth route) lets
+        Bearer-authenticated clients hit ``__schema`` / ``__type`` — they
+        need it to generate typed clients from the live schema.
+        """
         from graphql import parse
 
         query = data.get('query')
@@ -58,7 +69,8 @@ class MorpheusGraphQLView(GraphQLView):
         max_depth = getattr(settings, 'GRAPHQL_MAX_QUERY_DEPTH', 10)
         max_aliases = getattr(settings, 'GRAPHQL_MAX_ALIASES', 15)
         block_introspection = (
-            not settings.DEBUG
+            not allow_introspection
+            and not settings.DEBUG
             and getattr(settings, 'GRAPHQL_DISABLE_INTROSPECTION_IN_PROD', True)
         )
 
