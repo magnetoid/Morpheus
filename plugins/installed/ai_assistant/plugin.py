@@ -203,6 +203,23 @@ class AIAssistantPlugin(Plugin):
                     "title": "OpenRouter · Default model",
                     "description": "Format: vendor/model — e.g. anthropic/claude-3.5-sonnet",
                 },
+                # ── Grok (xAI) ────────────────────────────────────────
+                "grok_api_key": {
+                    "type": "string",
+                    "title": "Grok · API Key",
+                    "description": "xAI API key. https://console.x.ai",
+                },
+                "grok_base_url": {
+                    "type": "string",
+                    "title": "Grok · Base URL",
+                    "default": "https://api.x.ai/v1",
+                },
+                "grok_model": {
+                    "type": "string",
+                    "title": "Grok · Default model",
+                    "default": "grok-4",
+                    "description": "e.g. grok-4 · grok-4-fast-reasoning · grok-3",
+                },
                 # ── Ollama (cloud or self-hosted) ─────────────────────
                 "ollama_base_url": {
                     "type": "string",
@@ -223,7 +240,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Active provider selector ─────────────────────────
                 "ai_provider": {
                     "type": "string",
-                    "enum": ["openai", "anthropic", "gemini", "openrouter", "ollama"],
+                    "enum": ["openai", "anthropic", "gemini", "openrouter", "grok", "ollama"],
                     "default": "openai",
                     "title": "Active provider",
                     "description": "Which provider the assistant + agent layer call by default.",

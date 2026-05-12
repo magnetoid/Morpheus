@@ -396,6 +396,26 @@ class OpenRouterProvider(OpenAIProvider):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Grok (xAI) — OpenAI-compatible at https://api.x.ai/v1
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class GrokProvider(OpenAIProvider):
+    name = 'grok'
+
+    def __init__(self, model: str | None = None) -> None:
+        import openai
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config('grok')
+        kwargs: dict[str, Any] = {}
+        if cfg.api_key:
+            kwargs['api_key'] = cfg.api_key
+        kwargs['base_url'] = cfg.base_url or 'https://api.x.ai/v1'
+        self._client = openai.OpenAI(**kwargs)
+        self.model = model or cfg.model or 'grok-4'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Mock — deterministic, used in tests + when no provider configured
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -453,6 +473,7 @@ _PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
     'ollama': OllamaProvider,
     'gemini': GeminiProvider,
     'openrouter': OpenRouterProvider,
+    'grok': GrokProvider,
 }
 
 

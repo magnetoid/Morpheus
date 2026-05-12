@@ -35,6 +35,7 @@ _DEFAULT_BASE_URLS = {
     'gemini': 'https://generativelanguage.googleapis.com/v1beta',
     'openrouter': 'https://openrouter.ai/api/v1',
     'ollama': 'http://localhost:11434',
+    'grok': 'https://api.x.ai/v1',
 }
 
 _DEFAULT_MODELS = {
@@ -43,6 +44,7 @@ _DEFAULT_MODELS = {
     'gemini': 'gemini-2.0-flash',
     'openrouter': 'anthropic/claude-3.5-sonnet',
     'ollama': 'llama3.2',
+    'grok': 'grok-4',
 }
 
 
@@ -101,6 +103,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'gemini': 'GEMINI_API_KEY',
             'openrouter': 'OPENROUTER_API_KEY',
             'ollama': 'OLLAMA_API_KEY',
+            'grok': 'XAI_API_KEY',
         }
         api_key = getattr(settings, env_keys.get(name, ''), '') or ''
 
@@ -109,6 +112,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'ollama': 'OLLAMA_BASE_URL',
             'openai': 'OPENAI_BASE_URL',
             'openrouter': 'OPENROUTER_BASE_URL',
+            'grok': 'XAI_BASE_URL',
         }
         base_url = (
             getattr(settings, env_base.get(name, ''), '')

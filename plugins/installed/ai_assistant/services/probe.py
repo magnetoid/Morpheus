@@ -155,6 +155,28 @@ def probe_openrouter(*, api_key: str, base_url: str = '') -> dict:
     return _ok(models)
 
 
+# ── Grok (xAI) — OpenAI-compatible at https://api.x.ai/v1 ───────────────────
+
+
+def probe_grok(*, api_key: str, base_url: str = '') -> dict:
+    if not api_key:
+        return _fail('Grok API key not set.')
+    base = (base_url or 'https://api.x.ai/v1').rstrip('/')
+    data = _http_get(
+        f'{base}/models',
+        headers={'Authorization': f'Bearer {api_key}'},
+    )
+    if '_error' in data:
+        return _fail(str(data['_error']))
+    items = data.get('data') or []
+    models = [
+        {'id': m.get('id'), 'label': m.get('id')}
+        for m in items if m.get('id')
+    ]
+    models.sort(key=lambda m: m['id'])
+    return _ok(models)
+
+
 # ── Ollama (cloud or self-hosted) ────────────────────────────────────────────
 
 
@@ -180,6 +202,7 @@ _PROBES = {
     'anthropic': probe_anthropic,
     'gemini': probe_gemini,
     'openrouter': probe_openrouter,
+    'grok': probe_grok,
     'ollama': probe_ollama,
 }
 
