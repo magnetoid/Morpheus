@@ -245,6 +245,27 @@ class OpenRouterGateway(OpenAIGateway):
         )
 
 
+class GrokGateway(OpenAIGateway):
+    """xAI's Grok exposes an OpenAI-compatible Chat Completions API at
+    https://api.x.ai/v1 — same client, different base URL + model."""
+
+    def __init__(self, cfg: ProviderConfig | None = None):
+        cfg = cfg or get_provider_config('grok')
+        if not cfg.base_url:
+            cfg.base_url = 'https://api.x.ai/v1'
+        super().__init__(cfg)
+
+    def embed(self, text: str) -> list[float]:
+        # xAI hasn't shipped a public embeddings endpoint as of May 2026.
+        # Fall back to OpenAI's embeddings if a key is configured.
+        oa = get_provider_config('openai')
+        if oa.api_key:
+            return OpenAIGateway(oa).embed(text)
+        raise NotImplementedError(
+            'Grok (xAI) has no embeddings endpoint. Configure OpenAI or Ollama for embeddings.'
+        )
+
+
 class OllamaGateway(LLMGateway):
     """Local Ollama instance — full privacy, no data leaves the server."""
 
@@ -300,6 +321,7 @@ _GATEWAYS = {
     'anthropic': AnthropicGateway,
     'gemini': GeminiGateway,
     'openrouter': OpenRouterGateway,
+    'grok': GrokGateway,
     'ollama': OllamaGateway,
 }
 
