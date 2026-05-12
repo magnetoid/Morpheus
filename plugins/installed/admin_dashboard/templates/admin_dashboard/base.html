@@ -8,6 +8,9 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
+<!-- htmx — progressive partial-reload for boosted links + filter forms. -->
+<script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+<meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML","historyCacheSize":20,"globalViewTransitions":true}'>
 <style>
   /* Tailwind utilities like `flex` set display via class and out-rank
      the [hidden] attribute's UA-stylesheet `display: none`. Without
@@ -105,12 +108,17 @@
     color: var(--text); font-size: .8125rem; font-weight: 500;
     line-height: 1.25; position: relative;
   }
+  .nav-link { transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
   .nav-link:hover { background: var(--nav-hover-bg); }
   .nav-link.active { background: var(--nav-active-bg); font-weight: 600; }
-  .nav-link.active::before {
+  /* Animated active indicator — scales up from the bottom on activation. */
+  .nav-link::before {
     content: ''; position: absolute; left: -2px; top: 6px; bottom: 6px;
     width: 3px; background: var(--text); border-radius: 0 2px 2px 0;
+    transform: scaleY(0); transform-origin: center;
+    transition: transform var(--motion-med) var(--spring, var(--ease-out));
   }
+  .nav-link.active::before { transform: scaleY(1); }
   /* Submenus: indented children under a parent. Render only when the
      parent group is active so the rail stays compact otherwise. */
   /* Submenu slide: max-height transitions are bulletproof across browsers.
@@ -207,15 +215,37 @@
   .dropdown-item-danger:hover { background: var(--danger-bg); }
   @keyframes fadein { from {opacity:0; transform:translateY(2px)} to {opacity:1; transform:none} }
   .fadein { animation: fadein .12s ease-out both; }
+  /* htmx loading indicator — a thin progress strip across the top of main. */
+  #htmx-progress {
+    position: fixed; top: 0; left: 0; height: 2px; width: 0%;
+    background: var(--text); z-index: 9999; opacity: 0;
+    transition: width 200ms linear, opacity 200ms var(--ease-out);
+    pointer-events: none;
+  }
+  .htmx-request #htmx-progress { width: 70%; opacity: 1; }
+  /* Subtle row hover on data tables — used everywhere a list renders. */
+  table tbody tr { transition: background var(--motion-fast) var(--ease-out); }
+  table tbody tr:hover { background: var(--surface-2); }
+  /* Card hover lift — tiny, used on stat tiles + Pulse cards. */
+  .card { transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+  .card:hover { transform: translateY(-1px); box-shadow: var(--shadow-pop); }
+  /* Subtle press feedback on buttons — matches storefront. */
+  .btn:active, button:not(.input):active { transform: scale(0.97); transition: transform 80ms var(--ease-out); }
+  /* View Transitions on htmx swaps — adds a quick crossfade between
+     server-rendered partials when the browser supports it. */
+  @supports (view-transition-name: none) {
+    #main-content { view-transition-name: dashboard-main; }
+  }
   /* Body class toggled by Morph.dirty so the sticky save bar doesn't
      overlap the last form rows when it's visible. */
   body.has-save-bar main { padding-bottom: 4.5rem; }
 </style>
 </head>
-<body class="min-h-screen flex">
+<body class="min-h-screen flex" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
 
+<div id="htmx-progress" aria-hidden="true"></div>
 <div id="sidebar-backdrop" class="drawer-backdrop md:hidden"></div>
-<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full md:translate-x-0 md:static transition-transform duration-200 ease-out">
+<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full md:translate-x-0 md:static transition-transform duration-200 ease-out" hx-boost="false">
   <div class="h-12 flex items-center justify-between px-3 border-b border-[color:var(--border)]">
     <a href="{% url 'admin_dashboard:home' %}" class="flex items-center gap-2 font-semibold tracking-tight">
       <i data-lucide="hexagon" class="h-5 w-5"></i>
@@ -351,7 +381,7 @@
 </aside>
 
 <div class="flex-1 flex flex-col min-w-0">
-  <header class="h-12 flex items-center gap-2 px-3 lg:px-4 border-b border-[color:var(--border)] bg-[color:var(--bg)]">
+  <header class="h-12 flex items-center gap-2 px-3 lg:px-4 border-b border-[color:var(--border)] bg-[color:var(--bg)]" hx-boost="false">
     <button id="sidebar-open" class="md:hidden btn btn-ghost p-1.5"><i data-lucide="menu" class="h-5 w-5"></i></button>
     <button id="palette-open" class="relative flex-1 max-w-xl text-left input input-search"
             type="button"
@@ -417,7 +447,7 @@
     </div>
   </header>
 
-  <main class="flex-1 overflow-y-auto p-3 lg:p-5">
+  <main id="main-content" class="flex-1 overflow-y-auto p-3 lg:p-5">
     {% if messages %}
     {# Pipe Django messages framework into the toast queue. Morph.toast is #}
     {# defined in dashboard.js (loaded with `defer`) so we buffer onto its #}
@@ -617,5 +647,23 @@
 </script>
 {# Linda — the hard-coded staff AI assistant. Always present in admin. #}
 {% include "assistant/_floating_widget.html" %}
+
+<script>
+// Re-run client-side initializers after every htmx partial swap.
+// Lucide icons + any data-dropdown / data-confirm hooks live inside
+// dashboard.js — call its reinit if present, otherwise call lucide directly.
+document.body.addEventListener('htmx:afterSwap', function (e) {
+  try {
+    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+    if (window.Morph && typeof window.Morph.reinit === 'function') window.Morph.reinit(e.detail.target);
+  } catch (err) { /* swallow — never break navigation over a polish failure */ }
+});
+// Reveal main on swap with a small ko-reveal-up entrance.
+document.body.addEventListener('htmx:beforeSwap', function (e) {
+  if (e.detail.target && e.detail.target.id === 'main-content') {
+    e.detail.target.classList.add('fadein');
+  }
+});
+</script>
 </body>
 </html>
