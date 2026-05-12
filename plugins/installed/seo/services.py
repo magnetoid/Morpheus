@@ -860,6 +860,165 @@ def qa_page_jsonld(*, name: str, url: str, qa: list[dict]) -> dict:
     }
 
 
+def get_or_create_indexnow_key() -> str:
+    """IndexNow key — a UUID stored in plugin config, surfaced at
+    ``/<key>.txt`` for verification + sent with every push.
+    """
+    import uuid
+    cfg = _seo_plugin_cfg()
+    key = cfg.get('indexnow_key') or ''
+    if not key:
+        key = uuid.uuid4().hex
+        try:
+            from plugins.registry import plugin_registry
+            p = plugin_registry.get('seo')
+            if p is not None:
+                p.set_config('indexnow_key', key)
+        except Exception:  # noqa: BLE001
+            pass
+    return key
+
+
+def render_sitemap_index_xml() -> str:
+    """Sitemap index — points at every sub-sitemap. Crawlers discover
+    sub-sitemaps from here without hitting the main sitemap.xml
+    against the 50k-URL limit.
+    """
+    from django.utils import timezone
+    base = _site_base_url().rstrip('/')
+    now = timezone.now().replace(microsecond=0).isoformat()
+    children = [
+        f'{base}/sitemap.xml',
+        f'{base}/sitemap-images.xml',
+        f'{base}/sitemap-news.xml',
+    ]
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for child in children:
+        parts.append('<sitemap>')
+        parts.append(f'<loc>{escape(child)}</loc>')
+        parts.append(f'<lastmod>{escape(now)}</lastmod>')
+        parts.append('</sitemap>')
+    parts.append('</sitemapindex>')
+    return ''.join(parts)
+
+
+def render_news_sitemap_xml() -> str:
+    """News sitemap for journal posts in the last 48 h. Required-when-
+    fresh by Google News + AI editorial citations (Perplexity / ChatGPT
+    News). Empty urlset when no fresh posts — that's valid.
+    """
+    from django.utils import timezone
+    base = _site_base_url().rstrip('/')
+    cutoff = timezone.now() - timedelta(hours=48)
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+        'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
+    ]
+    try:
+        from plugins.installed.cms.models import JournalPost
+        s = site_settings()
+        pub_name = s.organization_name or 'Morpheus'
+        qs = JournalPost.objects.filter(
+            status='published', published_at__gte=cutoff,
+        ).order_by('-published_at')[:1000]
+        for post in qs:
+            url = f'{base}/journal/{post.slug}/'
+            pub = post.published_at.replace(microsecond=0).isoformat()
+            parts.append('<url>')
+            parts.append(f'<loc>{escape(url)}</loc>')
+            parts.append('<news:news>')
+            parts.append('<news:publication>')
+            parts.append(f'<news:name>{escape(pub_name)}</news:name>')
+            parts.append('<news:language>en</news:language>')
+            parts.append('</news:publication>')
+            parts.append(f'<news:publication_date>{escape(pub)}</news:publication_date>')
+            parts.append(f'<news:title>{escape(post.title)}</news:title>')
+            parts.append('</news:news>')
+            parts.append('</url>')
+    except Exception:  # noqa: BLE001 — no cms / no journal model
+        pass
+    parts.append('</urlset>')
+    return ''.join(parts)
+
+
+def render_opensearch_xml() -> str:
+    """OpenSearch description — installs the site as a Chrome tab-to-
+    search engine (Edge, Brave). Lightweight discoverability win.
+    """
+    base = _site_base_url().rstrip('/')
+    s = site_settings()
+    short = (s.organization_name or 'dot books')[:16]
+    desc = (s.llms_txt_intro or short)[:160]
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">'
+        f'<ShortName>{escape(short)}</ShortName>'
+        f'<Description>{escape(desc)}</Description>'
+        '<InputEncoding>UTF-8</InputEncoding>'
+        f'<Image width="16" height="16" type="image/x-icon">{escape(base)}/favicon.ico</Image>'
+        f'<Url type="text/html" method="get" template="{escape(base)}/products/?q={{searchTerms}}"/>'
+        '</OpenSearchDescription>'
+    )
+
+
+def render_pwa_manifest() -> dict:
+    """Web App Manifest — lets browsers install the storefront as a
+    PWA. Required by Lighthouse "Installable" + opens us up for the
+    Android home-screen add prompt.
+    """
+    s = site_settings()
+    name = s.organization_name or 'dot books'
+    return {
+        'name': name,
+        'short_name': name[:12],
+        'description': s.llms_txt_intro or name,
+        'start_url': '/',
+        'scope': '/',
+        'display': 'standalone',
+        'theme_color': '#f6f1e7',
+        'background_color': '#f6f1e7',
+        'icons': [
+            {'src': '/static/icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
+            {'src': '/static/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png'},
+            {'src': '/static/icons/icon-maskable-512.png', 'sizes': '512x512',
+             'type': 'image/png', 'purpose': 'maskable'},
+        ],
+    }
+
+
+def ping_indexnow(urls: list[str]) -> dict:
+    """POST one or many URLs to IndexNow — instant indexation on Bing,
+    Yandex, Naver, Seznam, Yep. Fire-and-forget on the server; failures
+    are silent so a slow IndexNow doesn't slow product saves.
+    """
+    import json as _json
+    import urllib.request
+    base = _site_base_url().rstrip('/')
+    host = base.replace('https://', '').replace('http://', '').strip('/')
+    key = get_or_create_indexnow_key()
+    body = {
+        'host': host,
+        'key': key,
+        'keyLocation': f'{base}/{key}.txt',
+        'urlList': [u for u in urls if u][:10_000],
+    }
+    try:
+        req = urllib.request.Request(
+            'https://api.indexnow.org/IndexNow',
+            data=_json.dumps(body).encode('utf-8'),
+            headers={'Content-Type': 'application/json; charset=utf-8'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return {'ok': 200 <= resp.status < 300, 'status': resp.status}
+    except Exception as exc:  # noqa: BLE001
+        return {'ok': False, 'error': str(exc)}
+
+
 def render_image_sitemap_xml() -> str:
     """Image-only sitemap. Lists every product's primary image with its
     caption/alt so AI image-search engines (Google AI Overviews, Bing

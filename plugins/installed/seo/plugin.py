@@ -42,6 +42,7 @@ class SeoPlugin(Plugin):
             store_audit(product, audit_product(product))
         except Exception as e:  # noqa: BLE001 — autofill is best-effort
             logger.warning('seo: autofill/audit failed for %s: %s', product.id, e, exc_info=True)
+        self._indexnow_push(product)
 
     def on_product_updated(self, product, **kwargs):
         """Refresh the SEO score when a product changes."""
@@ -50,6 +51,28 @@ class SeoPlugin(Plugin):
             store_audit(product, audit_product(product))
         except Exception as e:  # noqa: BLE001
             logger.debug('seo: refresh-audit failed for %s: %s', product.id, e)
+        self._indexnow_push(product)
+
+    def _indexnow_push(self, product) -> None:
+        """Notify Bing/Yandex/Naver/Seznam/Yep about this product URL.
+
+        Fire-and-forget — IndexNow failures must never block the
+        save/update flow. Skipped when the merchant has disabled
+        IndexNow in plugin config.
+        """
+        try:
+            cfg = self.get_config()
+            if not cfg.get('indexnow_enabled', True):
+                return
+            slug = getattr(product, 'slug', '')
+            if not slug:
+                return
+            from plugins.installed.seo.services import _site_base_url, ping_indexnow
+            url = f'{_site_base_url().rstrip("/")}/products/{slug}/'
+            import threading
+            threading.Thread(target=ping_indexnow, args=([url],), daemon=True).start()
+        except Exception as e:  # noqa: BLE001
+            logger.debug('seo: IndexNow push failed for %s: %s', getattr(product, 'id', '?'), e)
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.seo.agent_tools import (

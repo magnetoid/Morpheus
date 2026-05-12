@@ -239,6 +239,14 @@
 {% seo_verification_metas %}
 {% seo_llms_link %}
 
+{# PWA manifest + browser tab-to-search engine descriptor.
+   Both are tiny static endpoints under the seo plugin. #}
+<link rel="manifest" href="/manifest.json">
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="dot books">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="dot books">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+
 {# Motion One — ~3kb vanilla animator with spring built-in. Exposed as window.__motion #}
 <script type="module">
   import { animate, stagger } from 'https://cdn.jsdelivr.net/npm/motion@10/+esm';

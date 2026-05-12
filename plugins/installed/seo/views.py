@@ -75,6 +75,54 @@ def image_sitemap_xml(request: HttpRequest) -> HttpResponse:
     )
 
 
+def sitemap_index_xml(request: HttpRequest) -> HttpResponse:
+    """Sitemap index — entry-point that lists every sub-sitemap.
+    Search engines and AI crawlers prefer this over a flat sitemap
+    once the catalog crosses ~50k URLs."""
+    from plugins.installed.seo.services import render_sitemap_index_xml
+    return HttpResponse(
+        render_sitemap_index_xml(),
+        content_type='application/xml; charset=utf-8',
+    )
+
+
+def news_sitemap_xml(request: HttpRequest) -> HttpResponse:
+    """News sitemap — journal posts in the last 48h. Empty urlset
+    when nothing is fresh, which is valid per Google's news spec."""
+    from plugins.installed.seo.services import render_news_sitemap_xml
+    return HttpResponse(
+        render_news_sitemap_xml(),
+        content_type='application/xml; charset=utf-8',
+    )
+
+
+def opensearch_xml(request: HttpRequest) -> HttpResponse:
+    """OpenSearch description for browser tab-to-search engines."""
+    from plugins.installed.seo.services import render_opensearch_xml
+    return HttpResponse(
+        render_opensearch_xml(),
+        content_type='application/opensearchdescription+xml; charset=utf-8',
+    )
+
+
+def web_manifest(request: HttpRequest) -> JsonResponse:
+    """PWA web app manifest. Browsers use this to install the store
+    as a home-screen app + show themed window chrome."""
+    from plugins.installed.seo.services import render_pwa_manifest
+    return JsonResponse(render_pwa_manifest())
+
+
+def indexnow_keyfile(request: HttpRequest, key: str) -> HttpResponse:
+    """Serve the IndexNow key as plain text so api.indexnow.org can
+    verify ownership of the host before accepting URL pushes.
+    """
+    from plugins.installed.seo.services import get_or_create_indexnow_key
+    expected = get_or_create_indexnow_key()
+    if key != expected:
+        return HttpResponse('Unknown key.', status=404, content_type='text/plain; charset=utf-8')
+    return HttpResponse(expected, content_type='text/plain; charset=utf-8')
+
+
 def web_vitals_beacon(request: HttpRequest) -> JsonResponse:
     """Receive Real-User-Metrics from the storefront's web-vitals JS.
 
