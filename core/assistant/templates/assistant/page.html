@@ -2,125 +2,284 @@
 {% block title %}Linda · Morpheus admin{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-3">
-  <div>
-    <h1 class="text-xl font-semibold">Linda</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">
-      Linda is the staff AI assistant, hard-coded into the platform core.
-      She knows the whole store, takes action on your behalf with explicit
-      approval, and remembers what you tell her across sessions.
-    </p>
-  </div>
-</div>
+<div class="linda-page">
 
-<div class="linda-shell" style="display: grid; grid-template-columns: 240px 1fr; gap: 1rem; height: 78vh;">
-  <aside class="card" style="overflow-y: auto; padding: 0.85rem;">
-    <h3 class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]" style="margin-bottom: .5rem;">Try asking</h3>
-    <div style="display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1.25rem;">
-      {% for s in starters %}
-      <button type="button" class="linda-starter btn btn-ghost"
-              data-prefill="{{ s }}"
-              style="text-align: left; font-size: .8rem; line-height: 1.3; padding: .45rem .55rem; height: auto; white-space: normal;">
-        {{ s }}
-      </button>
-      {% endfor %}
+  <div id="linda-log" class="linda-log">
+    {% if not history %}
+    <div class="linda-empty">
+      <h1>How can I help?</h1>
+      <p class="linda-empty-lede">Linda knows the store. Ask, and she'll act — explicit approval first.</p>
+      <div class="linda-starters">
+        {% for s in starters %}
+        <button type="button" class="linda-starter" data-prefill="{{ s }}">{{ s }}</button>
+        {% endfor %}
+      </div>
+      {% if memories %}
+      <details class="linda-memories">
+        <summary>{{ memories|length }} thing{{ memories|length|pluralize }} Linda remembers</summary>
+        <ul>
+          {% for m in memories %}
+          <li><strong>{{ m.key }}</strong> — {{ m.value|truncatechars:100 }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
     </div>
-
-    <h3 class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]" style="margin-bottom: .5rem;">Linda remembers</h3>
-    {% if memories %}
-    <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .3rem;">
-      {% for m in memories %}
-      <li style="font-size: .75rem; padding: .35rem .5rem; background: var(--surface-2); border-radius: 4px; border: 1px solid var(--border);">
-        <div style="font-weight: 600; color: var(--text);">{{ m.key }}</div>
-        <div style="color: var(--text-muted); margin-top: .15rem;">{{ m.value|truncatechars:80 }}</div>
-      </li>
-      {% endfor %}
-    </ul>
     {% else %}
-    <p class="text-xs text-[color:var(--text-muted)]">
-      Nothing yet. Tell her something like "remember I prefer Postmark for email"
-      and she'll keep it across sessions.
-    </p>
-    {% endif %}
-  </aside>
-
-  <div class="card" style="display: flex; flex-direction: column; min-width: 0;">
-    <div id="assistant-log" style="flex:1; overflow-y:auto; padding: 1rem; font-size: .9rem;">
       {% for m in history %}
-      <div style="margin: .65rem 0; padding: .65rem .85rem; border-radius: 8px;
-                  background: {% if m.role == 'user' %}var(--surface-2){% elif m.role == 'tool' %}rgba(0,150,255,0.06){% else %}var(--surface){% endif %};
-                  border: {% if m.role == 'user' %}none{% else %}1px solid var(--border){% endif %};">
-        <strong style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">
-          {% if m.role == 'tool' %}🔧 {{ m.tool_name }}{% elif m.role == 'user' %}You{% else %}Linda{% endif %}
-        </strong>
-        <div style="margin-top:.25rem; white-space: pre-wrap;">{{ m.content }}</div>
+      <div class="linda-msg linda-msg-{{ m.role }}">
+        {% if m.role == 'tool' %}
+        <div class="linda-msg-meta">{{ m.tool_name|default:'tool' }}</div>
+        {% endif %}
+        <div class="linda-msg-body">{{ m.content }}</div>
       </div>
       {% endfor %}
-    </div>
-    <form id="assistant-form" style="display:flex; gap:.5rem; padding: .75rem; border-top: 1px solid var(--border);">
-      {% csrf_token %}
-      <input type="text" name="message" placeholder="Ask anything — Linda will use tools and show her work."
-        autocomplete="off" required style="flex:1;" class="input">
-      <button type="submit" class="btn btn-primary">Send</button>
-    </form>
+    {% endif %}
   </div>
+
+  <form id="linda-form" class="linda-form" autocomplete="off">
+    {% csrf_token %}
+    <textarea name="message" rows="1" placeholder="Ask Linda…" class="linda-input" required></textarea>
+    <button type="submit" class="linda-send" aria-label="Send">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l5-5 5 5M12 6v13"/></svg>
+    </button>
+  </form>
+
 </div>
 
 <style>
-@media (max-width: 900px) { .linda-shell { grid-template-columns: 1fr !important; height: auto !important; } .linda-shell > aside { max-height: 220px; } }
+  /* Take over the dashboard main panel — no padding, no scroll bleed. */
+  #main-content { padding: 0 !important; overflow: hidden; }
+  body.has-admin-bar #main-content { padding: 0 !important; }
+  .linda-page {
+    height: 100%;
+    display: flex; flex-direction: column;
+    background: var(--surface);
+  }
+  .linda-log {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 2.5rem 1.5rem 2rem;
+    scroll-behavior: smooth;
+  }
+  .linda-log > .linda-msg + .linda-msg { margin-top: 1.25rem; }
+
+  /* Empty state — centred prompt + starter chips. */
+  .linda-empty {
+    max-width: 38rem; margin: 0 auto;
+    padding: max(8vh, 3rem) 1rem 0;
+    text-align: center;
+  }
+  .linda-empty h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.75rem, 2.6vw + 1rem, 2.5rem);
+    font-weight: 500; letter-spacing: -0.01em;
+    margin: 0 0 .6rem;
+  }
+  .linda-empty-lede {
+    color: var(--text-muted);
+    font-size: .95rem; margin: 0 0 2rem;
+  }
+  .linda-starters {
+    display: flex; flex-direction: column; gap: .5rem;
+    max-width: 26rem; margin: 0 auto;
+  }
+  .linda-starter {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .65rem 1.1rem;
+    font-size: .85rem; color: var(--text);
+    text-align: left; cursor: pointer;
+    transition: background var(--motion-fast, 140ms) ease, border-color var(--motion-fast, 140ms) ease;
+  }
+  .linda-starter:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  .linda-memories {
+    margin-top: 2.5rem; text-align: left;
+    max-width: 26rem; margin-left: auto; margin-right: auto;
+    font-size: .8rem; color: var(--text-muted);
+  }
+  .linda-memories summary { cursor: pointer; padding: .25rem 0; }
+  .linda-memories ul { list-style: none; padding: 0; margin: .5rem 0 0; }
+  .linda-memories li { padding: .35rem 0; }
+
+  /* Messages — borderless, typography-forward, role-tagged. User right,
+     assistant left, tool inline-muted. */
+  .linda-msg {
+    max-width: 44rem; margin-left: auto; margin-right: auto;
+    line-height: 1.6;
+  }
+  .linda-msg-body {
+    white-space: pre-wrap;
+    font-size: .95rem;
+    color: var(--text);
+  }
+  .linda-msg-user {
+    /* User turns get a subtle right-anchored pill so the eye can
+       scan turn boundaries without borders on every block. */
+    display: flex; justify-content: flex-end;
+  }
+  .linda-msg-user .linda-msg-body {
+    background: var(--surface-2);
+    padding: .65rem 1rem;
+    border-radius: 16px 16px 4px 16px;
+    max-width: 32rem;
+  }
+  .linda-msg-tool .linda-msg-meta {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: .7rem;
+    color: var(--text-muted);
+    margin-bottom: .25rem;
+  }
+  .linda-msg-tool .linda-msg-body {
+    color: var(--text-muted);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: .78rem;
+  }
+
+  /* Tool-call card — inline collapsible. Minimal chrome. */
+  .linda-tool {
+    max-width: 44rem; margin: 1.25rem auto; font-size: .8rem;
+    color: var(--text-muted);
+  }
+  .linda-tool summary {
+    cursor: pointer; display: inline-flex; gap: .5rem; align-items: center;
+    padding: .25rem 0;
+    list-style: none;
+  }
+  .linda-tool summary::-webkit-details-marker { display: none; }
+  .linda-tool .t-icon { font-family: ui-monospace, monospace; }
+  .linda-tool .t-body {
+    margin-top: .5rem; padding: .5rem .75rem;
+    background: var(--surface-2); border-radius: 6px;
+    font-family: ui-monospace, Menlo, monospace; font-size: .72rem;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  /* Input row — sticky bottom, borderless input, single send button. */
+  .linda-form {
+    position: relative; flex-shrink: 0;
+    padding: 1rem 1.5rem 1.5rem;
+    background: linear-gradient(180deg, transparent 0, var(--surface) 30%);
+    display: flex; align-items: flex-end; gap: .5rem;
+    max-width: 48rem; margin: 0 auto; width: 100%;
+  }
+  .linda-input {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: .85rem 1.1rem;
+    background: var(--bg);
+    font: inherit; font-size: .95rem; line-height: 1.4;
+    max-height: 12rem; min-height: 2.75rem;
+    outline: none;
+    transition: border-color var(--motion-fast, 140ms) ease, box-shadow var(--motion-fast, 140ms) ease;
+  }
+  .linda-input:focus {
+    border-color: var(--text);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 10%, transparent);
+  }
+  .linda-send {
+    width: 44px; height: 44px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: none;
+    background: var(--text); color: var(--bg);
+    cursor: pointer;
+    transition: transform var(--motion-fast, 140ms) ease, opacity var(--motion-fast, 140ms) ease;
+  }
+  .linda-send:hover { transform: scale(1.04); }
+  .linda-send:active { transform: scale(.97); }
+  .linda-send:disabled { opacity: .4; transform: none; cursor: not-allowed; }
+
+  @media (max-width: 640px) {
+    .linda-log { padding: 1.5rem 1rem 1rem; }
+    .linda-form { padding: .75rem 1rem 1rem; }
+  }
 </style>
 
 <script>
 (() => {
-  const form = document.getElementById('assistant-form');
-  const log = document.getElementById('assistant-log');
+  const form = document.getElementById('linda-form');
+  const log = document.getElementById('linda-log');
   const csrf = form.querySelector('[name=csrfmiddlewaretoken]').value;
-  const input = form.querySelector('input[name=message]');
+  const input = form.querySelector('textarea[name=message]');
+  const sendBtn = form.querySelector('.linda-send');
+
+  // Auto-grow the textarea up to its max-height.
+  function autosize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 192) + 'px';
+  }
+  input.addEventListener('input', autosize);
+  // Enter sends; Shift+Enter inserts newline.
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  input.focus();
 
   function escapeHtml(s) {
-    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
-      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c];
-    });
+    return String(s == null ? '' : s).replace(/[<>&"]/g, c => (
+      { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]
+    ));
+  }
+
+  function clearEmptyState() {
+    const empty = log.querySelector('.linda-empty');
+    if (empty) empty.remove();
   }
 
   function pushLine(role, text, toolName) {
-    const div = document.createElement('div');
-    const isUser = role === 'user';
-    const isTool = role === 'tool';
-    div.style.cssText = `margin: .65rem 0; padding: .65rem .85rem; border-radius: 8px;
-      background: ${isUser ? 'var(--surface-2)' : isTool ? 'rgba(0,150,255,0.06)' : 'var(--surface)'};
-      border: ${isUser ? 'none' : '1px solid var(--border)'};`;
-    const label = isTool ? `🔧 ${toolName || 'tool'}` : isUser ? 'You' : 'Linda';
-    div.innerHTML = `<strong style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">${label}</strong>
-      <div style="margin-top:.25rem;white-space:pre-wrap;">${escapeHtml(text)}</div>`;
-    log.appendChild(div); log.scrollTop = log.scrollHeight;
-    return div;
+    clearEmptyState();
+    const wrap = document.createElement('div');
+    wrap.className = 'linda-msg linda-msg-' + role;
+    if (role === 'tool' && toolName) {
+      const meta = document.createElement('div');
+      meta.className = 'linda-msg-meta';
+      meta.textContent = toolName;
+      wrap.appendChild(meta);
+    }
+    const body = document.createElement('div');
+    body.className = 'linda-msg-body';
+    body.textContent = text;
+    wrap.appendChild(body);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+    return wrap;
   }
 
   function pushToolCard(name, args) {
+    clearEmptyState();
     const card = document.createElement('details');
-    card.style.cssText = 'margin:.5rem 0; padding:.5rem .65rem; border:1px solid var(--border); border-radius:6px; background:rgba(0,150,255,0.04); font-size:.8rem;';
+    card.className = 'linda-tool';
     const summary = document.createElement('summary');
-    summary.style.cssText = 'cursor:pointer; color:var(--text-muted); display:flex; align-items:center; gap:.4rem;';
     summary.innerHTML = '<span class="t-icon">⋯</span> <strong>' + escapeHtml(name) + '</strong> <span class="t-status">running…</span>';
     const body = document.createElement('div');
     body.className = 't-body';
-    body.style.cssText = 'margin-top:.45rem; padding-top:.45rem; border-top:1px dotted var(--border); font-family:ui-monospace,Menlo,monospace; font-size:.72rem; color:var(--text-muted); white-space:pre-wrap; word-break:break-word;';
     body.textContent = JSON.stringify(args || {}, null, 2);
     card.appendChild(summary); card.appendChild(body);
-    log.appendChild(card); log.scrollTop = log.scrollHeight;
+    log.appendChild(card);
+    log.scrollTop = log.scrollHeight;
     return card;
   }
 
   document.querySelectorAll('.linda-starter').forEach(b => {
-    b.addEventListener('click', () => { input.value = b.dataset.prefill || ''; input.focus(); });
+    b.addEventListener('click', () => {
+      input.value = b.dataset.prefill || '';
+      autosize();
+      input.focus();
+    });
   });
 
   form.addEventListener('submit', e => {
     e.preventDefault();
     const text = (input.value || '').trim();
     if (!text) return;
-    pushLine('user', text); input.value = '';
+    pushLine('user', text);
+    input.value = ''; autosize();
+    sendBtn.disabled = true;
     const pendingCards = {};
 
     fetch('/dashboard/assistant/stream/', {
@@ -134,7 +293,7 @@
       let buf = '';
       function pump() {
         return reader.read().then(chunk => {
-          if (chunk.done) return;
+          if (chunk.done) { sendBtn.disabled = false; return; }
           buf += decoder.decode(chunk.value, {stream: true});
           const blocks = buf.split('\n\n');
           buf = blocks.pop();
@@ -168,7 +327,10 @@
         });
       }
       return pump();
-    }).catch(() => pushLine('assistant', 'Sorry — connection error.'));
+    }).catch(() => {
+      pushLine('assistant', 'Sorry — connection error.');
+      sendBtn.disabled = false;
+    });
   });
 })();
 </script>

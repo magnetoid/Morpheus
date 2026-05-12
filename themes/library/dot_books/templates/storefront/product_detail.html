@@ -125,9 +125,15 @@
         </div>
         {% endif %}
 
-        <div style="margin-top: 2rem; line-height: 1.7; color: var(--ink-2); font-size: 1rem; max-width: 60ch;">
-          {{ product.description|safe }}
+        {% if product.description %}
+        <div style="margin-top: 2.5rem;">
+          <p class="eyebrow" style="margin-bottom: 0.75rem;">About this book</p>
+          <hr class="rule" style="margin-bottom: 1.25rem; max-width: 60ch;">
+          <div itemprop="description" class="pdp-long-desc" style="line-height: 1.75; color: var(--ink); font-size: 1.02rem; max-width: 60ch;">
+            {{ product.description|linebreaks }}
+          </div>
         </div>
+        {% endif %}
 
         {% if product.tags %}
         <div style="margin-top: 2rem; display:flex; flex-wrap: wrap; gap: 0.4rem;">
