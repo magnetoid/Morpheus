@@ -304,19 +304,98 @@ def render_sitemap_xml() -> str:
     return ''.join(parts)
 
 
+#: 2026 AI/answer-engine crawler catalogue. Each entry: (UA, label,
+# behaviour). Default policy = "allow" for every retrieval bot — they
+# drive AI Overviews / ChatGPT / Perplexity citations. Training-only
+# bots default to "allow" too so the merchant opts out, not in.
+AI_CRAWLERS = [
+    # OpenAI
+    ('GPTBot',           'OpenAI · ChatGPT training crawler',          'training'),
+    ('OAI-SearchBot',    'OpenAI · ChatGPT Search retrieval',          'search'),
+    ('ChatGPT-User',     'OpenAI · ChatGPT user-triggered fetch',      'user'),
+    # Anthropic
+    ('ClaudeBot',        'Anthropic · Claude training crawler',        'training'),
+    ('Claude-User',      'Anthropic · Claude user-triggered fetch',    'user'),
+    ('Claude-SearchBot', 'Anthropic · Claude search retrieval',        'search'),
+    # Perplexity
+    ('PerplexityBot',    'Perplexity · indexing crawler',              'search'),
+    ('Perplexity-User',  'Perplexity · user-triggered fetch',          'user'),
+    # Google
+    ('Google-Extended',  'Google · Bard / Vertex AI training opt-out', 'training'),
+    # Apple
+    ('Applebot-Extended','Apple · Apple Intelligence training opt-out','training'),
+    # Meta
+    ('Meta-ExternalAgent','Meta · AI training crawler',                'training'),
+    # ByteDance (TikTok)
+    ('Bytespider',       'ByteDance · LLM training crawler',           'training'),
+    # Amazon
+    ('Amazonbot',        'Amazon · Alexa + AI fetcher',                'search'),
+    # Common Crawl
+    ('CCBot',            'Common Crawl · public web archive',          'training'),
+]
+
+
+def get_ai_crawler_policy() -> dict[str, bool]:
+    """Read per-bot allow/disallow policy from seo plugin config.
+
+    Default = all-allow. Stored as ``{ua_lowercase: bool}`` in the plugin
+    config JSON. Returns the merged map ready for robots.txt emission.
+    """
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = plugin_registry.get('seo')
+        if seo_plugin is None:
+            return {}
+        raw = seo_plugin.get_config_value('ai_crawler_policy', {}) or {}
+        if not isinstance(raw, dict):
+            return {}
+        return {k.lower(): bool(v) for k, v in raw.items()}
+    except Exception:  # noqa: BLE001 — never break robots.txt over a config miss
+        return {}
+
+
 def render_robots_txt() -> str:
+    """robots.txt with explicit AI-crawler blocks.
+
+    A 2026 storefront wants per-bot control: opt out of LLM training
+    crawlers without blocking the retrieval bots that drive AI Overviews
+    + ChatGPT/Perplexity citations. Order matters — specific UAs first,
+    then the universal ``User-agent: *`` fallback.
+    """
     base = _site_base_url()
-    lines = [
-        'User-agent: *',
-        'Allow: /',
+    policy = get_ai_crawler_policy()  # {ua_lowercase: True=allow / False=block}
+    common_disallow = [
         'Disallow: /admin/',
         'Disallow: /dashboard/',
         'Disallow: /auth/',
         'Disallow: /cart/',
         'Disallow: /checkout/',
-        f'Sitemap: {urljoin(base, "/sitemap.xml")}',
     ]
-    return '\n'.join(lines) + '\n'
+
+    lines: list[str] = []
+
+    # Per-bot blocks. Default is "allow" — we only emit a block when the
+    # merchant has explicitly disallowed a bot.
+    for ua, _label, _kind in AI_CRAWLERS:
+        allowed = policy.get(ua.lower(), True)
+        lines.append(f'User-agent: {ua}')
+        if allowed:
+            lines.append('Allow: /')
+            lines.extend(common_disallow)
+        else:
+            lines.append('Disallow: /')
+        lines.append('')
+
+    # Universal fallback for every other crawler (Googlebot, Bingbot, …).
+    lines.extend([
+        'User-agent: *',
+        'Allow: /',
+        *common_disallow,
+        '',
+        f'Sitemap: {urljoin(base, "/sitemap.xml")}',
+        f'Sitemap: {urljoin(base, "/sitemap-images.xml")}',
+    ])
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 def _site_base_url() -> str:
@@ -559,7 +638,133 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
             for k, v in (am if isinstance(am, dict) else {}).items()
         ][:25]
 
+    # ProductGroup variants — schema.org's hasVariant unlocks variant
+    # cards in Google AI Shopping. Only emit when variants exist.
+    if not isinstance(product, dict):
+        try:
+            variants = list(getattr(product, 'variants', None).filter(is_active=True)[:20]) \
+                if getattr(product, 'variants', None) else []
+            if variants:
+                out['@type'] = 'ProductGroup'
+                out['productGroupID'] = str(getattr(product, 'id', '') or slug)
+                out['hasVariant'] = [
+                    {
+                        '@type': 'Product',
+                        'sku': v.sku or '',
+                        'name': v.name or '',
+                        'offers': {
+                            '@type': 'Offer',
+                            'price': str(getattr(v, 'price', None).amount if getattr(v, 'price', None) else (offer_price if price is not None else '')),
+                            'priceCurrency': str(getattr(v, 'price', None).currency if getattr(v, 'price', None) else (offer_curr if price is not None else 'USD')),
+                            'availability': 'https://schema.org/InStock',
+                        },
+                    }
+                    for v in variants
+                ]
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Entity-graph sameAs links via metafield 'seo.same_as' (comma- or
+    # newline-separated URLs). March-2026 core update made this the #1
+    # leverage point for AI engines.
+    if not isinstance(product, dict):
+        try:
+            from django.contrib.contenttypes.models import ContentType
+            from plugins.installed.metafields.models import Metafield
+            ct = ContentType.objects.get_for_model(type(product))
+            m = Metafield.objects.filter(
+                content_type=ct, object_id=product.pk,
+                namespace='seo', key='same_as',
+            ).first()
+            if m and m.value:
+                urls = [u.strip() for u in str(m.value).replace('\n', ',').split(',') if u.strip()]
+                if urls:
+                    out['sameAs'] = urls[:10]
+        except Exception:  # noqa: BLE001
+            pass
+
+    # GTIN / brand via 'book' metafield namespace (used by dotbooks).
+    if not isinstance(product, dict):
+        try:
+            from django.contrib.contenttypes.models import ContentType
+            from plugins.installed.metafields.models import Metafield
+            ct = ContentType.objects.get_for_model(type(product))
+            book_meta = {
+                row.key: row.value for row in
+                Metafield.objects.filter(
+                    content_type=ct, object_id=product.pk, namespace='book',
+                )
+            }
+            if book_meta.get('isbn'):
+                out['gtin13'] = str(book_meta['isbn'])[:13]
+            if book_meta.get('publisher'):
+                out['brand'] = {'@type': 'Brand', 'name': str(book_meta['publisher'])}
+            if book_meta.get('author'):
+                out['author'] = {'@type': 'Person', 'name': str(book_meta['author'])}
+        except Exception:  # noqa: BLE001
+            pass
+
     return out
+
+
+def speakable_jsonld(selectors: list[str] | None = None) -> dict:
+    """SpeakableSpecification — tells voice assistants which CSS selectors
+    contain text suitable for spoken reading.
+
+    Defaults target the page's headline + the lede paragraph, which work
+    on every storefront template we ship.
+    """
+    css = selectors or ['h1', '.lede', '[itemprop="description"]']
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        'speakable': {
+            '@type': 'SpeakableSpecification',
+            'cssSelector': css,
+        },
+    }
+
+
+def render_image_sitemap_xml() -> str:
+    """Image-only sitemap. Lists every product's primary image with its
+    caption/alt so AI image-search engines (Google AI Overviews, Bing
+    image grounding) can discover them.
+
+    Spec: https://www.sitemaps.org/schemas/sitemap-image/1.1/sitemap-image.xsd
+    """
+    base = _site_base_url().rstrip('/')
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+        'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+    ]
+    try:
+        from plugins.installed.catalog.models import Product
+        for p in Product.objects.filter(status='active').prefetch_related('images')[:5000]:
+            page_url = f'{base}/products/{p.slug}/'
+            imgs = list(p.images.all())
+            if not imgs:
+                continue
+            parts.append('<url>')
+            parts.append(f'<loc>{escape(page_url)}</loc>')
+            for img in imgs[:6]:
+                src = getattr(img.image, 'url', None) if getattr(img, 'image', None) else None
+                if not src:
+                    continue
+                if not src.startswith('http'):
+                    src = base + src
+                parts.append('<image:image>')
+                parts.append(f'<image:loc>{escape(src)}</image:loc>')
+                caption = (getattr(img, 'alt_text', '') or p.name or '').strip()
+                if caption:
+                    parts.append(f'<image:caption>{escape(caption[:200])}</image:caption>')
+                parts.append(f'<image:title>{escape(p.name[:80])}</image:title>')
+                parts.append('</image:image>')
+            parts.append('</url>')
+    except Exception:  # noqa: BLE001
+        pass
+    parts.append('</urlset>')
+    return ''.join(parts)
 
 
 def article_jsonld(*, headline: str, body: str, url: str,
@@ -632,7 +837,10 @@ def render_llms_txt(*, full: bool = False) -> str:
         qs = Product.objects.filter(status='active').order_by('-created_at')
         limit = 200 if full else 50
         for p in qs[:limit]:
-            line = f'- [{p.name}]({base}/products/{p.slug}/)'
+            # Per-product markdown export — let crawlers fetch the
+            # canonical content without parsing HTML. /md/products/<slug>
+            md_url = f'{base}/md/products/{p.slug}'
+            line = f'- [{p.name}]({base}/products/{p.slug}/) ({md_url})'
             if full:
                 desc = (p.short_description or p.description or '')[:160]
                 if desc:
@@ -641,6 +849,79 @@ def render_llms_txt(*, full: bool = False) -> str:
     except Exception:  # noqa: BLE001
         pass
     return '\n'.join(out) + '\n'
+
+
+def render_product_markdown(product) -> str:
+    """Canonical markdown rendering of a product for LLM crawlers.
+
+    Output is plain text — no HTML, no menu, no boilerplate. Stable
+    structure so crawlers can rely on the heading shape across pages.
+    Sections (each separated by a blank line):
+        # Title
+        > Short description
+        Price · availability
+        ## About
+        long description
+        ## Specifications
+        - key: value
+        ## Reviews (top 5)
+    """
+    parts: list[str] = []
+    name = getattr(product, 'name', '') or ''
+    parts.append(f'# {name}')
+    short = (getattr(product, 'short_description', '') or '').strip()
+    if short:
+        parts.extend(['', f'> {short}'])
+    # Price + availability.
+    price = getattr(product, 'price', None)
+    if price is not None:
+        try:
+            amount = price.amount
+            currency = str(price.currency)
+            avail = 'in stock' if not getattr(product, 'track_inventory', False) else \
+                    ('in stock' if (getattr(product, 'stock_quantity', None) or 1) > 0 else 'out of stock')
+            parts.extend(['', f'Price: {amount} {currency} · {avail}'])
+        except Exception:  # noqa: BLE001
+            pass
+    desc = (getattr(product, 'description', '') or '').strip()
+    if desc:
+        # Strip HTML if any — naive but adequate for the editorial copy
+        # this storefront stores in `description`.
+        import re as _re
+        plain = _re.sub(r'<[^>]+>', '', desc)
+        parts.extend(['', '## About', plain])
+    # Book-shop specifics — pull metafields if the catalog uses them.
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.metafields.models import Metafield
+        ct = ContentType.objects.get_for_model(type(product))
+        rows = list(Metafield.objects.filter(
+            content_type=ct, object_id=product.pk, namespace='book',
+        ).values_list('key', 'value'))
+        if rows:
+            parts.append('')
+            parts.append('## Specifications')
+            for k, v in rows:
+                parts.append(f'- {k}: {v}')
+    except Exception:  # noqa: BLE001
+        pass
+    # Reviews (top 5 published).
+    try:
+        from plugins.installed.catalog.models import Review
+        revs = list(
+            Review.objects.filter(product=product, status='published')
+            .order_by('-created_at')[:5]
+            .values('rating', 'title', 'body', 'created_at')
+        )
+        if revs:
+            parts.append('')
+            parts.append('## Reviews')
+            for r in revs:
+                parts.append(f"### {r.get('title') or '(untitled)'} — {r['rating']}/5")
+                parts.append((r.get('body') or '').strip())
+    except Exception:  # noqa: BLE001
+        pass
+    return '\n'.join(parts) + '\n'
 
 
 def render_ai_products_feed(*, limit: int = 500) -> dict:

@@ -119,6 +119,78 @@ def seo_product_jsonld(product):
 
 
 @register.simple_tag
+def seo_product_md_link(slug):
+    """<link rel="alternate" type="text/markdown" …> pointing at the
+    LLM-friendly markdown view of this product. Used by ChatGPT /
+    Perplexity / Claude crawlers as the canonical text source."""
+    if not slug:
+        return ''
+    href = f'/md/products/{slug}'
+    return mark_safe(f'<link rel="alternate" type="text/markdown" href="{href}" title="Plain-text product description for LLM crawlers">')
+
+
+@register.simple_tag
+def seo_product_og(product):
+    """Open Graph product extensions + Twitter label/data pairs.
+
+    Renders the product:* OG fields (price.amount, price.currency,
+    availability, condition) so link previews in Slack / iMessage /
+    Discord / ChatGPT show price + availability inline. Also emits
+    Twitter Card label1/data1/label2/data2 with the same info.
+
+    Accepts GraphQL dict OR Django model — same shape resolver as
+    seo_product_jsonld."""
+    if product is None:
+        return ''
+
+    def g(name, default=None):
+        if isinstance(product, dict):
+            return product.get(name, default)
+        return getattr(product, name, default)
+
+    price = g('price')
+    amount = currency = ''
+    if price is not None:
+        if isinstance(price, dict):
+            amount, currency = str(price.get('amount', '')), str(price.get('currency', ''))
+        else:
+            amount, currency = str(getattr(price, 'amount', price)), str(getattr(price, 'currency', ''))
+    avail = 'in stock'
+    out = [
+        '<meta property="og:type" content="product">',
+        f'<meta property="product:price:amount" content="{amount}">',
+        f'<meta property="product:price:currency" content="{currency}">',
+        f'<meta property="product:availability" content="{avail}">',
+        '<meta property="product:condition" content="new">',
+        '<meta name="twitter:label1" content="Price">',
+        f'<meta name="twitter:data1" content="{amount} {currency}">',
+        '<meta name="twitter:label2" content="Availability">',
+        f'<meta name="twitter:data2" content="{avail}">',
+    ]
+    return mark_safe('\n'.join(out))
+
+
+@register.simple_tag
+def seo_speakable_jsonld(selectors=None):
+    """Speakable schema — declares which CSS selectors hold spoken
+    content for Google Assistant / Siri / Alexa voice reading."""
+    from plugins.installed.seo.services import speakable_jsonld, _jsonld_dump
+    obj = speakable_jsonld(list(selectors) if selectors else None)
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
+@register.simple_tag
+def seo_faq_jsonld(items):
+    """FAQ schema — items is a list of {q, a}. Although Google retired
+    FAQ rich snippets in May 2026, AI engines still use the schema for
+    citation when the merchant publishes Q&A content."""
+    if not items:
+        return ''
+    from plugins.installed.seo.services import faq_jsonld, _jsonld_dump
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(faq_jsonld(items))}</script>')
+
+
+@register.simple_tag
 def seo_breadcrumb_jsonld(items):
     """Emit BreadcrumbList JSON-LD. `items` is a list of {name, url}."""
     if not items:

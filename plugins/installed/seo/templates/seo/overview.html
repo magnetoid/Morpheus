@@ -12,6 +12,39 @@
   <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Tracked keywords</p><p class="text-2xl font-semibold mt-1">{{ tracked_keywords }}</p></div>
 </div>
 
+{# Core Web Vitals — p75 from real visitor beacons in the last 1000 reports.
+   Empty until storefront traffic generates beacons via /web-vitals/. #}
+<div class="card card-padded mb-6">
+  <h3 class="font-semibold mb-1">Core Web Vitals (p75)</h3>
+  <p class="text-xs text-[color:var(--text-muted)] mb-3">
+    Real-User-Metrics captured from storefront visitors via
+    <code>web-vitals</code>. Each pill turns red when the 75th-percentile
+    visitor crosses Google's "good" threshold — that's the value that
+    appears in Search Console + AI Overview ranking signals.
+  </p>
+  <div class="grid grid-cols-3 gap-3 text-sm">
+    <div>
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">LCP <span class="text-[color:var(--text-subtle)]">(≤2.5s good)</span></p>
+      <p class="text-xl font-semibold mt-0.5" {% if cwv.lcp and cwv.lcp > 2500 %}style="color:var(--danger);"{% elif cwv.lcp %}style="color:var(--success);"{% endif %}>
+        {% if cwv.lcp %}{{ cwv.lcp|floatformat:0 }} ms{% else %}—{% endif %}
+      </p>
+    </div>
+    <div>
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">INP <span class="text-[color:var(--text-subtle)]">(≤200ms good)</span></p>
+      <p class="text-xl font-semibold mt-0.5" {% if cwv.inp and cwv.inp > 200 %}style="color:var(--danger);"{% elif cwv.inp %}style="color:var(--success);"{% endif %}>
+        {% if cwv.inp %}{{ cwv.inp|floatformat:0 }} ms{% else %}—{% endif %}
+      </p>
+    </div>
+    <div>
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">CLS <span class="text-[color:var(--text-subtle)]">(≤0.1 good)</span></p>
+      <p class="text-xl font-semibold mt-0.5" {% if cwv.cls and cwv.cls > 0.1 %}style="color:var(--danger);"{% elif cwv.cls %}style="color:var(--success);"{% endif %}>
+        {% if cwv.cls %}{{ cwv.cls|floatformat:3 }}{% else %}—{% endif %}
+      </p>
+    </div>
+  </div>
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">{{ cwv.samples }} samples</p>
+</div>
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
   <div class="card card-padded">
     <h3 class="font-semibold mb-3">Quick actions</h3>
@@ -21,9 +54,12 @@
       <a href="{% url 'seo_dashboard:audit' %}" class="btn">Run product audits</a>
       <a href="{% url 'seo_dashboard:not_found' %}" class="btn">Review 404s</a>
       <a href="{% url 'seo_dashboard:keywords' %}" class="btn">Tracked keywords</a>
-      <a href="/sitemap.xml" target="_blank" class="btn-link">View sitemap.xml</a>
-      <a href="/llms.txt" target="_blank" class="btn-link">View /llms.txt</a>
-      <a href="/ai/products.json" target="_blank" class="btn-link">View AI shopping feed</a>
+      <a href="/sitemap.xml" target="_blank" class="btn-link">sitemap.xml</a>
+      <a href="/sitemap-images.xml" target="_blank" class="btn-link">sitemap-images.xml</a>
+      <a href="/robots.txt" target="_blank" class="btn-link">robots.txt (with AI crawler matrix)</a>
+      <a href="/llms.txt" target="_blank" class="btn-link">llms.txt</a>
+      <a href="/llms-full.txt" target="_blank" class="btn-link">llms-full.txt</a>
+      <a href="/ai/products.json" target="_blank" class="btn-link">/ai/products.json</a>
     </div>
   </div>
   <div class="card card-padded">

@@ -4,6 +4,9 @@
 
 {% block extra_head %}
 {% seo_product_jsonld product %}
+{% seo_product_og product %}
+{% seo_product_md_link product.slug %}
+{% seo_speakable_jsonld %}
 {% if product.category %}
   {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endif %}

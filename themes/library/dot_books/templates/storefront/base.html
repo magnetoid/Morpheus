@@ -394,6 +394,24 @@
 {% storefront_blocks "global_below_body" %}
 {% include "storefront/_cart_drawer.html" %}
 
+{# Core Web Vitals RUM beacon. Captures LCP/INP/CLS/FCP/TTFB from real
+   visitors and POSTs them to /web-vitals/ where the audit log stores
+   them. Uses the official Google web-vitals library — no fallback,
+   no-op on unsupported browsers. #}
+<script type="module">
+  import {onCLS, onINP, onLCP, onFCP, onTTFB} from 'https://cdn.jsdelivr.net/npm/web-vitals@4/+esm';
+  function beacon(m) {
+    try {
+      navigator.sendBeacon('/web-vitals/', JSON.stringify({
+        name: m.name, value: m.value, id: m.id, delta: m.delta,
+        rating: m.rating, navigationType: m.navigationType,
+        url: location.pathname,
+      }));
+    } catch (e) { /* never block paint */ }
+  }
+  onLCP(beacon); onINP(beacon); onCLS(beacon); onFCP(beacon); onTTFB(beacon);
+</script>
+
 {# Lazy-load fade-in. Tag every lazy img with .ko-fade-img and rely on
    the `load` event to flip the class. ~25 lines, all native. #}
 <script>

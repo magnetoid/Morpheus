@@ -56,6 +56,25 @@
     <textarea name="llms_txt_intro" rows="3" class="input">{{ s.llms_txt_intro }}</textarea>
   </label>
 
+  <h3 class="font-semibold mt-4">AI crawler matrix</h3>
+  <p class="text-xs text-[color:var(--text-muted)] -mt-2">
+    Per-bot rules emitted in <code>/robots.txt</code>. "Allow" lets the
+    bot crawl + cite your pages (drives AI Overviews + ChatGPT/Perplexity
+    citations). "Disallow" blocks the bot entirely — useful for training-
+    only crawlers if you don't want your content in LLM training sets.
+  </p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+    {% for r in crawler_rows %}
+    <label class="flex items-start gap-2 p-2 rounded border border-[color:var(--border)]">
+      <input type="checkbox" name="crawler_{{ r.ua|lower }}" {% if r.allowed %}checked{% endif %} class="mt-0.5">
+      <span class="min-w-0">
+        <code class="font-mono text-xs">{{ r.ua }}</code>
+        <span class="block text-xs text-[color:var(--text-muted)]">{{ r.label }} · <em>{{ r.kind }}</em></span>
+      </span>
+    </label>
+    {% endfor %}
+  </div>
+
   <button type="submit" class="btn btn-primary">Save settings</button>
 </form>
 {% endblock %}

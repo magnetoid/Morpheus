@@ -9,8 +9,9 @@ from morpheus.views import get_object_or_404, redirect, render
 
 from plugins.installed.seo.services import (
     audit_all_products, audit_product, refresh_404_suggestions,
-    render_ai_products_feed, render_llms_txt, render_robots_txt,
-    render_sitemap_xml, site_settings, store_audit, suggest_redirect,
+    render_ai_products_feed, render_llms_txt, render_product_markdown,
+    render_robots_txt, render_sitemap_xml, site_settings, store_audit,
+    suggest_redirect,
 )
 
 
@@ -44,6 +45,73 @@ def ai_products_feed(request: HttpRequest) -> JsonResponse:
     return JsonResponse(render_ai_products_feed(limit=limit))
 
 
+def product_markdown(request: HttpRequest, slug: str) -> HttpResponse:
+    """Markdown rendering of a product — the LLM-friendly view.
+
+    Same data as the HTML PDP, no menu / no CSS / no script tags. Lets
+    ChatGPT / Perplexity / Claude crawlers ingest the content without
+    HTML parsing. Linked from /llms.txt + /llms-full.txt.
+    """
+    from plugins.installed.catalog.models import Product
+    try:
+        product = Product.objects.filter(slug=slug, status='active').first()
+    except Exception:  # noqa: BLE001
+        product = None
+    if product is None:
+        return HttpResponse('Not found.', status=404, content_type='text/plain; charset=utf-8')
+    return HttpResponse(
+        render_product_markdown(product),
+        content_type='text/markdown; charset=utf-8',
+    )
+
+
+def image_sitemap_xml(request: HttpRequest) -> HttpResponse:
+    """Image-only sitemap. Discovered by AI image-search engines for
+    grounding (Google AI Overviews, Bing image search, Perplexity)."""
+    from plugins.installed.seo.services import render_image_sitemap_xml
+    return HttpResponse(
+        render_image_sitemap_xml(),
+        content_type='application/xml; charset=utf-8',
+    )
+
+
+def web_vitals_beacon(request: HttpRequest) -> JsonResponse:
+    """Receive Real-User-Metrics from the storefront's web-vitals JS.
+
+    Body: `{name, value, id, navigationType, rating, delta}` — the
+    standard web-vitals.js payload. Stored as an `AuditEvent` row with
+    event_type='cwv.report' so the dashboard can aggregate without a
+    new model.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        body = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'bad json'}, status=400)
+    metric = (body.get('name') or '').upper()
+    if metric not in ('LCP', 'INP', 'CLS', 'FCP', 'TTFB', 'FID'):
+        return JsonResponse({'error': 'unknown metric'}, status=400)
+    try:
+        from core.audit.services import record
+        record(
+            event_type='cwv.report',
+            target=(body.get('url') or request.headers.get('Referer') or '')[:200],
+            metadata={
+                'metric': metric,
+                'value': float(body.get('value') or 0.0),
+                'rating': body.get('rating', ''),
+                'nav_type': body.get('navigationType', ''),
+                'delta': float(body.get('delta') or 0.0),
+                'page_id': body.get('id', ''),
+            },
+            request_id=getattr(request, 'request_id', '') or '',
+        )
+    except Exception:  # noqa: BLE001
+        pass  # never let beacon failures noise the request
+    return JsonResponse({'ok': True})
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Admin dashboard pages
 # ─────────────────────────────────────────────────────────────────────────────
@@ -54,6 +122,7 @@ def seo_overview(request):
     from plugins.installed.seo.models import (
         NotFoundLog, Redirect, SeoAuditResult, SeoMeta, TrackedKeyword,
     )
+    cwv = _cwv_summary()
     return render(request, 'seo/overview.html', {
         'site_settings': site_settings(),
         'meta_count': SeoMeta.objects.count(),
@@ -62,8 +131,41 @@ def seo_overview(request):
         'tracked_keywords': TrackedKeyword.objects.count(),
         'audit_count': SeoAuditResult.objects.count(),
         'lowest_scores': SeoAuditResult.objects.order_by('score')[:10],
+        'cwv': cwv,
         'active_nav': 'seo',
     })
+
+
+def _cwv_summary() -> dict:
+    """Aggregate the last 1000 web-vitals beacon reports into p75 per
+    metric — the same threshold Google uses to decide pass/fail.
+
+    Source: AuditEvent rows with event_type='cwv.report'. No new model.
+    """
+    out = {'lcp': None, 'inp': None, 'cls': None, 'samples': 0}
+    try:
+        from core.audit.models import AuditEvent
+        rows = list(
+            AuditEvent.objects
+            .filter(event_type='cwv.report')
+            .order_by('-created_at')[:1000]
+            .values_list('metadata', flat=True)
+        )
+        if not rows:
+            return out
+        out['samples'] = len(rows)
+        for metric_key, metric_name in (('lcp', 'LCP'), ('inp', 'INP'), ('cls', 'CLS')):
+            values = sorted([
+                float(m.get('value') or 0.0)
+                for m in rows
+                if (m or {}).get('metric') == metric_name
+            ])
+            if values:
+                p75_idx = int(0.75 * (len(values) - 1))
+                out[metric_key] = values[p75_idx]
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 @staff_member_required
@@ -90,13 +192,36 @@ def seo_settings_page(request):
                 pass
         params = (request.POST.get('noindex_query_params', '') or '').strip()
         s.noindex_query_params = [p.strip() for p in params.split(',') if p.strip()]
+        # AI crawler matrix — POST keys are crawler_<UA_lower>=on / missing.
+        from plugins.installed.seo.services import AI_CRAWLERS
+        from plugins.registry import plugin_registry
+        seo_plugin = plugin_registry.get('seo')
+        if seo_plugin is not None:
+            policy = {
+                ua.lower(): (request.POST.get(f'crawler_{ua.lower()}') == 'on')
+                for ua, _label, _kind in AI_CRAWLERS
+            }
+            seo_plugin.set_config('ai_crawler_policy', policy)
         if not s.pk:
             s.save()
         else:
             s.save()
         return redirect('seo_dashboard:settings')
+
+    # Render context — pre-compute the crawler matrix so the template
+    # only iterates a flat list.
+    from plugins.installed.seo.services import AI_CRAWLERS, get_ai_crawler_policy
+    policy_now = get_ai_crawler_policy()
+    crawler_rows = [
+        {
+            'ua': ua, 'label': label, 'kind': kind,
+            'allowed': policy_now.get(ua.lower(), True),
+        }
+        for ua, label, kind in AI_CRAWLERS
+    ]
     return render(request, 'seo/settings.html', {
         's': s, 'active_nav': 'seo',
+        'crawler_rows': crawler_rows,
     })
 
 
