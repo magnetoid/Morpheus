@@ -20,7 +20,42 @@
     </div>
   </div>
 
-  {# Active provider — top-of-page picker for the most-used setting. #}
+  {# Active-provider status banner — the unambiguous answer to "which
+     provider is Linda using right now?". Reads the resolved model from
+     get_llm_provider() and last-call status from the audit log, so it
+     reflects what the runtime actually does, not just what's saved. #}
+  {% with ab=active_banner %}
+  {% if ab.card %}
+  <div class="card card-padded ai-active-banner {% if not ab.card.configured %}is-warn{% elif ab.last_call and not ab.last_call.ok %}is-error{% else %}is-ok{% endif %}">
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="ai-tile-icon" style="background: var(--surface); border-color: var(--border-strong);">
+        <i data-lucide="{{ ab.card.icon }}" class="h-5 w-5"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Active right now</p>
+        <h2 class="font-semibold text-base mt-0.5">
+          Linda is using <span class="text-[color:var(--text)]">{{ ab.card.label }}</span>
+          {% if ab.resolved_model %}<span class="font-normal text-[color:var(--text-muted)]">· <code class="font-mono text-xs">{{ ab.resolved_model }}</code></span>{% endif %}
+        </h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+          {% if not ab.card.configured %}
+            <span class="text-[color:var(--danger)]">API key missing</span> — paste one below before Linda or any agent will respond.
+          {% elif ab.last_call %}
+            Last call <time datetime="{{ ab.last_call.at|date:'c' }}">{{ ab.last_call.at|timesince }}</time> ago ·
+            {% if ab.last_call.ok %}<span class="text-[color:var(--success)]">OK</span>{% else %}<span class="text-[color:var(--danger)]">Error</span>{% endif %}
+          {% else %}
+            No calls yet — send Linda a message to confirm it works.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {# Active provider — top-of-page picker. Only one provider is in use
+     at a time; switch it here. The list below is just for editing
+     individual keys, not switching. #}
   <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card card-padded flex items-center justify-between gap-3 flex-wrap">
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
@@ -52,6 +87,13 @@
               <span class="pill pill-success" data-status="ok">Configured</span>
             {% else %}
               <span class="pill pill-neutral" data-status="empty">Not configured</span>
+            {% endif %}
+            {% if c.last_call %}
+              {% if c.last_call.ok %}
+                <span class="pill pill-success" title="{{ c.last_call.at|date:'c' }}">Used {{ c.last_call.at|timesince }} ago</span>
+              {% else %}
+                <span class="pill pill-danger" title="{{ c.last_call.at|date:'c' }}">Error {{ c.last_call.at|timesince }} ago</span>
+              {% endif %}
             {% endif %}
             <span class="ai-test-msg text-xs"></span>
           </div>
@@ -94,11 +136,14 @@
             <input type="text" name="{{ c.slug }}_model" class="input flex-1 font-mono"
                    value="{{ c.model }}"
                    data-model-input
-                   placeholder="{{ c.placeholder_model }}">
+                   list="ai-model-list-{{ c.slug }}"
+                   placeholder="{{ c.placeholder_model }}"
+                   autocomplete="off">
+            <datalist id="ai-model-list-{{ c.slug }}"></datalist>
             <button type="button" class="btn ai-fetch-btn" data-provider="{{ c.slug }}"><i data-lucide="download" class="h-3.5 w-3.5"></i> Fetch</button>
             <button type="button" class="btn ai-test-btn" data-provider="{{ c.slug }}"><i data-lucide="zap" class="h-3.5 w-3.5"></i> Test</button>
           </div>
-          <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id manually, or click Fetch to pull the live catalog from the provider.</p>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id; the dropdown shows the live catalog after you click Fetch (cached locally so it survives reloads).</p>
         </div>
       </div>
 
@@ -109,13 +154,19 @@
   </div>
   {% endfor %}
 
-  {# Feature toggles. #}
+  {# Feature toggles — each maps to a chunk of platform behaviour. We
+     keep the toggles boolean and the descriptions self-explanatory so a
+     merchant can flip them without reading docs. #}
   <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card overflow-hidden">
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="card-padded border-b border-[color:var(--border)]">
       <h2 class="font-semibold">AI features</h2>
-      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Toggle which AI surfaces are active across the storefront and dashboard.</p>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+        Switch individual AI behaviours on or off. Off-by-default
+        features (dynamic pricing, autonomous operator) only act after
+        you tick them.
+      </p>
     </div>
     <div class="card-padded grid grid-cols-1 md:grid-cols-2 gap-3">
       {% for f in features %}
@@ -179,6 +230,11 @@
   }
   .ai-test-msg.ok { color: var(--success); font-weight: 500; }
   .ai-test-msg.fail { color: var(--danger); font-weight: 500; }
+  /* Active-provider banner — three states: OK (success border), warn (no
+     key set), error (last call failed). Subtle, never noisy. */
+  .ai-active-banner.is-ok    { border-left: 3px solid var(--success); }
+  .ai-active-banner.is-warn  { border-left: 3px solid var(--warn); }
+  .ai-active-banner.is-error { border-left: 3px solid var(--danger); }
 </style>
 
 <script>
@@ -216,12 +272,42 @@
     catch { return { ok: false, error: `HTTP ${res.status}` }; }
   }
 
+  // Datalist cache — survives reloads so the dropdown isn't empty until
+  // someone clicks Fetch. Keyed per-provider; one-week TTL.
+  function cacheKey(p) { return `ai-models:${p}`; }
+  function loadCachedModels(p) {
+    try {
+      const raw = localStorage.getItem(cacheKey(p));
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (Date.now() - obj.at > 7 * 24 * 3600 * 1000) return null;
+      return obj.ids || null;
+    } catch { return null; }
+  }
+  function saveCachedModels(p, ids) {
+    try { localStorage.setItem(cacheKey(p), JSON.stringify({ at: Date.now(), ids })); } catch {}
+  }
+  function paintDatalist(p, ids) {
+    const dl = document.getElementById(`ai-model-list-${p}`);
+    if (!dl) return;
+    dl.innerHTML = '';
+    for (const id of ids) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      dl.appendChild(opt);
+    }
+  }
+  // Hydrate every card's datalist from cache on page load.
+  document.querySelectorAll('[data-provider-form]').forEach(form => {
+    const p = form.dataset.providerForm;
+    const cached = loadCachedModels(p);
+    if (cached) paintDatalist(p, cached);
+  });
+
   document.querySelectorAll('.ai-fetch-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const p = btn.dataset.provider;
       const msg = statusEl(p);
-      const form = getCardForm(p);
-      const modelInput = form?.querySelector('[data-model-input]');
       msg.textContent = 'Fetching…'; msg.className = 'ai-test-msg text-xs';
       btn.disabled = true;
       try {
@@ -231,31 +317,13 @@
           msg.textContent = '✗ ' + (data.error || 'failed');
           return;
         }
-        if (modelInput && data.models?.length) {
-          const select = document.createElement('select');
-          select.name = modelInput.name;
-          select.className = modelInput.className;
-          select.dataset.modelInput = '';
-          const current = modelInput.value;
-          let matched = false;
-          for (const m of data.models) {
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = m.label || m.id;
-            if (m.id === current) { opt.selected = true; matched = true; }
-            select.appendChild(opt);
-          }
-          if (!matched && current) {
-            const opt = document.createElement('option');
-            opt.value = current;
-            opt.textContent = current + ' (custom)';
-            opt.selected = true;
-            select.insertBefore(opt, select.firstChild);
-          }
-          modelInput.replaceWith(select);
+        const ids = (data.models || []).map(m => m.id).filter(Boolean);
+        if (ids.length) {
+          paintDatalist(p, ids);
+          saveCachedModels(p, ids);
         }
         msg.className = 'ai-test-msg text-xs ok';
-        msg.textContent = `✓ ${data.models?.length || 0} models`;
+        msg.textContent = `✓ ${ids.length} models`;
       } finally {
         btn.disabled = false;
       }

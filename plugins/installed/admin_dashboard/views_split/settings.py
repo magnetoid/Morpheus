@@ -229,6 +229,29 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
     cfg = ai_plugin.get_config() if ai_plugin else {}
     active = cfg.get('ai_provider') or 'openai'
 
+    # Last AI call per provider (success / error + timestamp) for the per-
+    # card "Used N min ago" pill. Source: agents.decision rows the audit
+    # log captures on every Linda + agent tool call.
+    last_call_by_provider: dict[str, dict] = {}
+    try:
+        from core.audit.models import AuditEvent
+        recent = (
+            AuditEvent.objects
+            .filter(event_type='agents.decision')
+            .order_by('-created_at')[:200]
+        )
+        for ev in recent:
+            slug = (ev.metadata or {}).get('provider') or ''
+            if not slug or slug in last_call_by_provider:
+                continue
+            last_call_by_provider[slug] = {
+                'at': ev.created_at,
+                'ok': not (ev.metadata or {}).get('error'),
+                'error': (ev.metadata or {}).get('error') or '',
+            }
+    except Exception:  # noqa: BLE001 — audit table may be empty / pre-migration
+        pass
+
     # Per-provider card data with current values + status.
     cards = []
     for p in _AI_PROVIDERS:
@@ -243,7 +266,24 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
             'model': model,
             'configured': configured,
             'is_active': p['slug'] == active,
+            'last_call': last_call_by_provider.get(p['slug']),
         })
+
+    # Active-provider banner data — resolved model + status, the only
+    # answer to "which provider is Linda actually using right now?".
+    active_card = next((c for c in cards if c['is_active']), None)
+    resolved_model = ''
+    if active_card:
+        try:
+            from core.agents.llm import get_llm_provider
+            resolved_model = getattr(get_llm_provider(), 'model', '') or ''
+        except Exception:  # noqa: BLE001
+            resolved_model = active_card.get('model', '')
+    active_banner = {
+        'card': active_card,
+        'resolved_model': resolved_model,
+        'last_call': (active_card or {}).get('last_call'),
+    }
 
     # The agent_core panel — render it as a secondary schema-driven card
     # below the providers (existing template fields helper handles it).
@@ -277,6 +317,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         'category': cat,
         'cards': cards,
         'active_provider': active,
+        'active_banner': active_banner,
         'features': features,
         'agent_core_card': agent_core_card,
         'active_nav': 'settings',
