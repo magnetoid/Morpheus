@@ -35,7 +35,7 @@
         <a href="/products/{{ pick.slug }}/" class="book" style="max-width: 380px; margin: 0 auto;">
           <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
             {% if pick.primaryImage and pick.primaryImage.url %}
-              <img src="{{ pick.primaryImage.url }}" alt="{{ pick.primaryImage.altText|default:pick.name }}" loading="lazy" decoding="async" fetchpriority="high">
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 380px, 90vw" priority=True %}
             {% else %}
               <div class="placeholder">{{ pick.name }}</div>
             {% endif %}
