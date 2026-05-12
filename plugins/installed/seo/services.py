@@ -863,20 +863,34 @@ def qa_page_jsonld(*, name: str, url: str, qa: list[dict]) -> dict:
 def get_or_create_indexnow_key() -> str:
     """IndexNow key — a UUID stored in plugin config, surfaced at
     ``/<key>.txt`` for verification + sent with every push.
+
+    Reads + writes PluginConfig directly (bypassing the in-process
+    plugin cache) so the key is consistent across gunicorn workers
+    and management-command shells. Otherwise: worker A generates a
+    key, worker B reads its stale empty cache, generates a *new*
+    key, overwrites A's value, and /<oldkey>.txt returns 404.
     """
     import uuid
-    cfg = _seo_plugin_cfg()
-    key = cfg.get('indexnow_key') or ''
-    if not key:
+    try:
+        from plugins.models import PluginConfig
+        row, _ = PluginConfig.objects.get_or_create(plugin_name='seo')
+        existing = (row.config or {}).get('indexnow_key', '')
+        if existing:
+            return existing
         key = uuid.uuid4().hex
+        row.config = {**(row.config or {}), 'indexnow_key': key}
+        row.save(update_fields=['config', 'updated_at'])
+        # Best-effort: keep the in-process plugin cache aligned.
         try:
             from plugins.registry import plugin_registry
             p = plugin_registry.get('seo')
             if p is not None:
-                p.set_config('indexnow_key', key)
+                p.invalidate_config_cache()
         except Exception:  # noqa: BLE001
             pass
-    return key
+        return key
+    except Exception:  # noqa: BLE001
+        return ''
 
 
 def render_sitemap_index_xml() -> str:
