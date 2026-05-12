@@ -139,7 +139,19 @@
 </section>
 
 <style>
-@media (min-width: 900px) { .pdp-grid { grid-template-columns: 1fr 1fr !important; gap: 5rem !important; } }
+@media (min-width: 900px) {
+  .pdp-grid { grid-template-columns: 1fr 1fr !important; gap: 5rem !important; align-items: start !important; }
+  /* Pin the cover column while the details column scrolls past. Top offset
+     clears the sticky topbar (64px) + a comfortable breathing margin. */
+  .pdp-grid > div:first-child { position: sticky; top: 84px; align-self: start; }
+  /* When the staff admin bar is visible, shift the sticky offset down by
+     the bar's 32px height so the cover doesn't slide behind it. */
+  body.has-admin-bar .pdp-grid > div:first-child { top: 116px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Sticky doesn't animate, so reduced-motion users still get the pin —
+     no override needed. Listed here as documentation. */
+}
 </style>
 
 {% if reviews %}

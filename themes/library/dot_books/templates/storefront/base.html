@@ -76,6 +76,37 @@
     border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,.2);
     will-change: transform, opacity;
   }
+  /* Smooth scroll for anchor jumps + native CSS scroll-snap targets. */
+  html { scroll-behavior: smooth; }
+  /* Image lazy-load fade-in. Native <img loading="lazy"> images start at
+     opacity 0 and fade up on the `load` event (set via small JS in base).
+     Cheap, no JS frame cost. */
+  img.ko-fade-img { opacity: 0; transition: opacity 400ms var(--ease-out); }
+  img.ko-fade-img.is-loaded { opacity: 1; }
+  /* Subtle press feedback on every button-like control. ~30ms press, GPU. */
+  .btn:active, button:not(.ck-input):active { transform: scale(0.97); transition: transform 80ms var(--ease-out); }
+  /* Animated nav underline on hover — reveals from left, GPU-cheap. */
+  .nav a { position: relative; }
+  .nav a::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -4px;
+    height: 1px; background: var(--accent-ink);
+    transform: scaleX(0); transform-origin: left center;
+    transition: transform var(--motion-fast) var(--ease-out);
+  }
+  .nav a:hover::after { transform: scaleX(1); }
+  /* Marquee scroll for the top strip — slow continuous loop, no JS. */
+  .strip .wrap.strip-row {
+    overflow: hidden; white-space: nowrap;
+    display: flex !important; gap: 3rem;
+  }
+  @keyframes ko-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  /* Container marker — only animate when explicitly marked. */
+  .strip .wrap.strip-row.is-marquee > * { display: inline-block; }
+  /* Image zoom-on-hover inside book cover-wraps. Subtle, 1.04×, 600ms ease. */
+  @media (hover: hover) {
+    .book .cover-wrap img { transition: transform 600ms var(--ease-out); }
+    .book:hover .cover-wrap img { transform: scale(1.04); }
+  }
   /* Float-label fields. Wrap with .field; input must have placeholder=" "
      so :placeholder-shown stays true while empty. Label sits inside the
      input visually until focus or input. */
@@ -216,6 +247,8 @@
 </script>
 </head>
 <body>
+
+{% include "storefront/_admin_bar.html" %}
 
 <!-- Marquee strip -->
 <div class="strip">
@@ -360,6 +393,34 @@
 </script>
 {% storefront_blocks "global_below_body" %}
 {% include "storefront/_cart_drawer.html" %}
+
+{# Lazy-load fade-in. Tag every lazy img with .ko-fade-img and rely on
+   the `load` event to flip the class. ~25 lines, all native. #}
+<script>
+(function () {
+  function tagFade(img) {
+    if (img.classList.contains('ko-fade-img')) return;
+    img.classList.add('ko-fade-img');
+    if (img.complete && img.naturalWidth > 0) {
+      img.classList.add('is-loaded');
+    } else {
+      img.addEventListener('load', function () { img.classList.add('is-loaded'); }, {once: true});
+      img.addEventListener('error', function () { img.classList.add('is-loaded'); }, {once: true});
+    }
+  }
+  document.querySelectorAll('img[loading="lazy"]').forEach(tagFade);
+  // Catch images added dynamically (e.g. cart drawer, infinite scroll later).
+  new MutationObserver(function (records) {
+    records.forEach(function (r) {
+      r.addedNodes.forEach(function (n) {
+        if (n.nodeType !== 1) return;
+        if (n.tagName === 'IMG' && n.getAttribute('loading') === 'lazy') tagFade(n);
+        n.querySelectorAll && n.querySelectorAll('img[loading="lazy"]').forEach(tagFade);
+      });
+    });
+  }).observe(document.documentElement, {childList: true, subtree: true});
+})();
+</script>
 
 {# Speculation Rules — Chrome 122+ prefetches/prerenders PDPs on hover. #}
 {# No-op on browsers without support. Eagerness 'moderate' = on hover/touchstart. #}
