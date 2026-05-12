@@ -47,7 +47,12 @@ class ResolvedMeta:
         if self.keywords:
             parts.append(f'<meta name="keywords" content="{escape(self.keywords)}">')
         if self.robots:
-            parts.append(f'<meta name="robots" content="{escape(self.robots)}">')
+            # Append AI-snippet directives unless the merchant explicitly
+            # set noindex — these unlock full AI Overview snippets +
+            # large image previews without changing index behaviour.
+            ai_directives = 'max-snippet:-1, max-image-preview:large, max-video-preview:-1'
+            robots = self.robots if 'noindex' in self.robots else f'{self.robots}, {ai_directives}'
+            parts.append(f'<meta name="robots" content="{escape(robots)}">')
         if self.canonical_url:
             parts.append(f'<link rel="canonical" href="{escape(self.canonical_url)}">')
 
@@ -58,8 +63,21 @@ class ResolvedMeta:
         if og_desc:
             parts.append(f'<meta property="og:description" content="{escape(og_desc)}">')
         parts.append(f'<meta property="og:type" content="{escape(self.og_type)}">')
+        # og:locale — matches the Content-Language header the markets
+        # middleware emits; falls back to en_US.
+        try:
+            from django.conf import settings as _s
+            locale = (getattr(_s, 'LANGUAGE_CODE', 'en-US') or 'en-US').replace('-', '_')
+        except Exception:  # noqa: BLE001
+            locale = 'en_US'
+        parts.append(f'<meta property="og:locale" content="{escape(locale)}">')
         if self.og_image:
             parts.append(f'<meta property="og:image" content="{escape(self.og_image)}">')
+            parts.append(f'<meta property="og:image:secure_url" content="{escape(self.og_image)}">')
+            parts.append('<meta property="og:image:width" content="1200">')
+            parts.append('<meta property="og:image:height" content="630">')
+            if og_title:
+                parts.append(f'<meta property="og:image:alt" content="{escape(og_title)}">')
 
         parts.append(f'<meta name="twitter:card" content="{escape(self.twitter_card)}">')
         if og_title:
@@ -486,6 +504,21 @@ def site_settings():
         return SiteSeoSettings(organization_name='')
 
 
+def _seo_plugin_cfg() -> dict:
+    """Read seo plugin's PluginConfig JSON. Used for fields that don't
+    warrant a model migration (return policy, shipping fee, IndexNow
+    key, AI crawler matrix, etc.). Returns ``{}`` when the plugin is
+    not loaded yet (early boot / tests)."""
+    try:
+        from plugins.registry import plugin_registry
+        p = plugin_registry.get('seo')
+        if p is None:
+            return {}
+        return p.get_config() or {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def _jsonld_dump(obj: dict) -> str:
     import json as _json
     return _json.dumps(obj, separators=(',', ':'), ensure_ascii=False)
@@ -615,6 +648,52 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
             'availability': avail,
             'url': url,
         }
+        # MerchantReturnPolicy + OfferShippingDetails — 2026 Required
+        # for Merchant free listings + AI shopping comparisons. Values
+        # live in the SEO plugin's PluginConfig JSON so no migration.
+        commerce_cfg = _seo_plugin_cfg()
+        return_days = int(commerce_cfg.get('return_days') or 0)
+        ship_fee = commerce_cfg.get('shipping_fee_amount') or '0'
+        free_over = commerce_cfg.get('free_shipping_over') or '0'
+        country = (commerce_cfg.get('shipping_country') or 'US').upper()
+        if return_days:
+            out['offers']['hasMerchantReturnPolicy'] = {
+                '@type': 'MerchantReturnPolicy',
+                'applicableCountry': country,
+                'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
+                'merchantReturnDays': return_days,
+                'returnMethod': 'https://schema.org/ReturnByMail',
+                'returnFees': 'https://schema.org/FreeReturn',
+            }
+        out['offers']['shippingDetails'] = {
+            '@type': 'OfferShippingDetails',
+            'shippingDestination': {
+                '@type': 'DefinedRegion',
+                'addressCountry': country,
+            },
+            'shippingRate': {
+                '@type': 'MonetaryAmount',
+                'value': str(ship_fee),
+                'currency': offer_curr,
+            },
+            'deliveryTime': {
+                '@type': 'ShippingDeliveryTime',
+                'handlingTime': {
+                    '@type': 'QuantitativeValue',
+                    'minValue': 0, 'maxValue': 1, 'unitCode': 'DAY',
+                },
+                'transitTime': {
+                    '@type': 'QuantitativeValue',
+                    'minValue': 2, 'maxValue': 5, 'unitCode': 'DAY',
+                },
+            },
+        }
+        if free_over:
+            out['offers']['shippingDetails']['freeShippingThreshold'] = {
+                '@type': 'MonetaryAmount',
+                'value': str(free_over),
+                'currency': offer_curr,
+            }
 
     # Aggregate rating — ORM only.
     if not isinstance(product, dict):
@@ -722,6 +801,62 @@ def speakable_jsonld(selectors: list[str] | None = None) -> dict:
             '@type': 'SpeakableSpecification',
             'cssSelector': css,
         },
+    }
+
+
+def collection_page_jsonld(*, name: str, url: str, description: str,
+                            items: list[dict]) -> dict:
+    """CollectionPage + ItemList for PLP/category pages.
+
+    Each `items[i]` is a dict with at least {name, url, image}. Tells AI
+    engines that this URL is a list of products under a topic — Google
+    AI Overviews use this to assemble "show me [topic] from X" answers.
+    """
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        'name': name[:120],
+        'url': url,
+        'description': (description or '')[:400],
+        'mainEntity': {
+            '@type': 'ItemList',
+            'numberOfItems': len(items),
+            'itemListElement': [
+                {
+                    '@type': 'ListItem',
+                    'position': idx + 1,
+                    'url': it.get('url') or '',
+                    'name': (it.get('name') or '')[:120],
+                    **({'image': it['image']} if it.get('image') else {}),
+                }
+                for idx, it in enumerate(items[:60])
+            ],
+        },
+    }
+
+
+def qa_page_jsonld(*, name: str, url: str, qa: list[dict]) -> dict:
+    """QAPage schema — ChatGPT cites QAPage ~58% more than FAQPage
+    (per Searchless research, May 2026). Use for any "ask a question →
+    answer" surface; FAQPage stays useful for static FAQs.
+    """
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'QAPage',
+        'name': name[:120],
+        'url': url,
+        'mainEntity': [
+            {
+                '@type': 'Question',
+                'name': item.get('q', '')[:200],
+                'answerCount': 1,
+                'acceptedAnswer': {
+                    '@type': 'Answer',
+                    'text': item.get('a', '')[:2000],
+                },
+            }
+            for item in qa
+        ],
     }
 
 

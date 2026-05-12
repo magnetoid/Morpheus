@@ -190,6 +190,75 @@ def seo_faq_jsonld(items):
     return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(faq_jsonld(items))}</script>')
 
 
+@register.simple_tag(takes_context=True)
+def seo_collection_jsonld(context, items, name='', description=''):
+    """Emit CollectionPage + ItemList JSON-LD for a PLP/category.
+    `items` is a list of {name, url, image} (use camelCase or snake;
+    the helper accepts both)."""
+    if not items:
+        return ''
+    request = context.get('request')
+    try:
+        url = request.build_absolute_uri() if request else ''
+    except Exception:  # noqa: BLE001
+        url = ''
+    normalised = []
+    for it in items:
+        if not it:
+            continue
+        normalised.append({
+            'name': it.get('name') or it.get('title') or '',
+            'url': it.get('url') or '',
+            'image': it.get('image') or it.get('primaryImage', {}).get('url') if isinstance(it.get('primaryImage'), dict) else (it.get('image') or ''),
+        })
+    from plugins.installed.seo.services import collection_page_jsonld, _jsonld_dump
+    obj = collection_page_jsonld(
+        name=name or 'Collection',
+        url=url,
+        description=description,
+        items=normalised,
+    )
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
+@register.simple_tag(takes_context=True)
+def seo_qa_jsonld(context, qa, name=''):
+    """QAPage schema — qa is a list of {q, a}."""
+    if not qa:
+        return ''
+    request = context.get('request')
+    try:
+        url = request.build_absolute_uri() if request else ''
+    except Exception:  # noqa: BLE001
+        url = ''
+    from plugins.installed.seo.services import qa_page_jsonld, _jsonld_dump
+    obj = qa_page_jsonld(name=name or 'Q&A', url=url, qa=qa)
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
+@register.simple_tag(takes_context=True)
+def seo_article_jsonld(context, *, headline, body, author='', published=None,
+                       modified=None, image=''):
+    """Article schema for journal posts. AI engines weigh this heavily
+    for citation (especially Person.author + datePublished + sameAs)."""
+    request = context.get('request')
+    try:
+        url = request.build_absolute_uri() if request else ''
+    except Exception:  # noqa: BLE001
+        url = ''
+    from plugins.installed.seo.services import article_jsonld, _jsonld_dump
+    obj = article_jsonld(
+        headline=headline or '', body=body or '', url=url,
+        author=author or '', published_at=published, image=image,
+    )
+    if modified:
+        try:
+            obj['dateModified'] = modified.isoformat()
+        except Exception:  # noqa: BLE001
+            pass
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
 @register.simple_tag
 def seo_breadcrumb_jsonld(items):
     """Emit BreadcrumbList JSON-LD. `items` is a list of {name, url}."""

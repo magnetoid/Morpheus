@@ -2,7 +2,10 @@
 {% load morph %}
 {% load seo %}
 {% block title %}{{ category.name }} — dot books{% endblock %}
-{% block extra_head %}{% seo_breadcrumb_jsonld items=breadcrumb_items %}{% endblock %}
+{% block extra_head %}
+  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
+  {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
+{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">

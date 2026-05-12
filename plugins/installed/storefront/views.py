@@ -926,12 +926,22 @@ def category_detail(request, slug):
         {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
         {'name': category.name, 'url': request.build_absolute_uri(request.path)},
     ]
+    # CollectionPage + ItemList payload for the JSON-LD tag.
+    collection_items = [
+        {
+            'name': p.name,
+            'url': request.build_absolute_uri(f'/products/{p.slug}/'),
+            'image': (p.primary_image.image.url if p.primary_image and getattr(p.primary_image, 'image', None) else ''),
+        }
+        for p in products[:30]
+    ]
     return render(request, 'storefront/category_detail.html', {
         'category': category,
         'products': products,
         'intro_eyebrow': category.description and 'On the shelf' or intro.get('eyebrow', 'On the shelf'),
         'intro_lede':    category.description or intro.get('lede', ''),
         'breadcrumb_items': breadcrumb_items,
+        'collection_items': collection_items,
         # SEO meta — picked up by base.html's seo_meta tag.
         'seo_title':       f'{category.name} — dot books',
         'seo_description': category.description or intro.get('lede', '')[:160],
