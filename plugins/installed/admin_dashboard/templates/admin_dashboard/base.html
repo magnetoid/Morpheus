@@ -649,21 +649,83 @@
 {% include "assistant/_floating_widget.html" %}
 
 <script>
-// Re-run client-side initializers after every htmx partial swap.
-// Lucide icons + any data-dropdown / data-confirm hooks live inside
-// dashboard.js — call its reinit if present, otherwise call lucide directly.
-document.body.addEventListener('htmx:afterSwap', function (e) {
-  try {
-    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
-    if (window.Morph && typeof window.Morph.reinit === 'function') window.Morph.reinit(e.detail.target);
-  } catch (err) { /* swallow — never break navigation over a polish failure */ }
-});
-// Reveal main on swap with a small ko-reveal-up entrance.
-document.body.addEventListener('htmx:beforeSwap', function (e) {
-  if (e.detail.target && e.detail.target.id === 'main-content') {
-    e.detail.target.classList.add('fadein');
+// Safety net + sidebar active-state sync for htmx partial swaps.
+(function () {
+  // Map path → active_nav key. Mirrors the server-side `active_nav`
+  // values set by each view, so the sidebar can re-highlight without
+  // a full reload.
+  var navMap = [
+    [/^\/dashboard\/?$/, 'home'],
+    [/^\/dashboard\/assistant\//, 'assistant'],
+    [/^\/dashboard\/orders\b/, 'orders'],
+    [/^\/dashboard\/draft-orders\b/, 'drafts'],
+    [/^\/dashboard\/returns\b/, 'returns'],
+    [/^\/dashboard\/products\b/, 'products'],
+    [/^\/dashboard\/reviews\b/, 'reviews'],
+    [/^\/dashboard\/customers\b/, 'customers'],
+    [/^\/dashboard\/settings\b/, 'settings'],
+    [/^\/dashboard\/apps\b/, 'apps'],
+    [/^\/dashboard\/ai-insights\b/, 'ai_insights'],
+  ];
+
+  function navKeyFor(pathname) {
+    for (var i = 0; i < navMap.length; i++) {
+      if (navMap[i][0].test(pathname)) return navMap[i][1];
+    }
+    return null;
   }
-});
+
+  function syncSidebarActive() {
+    var key = navKeyFor(location.pathname);
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    sidebar.querySelectorAll('.nav-link.active').forEach(function (el) { el.classList.remove('active'); });
+    sidebar.querySelectorAll('.nav-children.open').forEach(function (el) { el.classList.remove('open'); });
+    if (!key) return;
+    // Mark every nav-link whose href matches the current pathname.
+    sidebar.querySelectorAll('.nav-link').forEach(function (a) {
+      var href = a.getAttribute('href') || '';
+      try { href = new URL(href, location.origin).pathname; } catch (_) {}
+      if (href === location.pathname) a.classList.add('active');
+    });
+    // Open the submenu containing the active link.
+    sidebar.querySelectorAll('.nav-link.active').forEach(function (a) {
+      var children = a.closest('.nav-children');
+      if (children) children.classList.add('open');
+    });
+  }
+
+  // After swap: re-run client-side initializers + sync sidebar active.
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    try {
+      if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+      if (window.Morph && typeof window.Morph.reinit === 'function') window.Morph.reinit(e.detail.target);
+    } catch (_) { /* swallow — never break navigation over a polish failure */ }
+    syncSidebarActive();
+  });
+
+  // Before swap: small entrance animation on the new main content.
+  document.body.addEventListener('htmx:beforeSwap', function (e) {
+    var xhr = e.detail.xhr;
+    // Server-side error (404/500/etc) — full reload so the user sees the
+    // proper error page instead of a silent stale UI.
+    if (xhr && xhr.status >= 400) {
+      window.location.href = xhr.responseURL || location.href;
+      e.detail.shouldSwap = false;
+      return;
+    }
+    // Response is missing #main-content (auth login redirect, third-
+    // party page, …) — bail to a full reload of the response URL.
+    if (xhr && xhr.responseText && xhr.responseText.indexOf('id="main-content"') === -1) {
+      window.location.href = xhr.responseURL || location.href;
+      e.detail.shouldSwap = false;
+      return;
+    }
+    if (e.detail.target && e.detail.target.id === 'main-content') {
+      e.detail.target.classList.add('fadein');
+    }
+  });
+})();
 </script>
 </body>
 </html>

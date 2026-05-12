@@ -39,7 +39,7 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-  <form method="post" id="product-form" class="space-y-4 lg:col-span-2" enctype="multipart/form-data" data-morph-dirty>
+  <form method="post" id="product-form" class="space-y-4 lg:col-span-2" enctype="multipart/form-data" data-morph-dirty hx-boost="false">
     {% csrf_token %}
 
     <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
@@ -501,7 +501,7 @@
     </div>
     {% endif %}
 
-    <form method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard:image_upload' product_id=product.id %}" class="mt-4 grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard:image_upload' product_id=product.id %}" class="mt-4 grid grid-cols-1 md:grid-cols-12 gap-2 items-end" hx-boost="false">
       {% csrf_token %}
       <div class="md:col-span-5">
         <label class="block text-sm font-medium mb-1">Image file</label>

@@ -460,4 +460,34 @@
   } else {
     boot();
   }
+
+  // Re-bind handlers on any DOM that was swapped in after the initial
+  // boot (e.g. an htmx partial-reload of #main-content). Idempotent:
+  // safe to call multiple times because each init scopes itself to a
+  // root element and uses element-bound listeners.
+  Morph.reinit = function (root) {
+    var scope = root || document;
+    scope.querySelectorAll('[data-morph-bulk]').forEach(function (el) {
+      try { Morph.bulk.init(el); } catch (_) { /* swallow */ }
+    });
+    // Re-bind dropdown toggles for any newly-rendered [data-dropdown].
+    scope.querySelectorAll('[data-dropdown]').forEach(function (root) {
+      if (root.dataset._morphBound === '1') return;
+      var toggle = root.querySelector('[data-dropdown-toggle]');
+      var menu = root.querySelector('.dropdown-menu');
+      if (!toggle || !menu) return;
+      toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        menu.hidden = !menu.hidden;
+        toggle.setAttribute('aria-expanded', String(!menu.hidden));
+      });
+      document.addEventListener('click', function (e) {
+        if (!root.contains(e.target)) {
+          menu.hidden = true;
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+      root.dataset._morphBound = '1';
+    });
+  };
 })();
