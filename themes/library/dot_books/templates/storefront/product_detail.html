@@ -28,11 +28,11 @@
         <div class="book" style="max-width: 480px;">
           <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
             {% if hero_image %}
-              <img id="pdp-hero-img" src="{{ hero_image.url }}" alt="{{ hero_image.altText|default:product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }}; transition: opacity var(--motion-med) var(--ease-out);">
+              <img id="pdp-hero-img" src="{{ hero_image.url }}" alt="{{ hero_image.altText|default:product.name }}" decoding="async" fetchpriority="high" style="view-transition-name: cover-{{ product.slug|slugify }}; transition: opacity var(--motion-med) var(--ease-out);">
             {% else %}
               <div class="placeholder">{{ product.name }}</div>
             {% endif %}
-            {% if product.is_on_sale %}<span class="ribbon">{{ product.discount_percentage }}% off</span>{% endif %}
+            {% if product.isOnSale %}<span class="ribbon">{{ product.discountPercentage }}% off</span>{% endif %}
           </div>
         </div>
         {% if product.images|length > 1 %}
@@ -72,21 +72,21 @@
       <div>
         <p class="eyebrow">{{ product.category.name|default:"Independent press" }}</p>
         <h1 class="display display-l" style="margin: 1rem 0 0.75rem;">{{ product.name }}<span class="text-accent">.</span></h1>
-        <p class="lede" style="margin-bottom: 1.5rem;">{{ product.short_description|default:"" }}</p>
+        <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:"" }}</p>
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
           <span style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{{ product.price|money }}</span>
-          {% if product.is_on_sale %}<span class="meta" style="text-decoration: line-through;">{{ product.compare_at_price|money }}</span>{% endif %}
+          {% if product.isOnSale %}<span class="meta" style="text-decoration: line-through;">{{ product.compareAtPrice|money }}</span>{% endif %}
         </div>
 
         {% storefront_blocks "pdp_below_price" %}
 
-        {% if product.variants.all %}
+        {% if product.variants %}
         <div style="margin-bottom: 1.5rem;">
           <p class="eyebrow" style="margin-bottom: 0.5rem;">Edition</p>
           <div style="display:flex; flex-wrap: wrap; gap: 0.5rem;">
-            {% for v in product.variants.all %}
-            {% if v.is_active %}
+            {% for v in product.variants %}
+            {% if v.isActive %}
             <button type="button" class="btn btn-ghost" style="font-size: 0.85rem; padding: 0.55rem 1rem;">{{ v.name }}</button>
             {% endif %}
             {% endfor %}
@@ -126,9 +126,9 @@
           {{ product.description|safe }}
         </div>
 
-        {% if product.tags.all %}
+        {% if product.tags %}
         <div style="margin-top: 2rem; display:flex; flex-wrap: wrap; gap: 0.4rem;">
-          {% for tag in product.tags.all %}
+          {% for tag in product.tags %}
           <a href="/products/?tag={{ tag.slug|default:tag.name }}" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted);">{{ tag.name }}</a>
           {% endfor %}
         </div>

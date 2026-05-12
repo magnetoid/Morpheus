@@ -20,8 +20,10 @@ def graphql_view(agent_only: bool = False):
 
 urlpatterns = [
     path('healthz', views.healthz, name='healthz'),
+    path('healthz/', views.healthz),  # tolerate trailing slash from naive probes
     path('healthz/deep', views.healthz_deep, name='healthz_deep'),
     path('readyz', views.readyz, name='readyz'),
+    path('readyz/', views.readyz),
     path('graphql/', graphql_view(), name='graphql'),
     path('graphql/agent/', graphql_view(agent_only=True), name='graphql_agent'),
     path('v1/', include(router.urls)),

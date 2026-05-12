@@ -22,7 +22,7 @@
         <div class="stack-3">
           <p style="font-family: var(--serif); font-size: 1.5rem; line-height: 1.15;"><em>{{ pick.name }}</em></p>
           <p class="meta">{{ pick.category.name|default:"" }}</p>
-          <p style="margin-top: 1rem; max-width: 50ch; color: var(--ink-2); line-height: 1.6;">{{ pick.short_description|default:""|truncatewords:36 }}</p>
+          <p style="margin-top: 1rem; max-width: 50ch; color: var(--ink-2); line-height: 1.6;">{{ pick.shortDescription|default:""|truncatewords:36 }}</p>
           <a href="/products/{{ pick.slug }}/" class="btn-link" style="margin-top:1rem;">Read more</a>
         </div>
         {% endif %}
@@ -34,8 +34,8 @@
         {% if pick %}
         <a href="/products/{{ pick.slug }}/" class="book" style="max-width: 380px; margin: 0 auto;">
           <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
-            {% if pick.primary_image %}
-              <img src="{{ pick.primary_image.image.url }}" alt="{{ pick.name }}" loading="lazy" decoding="async">
+            {% if pick.primaryImage and pick.primaryImage.url %}
+              <img src="{{ pick.primaryImage.url }}" alt="{{ pick.primaryImage.altText|default:pick.name }}" loading="lazy" decoding="async" fetchpriority="high">
             {% else %}
               <div class="placeholder">{{ pick.name }}</div>
             {% endif %}
@@ -71,19 +71,19 @@
       {% for product in featured_products %}
       <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
         <div class="cover-wrap">
-          {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
+          {% if product.primaryImage and product.primaryImage.url %}
+            <img src="{{ product.primaryImage.url }}" alt="{{ product.primaryImage.altText|default:product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}
-          {% if product.is_on_sale %}<span class="ribbon">{{ product.discount_percentage }}% off</span>{% endif %}
+          {% if product.isOnSale %}<span class="ribbon">{{ product.discountPercentage }}% off</span>{% endif %}
         </div>
         <div>
           <p class="title">{{ product.name }}</p>
           <p class="author">{{ product.category.name|default:"Independent press" }}</p>
           <p class="price">
             {{ product.price|money }}
-            {% if product.is_on_sale %}<span class="compare">{{ product.compare_at_price|money }}</span>{% endif %}
+            {% if product.isOnSale %}<span class="compare">{{ product.compareAtPrice|money }}</span>{% endif %}
           </p>
         </div>
       </a>

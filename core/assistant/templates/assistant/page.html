@@ -160,7 +160,8 @@
             } else if (ev.type === 'final') {
               pushLine('assistant', ev.text || '(no reply)');
             } else if (ev.type === 'error') {
-              pushLine('assistant', ev.error || '(error)');
+              pushLine('assistant', ev.text || ev.error || '(error)');
+              if (ev.error && ev.error !== ev.text) console.warn('[linda]', ev.error);
             }
           });
           return pump();

@@ -360,5 +360,17 @@
 </script>
 {% storefront_blocks "global_below_body" %}
 {% include "storefront/_cart_drawer.html" %}
+
+{# Speculation Rules — Chrome 122+ prefetches/prerenders PDPs on hover. #}
+{# No-op on browsers without support. Eagerness 'moderate' = on hover/touchstart. #}
+<script type="speculationrules">
+{
+  "prefetch": [{
+    "source": "document",
+    "where": { "href_matches": "/products/*" },
+    "eagerness": "moderate"
+  }]
+}
+</script>
 </body>
 </html>
