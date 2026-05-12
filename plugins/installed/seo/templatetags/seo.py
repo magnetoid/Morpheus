@@ -236,6 +236,82 @@ def seo_qa_jsonld(context, qa, name=''):
     return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
 
 
+@register.simple_tag
+def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
+                         priority=False, css_class='', style=''):
+    """Emit a <picture> element with AVIF + WebP sources + a JPEG/PNG
+    fallback `<img>`, generated via /img/<fmt>/<w>/... on demand.
+
+    Args:
+      src: absolute media URL (e.g. ``/media/products/foo.jpg``) or a
+        Django FieldFile-like object with a ``.url`` attribute.
+      alt: required alt text. Falls back to '' (mark decorative).
+      sizes: CSS `sizes` attribute (e.g. "(min-width: 900px) 480px, 100vw").
+      widths: comma-separated widths to emit; restricted to ALLOWED_IMAGE_WIDTHS.
+      priority: when truthy, emits fetchpriority=high + loading=eager
+        (use only for the LCP image).
+      css_class / style: forwarded to the <img>.
+    """
+    # Normalise src to a /media/... path.
+    url = src
+    if hasattr(src, 'url'):
+        try:
+            url = src.url
+        except Exception:  # noqa: BLE001
+            return ''
+    url = str(url or '')
+    if not url:
+        return ''
+    # Strip absolute prefix; we only resize images under MEDIA_ROOT.
+    if url.startswith('http://') or url.startswith('https://'):
+        # Best-effort: keep the original URL; skip resize for off-site.
+        loading = 'eager' if priority else 'lazy'
+        fp = ' fetchpriority="high"' if priority else ''
+        return mark_safe(
+            f'<img src="{escape(url)}" alt="{escape(alt)}" '
+            f'loading="{loading}" decoding="async"{fp} '
+            f'{f"class={css_class!r}" if css_class else ""} '
+            f'{f"style={style!r}" if style else ""}>'
+        )
+    media_prefix = '/media/'
+    if not url.startswith(media_prefix):
+        return mark_safe(f'<img src="{escape(url)}" alt="{escape(alt)}">')
+    rel = url[len(media_prefix):]
+
+    from plugins.installed.seo.services import ALLOWED_IMAGE_WIDTHS
+    requested = []
+    for w in str(widths).split(','):
+        w = w.strip()
+        if not w.isdigit():
+            continue
+        wi = int(w)
+        if wi in ALLOWED_IMAGE_WIDTHS:
+            requested.append(wi)
+    if not requested:
+        requested = [400, 800, 1200]
+
+    def srcset_for(fmt: str) -> str:
+        return ', '.join(f'/img/{fmt}/{w}/{rel} {w}w' for w in requested)
+
+    fallback_w = max(requested)
+    fallback = f'/img/webp/{fallback_w}/{rel}'
+    loading = 'eager' if priority else 'lazy'
+    fp = ' fetchpriority="high"' if priority else ''
+    sizes_attr = f' sizes="{escape(sizes)}"' if sizes else ''
+    class_attr = f' class="{escape(css_class)}"' if css_class else ''
+    style_attr = f' style="{escape(style)}"' if style else ''
+
+    return mark_safe(
+        f'<picture>'
+        f'<source type="image/avif" srcset="{escape(srcset_for("avif"))}"{sizes_attr}>'
+        f'<source type="image/webp" srcset="{escape(srcset_for("webp"))}"{sizes_attr}>'
+        f'<img src="{escape(fallback)}" alt="{escape(alt)}" '
+        f'loading="{loading}" decoding="async"{fp}'
+        f'{class_attr}{style_attr}>'
+        f'</picture>'
+    )
+
+
 @register.simple_tag(takes_context=True)
 def seo_article_jsonld(context, *, headline, body, author='', published=None,
                        modified=None, image=''):

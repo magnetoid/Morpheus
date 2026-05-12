@@ -17,5 +17,6 @@ urlpatterns = [
     path('web-vitals/', views.web_vitals_beacon, name='web_vitals'),
     path('opensearch.xml', views.opensearch_xml, name='opensearch'),
     path('manifest.json', views.web_manifest, name='manifest'),
+    path('img/<str:fmt>/<int:width>/<path:path>', views.image_variant, name='image_variant'),
     path('<str:key>.txt', views.indexnow_keyfile, name='indexnow_key'),
 ]

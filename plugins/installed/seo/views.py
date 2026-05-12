@@ -112,6 +112,33 @@ def web_manifest(request: HttpRequest) -> JsonResponse:
     return JsonResponse(render_pwa_manifest())
 
 
+def image_variant(request: HttpRequest, fmt: str, width: int, path: str) -> HttpResponse:
+    """Serve a resized WebP/AVIF variant of an image under MEDIA_ROOT.
+
+    URL shape: /img/<fmt>/<width>/<media-relative-path>
+    Whitelisted widths/formats only. Cached on disk after first hit
+    and returned with a 1-year immutable Cache-Control so Cloudflare /
+    browser cache pin it forever (variants are content-addressed).
+    """
+    from plugins.installed.seo.services import (
+        parse_image_variant_path, generate_image_variant,
+    )
+    resolved = parse_image_variant_path(fmt, width, path)
+    if resolved is None:
+        return HttpResponse('Not found.', status=404, content_type='text/plain; charset=utf-8')
+    src_abs, cache_abs = resolved
+    try:
+        generate_image_variant(src_abs, cache_abs, width=width, fmt=fmt)
+    except Exception:  # noqa: BLE001 — fall through to source as fallback
+        from django.http import FileResponse
+        return FileResponse(open(src_abs, 'rb'))
+    from django.http import FileResponse
+    mime = 'image/avif' if fmt == 'avif' else 'image/webp'
+    resp = FileResponse(open(cache_abs, 'rb'), content_type=mime)
+    resp['Cache-Control'] = 'public, max-age=31536000, immutable'
+    return resp
+
+
 def indexnow_keyfile(request: HttpRequest, key: str) -> HttpResponse:
     """Serve the IndexNow key as plain text so api.indexnow.org can
     verify ownership of the host before accepting URL pushes.
