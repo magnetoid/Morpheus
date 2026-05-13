@@ -239,7 +239,8 @@ def seo_qa_jsonld(context, qa, name=''):
 
 @register.simple_tag
 def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
-                         priority=False, css_class='', style=''):
+                         priority=False, css_class='', style='',
+                         view_transition_name='', img_id=''):
     """Emit a <picture> element with AVIF + WebP sources + a JPEG/PNG
     fallback `<img>`, generated via /img/<fmt>/<w>/... on demand.
 
@@ -300,7 +301,18 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
     fp = ' fetchpriority="high"' if priority else ''
     sizes_attr = f' sizes="{escape(sizes)}"' if sizes else ''
     class_attr = f' class="{escape(css_class)}"' if css_class else ''
-    style_attr = f' style="{escape(style)}"' if style else ''
+    # Compose style: caller-supplied first, then view-transition-name
+    # appended so a PLP card can hand off cleanly into the PDP hero.
+    final_style = ''
+    if style:
+        final_style = style if style.rstrip().endswith(';') else style.rstrip() + ';'
+    if view_transition_name:
+        final_style += f' view-transition-name: {view_transition_name};'
+    style_attr = f' style="{escape(final_style.strip())}"' if final_style else ''
+    id_attr = f' id="{escape(img_id)}"' if img_id else ''
+    # data-src-rel lets JS (e.g. PDP gallery swap) rewrite the
+    # <source srcset> + <img> src from a relative media path.
+    data_attr = f' data-src-rel="{escape(rel)}"'
 
     return mark_safe(
         f'<picture>'
@@ -308,7 +320,7 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
         f'<source type="image/webp" srcset="{escape(srcset_for("webp"))}"{sizes_attr}>'
         f'<img src="{escape(fallback)}" alt="{escape(alt)}" '
         f'loading="{loading}" decoding="async"{fp}'
-        f'{class_attr}{style_attr}>'
+        f'{class_attr}{style_attr}{id_attr}{data_attr}>'
         f'</picture>'
     )
 

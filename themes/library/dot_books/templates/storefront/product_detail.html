@@ -31,7 +31,9 @@
         <div class="book" style="max-width: 480px;">
           <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
             {% if hero_image %}
-              <img id="pdp-hero-img" src="{{ hero_image.url }}" alt="{{ hero_image.altText|default:product.name }}" decoding="async" fetchpriority="high" style="view-transition-name: cover-{{ product.slug|slugify }}; transition: opacity var(--motion-med) var(--ease-out);">
+              {% with vt_name="cover-"|add:product.slug|slugify %}
+              {% seo_responsive_image hero_image.url alt=hero_image.altText|default:product.name widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 90vw" priority=True img_id="pdp-hero-img" view_transition_name=vt_name style="transition: opacity var(--motion-med) var(--ease-out);" %}
+              {% endwith %}
             {% else %}
               <div class="placeholder">{{ product.name }}</div>
             {% endif %}
@@ -50,19 +52,42 @@
         </div>
         <script>
           (function () {
+            // PDP gallery swap. Hero is now a <picture> with AVIF + WebP
+            // sources + a WebP fallback <img>. On thumbnail click we
+            // rewrite all three (sources' srcsets + the img's src) from
+            // the thumbnail's media-relative path, then crossfade.
             var hero = document.getElementById('pdp-hero-img');
+            var picture = hero && hero.closest('picture');
             var thumbs = document.getElementById('pdp-thumbs');
-            if (!hero || !thumbs) return;
+            if (!hero || !picture || !thumbs) return;
+            var WIDTHS = [400, 600, 800, 1200];
+            function buildSrcset(fmt, rel) {
+              return WIDTHS.map(function (w) { return '/img/' + fmt + '/' + w + '/' + rel + ' ' + w + 'w'; }).join(', ');
+            }
             thumbs.addEventListener('click', function (e) {
               var btn = e.target.closest('.pdp-thumb');
               if (!btn) return;
-              var src = btn.dataset.fullSrc;
-              var alt = btn.dataset.fullAlt;
-              if (!src || src === hero.src) return;
+              var fullSrc = btn.dataset.fullSrc || '';
+              var alt = btn.dataset.fullAlt || hero.alt;
+              if (!fullSrc) return;
+              // Derive media-relative path (strip /media/ prefix); skip
+              // off-site URLs by falling back to direct src swap.
+              var rel = fullSrc.indexOf('/media/') === 0 ? fullSrc.slice(7) : '';
+              if (rel && rel === hero.dataset.srcRel) return;
               hero.style.opacity = '0';
               setTimeout(function () {
-                hero.src = src;
-                hero.alt = alt || hero.alt;
+                if (rel) {
+                  var sources = picture.querySelectorAll('source');
+                  sources.forEach(function (s) {
+                    var fmt = s.type === 'image/avif' ? 'avif' : 'webp';
+                    s.setAttribute('srcset', buildSrcset(fmt, rel));
+                  });
+                  hero.src = '/img/webp/' + WIDTHS[WIDTHS.length - 1] + '/' + rel;
+                  hero.dataset.srcRel = rel;
+                } else {
+                  hero.src = fullSrc;
+                }
+                hero.alt = alt;
                 requestAnimationFrame(function () { hero.style.opacity = '1'; });
               }, 240);
             });

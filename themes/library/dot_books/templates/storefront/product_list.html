@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load seo %}
 {% block title %}{% if selected_author %}Books by {{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }} titles{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif search_query %}Search: {{ search_query }}{% else %}All books{% endif %} — dot books{% endblock %}
 
 {% block content %}
@@ -99,7 +99,9 @@
       <a href="/products/{{ p.slug }}/" class="book ko-reveal-on-scroll" data-product-card>
         <div class="cover-wrap">
           {% if p.primary_image %}
-            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ p.slug|slugify }};">
+            {% with vt_name="cover-"|add:p.slug|slugify %}
+            {% seo_responsive_image p.primary_image.image alt=p.primary_image.alt_text|default:p.name widths="400,600,800" sizes="(min-width: 1200px) 280px, (min-width: 768px) 33vw, 50vw" view_transition_name=vt_name %}
+            {% endwith %}
           {% else %}
             <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
           {% endif %}
