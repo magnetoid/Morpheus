@@ -15,6 +15,7 @@ robots, keywords, and a JSON-LD <script>.
 from __future__ import annotations
 
 from django import template
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 from plugins.installed.seo.services import resolve_meta
