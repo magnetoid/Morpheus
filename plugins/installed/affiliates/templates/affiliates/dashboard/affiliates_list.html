@@ -2,25 +2,43 @@
 {% block title %}Affiliates · Morpheus admin{% endblock %}
 
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Affiliates</h1>
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">Affiliates</h1>
+    <p class="text-xs text-[color:var(--text-muted)]">Partners promoting the store. Approve pending applications and watch lifetime payout.</p>
+  </div>
+  <a href="/affiliates/portal/" class="btn btn-ghost text-xs">Partner portal preview →</a>
+</div>
 <div class="card">
   <table class="morph-table">
     <thead>
-      <tr><th>Code</th><th>Customer</th><th>Program</th><th>Clicks</th><th>Conversions</th><th>Lifetime payout</th><th>Active</th></tr>
+      <tr><th>Handle</th><th>Customer</th><th>Program</th><th>Status</th><th class="text-right">Clicks</th><th class="text-right">Conversions</th><th class="text-right">Accrued</th><th class="text-right">Paid lifetime</th><th></th></tr>
     </thead>
     <tbody>
       {% for a in affiliates %}
       <tr>
-        <td><code>{{ a.code }}</code></td>
-        <td>{{ a.customer.email|default:"—" }}</td>
+        <td><code>{{ a.handle }}</code></td>
+        <td>{{ a.user.email|default:"—" }}</td>
         <td>{{ a.program.name|default:"—" }}</td>
-        <td>{{ a.click_count }}</td>
-        <td>{{ a.conversion_count }}</td>
-        <td>{{ a.lifetime_payout|default:"—" }}</td>
-        <td>{% if a.is_active %}<span class="pill pill-success">active</span>{% else %}<span class="pill pill-neutral">paused</span>{% endif %}</td>
+        <td>
+          {% if a.status == 'approved' %}<span class="pill pill-success">approved</span>
+          {% elif a.status == 'pending' %}<span class="pill pill-warn">pending</span>
+          {% elif a.status == 'suspended' %}<span class="pill pill-danger">suspended</span>
+          {% else %}<span class="pill pill-neutral">{{ a.status }}</span>{% endif %}
+        </td>
+        <td class="text-right tabular-nums">{% if a.total_clicks is None %}{{ a.links.all|length }}{% else %}{{ a.total_clicks }}{% endif %}</td>
+        <td class="text-right tabular-nums">{{ a.total_conversions|default:0 }}</td>
+        <td class="text-right tabular-nums">{{ a.accrued_balance|default:"—" }}</td>
+        <td class="text-right tabular-nums">{{ a.lifetime_paid|default:"—" }}</td>
+        <td class="text-right">
+          {# Approve action lives behind a future URL — Phase 1.4
+             (signup + approve flow) wires it in. For now pending
+             affiliates require a staff/agent tool call to approve. #}
+          {% if a.status == 'pending' %}<span class="text-xs text-[color:var(--text-muted)]">await approval</span>{% endif %}
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-muted);">No affiliates yet.</td></tr>
+      <tr><td colspan="9" style="text-align:center; padding: 2rem; color: var(--text-muted);">No affiliates yet. Share <code>/affiliates/apply/</code> to start collecting applications.</td></tr>
       {% endfor %}
     </tbody>
   </table>

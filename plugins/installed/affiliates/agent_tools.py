@@ -20,19 +20,37 @@ from core.agents import ToolError, ToolResult, tool
     },
 )
 def list_affiliates_tool(*, limit: int = 25) -> ToolResult:
+    """List affiliates with aggregated KPIs.
+
+    Counters live on AffiliateLink, not Affiliate. Sum them per
+    affiliate via .annotate() instead of dereferencing fields that
+    don't exist on the parent row.
+    """
+    from django.db.models import Sum
     from plugins.installed.affiliates.models import Affiliate
 
-    rows = list(Affiliate.objects.select_related('customer', 'program')[:max(1, min(int(limit or 25), 100))])
+    cap = max(1, min(int(limit or 25), 100))
+    rows = list(
+        Affiliate.objects
+        .select_related('user', 'program')
+        .annotate(
+            total_clicks=Sum('links__click_count'),
+            total_conversions=Sum('links__conversion_count'),
+        )
+        .order_by('-lifetime_paid', '-created_at')[:cap]
+    )
     return ToolResult(output={
         'affiliates': [
             {
-                'code': a.code,
-                'email': getattr(a.customer, 'email', '') if a.customer_id else '',
+                'id': str(a.id),
+                'handle': a.handle,
+                'email': getattr(a.user, 'email', '') if a.user_id else '',
                 'program': a.program.name if a.program_id else '',
-                'click_count': a.click_count,
-                'conversion_count': a.conversion_count,
-                'lifetime_payout': str(getattr(a.lifetime_payout, 'amount', a.lifetime_payout or '')) if a.lifetime_payout else '',
-                'is_active': a.is_active,
+                'status': a.status,
+                'click_count': a.total_clicks or 0,
+                'conversion_count': a.total_conversions or 0,
+                'lifetime_paid': str(getattr(a.lifetime_paid, 'amount', a.lifetime_paid or '')) if a.lifetime_paid else '0',
+                'accrued_balance': str(getattr(a.accrued_balance, 'amount', a.accrued_balance or '')) if a.accrued_balance else '0',
             }
             for a in rows
         ],
@@ -47,16 +65,22 @@ def list_affiliates_tool(*, limit: int = 25) -> ToolResult:
 )
 def pending_payouts_tool() -> ToolResult:
     from plugins.installed.affiliates.models import AffiliatePayout
-    rows = list(AffiliatePayout.objects.filter(status='pending').select_related('affiliate__customer')[:50])
+    rows = list(
+        AffiliatePayout.objects
+        .filter(status='pending')
+        .select_related('affiliate__user', 'affiliate__program')
+        .order_by('-requested_at')[:50]
+    )
     return ToolResult(output={
         'payouts': [
             {
                 'id': str(p.id),
-                'affiliate': p.affiliate.code,
+                'affiliate_handle': p.affiliate.handle,
+                'affiliate_email': getattr(p.affiliate.user, 'email', ''),
                 'amount': str(p.amount.amount),
                 'currency': str(p.amount.currency),
                 'method': p.method,
-                'created_at': p.created_at.isoformat(),
+                'requested_at': p.requested_at.isoformat(),
             }
             for p in rows
         ],
@@ -107,14 +131,22 @@ def mark_payout_paid_tool(*, payout_id: str, external_reference: str = '') -> To
     },
     requires_approval=True,
 )
-def create_affiliate_tool(*, email: str, program_name: str = '', code: str = '') -> ToolResult:
+def create_affiliate_tool(*, email: str, program_name: str = '', handle: str = '') -> ToolResult:
+    """Create (or fetch) an affiliate from a customer email + program.
+
+    Affiliate identifies via ``user`` (auth User) + ``handle`` (unique
+    slug). The agent passes a handle to override; otherwise we derive
+    one from the email local-part with a short random tail to avoid
+    handle collisions.
+    """
     import secrets
     from django.contrib.auth import get_user_model
+    from django.utils.text import slugify
     from plugins.installed.affiliates.models import Affiliate, AffiliateProgram
 
     User = get_user_model()
-    customer = User.objects.filter(email__iexact=email).first()
-    if not customer:
+    user = User.objects.filter(email__iexact=email).first()
+    if not user:
         raise ToolError(f'No customer with email {email}')
     program = (
         AffiliateProgram.objects.filter(name__iexact=program_name).first() if program_name
@@ -122,11 +154,15 @@ def create_affiliate_tool(*, email: str, program_name: str = '', code: str = '')
     )
     if not program:
         raise ToolError('No active affiliate program. Create one in admin first.')
+    if not handle:
+        local = email.split('@', 1)[0]
+        handle = f'{slugify(local)[:60]}-{secrets.token_urlsafe(3)[:6]}'.strip('-')
     affiliate, created = Affiliate.objects.get_or_create(
-        customer=customer, program=program,
-        defaults={'code': (code or secrets.token_urlsafe(6))[:32], 'is_active': True},
+        user=user, program=program,
+        defaults={'handle': handle, 'status': 'pending', 'payout_email': email},
     )
     return ToolResult(
-        output={'affiliate_id': str(affiliate.id), 'code': affiliate.code, 'created': created},
-        display=f'{"Created" if created else "Found"} affiliate {affiliate.code}',
+        output={'affiliate_id': str(affiliate.id), 'handle': affiliate.handle,
+                'status': affiliate.status, 'created': created},
+        display=f'{"Created" if created else "Found"} affiliate {affiliate.handle}',
     )

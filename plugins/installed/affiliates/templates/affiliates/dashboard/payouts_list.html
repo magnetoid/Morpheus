@@ -11,10 +11,10 @@
     <tbody>
       {% for p in payouts %}
       <tr>
-        <td>{{ p.created_at|date:"M j, H:i" }}</td>
-        <td>{{ p.affiliate.code }}</td>
-        <td>{{ p.amount }}</td>
-        <td>{{ p.method }}</td>
+        <td>{{ p.requested_at|date:"M j, H:i" }}</td>
+        <td><code>{{ p.affiliate.handle }}</code> <span class="text-xs text-[color:var(--text-muted)]">{{ p.affiliate.user.email|default:"" }}</span></td>
+        <td class="tabular-nums">{{ p.amount }}</td>
+        <td>{{ p.method|default:"—" }}</td>
         <td>
           <span class="pill {% if p.status == 'paid' %}pill-success{% elif p.status == 'pending' %}pill-warn{% else %}pill-neutral{% endif %}">{{ p.status }}</span>
         </td>

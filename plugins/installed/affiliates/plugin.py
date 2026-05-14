@@ -17,19 +17,54 @@ class AffiliatesPlugin(Plugin):
         self.register_graphql_extension('plugins.installed.affiliates.graphql.queries')
         self.register_urls('plugins.installed.affiliates.urls', prefix='', namespace='affiliates')
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=70)
+        # Refund clawback. ORDER_CANCELLED fires today; PAYMENT_REFUNDED
+        # is defined but not yet emitted by the orders plugin — wire it
+        # here too so we plug in automatically when orders starts
+        # firing it.
+        self.register_hook(events.ORDER_CANCELLED, self.on_order_refunded, priority=70)
+        if hasattr(events, 'PAYMENT_REFUNDED'):
+            self.register_hook(events.PAYMENT_REFUNDED, self.on_order_refunded, priority=70)
 
     def on_order_placed(self, order, **kwargs):
-        """If the order carries an affiliate code on its source/metadata, attribute it."""
+        """Attribute an affiliate to a freshly-placed order.
+
+        Two attribution signals (in priority):
+          1. ``shipping_address.affiliate_code`` — set by the
+             storefront when the ``morph_aff`` cookie was present.
+          2. ``order.source`` of the form ``affiliate:<code>``.
+          3. The order's coupon code (Phase A1.5) — if it matches
+             an ``AffiliateLink.coupon_code`` we attribute even
+             without a click. This is how influencer shout-outs
+             work in 2026.
+        """
         code = ''
-        # Storefront writes the code into staff_notes or shipping_address.affiliate_code
         if getattr(order, 'shipping_address', None):
             code = order.shipping_address.get('affiliate_code', '') if isinstance(order.shipping_address, dict) else ''
         if not code and getattr(order, 'source', '').startswith('affiliate:'):
             code = order.source.split(':', 1)[1]
-        if not code:
+
+        # Coupon attribution fallback. Pull from order.coupon_code or
+        # order.metadata.coupon_code depending on what the cart wrote.
+        coupon = (getattr(order, 'coupon_code', '') or '').strip()
+        if not coupon and isinstance(getattr(order, 'metadata', None), dict):
+            coupon = (order.metadata.get('coupon_code') or '').strip()
+
+        if not code and not coupon:
             return
         from plugins.installed.affiliates.services import attribute_order
-        attribute_order(order=order, affiliate_code=code)
+        attribute_order(order=order, affiliate_code=code, coupon_code=coupon)
+
+    def on_order_refunded(self, order, **kwargs):
+        """Reverse any affiliate conversion attached to a refunded
+        order. See ``services.clawback_on_refund`` for the policy."""
+        from plugins.installed.affiliates.services import clawback_on_refund
+        try:
+            clawback_on_refund(order=order)
+        except Exception as exc:  # noqa: BLE001 — never block refund processing
+            import logging
+            logging.getLogger('morpheus.affiliates').warning(
+                'clawback failed for order %s: %s', getattr(order, 'pk', '?'), exc,
+            )
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.affiliates.agent_tools import (

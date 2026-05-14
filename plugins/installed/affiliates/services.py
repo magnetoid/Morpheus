@@ -52,25 +52,79 @@ def record_click(
     return link
 
 
-def attribute_order(*, order, affiliate_code: str) -> Optional['AffiliateConversion']:  # noqa: F821
-    """Create an AffiliateConversion for `order` if `affiliate_code` resolves and the cookie window is open."""
+def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -> Optional['AffiliateConversion']:  # noqa: F821
+    """Create an AffiliateConversion for ``order``.
+
+    Two attribution paths:
+      1. Click-token referral: ``affiliate_code`` from the
+         ``morph_aff`` cookie or URL parameter — the canonical path.
+      2. Coupon-code attribution (A1.5): when a customer redeems a
+         coupon that's tied to an affiliate via
+         ``AffiliateLink.coupon_code``, attribute even without a
+         click. Refersion + Tapfiliate both ship this — it's how
+         influencer collaborations work in 2026.
+
+    The cookie window is enforced HERE: we look up the most recent
+    click for the link and refuse attribution if the click is older
+    than ``program.cookie_window_days``. Previously the lock-window
+    was stored on the conversion row but never re-checked.
+    """
+    from datetime import timedelta as _td
     from plugins.installed.affiliates.models import (
+        AffiliateClick,
         AffiliateConversion,
         AffiliateLink,
     )
 
-    if not affiliate_code:
-        return None
-    try:
-        link = AffiliateLink.objects.select_related('affiliate', 'affiliate__program').get(
-            code=affiliate_code, is_active=True,
-        )
-    except AffiliateLink.DoesNotExist:
+    link = None
+    via = ''
+
+    # Path 1 — referral code from cookie / URL.
+    if affiliate_code:
+        try:
+            link = AffiliateLink.objects.select_related('affiliate', 'affiliate__program').get(
+                code=affiliate_code, is_active=True,
+            )
+            via = 'click'
+        except AffiliateLink.DoesNotExist:
+            link = None
+
+    # Path 2 — coupon-code attribution.
+    if link is None and coupon_code:
+        try:
+            link = AffiliateLink.objects.select_related('affiliate', 'affiliate__program').filter(
+                coupon_code__iexact=coupon_code.strip(), is_active=True,
+            ).first()
+            if link is not None:
+                via = 'coupon'
+        except Exception:  # noqa: BLE001 — coupon_code column may not exist on fresh installs
+            link = None
+
+    if link is None:
         return None
     if link.affiliate.status != 'approved':
         return None
 
     program = link.affiliate.program
+
+    # Enforce cookie window for click-referral path (coupon path is
+    # not bound by click recency — the influencer's audience may
+    # have heard the code months ago).
+    if via == 'click':
+        cutoff = timezone.now() - _td(days=program.cookie_window_days)
+        recent_click = (
+            AffiliateClick.objects
+            .filter(link=link, occurred_at__gte=cutoff)
+            .order_by('-occurred_at').first()
+        )
+        if recent_click is None:
+            logger.info(
+                'affiliates: refused click attribution for order %s — '
+                'no click within %d-day window',
+                getattr(order, 'order_number', order.pk), program.cookie_window_days,
+            )
+            return None
+
     commission = _calculate_commission(program=program, order=order)
     if commission.amount <= 0:
         return None
@@ -90,6 +144,64 @@ def attribute_order(*, order, affiliate_code: str) -> Optional['AffiliateConvers
             AffiliateLink.objects.filter(pk=link.pk).update(
                 conversion_count=link.conversion_count + 1,
             )
+    return conv
+
+
+def clawback_on_refund(*, order) -> Optional['AffiliateConversion']:  # noqa: F821
+    """Reverse an affiliate conversion when its order is refunded.
+
+    Three outcomes, in order of severity:
+      - status='pending' or 'approved'      → flip to 'rejected'; the
+        commission never made it to the affiliate's accrued_balance so
+        no debit needed unless we already approved it.
+      - status='paid' → mark 'rejected' + log a clawback in the audit
+        log. Money's already out the door; the merchant chases through
+        the next payout cycle (Phase 4 will automate this).
+
+    Returns the conversion row, or None when the order has no
+    associated affiliate conversion.
+    """
+    from plugins.installed.affiliates.models import (
+        Affiliate,
+        AffiliateConversion,
+    )
+
+    try:
+        conv = AffiliateConversion.objects.select_related('affiliate').get(order=order)
+    except AffiliateConversion.DoesNotExist:
+        return None
+    if conv.status == 'rejected':
+        return conv  # already reversed
+
+    with transaction.atomic():
+        if conv.status == 'approved':
+            # Debit the affiliate's accrued balance (floor at 0).
+            aff = conv.affiliate
+            new_accrued = max(aff.accrued_balance.amount - conv.commission.amount, Decimal('0'))
+            Affiliate.objects.filter(pk=aff.pk).update(
+                accrued_balance=Money(new_accrued, str(conv.commission.currency)),
+            )
+        was = conv.status
+        conv.status = 'rejected'
+        conv.save(update_fields=['status'])
+    logger.info(
+        'affiliates: clawback on order %s — conversion %s was %s, now rejected',
+        getattr(order, 'order_number', order.pk), conv.pk, was,
+    )
+    try:
+        from core.audit.services import record as audit_record
+        audit_record(
+            event_type='affiliates.clawback',
+            target=str(order.pk),
+            metadata={
+                'conversion_id': str(conv.pk),
+                'previous_status': was,
+                'commission_amount': str(conv.commission.amount),
+                'commission_currency': str(conv.commission.currency),
+            },
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return conv
 
 
