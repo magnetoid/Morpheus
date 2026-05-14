@@ -496,25 +496,104 @@
     </div>
     {% endif %}
 
-    <form method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard:image_upload' product_id=product.id %}" class="mt-4 grid grid-cols-1 md:grid-cols-12 gap-2 items-end" hx-boost="false">
+    <form method="post" enctype="multipart/form-data" id="img-upload-form"
+          action="{% url 'admin_dashboard:image_upload' product_id=product.id %}"
+          class="mt-4 space-y-3" hx-boost="false">
       {% csrf_token %}
-      <div class="md:col-span-5">
-        <label class="block text-sm font-medium mb-1">Image file</label>
-        <input type="file" name="image" accept="image/*" required class="input" style="padding:.4rem .55rem;">
-      </div>
-      <div class="md:col-span-4">
-        <label class="block text-sm font-medium mb-1">Alt text</label>
-        <input type="text" name="alt_text" class="input" placeholder="Describe the image">
-      </div>
-      <div class="md:col-span-2 flex items-center pt-5">
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_primary"> Primary
-        </label>
-      </div>
-      <div class="md:col-span-1">
-        <button class="btn btn-primary w-full"><i data-lucide="upload" class="h-4 w-4"></i> Add</button>
+      <label for="img-upload-input" id="img-dropzone" class="dz">
+        <div class="dz-stack">
+          <i data-lucide="upload-cloud" class="h-6 w-6 dz-icon"></i>
+          <p class="dz-headline"><strong>Drop images here</strong> or click to browse</p>
+          <p class="dz-hint">JPEG · PNG · WebP · AVIF · up to 10 MB</p>
+          <p id="dz-filename" class="dz-filename" hidden></p>
+        </div>
+        <input id="img-upload-input" type="file" name="image" accept="image/*" required class="dz-input">
+      </label>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+        <div class="md:col-span-8">
+          <label class="block text-sm font-medium mb-1">Alt text</label>
+          <input type="text" name="alt_text" class="input" placeholder="Describe the image for screen readers + AI search">
+        </div>
+        <div class="md:col-span-2 flex items-center pt-5">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" name="is_primary"> Primary
+          </label>
+        </div>
+        <div class="md:col-span-2">
+          <button class="btn btn-primary w-full"><i data-lucide="upload" class="h-4 w-4"></i> Upload</button>
+        </div>
       </div>
     </form>
+    <style>
+      .dz {
+        display: block; cursor: pointer; position: relative;
+        border: 2px dashed var(--border-strong);
+        border-radius: 10px;
+        background: var(--surface-2);
+        padding: 1.5rem;
+        text-align: center;
+        transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+      }
+      .dz:hover { background: var(--surface); border-color: var(--text-muted); }
+      .dz.is-dragover {
+        border-color: var(--primary);
+        background: var(--surface);
+        transform: scale(1.005);
+      }
+      .dz-stack { display: flex; flex-direction: column; align-items: center; gap: .4rem; }
+      .dz-icon { color: var(--text-muted); }
+      .dz-headline { font-size: .92rem; margin: 0; color: var(--text); }
+      .dz-headline strong { font-weight: 600; }
+      .dz-hint { font-size: .75rem; color: var(--text-muted); margin: 0; }
+      .dz-filename {
+        margin-top: .35rem; font-size: .82rem;
+        padding: .3rem .65rem; border-radius: 999px;
+        background: var(--surface); border: 1px solid var(--border);
+        color: var(--text); font-family: ui-monospace, Menlo, monospace;
+      }
+      .dz-input { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+    </style>
+    <script>
+      (function () {
+        var dz = document.getElementById('img-dropzone');
+        var input = document.getElementById('img-upload-input');
+        var name = document.getElementById('dz-filename');
+        if (!dz || !input) return;
+
+        function showName(file) {
+          if (!file) { name.hidden = true; return; }
+          name.textContent = file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+          name.hidden = false;
+        }
+
+        // Show filename when the user picks via click.
+        input.addEventListener('change', function () { showName(input.files[0]); });
+
+        // Drag-over visual state.
+        ['dragenter', 'dragover'].forEach(function (ev) {
+          dz.addEventListener(ev, function (e) {
+            e.preventDefault(); e.stopPropagation();
+            dz.classList.add('is-dragover');
+          });
+        });
+        ['dragleave', 'drop'].forEach(function (ev) {
+          dz.addEventListener(ev, function (e) {
+            e.preventDefault(); e.stopPropagation();
+            dz.classList.remove('is-dragover');
+          });
+        });
+
+        // Drop → assign file to the hidden input + show filename.
+        dz.addEventListener('drop', function (e) {
+          var files = e.dataTransfer && e.dataTransfer.files;
+          if (!files || !files.length) return;
+          // DataTransfer cannot directly populate <input type="file">.value;
+          // assign via the modern DataTransfer-style setter on .files.
+          try { input.files = files; } catch (_) {}
+          showName(files[0]);
+        });
+      })();
+    </script>
   </div>
 
   <div class="card" data-pt-show="variable,bundle">
