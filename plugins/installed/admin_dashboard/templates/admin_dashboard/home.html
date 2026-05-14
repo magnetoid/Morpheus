@@ -87,9 +87,6 @@
     {% endfor %}
   </div>
 
-  {# AI &amp; agents — Morpheus's defining surface. Provider pill shows
-     which LLM is currently answering Linda + every agent tool call.
-     "Configure" jumps to the AI providers settings page. #}
   <div class="card overflow-hidden">
     <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
       <div>
@@ -124,8 +121,6 @@
   </div>
 
   {% if low_stock %}
-  {# Stock alerts — only renders when at least one variant is at or
-     below its threshold. Disappears entirely when stock is healthy. #}
   <div class="card overflow-hidden">
     <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
       <div>
@@ -240,10 +235,6 @@
   </div>
   {% endif %}
 
-  {# Recent orders — last six, full-width. The right-column "AI insights"
-     panel that used to sit alongside duplicated the count in the AI
-     section above; removed. "New products" was a low-information
-     stub; merged here as a row below. #}
   <div class="card overflow-hidden">
     <div class="card-padded flex items-center justify-between">
       <div>
@@ -283,8 +274,6 @@
     {% endif %}
   </div>
 
-  {# Recently-added products, when any. Compact row — keeps the home
-     short. Click any tile to open the product. #}
   {% if top_products %}
   <div class="card card-padded">
     <div class="flex items-center justify-between mb-3">

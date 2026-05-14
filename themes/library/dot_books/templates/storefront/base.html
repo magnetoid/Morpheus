@@ -239,8 +239,6 @@
 {% seo_verification_metas %}
 {% seo_llms_link %}
 
-{# PWA manifest + browser tab-to-search engine descriptor.
-   Both are tiny static endpoints under the seo plugin. #}
 <link rel="manifest" href="/manifest.json">
 <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="dot books">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -402,10 +400,6 @@
 {% storefront_blocks "global_below_body" %}
 {% include "storefront/_cart_drawer.html" %}
 
-{# Core Web Vitals RUM beacon. Captures LCP/INP/CLS/FCP/TTFB from real
-   visitors and POSTs them to /web-vitals/ where the audit log stores
-   them. Uses the official Google web-vitals library — no fallback,
-   no-op on unsupported browsers. #}
 <script type="module">
   import {onCLS, onINP, onLCP, onFCP, onTTFB} from 'https://cdn.jsdelivr.net/npm/web-vitals@4/+esm';
   function beacon(m) {
@@ -420,8 +414,6 @@
   onLCP(beacon); onINP(beacon); onCLS(beacon); onFCP(beacon); onTTFB(beacon);
 </script>
 
-{# Lazy-load fade-in. Tag every lazy img with .ko-fade-img and rely on
-   the `load` event to flip the class. ~25 lines, all native. #}
 <script>
 (function () {
   function tagFade(img) {

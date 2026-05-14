@@ -201,8 +201,6 @@
       </div>
     </div>
 
-    {# Digital delivery — only when product_type == 'digital'. Replaces
-       weight/shipping with the file the customer downloads. #}
     <div class="card card-padded space-y-3" data-pt-show="digital">
       <h2 class="font-semibold text-sm">Digital delivery</h2>
       <p class="text-xs text-[color:var(--text-muted)]">
@@ -249,9 +247,6 @@
           <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable (digital sales tax / VAT)
         </label>
       </div>
-      {# Hidden shadow inputs ensure the form payload still includes the
-         physical-only fields with safe defaults — otherwise removing the
-         section would drop them entirely on save. #}
       <input type="hidden" name="track_inventory" value="">
       <input type="hidden" name="requires_shipping" value="">
     </div>

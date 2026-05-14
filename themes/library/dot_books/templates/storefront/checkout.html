@@ -9,9 +9,6 @@
     <p class="eyebrow">Checkout · 1 of 3</p>
     <h1 class="display display-l" style="margin: 1rem 0 2rem;">Where should it go<span class="text-accent">?</span></h1>
 
-    {# Error summary at top with role="alert" so screen readers
-       announce on submit failure. Per WCAG 2.2 + WAI ARIA practice:
-       container exists at render time so the SR doesn't miss it. #}
     <div id="checkout-errors" role="alert" aria-live="assertive" aria-atomic="true"
          class="ck-error-summary"{% if not error %} hidden{% endif %}>
       {% if error %}<p style="margin:0;"><strong>Please fix the following:</strong></p><p style="margin:.3rem 0 0;">{{ error }}</p>{% endif %}

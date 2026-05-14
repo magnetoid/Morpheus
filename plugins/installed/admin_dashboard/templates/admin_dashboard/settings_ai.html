@@ -20,10 +20,6 @@
     </div>
   </div>
 
-  {# Active-provider status banner — the unambiguous answer to "which
-     provider is Linda using right now?". Reads the resolved model from
-     get_llm_provider() and last-call status from the audit log, so it
-     reflects what the runtime actually does, not just what's saved. #}
   {% with ab=active_banner %}
   {% if ab.card %}
   <div class="card card-padded ai-active-banner {% if not ab.card.configured %}is-warn{% elif ab.last_call and not ab.last_call.ok %}is-error{% else %}is-ok{% endif %}">
@@ -53,9 +49,6 @@
   {% endif %}
   {% endwith %}
 
-  {# Active provider — top-of-page picker. Only one provider is in use
-     at a time; switch it here. The list below is just for editing
-     individual keys, not switching. #}
   <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card card-padded flex items-center justify-between gap-3 flex-wrap">
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
@@ -154,9 +147,6 @@
   </div>
   {% endfor %}
 
-  {# Feature toggles — each maps to a chunk of platform behaviour. We
-     keep the toggles boolean and the descriptions self-explanatory so a
-     merchant can flip them without reading docs. #}
   <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card overflow-hidden">
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
