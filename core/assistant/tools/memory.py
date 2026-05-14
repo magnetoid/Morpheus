@@ -119,16 +119,23 @@ def memory_forget_tool(*, key: str, scope: str = 'merchant') -> ToolResult:
 
 def get_recent_memories(limit: int = 50) -> list[dict]:
     """Top-of-turn injection helper — returns ``[{scope, key, value}, ...]``
-    for the most recently updated memories. Used by ``runtime._inject_memory``.
+    for the most relevant memories by combined source-confidence + temporal
+    decay. The May-2026 industry consensus (Mem0 / Zep) is that flat recency
+    misses the "user told me a key preference six weeks ago" fact in favour
+    of yesterday's noise — relevance scoring fixes that.
 
     Fails closed: when the table doesn't exist or the import fails, returns
     an empty list so Linda still works on a fresh install.
     """
     try:
         from core.assistant.models import LindaMemory
+        # Cap the query at 4× the desired output so the in-Python sort stays
+        # bounded even on databases with thousands of rows.
+        candidates = list(LindaMemory.objects.all()[: max(limit * 4, 200)])
+        candidates.sort(key=lambda r: r.relevance_score(), reverse=True)
         return [
             {'scope': r.scope, 'key': r.key, 'value': r.value}
-            for r in LindaMemory.objects.all()[:limit]
+            for r in candidates[:limit]
         ]
     except Exception:  # noqa: BLE001
         return []

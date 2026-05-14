@@ -66,6 +66,22 @@ class AgentCorePlugin(Plugin):
                 'schedule': crontab(minute='*'),
             },
         )
+        # Daily merchant digest — 07:00 UTC, single MerchantInsight row.
+        schedule.setdefault(
+            'agent_core.generate_daily_digest',
+            {
+                'task': 'plugins.installed.agent_core.tasks.generate_daily_digest',
+                'schedule': crontab(hour=7, minute=0),
+            },
+        )
+        # Assistant memory decay — 04:00 UTC, drops near-zero relevance rows.
+        schedule.setdefault(
+            'core_assistant.decay_assistant_memories',
+            {
+                'task': 'core.assistant.tasks.decay_assistant_memories',
+                'schedule': crontab(hour=4, minute=0),
+            },
+        )
 
     # ── Contribution surfaces ─────────────────────────────────────────────────
 
