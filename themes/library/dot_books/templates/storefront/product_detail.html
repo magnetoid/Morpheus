@@ -93,16 +93,6 @@
         </div>
         {% endif %}
 
-        {% if product.description %}
-        <div style="margin-top: 2.5rem;">
-          <p class="eyebrow" style="margin-bottom: 0.75rem;">About this book</p>
-          <hr class="rule" style="margin-bottom: 1.25rem; max-width: 60ch;">
-          <div itemprop="description" class="pdp-long-desc" style="line-height: 1.75; color: var(--ink); font-size: 1.02rem; max-width: 60ch;">
-            {{ product.description|linebreaks }}
-          </div>
-        </div>
-        {% endif %}
-
         {% if product.tags %}
         <div style="margin-top: 2rem; display:flex; flex-wrap: wrap; gap: 0.4rem;">
           {% for tag in product.tags %}
@@ -112,10 +102,32 @@
         {% endif %}
       </div>
     </div>
+
+    {% if product.description %}
+    <section class="pdp-about wrap-narrow">
+      <p class="eyebrow" style="margin-bottom: 0.75rem;">About this book</p>
+      <hr class="rule" style="margin-bottom: 1.5rem;">
+      <div itemprop="description" class="pdp-long-desc">
+        {{ product.description|linebreaks }}
+      </div>
+    </section>
+    {% endif %}
   </div>
 </section>
 
 <style>
+.pdp-about {
+  margin: 4rem auto 0;
+  max-width: 70ch;
+  padding: 0;
+}
+.pdp-long-desc {
+  line-height: 1.75;
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+.pdp-long-desc p { margin: 0 0 1.1em; }
+.pdp-long-desc p:first-child { font-size: 1.15rem; color: var(--ink); }
 @media (min-width: 900px) {
   .pdp-grid { grid-template-columns: 1fr 1fr !important; gap: 5rem !important; align-items: start !important; }
   /* Pin the cover column while the details column scrolls past. Top offset
