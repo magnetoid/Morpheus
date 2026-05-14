@@ -98,10 +98,23 @@ class DigitalProductsPlugin(Plugin):
             product = getattr(item, 'product', None)
             if product is None:
                 continue
-            if getattr(product, 'product_type', '') != 'digital':
+            # Issue a token when EITHER:
+            #   - product_type='digital' (single-SKU digital product), OR
+            #   - product_type='variable' AND the ordered variant marks
+            #     itself digital (sku ends in '-digital' OR name='Digital').
+            ptype = getattr(product, 'product_type', '')
+            if ptype not in ('digital', 'variable'):
                 continue
             if not getattr(product, 'digital_file', None):
                 continue
+            if ptype == 'variable':
+                variant = getattr(item, 'variant', None)
+                if variant is None:
+                    continue
+                sku = (getattr(variant, 'sku', '') or '').lower()
+                vname = (getattr(variant, 'name', '') or '').lower()
+                if not (sku.endswith('-digital') or vname == 'digital'):
+                    continue
             tok = DownloadToken.objects.create(
                 order=order,
                 order_item=item,
