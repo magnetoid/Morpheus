@@ -85,6 +85,17 @@ class AffiliateLink(models.Model):
     code = models.CharField(max_length=24, unique=True, db_index=True)
     landing_url = models.CharField(max_length=500, default='/')
     label = models.CharField(max_length=100, blank=True)
+    # 2026 affiliate-app standard: attribute conversions when this
+    # promo code is redeemed at checkout, no click required. Used for
+    # influencer / podcast / out-of-band collaborations.
+    coupon_code = models.CharField(
+        max_length=40, blank=True, db_index=True,
+        help_text=(
+            'Optional: if set, redeeming this coupon code at checkout '
+            'attributes the order to this affiliate without needing a '
+            'referral click.'
+        ),
+    )
     is_active = models.BooleanField(default=True, db_index=True)
     click_count = models.PositiveIntegerField(default=0)
     conversion_count = models.PositiveIntegerField(default=0)
