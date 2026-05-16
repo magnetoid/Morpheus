@@ -1,0 +1,29 @@
+{% load seo %}{% comment %}
+Renders ONLY the primary product image as the PDP cover. Non-primary
+images flow into the slider block above the long description.
+
+Caller context:
+  product — the catalog.Product instance
+  alt     — fallback alt text (typically product.name)
+  slug    — product slug (used for view-transition-name)
+
+The page falls back to a placeholder "book" when no primary image is
+set (or the product has no images at all).
+{% endcomment %}
+{% with main=product.primary_image %}
+{% if main and main.image %}
+  <div class="pgal-main" style="max-width: 480px;">
+    <div class="cover-wrap" style="aspect-ratio: 1/1; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45); border-radius: 8px; overflow: hidden; background: var(--paper-2);">
+      {% with vt_name="cover-"|add:slug|slugify %}
+      {% seo_responsive_image main.image alt=main.alt_text|default:alt widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 90vw" priority=True view_transition_name=vt_name %}
+      {% endwith %}
+    </div>
+  </div>
+{% else %}
+  <div class="book" style="max-width: 480px;">
+    <div class="cover-wrap" style="aspect-ratio: 1/1; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
+      <div class="placeholder">{{ alt|default:product.name }}</div>
+    </div>
+  </div>
+{% endif %}
+{% endwith %}

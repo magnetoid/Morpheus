@@ -1,0 +1,62 @@
+{% load seo %}{% comment %}
+Square image slider — rendered as a StorefrontBlock above the long
+description (and above the product video slot). Shows every non-primary
+image; the primary image lives in the cover column via _main_cover.html.
+
+Native scroll-snap → swipe on touch, trackpad scroll on desktop. No
+JS library needed. Hides itself when the product has zero non-primary
+images (the `regroup` only emits a section for the False bucket if it
+contains at least one row).
+
+Slot context: `product` is provided by the parent PDP render via the
+StorefrontBlock infrastructure in `plugins.context_processors`.
+{% endcomment %}
+{% if product %}
+{% regroup product.images.all by is_primary as image_groups %}
+{% for group in image_groups %}{% if not group.grouper %}
+<section class="pgal-slider wrap" aria-label="More views of {{ product.name }}" style="max-width: var(--max, 1240px); margin: 3rem auto 0; padding: 0 1.5rem;">
+  <p class="eyebrow" style="margin-bottom: 1rem;">More views</p>
+  <div class="pgal-strip" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Additional images of {{ product.name }}">
+    {% for img in group.list %}
+    <figure class="pgal-square" aria-label="Image {{ forloop.counter }} of {{ group.list|length }}">
+      {% if img.image %}
+        {% seo_responsive_image img.image alt=img.alt_text|default:product.name widths="400,600,800" sizes="(min-width: 900px) 360px, 80vw" %}
+      {% endif %}
+    </figure>
+    {% endfor %}
+  </div>
+</section>
+
+<style>
+  .pgal-slider .eyebrow {
+    font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted, #6b6b66); font-weight: 700;
+  }
+  .pgal-strip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(min(80vw, 360px), min(80vw, 360px));
+    gap: 1rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 1rem;
+    padding: .25rem .25rem 1rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  }
+  .pgal-strip::-webkit-scrollbar { height: 6px; }
+  .pgal-strip::-webkit-scrollbar-thumb { background: var(--rule, #d9d2bf); border-radius: 3px; }
+  .pgal-square {
+    margin: 0;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--paper-2, #efe7d6);
+    scroll-snap-align: start;
+    box-shadow: 0 4px 14px -8px rgba(14,14,14,.25);
+  }
+  .pgal-square :is(img, picture, source) { width: 100%; height: 100%; object-fit: cover; display: block; }
+</style>
+{% endif %}{% endfor %}
+{% endif %}

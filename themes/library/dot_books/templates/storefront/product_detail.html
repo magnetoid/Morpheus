@@ -28,15 +28,9 @@
     <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
       <!-- Cover stack — product_gallery plugin carousel. -->
       <div>
-        {% if product.images %}
-          {% include "product_gallery/_carousel.html" with images=product.images alt=product.name slug=product.slug %}
-        {% else %}
-        <div class="book" style="max-width: 480px;">
-          <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
-            <div class="placeholder">{{ product.name }}</div>
-          </div>
-        </div>
-        {% endif %}
+        {# Cover column: ONLY the primary image. Non-primary images flow
+           into the slider StorefrontBlock above the long description. #}
+        {% include "product_gallery/_main_cover.html" with product=product alt=product.name slug=product.slug %}
       </div>
 
       <!-- Details -->

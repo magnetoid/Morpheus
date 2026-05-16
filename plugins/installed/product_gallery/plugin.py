@@ -1,21 +1,28 @@
-"""Product gallery plugin — square carousel partial for PDPs.
+"""Product gallery plugin — main cover + square slider for PDPs.
 
-Ships a single template, `product_gallery/_carousel.html`, that any
-theme can include in its product-detail template:
+Ships three templates the theme can use:
 
-    {% include "product_gallery/_carousel.html" with
-       images=product.images
-       alt=product.name
-       slug=product.slug %}
+    {% include "product_gallery/_main_cover.html" with
+       product=product alt=product.name slug=product.slug %}
 
-Native CSS scroll-snap. Square aspect ratio. Dot indicators. Prev/next
-buttons. Keyboard arrows. No JS framework, no model.
+      → renders ONLY the primary image as the cover. Single hero.
+
+    `product_gallery/_slider.html` is contributed as a StorefrontBlock
+    into the `pdp_above_long_description` slot at priority=20, so it
+    auto-renders above the product video block (which sits at
+    priority=50 in the same slot). Shows every non-primary image as a
+    square scroll-snap strip.
+
+    `product_gallery/_carousel.html` is the legacy combined carousel
+    (kept for back-compat with themes that include it directly).
+
+Native CSS scroll-snap. No JS framework, no model.
 """
 from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin
+from morpheus import Plugin, StorefrontBlock
 
 logger = logging.getLogger('morpheus.product_gallery')
 
@@ -23,10 +30,23 @@ logger = logging.getLogger('morpheus.product_gallery')
 class ProductGalleryPlugin(Plugin):
     name = "product_gallery"
     label = "Product Gallery"
-    version = "1.0.0"
+    version = "1.1.0"
     description = (
-        "Square-format scroll-snap product image carousel — drop-in "
-        "template partial for any storefront theme."
+        "Main cover (primary image) + square slider (non-primary images) "
+        "for PDPs. Native scroll-snap, no JS dep."
     )
     has_models = False
     requires = ['catalog']
+
+    def contribute_storefront_blocks(self) -> list:
+        return [
+            # Slider renders ABOVE the video block (priority=50) and ABOVE
+            # the long description. Hides itself when there are no
+            # non-primary images.
+            StorefrontBlock(
+                slot='pdp_above_long_description',
+                template='product_gallery/_slider.html',
+                priority=20,
+                context_keys=['product'],
+            ),
+        ]
