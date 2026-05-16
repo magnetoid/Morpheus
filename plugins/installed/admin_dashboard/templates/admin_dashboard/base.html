@@ -5,13 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f1f1f1">
 <title>{% block title %}Morpheus admin{% endblock %}</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<!-- crossorigin=anonymous on every CDN script so window.onerror sees real
+     error messages + stack frames (browsers anonymize CORS-missing scripts
+     to plain "Script error." which is useless for debugging). -->
+<script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest" crossorigin="anonymous"></script>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
 <!-- Catch unhandled JS errors + unhandledrejection → /api/errors/client/. -->
 <script src="{% static 'core/error-capture.js' %}"></script>
-<!-- htmx — progressive partial-reload for boosted links + filter forms. -->
-<script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+<!-- htmx — progressive partial-reload for boosted links + filter forms.
+     Bumped 2.0.3 → 2.0.10: 2.0.3 had a bug where it called .includes()
+     on a null getAttribute() result during DOM scanning. -->
+<script src="https://unpkg.com/htmx.org@2.0.10" defer crossorigin="anonymous"></script>
 <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML","historyCacheSize":20,"globalViewTransitions":true}'>
 <style>
   /* Tailwind utilities like `flex` set display via class and out-rank
