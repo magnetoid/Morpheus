@@ -64,10 +64,14 @@ class DashboardPage:
     slug: str               # the URL slug, mounted under /dashboard/apps/<plugin>/<slug>/
     view: Any               # callable | str
     icon: str = 'circle'    # any lucide icon name
-    section: str = 'plugins'  # 'plugins' | 'sales' | 'apps' | 'settings'
+    # Sidebar grouping bucket. Known keys (see plugins/context_processors.py):
+    # ai, sales, catalog, crm, customers, cms, marketing, analytics, seo,
+    # growth, marketplace, plugins, developer, access, data, settings, apps.
+    # Unknown values fall through alphabetically under their literal slug.
+    section: str = 'plugins'
     order: int = 100
     plugin: str = ''
-    nav: str = 'main'       # 'main' | 'settings'
+    nav: str = 'main'       # 'main' | 'settings' | 'hidden'
 
 
 @dataclass(slots=True)

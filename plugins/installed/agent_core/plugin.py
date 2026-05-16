@@ -105,7 +105,7 @@ class AgentCorePlugin(Plugin):
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Agents',
+                label='Agent runs',
                 slug='runs',
                 view='plugins.installed.agent_core.views.runs_dashboard_view',
                 icon='sparkles',

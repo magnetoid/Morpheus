@@ -30,7 +30,7 @@ SETTINGS_CATEGORIES: list[SettingsCategory] = [
     SettingsCategory('marketing',     'Marketing',     'Coupons, email campaigns, CRM defaults.',             'megaphone'),
     SettingsCategory('notifications', 'Notifications', 'Transactional email templates, SMS, and outbound webhooks.', 'bell'),
     SettingsCategory('developer',     'Developer',     'API keys, webhooks, agent tokens, observability.',    'code'),
-    SettingsCategory('apps',          'Apps',          'Settings exposed by individual plugins.',             'grid-3x3'),
+    SettingsCategory('apps',          'Other plugins', 'Settings exposed by individual plugins.',             'puzzle'),
 ]
 
 

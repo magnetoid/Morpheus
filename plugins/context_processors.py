@@ -16,6 +16,7 @@ _SECTION_ORDER = [
     'sales',        # Orders (drafts surface inline)
     'catalog',      # Products, Categories, Collections
     'crm',          # Leads, Accounts, Deals, Tasks
+    'customers',    # Reviews, Subscriptions
     'cms',          # Pages, Blocks, Menus, Forms
     'analytics',    # Sessions, Events, Funnels
     'seo',          # SEO audit, redirects, JSON-LD config
@@ -117,7 +118,7 @@ def plugin_context(request):
     pages = plugin_registry.dashboard_pages()
 
     # Split by sidebar destination.
-    main_pages = [p for p in pages if getattr(p, 'nav', 'main') != 'settings']
+    main_pages = [p for p in pages if getattr(p, 'nav', 'main') not in ('settings', 'hidden')]
     settings_pages = [p for p in pages if getattr(p, 'nav', 'main') == 'settings']
 
     # Shopify-style settings categories — drives the settings sidebar.
