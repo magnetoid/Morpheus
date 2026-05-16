@@ -5,19 +5,42 @@ import json
 import logging
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import Count, Max
+from django.core.cache import cache
+from django.db.models import Count, OuterRef, Subquery
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from core.errors.models import ErrorEvent
-from core.errors.services import record_client_error
+from core.errors.services import _ip_hash, record_client_error
 
 logger = logging.getLogger('morpheus.errors')
 
 
 _MAX_BODY = 64 * 1024  # 64 KB — generous for a stack trace.
+
+# Per-IP write rate limit on /api/errors/client/. The browser already has a
+# 25-event cap + 5s dedup; the server cap defends against an attacker
+# ignoring the JS and POSTing in a tight loop to fill the table.
+_RL_MAX = 50            # requests
+_RL_WINDOW = 60         # seconds
+
+
+def _rate_limited(request) -> bool:
+    """Return True if this IP has exhausted its quota in the current window."""
+    bucket = _ip_hash(request) or 'anon'
+    key = f'errs:client:{bucket}'
+    # cache.incr requires the key to exist; add with timeout if missing.
+    if not cache.add(key, 1, timeout=_RL_WINDOW):
+        try:
+            count = cache.incr(key)
+        except ValueError:
+            # Race: the key expired between add() and incr(). Re-add.
+            cache.add(key, 1, timeout=_RL_WINDOW)
+            return False
+        return count > _RL_MAX
+    return False
 
 
 @csrf_exempt
@@ -47,6 +70,9 @@ def client_error_ingest(request: HttpRequest) -> HttpResponse:
     origin = request.headers.get('Origin', '') or request.headers.get('Referer', '')
     if origin and not _origin_allowed(origin):
         return JsonResponse({'error': 'origin not allowed'}, status=403)
+
+    if _rate_limited(request):
+        return JsonResponse({'error': 'rate limit exceeded'}, status=429)
 
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
@@ -97,10 +123,19 @@ def errors_list(request: HttpRequest) -> HttpResponse:
     if search:
         qs = qs.filter(message__icontains=search) | qs.filter(exception_class__icontains=search)
 
+    # Group by fingerprint. Use a correlated subquery for last_message /
+    # last_path so they come from the row with the latest created_at — Max()
+    # on text columns returns the lexically-greatest string, not the latest
+    # row's value (would silently lie when messages differ across occurrences).
+    latest = ErrorEvent.objects.filter(fingerprint=OuterRef('fingerprint')).order_by('-created_at')
     grouped = (
         qs.values('fingerprint', 'kind', 'level', 'exception_class')
-        .annotate(seen=Count('id'), last_seen=Max('created_at'),
-                  last_message=Max('message'), last_path=Max('path'))
+        .annotate(
+            seen=Count('id'),
+            last_seen=Subquery(latest.values('created_at')[:1]),
+            last_message=Subquery(latest.values('message')[:1]),
+            last_path=Subquery(latest.values('path')[:1]),
+        )
         .order_by('-last_seen')[:200]
     )
 

@@ -33,6 +33,12 @@
     if (sent >= MAX_PER_PAGE) return;
     var key = dedupKey(payload.message, payload.source, payload.lineno);
     var now = Date.now();
+    // Drop dedup keys older than 2x the window. Without this the dict
+    // accumulates a key per distinct (msg|src:line) tuple across the
+    // page lifetime — a tab open all day grows it into hundreds of KB.
+    for (var k in recent) {
+      if (now - recent[k] > DEDUP_WINDOW_MS * 2) delete recent[k];
+    }
     if (recent[key] && now - recent[key] < DEDUP_WINDOW_MS) return;
     recent[key] = now;
     sent++;

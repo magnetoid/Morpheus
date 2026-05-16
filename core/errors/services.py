@@ -57,6 +57,16 @@ def _ip_hash(request) -> str:
 
 
 _USER_AGENT_LIMIT = 400
+_TRACEBACK_LIMIT = 20000
+
+
+def _truncate(text: str, limit: int) -> str:
+    """Cap `text` at `limit` chars with a visible marker so readers know
+    they're not seeing the full thing (silently truncated tracebacks
+    have caused phantom-frame goose-chases more than once)."""
+    if not text or len(text) <= limit:
+        return text
+    return text[: limit - 40] + '\n…[truncated by core.errors]'
 
 
 def record_error(
@@ -77,7 +87,7 @@ def record_error(
             fingerprint=_fingerprint_server(exc),
             exception_class=type(exc).__name__,
             message=_scrub(str(exc))[:2000],
-            traceback=traceback_str[:20000],
+            traceback=_truncate(traceback_str, _TRACEBACK_LIMIT),
             path=(getattr(request, 'path', '') or '')[:500],
             method=getattr(request, 'method', '') or '',
             status_code=500,
@@ -102,7 +112,7 @@ def record_client_error(payload: dict[str, Any], *, request=None) -> None:
     source_url = (payload.get('source') or '')[:500]
     lineno = int(payload.get('lineno') or 0)
     colno = int(payload.get('colno') or 0)
-    stack = (payload.get('stack') or '')[:20000]
+    stack = _truncate(payload.get('stack') or '', _TRACEBACK_LIMIT)
     page_url = (payload.get('page') or '')[:500]
     browser = (payload.get('browser') or '')[:120]
     level = (payload.get('level') or 'error').lower()
