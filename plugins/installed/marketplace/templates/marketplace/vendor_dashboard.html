@@ -1,0 +1,98 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 960px;">
+
+    <p class="eyebrow">Your account</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">Vendor dashboard<span class="text-accent">.</span></h1>
+
+    {% if not application %}
+      <div class="card card-padded" style="background: var(--paper-2); padding: 2rem; border-radius: 6px;">
+        <p style="margin: 0 0 1rem;">You haven't applied to be a vendor yet.</p>
+        <a href="/vendor/apply/" class="btn btn-primary">Apply →</a>
+      </div>
+    {% else %}
+
+      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
+        <header style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1rem;">
+          <div>
+            <h2 style="font-family: var(--serif); font-size: 1.4rem; margin: 0;">{{ application.business_name }}</h2>
+            <p style="font-size: .85rem; color: var(--muted); margin: .35rem 0 0;">{{ application.contact_email }}</p>
+          </div>
+          <div style="text-align: right;">
+            {% if application.status == 'approved' %}
+              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#d6f3e3; color:#1f7a4d; font-size:.75rem; font-weight:600;">Approved</span>
+            {% elif application.status == 'submitted' %}
+              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:.75rem; font-weight:600;">Submitted</span>
+            {% elif application.status == 'reviewing' %}
+              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#ffeacc; color:#b86e00; font-size:.75rem; font-weight:600;">Reviewing</span>
+            {% else %}
+              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#fde7e9; color:#b3261e; font-size:.75rem; font-weight:600;">{{ application.get_status_display }}</span>
+            {% endif %}
+            {% if application.status == 'approved' %}
+              <p style="margin: .5rem 0 0; font-size: .85rem; color: var(--muted);">Accrued balance: <strong style="color: var(--ink);">{{ accrued }}</strong></p>
+            {% endif %}
+          </div>
+        </header>
+
+        {% if application.status != 'approved' %}
+        <p style="margin-top: 1rem; color: var(--muted); font-size: .9rem;">
+          {% if application.status == 'submitted' %}We've received your application — we'll review it within ~10 business days.
+          {% elif application.status == 'reviewing' %}We're reviewing your application — expect to hear from us soon.
+          {% elif application.status == 'rejected' %}Your application wasn't approved this time. You're welcome to <a href="/vendor/apply/" style="text-decoration: underline;">apply again</a>.
+          {% endif %}
+        </p>
+        {% endif %}
+      </article>
+
+      {% if vendor_orders %}
+      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
+        <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Recent vendor orders</h3>
+        <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left; border-bottom: 1px solid var(--rule);">
+              <th style="padding: .5rem 0; font-weight: 600;">Order</th>
+              <th style="padding: .5rem 0; font-weight: 600;">Status</th>
+              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Gross</th>
+              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Net</th>
+              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">When</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for vo in vendor_orders %}
+            <tr style="border-bottom: 1px solid var(--rule);">
+              <td style="padding: .6rem 0; font-family: ui-monospace, monospace; font-size: .85rem;">#{{ vo.parent_order.number|default:vo.parent_order_id|truncatechars:10 }}</td>
+              <td style="padding: .6rem 0;">{{ vo.get_status_display }}</td>
+              <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.gross }}</td>
+              <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.net }}</td>
+              <td style="padding: .6rem 0; text-align: right; color: var(--muted); font-size: .8rem;">{{ vo.created_at|date:"M j" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </article>
+      {% endif %}
+
+      {% if payouts %}
+      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Payout history</h3>
+        <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
+          <tbody>
+            {% for p in payouts %}
+            <tr style="border-bottom: 1px solid var(--rule);">
+              <td style="padding: .6rem 0;">{{ p.created_at|date:"M j, Y" }}</td>
+              <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ p.amount }}</td>
+              <td style="padding: .6rem 0; text-align: right; color: var(--muted);">{{ p.get_status_display }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </article>
+      {% endif %}
+
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

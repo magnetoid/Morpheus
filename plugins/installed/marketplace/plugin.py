@@ -19,6 +19,7 @@ class MarketplacePlugin(Plugin):
 
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.marketplace.graphql.queries')
+        self.register_urls('plugins.installed.marketplace.urls', prefix='', namespace='marketplace')
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
 
     def on_order_placed(self, order, **kwargs):

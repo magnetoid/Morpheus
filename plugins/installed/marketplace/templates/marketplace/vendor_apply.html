@@ -1,0 +1,71 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;">
+
+    <p class="eyebrow">Multivendor marketplace</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Sell with us<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2.5rem;">If you publish or distribute books we'd shelve, apply to become a vendor. We split each customer order automatically, pay you on a monthly cycle, and give you a vendor dashboard to track everything.</p>
+
+    {% if error %}
+      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem; border-radius:6px; margin-bottom: 1.5rem;">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    {% if existing and existing.status != 'rejected' %}
+      <div class="card card-padded" style="background: var(--paper-2); padding: 1.5rem; border-radius: 6px;">
+        <p style="font-weight: 600; margin: 0 0 .5rem;">Your application is on file.</p>
+        <p style="margin: 0 0 1rem; color: var(--ink-2);">
+          Status: <strong>{{ existing.get_status_display }}</strong> · Business: <strong>{{ existing.business_name }}</strong>
+        </p>
+        <a href="/vendor/me/" class="btn btn-primary">Open vendor dashboard →</a>
+      </div>
+    {% else %}
+      {% if existing and existing.status == 'rejected' %}
+      <div style="background:#fde7e9; color:#b3261e; padding:1rem; border-radius:6px; margin-bottom: 1.5rem;">
+        A previous application was not approved. You're welcome to submit a fresh one below.
+      </div>
+      {% endif %}
+      <form method="post" action="/vendor/apply/" style="display:grid; gap: 1.25rem;">
+        {% csrf_token %}
+        <div>
+          <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Business / publisher name *</label>
+          <input type="text" name="business_name" required maxlength="200" class="input">
+        </div>
+        <div>
+          <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Contact email *</label>
+          <input type="email" name="contact_email" class="input" value="{{ request.user.email }}" required>
+        </div>
+        <div>
+          <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tell us about your catalogue and audience</label>
+          <textarea name="description" rows="6" class="input" placeholder="Imprints, lists, where you currently distribute, typical reader profile."></textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tax ID (optional)</label>
+            <input type="text" name="tax_id" maxlength="50" class="input" placeholder="VAT / EIN / etc.">
+          </div>
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Preferred payout method</label>
+            <select name="payout_method" class="input">
+              <option value="">— select —</option>
+              <option value="stripe">Stripe Connect</option>
+              <option value="bank_transfer">Bank transfer (SEPA / wire)</option>
+              <option value="paypal">PayPal</option>
+              <option value="other">Other (we'll discuss)</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top: 1rem;">
+          <button type="submit" class="btn btn-primary" style="padding: .8rem 2rem;">Submit application</button>
+          <p style="font-size: .8rem; color: var(--muted); margin-top: .75rem;">We review applications weekly. You'll hear from us within ~10 business days.</p>
+        </div>
+      </form>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}
