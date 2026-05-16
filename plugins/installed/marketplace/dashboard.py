@@ -17,10 +17,13 @@ def _safe_list(model_path, *, order_by='-created_at', limit=200):
 
 @staff_member_required
 def vendors_list(request):
-    rows = _safe_list('marketplace.Vendor')
+    # `marketplace.Vendor` doesn't exist as a marketplace-app model — vendor
+    # identity lives in `catalog.Vendor`. _safe_list silently returned []
+    # before; pull from catalog so this page actually shows rows.
+    rows = _safe_list('catalog.Vendor')
     return render(request, 'marketplace/dashboard/list.html', {
         'rows': rows, 'title': 'Vendors',
-        'columns': ['name', 'email', 'is_active', 'created_at'],
+        'columns': ['name', 'slug', 'is_active', 'created_at'],
         'active_nav': 'marketplace',
     })
 
@@ -30,7 +33,10 @@ def vendor_orders(request):
     rows = _safe_list('marketplace.VendorOrder')
     return render(request, 'marketplace/dashboard/list.html', {
         'rows': rows, 'title': 'Vendor orders',
-        'columns': ['vendor', 'order', 'state', 'subtotal'],
+        # Real field names from VendorOrder (parent_order, status, gross) —
+        # the previous list ('order', 'state', 'subtotal') referenced columns
+        # that don't exist on the model, leaving every cell blank.
+        'columns': ['vendor', 'parent_order', 'status', 'gross'],
         'active_nav': 'marketplace',
     })
 
