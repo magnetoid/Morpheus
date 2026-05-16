@@ -29,6 +29,42 @@ import re as _re
 _HTML_TAG_RE = _re.compile(r'<\w+[\s>]')
 
 
+def _md_to_html(value: str) -> str:
+    """Minimal Markdown → HTML for the subset our LLM produces.
+
+    Inlined here (not imported from core.templatetags.morph) so the form
+    doesn't depend on whatever state that module is in. Handles ## / ###
+    headings, paragraph blocks, [text](url) links, **bold**, *italic*.
+    """
+    from django.utils.html import escape as _esc
+
+    def _inline(text: str) -> str:
+        text = _re.sub(
+            r'\[([^\]]+)\]\(([^)\s]+)\)',
+            lambda m: f'<a href="{_esc(m.group(2))}">{m.group(1)}</a>',
+            text,
+        )
+        text = _re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+        text = _re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', text)
+        return text
+
+    norm = _re.sub(r"\n(#{2,3} )", r"\n\n\1", str(value))
+    norm = _re.sub(r"(#{2,3} [^\n]+)\n(?!#|\n)", r"\1\n\n", norm)
+    out = []
+    for block in _re.split(r"\n\s*\n", norm.strip()):
+        b = block.strip()
+        if not b:
+            continue
+        if b.startswith("### "):
+            out.append(f"<h3>{_inline(_esc(b[4:].strip()))}</h3>")
+        elif b.startswith("## "):
+            out.append(f"<h2>{_inline(_esc(b[3:].strip()))}</h2>")
+        else:
+            esc = _esc(b).replace("\n", "<br>")
+            out.append(f"<p>{_inline(esc)}</p>")
+    return "\n".join(out)
+
+
 def _ensure_html(value: str | None) -> str:
     """Return HTML, converting legacy Markdown when needed.
 
@@ -41,8 +77,7 @@ def _ensure_html(value: str | None) -> str:
         return value or ''
     if _HTML_TAG_RE.search(value):
         return value
-    from core.templatetags.morph import markdown_to_html
-    return markdown_to_html(value)
+    return _md_to_html(value)
 
 
 # ── Product ──────────────────────────────────────────────────────────────────
