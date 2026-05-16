@@ -245,6 +245,10 @@
 <meta name="apple-mobile-web-app-title" content="dot books">
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 
+{# Catch unhandled JS errors + unhandledrejection → /api/errors/client/. #}
+{% load static %}
+<script src="{% static 'core/error-capture.js' %}"></script>
+
 {# Motion One — ~3kb vanilla animator with spring built-in. Exposed as window.__motion #}
 <script type="module">
   import { animate, stagger } from 'https://cdn.jsdelivr.net/npm/motion@10/+esm';

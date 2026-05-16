@@ -8,6 +8,8 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
+<!-- Catch unhandled JS errors + unhandledrejection → /api/errors/client/. -->
+<script src="{% static 'core/error-capture.js' %}"></script>
 <!-- htmx — progressive partial-reload for boosted links + filter forms. -->
 <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
 <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML","historyCacheSize":20,"globalViewTransitions":true}'>
@@ -307,6 +309,10 @@
       {% if 'marketing' in active_plugins %}<a href="/dashboard/apps/marketing/newsletter/" class="nav-link {% if active_nav == 'newsletter' %}active{% endif %}">Newsletter</a>{% endif %}
       <a href="{% url 'admin_dashboard:customers' %}?segment=admins" class="nav-link {% if active_nav == 'admins' %}active{% endif %}">Admins</a>
     </div>
+
+    {# Health: deep error log (server + client). Hardcoded so it's always #}
+    {# reachable, even with every plugin disabled. #}
+    <a href="{% url 'errors:list' %}" class="nav-link {% if active_nav == 'errors' %}active{% endif %}"><i data-lucide="alert-circle" class="h-4 w-4"></i> Errors</a>
 
     {% comment %}
       Plugin-contributed pages, grouped by section. Each section is a

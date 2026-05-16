@@ -1,0 +1,74 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Errors · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Errors</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">{{ total_server }} server · {{ total_client }} client (JS) · grouped by fingerprint.</p>
+    </div>
+  </div>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    <div class="flex gap-1">
+      <a href="?" class="btn {% if not kind_filter %}btn-primary{% endif %}">All</a>
+      <a href="?kind=server" class="btn {% if kind_filter == 'server' %}btn-primary{% endif %}">Server</a>
+      <a href="?kind=client" class="btn {% if kind_filter == 'client' %}btn-primary{% endif %}">Client</a>
+    </div>
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+      <input name="q" value="{{ search }}" placeholder="Message or exception class" class="input input-search">
+    </div>
+    {% if kind_filter %}<input type="hidden" name="kind" value="{{ kind_filter }}">{% endif %}
+    <button class="btn btn-primary">Search</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    {% if rows %}
+    <table class="w-full text-sm">
+      <thead class="bg-[color:var(--surface-2)]">
+        <tr class="text-left">
+          <th class="px-4 py-2 font-medium">Exception</th>
+          <th class="px-4 py-2 font-medium">Message</th>
+          <th class="px-4 py-2 font-medium">Last path</th>
+          <th class="px-4 py-2 font-medium">Kind</th>
+          <th class="px-4 py-2 font-medium text-right">Seen</th>
+          <th class="px-4 py-2 font-medium">Last seen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="border-t border-[color:var(--border)] hover:bg-[color:var(--surface-2)]">
+          <td class="px-4 py-2 font-medium">
+            <a href="{% url 'errors:detail' fingerprint=r.fingerprint %}" class="hover:underline">{{ r.exception_class|default:"—" }}</a>
+          </td>
+          <td class="px-4 py-2 text-[color:var(--text-muted)] max-w-[400px] truncate">{{ r.last_message|truncatechars:120 }}</td>
+          <td class="px-4 py-2 text-[color:var(--text-subtle)] font-mono text-xs max-w-[300px] truncate">{{ r.last_path|default:"—"|truncatechars:80 }}</td>
+          <td class="px-4 py-2">
+            {% if r.kind == 'server' %}
+            <span class="pill pill-danger">Server</span>
+            {% else %}
+            <span class="pill pill-warn">Client</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2 text-right tabular-nums font-medium">{{ r.seen }}</td>
+          <td class="px-4 py-2 text-[color:var(--text-muted)] text-xs">{{ r.last_seen|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="px-4 py-12 text-center text-[color:var(--text-muted)]">
+      {% if search or kind_filter %}
+      No errors match — <a href="?" class="underline">clear filters</a>.
+      {% else %}
+      No errors logged yet. New errors show up here within a second of being raised.
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

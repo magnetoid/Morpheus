@@ -129,6 +129,7 @@ MORPHEUS_ENGINE_APPS = [
     'core.auth',       # Passwordless email-OTP login (parallel to allauth)
     'core.i18n',       # Translation kernel — generic-FK Translation rows
     'core.audit',      # Security-grade audit log
+    'core.errors',     # Deep error log — 5xx + client JS errors → ErrorEvent
     'plugins',
     'themes',
     'api',
@@ -170,6 +171,7 @@ MIDDLEWARE = [
     'plugins.installed.environments.middleware.EnvironmentMiddleware',
     'plugins.installed.seo.middleware.SeoRedirectMiddleware',
     'plugins.installed.analytics.middleware.AnalyticsMiddleware',
+    'core.errors.middleware.ErrorCaptureMiddleware',
     'core.request_id.RequestIdMiddleware',
 ]
 

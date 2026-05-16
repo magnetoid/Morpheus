@@ -31,6 +31,9 @@ _admin_alias_patterns = [
 urlpatterns = [
     # The Assistant lives in core and mounts at /dashboard/assistant/.
     path('dashboard/assistant/', include('core.assistant.urls', namespace='assistant')),
+    # Error capture + dashboard surface — /api/errors/client/ ingest and
+    # /dashboard/errors/ list.
+    path('', include('core.errors.urls', namespace='errors')),
     path('', include('api.urls')),          # GraphQL at /graphql/
     # Auth lives at /auth/. /accounts/* is kept as a 301-redirect for any
     # external bookmark or third-party doc that still references it.
