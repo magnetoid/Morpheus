@@ -68,9 +68,15 @@
           <td><input type="checkbox" name="ids" value="{{ p.id }}" form="bulk-form" data-bulk-row class="rounded border-[color:var(--border)]"></td>
           <td>
             <a href="{% url 'admin_dashboard:product_edit' product_id=p.id %}" class="flex items-center gap-3">
-              <div class="h-9 w-9 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] flex items-center justify-center">
-                <i data-lucide="package" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+              {% with primary=p.primary_image %}
+              <div class="h-10 w-7 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] flex items-center justify-center overflow-hidden flex-shrink-0" title="{{ p.name }}">
+                {% if primary and primary.image %}
+                  <img src="{{ primary.image.url }}" alt="" style="width:100%; height:100%; object-fit:cover;" loading="lazy">
+                {% else %}
+                  <i data-lucide="package" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+                {% endif %}
               </div>
+              {% endwith %}
               <div class="min-w-0">
                 <div class="font-medium truncate hover:underline">{{ p.name }}</div>
                 <div class="text-xs text-[color:var(--text-muted)] truncate">{{ p.short_description|default:"" }}</div>

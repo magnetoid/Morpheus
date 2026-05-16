@@ -677,9 +677,10 @@
     <h2 class="font-semibold text-sm">Main image</h2>
     <p class="text-xs text-[color:var(--text-muted)]">The single hero image shown on the storefront cover. Replace by uploading a new one below — the previous main moves to the slider.</p>
 
-    <div class="mt-3" style="display:grid; grid-template-columns: 220px 1fr; gap: 1rem; align-items:flex-start;">
-      <div class="card overflow-hidden" style="width: 220px;">
-        <div style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+    <div class="mt-3" style="display:grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items:flex-start;">
+      <div class="card overflow-hidden" style="width: 200px;">
+        {# Preview aspect ratio matches the storefront (2:3 book-cover portrait). #}
+        <div style="aspect-ratio: 2/3; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden;">
           {# Render the first is_primary image (the view sets only one #}
           {# primary at a time, so this loop yields at most one match). #}
           {# Empty state is handled by the conditional below the loop. #}
