@@ -51,3 +51,12 @@ class ProductVideo(models.Model):
 
     def __str__(self) -> str:
         return self.title or self.url or f'Video {self.id}'
+
+    def save(self, *args, **kwargs):
+        # Defense in depth: even though embed_html is admin-only, run every
+        # write through the iframe allow-list so a compromised staff account
+        # or a future importer/API path can't seed stored XSS on the PDP.
+        from plugins.installed.product_videos.sanitize import sanitize_embed_html
+        if self.embed_html:
+            self.embed_html = sanitize_embed_html(self.embed_html)
+        super().save(*args, **kwargs)

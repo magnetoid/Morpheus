@@ -21,6 +21,20 @@ app = Celery('morpheus')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+# ── Beat schedule ────────────────────────────────────────────────────────────
+# Long-running periodic jobs live here so the merchant doesn't need to set up
+# cron entries in Coolify. Each entry runs on the `beat` container.
+from celery.schedules import crontab  # noqa: E402
+
+app.conf.beat_schedule = {
+    # Prune the error log nightly so the table stays bounded on noisy
+    # storefronts. 30-day retention; older rows are deleted.
+    'core-errors-prune': {
+        'task': 'core.errors.tasks.prune_errors_task',
+        'schedule': crontab(hour=3, minute=15),  # 03:15 UTC daily
+    },
+}
+
 # Observability bootstrap — fail-soft: missing OTel deps must not break workers.
 try:
     from core.observability import init_observability
