@@ -175,15 +175,17 @@
     </style>
 
     <script type="module">
-      // Pinned to 2.11.7 (last 2.x stable). All three pin @tiptap/pm to
-      // the same version via ?deps= so StarterKit and Link share ONE copy
-      // of the ProseMirror plugin classes. Without this we got
-      // "RangeError: Adding different instances of a keyed plugin
-      // (plugin$)" on the second editor (short description) because each
-      // editor saw a different PluginKey class instance.
-      import { Editor } from 'https://esm.sh/@tiptap/core@2.11.7?deps=@tiptap/pm@2.11.7';
-      import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.11.7?deps=@tiptap/core@2.11.7,@tiptap/pm@2.11.7';
-      import Link from 'https://esm.sh/@tiptap/extension-link@2.11.7?deps=@tiptap/core@2.11.7,@tiptap/pm@2.11.7';
+      // TipTap 3.23.4 — pinned together so the transitive extension graph
+      // resolves to a self-consistent tree. The 2.x line broke here when
+      // esm.sh resolved StarterKit's transitive `extension-horizontal-rule`
+      // to v2.27 (which wanted a newer `canInsertNode` API than was in
+      // @tiptap/core@2.11.7), surfacing as a SyntaxError + the downstream
+      // RangeError "Adding different instances of a keyed plugin". In v3
+      // every extension carries the same version stamp as core so the
+      // transitive dep can't drift out from under us.
+      import { Editor } from 'https://esm.sh/@tiptap/core@3.23.4';
+      import StarterKit from 'https://esm.sh/@tiptap/starter-kit@3.23.4?deps=@tiptap/core@3.23.4';
+      import Link from 'https://esm.sh/@tiptap/extension-link@3.23.4?deps=@tiptap/core@3.23.4';
 
       function wireTiptap({ hiddenId, targetId, sourceId, toolbarId, allowHeadings, ariaLabel, exposeAs }) {
         const hidden  = document.getElementById(hiddenId);
