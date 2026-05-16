@@ -84,17 +84,20 @@
           <div id="short-description-toolbar" class="rte-toolbar" role="toolbar" aria-label="Short description formatting">
             <button type="button" class="rte-btn" data-rte="bold" title="Bold (⌘B)"><b>B</b></button>
             <button type="button" class="rte-btn" data-rte="italic" title="Italic (⌘I)"><i>I</i></button>
+            <button type="button" class="rte-btn" data-rte="strike" title="Strikethrough"><s>S</s></button>
+            <button type="button" class="rte-btn" data-rte="code" title="Inline code"><code style="font-size:.9em;">&lt;&gt;</code></button>
             <span class="rte-divider"></span>
             <button type="button" class="rte-btn" data-rte="bulletList" title="Bullet list">•</button>
             <button type="button" class="rte-btn" data-rte="orderedList" title="Numbered list">1.</button>
             <span class="rte-divider"></span>
             <button type="button" class="rte-btn" data-rte="link" title="Insert link">🔗</button>
             <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">⛓̸</button>
+            <button type="button" class="rte-btn" data-rte="clear" title="Clear formatting">⌫</button>
             <span class="rte-divider"></span>
             <button type="button" class="rte-btn" data-rte="undo" title="Undo">↶</button>
             <button type="button" class="rte-btn" data-rte="redo" title="Redo">↷</button>
             <span class="rte-spacer"></span>
-            <button type="button" class="rte-btn" data-rte="source" title="Toggle HTML source">&lt;/&gt;</button>
+            <button type="button" class="rte-btn" data-rte="source" title="Edit HTML source directly">HTML</button>
           </div>
           <div id="short-description-editor" class="rte-content rte-content-short"></div>
           <textarea id="short-description-source" class="rte-source rte-source-short" hidden></textarea>
@@ -115,6 +118,8 @@
           <div id="description-toolbar" class="rte-toolbar" role="toolbar" aria-label="Formatting">
             <button type="button" class="rte-btn" data-rte="bold" title="Bold (⌘B)"><b>B</b></button>
             <button type="button" class="rte-btn" data-rte="italic" title="Italic (⌘I)"><i>I</i></button>
+            <button type="button" class="rte-btn" data-rte="strike" title="Strikethrough"><s>S</s></button>
+            <button type="button" class="rte-btn" data-rte="code" title="Inline code"><code style="font-size:.9em;">&lt;&gt;</code></button>
             <span class="rte-divider"></span>
             <button type="button" class="rte-btn" data-rte="h2" title="Heading 2">H2</button>
             <button type="button" class="rte-btn" data-rte="h3" title="Heading 3">H3</button>
@@ -122,14 +127,18 @@
             <span class="rte-divider"></span>
             <button type="button" class="rte-btn" data-rte="bulletList" title="Bullet list">•</button>
             <button type="button" class="rte-btn" data-rte="orderedList" title="Numbered list">1.</button>
+            <button type="button" class="rte-btn" data-rte="blockquote" title="Blockquote">❝</button>
+            <button type="button" class="rte-btn" data-rte="codeBlock" title="Code block">≡&lt;&gt;</button>
+            <button type="button" class="rte-btn" data-rte="hr" title="Horizontal rule">―</button>
             <span class="rte-divider"></span>
             <button type="button" class="rte-btn" data-rte="link" title="Insert link">🔗</button>
             <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">⛓̸</button>
+            <button type="button" class="rte-btn" data-rte="clear" title="Clear formatting">⌫</button>
             <span class="rte-divider"></span>
             <button type="button" class="rte-btn" data-rte="undo" title="Undo">↶</button>
             <button type="button" class="rte-btn" data-rte="redo" title="Redo">↷</button>
             <span class="rte-spacer"></span>
-            <button type="button" class="rte-btn" data-rte="source" title="Toggle HTML source">&lt;/&gt;</button>
+            <button type="button" class="rte-btn" data-rte="source" title="Edit HTML source directly">HTML</button>
           </div>
           <div id="description-editor" class="rte-content"></div>
           <textarea id="description-source" class="rte-source" hidden></textarea>
@@ -156,6 +165,12 @@
       .rte-content p { margin: 0; }
       .rte-content ul, .rte-content ol { padding-left: 1.5em; }
       .rte-content a { color: var(--accent-ink, #1e40af); text-decoration: underline; }
+      .rte-content blockquote { border-left: 3px solid var(--border-strong); padding-left: 1em; margin-left: 0; color: var(--text-muted); font-style: italic; }
+      .rte-content code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+      .rte-content pre { background: var(--surface-2); padding: 0.75em 1em; border-radius: 4px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+      .rte-content pre code { background: transparent; padding: 0; }
+      .rte-content hr { border: 0; border-top: 1px solid var(--border); margin: 1.5em 0; }
+      .rte-content s, .rte-content del { color: var(--text-muted); }
       .rte-source { width: 100%; min-height: 280px; padding: 12px 14px; font-family: ui-monospace, monospace; font-size: 12px; border: 0; resize: vertical; background: var(--surface); color: var(--text); }
     </style>
 
@@ -205,6 +220,8 @@
         function refreshButtons() {
           setActive('bold',         editor.isActive('bold'));
           setActive('italic',       editor.isActive('italic'));
+          setActive('strike',       editor.isActive('strike'));
+          setActive('code',         editor.isActive('code'));
           if (allowHeadings) {
             setActive('h2',         editor.isActive('heading', { level: 2 }));
             setActive('h3',         editor.isActive('heading', { level: 3 }));
@@ -212,6 +229,8 @@
           }
           setActive('bulletList',   editor.isActive('bulletList'));
           setActive('orderedList',  editor.isActive('orderedList'));
+          setActive('blockquote',   editor.isActive('blockquote'));
+          setActive('codeBlock',    editor.isActive('codeBlock'));
           setActive('link',         editor.isActive('link'));
         }
         editor.on('selectionUpdate', refreshButtons);
@@ -225,11 +244,17 @@
           switch (a) {
             case 'bold':         chain.toggleBold().run(); break;
             case 'italic':       chain.toggleItalic().run(); break;
+            case 'strike':       chain.toggleStrike().run(); break;
+            case 'code':         chain.toggleCode().run(); break;
             case 'h2':           chain.toggleHeading({ level: 2 }).run(); break;
             case 'h3':           chain.toggleHeading({ level: 3 }).run(); break;
             case 'paragraph':    chain.setParagraph().run(); break;
             case 'bulletList':   chain.toggleBulletList().run(); break;
             case 'orderedList':  chain.toggleOrderedList().run(); break;
+            case 'blockquote':   chain.toggleBlockquote().run(); break;
+            case 'codeBlock':    chain.toggleCodeBlock().run(); break;
+            case 'hr':           chain.setHorizontalRule().run(); break;
+            case 'clear':        chain.unsetAllMarks().clearNodes().run(); break;
             case 'undo':         chain.undo().run(); break;
             case 'redo':         chain.redo().run(); break;
             case 'link': {
