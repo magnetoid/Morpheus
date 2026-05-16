@@ -37,7 +37,8 @@
       <div>
         <p class="eyebrow">{{ product.category.name|default:"Independent press" }}</p>
         <h1 class="display display-l" style="margin: 1rem 0 0.75rem;">{{ product.name }}<span class="text-accent">.</span></h1>
-        <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:"" }}</p>
+        {# shortDescription is HTML from the TipTap editor; render unescaped. #}
+        <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:""|safe }}</p>
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
           <span style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{{ product.price|money }}</span>

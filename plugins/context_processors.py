@@ -43,7 +43,7 @@ _SECTION_LABELS = {
     'analytics': 'Analytics',
     'seo': 'SEO',
     'growth': 'Growth',
-    'marketplace': 'Marketplace',
+    'marketplace': 'Multivendor',
     'plugins': 'More plugins',
     'developer': 'Developer tools',
     'access': 'Access & roles',

@@ -109,7 +109,7 @@
         </div>
         <div>
           <p class="title">{{ p.name }}</p>
-          <p class="author">{{ p.short_description|truncatewords:8 }}</p>
+          <p class="author">{{ p.short_description|striptags|truncatewords:8 }}</p>
           <p class="price">{{ p.price|money }}{% if p.compare_at_price %}<span class="compare">{{ p.compare_at_price|money }}</span>{% endif %}</p>
         </div>
       </a>
