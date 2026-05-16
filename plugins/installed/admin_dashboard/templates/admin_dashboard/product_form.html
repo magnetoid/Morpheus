@@ -160,9 +160,14 @@
     </style>
 
     <script type="module">
-      import { Editor } from 'https://esm.sh/@tiptap/core@2.10.3';
-      import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.10.3?deps=@tiptap/core@2.10.3';
-      import Link from 'https://esm.sh/@tiptap/extension-link@2.10.3?deps=@tiptap/core@2.10.3';
+      // Pinned to 2.11.7 (the last 2.x stable). 2.10.3 was broken — its
+      // StarterKit pulled in transitive extensions that needed canInsertNode,
+      // which wasn't exported from @tiptap/core until 2.10.4. The ?bundle
+      // flag inlines every transitive dep into one resolved tree so the
+      // versions can't drift apart again.
+      import { Editor } from 'https://esm.sh/@tiptap/core@2.11.7';
+      import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.11.7?bundle&deps=@tiptap/core@2.11.7';
+      import Link from 'https://esm.sh/@tiptap/extension-link@2.11.7?deps=@tiptap/core@2.11.7';
 
       function wireTiptap({ hiddenId, targetId, sourceId, toolbarId, allowHeadings, ariaLabel, exposeAs }) {
         const hidden  = document.getElementById(hiddenId);
