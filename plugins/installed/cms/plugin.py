@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin
+from morpheus import Plugin, events
 from morpheus import DashboardPage
 
 logger = logging.getLogger('morpheus.cms')
@@ -23,7 +23,7 @@ class CmsPlugin(Plugin):
 
     def ready(self) -> None:
         self.register_urls('plugins.installed.cms.urls', prefix='', namespace='cms')
-        self.register_hook('cms.form_submitted', self.on_form_submitted, priority=50)
+        self.register_hook(events.CMS_FORM_SUBMITTED, self.on_form_submitted, priority=50)
         # Theme sections register on import. Pull the active theme's
         # section bundle so the section_registry is populated before
         # any page render tries to look up a section_id. Other themes

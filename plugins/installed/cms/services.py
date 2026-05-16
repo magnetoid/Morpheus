@@ -88,7 +88,7 @@ def get_menu(key: str) -> dict | None:
 
 def submit_form(*, form, payload: dict, request=None):
     """Persist a FormSubmission, fire `cms.form_submitted` hook."""
-    from core.hooks import hook_registry
+    from core.hooks import MorpheusEvents, hook_registry
     from plugins.installed.cms.models import FormSubmission
 
     ip = request.META.get('REMOTE_ADDR', '') if request else ''
@@ -101,7 +101,7 @@ def submit_form(*, form, payload: dict, request=None):
         user_agent=ua[:300],
     )
     try:
-        hook_registry.fire('cms.form_submitted', form=form, submission=submission)
+        hook_registry.fire(MorpheusEvents.CMS_FORM_SUBMITTED, form=form, submission=submission)
     except Exception as e:  # noqa: BLE001
         logger.warning('cms: hook fire failed: %s', e)
     return submission

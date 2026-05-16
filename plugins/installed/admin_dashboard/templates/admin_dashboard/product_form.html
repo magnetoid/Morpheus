@@ -17,6 +17,11 @@
       {% if product %}{{ product.name }}{% else %}Add product{% endif %}
     </h1>
     <div class="flex items-center gap-2">
+      {% if product and product.slug %}
+      <a href="/products/{{ product.slug }}/" target="_blank" rel="noopener" class="btn" title="Open the public storefront page in a new tab">
+        <i data-lucide="external-link" class="h-4 w-4"></i> View on storefront
+      </a>
+      {% endif %}
       {% if product %}
       <form method="post" action="{% url 'admin_dashboard:product_delete' product_id=product.id %}"
             data-confirm="Delete this product? This cannot be undone." data-confirm-title="Delete product" data-confirm-cta="Delete" data-confirm-danger>
@@ -75,7 +80,26 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Short description</label>
-        <textarea name="short_description" rows="2" class="input">{{ form.short_description.value|default:'' }}</textarea>
+        <div id="short-description-editor-wrap" class="rte rte-short">
+          <div id="short-description-toolbar" class="rte-toolbar" role="toolbar" aria-label="Short description formatting">
+            <button type="button" class="rte-btn" data-rte="bold" title="Bold (⌘B)"><b>B</b></button>
+            <button type="button" class="rte-btn" data-rte="italic" title="Italic (⌘I)"><i>I</i></button>
+            <span class="rte-divider"></span>
+            <button type="button" class="rte-btn" data-rte="bulletList" title="Bullet list">•</button>
+            <button type="button" class="rte-btn" data-rte="orderedList" title="Numbered list">1.</button>
+            <span class="rte-divider"></span>
+            <button type="button" class="rte-btn" data-rte="link" title="Insert link">🔗</button>
+            <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">⛓̸</button>
+            <span class="rte-divider"></span>
+            <button type="button" class="rte-btn" data-rte="undo" title="Undo">↶</button>
+            <button type="button" class="rte-btn" data-rte="redo" title="Redo">↷</button>
+            <span class="rte-spacer"></span>
+            <button type="button" class="rte-btn" data-rte="source" title="Toggle HTML source">&lt;/&gt;</button>
+          </div>
+          <div id="short-description-editor" class="rte-content rte-content-short"></div>
+          <textarea id="short-description-source" class="rte-source rte-source-short" hidden></textarea>
+        </div>
+        <textarea id="product-short-description" name="short_description" hidden>{{ form.short_description.value|default:'' }}</textarea>
       </div>
       <div>
         <div class="flex items-center justify-between mb-1">
@@ -87,9 +111,194 @@
             <i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Draft with AI
           </button>
         </div>
-        <textarea id="product-description" name="description" rows="6" class="input">{{ form.description.value|default:'' }}</textarea>
+        <div id="description-editor-wrap" class="rte">
+          <div id="description-toolbar" class="rte-toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" class="rte-btn" data-rte="bold" title="Bold (⌘B)"><b>B</b></button>
+            <button type="button" class="rte-btn" data-rte="italic" title="Italic (⌘I)"><i>I</i></button>
+            <span class="rte-divider"></span>
+            <button type="button" class="rte-btn" data-rte="h2" title="Heading 2">H2</button>
+            <button type="button" class="rte-btn" data-rte="h3" title="Heading 3">H3</button>
+            <button type="button" class="rte-btn" data-rte="paragraph" title="Paragraph">¶</button>
+            <span class="rte-divider"></span>
+            <button type="button" class="rte-btn" data-rte="bulletList" title="Bullet list">•</button>
+            <button type="button" class="rte-btn" data-rte="orderedList" title="Numbered list">1.</button>
+            <span class="rte-divider"></span>
+            <button type="button" class="rte-btn" data-rte="link" title="Insert link">🔗</button>
+            <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">⛓̸</button>
+            <span class="rte-divider"></span>
+            <button type="button" class="rte-btn" data-rte="undo" title="Undo">↶</button>
+            <button type="button" class="rte-btn" data-rte="redo" title="Redo">↷</button>
+            <span class="rte-spacer"></span>
+            <button type="button" class="rte-btn" data-rte="source" title="Toggle HTML source">&lt;/&gt;</button>
+          </div>
+          <div id="description-editor" class="rte-content"></div>
+          <textarea id="description-source" class="rte-source" hidden></textarea>
+        </div>
+        <textarea id="product-description" name="description" hidden>{{ form.description.value|default:'' }}</textarea>
       </div>
     </div>
+
+    <style>
+      .rte { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+      .rte-toolbar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-bottom: 1px solid var(--border); background: var(--surface-2); border-radius: 6px 6px 0 0; }
+      .rte-btn { min-width: 28px; height: 28px; padding: 0 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text); cursor: pointer; font-size: 13px; line-height: 1; }
+      .rte-btn:hover { background: var(--surface); border-color: var(--border); }
+      .rte-btn.is-active { background: var(--text); color: var(--surface); border-color: var(--text); }
+      .rte-divider { width: 1px; background: var(--border); margin: 4px 2px; }
+      .rte-spacer { flex: 1; }
+      .rte-content { min-height: 280px; padding: 12px 14px; font-size: 14px; line-height: 1.6; color: var(--text); outline: none; }
+      .rte-content-short { min-height: 80px; }
+      .rte-source-short { min-height: 80px; }
+      .rte-content:focus { outline: none; }
+      .rte-content > * + * { margin-top: .7em; }
+      .rte-content h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1.2em; }
+      .rte-content h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1em; }
+      .rte-content p { margin: 0; }
+      .rte-content ul, .rte-content ol { padding-left: 1.5em; }
+      .rte-content a { color: var(--accent-ink, #1e40af); text-decoration: underline; }
+      .rte-source { width: 100%; min-height: 280px; padding: 12px 14px; font-family: ui-monospace, monospace; font-size: 12px; border: 0; resize: vertical; background: var(--surface); color: var(--text); }
+    </style>
+
+    <script type="module">
+      import { Editor } from 'https://esm.sh/@tiptap/core@2.10.3';
+      import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.10.3?deps=@tiptap/core@2.10.3';
+      import Link from 'https://esm.sh/@tiptap/extension-link@2.10.3?deps=@tiptap/core@2.10.3';
+
+      function wireTiptap({ hiddenId, targetId, sourceId, toolbarId, allowHeadings, ariaLabel, exposeAs }) {
+        const hidden  = document.getElementById(hiddenId);
+        const target  = document.getElementById(targetId);
+        const source  = document.getElementById(sourceId);
+        const toolbar = document.getElementById(toolbarId);
+        if (!hidden || !target || !toolbar) return null;
+
+        const extensions = [
+          StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false }),
+          Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener', target: '_blank' } }),
+        ];
+
+        const editor = new Editor({
+          element: target,
+          extensions,
+          content: hidden.value || '<p></p>',
+          editorProps: { attributes: { 'aria-label': ariaLabel } },
+          onUpdate({ editor }) {
+            const html = editor.getHTML();
+            hidden.value = html;
+            if (!source.hidden) source.value = html;
+            refreshButtons();
+          },
+        });
+
+        if (exposeAs) window[exposeAs] = editor;
+
+        function btn(action) { return toolbar.querySelector(`[data-rte="${action}"]`); }
+        function setActive(action, on) {
+          const b = btn(action);
+          if (b) b.classList.toggle('is-active', !!on);
+        }
+        function refreshButtons() {
+          setActive('bold',         editor.isActive('bold'));
+          setActive('italic',       editor.isActive('italic'));
+          if (allowHeadings) {
+            setActive('h2',         editor.isActive('heading', { level: 2 }));
+            setActive('h3',         editor.isActive('heading', { level: 3 }));
+            setActive('paragraph',  editor.isActive('paragraph'));
+          }
+          setActive('bulletList',   editor.isActive('bulletList'));
+          setActive('orderedList',  editor.isActive('orderedList'));
+          setActive('link',         editor.isActive('link'));
+        }
+        editor.on('selectionUpdate', refreshButtons);
+
+        toolbar.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-rte]');
+          if (!b) return;
+          e.preventDefault();
+          const a = b.dataset.rte;
+          const chain = editor.chain().focus();
+          switch (a) {
+            case 'bold':         chain.toggleBold().run(); break;
+            case 'italic':       chain.toggleItalic().run(); break;
+            case 'h2':           chain.toggleHeading({ level: 2 }).run(); break;
+            case 'h3':           chain.toggleHeading({ level: 3 }).run(); break;
+            case 'paragraph':    chain.setParagraph().run(); break;
+            case 'bulletList':   chain.toggleBulletList().run(); break;
+            case 'orderedList':  chain.toggleOrderedList().run(); break;
+            case 'undo':         chain.undo().run(); break;
+            case 'redo':         chain.redo().run(); break;
+            case 'link': {
+              const prev = editor.getAttributes('link').href || '';
+              const url = window.prompt('URL', prev);
+              if (url === null) return;
+              if (url === '') { editor.chain().focus().unsetLink().run(); return; }
+              editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+              break;
+            }
+            case 'unlink':       chain.unsetLink().run(); break;
+            case 'source': {
+              const showingSource = !source.hidden;
+              if (showingSource) {
+                editor.commands.setContent(source.value || '<p></p>');
+                source.hidden = true;
+                target.hidden = false;
+                b.classList.remove('is-active');
+              } else {
+                source.value = editor.getHTML();
+                source.hidden = false;
+                target.hidden = true;
+                b.classList.add('is-active');
+              }
+              break;
+            }
+          }
+          refreshButtons();
+        });
+
+        // External writes to `hidden.value` (e.g. AI-draft button) flow
+        // back into the editor. The legacy script uses `ta.value = …`
+        // directly, so we patch the setter too.
+        const obs = new MutationObserver(() => {
+          if (hidden.value !== editor.getHTML()) {
+            editor.commands.setContent(hidden.value || '<p></p>');
+          }
+        });
+        obs.observe(hidden, { attributes: true, childList: true, characterData: true, subtree: true });
+        const desc = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+        if (desc && desc.set) {
+          Object.defineProperty(hidden, 'value', {
+            get() { return desc.get.call(this); },
+            set(v) {
+              desc.set.call(this, v);
+              if (v !== editor.getHTML()) {
+                editor.commands.setContent(v || '<p></p>');
+              }
+            },
+          });
+        }
+
+        refreshButtons();
+        return editor;
+      }
+
+      wireTiptap({
+        hiddenId: 'product-description',
+        targetId: 'description-editor',
+        sourceId: 'description-source',
+        toolbarId: 'description-toolbar',
+        allowHeadings: true,
+        ariaLabel: 'Product description editor',
+        exposeAs: 'morphProductDescriptionEditor',
+      });
+      wireTiptap({
+        hiddenId: 'product-short-description',
+        targetId: 'short-description-editor',
+        sourceId: 'short-description-source',
+        toolbarId: 'short-description-toolbar',
+        allowHeadings: false,
+        ariaLabel: 'Short description editor',
+        exposeAs: 'morphProductShortDescriptionEditor',
+      });
+    </script>
 
     <script>
     (function () {

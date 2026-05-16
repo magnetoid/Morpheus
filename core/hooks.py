@@ -224,9 +224,20 @@ class MorpheusEvents:
     #                     handle recovery email, AI cart-summary,
     #                     CRM follow-up tasks. `email` is None when the
     #                     cart has no customer and no captured email.
+    # ADD_TO_CART       — kwargs: cart=Cart, item=CartItem, product=Product,
+    #                      variant=ProductVariant|None, quantity=int. Fires
+    #                      from storefront cart_add view AFTER the item is
+    #                      persisted. Subscribers: GA4 add_to_cart event.
+    # REMOVE_FROM_CART  — kwargs: cart=Cart, item=CartItem (pre-delete),
+    #                      product=Product, quantity=int.
+    # BEGIN_CHECKOUT    — kwargs: cart=Cart, customer=User|None. Fires once
+    #                      per session when the customer hits /checkout/.
     CART_CREATED = 'cart.created'
     CART_UPDATED = 'cart.updated'
     CART_ABANDONED = 'cart.abandoned'
+    ADD_TO_CART = 'cart.item_added'
+    REMOVE_FROM_CART = 'cart.item_removed'
+    BEGIN_CHECKOUT = 'checkout.started'
 
     # ── Filters ───────────────────────────────────────────────────────────
     # CART_CALCULATE_BREAKDOWN — value=dict (subtotal/shipping/tax/discount/
@@ -291,6 +302,16 @@ class MorpheusEvents:
     # ── AI (fire) ─────────────────────────────────────────────────────────
     AI_DESCRIPTION_GENERATED = 'ai.description_generated'
     AI_RECOMMENDATION_REQUESTED = 'ai.recommendation_requested'
+
+    # ── Agent intents (fire) — emitted by plugins/installed/ai_assistant ──
+    AGENT_INTENT_PROPOSED = 'agent.intent.proposed'
+    AGENT_INTENT_AUTHORIZED = 'agent.intent.authorized'
+    AGENT_INTENT_REJECTED = 'agent.intent.rejected'
+    AGENT_INTENT_COMPLETED = 'agent.intent.completed'
+    AGENT_INTENT_FAILED = 'agent.intent.failed'
+
+    # ── CMS (fire) ────────────────────────────────────────────────────────
+    CMS_FORM_SUBMITTED = 'cms.form_submitted'
 
     # ── Digital products (fire) ───────────────────────────────────────────
     # 'digital.tokens_issued' — kwargs: order=Order, tokens=list[DownloadToken].

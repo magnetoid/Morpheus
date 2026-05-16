@@ -22,7 +22,7 @@ from django.db import transaction
 from django.utils import timezone
 from djmoney.money import Money
 
-from core.hooks import hook_registry
+from core.hooks import MorpheusEvents, hook_registry
 from plugins.installed.ai_assistant.services.receipts import sign_receipt
 
 logger = logging.getLogger('morpheus.agent.intent')
@@ -123,7 +123,7 @@ def propose(
             actor='agent',
             note='Intent proposed',
         )
-    hook_registry.fire('agent.intent.proposed', intent=intent)
+    hook_registry.fire(MorpheusEvents.AGENT_INTENT_PROPOSED, intent=intent)
     return intent
 
 
@@ -168,13 +168,13 @@ def authorize(intent, *, actor: str = 'customer', note: str = '') -> None:
         raise IntentTransitionError('Intent expired before authorization')
     with transaction.atomic():
         _transition(intent, target='authorized', actor=actor, note=note)
-    hook_registry.fire('agent.intent.authorized', intent=intent)
+    hook_registry.fire(MorpheusEvents.AGENT_INTENT_AUTHORIZED, intent=intent)
 
 
 def reject(intent, *, actor: str = 'customer', reason: str = '') -> None:
     with transaction.atomic():
         _transition(intent, target='rejected', actor=actor, note=reason)
-    hook_registry.fire('agent.intent.rejected', intent=intent)
+    hook_registry.fire(MorpheusEvents.AGENT_INTENT_REJECTED, intent=intent)
 
 
 def begin_execute(intent) -> None:
@@ -215,7 +215,7 @@ def complete(
         intent.receipt_signed_at = timezone.now()
         intent.save(update_fields=['receipt_signature', 'receipt_signed_at', 'updated_at'])
 
-    hook_registry.fire('agent.intent.completed', intent=intent, receipt=payload, signature=signature)
+    hook_registry.fire(MorpheusEvents.AGENT_INTENT_COMPLETED, intent=intent, receipt=payload, signature=signature)
     return IntentResult(intent_id=str(intent.id), state=intent.state, receipt=payload, signature=signature)
 
 
@@ -224,7 +224,7 @@ def fail(intent, *, error: str, metadata: Optional[dict[str, Any]] = None) -> No
         intent.result = {**(intent.result or {}), 'error': error[:500]}
         intent.save(update_fields=['result', 'updated_at'])
         _transition(intent, target='failed', actor='agent', note=error, metadata=metadata)
-    hook_registry.fire('agent.intent.failed', intent=intent, error=error)
+    hook_registry.fire(MorpheusEvents.AGENT_INTENT_FAILED, intent=intent, error=error)
 
 
 def models_F_add(field: str, amount):

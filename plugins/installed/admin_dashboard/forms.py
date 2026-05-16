@@ -25,6 +25,26 @@ def _money(amount: str | Decimal | None, currency: str = 'USD'):
         return None
 
 
+import re as _re
+_HTML_TAG_RE = _re.compile(r'<\w+[\s>]')
+
+
+def _ensure_html(value: str | None) -> str:
+    """Return HTML, converting legacy Markdown when needed.
+
+    The TipTap editor expects HTML, but `populate_descriptions` historically
+    wrote Markdown to `Product.{short_description,description}`. We convert
+    on read so the editor renders the saved content correctly. Idempotent:
+    rows that already look like HTML pass through unchanged.
+    """
+    if not value:
+        return value or ''
+    if _HTML_TAG_RE.search(value):
+        return value
+    from core.templatetags.morph import markdown_to_html
+    return markdown_to_html(value)
+
+
 # ── Product ──────────────────────────────────────────────────────────────────
 
 
@@ -110,8 +130,10 @@ class ProductForm(forms.Form):
                 'cost_price': (
                     instance.cost_price.amount if instance.cost_price else None
                 ),
-                'short_description': instance.short_description,
-                'description': instance.description,
+                # TipTap stores HTML; legacy rows from populate_descriptions
+                # are Markdown — convert on read so the editor renders them.
+                'short_description': _ensure_html(instance.short_description),
+                'description': _ensure_html(instance.description),
                 'category': instance.category_id,
                 'vendor': instance.vendor_id,
                 'is_featured': instance.is_featured,

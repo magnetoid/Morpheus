@@ -177,7 +177,7 @@ class ShopifyImporter(BaseImporter):
             self.summary.increment('products')
 
     def _import_customer(self, record: dict) -> None:
-        from customers.models import Customer
+        from plugins.installed.customers.models import Customer
 
         source_id = str(record['id'])
         email = (record.get('email') or '').lower()
