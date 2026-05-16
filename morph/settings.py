@@ -171,8 +171,12 @@ MIDDLEWARE = [
     'plugins.installed.environments.middleware.EnvironmentMiddleware',
     'plugins.installed.seo.middleware.SeoRedirectMiddleware',
     'plugins.installed.analytics.middleware.AnalyticsMiddleware',
-    'core.errors.middleware.ErrorCaptureMiddleware',
+    # request_id MUST come before error-capture: process_exception runs in
+    # reverse MIDDLEWARE order, so error-capture (which reads request.request_id)
+    # has to be registered AFTER request_id. With the previous ordering every
+    # captured server ErrorEvent had request_id=''.
     'core.request_id.RequestIdMiddleware',
+    'core.errors.middleware.ErrorCaptureMiddleware',
 ]
 
 ROOT_URLCONF = 'morph.urls'
