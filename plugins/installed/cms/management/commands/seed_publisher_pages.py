@@ -86,8 +86,17 @@ PUBLISH_PAGE_BODY = """\
 
 <h3 style="margin: 0 0 1.5rem; font-size: 1.25rem;">Send us your work</h3>
 
-<form method="post" action="/forms/publish-with-us/submit/" class="cms-form publish-form" style="display:grid; gap: 1.2rem;">
+<form method="post" action="/forms/publish-with-us/submit/" class="cms-form publish-form" style="display:grid; gap: 1.2rem;" onsubmit="return _setPublishCsrf(this);">
+  {# CMS Page.body is rendered with |safe (no template eval), so we can't use {% csrf_token %}.
+     Instead inject the token from the Django csrftoken cookie at submit time. #}
   <input type="hidden" name="csrfmiddlewaretoken" value="">
+  <script>
+    function _setPublishCsrf(form) {
+      var m = document.cookie.match(/(?:^|;\\s*)csrftoken=([^;]+)/);
+      if (m) form.elements['csrfmiddlewaretoken'].value = decodeURIComponent(m[1]);
+      return true;
+    }
+  </script>
   <div>
     <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Manuscript title *</label>
     <input type="text" name="title" required class="input">

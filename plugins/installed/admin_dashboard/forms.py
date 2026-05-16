@@ -38,10 +38,20 @@ def _md_to_html(value: str) -> str:
     """
     from django.utils.html import escape as _esc
 
+    def _safe_href(url: str) -> str:
+        """Allow http(s), absolute paths, mailto, tel. Block javascript:,
+        data:, vbscript:, file:, etc. — anything that could execute on click.
+        """
+        u = (url or '').strip()
+        low = u.lower()
+        if low.startswith(('http://', 'https://', '/', 'mailto:', 'tel:')):
+            return _esc(u)
+        return '#'  # neuter unsafe schemes
+
     def _inline(text: str) -> str:
         text = _re.sub(
             r'\[([^\]]+)\]\(([^)\s]+)\)',
-            lambda m: f'<a href="{_esc(m.group(2))}">{m.group(1)}</a>',
+            lambda m: f'<a href="{_safe_href(m.group(2))}">{m.group(1)}</a>',
             text,
         )
         text = _re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
