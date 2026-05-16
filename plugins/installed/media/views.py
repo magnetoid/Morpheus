@@ -23,6 +23,163 @@ from plugins.installed.media.models import MediaAsset
 logger = logging.getLogger('morpheus.media.views')
 
 
+class _UnifiedAsset:
+    """Adapter that exposes a uniform shape across MediaAsset,
+    ProductImage, and Product.digital_file. The library template
+    iterates these by attribute name, so we mimic MediaAsset's
+    public surface (.is_image, .kind, .url, .filename, .mime_type,
+    .alt_text, .width, .height, .human_size) and add .edit_url so
+    the template can link back to the source of truth (admin
+    product edit form for ProductImage / digital_file, media
+    edit-meta for native MediaAsset rows).
+    """
+
+    __slots__ = (
+        'id', 'kind', 'url', 'filename', 'mime_type', 'alt_text',
+        'width', 'height', 'size_bytes', 'created_at',
+        'edit_url', 'source', 'source_label',
+    )
+
+    def __init__(self, *, id, kind, url, filename='', mime_type='',
+                 alt_text='', width=None, height=None, size_bytes=0,
+                 created_at=None, edit_url='', source='media',
+                 source_label=''):
+        self.id = id
+        self.kind = kind
+        self.url = url
+        self.filename = filename
+        self.mime_type = mime_type
+        self.alt_text = alt_text
+        self.width = width
+        self.height = height
+        self.size_bytes = size_bytes
+        self.created_at = created_at
+        self.edit_url = edit_url
+        self.source = source
+        self.source_label = source_label
+
+    @property
+    def is_image(self) -> bool:
+        return self.kind == 'image'
+
+    @property
+    def human_size(self) -> str:
+        n = float(self.size_bytes or 0)
+        for unit in ('B', 'KB', 'MB', 'GB'):
+            if n < 1024 or unit == 'GB':
+                return f'{n:,.1f} {unit}' if unit != 'B' else f'{int(n)} B'
+            n /= 1024
+        return f'{n:,.1f} GB'
+
+    @classmethod
+    def from_media_asset(cls, a) -> '_UnifiedAsset':
+        return cls(
+            id=str(a.id), kind=a.kind, url=a.url, filename=a.filename,
+            mime_type=a.mime_type, alt_text=a.alt_text,
+            width=a.width, height=a.height, size_bytes=a.size_bytes,
+            created_at=a.created_at,
+            edit_url=f'/dashboard/media/{a.id}/',
+            source='media', source_label='Library',
+        )
+
+    @classmethod
+    def from_product_image(cls, pi) -> '_UnifiedAsset':
+        try:
+            url = pi.image.url if pi.image else ''
+            size = pi.image.size if pi.image and pi.image.storage.exists(pi.image.name) else 0
+        except Exception:  # noqa: BLE001
+            url, size = '', 0
+        name = (pi.image.name or '').rsplit('/', 1)[-1]
+        return cls(
+            id=f'pi:{pi.id}', kind='image', url=url, filename=name or 'product-image',
+            mime_type='image/' + (name.rsplit('.', 1)[-1].lower() if '.' in name else 'jpeg'),
+            alt_text=pi.alt_text or '', size_bytes=size,
+            created_at=pi.created_at,
+            edit_url=f'/dashboard/products/{pi.product_id}/',
+            source='product_image', source_label='Product image',
+        )
+
+    @classmethod
+    def from_digital_file(cls, prod) -> '_UnifiedAsset':
+        try:
+            url = prod.digital_file.url if prod.digital_file else ''
+            size = prod.digital_file.size if prod.digital_file and prod.digital_file.storage.exists(prod.digital_file.name) else 0
+        except Exception:  # noqa: BLE001
+            url, size = '', 0
+        name = (prod.digital_file.name or '').rsplit('/', 1)[-1]
+        ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+        mime = {
+            'pdf': 'application/pdf',
+            'epub': 'application/epub+zip',
+            'zip': 'application/zip',
+            'txt': 'text/plain',
+            'csv': 'text/csv',
+            'mobi': 'application/x-mobipocket-ebook',
+        }.get(ext, 'application/octet-stream')
+        return cls(
+            id=f'dp:{prod.id}', kind='document', url=url,
+            filename=name or f'{prod.slug}.bin', mime_type=mime,
+            alt_text=prod.name, size_bytes=size,
+            created_at=prod.updated_at,
+            edit_url=f'/dashboard/products/{prod.id}/',
+            source='digital_product', source_label='Digital product',
+        )
+
+
+def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_UnifiedAsset]:
+    """Read-time union of MediaAsset, ProductImage, and Product.digital_file.
+
+    Filters apply uniformly across all three sources. Returned newest-first
+    by created_at. Hard-capped at 500 federated rows to keep the page
+    snappy — paginated views can plug in when this hits a real bottleneck.
+    """
+    items: list[_UnifiedAsset] = []
+
+    # 1) Native MediaAsset rows — always available.
+    qs = _filter_for_view(MediaAsset.objects.all(), view)
+    if search:
+        qs = qs.filter(Q(filename__icontains=search) | Q(alt_text__icontains=search))
+    if tag:
+        qs = qs.filter(tags__contains=[tag])
+    items.extend(_UnifiedAsset.from_media_asset(a) for a in qs[:300])
+
+    # 2) ProductImage rows — surface as images.
+    if view in ('all', 'image'):
+        try:
+            from plugins.installed.catalog.models import ProductImage
+            pi_qs = ProductImage.objects.select_related('product').order_by('-created_at')
+            if search:
+                pi_qs = pi_qs.filter(
+                    Q(image__icontains=search)
+                    | Q(alt_text__icontains=search)
+                    | Q(product__name__icontains=search)
+                )
+            items.extend(_UnifiedAsset.from_product_image(pi) for pi in pi_qs[:300])
+        except Exception as e:  # noqa: BLE001
+            logger.debug('media.federated: ProductImage skipped: %s', e)
+
+    # 3) Product.digital_file rows — surface as documents.
+    if view in ('all', 'document', 'pdf', 'spreadsheet', 'word', 'other'):
+        try:
+            from plugins.installed.catalog.models import Product
+            dp_qs = (Product.objects
+                     .filter(product_type='digital')
+                     .exclude(digital_file='')
+                     .exclude(digital_file__isnull=True)
+                     .order_by('-updated_at'))
+            if search:
+                dp_qs = dp_qs.filter(
+                    Q(name__icontains=search)
+                    | Q(digital_file__icontains=search)
+                )
+            items.extend(_UnifiedAsset.from_digital_file(p) for p in dp_qs[:200])
+        except Exception as e:  # noqa: BLE001
+            logger.debug('media.federated: digital_file skipped: %s', e)
+
+    items.sort(key=lambda a: a.created_at or '', reverse=True)
+    return items[:500]
+
+
 # Mime → "view" classifier for fine-grained tabs within the document kind.
 # Order is significant — first match wins.
 _DOC_VIEWS = (
@@ -60,11 +217,31 @@ def _filter_for_view(qs, view: str):
 
 
 def _build_tabs(view: str) -> list[dict]:
-    """Pre-counted tab list rendered into the template."""
+    """Pre-counted tab list rendered into the template.
+
+    Counts include federated rows (ProductImage + Product.digital_file)
+    so the tab numbers match what the user actually sees on each tab.
+    """
     base = MediaAsset.objects.all()
+
+    # Cheap federated counts — one COUNT(*) per source. Tolerate missing
+    # tables (fresh install before migrations) by zeroing out on error.
+    pi_count = 0
+    dp_count = 0
+    try:
+        from plugins.installed.catalog.models import Product, ProductImage
+        pi_count = ProductImage.objects.count()
+        dp_count = (Product.objects
+                    .filter(product_type='digital')
+                    .exclude(digital_file='')
+                    .exclude(digital_file__isnull=True)
+                    .count())
+    except Exception:  # noqa: BLE001
+        pass
+
     tabs = [{
         'key': 'all', 'label': 'All', 'icon': 'layers',
-        'count': base.count(),
+        'count': base.count() + pi_count + dp_count,
         'active': view in ('all', ''),
     }]
     for key, label, icon in (
@@ -72,9 +249,12 @@ def _build_tabs(view: str) -> list[dict]:
         ('video', 'Videos', 'film'),
         ('audio', 'Audio',  'music'),
     ):
+        c = base.filter(kind=key).count()
+        if key == 'image':
+            c += pi_count
         tabs.append({
             'key': key, 'label': label, 'icon': icon,
-            'count': base.filter(kind=key).count(),
+            'count': c,
             'active': view == key,
         })
     for key, label, icon, _ in _DOC_VIEWS:
@@ -85,7 +265,7 @@ def _build_tabs(view: str) -> list[dict]:
         })
     tabs.append({
         'key': 'document', 'label': 'Other docs', 'icon': 'file',
-        'count': _filter_for_view(base, 'document').count(),
+        'count': _filter_for_view(base, 'document').count() + dp_count,
         'active': view == 'document',
     })
     tabs.append({
@@ -130,28 +310,9 @@ def library(request: HttpRequest) -> HttpResponse:
             'active_nav': 'assets',
         })
 
-    qs = _filter_for_view(MediaAsset.objects.all(), view)
     search = (request.GET.get('q') or '').strip()
-    if search:
-        qs = qs.filter(
-            Q(filename__icontains=search) | Q(alt_text__icontains=search)
-        )
     tag = (request.GET.get('tag') or '').strip()
-    if tag:
-        qs = qs.filter(tags__contains=[tag])
-
-    try:
-        from plugins.installed.admin_dashboard.views_split._shared import paginate_and_sort
-        page_obj, paging_ctx = paginate_and_sort(
-            request, qs,
-            default_sort='-created_at',
-            allowed_sorts=('created_at', 'filename', 'size_bytes', 'kind'),
-            default_per_page=60,
-        )
-        assets = list(page_obj.object_list)
-    except Exception:  # noqa: BLE001
-        paging_ctx = {}
-        assets = list(qs[:200])
+    assets = _federated_assets(view, search=search, tag=tag)
 
     return render(request, 'media/library.html', {
         'assets': assets,
@@ -160,7 +321,6 @@ def library(request: HttpRequest) -> HttpResponse:
         'tag': tag,
         'kind_tabs': _build_tabs(view),
         'active_nav': 'assets',
-        **paging_ctx,
     })
 
 
