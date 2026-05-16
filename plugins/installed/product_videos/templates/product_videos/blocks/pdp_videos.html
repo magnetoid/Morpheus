@@ -1,0 +1,47 @@
+{# product_videos: PDP block rendered above the long description. #}
+{% if product %}
+{% with videos=product.videos.all %}
+{% if videos %}
+<section class="pdp-videos wrap-narrow" aria-label="Videos">
+  <p class="eyebrow" style="margin-bottom: 0.75rem;">Watch</p>
+  <hr class="rule" style="margin-bottom: 1.5rem;">
+
+  {% for v in videos %}
+  {% if v.is_active %}
+  <figure class="pdp-video">
+    {% if v.embed_html %}
+      {{ v.embed_html|safe }}
+    {% else %}
+      {# url-based: auto-detect YouTube / Vimeo, otherwise <video> tag. #}
+      {% if "youtube.com/watch" in v.url or "youtu.be/" in v.url %}
+        {% include "product_videos/blocks/_youtube.html" with url=v.url title=v.title %}
+      {% elif "vimeo.com/" in v.url %}
+        {% include "product_videos/blocks/_vimeo.html" with url=v.url title=v.title %}
+      {% else %}
+        <video controls preload="metadata"
+               {% if v.poster_url %}poster="{{ v.poster_url }}"{% endif %}
+               style="width:100%; aspect-ratio: 16/9; border-radius: 6px; background:#000;">
+          <source src="{{ v.url }}">
+        </video>
+      {% endif %}
+    {% endif %}
+    {% if v.title %}<figcaption class="pdp-video-caption">{{ v.title }}</figcaption>{% endif %}
+  </figure>
+  {% endif %}
+  {% endfor %}
+</section>
+
+<style>
+.pdp-videos { margin: 3rem auto 0; max-width: 70ch; }
+.pdp-video { margin: 0 0 1.5rem; }
+.pdp-video iframe, .pdp-video video {
+  width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 6px; display: block;
+}
+.pdp-video-caption {
+  margin-top: .5rem; font-size: .85rem; color: var(--muted);
+  font-style: italic; text-align: center;
+}
+</style>
+{% endif %}
+{% endwith %}
+{% endif %}

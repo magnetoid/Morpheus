@@ -1,0 +1,12 @@
+{# Vimeo embed. #}
+{% load product_videos %}
+{% with vid=url|vimeo_id %}
+{% if vid %}
+<iframe src="https://player.vimeo.com/video/{{ vid }}?dnt=1"
+        title="{{ title|default:'Vimeo video' }}"
+        loading="lazy"
+        allow="autoplay; fullscreen; picture-in-picture"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen></iframe>
+{% endif %}
+{% endwith %}
