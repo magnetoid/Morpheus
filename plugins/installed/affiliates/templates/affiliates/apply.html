@@ -1,0 +1,33 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;">
+
+    <p class="eyebrow">Partner with us</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Become an affiliate<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2.5rem;">Earn a commission on every order that arrives through your link. We approve thoughtful recommenders — bloggers, newsletters, podcasts, reading lists — within a few days.</p>
+
+    {% if existing %}
+      <div class="card card-padded" style="background: var(--paper-2); padding: 1.5rem; border-radius: 6px;">
+        <p style="font-weight: 600; margin: 0 0 .5rem;">You've already applied.</p>
+        <p style="margin: 0 0 1rem; color: var(--ink-2);">
+          Status: <strong>{{ existing.get_status_display }}</strong> · Handle: <code>{{ existing.handle }}</code>
+        </p>
+        <a href="/affiliates/me/" class="btn btn-primary">Open your dashboard →</a>
+      </div>
+    {% elif error %}
+      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem; border-radius:6px; margin-bottom: 1.5rem;">
+        {{ error }}
+      </div>
+      {% if programs %}{% include "affiliates/_apply_form.html" %}{% endif %}
+    {% elif not programs %}
+      <p style="color: var(--muted);">No active programs are accepting applications right now. Please check back soon.</p>
+    {% else %}
+      {% include "affiliates/_apply_form.html" %}
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

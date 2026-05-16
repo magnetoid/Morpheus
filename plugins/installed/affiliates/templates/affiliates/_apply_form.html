@@ -1,0 +1,38 @@
+{# Affiliate application form — shared by the success/error paths. #}
+<form method="post" action="/affiliates/apply/" style="display:grid; gap: 1.25rem;">
+  {% csrf_token %}
+  <div>
+    <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Your handle *</label>
+    <input type="text" name="handle" required class="input" maxlength="80"
+           placeholder="e.g. anna-reads — lower-case, dashes only">
+    <p style="font-size: .8rem; color: var(--muted); margin-top: .35rem;">Shows up in your tracked links: <code>/r/&lt;handle&gt;-abc123</code>.</p>
+  </div>
+  {% if programs|length > 1 %}
+  <div>
+    <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Program</label>
+    <select name="program_slug" class="input">
+      {% for p in programs %}
+      <option value="{{ p.slug }}">{{ p.name }} — {% if p.commission_type == 'percent' %}{{ p.commission_value|floatformat:1 }}%{% else %}{{ p.commission_value|floatformat:2 }} fixed{% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% else %}
+  <input type="hidden" name="program_slug" value="{{ programs.0.slug }}">
+  {% endif %}
+  <div>
+    <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Payout email (optional)</label>
+    <input type="email" name="payout_email" class="input" placeholder="defaults to your account email">
+  </div>
+  <div>
+    <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Company / outlet (optional)</label>
+    <input type="text" name="company" class="input" maxlength="200" placeholder="Newsletter, podcast, blog, or company name">
+  </div>
+  <div>
+    <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tell us about your audience</label>
+    <textarea name="notes" rows="5" class="input" placeholder="What kinds of books do you recommend? Roughly how many people will see your links?"></textarea>
+  </div>
+  <div style="margin-top: 1rem;">
+    <button type="submit" class="btn btn-primary" style="padding: .8rem 2rem;">Send application</button>
+    <p style="font-size: .8rem; color: var(--muted); margin-top: .75rem;">We typically review within 3 business days.</p>
+  </div>
+</form>

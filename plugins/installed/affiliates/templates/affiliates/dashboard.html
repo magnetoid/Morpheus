@@ -1,0 +1,79 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 880px;">
+
+    <p class="eyebrow">Your account</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">Affiliate dashboard<span class="text-accent">.</span></h1>
+
+    {% if not accounts %}
+      <div class="card card-padded" style="background: var(--paper-2); padding: 2rem; border-radius: 6px;">
+        <p style="margin: 0 0 1rem;">You don't have an affiliate account yet.</p>
+        <a href="/affiliates/apply/" class="btn btn-primary">Apply →</a>
+      </div>
+    {% else %}
+
+    {% for a in accounts %}
+    <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
+      <header style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <p class="eyebrow">{{ a.program.name }}</p>
+          <h2 style="font-family: var(--serif); font-size: 1.4rem; margin: .25rem 0 0;">@{{ a.handle }}</h2>
+        </div>
+        <div style="text-align: right;">
+          {% if a.status == 'approved' %}
+            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#d6f3e3; color:#1f7a4d; font-size:.75rem; font-weight:600;">Approved</span>
+          {% elif a.status == 'pending' %}
+            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#ffeacc; color:#b86e00; font-size:.75rem; font-weight:600;">Pending review</span>
+          {% elif a.status == 'suspended' %}
+            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#fde7e9; color:#b3261e; font-size:.75rem; font-weight:600;">Suspended</span>
+          {% else %}
+            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#eee; color:#666; font-size:.75rem; font-weight:600;">{{ a.get_status_display }}</span>
+          {% endif %}
+          <p style="margin: .5rem 0 0; font-size: .85rem; color: var(--muted);">Accrued: <strong style="color: var(--ink);">{{ a.accrued_balance }}</strong></p>
+        </div>
+      </header>
+
+      {% if a.status == 'approved' %}
+        <div style="margin-top: 1.5rem;">
+          <p class="eyebrow" style="margin-bottom: .75rem;">Your tracked links</p>
+          {% for link in a.tracked_links %}
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid var(--rule);">
+            <code style="font-size: .85rem; color: var(--ink);">{{ site_base }}/r/{{ link.code }}</code>
+            <span style="font-size: .8rem; color: var(--muted);">→ {{ link.landing_url }}</span>
+            {% if link.label %}<span style="font-size: .8rem; color: var(--muted); font-style: italic;">{{ link.label }}</span>{% endif %}
+            <span style="margin-left:auto; font-size: .8rem; color: var(--muted);">{{ link.click_count }} click{{ link.click_count|pluralize }} · {{ link.conversion_count }} conv.</span>
+          </div>
+          {% empty %}
+          <p style="color: var(--muted); font-size: .9rem;">No links yet — create your first below.</p>
+          {% endfor %}
+
+          <form method="post" action="/affiliates/me/links/new/"
+                style="display: grid; grid-template-columns: 1fr 1fr auto; gap: .5rem; margin-top: 1rem; align-items: end;">
+            {% csrf_token %}
+            <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+            <div>
+              <label style="font-size: .75rem; color: var(--muted);">Landing path</label>
+              <input type="text" name="landing_url" value="/" required
+                     style="width:100%; padding:.5rem .65rem; border:1px solid var(--rule); border-radius:4px; font-family: ui-monospace, monospace;">
+            </div>
+            <div>
+              <label style="font-size: .75rem; color: var(--muted);">Label (optional)</label>
+              <input type="text" name="label" maxlength="100" placeholder="e.g. Newsletter Jan"
+                     style="width:100%; padding:.5rem .65rem; border:1px solid var(--rule); border-radius:4px;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="height: 38px;">Create link</button>
+          </form>
+        </div>
+      {% elif a.status == 'pending' %}
+        <p style="color: var(--muted); font-size: .9rem;">We're reviewing your application. You'll be able to create tracked links here once approved.</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
