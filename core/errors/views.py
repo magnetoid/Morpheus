@@ -84,6 +84,10 @@ def _origin_allowed(origin: str) -> bool:
 @staff_member_required
 def errors_list(request: HttpRequest) -> HttpResponse:
     """Grouped list of recent errors — one row per fingerprint."""
+    from datetime import timedelta
+    from django.db.models.functions import TruncHour
+    from django.utils import timezone
+
     qs = ErrorEvent.objects.all()
 
     kind = request.GET.get('kind', '')
@@ -100,15 +104,51 @@ def errors_list(request: HttpRequest) -> HttpResponse:
         .order_by('-last_seen')[:200]
     )
 
-    total_server = ErrorEvent.objects.filter(kind='server').count()
-    total_client = ErrorEvent.objects.filter(kind='client').count()
+    # Summary counters across the same filter as the list — gives context
+    # without forcing the user to add `?kind=...` to the URL.
+    now = timezone.now()
+    last_24h = now - timedelta(hours=24)
+    last_7d = now - timedelta(days=7)
+    counts = {
+        'total': qs.count(),
+        'last_24h': qs.filter(created_at__gte=last_24h).count(),
+        'last_7d': qs.filter(created_at__gte=last_7d).count(),
+        'server': ErrorEvent.objects.filter(kind='server').count(),
+        'client': ErrorEvent.objects.filter(kind='client').count(),
+    }
+
+    # 24-bucket hourly sparkline. Build a {hour: count} dict, zero-fill,
+    # then pre-compute SVG bar coords in Python so the template can stay
+    # dumb (Django templates don't do arithmetic well).
+    by_hour = {
+        row['hour']: row['c']
+        for row in qs.filter(created_at__gte=last_24h)
+                     .annotate(hour=TruncHour('created_at'))
+                     .values('hour').annotate(c=Count('id'))
+    }
+    raw = []
+    for i in range(24, 0, -1):
+        bucket = (now - timedelta(hours=i)).replace(minute=0, second=0, microsecond=0)
+        raw.append(by_hour.get(bucket, 0))
+    spark_max = max(raw) or 1
+    # Each bar: x in [0..480], y from bottom (56), width 18, evenly spaced.
+    spark_bars = []
+    for idx, v in enumerate(raw):
+        x = int(idx * 480 / 24)
+        h = int(v * 56 / spark_max) if v else 1
+        y = 56 - h
+        spark_bars.append({'x': x, 'y': y, 'h': h, 'v': v})
 
     return render(request, 'admin_dashboard/errors_list.html', {
         'rows': list(grouped),
         'kind_filter': kind,
         'search': search,
-        'total_server': total_server,
-        'total_client': total_client,
+        'counts': counts,
+        'spark_bars': spark_bars,
+        'spark_max': spark_max,
+        # Legacy keys (still used by the template for back-compat):
+        'total_server': counts['server'],
+        'total_client': counts['client'],
         'active_nav': 'errors',
     })
 
