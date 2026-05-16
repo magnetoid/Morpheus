@@ -1,0 +1,87 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Categories · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Categories</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">{{ total_active }} active{% if total_inactive %} · {{ total_inactive }} inactive{% endif %} · the catalog tree that powers product browsing and SEO landing pages.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if show_inactive %}
+      <a href="?q={{ search }}" class="btn">Show active only</a>
+      {% else %}
+      <a href="?q={{ search }}&amp;inactive=1" class="btn">Include inactive</a>
+      {% endif %}
+      <a href="/admin/catalog/category/add/" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New category</a>
+    </div>
+  </div>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    {% if show_inactive %}<input type="hidden" name="inactive" value="1">{% endif %}
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+      <input name="q" value="{{ search }}" placeholder="Search by name" class="input input-search">
+    </div>
+    <button class="btn btn-primary">Search</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    {% if rows %}
+    <table class="w-full text-sm">
+      <thead class="bg-[color:var(--surface-2)]">
+        <tr class="text-left">
+          <th class="px-4 py-2 font-medium">Name</th>
+          <th class="px-4 py-2 font-medium">Slug</th>
+          <th class="px-4 py-2 font-medium">Parent</th>
+          <th class="px-4 py-2 font-medium text-right">Products</th>
+          <th class="px-4 py-2 font-medium">Status</th>
+          <th class="px-4 py-2 font-medium">Updated</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-[color:var(--border)] {% if not row.is_active %}opacity-60{% endif %}">
+          <td class="px-4 py-2">
+            <span style="display: inline-block; width: {{ row.level }}em;"></span>
+            {% if row.level %}<span class="text-[color:var(--text-subtle)]">└─ </span>{% endif %}
+            <a href="/admin/catalog/category/{{ row.id }}/change/" class="font-medium hover:underline">{{ row.name }}</a>
+          </td>
+          <td class="px-4 py-2 text-[color:var(--text-muted)] font-mono text-xs">{{ row.slug }}</td>
+          <td class="px-4 py-2 text-[color:var(--text-muted)]">{{ row.parent_name|default:"—" }}</td>
+          <td class="px-4 py-2 text-right tabular-nums">
+            <a href="{% url 'admin_dashboard:products' %}?q={{ row.name }}" class="hover:underline">{{ row.product_count }}</a>
+          </td>
+          <td class="px-4 py-2">
+            {% if row.is_active %}
+            <span class="pill pill-success">Active</span>
+            {% else %}
+            <span class="pill">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2 text-[color:var(--text-muted)] text-xs">{{ row.updated_at|date:"Y-m-d H:i" }}</td>
+          <td class="px-4 py-2 text-right">
+            <a href="/category/{{ row.slug }}/" target="_blank" rel="noopener" class="btn btn-ghost text-xs" title="View on storefront">
+              <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="px-4 py-12 text-center text-[color:var(--text-muted)]">
+      {% if search %}
+      No categories match <strong>{{ search }}</strong>. <a href="?" class="underline">Clear search</a>.
+      {% else %}
+      No categories yet. <a href="/admin/catalog/category/add/" class="underline">Create the first one</a>.
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

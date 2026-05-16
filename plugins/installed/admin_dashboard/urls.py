@@ -136,6 +136,7 @@ urlpatterns = [
     path('products/<uuid:product_id>/images/upload/', views.image_upload, name='image_upload'),
     path('products/<uuid:product_id>/images/<uuid:image_id>/delete/', views.image_delete, name='image_delete'),
     path('products/<uuid:product_id>/images/<uuid:image_id>/primary/', views.image_set_primary, name='image_set_primary'),
+    path('categories/', views.categories_list, name='categories'),
     path('customers/', views.customers_list, name='customers'),
     path('customers/bulk/', views.customers_bulk, name='customers_bulk'),
     path('customers/new/', views.customer_new, name='customer_new'),
