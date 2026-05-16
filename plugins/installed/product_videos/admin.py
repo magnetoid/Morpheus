@@ -8,7 +8,7 @@ class ProductVideoAdmin(admin.ModelAdmin):
     list_display = ('title', 'product', 'is_active', 'sort_order', 'updated_at')
     list_filter = ('is_active', 'created_at')
     search_fields = ('title', 'url', 'product__name', 'product__sku')
-    autocomplete_fields = ('product',)
+    raw_id_fields = ('product',)
     ordering = ('product', 'sort_order')
     fieldsets = (
         (None, {
