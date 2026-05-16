@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f1f1f1">
 <title>{% block title %}Morpheus admin{% endblock %}</title>
-<!-- crossorigin=anonymous on every CDN script so window.onerror sees real
-     error messages + stack frames (browsers anonymize CORS-missing scripts
-     to plain "Script error." which is useless for debugging). -->
-<script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
+<!-- crossorigin=anonymous on CORS-serving CDNs only so window.onerror sees
+     real error messages + stack frames. cdn.tailwindcss.com does NOT serve
+     Access-Control-Allow-Origin, so the crossorigin attribute makes the
+     browser block it outright — leave it bare. unpkg.com does serve CORS,
+     so its scripts keep the attribute. -->
+<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest" crossorigin="anonymous"></script>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
 <!-- Catch unhandled JS errors + unhandledrejection → /api/errors/client/. -->
