@@ -343,10 +343,15 @@ def product_detail(request, slug):
     # The GraphQL `images` field is a flat list of {url, altText, isPrimary}.
     # Resolve the hero image once so the template can stay simple.
     images = product.get('images') or []
-    # `primary_image` is the EXPLICITLY-marked primary or None — used by the
-    # cover template, which must NEVER fall back to a non-primary image
-    # (slider images are a separate concept).
-    primary_image = next((i for i in images if i.get('isPrimary')), None)
+    # `primary_images` is the list of EXPLICITLY-marked primaries (front +
+    # optional back). Front-cover convention is the lowest sort_order
+    # among the primaries — but the GraphQL query doesn't ship sort_order
+    # today, so we trust the server-side ordering (Meta.ordering already
+    # sorts ProductImage by sort_order). Take up to two.
+    primary_images = [i for i in images if i.get('isPrimary')][:2]
+    # `primary_image` (singular) = the front cover, used by anything that
+    # wants just one image (back-compat).
+    primary_image = primary_images[0] if primary_images else None
     # `hero_image` keeps its historic fallback-to-first behavior for any
     # caller that wants "best available image" (e.g. og:image / JSON-LD).
     hero_image = primary_image or (images[0] if images else None)
@@ -383,6 +388,8 @@ def product_detail(request, slug):
     return render(request, 'storefront/product_detail.html', {
         'product': product,
         'hero_image': hero_image,
+        'primary_image': primary_image,
+        'primary_images': primary_images,
         'related_products': related,
         'book_specs': _book_specs(slug),
         'reviews': _published_reviews(slug),

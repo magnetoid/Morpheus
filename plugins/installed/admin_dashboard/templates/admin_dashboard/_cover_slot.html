@@ -1,0 +1,99 @@
+{% comment %}
+One cover slot (front or back). Renders the preview if a matching
+primary image exists, otherwise an empty drop-zone. Upload posts
+to image_upload with cover_slot=<slot>; delete posts to
+image_delete; the wrapper card carries the slot label.
+
+Caller context:
+  product     — the catalog.Product instance
+  images      — pre-loaded list of ProductImage rows for the product
+  slot        — 'front' or 'back'
+  slot_label  — display label (e.g. "Front cover")
+
+Convention: sort_order 0 = front, 1 = back, anything else = slider.
+{% endcomment %}
+
+{# Resolve the current image for this slot, if any. #}
+{% with slot_sort=0 %}
+{% if slot == 'back' %}{% with slot_sort=1 %}{% endwith %}{% endif %}
+{% endwith %}
+
+<div class="card overflow-hidden">
+  {# Preview pane. Pull the image whose sort_order matches the slot. #}
+  <div style="aspect-ratio: 2/3; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden; position: relative;">
+    {% with current=None %}
+    {% for img in images %}
+      {% if img.is_primary %}
+        {% if slot == 'front' and img.sort_order == 0 %}{% with current=img %}{% endwith %}{% endif %}
+        {% if slot == 'back'  and img.sort_order == 1 %}{% with current=img %}{% endwith %}{% endif %}
+      {% endif %}
+    {% endfor %}
+    {% endwith %}
+
+    {# Render whatever sits in this slot. #}
+    {% for img in images %}
+      {% if img.is_primary %}
+        {% if slot == 'front' and img.sort_order == 0 %}
+          <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" style="width:100%; height:100%; object-fit:cover;">
+        {% elif slot == 'back' and img.sort_order == 1 %}
+          <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" style="width:100%; height:100%; object-fit:cover;">
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+
+    {# Empty-state hint when this slot is empty. #}
+    {% with has=0 %}
+    {% for img in images %}
+      {% if img.is_primary %}
+        {% if slot == 'front' and img.sort_order == 0 %}{% with has=1 %}{% endwith %}{% endif %}
+        {% if slot == 'back'  and img.sort_order == 1 %}{% with has=1 %}{% endwith %}{% endif %}
+      {% endif %}
+    {% endfor %}
+    {% endwith %}
+  </div>
+
+  <div class="card-padded" style="padding:.6rem .75rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem;">
+    <span class="pill pill-info"><i data-lucide="star" class="h-3 w-3" style="margin-right:.2rem;"></i> {{ slot|upper }}</span>
+
+    {# Delete button shows ONLY when this slot has an image. #}
+    {% for img in images %}
+      {% if img.is_primary %}
+        {% if slot == 'front' and img.sort_order == 0 %}
+          <form method="post" action="{% url 'admin_dashboard:image_delete' product_id=product.id image_id=img.id %}"
+                data-confirm="Delete the {{ slot_label|lower }}? This cannot be undone." data-confirm-cta="Delete" data-confirm-danger
+                style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost p-1" aria-label="Delete {{ slot_label|lower }}" title="Delete {{ slot_label|lower }}">
+              <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+            </button>
+          </form>
+        {% elif slot == 'back' and img.sort_order == 1 %}
+          <form method="post" action="{% url 'admin_dashboard:image_delete' product_id=product.id image_id=img.id %}"
+                data-confirm="Delete the {{ slot_label|lower }}? This cannot be undone." data-confirm-cta="Delete" data-confirm-danger
+                style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost p-1" aria-label="Delete {{ slot_label|lower }}" title="Delete {{ slot_label|lower }}">
+              <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+            </button>
+          </form>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {# Upload dropzone for this slot. Auto-submits on file pick. #}
+  <form method="post" enctype="multipart/form-data"
+        action="{% url 'admin_dashboard:image_upload' product_id=product.id %}"
+        class="card-padded space-y-2" style="border-top: 1px solid var(--border); padding: .75rem;" hx-boost="false">
+    {% csrf_token %}
+    <input type="hidden" name="cover_slot" value="{{ slot }}">
+    <label for="img-upload-{{ slot }}" id="img-dropzone-{{ slot }}" class="dz" style="padding: .75rem; cursor: pointer;">
+      <div class="dz-stack">
+        <i data-lucide="upload-cloud" class="h-5 w-5 dz-icon"></i>
+        <p class="dz-headline" style="font-size:.85rem;">Drop {{ slot_label|lower }} or click</p>
+        <p id="dz-filename-{{ slot }}" class="dz-filename" hidden></p>
+      </div>
+      <input id="img-upload-{{ slot }}" type="file" name="image" accept="image/*" required class="dz-input">
+    </label>
+  </form>
+</div>

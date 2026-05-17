@@ -1,36 +1,51 @@
 {% load seo %}{% comment %}
-Renders the EXPLICIT primary product image(s) as the PDP cover.
-NEVER falls back to a non-primary image — main and slider are
-separate by design; promoting a slider image to "main" by accident
-is exactly what we forbid.
+Renders the EXPLICIT main cover image(s) as the PDP cover.
+
+A product can have 1 or 2 main images:
+  * 1 image → front cover only (portrait 2:3, takes the full column)
+  * 2 images → front + back, side-by-side at smaller scale, each 2:3
+NEVER falls back to a non-primary image; slider images are a
+separate concept and must not be promoted silently.
 
 Caller context:
-  primary_image — pre-resolved by the view (next(... isPrimary ...))
-                  or None if no image is marked is_primary. This is
-                  the ONLY source the cover honors.
-  alt           — fallback alt text (typically product.name)
-  slug          — product slug (used for view-transition-name)
-
-If primary_image is None → render the book-shaped placeholder.
-To set the cover: from the admin product form, click the ★ button on
-any slider image, or upload via the Main-image dropzone.
+  primary_images — list of up to 2 image dicts (front first, then back),
+                   pre-resolved by the storefront view. Empty list → no
+                   primaries marked → placeholder shows.
+  alt            — fallback alt text (typically product.name)
+  slug           — product slug (used for view-transition-name)
 {% endcomment %}
 
 <style>
-  /* seo_responsive_image emits <picture><img> at intrinsic size — force
-     it to fill the wrapper so the cover uses the column's full width. */
-  .pgal-main { width: 100%; max-width: 480px; }
-  .pgal-main .cover-wrap { width: 100%; }
+  /* The wrapper holds 1 or 2 portrait covers. seo_responsive_image emits
+     <picture><img> at intrinsic size; force fill so each cover uses
+     its column width. */
+  .pgal-main { width: 100%; max-width: 480px; display: grid; gap: .75rem; }
+  .pgal-main.pgal-main--two { grid-template-columns: 1fr 1fr; max-width: 640px; }
+  .pgal-main .cover-wrap { width: 100%; aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45); border-radius: 8px; overflow: hidden; background: var(--paper-2); }
   .pgal-main picture, .pgal-main img { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .pgal-main .cover-label {
+    position: absolute; top: .5rem; left: .5rem;
+    background: rgba(14,14,14,.65); color: #fff;
+    font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+    padding: .15rem .55rem; border-radius: 999px; pointer-events: none;
+  }
+  .pgal-main .cover-slot { position: relative; }
 </style>
 
-{% if primary_image %}
-  <div class="pgal-main">
-    <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45); border-radius: 8px; overflow: hidden; background: var(--paper-2);">
-      {% with vt_name="cover-"|add:slug|slugify %}
-      {% seo_responsive_image primary_image.url alt=primary_image.altText|default:alt widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 90vw" priority=True view_transition_name=vt_name %}
-      {% endwith %}
+{% if primary_images %}
+  <div class="pgal-main {% if primary_images|length > 1 %}pgal-main--two{% endif %}">
+    {% for img in primary_images %}
+    <div class="cover-slot">
+      {% if primary_images|length > 1 %}
+        <span class="cover-label">{% if forloop.first %}Front{% else %}Back{% endif %}</span>
+      {% endif %}
+      <div class="cover-wrap">
+        {% with vt_name="cover-"|add:slug|slugify|add:"-"|add:forloop.counter0|stringformat:"s" %}
+        {% seo_responsive_image img.url alt=img.altText|default:alt widths="400,600,800,1200" sizes="(min-width: 900px) 320px, 90vw" priority=forloop.first view_transition_name=vt_name %}
+        {% endwith %}
+      </div>
     </div>
+    {% endfor %}
   </div>
 {% else %}
   {# No image marked is_primary → book-shaped placeholder. #}

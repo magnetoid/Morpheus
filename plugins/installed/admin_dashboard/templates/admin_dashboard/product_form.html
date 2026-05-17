@@ -702,72 +702,12 @@
 
   {% if product %}
   <div class="card card-padded">
-    <h2 class="font-semibold text-sm">Main image</h2>
-    <p class="text-xs text-[color:var(--text-muted)]">The single hero image shown on the storefront cover. Replace by uploading a new one below — the previous main moves to the slider.</p>
+    <h2 class="font-semibold text-sm">Main cover (front + back)</h2>
+    <p class="text-xs text-[color:var(--text-muted)]">The storefront PDP shows up to two main images side-by-side — front and (optional) back cover. Slider images live in the next card.</p>
 
-    <div class="mt-3" style="display:grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items:flex-start;">
-      <div class="card overflow-hidden" style="width: 200px;">
-        {# Preview aspect ratio matches the storefront (2:3 book-cover portrait). #}
-        <div style="aspect-ratio: 2/3; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden;">
-          {# Render the first is_primary image (the view sets only one #}
-          {# primary at a time, so this loop yields at most one match). #}
-          {# Empty state is handled by the conditional below the loop. #}
-          {% for img in images %}{% if img.is_primary %}
-            <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" style="width:100%; height:100%; object-fit:cover;">
-          {% endif %}{% endfor %}
-          {% if not product.primary_image %}
-            <div style="text-align:center; color:var(--text-subtle); font-size:.8rem; padding:1rem;">
-              <i data-lucide="image-plus" class="h-6 w-6"></i>
-              <div style="margin-top:.4rem;">No main image yet</div>
-            </div>
-          {% endif %}
-        </div>
-        <div class="card-padded" style="padding:.6rem .75rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem;">
-          <span>
-            <span class="pill pill-info"><i data-lucide="star" class="h-3 w-3" style="margin-right:.2rem;"></i> MAIN</span>
-          </span>
-          {# Delete button on the current main image (renders inline next to the MAIN pill). #}
-          {% for img in images %}{% if img.is_primary %}
-          <form method="post" action="{% url 'admin_dashboard:image_delete' product_id=product.id image_id=img.id %}"
-                data-confirm="Delete the main image? This cannot be undone." data-confirm-cta="Delete" data-confirm-danger
-                style="margin:0;">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-ghost p-1" aria-label="Delete main image" title="Delete main image">
-              <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
-            </button>
-          </form>
-          {% endif %}{% endfor %}
-        </div>
-      </div>
-
-      {# Main-image upload form: is_primary forced to True. Auto-submits #}
-      {# the moment a file is picked or dropped — the "Upload" button is #}
-      {# kept as a fallback for screen readers but isn't usually clicked. #}
-      <form method="post" enctype="multipart/form-data"
-            id="img-upload-main-form"
-            action="{% url 'admin_dashboard:image_upload' product_id=product.id %}"
-            class="space-y-3" hx-boost="false">
-        {% csrf_token %}
-        <input type="hidden" name="is_primary" value="1">
-        <label for="img-upload-main" id="img-dropzone-main" class="dz" style="padding: 1rem; cursor: pointer;">
-          <div class="dz-stack">
-            <i data-lucide="upload-cloud" class="h-5 w-5 dz-icon"></i>
-            <p class="dz-headline"><strong>Drop the main image here</strong> or click to browse</p>
-            <p class="dz-hint">Uploading replaces the current main — old main moves to the slider.</p>
-            <p id="dz-filename-main" class="dz-filename" hidden></p>
-          </div>
-          <input id="img-upload-main" type="file" name="image" accept="image/*" required class="dz-input">
-        </label>
-        <div class="grid grid-cols-12 gap-2 items-end">
-          <div class="col-span-9">
-            <label class="block text-sm font-medium mb-1">Alt text (optional — typed BEFORE upload to include in the saved row)</label>
-            <input type="text" name="alt_text" class="input" placeholder="Describe the cover for screen readers + AI search">
-          </div>
-          <div class="col-span-3">
-            <button type="submit" class="btn btn-primary w-full"><i data-lucide="upload" class="h-4 w-4"></i> Set as main</button>
-          </div>
-        </div>
-      </form>
+    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% include "admin_dashboard/_cover_slot.html" with slot="front" slot_label="Front cover" product=product images=images %}
+      {% include "admin_dashboard/_cover_slot.html" with slot="back" slot_label="Back cover (optional)" product=product images=images %}
     </div>
   </div>
 
@@ -788,9 +728,14 @@
         </div>
         <div class="card-padded" style="padding:.6rem .75rem;">
           <div class="flex items-center justify-between gap-2">
-            <form method="post" action="{% url 'admin_dashboard:image_set_primary' product_id=product.id image_id=img.id %}">
+            <form method="post" action="{% url 'admin_dashboard:image_set_primary' product_id=product.id image_id=img.id %}" style="display:flex; gap:.2rem;">
               {% csrf_token %}
-              <button class="btn btn-ghost p-1" title="Promote to main"><i data-lucide="star" class="h-4 w-4"></i></button>
+              <button name="slot" value="front" class="btn btn-ghost p-1" title="Promote to front cover">
+                <i data-lucide="star" class="h-4 w-4"></i><span style="font-size:.65rem; margin-left:.15rem;">F</span>
+              </button>
+              <button name="slot" value="back" class="btn btn-ghost p-1" title="Promote to back cover">
+                <i data-lucide="star" class="h-4 w-4"></i><span style="font-size:.65rem; margin-left:.15rem;">B</span>
+              </button>
             </form>
             <form method="post" action="{% url 'admin_dashboard:image_delete' product_id=product.id image_id=img.id %}"
                   data-confirm="Delete this image?" data-confirm-cta="Delete" data-confirm-danger>
@@ -912,9 +857,10 @@
       // Slider images: pick + alt-text + click Upload (no autoSubmit).
       wireDropzone('img-dropzone', 'img-upload-input', 'dz-filename', false);
 
-      // Main image: dedicated dropzone — auto-submits on pick/drop so the
-      // user doesn't have to hunt for the "Set as main" button.
-      wireDropzone('img-dropzone-main', 'img-upload-main', 'dz-filename-main', true);
+      // Front + back cover slots: auto-submit on file pick — single-action
+      // dropzones, no separate "alt text then upload" step.
+      wireDropzone('img-dropzone-front', 'img-upload-front', 'dz-filename-front', true);
+      wireDropzone('img-dropzone-back',  'img-upload-back',  'dz-filename-back',  true);
     </script>
   </div>
 

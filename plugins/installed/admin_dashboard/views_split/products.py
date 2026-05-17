@@ -233,19 +233,47 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
         return redirect('admin_dashboard:product_edit', product_id=product.id)
     alt = (request.POST.get('alt_text') or '').strip()[:255]
     is_primary = bool(request.POST.get('is_primary'))
-    if is_primary:
-        # Only one primary at a time.
-        ProductImage.objects.filter(product=product, is_primary=True).update(is_primary=False)
-    next_order = (
-        ProductImage.objects.filter(product=product)
-        .order_by('-sort_order').values_list('sort_order', flat=True).first()
-    )
+    # `cover_slot` is set by the admin's Front/Back cover dropzones.
+    # 'front' → primary + sort_order=0   (becomes the front cover)
+    # 'back'  → primary + sort_order=1   (becomes the back cover)
+    # anything else → slider image (is_primary=False)
+    cover_slot = (request.POST.get('cover_slot') or '').strip().lower()
+
+    if cover_slot in ('front', 'back'):
+        # Replace whatever sits in that slot today so the slot stays unique.
+        slot_sort = 0 if cover_slot == 'front' else 1
+        ProductImage.objects.filter(
+            product=product, is_primary=True, sort_order=slot_sort,
+        ).delete()
+        sort_order = slot_sort
+        is_primary = True
+    elif is_primary:
+        # Legacy single-primary upload (no cover_slot specified) — preserve
+        # existing front cover if present, take the back slot instead.
+        has_front = ProductImage.objects.filter(
+            product=product, is_primary=True, sort_order=0,
+        ).exists()
+        sort_order = 1 if has_front else 0
+        # Clean any old row at that slot.
+        ProductImage.objects.filter(
+            product=product, is_primary=True, sort_order=sort_order,
+        ).delete()
+    else:
+        # Slider image — append after the highest non-primary sort_order
+        # (keep cover slots 0/1 reserved for primaries).
+        max_slider = (
+            ProductImage.objects.filter(product=product, is_primary=False)
+            .order_by('-sort_order').values_list('sort_order', flat=True).first()
+        )
+        # First slider image lands at 2 so slots 0/1 stay free for front/back.
+        sort_order = max(max_slider or 1, 1) + 1
+
     ProductImage.objects.create(
         product=product,
         image=upload,
         alt_text=alt,
         is_primary=is_primary,
-        sort_order=(next_order or 0) + 1,
+        sort_order=sort_order,
     )
     messages.success(request, 'Image uploaded.')
     return redirect('admin_dashboard:product_edit', product_id=product.id)
@@ -267,11 +295,23 @@ def image_set_primary(request: HttpRequest, product_id: str, image_id: str) -> H
     from plugins.installed.catalog.models import ProductImage
     product = _get_product(product_id)
     image = get_object_or_404(ProductImage, pk=image_id, product=product)
+    # Optional `slot` POST param ('front' | 'back') lets the admin form
+    # promote directly into a specific cover slot. Default: front slot.
+    slot = (request.POST.get('slot') or 'front').strip().lower()
+    if slot not in ('front', 'back'):
+        slot = 'front'
     if request.method == 'POST':
-        ProductImage.objects.filter(product=product, is_primary=True).update(is_primary=False)
+        target_sort = 0 if slot == 'front' else 1
+        # Demote whatever currently sits at the target slot so the slot
+        # stays unique. The demoted image goes back to the slider with a
+        # high sort_order (so it doesn't fight the back slot).
+        ProductImage.objects.filter(
+            product=product, is_primary=True, sort_order=target_sort,
+        ).exclude(pk=image.pk).update(is_primary=False, sort_order=99)
         image.is_primary = True
-        image.save(update_fields=['is_primary'])
-        messages.success(request, 'Primary image updated.')
+        image.sort_order = target_sort
+        image.save(update_fields=['is_primary', 'sort_order'])
+        messages.success(request, f'Image set as {slot} cover.')
     return redirect('admin_dashboard:product_edit', product_id=product.id)
 
 
