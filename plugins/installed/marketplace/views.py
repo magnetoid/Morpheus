@@ -75,14 +75,15 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     accrued = '0.00'
     payouts: list = []
     if application and application.status == 'approved':
-        # The link between Vendor and the customer who applied isn't a
-        # FK on Vendor — services.py creates the Vendor with the same
-        # email or business_name. Best-effort match by email.
+        # Use the canonical link: catalog.Vendor.owner is an FK to
+        # Customer, and the applicant IS a Customer. No fragile email/
+        # name guessing needed. (The previous email-match was also
+        # broken — catalog.Vendor has no `email` field, so the filter
+        # raised FieldError silently swallowed by .first().)
         vendor = (
             Vendor.objects
-            .filter(email=application.contact_email)
+            .filter(owner=application.user)
             .first()
-            or Vendor.objects.filter(name=application.business_name).first()
         )
         if vendor:
             vendor_orders = list(
