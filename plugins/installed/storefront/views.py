@@ -235,6 +235,25 @@ def product_list(request):
     except Exception:  # noqa: BLE001
         pass
 
+    selected_cat = next((c for c in categories if c.slug == cat_slug), None)
+    plp_name = selected_cat.name if selected_cat else 'All books'
+    plp_items = [
+        {
+            'name': p.name,
+            'url': request.build_absolute_uri(f'/products/{p.slug}/'),
+            'image': (p.primary_image.image.url if p.primary_image and getattr(p.primary_image, 'image', None) else ''),
+        }
+        for p in products[:50]
+    ]
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+    ]
+    if selected_cat:
+        breadcrumb_items.append({
+            'name': selected_cat.name,
+            'url': request.build_absolute_uri(f'/products/?category={selected_cat.slug}'),
+        })
     return render(request, 'storefront/product_list.html', {
         'products': products,
         'categories': categories,
@@ -242,13 +261,18 @@ def product_list(request):
         'available_authors': available_authors,
         'search_query': q,
         'selected_category': cat_slug,
-        'selected_category_obj': next((c for c in categories if c.slug == cat_slug), None),
+        'selected_category_obj': selected_cat,
         'selected_tag': tag_slug,
         'selected_author': book_filter.get('author', ''),
         'selected_publisher': book_filter.get('publisher', ''),
         'selected_sort': sort,
         'price_min': pmin or '',
         'price_max': pmax or '',
+        'plp_items': plp_items,
+        'plp_name': plp_name,
+        'breadcrumb_items': breadcrumb_items,
+        'seo_title': f'{plp_name} — dot books',
+        'seo_description': (selected_cat.description if selected_cat and selected_cat.description else 'The full dot books shelf — independent press, curated by readers.')[:160],
     })
 
 
@@ -319,7 +343,13 @@ def product_detail(request, slug):
     # The GraphQL `images` field is a flat list of {url, altText, isPrimary}.
     # Resolve the hero image once so the template can stay simple.
     images = product.get('images') or []
-    hero_image = next((i for i in images if i.get('isPrimary')), None) or (images[0] if images else None)
+    # `primary_image` is the EXPLICITLY-marked primary or None — used by the
+    # cover template, which must NEVER fall back to a non-primary image
+    # (slider images are a separate concept).
+    primary_image = next((i for i in images if i.get('isPrimary')), None)
+    # `hero_image` keeps its historic fallback-to-first behavior for any
+    # caller that wants "best available image" (e.g. og:image / JSON-LD).
+    hero_image = primary_image or (images[0] if images else None)
     breadcrumb_items = [{'name': 'Home', 'url': request.build_absolute_uri('/')}]
     breadcrumb_items.append({'name': 'All books', 'url': request.build_absolute_uri('/products/')})
     cat = (product or {}).get('category') or {}
@@ -332,14 +362,73 @@ def product_detail(request, slug):
         'name': product.get('name') or slug,
         'url': request.build_absolute_uri(request.path),
     })
+    last_reviewed = None
+    try:
+        from plugins.installed.catalog.models import Product as _Product
+        _row = _Product.objects.filter(slug=slug).only('updated_at').first()
+        if _row:
+            last_reviewed = _row.updated_at
+            # Feed it back into the GraphQL dict so seo_product_jsonld
+            # picks it up and emits dateModified in the Product schema.
+            if isinstance(product, dict):
+                product['updatedAt'] = last_reviewed.isoformat()
+    except Exception:  # noqa: BLE001
+        pass
+    # Staff admin-bar deep-link: lets a signed-in staff user jump
+    # straight from the public PDP into the admin product edit form.
+    active_pdp_edit_url = ''
+    pid = (product or {}).get('id') if isinstance(product, dict) else None
+    if pid and request.user.is_authenticated and request.user.is_staff:
+        active_pdp_edit_url = f'/dashboard/products/{pid}/'
     return render(request, 'storefront/product_detail.html', {
         'product': product,
         'hero_image': hero_image,
         'related_products': related,
         'book_specs': _book_specs(slug),
         'reviews': _published_reviews(slug),
+        'pdp_faqs': _pdp_faqs(slug),
         'breadcrumb_items': breadcrumb_items,
+        'last_reviewed': last_reviewed,
+        'active_pdp_edit_url': active_pdp_edit_url,
     })
+
+
+def _pdp_faqs(slug: str) -> list[dict]:
+    """Return ``[{q, a}, ...]`` from the seo.pdp_faqs metafield, or []."""
+    try:
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.metafields.models import Metafield
+    except Exception:  # noqa: BLE001
+        return []
+    try:
+        product = Product.objects.filter(slug=slug).first()
+        if product is None:
+            return []
+        from django.contrib.contenttypes.models import ContentType
+        ct = ContentType.objects.get_for_model(Product)
+        mf = Metafield.objects.filter(
+            content_type=ct, object_id=str(product.pk),
+            namespace='seo', key='pdp_faqs',
+        ).first()
+    except Exception:  # noqa: BLE001
+        return []
+    if mf is None or not mf.value:
+        return []
+    import json as _json
+    try:
+        data = _json.loads(mf.value)
+    except (ValueError, TypeError):
+        return []
+    out = []
+    if isinstance(data, list):
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            q = (item.get('q') or '').strip()
+            a = (item.get('a') or '').strip()
+            if q and a:
+                out.append({'q': q, 'a': a})
+    return out
 
 
 def _published_reviews(slug: str, limit: int = 4) -> list[dict]:
@@ -508,6 +597,22 @@ def cart_add(request, product_id):
     payload = (data or {}).get('addToCart') or {}
     errors = payload.get('errors') or []
 
+    # Fire ADD_TO_CART so analytics + tracking plugins can react.
+    if not errors:
+        try:
+            from core.hooks import hook_registry, MorpheusEvents
+            from plugins.installed.catalog.models import Product, ProductVariant
+            prod = Product.objects.filter(pk=product_id).first()
+            variant = ProductVariant.objects.filter(pk=variant_id).first() if variant_id else None
+            if prod is not None:
+                hook_registry.fire(
+                    MorpheusEvents.ADD_TO_CART,
+                    cart=None, item=None,
+                    product=prod, variant=variant, quantity=quantity,
+                )
+        except Exception:  # noqa: BLE001 — tracking must never block cart
+            pass
+
     if is_xhr:
         if errors:
             return JsonResponse(
@@ -534,6 +639,17 @@ def checkout(request):
     """
     if request.method == 'GET':
         ctx = _checkout_base_context(request)
+        # Fire BEGIN_CHECKOUT once per session for analytics.
+        try:
+            if not request.session.get('checkout_started'):
+                from core.hooks import hook_registry, MorpheusEvents
+                cart = ctx.get('cart')
+                if cart is not None:
+                    hook_registry.fire(MorpheusEvents.BEGIN_CHECKOUT, cart=cart,
+                                       customer=request.user if request.user.is_authenticated else None)
+                request.session['checkout_started'] = True
+        except Exception:  # noqa: BLE001
+            pass
         return render(request, 'storefront/checkout.html', ctx)
     # Save contact + shipping address into the session, then advance to
     # the shipping-method picker.
@@ -815,8 +931,24 @@ def search(request):
     """, variables={'query': q}, request=request) if q else None
     result = (data or {}).get('semanticSearch', {}) if data else {'products': [], 'explanation': None}
 
+    search_items = [
+        {
+            'name': p.get('name', ''),
+            'url': request.build_absolute_uri(f"/products/{p.get('slug', '')}/"),
+            'image': (p.get('primaryImage') or {}).get('url', ''),
+        }
+        for p in (result.get('products') or [])
+    ]
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Search', 'url': request.build_absolute_uri(request.path)},
+    ]
     return render(request, 'storefront/search.html', {
-        'query': q, 'result': result, 'semantic': use_semantic
+        'query': q, 'result': result, 'semantic': use_semantic,
+        'search_items': search_items,
+        'breadcrumb_items': breadcrumb_items,
+        'seo_title':       f'Search: {q} — dot books' if q else 'Search — dot books',
+        'seo_description': f'Results for "{q}" on the dot books shelf.' if q else 'Search the dot books shelf.',
     })
 
 
@@ -868,7 +1000,16 @@ _JOURNAL_ENTRIES = [
 
 
 def about(request):
-    return render(request, 'storefront/about.html')
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'About', 'url': request.build_absolute_uri(request.path)},
+    ]
+    return render(request, 'storefront/about.html', {
+        'breadcrumb_items': breadcrumb_items,
+        'seo_title':       'About — dot books',
+        'seo_description': 'dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.',
+        'seo_og_type':     'website',
+    })
 
 
 # Editorial intros for genre landing pages. The merchant can override any of
@@ -1036,10 +1177,25 @@ def author_detail(request, slug):
     except Exception:  # noqa: BLE001
         pass
 
+    bib_items = [
+        {
+            'name': p.name,
+            'url': request.build_absolute_uri(f'/products/{p.slug}/'),
+            'image': (p.primary_image.image.url if p.primary_image and getattr(p.primary_image, 'image', None) else ''),
+        }
+        for p in bibliography[:30]
+    ]
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+        {'name': author_name, 'url': request.build_absolute_uri(request.path)},
+    ]
     return render(request, 'storefront/author_detail.html', {
         'author_name': author_name,
         'author_slug': slug,
         'bibliography': bibliography,
+        'bib_items': bib_items,
+        'breadcrumb_items': breadcrumb_items,
         'bio_page': bio_page,
         'seo_title':       f'{author_name} — dot books',
         'seo_description': (bio_page.excerpt if bio_page and bio_page.excerpt
@@ -1068,9 +1224,23 @@ def staff_picks(request):
         collection.description if collection and collection.description
         else 'A small rotating shelf of titles we’d hand a friend without hesitation.'
     )
+    pick_items = [
+        {
+            'name': p.name,
+            'url': request.build_absolute_uri(f'/products/{p.slug}/'),
+            'image': (p.primary_image.image.url if p.primary_image and getattr(p.primary_image, 'image', None) else ''),
+        }
+        for p in products[:30]
+    ]
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Staff picks', 'url': request.build_absolute_uri(request.path)},
+    ]
     return render(request, 'storefront/staff_picks.html', {
         'collection': collection,
         'products': products,
+        'pick_items': pick_items,
+        'breadcrumb_items': breadcrumb_items,
         'seo_title':       'Staff picks — dot books',
         'seo_description': description[:160],
         'seo_og_type':     'website',
@@ -1103,7 +1273,17 @@ def contact(request):
             except (ImportError, DatabaseError):
                 pass
         sent = True
-    return render(request, 'storefront/contact.html', {'sent': sent})
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Contact', 'url': request.build_absolute_uri(request.path)},
+    ]
+    return render(request, 'storefront/contact.html', {
+        'sent': sent,
+        'breadcrumb_items': breadcrumb_items,
+        'seo_title':       'Contact — dot books',
+        'seo_description': 'Get in touch with dot books. Recommendations, suggestions, and help with orders — we read every message.',
+        'seo_og_type':     'website',
+    })
 
 
 def journal_index(request):
@@ -1115,8 +1295,23 @@ def journal_index(request):
     except Exception:  # noqa: BLE001 — CMS not installed / db not migrated
         cms_entries = []
     entries = cms_entries or _JOURNAL_ENTRIES
+    post_items = [
+        {
+            'name': e.get('title', '') if isinstance(e, dict) else getattr(e, 'title', ''),
+            'url': request.build_absolute_uri(
+                f"/journal/{(e.get('slug', '') if isinstance(e, dict) else getattr(e, 'slug', ''))}/"
+            ),
+        }
+        for e in entries
+    ]
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Journal', 'url': request.build_absolute_uri(request.path)},
+    ]
     return render(request, 'storefront/journal_index.html', {
         'entries': entries,
+        'post_items': post_items,
+        'breadcrumb_items': breadcrumb_items,
         'seo_title':       'Journal — dot books',
         'seo_description': 'Notes, essays, short pieces from the booksellers. Updated when there\'s something to say.',
         'seo_og_type':     'website',
@@ -1135,8 +1330,14 @@ def journal_detail(request, slug):
         entry = next((e for e in _JOURNAL_ENTRIES if e['slug'] == slug), None)
     if entry is None:
         raise Http404
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Journal', 'url': request.build_absolute_uri('/journal/')},
+        {'name': entry.get('title', ''), 'url': request.build_absolute_uri(request.path)},
+    ]
     return render(request, 'storefront/journal_detail.html', {
         'entry': entry,
+        'breadcrumb_items': breadcrumb_items,
         'seo_title':       f'{entry["title"]} — Journal — dot books',
         'seo_description': entry.get('excerpt', '')[:160],
         'seo_og_type':     'article',
@@ -1151,8 +1352,26 @@ def categories(request):
           }
         }
     """, request=request) or {}
+    cats = data.get('categories', [])
+    cat_items = [
+        {
+            'name': c.get('name', ''),
+            'url': request.build_absolute_uri(f"/products/?category={c.get('slug', '')}"),
+            'image': (c.get('image') or {}).get('url', ''),
+        }
+        for c in cats
+    ]
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Categories', 'url': request.build_absolute_uri(request.path)},
+    ]
     return render(request, 'storefront/categories.html', {
-        'categories': data.get('categories', []),
+        'categories': cats,
+        'cat_items': cat_items,
+        'breadcrumb_items': breadcrumb_items,
+        'seo_title':       'Categories — dot books',
+        'seo_description': 'All categories on the dot books shelf — fiction, non-fiction, poetry, essays, art & design, children\'s.',
+        'seo_og_type':     'website',
     })
 
 
