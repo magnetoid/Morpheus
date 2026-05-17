@@ -24,7 +24,7 @@ query ProductDetail($slug: String!) {
     id name slug description shortDescription
     price { amount currency }
     compareAtPrice { amount }
-    images { url altText isPrimary }
+    images { url altText isPrimary sortOrder }
     variants { id name sku price { amount currency } isActive }
     tags category { name slug }
     averageRating
@@ -344,11 +344,12 @@ def product_detail(request, slug):
     # Resolve the hero image once so the template can stay simple.
     images = product.get('images') or []
     # `primary_images` is the list of EXPLICITLY-marked primaries (front +
-    # optional back). Front-cover convention is the lowest sort_order
-    # among the primaries — but the GraphQL query doesn't ship sort_order
-    # today, so we trust the server-side ordering (Meta.ordering already
-    # sorts ProductImage by sort_order). Take up to two.
-    primary_images = [i for i in images if i.get('isPrimary')][:2]
+    # optional back), ordered by sortOrder ASC so sortOrder=0 is always
+    # the front cover and 1 is always the back — front/back can't swap.
+    primary_images = sorted(
+        (i for i in images if i.get('isPrimary')),
+        key=lambda i: i.get('sortOrder') or 0,
+    )[:2]
     # `primary_image` (singular) = the front cover, used by anything that
     # wants just one image (back-compat).
     primary_image = primary_images[0] if primary_images else None

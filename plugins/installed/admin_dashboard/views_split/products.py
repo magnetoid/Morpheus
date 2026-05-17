@@ -125,6 +125,11 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     categories, vendors = _product_form_choices()
     variants = list(product.variants.all().order_by('sort_order', 'name'))
     images = list(product.images.all().order_by('sort_order', '-is_primary'))
+    # Pre-resolve the front + back slot occupants so the _cover_slot.html
+    # partial doesn't have to re-iterate the image list 3× per slot.
+    # Convention: sort_order=0 is the front cover, 1 is the back.
+    front_image = next((i for i in images if i.is_primary and i.sort_order == 0), None)
+    back_image = next((i for i in images if i.is_primary and i.sort_order == 1), None)
     return render(request, 'admin_dashboard/product_form.html', {
         'form': form,
         'product': product,
@@ -132,6 +137,8 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         'vendors': vendors,
         'variants': variants,
         'images': images,
+        'front_image': front_image,
+        'back_image': back_image,
         'active_nav': 'products',
     })
 

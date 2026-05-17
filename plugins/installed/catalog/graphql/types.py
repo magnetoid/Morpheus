@@ -10,6 +10,7 @@ class ImageType:
     url: str
     alt_text: Optional[str] = None
     is_primary: Optional[bool] = None
+    sort_order: Optional[int] = None  # 0=front cover, 1=back cover, ≥2=slider
     webp_url: Optional[str] = None  # null when no WebP variant exists yet
 
 @strawberry_django.type(models.Category)
@@ -117,19 +118,24 @@ class ProductType:
             url=img.image.url,
             alt_text=img.alt_text or self.name,
             is_primary=img.is_primary,
+            sort_order=img.sort_order,
             webp_url=(img.webp_image.url if getattr(img, 'webp_image', None) else None),
         )
 
-    @strawberry.field(description="All product images")
+    @strawberry.field(description="All product images, ordered by sort_order ASC")
     def images(self) -> List[ImageType]:
         images = []
-        for img in self.images.all():
+        # Explicit order_by to override Meta.ordering's secondary
+        # `-is_primary` key — the storefront's two-image cover relies on
+        # sort_order==0 being the front and sort_order==1 the back.
+        for img in self.images.order_by('sort_order'):
             if not img.image:
                 continue
             images.append(ImageType(
                 url=img.image.url,
                 alt_text=img.alt_text or self.name,
                 is_primary=img.is_primary,
+                sort_order=img.sort_order,
                 webp_url=(img.webp_image.url if getattr(img, 'webp_image', None) else None),
             ))
         return images

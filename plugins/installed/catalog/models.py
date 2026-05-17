@@ -377,6 +377,20 @@ class ProductImage(models.Model):
                 'Failed to generate WebP for ProductImage %s', self.pk, exc_info=True,
             )
 
+    def delete(self, *args, **kwargs):
+        # Django's default delete removes the DB row but leaves the
+        # underlying file in MEDIA_ROOT — that's a slow file-system leak
+        # whenever the admin replaces a cover image. Strip the file (and
+        # its WebP sibling) first; ignore missing-file errors so the
+        # delete is idempotent across re-uploads + restored backups.
+        for field in (self.image, self.webp_image):
+            if field and field.name:
+                try:
+                    field.delete(save=False)
+                except (FileNotFoundError, OSError):
+                    pass
+        return super().delete(*args, **kwargs)
+
 
 class ProductVariant(models.Model):
     """

@@ -706,8 +706,8 @@
     <p class="text-xs text-[color:var(--text-muted)]">The storefront PDP shows up to two main images side-by-side — front and (optional) back cover. Slider images live in the next card.</p>
 
     <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-      {% include "admin_dashboard/_cover_slot.html" with slot="front" slot_label="Front cover" product=product images=images %}
-      {% include "admin_dashboard/_cover_slot.html" with slot="back" slot_label="Back cover (optional)" product=product images=images %}
+      {% include "admin_dashboard/_cover_slot.html" with slot="front" slot_label="Front cover" product=product image=front_image %}
+      {% include "admin_dashboard/_cover_slot.html" with slot="back" slot_label="Back cover (optional)" product=product image=back_image %}
     </div>
   </div>
 
