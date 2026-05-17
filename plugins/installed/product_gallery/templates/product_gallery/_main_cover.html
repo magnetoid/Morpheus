@@ -1,29 +1,67 @@
 {% load seo %}{% comment %}
-Renders ONLY the primary product image as the PDP cover. Non-primary
-images flow into the slider block above the long description.
+Renders the primary product image as the PDP cover.
 
 Caller context:
-  product — the catalog.Product instance
-  alt     — fallback alt text (typically product.name)
-  slug    — product slug (used for view-transition-name)
+  product     — the GraphQL `product` dict (has .images = list of
+                {url, altText, isPrimary}, .name, .slug, …)
+  hero_image  — optional pre-resolved primary image dict (the view
+                computes this once via `next(... isPrimary ...) or
+                images[0]`). If passed, we use it directly. If not,
+                we fall back to iterating product.images.
+  alt         — fallback alt text (typically product.name)
+  slug        — product slug (used for view-transition-name)
 
-The page falls back to a placeholder "book" when no primary image is
-set (or the product has no images at all).
+Placeholder card renders when no usable image exists.
 {% endcomment %}
-{% with main=product.primary_image %}
-{% if main and main.image %}
+
+{# Pick the URL to render. hero_image wins; otherwise scan product.images. #}
+{% with hero_url=hero_image.url|default:'' %}
+
+{% if hero_url %}
   <div class="pgal-main" style="max-width: 480px;">
     <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45); border-radius: 8px; overflow: hidden; background: var(--paper-2);">
       {% with vt_name="cover-"|add:slug|slugify %}
-      {% seo_responsive_image main.image alt=main.alt_text|default:alt widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 90vw" priority=True view_transition_name=vt_name %}
+      {% seo_responsive_image hero_url alt=hero_image.altText|default:alt widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 90vw" priority=True view_transition_name=vt_name %}
       {% endwith %}
     </div>
   </div>
 {% else %}
-  <div class="book" style="max-width: 480px;">
-    <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
-      <div class="placeholder">{{ alt|default:product.name }}</div>
+  {# Fallback: scan product.images for an isPrimary one (or the first). #}
+  {% with picked=None %}
+  {% for img in product.images %}
+    {% if img.isPrimary and not picked %}{% with picked=img %}
+      <div class="pgal-main" style="max-width: 480px;">
+        <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45); border-radius: 8px; overflow: hidden; background: var(--paper-2);">
+          {% with vt_name="cover-"|add:slug|slugify %}
+          {% seo_responsive_image picked.url alt=picked.altText|default:alt widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 90vw" priority=True view_transition_name=vt_name %}
+          {% endwith %}
+        </div>
+      </div>
+    {% endwith %}{% endif %}
+  {% endfor %}
+
+  {# Last-resort: no isPrimary, use the first image if any. #}
+  {% if product.images and not product.images.0.isPrimary %}
+    {% with first=product.images.0 %}
+    {% if first.url %}
+      <div class="pgal-main" style="max-width: 480px;">
+        <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45); border-radius: 8px; overflow: hidden; background: var(--paper-2);">
+          {% with vt_name="cover-"|add:slug|slugify %}
+          {% seo_responsive_image first.url alt=first.altText|default:alt widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 90vw" priority=True view_transition_name=vt_name %}
+          {% endwith %}
+        </div>
+      </div>
+    {% endif %}
+    {% endwith %}
+  {% elif not product.images %}
+    {# No images at all — book-shaped placeholder. #}
+    <div class="book" style="max-width: 480px;">
+      <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
+        <div class="placeholder">{{ alt|default:product.name }}</div>
+      </div>
     </div>
-  </div>
+  {% endif %}
+  {% endwith %}
 {% endif %}
+
 {% endwith %}

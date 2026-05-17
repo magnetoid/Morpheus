@@ -740,27 +740,31 @@
         </div>
       </div>
 
-      {# Main-image upload form: is_primary forced to True. #}
+      {# Main-image upload form: is_primary forced to True. Auto-submits #}
+      {# the moment a file is picked or dropped — the "Upload" button is #}
+      {# kept as a fallback for screen readers but isn't usually clicked. #}
       <form method="post" enctype="multipart/form-data"
+            id="img-upload-main-form"
             action="{% url 'admin_dashboard:image_upload' product_id=product.id %}"
             class="space-y-3" hx-boost="false">
         {% csrf_token %}
         <input type="hidden" name="is_primary" value="1">
-        <label for="img-upload-main" class="dz" style="padding: 1rem;">
+        <label for="img-upload-main" id="img-dropzone-main" class="dz" style="padding: 1rem; cursor: pointer;">
           <div class="dz-stack">
             <i data-lucide="upload-cloud" class="h-5 w-5 dz-icon"></i>
             <p class="dz-headline"><strong>Drop the main image here</strong> or click to browse</p>
-            <p class="dz-hint">Uploading replaces the current main. Old main moves to the slider.</p>
+            <p class="dz-hint">Uploading replaces the current main — old main moves to the slider.</p>
+            <p id="dz-filename-main" class="dz-filename" hidden></p>
           </div>
           <input id="img-upload-main" type="file" name="image" accept="image/*" required class="dz-input">
         </label>
         <div class="grid grid-cols-12 gap-2 items-end">
           <div class="col-span-9">
-            <label class="block text-sm font-medium mb-1">Alt text</label>
+            <label class="block text-sm font-medium mb-1">Alt text (optional — typed BEFORE upload to include in the saved row)</label>
             <input type="text" name="alt_text" class="input" placeholder="Describe the cover for screen readers + AI search">
           </div>
           <div class="col-span-3">
-            <button class="btn btn-primary w-full"><i data-lucide="upload" class="h-4 w-4"></i> Set as main</button>
+            <button type="submit" class="btn btn-primary w-full"><i data-lucide="upload" class="h-4 w-4"></i> Set as main</button>
           </div>
         </div>
       </form>
@@ -854,20 +858,32 @@
       .dz-input { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
     </style>
     <script>
-      (function () {
-        var dz = document.getElementById('img-dropzone');
-        var input = document.getElementById('img-upload-input');
-        var name = document.getElementById('dz-filename');
+      // Reusable dropzone wiring. `autoSubmit=true` makes the form post the
+      // moment a file is picked or dropped — used by the main-image dropzone
+      // where there's no separate "configure then submit" step.
+      function wireDropzone(dzId, inputId, nameId, autoSubmit) {
+        var dz = document.getElementById(dzId);
+        var input = document.getElementById(inputId);
+        var name = nameId ? document.getElementById(nameId) : null;
         if (!dz || !input) return;
 
         function showName(file) {
+          if (!name) return;
           if (!file) { name.hidden = true; return; }
           name.textContent = file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
           name.hidden = false;
         }
+        function submitForm() {
+          var form = input.closest('form');
+          if (form) form.submit();
+        }
 
-        // Show filename when the user picks via click.
-        input.addEventListener('change', function () { showName(input.files[0]); });
+        // Show filename when the user picks via click. If autoSubmit,
+        // fire the form post immediately.
+        input.addEventListener('change', function () {
+          showName(input.files[0]);
+          if (autoSubmit && input.files && input.files.length) submitForm();
+        });
 
         // Drag-over visual state.
         ['dragenter', 'dragover'].forEach(function (ev) {
@@ -883,16 +899,22 @@
           });
         });
 
-        // Drop → assign file to the hidden input + show filename.
+        // Drop → assign file to the hidden input + show filename + maybe submit.
         dz.addEventListener('drop', function (e) {
           var files = e.dataTransfer && e.dataTransfer.files;
           if (!files || !files.length) return;
-          // DataTransfer cannot directly populate <input type="file">.value;
-          // assign via the modern DataTransfer-style setter on .files.
           try { input.files = files; } catch (_) {}
           showName(files[0]);
+          if (autoSubmit) submitForm();
         });
-      })();
+      }
+
+      // Slider images: pick + alt-text + click Upload (no autoSubmit).
+      wireDropzone('img-dropzone', 'img-upload-input', 'dz-filename', false);
+
+      // Main image: dedicated dropzone — auto-submits on pick/drop so the
+      // user doesn't have to hunt for the "Set as main" button.
+      wireDropzone('img-dropzone-main', 'img-upload-main', 'dz-filename-main', true);
     </script>
   </div>
 
