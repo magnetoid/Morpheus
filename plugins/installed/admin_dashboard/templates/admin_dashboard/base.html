@@ -308,14 +308,12 @@
     </div>
 
     <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Users</a>
-    <div class="nav-children {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}open{% endif %}">
-      <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'customers' %}active{% endif %}">All</a>
-      <a href="{% url 'admin_dashboard:customers' %}?segment=customers" class="nav-link">Customers</a>
-      {% if 'crm' in active_plugins %}<a href="/dashboard/apps/crm/leads/" class="nav-link {% if active_nav == 'leads' %}active{% endif %}">Leads</a>{% endif %}
-      <a href="{% url 'admin_dashboard:customers' %}?segment=signups" class="nav-link">Signups</a>
-      {% if 'marketing' in active_plugins %}<a href="/dashboard/apps/marketing/newsletter/" class="nav-link {% if active_nav == 'newsletter' %}active{% endif %}">Newsletter</a>{% endif %}
-      <a href="{% url 'admin_dashboard:customers' %}?segment=admins" class="nav-link {% if active_nav == 'admins' %}active{% endif %}">Admins</a>
-    </div>
+
+    {% comment %}Assets is core — sits right under Users so the merchant can jump straight from contacts to the file library.{% endcomment %}
+    <a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>
+
+    {% comment %}Tracking control center — GA4 + GTM settings, event log, consent. Hardcoded so the merchant always knows where to find it, even with the plugin disabled.{% endcomment %}
+    <a href="/dashboard/tracking/" class="nav-link {% if active_nav == 'tracking' %}active{% endif %}"><i data-lucide="activity" class="h-4 w-4"></i> Tracking</a>
 
     {# Health: deep error log (server + client). Hardcoded so it's always #}
     {# reachable, even with every plugin disabled. #}

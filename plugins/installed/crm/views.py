@@ -257,8 +257,13 @@ def inbox_accounts(request):
             return HttpResponseRedirect('/dashboard/crm/inbox/accounts/')
 
     accounts = list(MailAccount.objects.all().order_by('label'))
+    edit_id = (request.GET.get('edit') or '').strip()
+    edit_account = None
+    if edit_id:
+        edit_account = next((a for a in accounts if str(a.pk) == edit_id), None)
     return render(request, 'crm/inbox_accounts.html', {
         'accounts': accounts,
+        'edit_account': edit_account,
         'error': error,
         'active_nav': 'crm',
     })

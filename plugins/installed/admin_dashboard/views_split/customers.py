@@ -43,8 +43,10 @@ def customers_list(request: HttpRequest) -> HttpResponse:
     """
     search = request.GET.get('q', '').strip()[:80]
     source_filter = request.GET.get('source', '').strip()[:20]
+    admin_filter = request.GET.get('admin') == '1'
     customers: list[Any] = []
     source_counts: dict[str, int] = {}
+    admin_count = 0
     paging_ctx: dict[str, Any] = {}
     try:
         from django.contrib.auth import get_user_model
@@ -62,6 +64,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             (row['source'] or ''): row['c']
             for row in unfiltered.values('source').annotate(c=Count('id'))
         }
+        admin_count = unfiltered.filter(is_staff=True).count()
         qs = User.objects.all()
         if search:
             qs = qs.filter(
@@ -71,6 +74,8 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             )
         if source_filter:
             qs = qs.filter(source=source_filter)
+        if admin_filter:
+            qs = qs.filter(is_staff=True)
         # Paginate first, then enrich the page's rows. This keeps the
         # Python loop over a bounded slice no matter how many users exist.
         page_obj, paging_ctx = paginate_and_sort(
@@ -112,13 +117,24 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         customers = rows
     except Exception:  # noqa: BLE001
         customers = []
+    source_tabs = [
+        {
+            'value': value, 'label': label,
+            'count': (source_counts.get(value, 0) if value else sum(source_counts.values())),
+            'active': not admin_filter and source_filter == value,
+        }
+        for value, label in CUSTOMER_SOURCE_CHOICES
+    ]
     return render(request, 'admin_dashboard/customers.html', {
         'customers': customers,
         'search': search,
         'source_filter': source_filter,
         'source_choices': CUSTOMER_SOURCE_CHOICES,
         'source_counts': source_counts,
-        'active_nav': 'customers',
+        'source_tabs': source_tabs,
+        'admin_filter': admin_filter,
+        'admin_count': admin_count,
+        'active_nav': 'admins' if admin_filter else 'customers',
         **paging_ctx,
     })
 

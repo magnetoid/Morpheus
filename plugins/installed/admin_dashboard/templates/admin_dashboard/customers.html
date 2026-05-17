@@ -16,7 +16,29 @@
     </div>
   </div>
 
-  {% index_tabs param="source" choices=source_choices counts=source_counts %}
+  <nav class="flex items-center gap-1 flex-wrap" style="border-bottom: 1px solid var(--border);">
+    {% for t in source_tabs %}
+    <a href="?{% if t.value %}source={{ t.value }}{% endif %}"
+       class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
+       style="border-bottom: 2px solid {% if t.active %}var(--text){% else %}transparent{% endif %};
+              color: {% if t.active %}var(--text){% else %}var(--text-muted){% endif %};
+              font-weight: {% if t.active %}600{% else %}500{% endif %};
+              margin-bottom: -1px;">
+      {{ t.label }}
+      <span class="pill {% if t.active %}pill-success{% else %}pill-neutral{% endif %}" style="font-size:.68rem; padding:.05rem .4rem;">{{ t.count }}</span>
+    </a>
+    {% endfor %}
+    <a href="?admin=1"
+       class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
+       style="border-bottom: 2px solid {% if admin_filter %}var(--text){% else %}transparent{% endif %};
+              color: {% if admin_filter %}var(--text){% else %}var(--text-muted){% endif %};
+              font-weight: {% if admin_filter %}600{% else %}500{% endif %};
+              margin-bottom: -1px;"
+       title="Staff users with admin access">
+      <i data-lucide="shield" class="h-3.5 w-3.5"></i> Admin
+      <span class="pill pill-info" style="font-size:.68rem; padding:.05rem .4rem;">{{ admin_count }}</span>
+    </a>
+  </nav>
 
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
     {% if source_filter %}<input type="hidden" name="source" value="{{ source_filter }}">{% endif %}

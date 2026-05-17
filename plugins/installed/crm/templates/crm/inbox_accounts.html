@@ -18,7 +18,8 @@
         <td>{{ a.email_address }}</td>
         <td class="whitespace-nowrap text-[color:var(--text-muted)]">{% if a.last_polled_at %}{{ a.last_polled_at|date:"M j, H:i" }}{% else %}—{% endif %}</td>
         <td class="text-xs text-[color:var(--danger)]">{{ a.last_error|truncatechars:80 }}</td>
-        <td class="text-right">
+        <td class="text-right whitespace-nowrap">
+          <a href="?edit={{ a.id }}#account-form" class="btn btn-ghost text-xs">Edit</a>
           <form method="post" class="inline">
             {% csrf_token %}
             <input type="hidden" name="action" value="sync">
@@ -39,72 +40,82 @@
 </div>
 {% endif %}
 
-<div class="card card-padded max-w-3xl">
-  <h2 class="font-semibold mb-3">Add mail account</h2>
+<div class="card card-padded max-w-3xl" id="account-form">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="font-semibold">{% if edit_account %}Edit “{{ edit_account.label }}”{% else %}Add mail account{% endif %}</h2>
+    {% if edit_account %}<a href="/dashboard/crm/inbox/accounts/" class="text-xs text-[color:var(--text-muted)] hover:underline">Cancel</a>{% endif %}
+  </div>
   {% if error %}<p class="pill pill-danger mb-3">{{ error }}</p>{% endif %}
   <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-3">
     {% csrf_token %}
+    {% if edit_account %}<input type="hidden" name="id" value="{{ edit_account.id }}">{% endif %}
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">Label</label>
-      <input class="input w-full" name="label" required placeholder="e.g. Support inbox">
+      <input class="input w-full" name="label" required placeholder="e.g. Support inbox" value="{{ edit_account.label|default:'' }}">
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">Email address</label>
-      <input class="input w-full" name="email_address" type="email" required placeholder="support@example.com">
+      <input class="input w-full" name="email_address" type="email" required placeholder="support@example.com" value="{{ edit_account.email_address|default:'' }}">
     </div>
 
     <div class="md:col-span-2"><h3 class="text-sm font-semibold mt-2">IMAP (incoming)</h3></div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP host</label>
-      <input class="input w-full" name="imap_host" required placeholder="imap.gmail.com">
+      <input class="input w-full" name="imap_host" required placeholder="imap.gmail.com" value="{{ edit_account.imap_host|default:'' }}">
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP port</label>
-      <input class="input w-full" name="imap_port" type="number" value="993">
+      <input class="input w-full" name="imap_port" type="number" value="{{ edit_account.imap_port|default:993 }}">
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP username</label>
-      <input class="input w-full" name="imap_username">
+      <input class="input w-full" name="imap_username" value="{{ edit_account.imap_username|default:'' }}">
     </div>
     <div>
-      <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP password</label>
-      <input class="input w-full" name="imap_password" type="password">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">
+        IMAP password
+        {% if edit_account %}<span class="text-[color:var(--text-muted)]">— leave blank to keep current</span>{% endif %}
+      </label>
+      <input class="input w-full" name="imap_password" type="password" autocomplete="new-password">
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP folder</label>
-      <input class="input w-full" name="imap_folder" value="INBOX">
+      <input class="input w-full" name="imap_folder" value="{{ edit_account.imap_folder|default:'INBOX' }}">
     </div>
     <div class="flex items-center gap-2 pt-6">
-      <label><input type="checkbox" name="imap_use_ssl" checked> Use SSL/TLS</label>
+      <label><input type="checkbox" name="imap_use_ssl"{% if not edit_account or edit_account.imap_use_ssl %} checked{% endif %}> Use SSL/TLS</label>
     </div>
 
     <div class="md:col-span-2"><h3 class="text-sm font-semibold mt-2">SMTP (outgoing)</h3></div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP host</label>
-      <input class="input w-full" name="smtp_host" required placeholder="smtp.gmail.com">
+      <input class="input w-full" name="smtp_host" required placeholder="smtp.gmail.com" value="{{ edit_account.smtp_host|default:'' }}">
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP port</label>
-      <input class="input w-full" name="smtp_port" type="number" value="465">
+      <input class="input w-full" name="smtp_port" type="number" value="{{ edit_account.smtp_port|default:465 }}">
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP username</label>
-      <input class="input w-full" name="smtp_username">
+      <input class="input w-full" name="smtp_username" value="{{ edit_account.smtp_username|default:'' }}">
     </div>
     <div>
-      <label class="text-xs text-[color:var(--text-muted)] block mb-1">SMTP password</label>
-      <input class="input w-full" name="smtp_password" type="password">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">
+        SMTP password
+        {% if edit_account %}<span class="text-[color:var(--text-muted)]">— leave blank to keep current</span>{% endif %}
+      </label>
+      <input class="input w-full" name="smtp_password" type="password" autocomplete="new-password">
     </div>
     <div class="flex items-center gap-2 pt-6">
-      <label><input type="checkbox" name="smtp_use_ssl" checked> SSL (port 465)</label>
-      <label class="ml-3"><input type="checkbox" name="smtp_use_tls"> STARTTLS (port 587)</label>
+      <label><input type="checkbox" name="smtp_use_ssl"{% if not edit_account or edit_account.smtp_use_ssl %} checked{% endif %}> SSL (port 465)</label>
+      <label class="ml-3"><input type="checkbox" name="smtp_use_tls"{% if edit_account and edit_account.smtp_use_tls %} checked{% endif %}> STARTTLS (port 587)</label>
     </div>
     <div class="flex items-center gap-2 pt-6">
-      <label><input type="checkbox" name="is_active" checked> Active</label>
+      <label><input type="checkbox" name="is_active"{% if not edit_account or edit_account.is_active %} checked{% endif %}> Active</label>
     </div>
 
     <div class="md:col-span-2 mt-2">
-      <button type="submit" class="btn btn-primary">Save account</button>
+      <button type="submit" class="btn btn-primary">{% if edit_account %}Save changes{% else %}Save account{% endif %}</button>
     </div>
   </form>
 </div>
