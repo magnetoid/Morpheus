@@ -1,5 +1,11 @@
 {% extends "storefront/base.html" %}
+{% load seo %}
 {% block title %}Contact — dot books{% endblock %}
+
+{% block extra_head %}
+{% seo_contactpage_jsonld name="Contact dot books" description="Get in touch with dot books — recommendations, suggestions, order help." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">

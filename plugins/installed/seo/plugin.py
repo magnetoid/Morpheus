@@ -115,6 +115,11 @@ class SeoPlugin(Plugin):
                 icon='hash', section='seo', order=50,
             ),
             DashboardPage(
+                label='Sitemap', slug='sitemap',
+                view='plugins.installed.seo.views.sitemap_page',
+                icon='map', section='seo', order=55,
+            ),
+            DashboardPage(
                 label='Site SEO settings', slug='settings',
                 view='plugins.installed.seo.views.seo_settings_page',
                 icon='settings', section='seo', order=60,

@@ -294,9 +294,31 @@ def seo_settings_page(request):
         }
         for ua, label, kind in AI_CRAWLERS
     ]
+    # Group by kind for the 2026 training-vs-retrieval split.
+    crawler_groups = [
+        {
+            'kind': 'search',
+            'title': 'Retrieval bots — power AI Overviews + ChatGPT/Perplexity citations',
+            'hint': 'These bots fetch content at answer-time. Leaving them allowed is how your store shows up in AI answers.',
+            'rows': [r for r in crawler_rows if r['kind'] == 'search'],
+        },
+        {
+            'kind': 'user',
+            'title': 'User-triggered fetchers — invoked when a person asks the AI to browse',
+            'hint': 'User-instructed fetches (e.g. ChatGPT browse, Claude search). Usually safe to allow.',
+            'rows': [r for r in crawler_rows if r['kind'] == 'user'],
+        },
+        {
+            'kind': 'training',
+            'title': 'Training crawlers — feed LLM pre-training corpora',
+            'hint': 'Disallow these if you don\'t want your content in the next round of model training. Does not affect AI citations.',
+            'rows': [r for r in crawler_rows if r['kind'] == 'training'],
+        },
+    ]
     return render(request, 'seo/settings.html', {
         's': s, 'active_nav': 'seo',
         'crawler_rows': crawler_rows,
+        'crawler_groups': crawler_groups,
     })
 
 
@@ -396,3 +418,191 @@ def bulk_meta(request):
             'description': m.description if m else '',
         })
     return render(request, 'seo/bulk_meta.html', {'rows': rows, 'active_nav': 'seo'})
+
+
+@staff_member_required
+def sitemap_page(request):
+    """Sitemap dashboard — single page for every sitemap surface,
+    manual entries CRUD, IndexNow status, toggles, and a validate
+    button. No new models; reuses iter_sitemap_entries() +
+    SitemapEntry + SiteSeoSettings + seo plugin config.
+    """
+    from decimal import Decimal, InvalidOperation
+    from morpheus.views import HttpResponseRedirect
+    from plugins.installed.seo.models import SitemapEntry, SiteSeoSettings
+    from plugins.installed.seo.services import (
+        _site_base_url, get_or_create_indexnow_key, iter_sitemap_entries,
+        ping_indexnow, sitemap_counts,
+    )
+    from plugins.registry import plugin_registry
+
+    seo_plugin = plugin_registry.get('seo')
+
+    def _plugin_get(key, default):
+        try:
+            return seo_plugin.get_config_value(key, default) if seo_plugin else default
+        except Exception:  # noqa: BLE001
+            return default
+
+    def _plugin_set(key, value):
+        if seo_plugin is not None:
+            try:
+                seo_plugin.set_config(key, value)
+            except Exception:  # noqa: BLE001
+                pass
+
+    flash = ''
+    flash_kind = 'ok'
+
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+
+        if action == 'add_entry':
+            location = (request.POST.get('location') or '').strip()[:500]
+            if location:
+                try:
+                    priority = Decimal(request.POST.get('priority') or '0.5')
+                except InvalidOperation:
+                    priority = Decimal('0.5')
+                SitemapEntry.objects.create(
+                    location=location,
+                    changefreq=(request.POST.get('changefreq') or 'weekly').strip(),
+                    priority=priority,
+                    is_active=request.POST.get('is_active') == 'on',
+                )
+            return HttpResponseRedirect('/dashboard/seo/sitemap/')
+
+        if action == 'edit_entry':
+            entry_id = (request.POST.get('id') or '').strip()
+            if entry_id:
+                location = (request.POST.get('location') or '').strip()[:500]
+                try:
+                    priority = Decimal(request.POST.get('priority') or '0.5')
+                except InvalidOperation:
+                    priority = Decimal('0.5')
+                SitemapEntry.objects.filter(pk=entry_id).update(
+                    location=location,
+                    changefreq=(request.POST.get('changefreq') or 'weekly').strip(),
+                    priority=priority,
+                    is_active=request.POST.get('is_active') == 'on',
+                )
+            return HttpResponseRedirect('/dashboard/seo/sitemap/')
+
+        if action == 'delete_entry':
+            SitemapEntry.objects.filter(pk=request.POST.get('id') or '').delete()
+            return HttpResponseRedirect('/dashboard/seo/sitemap/')
+
+        if action == 'save_toggles':
+            s = site_settings()
+            for field in ('llms_txt_enabled', 'ai_shopping_feed_enabled',
+                          'enable_sitelinks_search'):
+                setattr(s, field, bool(request.POST.get(field)))
+            s.save()
+            _plugin_set('indexnow_enabled',
+                        bool(request.POST.get('indexnow_enabled')))
+            _plugin_set('news_sitemap_enabled',
+                        bool(request.POST.get('news_sitemap_enabled')))
+            _plugin_set('image_sitemap_enabled',
+                        bool(request.POST.get('image_sitemap_enabled')))
+            return HttpResponseRedirect('/dashboard/seo/sitemap/?saved=1')
+
+        if action == 'ping_sitemap':
+            base = _site_base_url().rstrip('/')
+            result = ping_indexnow([f'{base}/sitemap.xml'])
+            ok = result.get('ok')
+            status = result.get('status') or result.get('error') or '—'
+            return HttpResponseRedirect(
+                f'/dashboard/seo/sitemap/?ping={"ok" if ok else "err"}&status={status}'
+            )
+
+        if action == 'ping_url':
+            target = (request.POST.get('target_url') or '').strip()
+            if target:
+                result = ping_indexnow([target])
+                ok = result.get('ok')
+                status = result.get('status') or result.get('error') or '—'
+                return HttpResponseRedirect(
+                    f'/dashboard/seo/sitemap/?ping={"ok" if ok else "err"}&status={status}'
+                )
+            return HttpResponseRedirect('/dashboard/seo/sitemap/')
+
+        if action == 'validate':
+            import requests as _requests
+            errors = []
+            ok_n = 0
+            sample = []
+            for i, e in enumerate(iter_sitemap_entries()):
+                if i >= 25:
+                    break
+                sample.append(e['loc'])
+            for url in sample:
+                try:
+                    r = _requests.head(url, timeout=3, allow_redirects=True)
+                    if 200 <= r.status_code < 400:
+                        ok_n += 1
+                    else:
+                        errors.append({'url': url, 'status': r.status_code})
+                except Exception as exc:  # noqa: BLE001
+                    errors.append({'url': url, 'status': str(exc)[:40]})
+            request.session['sitemap_validate'] = {
+                'checked': len(sample), 'ok': ok_n, 'errors': errors[:10],
+            }
+            return HttpResponseRedirect('/dashboard/seo/sitemap/?validated=1')
+
+    # GET render path.
+    s = site_settings()
+    counts = sitemap_counts()
+    base = _site_base_url().rstrip('/')
+    key = get_or_create_indexnow_key()
+    redacted_key = (key[:4] + '…' + key[-4:]) if key and len(key) >= 8 else key
+
+    edit_id = (request.GET.get('edit') or '').strip()
+    edit_entry = None
+    entries = list(SitemapEntry.objects.all().order_by('location'))
+    if edit_id:
+        edit_entry = next((e for e in entries if str(e.pk) == edit_id), None)
+
+    surfaces = [
+        {'label': 'Sitemap index', 'path': '/sitemap-index.xml',
+         'desc': 'Discovery doc — points crawlers at every sub-sitemap.'},
+        {'label': 'Main sitemap', 'path': '/sitemap.xml',
+         'desc': f'{counts["total"]} URLs (products + categories + journal + manual).'},
+        {'label': 'Image sitemap', 'path': '/sitemap-images.xml',
+         'desc': 'Image URLs for Google Image + AI Overview discovery.'},
+        {'label': 'News sitemap', 'path': '/sitemap-news.xml',
+         'desc': 'Recent journal posts (window configurable via news_sitemap_max_age_hours; default 7 days).'},
+        {'label': 'robots.txt', 'path': '/robots.txt',
+         'desc': 'Per-bot allow/disallow + sitemap pointers.'},
+        {'label': '/llms.txt', 'path': '/llms.txt',
+         'desc': 'LLM-friendly site map (OpenAI/Anthropic/Perplexity/Google).'},
+        {'label': '/llms-full.txt', 'path': '/llms-full.txt',
+         'desc': 'Full content dump for LLM ingestion.'},
+        {'label': 'AI products feed', 'path': '/ai/products.json',
+         'desc': 'schema.org Product feed for AI shopping crawlers.'},
+        {'label': 'OpenSearch', 'path': '/opensearch.xml',
+         'desc': 'Browser tab → search engine descriptor.'},
+        {'label': 'Web app manifest', 'path': '/manifest.json',
+         'desc': 'PWA manifest (install-on-mobile).'},
+        {'label': 'IndexNow key', 'path': f'/{key}.txt' if key else '',
+         'desc': 'Bing/Yandex verification key.'},
+    ]
+
+    return render(request, 'seo/sitemap.html', {
+        'active_nav': 'seo',
+        's': s,
+        'base': base,
+        'counts': counts,
+        'surfaces': surfaces,
+        'entries': entries,
+        'edit_entry': edit_entry,
+        'indexnow_key_redacted': redacted_key,
+        'indexnow_enabled': bool(_plugin_get('indexnow_enabled', True)),
+        'news_sitemap_enabled': bool(_plugin_get('news_sitemap_enabled', True)),
+        'image_sitemap_enabled': bool(_plugin_get('image_sitemap_enabled', True)),
+        'last_ping': request.GET.get('ping'),
+        'last_ping_status': request.GET.get('status'),
+        'saved': request.GET.get('saved') == '1',
+        'validated': request.GET.get('validated') == '1',
+        'validate_result': request.session.pop('sitemap_validate', None),
+        'flash': flash, 'flash_kind': flash_kind,
+    })

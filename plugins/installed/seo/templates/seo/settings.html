@@ -58,22 +58,31 @@
 
   <h3 class="font-semibold mt-4">AI crawler matrix</h3>
   <p class="text-xs text-[color:var(--text-muted)] -mt-2">
-    Per-bot rules emitted in <code>/robots.txt</code>. "Allow" lets the
-    bot crawl + cite your pages (drives AI Overviews + ChatGPT/Perplexity
-    citations). "Disallow" blocks the bot entirely — useful for training-
-    only crawlers if you don't want your content in LLM training sets.
+    Per-bot rules emitted in <code>/robots.txt</code>. The 2026 best
+    practice: <strong>keep retrieval bots allowed</strong> (so your store
+    appears in AI Overviews + ChatGPT/Perplexity citations), and
+    <strong>disallow training crawlers</strong> if you don't want your
+    content in the next LLM training corpus.
   </p>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-    {% for r in crawler_rows %}
-    <label class="flex items-start gap-2 p-2 rounded border border-[color:var(--border)]">
-      <input type="checkbox" name="crawler_{{ r.ua|lower }}" {% if r.allowed %}checked{% endif %} class="mt-0.5">
-      <span class="min-w-0">
-        <code class="font-mono text-xs">{{ r.ua }}</code>
-        <span class="block text-xs text-[color:var(--text-muted)]">{{ r.label }} · <em>{{ r.kind }}</em></span>
-      </span>
-    </label>
-    {% endfor %}
-  </div>
+  {% for g in crawler_groups %}
+    {% if g.rows %}
+    <div class="mt-3">
+      <p class="text-sm font-medium">{{ g.title }}</p>
+      <p class="text-xs text-[color:var(--text-muted)] mb-2">{{ g.hint }}</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+        {% for r in g.rows %}
+        <label class="flex items-start gap-2 p-2 rounded border border-[color:var(--border)]">
+          <input type="checkbox" name="crawler_{{ r.ua|lower }}" {% if r.allowed %}checked{% endif %} class="mt-0.5">
+          <span class="min-w-0">
+            <code class="font-mono text-xs">{{ r.ua }}</code>
+            <span class="block text-xs text-[color:var(--text-muted)]">{{ r.label }}</span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
 
   <button type="submit" class="btn btn-primary">Save settings</button>
 </form>

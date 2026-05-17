@@ -1,5 +1,11 @@
 {% extends "storefront/base.html" %}
+{% load seo %}
 {% block title %}About — dot books{% endblock %}
+
+{% block extra_head %}
+{% seo_aboutpage_jsonld name="About dot books" description="dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">

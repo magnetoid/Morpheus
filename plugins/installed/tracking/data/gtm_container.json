@@ -1,0 +1,90 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-05-15 00:00:00",
+  "containerVersion": {
+    "container": {
+      "name": "Morpheus GA4 starter",
+      "usageContext": ["WEB"]
+    },
+    "tag": [
+      {
+        "name": "GA4 Configuration",
+        "type": "googtag",
+        "parameter": [
+          {"type": "TEMPLATE", "key": "tagId", "value": "{{GA4 Measurement ID}}"},
+          {"type": "BOOLEAN", "key": "sendPageView", "value": "true"}
+        ],
+        "firingTriggerId": ["2147479553"]
+      },
+      {
+        "name": "GA4 Event - view_item",
+        "type": "googtag",
+        "parameter": [
+          {"type": "TEMPLATE", "key": "tagId", "value": "{{GA4 Measurement ID}}"},
+          {"type": "TEMPLATE", "key": "eventName", "value": "view_item"},
+          {"type": "LIST", "key": "eventParameters", "list": [
+            {"type": "MAP", "map": [
+              {"type": "TEMPLATE", "key": "name", "value": "items"},
+              {"type": "TEMPLATE", "key": "value", "value": "{{DLV - ecommerce.items}}"}
+            ]},
+            {"type": "MAP", "map": [
+              {"type": "TEMPLATE", "key": "name", "value": "currency"},
+              {"type": "TEMPLATE", "key": "value", "value": "{{DLV - ecommerce.currency}}"}
+            ]},
+            {"type": "MAP", "map": [
+              {"type": "TEMPLATE", "key": "name", "value": "value"},
+              {"type": "TEMPLATE", "key": "value", "value": "{{DLV - ecommerce.value}}"}
+            ]}
+          ]}
+        ],
+        "firingTriggerId": ["TRIGGER_VIEW_ITEM"]
+      },
+      {
+        "name": "GA4 Event - add_to_cart",
+        "type": "googtag",
+        "parameter": [
+          {"type": "TEMPLATE", "key": "tagId", "value": "{{GA4 Measurement ID}}"},
+          {"type": "TEMPLATE", "key": "eventName", "value": "add_to_cart"}
+        ],
+        "firingTriggerId": ["TRIGGER_ADD_TO_CART"]
+      },
+      {
+        "name": "GA4 Event - begin_checkout",
+        "type": "googtag",
+        "parameter": [
+          {"type": "TEMPLATE", "key": "tagId", "value": "{{GA4 Measurement ID}}"},
+          {"type": "TEMPLATE", "key": "eventName", "value": "begin_checkout"}
+        ],
+        "firingTriggerId": ["TRIGGER_BEGIN_CHECKOUT"]
+      },
+      {
+        "name": "GA4 Event - purchase",
+        "type": "googtag",
+        "parameter": [
+          {"type": "TEMPLATE", "key": "tagId", "value": "{{GA4 Measurement ID}}"},
+          {"type": "TEMPLATE", "key": "eventName", "value": "purchase"}
+        ],
+        "firingTriggerId": ["TRIGGER_PURCHASE"]
+      }
+    ],
+    "trigger": [
+      {"name": "view_item", "type": "CUSTOM_EVENT", "filter": [{"type": "EQUALS", "parameter": [{"type": "TEMPLATE", "key": "arg0", "value": "{{_event}}"}, {"type": "TEMPLATE", "key": "arg1", "value": "view_item"}]}], "_id": "TRIGGER_VIEW_ITEM"},
+      {"name": "add_to_cart", "type": "CUSTOM_EVENT", "filter": [{"type": "EQUALS", "parameter": [{"type": "TEMPLATE", "key": "arg0", "value": "{{_event}}"}, {"type": "TEMPLATE", "key": "arg1", "value": "add_to_cart"}]}], "_id": "TRIGGER_ADD_TO_CART"},
+      {"name": "begin_checkout", "type": "CUSTOM_EVENT", "filter": [{"type": "EQUALS", "parameter": [{"type": "TEMPLATE", "key": "arg0", "value": "{{_event}}"}, {"type": "TEMPLATE", "key": "arg1", "value": "begin_checkout"}]}], "_id": "TRIGGER_BEGIN_CHECKOUT"},
+      {"name": "purchase", "type": "CUSTOM_EVENT", "filter": [{"type": "EQUALS", "parameter": [{"type": "TEMPLATE", "key": "arg0", "value": "{{_event}}"}, {"type": "TEMPLATE", "key": "arg1", "value": "purchase"}]}], "_id": "TRIGGER_PURCHASE"}
+    ],
+    "variable": [
+      {"name": "GA4 Measurement ID", "type": "c", "parameter": [{"type": "TEMPLATE", "key": "value", "value": "G-XXXXXXXXXX"}]},
+      {"name": "DLV - ecommerce.items", "type": "v", "parameter": [{"type": "TEMPLATE", "key": "name", "value": "ecommerce.items"}, {"type": "INTEGER", "key": "dataLayerVersion", "value": "2"}]},
+      {"name": "DLV - ecommerce.value", "type": "v", "parameter": [{"type": "TEMPLATE", "key": "name", "value": "ecommerce.value"}, {"type": "INTEGER", "key": "dataLayerVersion", "value": "2"}]},
+      {"name": "DLV - ecommerce.currency", "type": "v", "parameter": [{"type": "TEMPLATE", "key": "name", "value": "ecommerce.currency"}, {"type": "INTEGER", "key": "dataLayerVersion", "value": "2"}]},
+      {"name": "DLV - ecommerce.transaction_id", "type": "v", "parameter": [{"type": "TEMPLATE", "key": "name", "value": "ecommerce.transaction_id"}, {"type": "INTEGER", "key": "dataLayerVersion", "value": "2"}]}
+    ]
+  },
+  "_notes": [
+    "Import via GTM → Admin → Import Container → Merge.",
+    "Edit 'GA4 Measurement ID' variable to your real G-XXXXXXXXXX.",
+    "Triggers are CUSTOM_EVENT on the matching event names — Morpheus pushes them to dataLayer.",
+    "Publish your workspace after import."
+  ]
+}

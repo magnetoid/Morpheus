@@ -1,5 +1,11 @@
 {% extends "storefront/base.html" %}
+{% load seo %}
 {% block title %}Categories — dot books{% endblock %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=cat_items name="Categories" description="All categories on the dot books shelf." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">

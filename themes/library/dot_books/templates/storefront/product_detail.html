@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}
+{% load morph %}{% load seo %}{% load tracking %}
 {% block title %}{{ product.name }} — dot books{% endblock %}
 
 {% block extra_head %}
@@ -10,6 +10,8 @@
 {% if product.category %}
   {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endif %}
+{% if pdp_faqs %}{% seo_faq_jsonld items=pdp_faqs %}{% endif %}
+{% dl_view_item product %}
 {% endblock %}
 
 {% block content %}
@@ -43,6 +45,7 @@
           <span style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{{ product.price|money }}</span>
           {% if product.isOnSale %}<span class="meta" style="text-decoration: line-through;">{{ product.compareAtPrice|money }}</span>{% endif %}
         </div>
+        {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}
 
         {% storefront_blocks "pdp_below_price" %}
 
@@ -125,6 +128,8 @@
 }
 .pdp-long-desc p { margin: 0 0 1.1em; }
 .pdp-long-desc p:first-child { font-size: 1.15rem; color: var(--ink); }
+.pdp-long-desc h2 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; line-height: 1.25; margin: 2rem 0 0.75rem; color: var(--ink); }
+.pdp-long-desc h3 { font-family: var(--serif); font-size: 1.15rem; font-weight: 500; line-height: 1.3; margin: 1.5rem 0 0.5rem; color: var(--ink); }
 @media (min-width: 900px) {
   .pdp-grid { grid-template-columns: 1fr 1fr !important; gap: 5rem !important; align-items: start !important; }
   /* Pin the cover column while the details column scrolls past. Top offset
@@ -139,6 +144,36 @@
      no override needed. Listed here as documentation. */
 }
 </style>
+
+{% if pdp_faqs %}
+<section class="pdp-faqs">
+  <div class="wrap-narrow">
+    <p class="eyebrow" style="margin-bottom: 0.75rem;">Reader questions</p>
+    <h2 class="display display-m" style="margin: 0 0 1.5rem;">Frequently asked<span class="text-accent">.</span></h2>
+    <p class="meta" style="margin-bottom: 1.5rem; color: var(--muted);">Distilled from reader reviews. Not editorial.</p>
+    <div class="faq-list">
+      {% for f in pdp_faqs %}
+      <details class="faq-row">
+        <summary>{{ f.q }}</summary>
+        <div class="faq-answer">{{ f.a }}</div>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+<style>
+  .pdp-faqs { max-width: 70ch; margin: 3rem auto 0; padding: 0 0 1rem; }
+  .pdp-faqs .wrap-narrow { padding: 0 1.25rem; }
+  .faq-list { display: grid; gap: .5rem; }
+  .faq-row { border-top: 1px solid var(--rule); padding: 1rem 0; }
+  .faq-row:last-child { border-bottom: 1px solid var(--rule); }
+  .faq-row summary { cursor: pointer; font-family: var(--serif); font-size: 1.1rem; font-weight: 500; list-style: none; display:flex; justify-content: space-between; gap: 1rem; }
+  .faq-row summary::-webkit-details-marker { display: none; }
+  .faq-row summary::after { content: '+'; font-weight: 300; opacity: .6; }
+  .faq-row[open] summary::after { content: '–'; }
+  .faq-answer { margin-top: .75rem; line-height: 1.65; color: var(--ink-2); }
+</style>
+{% endif %}
 
 {% if reviews %}
 <section class="tight" id="reviews" style="background: var(--paper-2);">

@@ -1,0 +1,51 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Event log · Tracking · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-3">
+  <div>
+    <h1 class="text-xl font-semibold">Event log</h1>
+    <p class="text-xs text-[color:var(--text-muted)]">Most recent 200 server-side hits. Append-only; 30-day retention.</p>
+  </div>
+  <a href="/dashboard/tracking/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Tracking</a>
+</div>
+
+<form method="get" class="card card-padded flex flex-wrap gap-2 items-center mb-4">
+  <input class="input" name="event" value="{{ filter_event }}" placeholder="Filter by event (e.g. purchase)">
+  <select class="input" name="status">
+    <option value="">All statuses</option>
+    <option value="sent"{% if filter_status == 'sent' %} selected{% endif %}>Sent</option>
+    <option value="error"{% if filter_status == 'error' %} selected{% endif %}>Error</option>
+    <option value="deduped"{% if filter_status == 'deduped' %} selected{% endif %}>Deduped</option>
+    <option value="disabled"{% if filter_status == 'disabled' %} selected{% endif %}>Disabled</option>
+  </select>
+  <button class="btn btn-primary">Filter</button>
+  {% if filter_event or filter_status %}<a href="/dashboard/tracking/events/" class="btn">Clear</a>{% endif %}
+</form>
+
+<div class="card overflow-hidden">
+  <table class="morph-table">
+    <thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Transaction</th><th>Client</th><th>HTTP</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="whitespace-nowrap text-[color:var(--text-muted)] text-xs">{{ r.fired_at|date:"M j, H:i:s" }}</td>
+        <td><code>{{ r.event_name }}</code></td>
+        <td>
+          {% if r.status == 'sent' %}<span class="pill pill-success">sent</span>
+          {% elif r.status == 'error' %}<span class="pill pill-danger">error</span>
+          {% elif r.status == 'deduped' %}<span class="pill pill-info">deduped</span>
+          {% else %}<span class="pill pill-neutral">{{ r.status }}</span>{% endif %}
+        </td>
+        <td><code class="text-xs">{{ r.transaction_id|default:"—" }}</code></td>
+        <td class="text-xs text-[color:var(--text-muted)]">{{ r.client_id|truncatechars:16 }}</td>
+        <td class="text-xs">{{ r.response_status|default:"—" }}</td>
+        <td class="text-right"><a href="/dashboard/tracking/events/{{ r.id }}/" class="btn btn-ghost text-xs">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">No events yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

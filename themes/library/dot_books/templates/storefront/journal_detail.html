@@ -1,5 +1,11 @@
 {% extends "storefront/base.html" %}
+{% load seo %}
 {% block title %}{{ entry.title }} — Journal — dot books{% endblock %}
+
+{% block extra_head %}
+{% seo_article_jsonld headline=entry.title body=entry.body|striptags|truncatechars:5000 author="dot books staff" published=entry.published_at modified=entry.published_at %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
 
 {% block content %}
 <article style="padding: 4rem 0 5rem;">
@@ -11,7 +17,7 @@
     <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
       {{ entry.title }}<span class="text-accent">.</span>
     </h1>
-    <div style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
+    <div itemprop="articleBody" style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
       {{ entry.body|linebreaks }}
     </div>
 

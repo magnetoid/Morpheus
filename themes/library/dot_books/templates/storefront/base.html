@@ -1,4 +1,4 @@
-{% load morph %}{% load seo %}<!DOCTYPE html>
+{% load morph %}{% load seo %}{% load tracking %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -233,6 +233,10 @@
 </style>
 {% block extra_head %}{% endblock %}
 
+{% comment %}Consent Mode v2 defaults must run BEFORE the GTM container loads, otherwise the first hit goes out with implicit-granted state — that's the #1 EEA-compliance bug per Google's own docs.{% endcomment %}
+{% gtm_consent_default %}
+{% gtm_head %}
+
 {# SEO: site-wide JSON-LD, search-engine verification metas, LLM hint. #}
 {% seo_organization_jsonld %}
 {% seo_website_jsonld %}
@@ -257,6 +261,8 @@
 </script>
 </head>
 <body>
+{% gtm_noscript_body %}
+{% tracking_consent_banner %}
 
 {% include "storefront/_admin_bar.html" %}
 
@@ -377,13 +383,16 @@
       <h4>The press</h4>
       <a href="/journal/">Journal</a>
       <a href="/about/">About</a>
-      <a href="/stockists/">Stockists</a>
+      <a href="/p/authors/">Authors</a>
+      <a href="/p/imprints/">Imprints</a>
+      <a href="/p/publish-with-us/">Publish with us</a>
       <a href="/staff-picks/">Staff picks</a>
     </div>
     <div class="col">
       <h4>Help</h4>
-      <a href="/shipping/">Shipping</a>
-      <a href="/returns/">Returns</a>
+      <a href="/p/faq/">FAQ</a>
+      <a href="/p/shipping/">Shipping</a>
+      <a href="/p/returns/">Returns</a>
       <a href="/contact/">Contact</a>
       <a href="/account/">Account</a>
     </div>

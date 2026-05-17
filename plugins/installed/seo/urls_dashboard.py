@@ -12,4 +12,5 @@ urlpatterns = [
     path('audit/', views.audit_page, name='audit'),
     path('keywords/', views.keywords_page, name='keywords'),
     path('bulk-meta/', views.bulk_meta, name='bulk_meta'),
+    path('sitemap/', views.sitemap_page, name='sitemap'),
 ]

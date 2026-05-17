@@ -1,20 +1,23 @@
-"""Populate the long `Product.description` field for every active product.
+"""Populate Product.short_description and Product.description via the active LLM.
 
-Uses the active AI provider (set in /dashboard/settings/ai/) to write
-a ~200-word editorial blurb per book — title, author, and short
-description go in, a warm spoiler-free piece comes out.
+Single LLM call per product returns strict JSON `{short, long}`. The
+short is a 30–50 word hook; the long is 600–800 words of Markdown
+structured into five H2 sections — drives both human readability and
+the SEO audit's H2/H3 / word-count rules.
 
-Idempotent by default — skips any product whose description is
-already longer than --min-length characters. Pass --force to overwrite.
+Idempotent by default — skips any product whose long description is
+already longer than `--min-length` chars. Pass `--force` to overwrite.
 
 Usage:
     python manage.py populate_descriptions
-    python manage.py populate_descriptions --min-length 400 --force
+    python manage.py populate_descriptions --min-length 800 --force
     python manage.py populate_descriptions --slugs pride-and-prejudice,moby-dick
     python manage.py populate_descriptions --dry-run
+    python manage.py populate_descriptions --no-short    # long only
 """
 from __future__ import annotations
 
+import json
 import logging
 
 from django.core.management.base import BaseCommand
@@ -22,17 +25,36 @@ from django.core.management.base import BaseCommand
 logger = logging.getLogger('morpheus.catalog')
 
 
+_SYSTEM_PROMPT = (
+    'You write book copy for an independent online bookshop. Tone: '
+    'warm, literary, smart — like the back-cover blurb a thoughtful '
+    'bookseller would hand-write. No spoilers. Avoid clichés ("timeless '
+    'classic", "masterpiece", "instant classic"). No marketing fluff. '
+    'Always return STRICT JSON only — no preamble, no markdown fences, '
+    'no commentary around it.'
+)
+
+
 _PROMPT_TEMPLATE = (
-    "Write a 180-220 word editorial blurb for the book \"{title}\" by {author}. "
-    "Tone: warm, literary, smart — like the back-cover copy from a good "
-    "independent bookshop. NO spoilers. Mention themes, the era, and why "
-    "the book still matters. Avoid generic phrases like \"timeless classic\" "
-    "and \"masterpiece\". Open with a vivid sentence that grabs the reader. "
-    "Plain text only — no markdown, no headings, no bullet points. "
-    "End with a single short paragraph naming who it's for or what mood "
-    "it fits.\n\n"
-    "Context (short blurb already on file): {short}\n\n"
-    "Output the blurb only — no preamble, no quotes around it."
+    'Write a rich pair of descriptions for "{title}" by {author}.\n\n'
+    'Context (short blurb already on file): {short}\n\n'
+    'Return STRICT JSON only, exactly:\n'
+    '{{"short": "...", "long": "..."}}\n\n'
+    '"short" — 30–50 words, one or two vivid sentences that grab the '
+    'reader. No spoilers. Plain text (no markdown).\n\n'
+    '"long" — 600–800 words of Markdown, structured exactly as:\n'
+    '  <50-word vivid opener paragraph (no heading)>\n'
+    '  ## What it\'s about\n'
+    '  <120–150 words: plot or contents tour, spoiler-free>\n'
+    '  ## Themes\n'
+    '  <120–150 words: 2–3 main themes the book explores>\n'
+    '  ## Why it still matters\n'
+    '  <120–150 words: current relevance / lasting influence>\n'
+    '  ## Who it\'s for\n'
+    '  <80–100 words: reader profile — mood, taste, adjacent reads>\n'
+    '  ## On reading it now\n'
+    '  <80–100 words: a short reflection from a 2026 reader\'s vantage>\n'
+    'Plain prose per section, no bullet lists, no nested headings.'
 )
 
 
@@ -56,16 +78,41 @@ def _book_meta(product) -> tuple[str, str, str]:
     return title, author or 'an anonymous author', short
 
 
+def _parse_json_payload(raw: str) -> dict:
+    """Defensive JSON parse. Strips code fences, finds the first {...} block."""
+    if not raw:
+        return {}
+    txt = raw.strip()
+    if txt.startswith('```'):
+        txt = txt.strip('`')
+        if txt.lower().startswith('json'):
+            txt = txt[4:]
+    start = txt.find('{')
+    end = txt.rfind('}')
+    if start < 0 or end <= start:
+        return {}
+    try:
+        return json.loads(txt[start:end + 1])
+    except json.JSONDecodeError:
+        return {}
+
+
 class Command(BaseCommand):
-    help = 'Generate long-form Product.description via the active AI provider.'
+    help = 'Generate rich Product.short_description + Product.description via the active AI provider.'
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument('--slugs', default='', help='Comma-separated product slugs (default: all active).')
-        parser.add_argument('--min-length', type=int, default=400,
-                            help='Skip products whose description is already this many chars or more. Default 400.')
-        parser.add_argument('--force', action='store_true', help='Overwrite even if min-length is met.')
-        parser.add_argument('--dry-run', action='store_true', help='Show what would change; do not write.')
-        parser.add_argument('--limit', type=int, default=0, help='Stop after this many writes (0 = no limit).')
+        parser.add_argument('--slugs', default='',
+                            help='Comma-separated product slugs (default: all active).')
+        parser.add_argument('--min-length', type=int, default=800,
+                            help='Skip products whose long description is already this many chars or more. Default 800.')
+        parser.add_argument('--force', action='store_true',
+                            help='Overwrite even if min-length is met.')
+        parser.add_argument('--dry-run', action='store_true',
+                            help='Show what would change; do not write.')
+        parser.add_argument('--limit', type=int, default=0,
+                            help='Stop after this many writes (0 = no limit).')
+        parser.add_argument('--no-short', action='store_true',
+                            help='Skip writing short_description (long only).')
 
     def handle(self, *args, **opts) -> None:
         from plugins.installed.catalog.models import Product
@@ -75,12 +122,12 @@ class Command(BaseCommand):
         force = bool(opts['force'])
         dry = bool(opts['dry_run'])
         limit = int(opts['limit'])
+        skip_short = bool(opts['no_short'])
 
         qs = Product.objects.filter(status='active')
         if slugs:
             qs = qs.filter(slug__in=slugs)
 
-        # Resolve the LLM provider via the same registry Linda uses.
         try:
             from plugins.installed.ai_assistant.services.llm import get_llm
             llm = get_llm()
@@ -99,25 +146,46 @@ class Command(BaseCommand):
                 continue
 
             title, author, short = _book_meta(product)
-            prompt = _PROMPT_TEMPLATE.format(title=title, author=author, short=short or '(none)')
+            prompt = _PROMPT_TEMPLATE.format(
+                title=title, author=author, short=short or '(none)',
+            )
             self.stdout.write(f'→ {product.slug} ({existing_len} chars → generating…)')
             if dry:
                 continue
 
             try:
-                new_desc = (llm.complete(prompt, temperature=0.6, max_tokens=400) or '').strip()
+                raw = llm.complete(
+                    prompt, system=_SYSTEM_PROMPT,
+                    temperature=0.6, max_tokens=1800,
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning('llm error for %s: %s', product.slug, exc)
                 errored += 1
                 continue
-            if len(new_desc) < 150:
-                logger.warning('blurb too short for %s (%d chars) — skipping', product.slug, len(new_desc))
+
+            data = _parse_json_payload(raw or '')
+            long_desc = (data.get('long') or '').strip()
+            short_desc = (data.get('short') or '').strip()
+
+            if len(long_desc) < 1500:
+                logger.warning(
+                    'long description too short for %s (%d chars) — skipping',
+                    product.slug, len(long_desc),
+                )
                 errored += 1
                 continue
 
-            product.description = new_desc
-            product.save(update_fields=['description'])
+            update_fields = ['description']
+            product.description = long_desc
+            if not skip_short and len(short_desc) >= 25:
+                product.short_description = short_desc[:500]
+                update_fields.append('short_description')
+
+            product.save(update_fields=update_fields)
             written += 1
+            self.stdout.write(self.style.SUCCESS(
+                f'  saved {product.slug}: short={len(short_desc)} long={len(long_desc)}'
+            ))
             if limit and written >= limit:
                 self.stdout.write(self.style.WARNING(f'stopped at --limit {limit}'))
                 break

@@ -1,0 +1,49 @@
+{% comment %}
+Small fixed-position consent banner. Stored choice in localStorage
+under `morph_consent`. On accept, fires Consent Mode v2 `update`
+with all four signals granted. On reject, defaults stay as-is.
+{% endcomment %}
+<div id="morph-consent-banner" data-placement="{{ s.banner_placement }}" hidden>
+  <div class="morph-consent-inner">
+    <p>{{ s.banner_body }}{% if s.banner_link_url %} <a href="{{ s.banner_link_url }}" target="_blank" rel="noopener">Learn more</a>.{% endif %}</p>
+    <div class="morph-consent-actions">
+      <button type="button" data-consent-action="reject" class="morph-consent-btn-secondary">{{ s.banner_reject_label }}</button>
+      <button type="button" data-consent-action="accept" class="morph-consent-btn-primary">{{ s.banner_accept_label }}</button>
+    </div>
+  </div>
+</div>
+<style>
+  #morph-consent-banner { position: fixed; z-index: 9999; background: #1a1a1a; color: #f4f4f4; font-family: var(--sans, system-ui); }
+  #morph-consent-banner[data-placement="bottom"] { left: 0; right: 0; bottom: 0; padding: 1rem 1.25rem; }
+  #morph-consent-banner[data-placement="corner"] { right: 1rem; bottom: 1rem; max-width: 360px; padding: 1rem; border-radius: 8px; box-shadow: 0 20px 50px -10px rgba(0,0,0,.4); }
+  #morph-consent-banner[data-placement="modal"] { left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 480px; padding: 1.5rem; border-radius: 8px; box-shadow: 0 20px 50px -10px rgba(0,0,0,.4); }
+  .morph-consent-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; max-width: 1100px; margin: 0 auto; }
+  .morph-consent-inner p { flex: 1; margin: 0; font-size: .85rem; line-height: 1.4; }
+  .morph-consent-inner a { color: #ffe28a; text-decoration: underline; }
+  .morph-consent-actions { display: flex; gap: .5rem; }
+  .morph-consent-btn-primary, .morph-consent-btn-secondary {
+    padding: .5rem 1rem; font-size: .85rem; border-radius: 4px; cursor: pointer; border: 1px solid transparent;
+  }
+  .morph-consent-btn-primary { background: #fff; color: #1a1a1a; }
+  .morph-consent-btn-secondary { background: transparent; color: #f4f4f4; border-color: #555; }
+</style>
+<script>
+(function(){
+  var KEY='morph_consent';
+  var banner=document.getElementById('morph-consent-banner');
+  if(!banner) return;
+  var stored=null;
+  try { stored=localStorage.getItem(KEY); } catch(_){}
+  if(!stored){ banner.hidden=false; }
+  banner.addEventListener('click', function(e){
+    var btn=e.target.closest('[data-consent-action]');
+    if(!btn) return;
+    var action=btn.dataset.consentAction;
+    try { localStorage.setItem(KEY, action+':'+Date.now()); } catch(_){}
+    banner.hidden=true;
+    if(action==='accept' && typeof gtag==='function'){
+      gtag('consent','update',{ad_storage:'granted',analytics_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});
+    }
+  });
+})();
+</script>

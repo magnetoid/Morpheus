@@ -409,6 +409,125 @@ def seo_pagination_links(context, page_obj=None):
     return mark_safe('\n'.join(out))
 
 
+@register.simple_tag(takes_context=True)
+def seo_search_results_jsonld(context, items, query=''):
+    """Emit SearchResultsPage + ItemList for a /search/ page.
+    `items` is a list of {name, url, image}.
+    """
+    if not items:
+        return ''
+    request = context.get('request')
+    try:
+        url = request.build_absolute_uri() if request else ''
+    except Exception:  # noqa: BLE001
+        url = ''
+    from plugins.installed.seo.services import _jsonld_dump
+    item_list = [
+        {
+            '@type': 'ListItem',
+            'position': i + 1,
+            'url': it.get('url') or '',
+            'name': it.get('name') or '',
+        }
+        for i, it in enumerate(items)
+    ]
+    obj = {
+        '@context': 'https://schema.org',
+        '@type': 'SearchResultsPage',
+        'url': url,
+        'name': f'Search results for {query}' if query else 'Search results',
+        'mainEntity': {
+            '@type': 'ItemList',
+            'numberOfItems': len(items),
+            'itemListElement': item_list,
+        },
+    }
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
+@register.simple_tag(takes_context=True)
+def seo_person_jsonld(context, name, slug='', sameas=None):
+    """Person JSON-LD for author landing pages. `sameas` is an
+    optional iterable of URLs (LinkedIn / ORCID / Wikidata / etc.)
+    that prove the entity's identity.
+    """
+    if not name:
+        return ''
+    request = context.get('request')
+    try:
+        url = request.build_absolute_uri() if request else ''
+    except Exception:  # noqa: BLE001
+        url = ''
+    from plugins.installed.seo.services import _jsonld_dump
+    obj = {
+        '@context': 'https://schema.org',
+        '@type': 'Person',
+        'name': name,
+        'url': url,
+    }
+    if sameas:
+        obj['sameAs'] = [u for u in sameas if u]
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
+@register.simple_tag(takes_context=True)
+def seo_aboutpage_jsonld(context, name='', description=''):
+    """AboutPage JSON-LD with mainEntity → Organization. Used on /about/."""
+    from plugins.installed.seo.services import organization_jsonld, _jsonld_dump
+    request = context.get('request')
+    try:
+        url = request.build_absolute_uri() if request else ''
+    except Exception:  # noqa: BLE001
+        url = ''
+    org = organization_jsonld() or {}
+    org.pop('@context', None)
+    obj = {
+        '@context': 'https://schema.org',
+        '@type': 'AboutPage',
+        'name': name or 'About',
+        'url': url,
+    }
+    if description:
+        obj['description'] = description
+    if org:
+        obj['mainEntity'] = org
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
+@register.simple_tag(takes_context=True)
+def seo_contactpage_jsonld(context, name='', description=''):
+    """ContactPage JSON-LD with mainEntity → Organization + ContactPoint."""
+    from core.models import StoreSettings
+    from plugins.installed.seo.services import organization_jsonld, _jsonld_dump
+    request = context.get('request')
+    try:
+        url = request.build_absolute_uri() if request else ''
+    except Exception:  # noqa: BLE001
+        url = ''
+    org = organization_jsonld() or {}
+    org.pop('@context', None)
+    email = StoreSettings.get('contact_email', '') or ''
+    phone = StoreSettings.get('support_phone', '') or ''
+    if email or phone:
+        cp = {'@type': 'ContactPoint', 'contactType': 'customer support'}
+        if email:
+            cp['email'] = email
+        if phone:
+            cp['telephone'] = phone
+        org['contactPoint'] = cp
+    obj = {
+        '@context': 'https://schema.org',
+        '@type': 'ContactPage',
+        'name': name or 'Contact',
+        'url': url,
+    }
+    if description:
+        obj['description'] = description
+    if org:
+        obj['mainEntity'] = org
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
+
+
 @register.simple_tag
 def seo_llms_link():
     """Emit a <link rel="alternate"> hint to /llms.txt for LLM crawlers."""

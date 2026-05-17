@@ -1,5 +1,11 @@
 {% extends "storefront/base.html" %}
+{% load seo %}
 {% block title %}Journal — dot books{% endblock %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=post_items name="Journal" description="Editorial notes from dot books — essays and short pieces from the booksellers." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">

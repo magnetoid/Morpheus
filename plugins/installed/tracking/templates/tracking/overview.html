@@ -1,0 +1,104 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Tracking · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">Tracking</h1>
+    <p class="text-xs text-[color:var(--text-muted)]">Google Analytics 4 (server) + Google Tag Manager (client). Last 24 h: {{ stats.total_24h }} event{{ stats.total_24h|pluralize }} fired ({{ stats.success_rate|floatformat:0 }}% success).</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="/dashboard/tracking/settings/" class="btn btn-primary"><i data-lucide="settings" class="h-4 w-4"></i> Settings</a>
+    <a href="/dashboard/tracking/events/" class="btn">Event log</a>
+  </div>
+</div>
+
+{% if not configured %}
+<div class="card card-padded mb-4" style="border-color: var(--warn);">
+  <p class="font-semibold">Tracking is not configured yet.</p>
+  <p class="text-xs text-[color:var(--text-muted)]">Add your <strong>GA4 measurement ID</strong> + <strong>API secret</strong> + <strong>GTM container ID</strong> in <a href="/dashboard/tracking/settings/?tab=connection" class="hover:underline">Settings → Connection</a>. Server-side firing needs the measurement ID + API secret; GTM script needs the container ID.</p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Sent (24 h)</p><p class="text-2xl font-semibold mt-1">{{ stats.sent_24h }}</p></div>
+  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Errored</p><p class="text-2xl font-semibold mt-1" {% if stats.errored_24h %}style="color:var(--danger);"{% endif %}>{{ stats.errored_24h }}</p></div>
+  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Deduped</p><p class="text-2xl font-semibold mt-1">{{ stats.deduped_24h }}</p></div>
+  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Success rate</p><p class="text-2xl font-semibold mt-1" {% if stats.success_rate >= 95 %}style="color:var(--success);"{% elif stats.success_rate < 80 %}style="color:var(--warn);"{% endif %}>{{ stats.success_rate|floatformat:1 }}%</p></div>
+  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Last sent</p><p class="text-sm font-medium mt-1">{% if last_sent_at %}{{ last_sent_at|timesince }} ago{% else %}—{% endif %}</p></div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+  <div class="card card-padded">
+    <h3 class="font-semibold mb-2">Connection</h3>
+    <dl class="text-sm grid grid-cols-2 gap-y-1">
+      <dt class="text-[color:var(--text-muted)]">Measurement ID</dt>
+      <dd><code>{{ s.measurement_id|default:"—" }}</code></dd>
+      <dt class="text-[color:var(--text-muted)]">API secret</dt>
+      <dd>{% if s.api_secret %}<code>•••••••</code>{% else %}<span class="pill pill-warn">missing</span>{% endif %}</dd>
+      <dt class="text-[color:var(--text-muted)]">GTM container</dt>
+      <dd><code>{{ s.gtm_container_id|default:"—" }}</code></dd>
+      <dt class="text-[color:var(--text-muted)]">Region</dt>
+      <dd>{{ s.get_region_display }}</dd>
+      <dt class="text-[color:var(--text-muted)]">sGTM endpoint</dt>
+      <dd><code>{{ s.sgtm_server_url|default:"—" }}</code></dd>
+      <dt class="text-[color:var(--text-muted)]">Server firing</dt>
+      <dd>{% if s.server_side_enabled %}<span class="pill pill-success">on</span>{% else %}<span class="pill pill-neutral">off</span>{% endif %}</dd>
+      <dt class="text-[color:var(--text-muted)]">Client firing</dt>
+      <dd>{% if s.client_side_enabled %}<span class="pill pill-success">on</span>{% else %}<span class="pill pill-neutral">off</span>{% endif %}</dd>
+      <dt class="text-[color:var(--text-muted)]">Debug mode</dt>
+      <dd>{% if s.debug_mode %}<span class="pill pill-info">on (DebugView)</span>{% else %}—{% endif %}</dd>
+    </dl>
+  </div>
+
+  <div class="card card-padded">
+    <h3 class="font-semibold mb-2">Top events (24 h)</h3>
+    {% if stats.top_events %}
+    <table class="morph-table">
+      <thead><tr><th>Event</th><th class="text-right">Hits</th></tr></thead>
+      <tbody>
+        {% for name, count in stats.top_events %}
+        <tr><td><a href="/dashboard/tracking/events/?event={{ name }}" class="hover:underline"><code>{{ name }}</code></a></td><td class="text-right tabular-nums">{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">No events fired in the last 24 hours.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-padded flex items-center justify-between">
+    <h3 class="font-semibold">Recent events</h3>
+    <div class="flex gap-2">
+      <form method="post" action="/dashboard/tracking/test/" class="inline">
+        {% csrf_token %}
+        <button class="btn text-sm"><i data-lucide="zap" class="h-4 w-4"></i> Fire test purchase</button>
+      </form>
+      <a href="/dashboard/tracking/container.json" class="btn text-sm"><i data-lucide="download" class="h-4 w-4"></i> Download GTM container</a>
+    </div>
+  </div>
+  <table class="morph-table">
+    <thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Transaction</th><th></th></tr></thead>
+    <tbody>
+      {% for r in recent %}
+      <tr>
+        <td class="whitespace-nowrap text-[color:var(--text-muted)]">{{ r.fired_at|date:"M j, H:i:s" }}</td>
+        <td><code>{{ r.event_name }}</code></td>
+        <td>
+          {% if r.status == 'sent' %}<span class="pill pill-success">sent</span>
+          {% elif r.status == 'error' %}<span class="pill pill-danger">error</span>
+          {% elif r.status == 'deduped' %}<span class="pill pill-info">deduped</span>
+          {% else %}<span class="pill pill-neutral">{{ r.status }}</span>{% endif %}
+        </td>
+        <td><code class="text-xs">{{ r.transaction_id|default:"—" }}</code></td>
+        <td class="text-right"><a href="/dashboard/tracking/events/{{ r.id }}/" class="btn btn-ghost text-xs">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No events fired yet — configure tracking in <a href="/dashboard/tracking/settings/" class="hover:underline">Settings</a> and place a test order.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

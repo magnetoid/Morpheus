@@ -1,6 +1,12 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load seo %}
 {% block title %}Search — dot books{% endblock %}
+
+{% block extra_head %}
+{% if search_items %}{% seo_search_results_jsonld items=search_items query=query %}{% endif %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+<meta name="robots" content="noindex, follow">
+{% endblock %}
 
 {% block content %}
 <section style="padding: 3rem 0 2rem;">

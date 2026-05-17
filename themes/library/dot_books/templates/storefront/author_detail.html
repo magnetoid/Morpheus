@@ -1,6 +1,12 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load seo %}
 {% block title %}{{ author_name }} — dot books{% endblock %}
+
+{% block extra_head %}
+{% seo_person_jsonld name=author_name slug=author_slug %}
+{% seo_collection_jsonld items=bib_items name=author_name description=seo_description %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">

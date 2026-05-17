@@ -1,0 +1,188 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Tracking settings · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-3">
+  <div>
+    <h1 class="text-xl font-semibold">Tracking settings</h1>
+    <p class="text-xs text-[color:var(--text-muted)]">Comprehensive control center for the GA4 + GTM integration.</p>
+  </div>
+  <a href="/dashboard/tracking/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Overview</a>
+</div>
+
+{% if flash %}<p class="pill pill-success mb-3">{{ flash }}</p>{% endif %}
+
+<nav class="flex items-center gap-1 mb-4" style="border-bottom: 1px solid var(--border);">
+  {% with t='connection' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="link-2" class="h-4 w-4"></i> Connection</a>{% endwith %}
+  {% with t='events' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="zap" class="h-4 w-4"></i> Event firing</a>{% endwith %}
+  {% with t='consent' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="shield" class="h-4 w-4"></i> Consent</a>{% endwith %}
+  {% with t='identity' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="user" class="h-4 w-4"></i> Identity</a>{% endwith %}
+  {% with t='filters' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="filter" class="h-4 w-4"></i> Filters &amp; dedup</a>{% endwith %}
+  {% with t='tests' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="flask-conical" class="h-4 w-4"></i> Tests</a>{% endwith %}
+</nav>
+
+{% if tab == 'connection' %}
+<form method="post" class="card card-padded space-y-3 max-w-3xl">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="connection">
+  <h3 class="font-semibold">Connection</h3>
+  <p class="text-xs text-[color:var(--text-muted)]">Enter the credentials from your GA4 data stream and GTM workspace.</p>
+  <label class="block text-sm">GA4 Measurement ID
+    <input class="input w-full font-mono" name="measurement_id" placeholder="G-XXXXXXXXXX" value="{{ s.measurement_id }}">
+  </label>
+  <label class="block text-sm">GA4 API secret
+    <input class="input w-full font-mono" name="api_secret" type="password" placeholder="{% if s.api_secret %}leave blank to keep current{% else %}create one under GA4 → Admin → Data Streams → Measurement Protocol{% endif %}" value="__unchanged__" data-unchanged="1" onfocus="if(this.value=='__unchanged__'){this.value='';}">
+  </label>
+  <label class="block text-sm">GTM container ID
+    <input class="input w-full font-mono" name="gtm_container_id" placeholder="GTM-XXXXXXX" value="{{ s.gtm_container_id }}">
+  </label>
+  <label class="block text-sm">Server-side GTM endpoint (optional)
+    <input class="input w-full" name="sgtm_server_url" placeholder="https://metrics.example.com" value="{{ s.sgtm_server_url }}">
+  </label>
+  <label class="block text-sm">Region
+    <select class="input w-full" name="region">
+      <option value="global" {% if s.region == 'global' %}selected{% endif %}>Global (www.google-analytics.com)</option>
+      <option value="eu" {% if s.region == 'eu' %}selected{% endif %}>European Union (region1.google-analytics.com)</option>
+    </select>
+  </label>
+  <button class="btn btn-primary">Save connection</button>
+</form>
+
+{% elif tab == 'events' %}
+<form method="post" class="card card-padded max-w-4xl">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="events">
+  <h3 class="font-semibold mb-2">Event firing</h3>
+  <p class="text-xs text-[color:var(--text-muted)] mb-3">Toggle which GA4 events Morpheus fires. Server-side runs through Measurement Protocol; client-side runs as <code>dataLayer.push()</code>. Both can be on (recommended — server-side captures ad-blocker traffic; client-side captures the full funnel).</p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="server_side_enabled" {% if s.server_side_enabled %}checked{% endif %}> Server-side firing (Measurement Protocol v2)</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="client_side_enabled" {% if s.client_side_enabled %}checked{% endif %}> Client-side firing (GTM dataLayer)</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="debug_mode" {% if s.debug_mode %}checked{% endif %}> Debug mode (DebugView only)</label>
+  </div>
+  <h4 class="font-medium mt-3 mb-2">Per-event toggles</h4>
+  <table class="morph-table">
+    <thead><tr><th>Event</th><th>Fire</th><th>Last fired</th></tr></thead>
+    <tbody>
+      {% for r in event_rows %}
+      <tr>
+        <td><code>{{ r.name }}</code></td>
+        <td><label><input type="checkbox" name="event_{{ r.name }}"{% if r.enabled %} checked{% endif %}></label></td>
+        <td class="text-xs text-[color:var(--text-muted)]">{% if r.last_fired_at %}{{ r.last_fired_at|timesince }} ago{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <h4 class="font-medium mt-4 mb-2">Enhanced Measurement overrides</h4>
+  <p class="text-xs text-[color:var(--text-muted)] mb-2">GA4 fires these automatically when on. Untick to suppress at the GTM trigger level.</p>
+  <div class="grid grid-cols-2 gap-2">
+    {% for r in enhanced_rows %}
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="enhanced_{{ r.name }}"{% if r.enabled %} checked{% endif %}> <code>{{ r.name }}</code></label>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary mt-4">Save event firing</button>
+</form>
+
+{% elif tab == 'consent' %}
+<form method="post" class="card card-padded space-y-3 max-w-3xl">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="consent">
+  <h3 class="font-semibold">Consent Mode v2</h3>
+  <p class="text-xs text-[color:var(--text-muted)]">Default state per signal before the visitor interacts with your banner. EEA visitors require <strong>all denied</strong> until consent — Google's models still aggregate from opted-out traffic, so denied does not mean blind.</p>
+  <div class="grid grid-cols-2 gap-3">
+    {% for r in consent_rows %}
+    <label class="text-sm"><span class="block mb-1"><code>{{ r.signal }}</code></span>
+      <select class="input w-full" name="consent_{{ r.signal }}">
+        <option value="denied"{% if r.value == 'denied' %} selected{% endif %}>denied</option>
+        <option value="granted"{% if r.value == 'granted' %} selected{% endif %}>granted</option>
+      </select>
+    </label>
+    {% endfor %}
+  </div>
+  <hr class="my-3">
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="show_consent_banner" {% if s.show_consent_banner %}checked{% endif %}> Show consent banner on the storefront</label>
+  <div class="grid grid-cols-2 gap-3">
+    <label class="text-sm">Accept label
+      <input class="input w-full" name="banner_accept_label" value="{{ s.banner_accept_label }}">
+    </label>
+    <label class="text-sm">Reject label
+      <input class="input w-full" name="banner_reject_label" value="{{ s.banner_reject_label }}">
+    </label>
+  </div>
+  <label class="text-sm">Body
+    <textarea class="input w-full" name="banner_body" rows="2">{{ s.banner_body }}</textarea>
+  </label>
+  <label class="text-sm">Learn-more URL (optional)
+    <input class="input w-full" name="banner_link_url" value="{{ s.banner_link_url }}">
+  </label>
+  <label class="text-sm">Placement
+    <select class="input w-full" name="banner_placement">
+      <option value="bottom" {% if s.banner_placement == 'bottom' %}selected{% endif %}>Bottom banner</option>
+      <option value="corner" {% if s.banner_placement == 'corner' %}selected{% endif %}>Corner card</option>
+      <option value="modal" {% if s.banner_placement == 'modal' %}selected{% endif %}>Blocking modal</option>
+    </select>
+  </label>
+  <button class="btn btn-primary">Save consent</button>
+</form>
+
+<form method="post" class="card card-padded space-y-2 max-w-3xl mt-4">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="consent_preset">
+  <h4 class="font-medium">Presets</h4>
+  <div class="flex gap-2">
+    <button name="preset" value="eea_strict" class="btn">Apply EEA-strict (all denied)</button>
+    <button name="preset" value="permissive" class="btn">Apply non-EEA permissive (all granted)</button>
+  </div>
+</form>
+
+{% elif tab == 'identity' %}
+<form method="post" class="card card-padded space-y-3 max-w-3xl">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="identity">
+  <h3 class="font-semibold">Identity</h3>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="user_id_enabled" {% if s.user_id_enabled %}checked{% endif %}> Send hashed customer pk as GA4 <code>user_id</code> when signed in</label>
+  <label class="text-sm">Cross-domain measurement (comma-separated)
+    <input class="input w-full" name="cross_domain" value="{{ s.cross_domain }}" placeholder="checkout.example.com, blog.example.com">
+  </label>
+  <button class="btn btn-primary">Save identity</button>
+</form>
+
+{% elif tab == 'filters' %}
+<form method="post" class="card card-padded space-y-3 max-w-3xl">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="filters">
+  <h3 class="font-semibold">Filters &amp; deduplication</h3>
+  <label class="text-sm">Block these path prefixes (one per line)
+    <textarea class="input w-full font-mono" name="block_paths" rows="4">{% for p in s.block_paths %}{{ p }}
+{% endfor %}</textarea>
+  </label>
+  <label class="text-sm">Bot User-Agent substrings (one per line)
+    <textarea class="input w-full font-mono" name="bot_patterns" rows="4">{% for p in s.bot_patterns %}{{ p }}
+{% endfor %}</textarea>
+  </label>
+  <label class="text-sm">Dedup strategy
+    <select class="input w-full" name="dedup_strategy">
+      <option value="transaction_id" {% if s.dedup_strategy == 'transaction_id' %}selected{% endif %}>By transaction_id (recommended for purchases)</option>
+      <option value="client_window" {% if s.dedup_strategy == 'client_window' %}selected{% endif %}>By client_id + event_name within window</option>
+      <option value="off" {% if s.dedup_strategy == 'off' %}selected{% endif %}>No deduplication</option>
+    </select>
+  </label>
+  <label class="text-sm">Dedup window (minutes)
+    <input class="input w-full" type="number" min="1" max="1440" name="dedup_window_minutes" value="{{ s.dedup_window_minutes }}">
+  </label>
+  <button class="btn btn-primary">Save filters</button>
+</form>
+
+{% elif tab == 'tests' %}
+<div class="card card-padded max-w-3xl space-y-3">
+  <h3 class="font-semibold">Tests &amp; validation</h3>
+  <p class="text-xs text-[color:var(--text-muted)]">Fire a synthetic event end-to-end so you can verify your measurement ID + API secret without placing a real order.</p>
+  <form method="post" action="/dashboard/tracking/test/">
+    {% csrf_token %}
+    <button class="btn btn-primary"><i data-lucide="zap" class="h-4 w-4"></i> Fire test purchase</button>
+  </form>
+  <hr>
+  <p class="text-sm"><a href="/dashboard/tracking/events/" class="hover:underline">Open full event log →</a></p>
+  <p class="text-sm"><a href="/dashboard/tracking/container.json" class="hover:underline">Download GTM container (JSON for import) →</a></p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,6 +1,12 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}
+{% load morph %}{% load seo %}{% load tracking %}
 {% block title %}{% if selected_author %}Books by {{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }} titles{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif search_query %}Search: {{ search_query }}{% else %}All books{% endif %} — dot books{% endblock %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% dl_view_item_list products list_id=selected_category|default:'all' list_name=plp_name %}
+{% endblock %}
 
 {% block content %}
 <section style="padding: 3rem 0 2rem;">

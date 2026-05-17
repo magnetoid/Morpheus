@@ -134,7 +134,11 @@ def resolve_meta(
         or native('meta_description')
         or fallback_description
     ).strip()
-    og_image = (meta.og_image if meta and meta.og_image else fallback_image).strip()
+    og_image = (
+        (meta.og_image if meta and meta.og_image else '')
+        or fallback_image
+        or (site_settings().default_og_image or '')
+    ).strip()
     canonical = (
         (meta.canonical_url if meta and meta.canonical_url else '')
         or native('canonical_url')
@@ -303,6 +307,51 @@ def iter_sitemap_entries() -> Iterable[dict]:
             }
     except Exception as e:  # noqa: BLE001
         logger.debug('seo: manual sitemap entries skipped: %s', e)
+
+
+def sitemap_counts() -> dict:
+    """Aggregate ``iter_sitemap_entries()`` into per-source counts +
+    overall last-modified timestamps. Used by the Sitemap dashboard.
+
+    Returns a dict shaped:
+        {
+          'total': int,
+          'product_count': int, 'category_count': int,
+          'collection_count': int, 'journal_count': int,
+          'static_count': int, 'manual_count': int,
+          'last_modified': isoformat str | '',
+        }
+    """
+    counts = {
+        'total': 0,
+        'product_count': 0, 'category_count': 0, 'collection_count': 0,
+        'journal_count': 0, 'static_count': 0, 'manual_count': 0,
+        'last_modified': '',
+    }
+    base = _site_base_url().rstrip('/')
+    latest = ''
+    for e in iter_sitemap_entries():
+        counts['total'] += 1
+        loc = e.get('loc', '')
+        path = loc[len(base):] if loc.startswith(base) else loc
+        if path.startswith('/products/') and path.count('/') >= 3:
+            counts['product_count'] += 1
+        elif path.startswith('/category/'):
+            counts['category_count'] += 1
+        elif path.startswith('/c/'):
+            counts['collection_count'] += 1
+        elif path.startswith('/journal/') and path != '/journal/':
+            counts['journal_count'] += 1
+        elif path in ('/', '/products/', '/staff-picks/', '/about/',
+                      '/contact/', '/journal/'):
+            counts['static_count'] += 1
+        else:
+            counts['manual_count'] += 1
+        lm = e.get('lastmod') or ''
+        if lm > latest:
+            latest = lm
+    counts['last_modified'] = latest
+    return counts
 
 
 def render_sitemap_xml() -> str:
@@ -602,6 +651,15 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         'url': url,
         'description': description[:500],
     }
+    # dateModified — Perplexity decays citations after ~13 weeks and AI
+    # Overviews favour ≤60-day content. updated_at is auto_now=True on
+    # the Product model so it bumps on every save.
+    updated = g('updated_at') or g('updatedAt')
+    if updated:
+        try:
+            out['dateModified'] = updated.isoformat() if hasattr(updated, 'isoformat') else str(updated)
+        except Exception:  # noqa: BLE001
+            pass
 
     # Image: model exposes .primary_image.image.url; GraphQL exposes
     # primary_image_url or primaryImage.url.
@@ -920,41 +978,66 @@ def render_sitemap_index_xml() -> str:
 
 
 def render_news_sitemap_xml() -> str:
-    """News sitemap for journal posts in the last 48 h. Required-when-
-    fresh by Google News + AI editorial citations (Perplexity / ChatGPT
-    News). Empty urlset when no fresh posts — that's valid.
+    """News sitemap for journal posts.
+
+    Google News strictly wants entries from the last 48 h, but most
+    indie-publisher journals post weekly or less — an empty news
+    sitemap is technically valid but useless for AI-citation
+    discovery. The recency window is therefore configurable
+    (``news_sitemap_max_age_hours`` in the seo plugin config;
+    default 168 = 7 days), and we read journal entries directly from
+    the cms.Page table where they actually live (``metadata.category =
+    'journal'``).
     """
     from django.utils import timezone
+
     base = _site_base_url().rstrip('/')
-    cutoff = timezone.now() - timedelta(hours=48)
+    max_age_hours = 168  # 7 days default
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = plugin_registry.get('seo')
+        if seo_plugin is not None:
+            max_age_hours = int(seo_plugin.get_config_value('news_sitemap_max_age_hours', 168) or 168)
+    except Exception:  # noqa: BLE001
+        pass
+    cutoff = timezone.now() - timedelta(hours=max_age_hours)
+
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
         'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
     ]
     try:
-        from plugins.installed.cms.models import JournalPost
-        s = site_settings()
-        pub_name = s.organization_name or 'Morpheus'
-        qs = JournalPost.objects.filter(
-            status='published', published_at__gte=cutoff,
-        ).order_by('-published_at')[:1000]
-        for post in qs:
-            url = f'{base}/journal/{post.slug}/'
-            pub = post.published_at.replace(microsecond=0).isoformat()
-            parts.append('<url>')
-            parts.append(f'<loc>{escape(url)}</loc>')
-            parts.append('<news:news>')
-            parts.append('<news:publication>')
-            parts.append(f'<news:name>{escape(pub_name)}</news:name>')
-            parts.append('<news:language>en</news:language>')
-            parts.append('</news:publication>')
-            parts.append(f'<news:publication_date>{escape(pub)}</news:publication_date>')
-            parts.append(f'<news:title>{escape(post.title)}</news:title>')
-            parts.append('</news:news>')
-            parts.append('</url>')
-    except Exception:  # noqa: BLE001 — no cms / no journal model
-        pass
+        from plugins.installed.cms.models import Page
+    except Exception as exc:  # noqa: BLE001 — cms plugin not installed
+        logger.debug('seo.news_sitemap: cms.Page unavailable: %s', exc)
+        parts.append('</urlset>')
+        return ''.join(parts)
+
+    s = site_settings()
+    pub_name = s.organization_name or 'Morpheus'
+    qs = (Page.objects
+          .filter(state='published', metadata__category='journal')
+          .exclude(publish_at__gt=timezone.now())
+          .filter(publish_at__gte=cutoff)
+          .order_by('-publish_at')[:1000])
+    for post in qs:
+        pub_at = post.publish_at or post.updated_at or post.created_at
+        if pub_at is None:
+            continue
+        url = f'{base}/journal/{post.slug}/'
+        pub = pub_at.replace(microsecond=0).isoformat()
+        parts.append('<url>')
+        parts.append(f'<loc>{escape(url)}</loc>')
+        parts.append('<news:news>')
+        parts.append('<news:publication>')
+        parts.append(f'<news:name>{escape(pub_name)}</news:name>')
+        parts.append('<news:language>en</news:language>')
+        parts.append('</news:publication>')
+        parts.append(f'<news:publication_date>{escape(pub)}</news:publication_date>')
+        parts.append(f'<news:title>{escape(post.title)}</news:title>')
+        parts.append('</news:news>')
+        parts.append('</url>')
     parts.append('</urlset>')
     return ''.join(parts)
 
@@ -1330,14 +1413,23 @@ def audit_product(product) -> dict:
 
     meta = SeoMeta.for_obj(product) if hasattr(SeoMeta, 'for_obj') else None
     title = (meta.title if meta and meta.title else product.name) or ''
-    desc = (meta.description if meta and meta.description
+    # `desc_explicit` is True only when the merchant set a SeoMeta override;
+    # in that case the over-length rule is meaningful (the value is going
+    # into <meta name="description">). When falling back to the rich
+    # product.short_description we only enforce the lower bound — going
+    # long on storefront copy is fine and the meta tag is auto-truncated.
+    desc_explicit = bool(meta and meta.description)
+    desc = (meta.description if desc_explicit
             else (product.short_description or product.description or ''))[:500]
 
-    # Title
+    # Title — short-title rule only applies to explicit SeoMeta.title;
+    # the product name is whatever the merchant put on the product
+    # (e.g. "Pinocchio") and may legitimately be shorter than 30 chars.
+    title_explicit = bool(meta and meta.title)
     if not title:
         issues.append({'code': 'no_title', 'severity': 'high', 'message': 'No title set.'})
         score -= 25
-    elif len(title) < 30:
+    elif title_explicit and len(title) < 30:
         issues.append({'code': 'short_title', 'severity': 'medium',
                        'message': f'Title is {len(title)} chars; aim for 30–60.'})
         score -= 10
@@ -1357,7 +1449,7 @@ def audit_product(product) -> dict:
         issues.append({'code': 'short_description', 'severity': 'medium',
                        'message': f'Description is {len(desc)} chars; aim for 120–155.'})
         score -= 10
-    elif len(desc) > s.description_max_length:
+    elif desc_explicit and len(desc) > s.description_max_length:
         issues.append({'code': 'long_description', 'severity': 'low',
                        'message': f'Description is {len(desc)} chars; aim for under {s.description_max_length}.'})
         score -= 5
@@ -1393,6 +1485,62 @@ def audit_product(product) -> dict:
                        'message': 'Product is set to noindex.'})
         score -= 30
         suggestions.append('Remove the noindex directive unless intentional.')
+
+    # Content-quality rules (2026 AEO/GEO):
+    # AI search engines cite long-form, well-structured content far more
+    # than thin product copy. These penalties cap at -25 collectively so
+    # they nudge rather than dominate the score.
+    body_html = (product.description or '')
+    body_text = re.sub(r'<[^>]+>', ' ', body_html)
+    body_text = re.sub(r'\s+', ' ', body_text).strip()
+    word_count = len(body_text.split()) if body_text else 0
+    content_penalty = 0
+    if word_count < 100:
+        issues.append({'code': 'thin_description', 'severity': 'medium',
+                       'message': f'Description is {word_count} words; AI search cites long-form content 10× more.'})
+        content_penalty += 10
+        suggestions.append('Expand the description to at least 200 words — AI engines cite longer pages disproportionately.')
+
+    internal_links = (
+        len(re.findall(r'<a\s+[^>]*href=', body_html, flags=re.I))
+        + len(re.findall(r'\[[^\]]+\]\([^)]+\)', body_html))
+    )
+    if internal_links == 0 and word_count >= 80:
+        issues.append({'code': 'no_internal_links', 'severity': 'low',
+                       'message': 'Description has no internal links.'})
+        content_penalty += 5
+        suggestions.append('Add 1–3 internal links (related books, the author page, the category) inside the description.')
+
+    if primary is not None:
+        alt = (getattr(primary, 'alt_text', '') or '').strip()
+        alt_lower = alt.lower()
+        if alt and len(alt) < 8:
+            issues.append({'code': 'short_alt', 'severity': 'low',
+                           'message': f'Primary image alt is only {len(alt)} chars.'})
+            content_penalty += 3
+            suggestions.append('Describe the image in 8+ chars — what is visible, not the product name.')
+        elif alt_lower in {'image', 'photo', 'picture', 'cover'}:
+            issues.append({'code': 'generic_alt', 'severity': 'low',
+                           'message': f'Primary image alt is generic ("{alt}").'})
+            content_penalty += 3
+            suggestions.append('Replace generic alt text with a sentence that describes what is in the image.')
+        elif alt and product.name and alt_lower == product.name.lower():
+            issues.append({'code': 'duplicate_alt', 'severity': 'low',
+                           'message': 'Alt text just repeats the product name.'})
+            content_penalty += 2
+
+    if word_count >= 300:
+        heading_count = (
+            len(re.findall(r'<h[23]\b', body_html, flags=re.I))
+            + len(re.findall(r'(?m)^\s*#{2,3}\s+\S', body_html))
+        )
+        if heading_count == 0:
+            issues.append({'code': 'no_subheadings', 'severity': 'low',
+                           'message': 'Long description has no H2/H3 subheadings — bad for scanning + AI extraction.'})
+            content_penalty += 5
+            suggestions.append('Break the long description with 2–3 H2 subheadings (the gist, the form, who it\'s for).')
+
+    score -= min(content_penalty, 25)
 
     return {
         'score': max(0, min(100, score)),
@@ -1447,24 +1595,109 @@ def record_404(*, path: str, referrer: str = '') -> None:
         pass
 
 
+def suggest_internal_links_for(product, *, limit: int = 3) -> list[dict]:
+    """Return up to ``limit`` related products as link-suggestion dicts.
+
+    Uses `ai_assistant.recommendations.similar_to` (embedding +
+    category fallback). Returned shape:
+    ``[{'slug': str, 'name': str, 'url': str}, ...]``. Skipped products
+    are filtered (drafts, missing slug).
+    """
+    try:
+        from plugins.installed.ai_assistant.services.recommendations import similar_to
+    except Exception:  # noqa: BLE001
+        return []
+    try:
+        rows = similar_to(product, limit=max(int(limit), 1))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug('suggest_internal_links: similar_to failed: %s', exc)
+        return []
+    base = _site_base_url().rstrip('/')
+    out = []
+    for p in rows:
+        slug = getattr(p, 'slug', '') or ''
+        name = getattr(p, 'name', '') or ''
+        if not slug or not name:
+            continue
+        out.append({'slug': slug, 'name': name, 'url': f'{base}/products/{slug}/'})
+    return out[:limit]
+
+
 def suggest_redirect(path: str) -> str:
-    """Best-effort: find a product/category whose slug matches a token in `path`."""
+    """Suggest a live URL for a 404 path.
+
+    Strategy:
+      1. Extract the most-significant slug segment (the last
+         non-empty path component without a file extension).
+      2. Fuzzy-match it against the live product slug index using
+         ``difflib.get_close_matches``. This catches typos and
+         renamings (e.g. ``the-greate-gatsby`` → ``the-great-gatsby``).
+      3. Fall back to token-overlap against category slugs.
+      4. Last resort: the legacy substring lookup we used to do.
+    """
     if not path:
-        return ''
-    slug_token = re.sub(r'[^a-z0-9-]', ' ', path.lower()).split()
-    if not slug_token:
         return ''
     try:
         from plugins.installed.catalog.models import Category, Product
-        for token in slug_token:
-            if not token:
+    except Exception:  # noqa: BLE001
+        return ''
+
+    import difflib
+
+    segments = [s for s in path.strip('/').split('/') if s]
+    if not segments:
+        return ''
+    target_slug = re.sub(r'\.[a-z0-9]{1,5}$', '', segments[-1].lower())
+    target_slug = re.sub(r'[^a-z0-9-]', '', target_slug)
+    tokens = [t for t in target_slug.split('-') if t]
+    if not target_slug:
+        return ''
+
+    try:
+        product_slugs = list(
+            Product.objects.filter(status='active').values_list('slug', flat=True)
+        )
+    except Exception:  # noqa: BLE001
+        product_slugs = []
+
+    if product_slugs and target_slug:
+        close = difflib.get_close_matches(target_slug, product_slugs, n=1, cutoff=0.6)
+        if close:
+            return f'/products/{close[0]}/'
+
+    # Token-overlap against products: pick the product whose slug
+    # shares the most tokens with the 404 path.
+    if tokens and product_slugs:
+        best_slug, best_score = '', 0
+        for slug in product_slugs:
+            slug_tokens = set(t for t in slug.split('-') if len(t) >= 3)
+            overlap = sum(1 for t in tokens if t in slug_tokens)
+            if overlap > best_score:
+                best_score, best_slug = overlap, slug
+        if best_score >= 2:
+            return f'/products/{best_slug}/'
+
+    # Category fallback.
+    try:
+        cat_slugs = list(Category.objects.values_list('slug', flat=True))
+    except Exception:  # noqa: BLE001
+        cat_slugs = []
+    if cat_slugs and target_slug:
+        close = difflib.get_close_matches(target_slug, cat_slugs, n=1, cutoff=0.6)
+        if close:
+            return f'/products/?category={close[0]}'
+        for token in tokens:
+            if token in cat_slugs:
+                return f'/products/?category={token}'
+
+    # Legacy contains-substring fallback (kept for backward parity).
+    try:
+        for token in tokens:
+            if len(token) < 3:
                 continue
             p = Product.objects.filter(slug__icontains=token, status='active').first()
             if p:
                 return f'/products/{p.slug}/'
-            c = Category.objects.filter(slug__icontains=token).first()
-            if c:
-                return f'/products/?category={c.slug}'
     except Exception:  # noqa: BLE001
         pass
     return ''
