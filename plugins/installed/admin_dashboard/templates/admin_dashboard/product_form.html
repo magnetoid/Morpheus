@@ -2,7 +2,7 @@
 {% block title %}{% if product %}{{ product.name }}{% else %}New product{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-4">
+<div class="max-w-7xl mx-auto space-y-4">
 
   <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
     <a href="{% url 'admin_dashboard:products' %}" class="hover:underline">Products</a>
@@ -722,9 +722,21 @@
             </div>
           {% endif %}
         </div>
-        <div class="card-padded" style="padding:.6rem .75rem;">
-          <span class="pill pill-info"><i data-lucide="star" class="h-3 w-3" style="margin-right:.2rem;"></i> MAIN</span>
-          <span class="text-xs text-[color:var(--text-muted)]" style="margin-left:.5rem;">Cover image</span>
+        <div class="card-padded" style="padding:.6rem .75rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem;">
+          <span>
+            <span class="pill pill-info"><i data-lucide="star" class="h-3 w-3" style="margin-right:.2rem;"></i> MAIN</span>
+          </span>
+          {# Delete button on the current main image (renders inline next to the MAIN pill). #}
+          {% for img in images %}{% if img.is_primary %}
+          <form method="post" action="{% url 'admin_dashboard:image_delete' product_id=product.id image_id=img.id %}"
+                data-confirm="Delete the main image? This cannot be undone." data-confirm-cta="Delete" data-confirm-danger
+                style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost p-1" aria-label="Delete main image" title="Delete main image">
+              <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+            </button>
+          </form>
+          {% endif %}{% endfor %}
         </div>
       </div>
 
@@ -885,25 +897,35 @@
   </div>
 
   <div class="card" data-pt-show="variable,bundle">
-    <div class="card-padded flex items-center justify-between">
-      <div>
-        <h2 class="font-semibold text-sm">Variants</h2>
-        <p class="text-xs text-[color:var(--text-muted)]">Specific purchasable versions of this product (e.g. size, color).</p>
+    <div class="card-padded">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-sm">Variants</h2>
+          <p class="text-xs text-[color:var(--text-muted)]">Specific purchasable versions (e.g. size, color). Edit inline below — no navigation required.</p>
+        </div>
+        <button type="button" class="btn" onclick="document.getElementById('variant-new-row').open=true; document.querySelector('#variant-new-row input[name=\'name\']').focus();">
+          <i data-lucide="plus" class="h-4 w-4"></i> Add variant
+        </button>
       </div>
-      <a href="{% url 'admin_dashboard:variant_new' product_id=product.id %}" class="btn">
-        <i data-lucide="plus" class="h-4 w-4"></i> Add variant
-      </a>
     </div>
+
     {% if variants %}
     <table class="morph-table">
       <thead>
-        <tr><th>Name</th><th>SKU</th><th class="text-right">Price</th><th>Status</th><th></th></tr>
+        <tr>
+          <th>Name</th>
+          <th>SKU</th>
+          <th class="text-right">Price</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
       </thead>
       <tbody>
         {% for v in variants %}
-        <tr>
+        {# Two rows per variant: the always-visible summary, and the inline edit form (hidden until expanded). #}
+        <tr data-variant-id="{{ v.id }}">
           <td>
-            <a href="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}" class="font-medium hover:underline">{{ v.name }}</a>
+            <button type="button" class="font-medium hover:underline" onclick="this.closest('tr').nextElementSibling.classList.toggle('inline-edit-open')">{{ v.name }}</button>
           </td>
           <td class="text-[color:var(--text-muted)]"><code>{{ v.sku }}</code></td>
           <td class="text-right">{{ v.effective_price|default:"—" }}</td>
@@ -912,9 +934,65 @@
             {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
           </td>
           <td class="text-right">
-            <a href="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}" class="btn btn-ghost p-1.5">
+            <button type="button" class="btn btn-ghost p-1.5" title="Edit inline"
+                    onclick="this.closest('tr').nextElementSibling.classList.toggle('inline-edit-open')">
               <i data-lucide="pencil" class="h-4 w-4"></i>
-            </a>
+            </button>
+            <form method="post" action="{% url 'admin_dashboard:variant_delete' product_id=product.id variant_id=v.id %}"
+                  data-confirm="Delete variant '{{ v.name|escapejs }}'?" data-confirm-cta="Delete" data-confirm-danger
+                  style="display:inline-block; margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost p-1.5" title="Delete">
+                <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        <tr class="inline-edit-row">
+          <td colspan="5" style="padding: 0;">
+            <div class="inline-edit-wrap" style="background: var(--surface-2); padding: 1rem 1.25rem; border-top: 1px dashed var(--border);">
+              <form method="post" action="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}"
+                    class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                {% csrf_token %}
+                <div class="md:col-span-4">
+                  <label class="block text-xs font-medium mb-1">Name</label>
+                  <input type="text" name="name" value="{{ v.name }}" required class="input">
+                </div>
+                <div class="md:col-span-3">
+                  <label class="block text-xs font-medium mb-1">SKU</label>
+                  <input type="text" name="sku" value="{{ v.sku }}" required class="input">
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-xs font-medium mb-1">Price</label>
+                  <input type="number" step="0.01" min="0" name="price" value="{% if v.price %}{{ v.price.amount }}{% endif %}" class="input">
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-xs font-medium mb-1">Compare-at</label>
+                  <input type="number" step="0.01" min="0" name="compare_at_price" value="{% if v.compare_at_price %}{{ v.compare_at_price.amount }}{% endif %}" class="input">
+                </div>
+                <div class="md:col-span-1 flex items-center pt-5">
+                  <label class="inline-flex items-center gap-1 text-xs">
+                    <input type="checkbox" name="is_active" {% if v.is_active %}checked{% endif %}> Active
+                  </label>
+                </div>
+                <div class="md:col-span-3">
+                  <label class="block text-xs font-medium mb-1">Cost</label>
+                  <input type="number" step="0.01" min="0" name="cost_price" value="{% if v.cost_price %}{{ v.cost_price.amount }}{% endif %}" class="input">
+                </div>
+                <div class="md:col-span-3">
+                  <label class="block text-xs font-medium mb-1">Weight</label>
+                  <input type="number" step="0.001" min="0" name="weight" value="{{ v.weight|default:'' }}" class="input">
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-xs font-medium mb-1">Sort order</label>
+                  <input type="number" min="0" name="sort_order" value="{{ v.sort_order|default:'0' }}" class="input">
+                </div>
+                <div class="md:col-span-4 flex justify-end gap-2">
+                  <button type="button" class="btn" onclick="this.closest('tr').classList.remove('inline-edit-open')">Cancel</button>
+                  <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+                </div>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -922,10 +1000,58 @@
     </table>
     {% else %}
     <div class="card-padded text-sm text-[color:var(--text-muted)]">
-      No variants yet. Add one to switch this product into variable mode.
+      No variants yet. Click <strong>Add variant</strong> to create one inline below.
     </div>
     {% endif %}
+
+    {# Inline new-variant form — collapsed until the "Add variant" button opens it. #}
+    <details id="variant-new-row" class="card-padded" style="border-top: 1px solid var(--border);">
+      <summary class="font-medium text-sm cursor-pointer" style="list-style:none;">
+        <i data-lucide="plus-circle" class="h-4 w-4 inline"></i> New variant
+      </summary>
+      <form method="post" action="{% url 'admin_dashboard:variant_new' product_id=product.id %}"
+            class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end mt-3">
+        {% csrf_token %}
+        <div class="md:col-span-4">
+          <label class="block text-xs font-medium mb-1">Name *</label>
+          <input type="text" name="name" required class="input" placeholder="e.g. Hardcover · Signed · Red XL">
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-xs font-medium mb-1">SKU *</label>
+          <input type="text" name="sku" required class="input" placeholder="auto-uppercase">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium mb-1">Price</label>
+          <input type="number" step="0.01" min="0" name="price" class="input">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium mb-1">Compare-at</label>
+          <input type="number" step="0.01" min="0" name="compare_at_price" class="input">
+        </div>
+        <div class="md:col-span-1 flex items-center pt-5">
+          <label class="inline-flex items-center gap-1 text-xs">
+            <input type="checkbox" name="is_active" checked> Active
+          </label>
+        </div>
+        <div class="md:col-span-12 flex justify-end gap-2">
+          <button type="submit" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Create variant</button>
+        </div>
+      </form>
+    </details>
   </div>
+
+  <style>
+    /* Inline-edit rows collapsed by default; expand when sibling toggle adds .inline-edit-open. */
+    .morph-table tr.inline-edit-row > td { padding: 0; }
+    .morph-table tr.inline-edit-row .inline-edit-wrap {
+      max-height: 0; overflow: hidden;
+      transition: max-height 220ms ease, padding 220ms ease;
+      padding-top: 0 !important; padding-bottom: 0 !important;
+    }
+    .morph-table tr.inline-edit-row.inline-edit-open .inline-edit-wrap {
+      max-height: 600px; padding-top: 1rem !important; padding-bottom: 1rem !important;
+    }
+  </style>
   {% endif %}
 
 </div>
