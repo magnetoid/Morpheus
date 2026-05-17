@@ -107,11 +107,28 @@ class Command(BaseCommand):
                 content_type=ct, object_id=str(product.pk),
                 namespace=NAMESPACE, key=KEY,
             ).first()
-            if existing_flag and not force:
-                skipped += 1
-                continue
-
             body = product.description or ''
+            if existing_flag and not force:
+                # If the metafield records specific slugs but NONE of
+                # them are present in the current description, the
+                # description was overwritten by a later regenerate
+                # (populate_descriptions) and the link block was lost.
+                # Re-apply so the audit's "no internal links" rule
+                # actually clears.
+                recorded = (existing_flag.value or '').strip()
+                recorded_slugs = [s for s in recorded.split(',') if s and s != 'already-linked']
+                if recorded_slugs and not any(
+                    f'/products/{s}/' in body for s in recorded_slugs
+                ):
+                    logger.info(
+                        'apply_internal_links: %s recorded as applied (%s) but '
+                        'description shows no link traces — re-applying',
+                        product.slug, recorded,
+                    )
+                else:
+                    skipped += 1
+                    continue
+
             if _has_internal_link(body) or _has_markdown_link(body):
                 # Already has links — record that we considered it so
                 # the next run doesn't re-evaluate.

@@ -97,6 +97,25 @@ def _parse_json_payload(raw: str) -> dict:
         return {}
 
 
+def _extract_related_reading(body: str) -> str:
+    """Return the trailing 'Related reading' block (HTML or Markdown
+    form) from ``body``, or '' if none is present. Used to preserve
+    internal-link work across description regenerations.
+    """
+    if not body:
+        return ''
+    import re as _re
+    # HTML form first — TipTap-stored descriptions.
+    m = _re.search(r'<h2[^>]*>\s*Related reading\s*</h2>', body, flags=_re.I)
+    if m:
+        return body[m.start():].rstrip() + '\n'
+    # Markdown form (legacy / LLM Markdown).
+    idx = body.find('## Related reading')
+    if idx >= 0:
+        return body[idx:].rstrip() + '\n'
+    return ''
+
+
 class Command(BaseCommand):
     help = 'Generate rich Product.short_description + Product.description via the active AI provider.'
 
@@ -175,8 +194,18 @@ class Command(BaseCommand):
                 errored += 1
                 continue
 
+            # Preserve any existing Related-reading section so that
+            # internal links (written by apply_internal_links) survive
+            # a description regeneration. Otherwise every populate run
+            # silently undoes the link work, the metafield falsely
+            # claims "applied", and the SEO audit penalises the page.
+            existing_related = _extract_related_reading(product.description or '')
+
             update_fields = ['description']
-            product.description = long_desc
+            product.description = (
+                f'{long_desc}\n{existing_related}'
+                if existing_related else long_desc
+            )
             if not skip_short and len(short_desc) >= 25:
                 product.short_description = short_desc[:500]
                 update_fields.append('short_description')

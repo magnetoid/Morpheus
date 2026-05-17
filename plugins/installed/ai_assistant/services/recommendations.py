@@ -34,8 +34,16 @@ def similar_to(product: Product, limit: int = 4) -> List[Product]:
         )
     else:
         fallback_qs = Product.objects.filter(status='active')
-    fallback = [p for p in fallback_qs[: limit * 3] if p.id not in seen]
-    extras = fallback[: limit - len(embed_hits)]
+    candidates = [p for p in fallback_qs if p.id not in seen]
+    # Without a seed, the default Meta.ordering = ['-created_at']
+    # returns the same N most-recently-created siblings for every
+    # product in the category — leading to "Shakespeare trio for every
+    # fiction PDP". Seed on product.id so each product gets a varied
+    # but reproducible sibling set; re-running apply_internal_links
+    # yields the same answer for the same product.
+    import random
+    random.Random(str(product.id)).shuffle(candidates)
+    extras = candidates[: limit - len(embed_hits)]
     return embed_hits + extras
 
 
