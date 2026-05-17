@@ -26,6 +26,48 @@ def _hash_ip(ip: str) -> str:
     return hashlib.sha256(ip.encode()).hexdigest()[:32]
 
 
+class HandleUnavailable(ValueError):
+    """Raised when generate_unique_handle gives up after the retry budget.
+
+    Callers should surface this as a 400-class user-facing error
+    ("please pick a different handle") rather than a 403/500.
+    """
+
+
+def generate_unique_handle(customer, *, suggested: str = '', max_tries: int = 50) -> str:
+    """Pick a unique `Affiliate.handle` slug for `customer`.
+
+    Tries the suggested value first (slugified), then numeric suffixes
+    up to `max_tries`. Falls back to `aff-<8-char-pk-prefix>` if the
+    customer's `.email` is missing — covers SSO / passwordless users
+    where `.email` may be empty or None.
+
+    Raises `HandleUnavailable` if every candidate collides within
+    `max_tries`. The caller is responsible for turning that into a
+    400 response with a friendly message.
+    """
+    from django.utils.text import slugify
+    from plugins.installed.affiliates.models import Affiliate
+
+    # Pick a seed slug from (in priority): explicit suggested value,
+    # email local-part, or a customer-id-based fallback.
+    email = (getattr(customer, 'email', '') or '').strip()
+    local = email.split('@', 1)[0] if '@' in email else ''
+    seed = slugify(suggested or '')[:80] or slugify(local)[:80]
+    if not seed:
+        # Last resort: never crash. UUID pk has 36 chars; take the first 8
+        # of the hex form for a short, stable, unique-ish handle.
+        seed = f'aff-{str(getattr(customer, "pk", "anon"))[:8]}'
+
+    handle, base, idx = seed, seed, 2
+    while Affiliate.objects.filter(handle=handle).exists():
+        handle = f'{base[:74]}-{idx}'
+        idx += 1
+        if idx > max_tries:
+            raise HandleUnavailable(seed)
+    return handle
+
+
 def record_click(
     *,
     code: str,

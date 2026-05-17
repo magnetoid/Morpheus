@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
-from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods
 
 from morpheus.views import HttpRequest, HttpResponse, HttpResponseRedirect
@@ -69,20 +68,21 @@ def apply(request: HttpRequest) -> HttpResponse:
                 'existing': None, 'programs': [], 'seo_title': 'Become an affiliate',
             })
 
-        # Pick a unique handle from the submitted value (or fall back to the
-        # local part of their email).
-        handle = slugify(handle_raw)[:80] or slugify(request.user.email.split('@')[0])[:80]
-        base, idx = handle, 2
-        while Affiliate.objects.filter(handle=handle).exists():
-            handle = f'{base[:74]}-{idx}'
-            idx += 1
-            if idx > 50:
-                return render(request, 'affiliates/apply.html', {
-                    'error': "Couldn't pick a unique handle — try a different one.",
-                    'existing': None,
-                    'programs': list(AffiliateProgram.objects.filter(is_active=True)),
-                    'seo_title': 'Become an affiliate',
-                })
+        # Generate a unique handle. Helper safely handles SSO users with
+        # empty email + raises HandleUnavailable on collision exhaustion,
+        # which we surface as a 200-with-form-error (not 403).
+        from plugins.installed.affiliates.services import (
+            HandleUnavailable, generate_unique_handle,
+        )
+        try:
+            handle = generate_unique_handle(request.user, suggested=handle_raw)
+        except HandleUnavailable:
+            return render(request, 'affiliates/apply.html', {
+                'error': "Couldn't pick a unique handle — try a different one.",
+                'existing': None,
+                'programs': list(AffiliateProgram.objects.filter(is_active=True)),
+                'seo_title': 'Become an affiliate',
+            })
 
         Affiliate.objects.create(
             program=program, user=request.user, handle=handle, status='pending',

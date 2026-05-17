@@ -83,15 +83,6 @@ class CreateAffiliateLinkInput:
     label: str = ''
 
 
-@strawberry.input
-class ApplyAsAffiliateInput:
-    handle: str
-    program_slug: str = ''      # empty → first active program
-    payout_email: str = ''
-    company: str = ''
-    notes: str = ''
-
-
 @strawberry.type
 class AffiliatesMutationExtension:
 
@@ -121,57 +112,10 @@ class AffiliatesMutationExtension:
             click_count=link.click_count, conversion_count=link.conversion_count,
         )
 
-    @strawberry.mutation(description='Apply to become an affiliate. Creates a pending Affiliate row that an admin must approve.')
-    def apply_as_affiliate(
-        self, info: strawberry.Info, input: ApplyAsAffiliateInput,
-    ) -> AffiliateAccountType:
-        require_authenticated(info)
-        customer = current_customer(info)
-        from django.utils.text import slugify
-        from plugins.installed.affiliates.models import Affiliate, AffiliateProgram
-
-        # Resolve the program — explicit slug if given, otherwise first active.
-        program = None
-        if input.program_slug:
-            program = AffiliateProgram.objects.filter(
-                slug=input.program_slug, is_active=True,
-            ).first()
-        if program is None:
-            program = AffiliateProgram.objects.filter(is_active=True).order_by('created_at').first()
-        if program is None:
-            raise PermissionDenied('No active affiliate program is accepting applications.')
-
-        # Don't let the same customer apply twice to the same program.
-        existing = Affiliate.objects.filter(user=customer, program=program).first()
-        if existing:
-            return AffiliateAccountType(
-                id=str(existing.id), handle=existing.handle, status=existing.status,
-                accrued_amount=str(existing.accrued_balance.amount),
-                accrued_currency=str(existing.accrued_balance.currency),
-            )
-
-        # `handle` is the unique slug used in tracked links. Slugify defensively
-        # and append a short suffix if it collides.
-        handle = slugify(input.handle)[:80] or slugify(customer.email.split('@')[0])[:80]
-        base = handle
-        idx = 2
-        while Affiliate.objects.filter(handle=handle).exists():
-            handle = f'{base[:74]}-{idx}'
-            idx += 1
-            if idx > 50:
-                raise PermissionDenied('Could not pick a unique handle.')
-
-        a = Affiliate.objects.create(
-            program=program,
-            user=customer,
-            handle=handle,
-            status='pending',
-            company=(input.company or '')[:200],
-            payout_email=(input.payout_email or customer.email)[:254],
-            notes=(input.notes or '')[:2000],
-        )
-        return AffiliateAccountType(
-            id=str(a.id), handle=a.handle, status=a.status,
-            accrued_amount=str(a.accrued_balance.amount),
-            accrued_currency=str(a.accrued_balance.currency),
-        )
+    # NOTE: a previous version of this file shipped an `apply_as_affiliate`
+    # GraphQL mutation. It was dead code — the storefront affiliate
+    # apply page uses a Django POST handler at /affiliates/apply/, not
+    # GraphQL. Removing the mutation collapses two implementations of
+    # the same logic into one (see plugins.installed.affiliates.views.apply
+    # for the canonical path, and services.generate_unique_handle for
+    # the shared slug-generation helper).
