@@ -116,13 +116,23 @@ class _UnifiedAsset:
             'csv': 'text/csv',
             'mobi': 'application/x-mobipocket-ebook',
         }.get(ext, 'application/octet-stream')
+        # Label the source with the product's status so admin can tell
+        # draft / archived digital files from the live catalogue at a
+        # glance. The asset itself still surfaces (the file exists) —
+        # the badge just disambiguates.
+        status = (prod.status or '').lower()
+        label_suffix = ''
+        if status == 'draft':
+            label_suffix = ' · DRAFT'
+        elif status == 'archived':
+            label_suffix = ' · ARCHIVED'
         return cls(
             id=f'dp:{prod.id}', kind='document', url=url,
             filename=name or f'{prod.slug}.bin', mime_type=mime,
             alt_text=prod.name, size_bytes=size,
             created_at=prod.updated_at,
             edit_url=f'/dashboard/products/{prod.id}/',
-            source='digital_product', source_label='Digital product',
+            source='digital_product', source_label=f'Digital product{label_suffix}',
         )
 
 

@@ -916,11 +916,12 @@
             </form>
           </td>
         </tr>
-        <tr class="inline-edit-row">
+        <tr class="inline-edit-row" data-variant-id="{{ v.id }}">
           <td colspan="5" style="padding: 0;">
             <div class="inline-edit-wrap" style="background: var(--surface-2); padding: 1rem 1.25rem; border-top: 1px dashed var(--border);">
               <form method="post" action="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}"
-                    class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end"
+                    onsubmit="try { sessionStorage.setItem('morph:lastEditedVariant', '{{ v.id }}'); } catch (_) {}">
                 {% csrf_token %}
                 <div class="md:col-span-4">
                   <label class="block text-xs font-medium mb-1">Name</label>
@@ -1020,6 +1021,24 @@
       max-height: 600px; padding-top: 1rem !important; padding-bottom: 1rem !important;
     }
   </style>
+
+  <script>
+    // Restore the variant inline-edit state across a save → redirect →
+    // reload cycle. Without this, every save collapses every row and
+    // the merchant loses their place after editing 30 variants in a row.
+    (function () {
+      try {
+        var id = sessionStorage.getItem('morph:lastEditedVariant');
+        if (!id) return;
+        sessionStorage.removeItem('morph:lastEditedVariant');
+        var editRow = document.querySelector('tr.inline-edit-row[data-variant-id="' + id + '"]');
+        if (editRow) {
+          editRow.classList.add('inline-edit-open');
+          editRow.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
+      } catch (_) { /* sessionStorage disabled — no-op */ }
+    })();
+  </script>
   {% endif %}
 
 </div>
