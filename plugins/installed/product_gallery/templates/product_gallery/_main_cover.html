@@ -16,6 +16,14 @@ Placeholder card renders when no usable image exists.
 
 {# Pick the URL to render. hero_image wins; otherwise scan product.images. #}
 {% with hero_url=hero_image.url|default:'' %}
+<style>
+  /* The seo_responsive_image tag emits <picture><img> at its natural size.
+     Force it to fill the .pgal-main wrapper so the cover actually uses
+     the column's width instead of shrinking to intrinsic dimensions. */
+  .pgal-main { width: 100%; }
+  .pgal-main .cover-wrap { width: 100%; }
+  .pgal-main picture, .pgal-main img { width: 100%; height: 100%; display: block; object-fit: cover; }
+</style>
 
 {% if hero_url %}
   <div class="pgal-main" style="max-width: 480px;">
