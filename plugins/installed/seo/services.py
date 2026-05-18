@@ -196,13 +196,15 @@ def resolve_meta(
 
 
 def _structured_data_for(obj: Any, *, title: str, description: str, image: str) -> dict:
-    """Generate sensible JSON-LD for known model types. Empty dict if unknown."""
+    """Generate sensible JSON-LD for known model types. Empty dict if unknown.
+
+    No Organization fallback here — base.html emits the canonical
+    Organization graph via `{% seo_organization_jsonld %}`, so emitting
+    a stripped-down second one (only `name`) would just duplicate every
+    page's <head> with two `@type: Organization` scripts.
+    """
     if obj is None:
-        return {
-            '@context': 'https://schema.org',
-            '@type': 'Organization',
-            'name': getattr(settings, 'STORE_NAME', 'Morpheus Store'),
-        }
+        return {}
     cls_name = type(obj).__name__
     if cls_name == 'Product':
         try:

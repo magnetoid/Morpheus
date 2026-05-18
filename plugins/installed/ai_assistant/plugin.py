@@ -133,6 +133,7 @@ class AIAssistantPlugin(Plugin):
             import logging
             logging.getLogger('morpheus.ai').warning(
                 'Failed to enqueue embedding refresh for product %s', product.id,
+                exc_info=True,
             )
 
     def on_calculate_price(self, value, product=None, customer=None, **kwargs):
