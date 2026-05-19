@@ -33,11 +33,12 @@ class AIAssistantPlugin(Plugin):
         # REST/Webhook/Manifest URLs
         self.register_urls('plugins.installed.ai_assistant.urls', prefix='api/')
 
-        # React to store events
+        # React to store events. PRODUCT_VIEWED + SEARCH_PERFORMED are
+        # owned by the `analytics` plugin (the canonical persistence
+        # path) and the `tracking` plugin (GA4 firing); ai_assistant
+        # used to subscribe with stub tasks that only logged — removed.
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
-        self.register_hook(events.PRODUCT_VIEWED, self.on_product_viewed, priority=80)
         self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=80)
-        self.register_hook(events.SEARCH_PERFORMED, self.on_search_performed, priority=80)
         self.register_hook(events.CART_ABANDONED, self.on_cart_abandoned, priority=80)
         self.register_hook(events.PRODUCT_CREATED, self.on_product_created, priority=90)
         self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=90)
@@ -90,24 +91,10 @@ class AIAssistantPlugin(Plugin):
         from plugins.installed.ai_assistant.tasks import update_recommendations_after_order
         update_recommendations_after_order.delay(str(order.id))
 
-    def on_product_viewed(self, product, customer=None, session_key=None, **kwargs):
-        """Record product view for collaborative filtering."""
-        from plugins.installed.ai_assistant.tasks import record_product_view
-        record_product_view.delay(
-            str(product.id),
-            str(customer.id) if customer else None,
-            session_key,
-        )
-
     def on_customer_registered(self, customer, **kwargs):
         """Initialize memory store for new customer."""
         from plugins.installed.ai_assistant.tasks import initialize_customer_memory
         initialize_customer_memory.delay(str(customer.id))
-
-    def on_search_performed(self, query, results_count=0, customer=None, **kwargs):
-        """Log search for intent analysis and improving future results."""
-        from plugins.installed.ai_assistant.tasks import log_search_event
-        log_search_event.delay(query, results_count, str(customer.id) if customer else None)
 
     def on_cart_abandoned(self, cart, **kwargs):
         """Generate AI-personalized cart recovery message."""

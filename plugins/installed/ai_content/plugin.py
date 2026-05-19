@@ -1,32 +1,24 @@
-from morpheus import Plugin, SettingsPanel
-from morpheus import events
 import logging
 
+from morpheus import Plugin, SettingsPanel
+
 logger = logging.getLogger('morpheus.ai_content')
+
 
 class AIContentPlugin(Plugin):
     name = "ai_content"
     label = "AI Content & Assets Studio"
     version = "1.1.0"
-    description = "Autonomously generates high-converting product descriptions, SEO tags, and lifestyle images. Carries the brand voice config that every AI generation in the platform reads from."
+    description = (
+        "Carries the store-wide brand-voice config (tone, audience, "
+        "guidelines) that every AI generation in the platform reads "
+        "from via `services.get_brand_voice()`. The canonical product-"
+        "description auto-generation path lives in the ai_assistant "
+        "plugin's PRODUCT_CREATED hook (`generate_product_description` "
+        "Celery task)."
+    )
     has_models = False
     requires = ["catalog", "ai_assistant"]
-
-    def ready(self):
-        # We hook into product creation to autonomously generate content
-        self.register_hook(events.PRODUCT_CREATED, self.on_product_created, priority=90)
-
-    def on_product_created(self, product, **kwargs):
-        """Trigger background tasks to generate text and images for the new product."""
-        if self.get_config_value('auto_generate_text', True):
-            from plugins.installed.ai_content.services import ContentGenerationService
-            # In a real environment, this should be a Celery task.
-            # Using the service directly here for MVP illustration.
-            ContentGenerationService.generate_product_copy(product)
-
-        if self.get_config_value('auto_generate_images', False):
-            from plugins.installed.ai_content.services import ContentGenerationService
-            ContentGenerationService.generate_product_images(product)
 
     def get_config_schema(self):
         """
@@ -66,17 +58,6 @@ class AIContentPlugin(Plugin):
                     "default": "",
                     "title": "Voice guidelines",
                     "description": "Free-form rules: words to avoid, signature phrases, sentence length, formality. Prepended to every AI prompt as a system message.",
-                },
-                # ── Auto-generation toggles (Celery-backed) ─────────────
-                "auto_generate_text": {
-                    "type": "boolean",
-                    "default": True,
-                    "title": "Auto-generate product descriptions on create",
-                },
-                "auto_generate_images": {
-                    "type": "boolean",
-                    "default": False,
-                    "title": "Auto-generate lifestyle images (requires image API)",
                 },
                 # Legacy field — kept for back-compat. New copy uses brand_tone.
                 "tone_of_voice": {

@@ -46,54 +46,43 @@ class DynamicPricingService:
 
     @classmethod
     def evaluate_product_price(cls, product):
+        """Rule-based dynamic-pricing evaluator (runs hourly via Celery).
+
+        Reads inventory level for the product's first variant and writes
+        a DynamicPriceRule row that ``calculate()`` later reads on every
+        PRODUCT_CALCULATE_PRICE hook fire. Rules:
+
+          inventory > 100  →  multiplier 0.95  ("clear stock")
+          inventory < 10   →  multiplier 1.15  ("scarcity premium")
+          otherwise        →  multiplier 1.00
+
+        The agent-driven version (which would consult competitor data
+        and demand signals via an LLM) is intentionally deferred —
+        the prior implementation built a prompt and threw it away
+        while logging "AI Pricing Engine" messages, which misled
+        merchants into thinking real reasoning was happening.
         """
-        Runs asynchronously via Celery.
-        An AI Agent evaluates real-time supply, demand, and competitor history to output a new multiplier.
-        """
-        from plugins.installed.ai_assistant.services.operator import AgentOperator
-        
-        logger.info(f"AI Pricing Engine: Evaluating product {product.name} ({product.id})")
-        operator = AgentOperator()
-        
-        # Build prompt representing supply/demand/competitor data
-        inventory_level = product.variants.first().inventory_quantity if product.variants.exists() else 0
-        context = f"""
-        Product: {product.name}
-        Base Price: {product.price}
-        Current Inventory: {inventory_level}
-        Competitor Average Price: $Unknown (Assuming standard market rate)
-        """
-        
-        objective = """
-        Analyze the supply and demand for this product.
-        If inventory is high (>100), suggest a multiplier of 0.95 (5% discount) to move volume.
-        If inventory is extremely low (<10), suggest a multiplier of 1.15 (15% premium) to maximize margins.
-        Otherwise, keep the multiplier at 1.0.
-        Output ONLY the numeric multiplier (e.g. '1.05') as the final result, along with a short reason.
-        """
-        
-        prompt = f"{context}\n\nObjective: {objective}"
-        
         try:
-            # Simulate the autonomous LLM reasoning
-            # In a true deployment, we'd extract the numeric value natively
-            # result = operator.run_workflow(prompt)
-            # mock extraction for MVP:
-            new_multiplier = Decimal('1.0000')
-            reasoning = "Normal stock levels. Standard pricing applied."
-            
+            variant = product.variants.first()
+            inventory_level = variant.inventory_quantity if variant else 0
+
             if inventory_level > 100:
                 new_multiplier = Decimal('0.9500')
-                reasoning = "High inventory detected. Discounting to clear stock."
+                reasoning = "High inventory — discount to clear stock."
             elif inventory_level < 10:
                 new_multiplier = Decimal('1.1500')
-                reasoning = "Low inventory detected. Premium pricing applied based on scarcity."
-                
-            rule, created = DynamicPriceRule.objects.update_or_create(
+                reasoning = "Low inventory — scarcity premium."
+            else:
+                new_multiplier = Decimal('1.0000')
+                reasoning = "Normal stock — standard pricing."
+
+            DynamicPriceRule.objects.update_or_create(
                 product=product,
-                defaults={'multiplier': new_multiplier, 'reasoning': reasoning}
+                defaults={'multiplier': new_multiplier, 'reasoning': reasoning},
             )
-            logger.info(f"AI Pricing Engine: Updated {product.name} to x{new_multiplier} multiplier.")
-            
-        except Exception as e:
-            logger.error(f"AI Pricing Engine failed for {product.name}: {e}")
+            logger.info(
+                'pricing.evaluate_product_price: %s → x%s (%s)',
+                product.slug, new_multiplier, reasoning,
+            )
+        except Exception as e:  # noqa: BLE001 — hourly cron must not stop on one bad row
+            logger.warning('pricing.evaluate_product_price failed for %s: %s', product.slug, e)

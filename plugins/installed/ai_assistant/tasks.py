@@ -11,18 +11,11 @@ def update_recommendations_after_order(order_id):
     operator.run_workflow(f"Order {order_id} placed. Analyze the purchased products and update the semantic recommendation clusters.")
 
 @shared_task
-def record_product_view(product_id, customer_id=None, session_key=None):
-    logger.info(f"AI Task: Recorded product view {product_id} for user {customer_id}")
-
-@shared_task
 def initialize_customer_memory(customer_id):
     logger.info(f"AI Task: Initializing memory vector space for customer {customer_id}")
     operator = AgentOperator()
     operator.run_workflow(f"Customer {customer_id} just registered. Create an initial preference graph based on their registration domain and first session data.")
 
-@shared_task
-def log_search_event(query, results_count, customer_id=None):
-    logger.info(f"AI Task: Logging search intent for query: '{query}'")
 
 @shared_task
 def generate_cart_recovery(cart_id):
