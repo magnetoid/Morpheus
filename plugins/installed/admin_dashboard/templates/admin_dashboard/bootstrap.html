@@ -1,0 +1,115 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Start your store · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto" style="padding-top: 1rem;">
+
+  {% if result %}
+    {# ── Success / result state ─────────────────────────────────── #}
+    <div class="card card-padded" style="border: 1px solid var(--border);">
+      {% if result.error %}
+        <div class="pill pill-danger mb-3">{{ result.error }}</div>
+        <p class="text-sm text-[color:var(--text-muted)]">
+          The provider couldn't return a usable plan. You can try a more specific
+          prompt, or check your LLM provider at
+          <a href="/dashboard/settings/ai/" class="underline">AI settings</a>.
+        </p>
+        <a href="/dashboard/start/" class="btn btn-secondary mt-3">Try again</a>
+      {% else %}
+        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
+          Your store is seeded
+        </p>
+        <h1 class="text-2xl font-semibold mt-1 mb-3">
+          {{ result.store_name|default:"Your new store" }}
+        </h1>
+        <p class="text-sm text-[color:var(--text-muted)] mb-4">
+          Brand voice, categories, and products were generated from your prompt
+          and saved. Edit anything you want from the products and settings
+          pages — this is your store now.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div class="card card-padded" style="background: var(--surface-2);">
+            <p class="text-xs text-[color:var(--text-muted)]">Categories created</p>
+            <p class="text-2xl font-semibold tabular-nums">{{ result.categories_created|length }}</p>
+          </div>
+          <div class="card card-padded" style="background: var(--surface-2);">
+            <p class="text-xs text-[color:var(--text-muted)]">Products created</p>
+            <p class="text-2xl font-semibold tabular-nums">{{ result.products_created|length }}</p>
+          </div>
+          <div class="card card-padded" style="background: var(--surface-2);">
+            <p class="text-xs text-[color:var(--text-muted)]">Brand voice set</p>
+            <p class="text-2xl font-semibold tabular-nums">
+              {% if result.brand.tone %}✓{% else %}—{% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <a href="/dashboard/products/" class="btn btn-primary">Review products</a>
+          <a href="/" target="_blank" class="btn btn-secondary">Open storefront</a>
+          <a href="/dashboard/" class="btn btn-ghost">Home</a>
+        </div>
+      {% endif %}
+    </div>
+
+  {% else %}
+    {# ── Form state ─────────────────────────────────────────────── #}
+    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
+      One prompt. Real store.
+    </p>
+    <h1 class="text-3xl font-semibold mt-1 mb-2">
+      Describe what you want to sell<span style="color: var(--accent, #ff6633);">.</span>
+    </h1>
+    <p class="text-sm text-[color:var(--text-muted)] mb-6" style="max-width: 56ch;">
+      Morpheus will draft a brand voice, design a small category structure,
+      and seed it with real products you can edit. Generation takes around
+      ten to twenty seconds.
+    </p>
+
+    {% if error %}<div class="pill pill-danger mb-3">{{ error }}</div>{% endif %}
+
+    <form method="post" class="card card-padded"
+          style="background: linear-gradient(135deg, var(--surface-2), var(--surface));"
+          onsubmit="document.getElementById('bs-submit').disabled = true;
+                   document.getElementById('bs-submit').textContent = 'Generating…';
+                   document.getElementById('bs-wait').style.display = 'block';">
+      {% csrf_token %}
+      <label class="block text-sm font-medium mb-2">Concept</label>
+      <textarea name="prompt" rows="3" required maxlength="600"
+                placeholder="e.g. {{ sample_prompts.0 }}"
+                class="input w-full" style="font-size: 1rem; line-height: 1.5; resize: vertical;"
+      >{{ prompt }}</textarea>
+      <div class="flex items-center justify-between mt-3">
+        <p class="text-xs text-[color:var(--text-muted)]">
+          We'll use the active LLM provider configured at
+          <a href="/dashboard/settings/ai/" class="underline">AI settings</a>.
+        </p>
+        <button id="bs-submit" type="submit" class="btn btn-primary">Generate my store</button>
+      </div>
+      <div id="bs-wait" style="display:none; margin-top: 1rem; padding: 1rem; border-radius: 8px;
+                                background: var(--surface); border: 1px dashed var(--border);">
+        <p class="text-sm font-medium mb-1">Building your store…</p>
+        <p class="text-xs text-[color:var(--text-muted)]">
+          Writing brand voice → designing categories → drafting products.
+          This usually takes 10–20 seconds.
+        </p>
+      </div>
+    </form>
+
+    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)] mt-6 mb-2">
+      Try one of these
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+      {% for sp in sample_prompts %}
+      <button type="button" onclick="document.querySelector('textarea[name=prompt]').value = this.textContent.trim();"
+              class="text-left p-3 rounded-md hover:bg-[color:var(--surface-2)]"
+              style="border: 1px solid var(--border); font-size: .85rem; line-height: 1.45;">
+        {{ sp }}
+      </button>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

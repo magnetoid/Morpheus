@@ -113,6 +113,7 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
 
 urlpatterns = [
     path('', views.dashboard_home, name='home'),
+    path('start/', views.bootstrap_view, name='bootstrap'),
     path('me/', views.my_account, name='my_account'),
     path('pulse/refresh/', views.pulse_refresh, name='pulse_refresh'),
     path('pulse/<uuid:insight_id>/dismiss/', views.pulse_dismiss, name='pulse_dismiss'),

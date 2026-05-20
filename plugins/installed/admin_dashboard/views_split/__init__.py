@@ -24,4 +24,5 @@ from plugins.installed.admin_dashboard.views_split.returns import *   # noqa: F4
 from plugins.installed.admin_dashboard.views_split.palette import *   # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.ai_writers import * # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.account import *    # noqa: F401, F403
+from plugins.installed.admin_dashboard.views_split.bootstrap import *  # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split import theme_builder as theme_builder_views  # noqa: F401
