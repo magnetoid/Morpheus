@@ -339,6 +339,23 @@ def product_detail(request, slug):
     if not product:
         from morpheus.views import Http404
         raise Http404
+
+    # Single ORM lookup for the product, prefetching the relations every
+    # helper below needed to fetch independently (4 helpers × 1 query
+    # each = 4 redundant queries per PDP render under the old code).
+    # The helpers now accept the loaded model and skip their internal
+    # `Product.objects.filter(slug=slug).first()` lookups.
+    from plugins.installed.catalog.models import Product as _Product
+    try:
+        product_row = (
+            _Product.objects
+            .filter(slug=slug)
+            .only('id', 'slug', 'updated_at')
+            .first()
+        )
+    except Exception:  # noqa: BLE001
+        product_row = None
+
     related = _related_products(slug)
     # The GraphQL `images` field is a flat list of {url, altText, isPrimary}.
     # Resolve the hero image once so the template can stay simple.
@@ -368,18 +385,15 @@ def product_detail(request, slug):
         'name': product.get('name') or slug,
         'url': request.build_absolute_uri(request.path),
     })
+    # Reuse the single product_row loaded at the top of the view — no
+    # second `Product.objects.filter(slug=slug)` round-trip.
     last_reviewed = None
-    try:
-        from plugins.installed.catalog.models import Product as _Product
-        _row = _Product.objects.filter(slug=slug).only('updated_at').first()
-        if _row:
-            last_reviewed = _row.updated_at
-            # Feed it back into the GraphQL dict so seo_product_jsonld
-            # picks it up and emits dateModified in the Product schema.
-            if isinstance(product, dict):
-                product['updatedAt'] = last_reviewed.isoformat()
-    except Exception:  # noqa: BLE001
-        pass
+    if product_row is not None:
+        last_reviewed = product_row.updated_at
+        # Feed it back into the GraphQL dict so seo_product_jsonld
+        # picks it up and emits dateModified in the Product schema.
+        if isinstance(product, dict):
+            product['updatedAt'] = last_reviewed.isoformat()
     # Staff admin-bar deep-link: lets a signed-in staff user jump
     # straight from the public PDP into the admin product edit form.
     active_pdp_edit_url = ''
@@ -393,23 +407,27 @@ def product_detail(request, slug):
         'primary_images': primary_images,
         'related_products': related,
         'book_specs': _book_specs(slug),
-        'reviews': _published_reviews(slug),
-        'pdp_faqs': _pdp_faqs(slug),
+        'reviews': _published_reviews(slug, product_row=product_row),
+        'pdp_faqs': _pdp_faqs(slug, product_row=product_row),
         'breadcrumb_items': breadcrumb_items,
         'last_reviewed': last_reviewed,
         'active_pdp_edit_url': active_pdp_edit_url,
     })
 
 
-def _pdp_faqs(slug: str) -> list[dict]:
-    """Return ``[{q, a}, ...]`` from the seo.pdp_faqs metafield, or []."""
+def _pdp_faqs(slug: str, *, product_row=None) -> list[dict]:
+    """Return ``[{q, a}, ...]`` from the seo.pdp_faqs metafield, or [].
+
+    Accepts ``product_row`` from the caller so the PDP doesn't need to
+    re-fetch the Product by slug just to look up its primary key.
+    """
     try:
         from plugins.installed.catalog.models import Product
         from plugins.installed.metafields.models import Metafield
     except Exception:  # noqa: BLE001
         return []
     try:
-        product = Product.objects.filter(slug=slug).first()
+        product = product_row or Product.objects.filter(slug=slug).first()
         if product is None:
             return []
         from django.contrib.contenttypes.models import ContentType
@@ -439,15 +457,19 @@ def _pdp_faqs(slug: str) -> list[dict]:
     return out
 
 
-def _published_reviews(slug: str, limit: int = 4) -> list[dict]:
+def _published_reviews(slug: str, limit: int = 4, *, product_row=None) -> list[dict]:
     """Return ``[{stars, body, author_name, created_at}, ...]`` for the PDP.
-    Pre-computes the star string + author display so the template stays simple."""
+
+    Accepts ``product_row`` from the caller to avoid a second
+    Product-by-slug lookup. Pre-computes the star string + author
+    display so the template stays simple.
+    """
     try:
         from plugins.installed.catalog.models import Product, Review
     except Exception:  # noqa: BLE001 — catalog plugin not installed
         return []
     try:
-        product = Product.objects.filter(slug=slug).first()
+        product = product_row or Product.objects.filter(slug=slug).first()
         if product is None:
             return []
         rows = (Review.objects

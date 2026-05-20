@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}
 {% block title %}{{ product.name }} — dot books{% endblock %}
 
 {% block extra_head %}
@@ -175,6 +175,7 @@
 </style>
 {% endif %}
 
+{% cache 600 pdp_reviews product.id product.updated_at|default:"0" %}
 {% if reviews %}
 <section class="tight" id="reviews" style="background: var(--paper-2);">
   <div class="wrap">
@@ -193,7 +194,9 @@
 </section>
 <style>@media (min-width: 768px) { .reviews-grid { grid-template-columns: repeat(2, 1fr) !important; } }</style>
 {% endif %}
+{% endcache %}
 
+{% cache 1800 pdp_related product.id product.updated_at|default:"0" %}
 {% if related_products %}
 <section style="padding: 3rem 0 4rem;">
   <div class="wrap">
@@ -219,5 +222,6 @@
   </div>
 </section>
 {% endif %}
+{% endcache %}
 
 {% endblock %}

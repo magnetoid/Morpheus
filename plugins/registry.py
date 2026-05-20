@@ -147,7 +147,14 @@ class PluginRegistry:
                 self._activate(instance)
 
         self._ready = True
-        logger.info("Plugin system ready. Active: %s", sorted(self._active))
+        # One summary line at INFO. Per-plugin lines stay at DEBUG so
+        # production logs don't get N lines of "Plugin activated:" noise
+        # on every shell invocation.
+        active = sorted(self._active)
+        logger.info(
+            "Plugin system ready: %d active (%s)",
+            len(active), ', '.join(active),
+        )
 
     def _activate(self, plugin: MorpheusPlugin) -> None:
         try:
@@ -157,7 +164,10 @@ class PluginRegistry:
             return
         self._active.add(plugin.name)
         self._collect_contributions(plugin)
-        logger.info("Plugin activated: %s v%s", plugin.name, plugin.version)
+        # Per-plugin success is DEBUG (still surfaces in dev / tracing);
+        # the boot summary at the end of activate_all() carries the
+        # human-readable count + names list at INFO.
+        logger.debug("Plugin activated: %s v%s", plugin.name, plugin.version)
 
     def deactivate(self, name: str) -> None:
         if name in self._plugins and name in self._active:
