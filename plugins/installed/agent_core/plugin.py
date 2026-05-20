@@ -103,21 +103,26 @@ class AgentCorePlugin(Plugin):
         ]
 
     def contribute_dashboard_pages(self) -> list:
+        # AI-first: the Ops console is Morpheus's defining surface,
+        # so it lives at the TOP of the main sidebar under "AI &
+        # agents" — not buried in settings. The operational pages
+        # (run history, background scheduling, observability) stay
+        # in settings since they're admin/setup affordances.
         return [
-            DashboardPage(
-                label='Agent runs',
-                slug='runs',
-                view='plugins.installed.agent_core.views.runs_dashboard_view',
-                icon='sparkles',
-                section='ai',
-                order=10,
-                nav='settings',
-            ),
             DashboardPage(
                 label='Ops console',
                 slug='console',
                 view='plugins.installed.agent_core.views.merchant_ops_chat_view',
-                icon='terminal',
+                icon='sparkles',
+                section='ai',
+                order=10,
+                nav='main',
+            ),
+            DashboardPage(
+                label='Agent runs',
+                slug='runs',
+                view='plugins.installed.agent_core.views.runs_dashboard_view',
+                icon='activity',
                 section='ai',
                 order=20,
                 nav='settings',
@@ -135,7 +140,7 @@ class AgentCorePlugin(Plugin):
                 label='Observability',
                 slug='observability',
                 view='plugins.installed.agent_core.views.observability_view',
-                icon='activity',
+                icon='gauge',
                 section='ai',
                 order=40,
                 nav='settings',
