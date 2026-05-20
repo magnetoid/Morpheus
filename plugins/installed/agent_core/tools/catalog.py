@@ -101,6 +101,47 @@ def list_categories_tool() -> ToolResult:
 
 
 @tool(
+    name='catalog.backfill_alt_text',
+    description=(
+        'Backfill content-aware alt text on ProductImage rows '
+        '("Title by Author — book cover" / "back cover" / "interior page N"). '
+        'Idempotent: skips images whose alt is already non-empty, '
+        'non-generic, and not equal to the product name. Pass `force=True` '
+        'to overwrite. Returns updated/skipped counts.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slugs': {'type': 'array', 'items': {'type': 'string'},
+                      'description': 'Optional list of product slugs to restrict to.'},
+            'force': {'type': 'boolean', 'default': False},
+        },
+    },
+    requires_approval=True,
+)
+def backfill_alt_text_tool(*, slugs: list[str] | None = None, force: bool = False) -> ToolResult:
+    import re as _re
+    from io import StringIO
+    from django.core.management import call_command
+    buf = StringIO()
+    kwargs = {'force': bool(force), 'stdout': buf, 'stderr': buf}
+    if slugs:
+        kwargs['slugs'] = ','.join(s for s in slugs if s)
+    call_command('backfill_alt_text', **kwargs)
+    out = buf.getvalue()
+    summary = {}
+    for token in ('updated', 'skipped'):
+        m = _re.search(rf'{token}=(\d+)', out)
+        if m:
+            summary[token] = int(m.group(1))
+    return ToolResult(
+        output={'summary': summary, 'log_tail': out[-400:]},
+        display=f'updated={summary.get("updated", 0)} skipped={summary.get("skipped", 0)}',
+    )
+
+
+@tool(
     name='catalog.stats',
     description=(
         'Catalog-at-a-glance: total active / draft / archived product '

@@ -260,3 +260,43 @@ def set_site_settings_tool(**kwargs) -> ToolResult:
             changed.append(field)
     s.save()
     return ToolResult(output={'changed': changed}, display=f'updated {len(changed)} field(s)')
+
+
+@tool(
+    name='seo.apply_internal_links',
+    description=(
+        'Append a "Related reading" section with 1-3 internal links to '
+        'every active product whose description has no links yet. Uses '
+        'the recommendation graph to pick semantically-similar siblings. '
+        'Idempotent: skips products already linked. Returns counts.'
+    ),
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slugs': {'type': 'array', 'items': {'type': 'string'},
+                      'description': 'Optional list of product slugs to restrict to.'},
+            'force': {'type': 'boolean', 'default': False,
+                      'description': 'Overwrite existing Related-reading block.'},
+        },
+    },
+    requires_approval=True,
+)
+def apply_internal_links_tool(*, slugs: list[str] | None = None, force: bool = False) -> ToolResult:
+    from io import StringIO
+    from django.core.management import call_command
+    buf = StringIO()
+    kwargs = {'force': bool(force), 'stdout': buf, 'stderr': buf}
+    if slugs:
+        kwargs['slugs'] = ','.join(s for s in slugs if s)
+    call_command('apply_internal_links', **kwargs)
+    out = buf.getvalue()
+    # Parse the "done — applied=X skipped=Y no_suggestions=Z" tail line.
+    summary = {}
+    for token in ('applied', 'skipped', 'no_suggestions'):
+        import re
+        m = re.search(rf'{token}=(\d+)', out)
+        if m:
+            summary[token] = int(m.group(1))
+    return ToolResult(output={'summary': summary, 'log_tail': out[-600:]},
+                      display=f'applied={summary.get("applied", 0)} skipped={summary.get("skipped", 0)}')

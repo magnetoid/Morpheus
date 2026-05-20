@@ -76,15 +76,16 @@ class SeoPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.seo.agent_tools import (
-            audit_all_tool, audit_product_tool, bulk_set_meta_tool,
-            create_redirect_tool, get_meta_tool, list_404s_tool,
-            set_meta_tool, set_site_settings_tool,
+            apply_internal_links_tool, audit_all_tool, audit_product_tool,
+            bulk_set_meta_tool, create_redirect_tool, get_meta_tool,
+            list_404s_tool, set_meta_tool, set_site_settings_tool,
         )
         return [
             get_meta_tool, set_meta_tool,
             audit_product_tool, audit_all_tool,
             list_404s_tool, create_redirect_tool,
             bulk_set_meta_tool, set_site_settings_tool,
+            apply_internal_links_tool,
         ]
 
     def contribute_dashboard_pages(self) -> list:
