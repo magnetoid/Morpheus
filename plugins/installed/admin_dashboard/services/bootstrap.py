@@ -147,10 +147,11 @@ def _ensure_unique_slug(model, base: str) -> str:
 
 
 def _create_categories(spec: list[dict]) -> dict[str, Any]:
-    """Create categories. Returns a {name: Category} map for product linking.
+    """Resolve categories. Returns a {name: Category} map for product linking.
 
-    Skips categories whose slug already exists — the caller decides whether
-    to count that as "skipped" or "reused".
+    Uses get_or_create on slug so the bootstrap is idempotent: a repeat
+    run with the same concept reuses the existing categories rather
+    than creating slug-1/-2 duplicates.
     """
     from plugins.installed.catalog.models import Category
     out: dict[str, Any] = {}
@@ -158,16 +159,15 @@ def _create_categories(spec: list[dict]) -> dict[str, Any]:
         name = (entry.get('name') or '').strip()
         if not name:
             continue
-        slug = slugify(name)[:200]
-        existing = Category.objects.filter(slug=slug).first()
-        if existing:
-            out[name] = existing
-            continue
+        slug = slugify(name)[:200] or 'category'
         try:
-            cat = Category.objects.create(
-                name=name[:100],
-                slug=_ensure_unique_slug(Category, name),
-                description=(entry.get('description') or '')[:500],
+            cat, _ = Category.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    'name': name[:100],
+                    'description': (entry.get('description') or '')[:500],
+                    'is_active': True,
+                },
             )
         except Exception as e:  # noqa: BLE001
             logger.warning('bootstrap: skipping category %r: %s', name, e)
@@ -177,14 +177,19 @@ def _create_categories(spec: list[dict]) -> dict[str, Any]:
 
 
 def _create_products(spec: list[dict], category_map: dict[str, Any]) -> list[str]:
-    """Create active products linked to their named category."""
+    """Create active products linked to their named category.
+
+    Slug collision is silently skipped — re-running the same bootstrap
+    won't create slug-2 duplicates, just lands the new products from
+    the freshly-generated spec.
+    """
     from plugins.installed.catalog.models import Product
     created: list[str] = []
     for entry in spec:
         name = (entry.get('name') or '').strip()
         if not name:
             continue
-        slug = slugify(name)[:200]
+        slug = slugify(name)[:200] or 'product'
         if Product.objects.filter(slug=slug).exists():
             continue
         try:
@@ -196,7 +201,7 @@ def _create_products(spec: list[dict], category_map: dict[str, Any]) -> list[str
         try:
             Product.objects.create(
                 name=name[:300],
-                slug=_ensure_unique_slug(Product, name),
+                slug=slug,
                 status='active',
                 price=price,
                 short_description=(entry.get('short') or '')[:500],
