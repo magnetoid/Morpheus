@@ -68,6 +68,21 @@
         append('agent', 'Sorry — connection error.');
       });
   });
+
+  // Auto-submit when the page was opened with ?msg=... from the
+  // home-dashboard command bar — saves the merchant a second click.
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var preset = params.get('msg');
+    if (preset) {
+      var input = form.querySelector('input[name=message]');
+      input.value = preset;
+      // Strip the query param so a reload doesn't re-submit.
+      var clean = window.location.pathname;
+      window.history.replaceState({}, '', clean);
+      form.dispatchEvent(new Event('submit', {cancelable: true}));
+    }
+  } catch (_) { /* no URLSearchParams → no preset; noop */ }
 })();
 </script>
 {% endblock %}
