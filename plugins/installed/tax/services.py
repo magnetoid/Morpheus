@@ -94,8 +94,13 @@ def compute_tax(*, line_items: Iterable[dict], country: str = '', region: str = 
             'rate_percent': v['rate_percent'],
             'amount': Money(amt, currency or 'USD'),
         })
+    # Always return a Money — never None. The previous code returned
+    # None when no tax lines matched, which forced every caller to
+    # special-case it; a caller that forgot the None-check silently
+    # undercharged. Money(0) is the unambiguous "no tax applies" value
+    # and arithmetic on it is identity.
     return {
-        'total': Money(total.quantize(Decimal('0.01')), currency or 'USD') if total > 0 else None,
+        'total': Money(total.quantize(Decimal('0.01')), currency or 'USD'),
         'lines': lines,
     }
 

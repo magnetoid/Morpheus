@@ -258,20 +258,30 @@ class OrdersMutationExtension:
             cart.metadata['shipping_rate_id'] = (input.shipping_rate_id or '').strip()
             cart.save(update_fields=['metadata', 'updated_at'])
 
+        # Atomicity contract: order creation AND payment-intent creation
+        # succeed together or roll back together. The previous code
+        # created the order, then created the intent outside the atomic
+        # block, then swallowed any Stripe error — leaving a "real"
+        # order in the database with no payment intent, no client_secret
+        # the customer could confirm against. Merchants then fulfilled
+        # unpaid orders (direct revenue loss) and customers saw a
+        # blank checkout. Now: if Stripe can't issue an intent, the
+        # order is rolled back and the customer gets a retryable error.
         try:
+            from plugins.installed.payments.services.stripe import PaymentService
             with transaction.atomic():
                 order = OrderService.create_from_cart(
                     cart=cart, email=input.email,
                     shipping_address=ship, billing_address=bill,
                 )
-            client_secret = ''
-            try:
-                from plugins.installed.payments.services.stripe import PaymentService
                 pi = PaymentService.create_payment_intent(order)
-                if pi.get('success'):
-                    client_secret = pi.get('client_secret') or ''
-            except Exception as e:  # noqa: BLE001 — order placed even if payment provider is offline
-                import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+                if not pi.get('success'):
+                    # Force rollback by raising; the caller-level except
+                    # converts this into a CHECKOUT_FAILED user message.
+                    raise RuntimeError(
+                        pi.get('error') or 'Payment provider could not issue a payment intent.'
+                    )
+                client_secret = pi.get('client_secret') or ''
             return OrderPayload(
                 order_number=order.order_number,
                 payment_client_secret=client_secret,

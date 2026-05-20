@@ -37,8 +37,6 @@ class TaxPlugin(Plugin):
                 region=(address or {}).get('region', ''),
             )
             tax_total = result.get('total')
-            if tax_total is None:
-                return value
             value['tax'] = tax_total
 
             subtotal = value.get('subtotal')
@@ -74,10 +72,7 @@ class TaxPlugin(Plugin):
             country = (address or {}).get('country', '') if address else ''
             region = (address or {}).get('region', '') if address else ''
             result = compute_tax_for_cart(cart, country=country, region=region)
-            tax_total = result.get('total')
-            if tax_total is None:
-                return value
-            return value + tax_total
+            return value + result.get('total')
         except Exception as e:  # noqa: BLE001
             logger.warning('tax: on_cart_total failed: %s', e, exc_info=True)
             return value
