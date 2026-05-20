@@ -84,25 +84,81 @@ def _hash_prompt(prompt: str) -> str:
 def _parse_payload(raw: str) -> dict:
     """Find and parse the JSON object inside an LLM response.
 
-    Robust against ```json fences, leading commentary, trailing prose.
+    Robust against ```json fences, leading commentary, trailing prose,
+    trailing commas, and unescaped control chars inside string values.
     """
     if not raw:
         return {}
     txt = raw.strip()
-    # Strip code fence
+    # Strip leading/trailing code fences (both ```json and bare ```).
     if txt.startswith('```'):
         txt = re.sub(r'^```[a-zA-Z]*\n?', '', txt)
-        txt = txt.rsplit('```', 1)[0]
-    # Extract the outermost {...}
+    if txt.endswith('```'):
+        txt = txt[:-3]
+    txt = txt.strip()
+    # Slice down to the outermost {...}
     start = txt.find('{')
     end = txt.rfind('}')
     if start < 0 or end <= start:
         return {}
+    candidate = txt[start:end + 1]
+
+    # Try strict parse first.
     try:
-        return json.loads(txt[start:end + 1])
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        pass
+
+    # Repair pass: strip trailing commas, escape literal newlines inside
+    # string values. LLMs frequently embed real newlines in long
+    # descriptions; json.loads requires them as \n.
+    repaired = re.sub(r',\s*([}\]])', r'\1', candidate)
+    repaired = _escape_literal_newlines_in_strings(repaired)
+    try:
+        return json.loads(repaired)
     except json.JSONDecodeError as e:
-        logger.warning('bootstrap: JSON parse failed: %s; raw first 200: %s', e, txt[:200])
+        logger.warning(
+            'bootstrap: JSON parse failed: %s. First 200 of candidate: %s',
+            e, candidate[:200],
+        )
         return {}
+
+
+def _escape_literal_newlines_in_strings(s: str) -> str:
+    """Replace literal \\n / \\r inside JSON string literals with \\\\n.
+
+    Walks the string with a tiny state machine — anything between an
+    unescaped " and the matching " is a string body; replace real
+    newlines/CRs there. Doesn't try to be a full JSON repairer; just
+    handles the single most common LLM error mode.
+    """
+    out: list[str] = []
+    in_str = False
+    escape = False
+    for ch in s:
+        if escape:
+            out.append(ch)
+            escape = False
+            continue
+        if ch == '\\':
+            out.append(ch)
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            out.append(ch)
+            continue
+        if in_str and ch == '\n':
+            out.append('\\n')
+            continue
+        if in_str and ch == '\r':
+            out.append('\\r')
+            continue
+        if in_str and ch == '\t':
+            out.append('\\t')
+            continue
+        out.append(ch)
+    return ''.join(out)
 
 
 def _apply_brand_voice(brand: dict) -> None:
