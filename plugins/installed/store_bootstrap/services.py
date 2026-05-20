@@ -12,17 +12,16 @@ catalogue rows.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from django.db import transaction  # noqa: F401 — reserved for future per-row savepoints
 from django.utils.text import slugify
 
-logger = logging.getLogger('morpheus.admin_dashboard.bootstrap')
+from core.llm_parsing import parse_llm_json
+
+logger = logging.getLogger('morpheus.store_bootstrap')
 
 
 _SYSTEM_PROMPT = (
@@ -81,86 +80,6 @@ def _hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.strip().lower().encode('utf-8')).hexdigest()[:16]
 
 
-def _parse_payload(raw: str) -> dict:
-    """Find and parse the JSON object inside an LLM response.
-
-    Robust against ```json fences, leading commentary, trailing prose,
-    trailing commas, and unescaped control chars inside string values.
-    """
-    if not raw:
-        return {}
-    txt = raw.strip()
-    # Strip leading/trailing code fences (both ```json and bare ```).
-    if txt.startswith('```'):
-        txt = re.sub(r'^```[a-zA-Z]*\n?', '', txt)
-    if txt.endswith('```'):
-        txt = txt[:-3]
-    txt = txt.strip()
-    # Slice down to the outermost {...}
-    start = txt.find('{')
-    end = txt.rfind('}')
-    if start < 0 or end <= start:
-        return {}
-    candidate = txt[start:end + 1]
-
-    # Try strict parse first.
-    try:
-        return json.loads(candidate)
-    except json.JSONDecodeError:
-        pass
-
-    # Repair pass: strip trailing commas, escape literal newlines inside
-    # string values. LLMs frequently embed real newlines in long
-    # descriptions; json.loads requires them as \n.
-    repaired = re.sub(r',\s*([}\]])', r'\1', candidate)
-    repaired = _escape_literal_newlines_in_strings(repaired)
-    try:
-        return json.loads(repaired)
-    except json.JSONDecodeError as e:
-        logger.warning(
-            'bootstrap: JSON parse failed: %s. First 200 of candidate: %s',
-            e, candidate[:200],
-        )
-        return {}
-
-
-def _escape_literal_newlines_in_strings(s: str) -> str:
-    """Replace literal \\n / \\r inside JSON string literals with \\\\n.
-
-    Walks the string with a tiny state machine — anything between an
-    unescaped " and the matching " is a string body; replace real
-    newlines/CRs there. Doesn't try to be a full JSON repairer; just
-    handles the single most common LLM error mode.
-    """
-    out: list[str] = []
-    in_str = False
-    escape = False
-    for ch in s:
-        if escape:
-            out.append(ch)
-            escape = False
-            continue
-        if ch == '\\':
-            out.append(ch)
-            escape = True
-            continue
-        if ch == '"':
-            in_str = not in_str
-            out.append(ch)
-            continue
-        if in_str and ch == '\n':
-            out.append('\\n')
-            continue
-        if in_str and ch == '\r':
-            out.append('\\r')
-            continue
-        if in_str and ch == '\t':
-            out.append('\\t')
-            continue
-        out.append(ch)
-    return ''.join(out)
-
-
 def _apply_brand_voice(brand: dict) -> None:
     """Persist the generated brand-voice config into the ai_content plugin.
 
@@ -186,20 +105,6 @@ def _apply_brand_voice(brand: dict) -> None:
             plugin.set_config(dst_key, value)
         except Exception as e:  # noqa: BLE001
             logger.warning('bootstrap: brand-voice %s persist failed: %s', dst_key, e)
-
-
-def _ensure_unique_slug(model, base: str) -> str:
-    """Return a slug derived from `base` that isn't already on the model."""
-    base_slug = slugify(base)[:200] or 'item'
-    candidate = base_slug
-    i = 2
-    while model.objects.filter(slug=candidate).exists():
-        candidate = f'{base_slug}-{i}'
-        i += 1
-        if i > 50:
-            candidate = f'{base_slug}-{_hash_prompt(base)[:6]}'
-            break
-    return candidate
 
 
 def _create_categories(spec: list[dict]) -> dict[str, Any]:
@@ -311,8 +216,8 @@ def bootstrap_store_from_prompt(prompt: str) -> BootstrapResult:
         result.error = f'LLM call failed: {e}'
         return result
 
-    payload = _parse_payload(raw or '')
-    if not payload:
+    payload = parse_llm_json(raw or '') or {}
+    if not isinstance(payload, dict) or not payload:
         result.error = 'Could not parse a usable plan from the LLM response.'
         return result
 

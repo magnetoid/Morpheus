@@ -17,10 +17,11 @@ Usage:
 """
 from __future__ import annotations
 
-import json
 import logging
 
 from django.core.management.base import BaseCommand
+
+from core.llm_parsing import parse_llm_json
 
 logger = logging.getLogger('morpheus.catalog')
 
@@ -76,25 +77,6 @@ def _book_meta(product) -> tuple[str, str, str]:
     except Exception:  # noqa: BLE001
         pass
     return title, author or 'an anonymous author', short
-
-
-def _parse_json_payload(raw: str) -> dict:
-    """Defensive JSON parse. Strips code fences, finds the first {...} block."""
-    if not raw:
-        return {}
-    txt = raw.strip()
-    if txt.startswith('```'):
-        txt = txt.strip('`')
-        if txt.lower().startswith('json'):
-            txt = txt[4:]
-    start = txt.find('{')
-    end = txt.rfind('}')
-    if start < 0 or end <= start:
-        return {}
-    try:
-        return json.loads(txt[start:end + 1])
-    except json.JSONDecodeError:
-        return {}
 
 
 def _extract_related_reading(body: str) -> str:
@@ -182,7 +164,9 @@ class Command(BaseCommand):
                 errored += 1
                 continue
 
-            data = _parse_json_payload(raw or '')
+            data = parse_llm_json(raw or '') or {}
+            if not isinstance(data, dict):
+                data = {}
             long_desc = (data.get('long') or '').strip()
             short_desc = (data.get('short') or '').strip()
 

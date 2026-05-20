@@ -12,7 +12,7 @@ last 14 days unless --force is set.
 """
 from __future__ import annotations
 
-import json
+from core.llm_parsing import parse_llm_json
 import logging
 from datetime import timedelta
 
@@ -157,23 +157,14 @@ class Command(BaseCommand):
 
 
 def _parse_faq_payload(raw: str) -> list[dict]:
-    """Defensively parse an LLM response into [{q, a}, ...]."""
-    if not raw:
+    """Parse an LLM response into [{q, a}, ...]. The agent is asked for
+    a top-level array; the shared parser handles the JSON edges
+    (code fences, repair). Per-item normalisation stays here so
+    {question:..., answer:...} payloads also work."""
+    data = parse_llm_json(raw or '')
+    if not isinstance(data, list):
         return []
-    txt = raw.strip()
-    if txt.startswith('```'):
-        txt = txt.strip('`')
-        if txt.startswith('json'):
-            txt = txt[4:]
-    start = txt.find('[')
-    end = txt.rfind(']')
-    if start < 0 or end <= start:
-        return []
-    try:
-        data = json.loads(txt[start:end + 1])
-    except json.JSONDecodeError:
-        return []
-    out = []
+    out: list[dict] = []
     for item in data:
         if not isinstance(item, dict):
             continue

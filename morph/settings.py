@@ -88,6 +88,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.product_gallery',
     'plugins.installed.product_videos',
     'plugins.installed.tracking',
+    'plugins.installed.store_bootstrap',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────
