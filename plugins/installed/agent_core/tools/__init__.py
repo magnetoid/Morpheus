@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 
 from plugins.installed.agent_core.tools.catalog import (
+    catalog_stats_tool,
     find_products_tool,
     get_product_tool,
     list_categories_tool,
@@ -71,6 +72,7 @@ def all_builtin_tools() -> list:
         find_products_tool,
         get_product_tool,
         list_categories_tool,
+        catalog_stats_tool,
         add_to_cart_tool,
         get_cart_summary_tool,
         list_recent_orders_tool,

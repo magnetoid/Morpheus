@@ -98,3 +98,60 @@ def list_categories_tool() -> ToolResult:
     return ToolResult(output={
         'categories': [{'slug': c.slug, 'name': c.name} for c in cats],
     })
+
+
+@tool(
+    name='catalog.stats',
+    description=(
+        'Catalog-at-a-glance: total active / draft / archived product '
+        'counts, breakdown by category, count missing primary images, '
+        'and count flagged by the SEO audit. Use this when the merchant '
+        'asks "how many products do we have", "what is the catalog '
+        'status", or any catalog-wide summary question.'
+    ),
+    scopes=['catalog.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def catalog_stats_tool() -> ToolResult:
+    from django.db.models import Count, Q
+    from plugins.installed.catalog.models import Category, Product, ProductImage
+
+    by_status = dict(
+        Product.objects.values_list('status').annotate(c=Count('id')).values_list('status', 'c')
+    )
+    active_count = by_status.get('active', 0)
+    draft_count = by_status.get('draft', 0)
+    archived_count = by_status.get('archived', 0)
+
+    # Per-category counts of active products. Categories with zero are
+    # included so the merchant can spot empty buckets.
+    cats = (
+        Category.objects.filter(parent__isnull=True)
+        .annotate(active=Count('products', filter=Q(products__status='active')))
+        .order_by('name')
+    )
+    by_category = [{'slug': c.slug, 'name': c.name, 'active': c.active} for c in cats]
+
+    products_with_image_ids = set(
+        ProductImage.objects.filter(is_primary=True).values_list('product_id', flat=True).distinct()
+    )
+    missing_primary_image = (
+        Product.objects.filter(status='active')
+        .exclude(id__in=products_with_image_ids)
+        .count()
+    )
+
+    return ToolResult(
+        output={
+            'active': active_count,
+            'draft': draft_count,
+            'archived': archived_count,
+            'total': active_count + draft_count + archived_count,
+            'by_category': by_category,
+            'missing_primary_image': missing_primary_image,
+        },
+        display=(
+            f'{active_count} active · {draft_count} draft · {archived_count} archived '
+            f'· {missing_primary_image} missing primary image'
+        ),
+    )
