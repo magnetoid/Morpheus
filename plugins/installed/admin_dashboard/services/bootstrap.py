@@ -198,10 +198,17 @@ def _create_products(spec: list[dict], category_map: dict[str, Any]) -> list[str
         except Exception:  # noqa: BLE001
             price = Decimal('9.99')
         category = category_map.get((entry.get('category_name') or '').strip())
+        # Product.sku has a unique constraint; an empty string collides
+        # across products on the same bootstrap run (first product
+        # "reserves" '' and every subsequent one fails). Derive a
+        # readable SKU from the slug (no chance of collision since the
+        # slug itself is unique above).
+        sku = (slug or 'sku').upper()[:80]
         try:
             Product.objects.create(
                 name=name[:300],
                 slug=slug,
+                sku=sku,
                 status='active',
                 price=price,
                 short_description=(entry.get('short') or '')[:500],
