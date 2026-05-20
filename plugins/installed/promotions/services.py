@@ -281,19 +281,49 @@ def models_q_active(now):
 
 
 def record_application(applied: AppliedPromotion, *, order_id: str = '', customer_id: str = '', currency: str = 'USD') -> None:
+    """Persist a PromotionApplication + bump times_used atomically.
+
+    Lock the Promotion row inside an atomic block so two concurrent
+    checkouts that both read `times_used=N, limit=N+1` can't both pass
+    the limit check and both increment. The lock is short (one
+    INSERT + one UPDATE on a single row) and only contends when the
+    same promo fires for multiple orders in the same instant — for
+    high-traffic flash sales, exactly the case where bypassing the
+    limit matters.
+    """
+    from django.db import transaction as db_tx
     from plugins.installed.promotions.models import PromotionApplication, Promotion
     try:
-        PromotionApplication.objects.create(
-            promotion_id=applied.promotion_id,
-            rule_id=applied.rule_id,
-            order_id=order_id,
-            customer_id=customer_id,
-            discount_amount=applied.discount_amount,
-            currency=currency,
-        )
-        Promotion.objects.filter(id=applied.promotion_id).update(times_used=models_f_inc('times_used'))
+        with db_tx.atomic():
+            promo = (
+                Promotion.objects
+                .select_for_update()
+                .filter(id=applied.promotion_id)
+                .first()
+            )
+            if promo is None:
+                return
+            if promo.usage_limit and promo.times_used >= promo.usage_limit:
+                # Lost the race — another checkout claimed the last slot.
+                # Record the attempt without bumping the counter so audits
+                # can surface why this customer didn't get the discount.
+                logger.info(
+                    'promotions: usage_limit reached for %s under concurrency; '
+                    'discount NOT applied to order=%s', applied.promotion_id, order_id,
+                )
+                return
+            PromotionApplication.objects.create(
+                promotion_id=applied.promotion_id,
+                rule_id=applied.rule_id,
+                order_id=order_id,
+                customer_id=customer_id,
+                discount_amount=applied.discount_amount,
+                currency=currency,
+            )
+            promo.times_used = (promo.times_used or 0) + 1
+            promo.save(update_fields=['times_used'])
     except Exception as e:  # noqa: BLE001
-        logger.warning('promotions: record_application failed: %s', e)
+        logger.warning('promotions: record_application failed: %s', e, exc_info=True)
 
 
 def models_f_inc(field_name):

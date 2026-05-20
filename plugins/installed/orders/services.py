@@ -299,10 +299,16 @@ class OrderService:
         except Exception as e:  # noqa: BLE001
             logger.warning('orders: promotions/coupon recording failed: %s', e)
 
-        # Redeem the applied gift card. Wrapped tightly: a race (card
-        # disabled between cart-apply and order-create) must not break
-        # checkout — the order stands; the merchant gets a flagged
-        # warning in observability instead.
+        # Redeem the applied gift card. The cart's gift-card discount is
+        # already baked into `order.total` at this point; a redeem
+        # failure (card disabled / expired / insufficient balance race)
+        # means the customer is about to be charged a discounted amount
+        # without us actually consuming a gift card. We narrow the
+        # except, write the failure to BOTH the order metadata AND the
+        # audit log (not just a logger.warning that nobody reads), and
+        # flag the order with `gift_card_redeem_failed=True` so the
+        # checkout caller can refuse to capture and the merchant can
+        # reconcile manually.
         gift_card_meta = (breakdown.get('meta') or {}).get('gift_card') or {}
         if gift_card_meta and getattr(cart, 'gift_card_id', None):
             try:
@@ -318,12 +324,32 @@ class OrderService:
                         reference=order.order_number,
                         actor=cart.customer,
                     )
-            except Exception as e:  # noqa: BLE001
+            except (ValueError, LookupError, ImportError) as e:
                 logger.warning(
-                    'orders: gift-card redeem failed for order %s: %s — '
-                    'order proceeded without gift-card discount',
+                    'orders: gift-card redeem failed for order %s: %s',
                     order.order_number, e, exc_info=True,
                 )
+                try:
+                    order.metadata = order.metadata or {}
+                    order.metadata['gift_card_redeem_failed'] = True
+                    order.metadata['gift_card_redeem_error'] = str(e)[:200]
+                    order.save(update_fields=['metadata'])
+                except Exception:  # noqa: BLE001
+                    pass
+                try:
+                    from core.audit.services import record as audit_record
+                    audit_record(
+                        event_type='order.gift_card_redeem_failed',
+                        actor_user=getattr(cart, 'customer', None),
+                        target=order,
+                        metadata={
+                            'order_number': order.order_number,
+                            'gift_card_code': gift_card_meta.get('code') or '',
+                            'error': str(e)[:500],
+                        },
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
 
         cart.items.all().delete()
         if (

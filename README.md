@@ -8,8 +8,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Live demo](https://img.shields.io/badge/live-dotbooks.store-ff5722.svg)](https://dotbooks.store)
-[![Plugins](https://img.shields.io/badge/plugins-43%20active-blue.svg)](#whats-inside)
+[![Plugins](https://img.shields.io/badge/plugins-49%20active-blue.svg)](#whats-inside)
 [![MCP](https://img.shields.io/badge/MCP-ready-7c3aed.svg)](#agentic-commerce-surfaces)
+[![One-prompt bootstrap](https://img.shields.io/badge/bootstrap-1%20prompt%20%E2%86%92%20live%20store-22c55e.svg)](#one-prompt-store-bootstrap)
 [![Stack](https://img.shields.io/badge/django%206-postgres-2563eb.svg)](#tech-stack)
 
 [Quick start](#quick-start) · [The mental model](#the-mental-model) · [What's inside](#whats-inside) · [The agent layer](#the-agent-layer) · [Agentic commerce surfaces](#agentic-commerce-surfaces) · [Showcase](#showcase) · [Docs](#documentation)
@@ -51,7 +52,20 @@ What you get:
 | **Schema-less custom data** | A first-class [`metafields`](plugins/installed/metafields/) plugin: `(content_type, object_id, namespace, key, value)` triples on **any** Django model out of the box. The Shopify escape valve, but generic. |
 | **Central media library** | A dedicated [`media`](plugins/installed/media/) plugin: one `MediaAsset` model, sharded uploads, kind tabs, embeddable picker — used everywhere a file ID is needed. |
 
-Live deployment: **https://dotbooks.store** · 43 plugins · 5 built-in agents · 1 hard-coded Assistant · 1 MCP server.
+Live deployment: **https://dotbooks.store** · 49 plugins · 6 built-in agents · 1 hard-coded Assistant · 1 MCP server · ~20-second one-prompt store bootstrap.
+
+### One-prompt store bootstrap
+
+A merchant types one sentence — *"A modern Japanese tea shop selling single-estate matcha, sencha, and hand-thrown ceramics"* — and the [`store_bootstrap`](plugins/installed/store_bootstrap/) plugin uses the active LLM gateway to generate brand voice, 4-6 categories, and 10-12 starter products with copy, prices, and SKUs. The whole thing finishes in ~20 seconds. No other open-source commerce platform ships this.
+
+```
+/dashboard/apps/store_bootstrap/start/
+  →  prompt → LLM → JSON plan → Category.get_or_create × N → Product.create × M
+  →  brand voice written to ai_content config (propagates to every future generation)
+  →  ready storefront at https://your.shop/products/
+```
+
+Idempotent by SHA-256 of the prompt — re-running the same sentence re-uses the existing categories rather than duplicating them. JSON-repair pass handles trailing commas, unescaped newlines, and code-fence wrappers that LLMs slip into "strict JSON" output.
 
 ---
 
@@ -126,7 +140,7 @@ Three layers, two registries. Internalise this and the rest of the codebase read
                           ▼          ▼          ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                              LAYER 2 — PLUGINS                                │
-│           43 enabled by default. Each is a self-contained Python package.    │
+│           49 enabled by default. Each is a self-contained Python package.    │
 │                                                                              │
 │  COMMERCE         AI / AGENTS        FOUNDATIONS       INFRA / OPS            │
 │  catalog          agent_core         media ★           cloudflare             │
@@ -134,14 +148,15 @@ Three layers, two registries. Internalise this and the rest of the codebase read
 │  customers        ai_assistant       importers         environments           │
 │  payments         ai_content         seo               webhooks_ui            │
 │  inventory        functions          rbac              backups                │
-│  cms                                                   demo_data              │
-│  tax              GROWTH             B2B               admin_dashboard        │
-│  shipping         crm                b2b               advanced_ecommerce     │
-│  promotions       affiliates         subscriptions     analytics              │
-│  draft_orders     marketplace        digital_products                         │
-│  storefront       marketing                                                   │
-│  gift_cards       loyalty_points                                              │
-│  reviews          wishlist                                                    │
+│  cms              store_bootstrap ★                    demo_data              │
+│  tax                                                   tracking ★             │
+│  shipping         GROWTH             B2B               admin_dashboard        │
+│  promotions       crm                b2b               advanced_ecommerce     │
+│  draft_orders     affiliates         subscriptions     analytics              │
+│  storefront       marketplace        digital_products  product_gallery        │
+│  gift_cards       marketing                            product_videos         │
+│  reviews          loyalty_points     notifications_                           │
+│                   wishlist           center                                   │
 │                   cart_abandonment                                            │
 └──────────────────────────────────────────────────────────────────────────────┘
                                      │
@@ -198,7 +213,7 @@ The two registries that wire it all together:
 | [`themes/`](themes/) | theme base + registry + ThemeLoader; `morph_create_theme` scaffolder |
 | [`morph/`](morph/) | Django settings, ASGI/WSGI, Celery |
 
-### First-party plugins (43 active)
+### First-party plugins (49 active)
 
 #### Commerce
 
@@ -225,7 +240,8 @@ The two registries that wire it all together:
 | [`agent_core`](plugins/installed/agent_core/) | **Persistence + GraphQL + dashboard for the agent kernel.** Built-in agents (Concierge, Merchant Ops, Pricing, Content Writer). Background agents lifecycle + observability dashboard |
 | [`agent_mcp`](plugins/installed/agent_mcp/) ★ | **MCP server** — JSON-RPC 2.0 endpoint at `/mcp/v1/` so external AI clients can transact through Morpheus without per-vendor integrations |
 | [`ai_assistant`](plugins/installed/ai_assistant/) | AI provider config (OpenAI / Anthropic / Gemini / OpenRouter / **Grok (xAI)** / Ollama), embeddings, semantic search, recommendations, dynamic pricing. Per-provider key + model + live model picker from `/v1/models` |
-| [`ai_content`](plugins/installed/ai_content/) ★ | **Brand voice config** — single source of truth that propagates to every AI generation in the platform. Generative product copy + lifestyle images |
+| [`ai_content`](plugins/installed/ai_content/) ★ | **Brand voice config** — single source of truth that propagates to every AI generation in the platform via `services.get_brand_voice()`. Tone, audience, guidelines edited once propagate to product copy, email rewrites, SEO drafts |
+| [`store_bootstrap`](plugins/installed/store_bootstrap/) ★ | **One-prompt store seed** — merchant describes a concept in one sentence, plugin generates brand voice + categories + 10-12 starter products in ~20s. Idempotent on SHA-256 of prompt. The AI-first onboarding moment |
 | [`functions`](plugins/installed/functions/) | Sandboxed merchant-defined logic for cart totals, pricing, shipping, validation |
 
 #### Foundations
@@ -270,6 +286,7 @@ The two registries that wire it all together:
 | [`webhooks_ui`](plugins/installed/webhooks_ui/) | Endpoint CRUD + delivery log with retry / replay; HMAC-SHA256 signed |
 | [`backups`](plugins/installed/backups/) | Scheduled `morph_backup` + restore tooling |
 | [`cloudflare`](plugins/installed/cloudflare/) | DNS, cache purge, WAF, R2 — auto-purge on `product.updated` |
+| [`tracking`](plugins/installed/tracking/) ★ | **GA4 + GTM control center** — server-side Measurement Protocol v2 on the hook bus (ORDER_PAID / ADD_TO_CART / BEGIN_CHECKOUT / view_item / search / signup / login), client-side GTM with **Consent Mode v2 defaults emitted before the container loads** (the #1 EEA-compliance bug per Google's own docs), storefront consent banner, audit log, container export |
 | [`demo_data`](plugins/installed/demo_data/) | `manage.py morph_seed_demo` + theme-aware on-demand random product generator |
 
 ★ = recently added.
@@ -435,6 +452,25 @@ A live tracker of how Morpheus compares to Saleor, the previous open-source benc
 | **Agent observability dashboard** | ❌ | ✅ |
 | **Agent-readable commerce surface (`/llms.txt`, agent receipts, agent GraphQL)** | ❌ | ✅ |
 | **Plugin crash isolation** | ❌ | ✅ (broken `ready()` doesn't take down siblings) |
+
+---
+
+## Where Saleor is still better (honest)
+
+We won't pretend. Saleor has ~5 years of production mileage on thousands of stores; Morpheus is younger. If you're picking a platform today, here's the candid trade-off so you can choose with eyes open:
+
+| Area | Reality |
+|---|---|
+| **Maturity & runtime hours** | Saleor has shipped through edge cases Morpheus hasn't seen yet. Recent internal audits surfaced real concurrency bugs (promotion `usage_limit` race, gift-card redemption inside a broad except, refund-state race) that Saleor patched years ago. We're closing them — see [`CHANGELOG.md`](CHANGELOG.md) — but the lead is real. |
+| **GraphQL completeness** | Saleor's GraphQL *is* the API — exhaustive, versioned, with announced breaking-change cadence. Morpheus has GraphQL for catalog/orders/cart but plenty of operations still live in Django views. Building a non-trivial headless storefront against Morpheus today means mixing GraphQL + REST + occasional template scraping. |
+| **Multi-warehouse / multi-currency depth** | Saleor has stock-reservation across warehouses, channel-specific pricing, country-specific tax stacks, FX-aware refunds at multiple rate snapshots. Morpheus has the basics, not the edges. |
+| **Public API contract** | Saleor's schema is versioned; Morpheus has no public-API stability guarantee yet. We're working on that ([`docs/API_STABILITY.md`](docs/API_STABILITY.md)) but you can't build a third-party app on Morpheus today and assume the schema won't shift. |
+| **Performance at scale** | Saleor has been load-tested and tuned (caching layers, optimized indexes, CDN strategies). Morpheus hasn't published p95 numbers at 100 req/s yet. |
+| **Developer ecosystem** | Stack Overflow questions, third-party tutorials, hosted-app marketplace, recruiters who know the name. Morpheus is one team — that's changing, but it's the truth today. |
+| **Enterprise compliance posture** | Saleor Cloud has GDPR / PCI / SOC2 work done. Morpheus ships the `rbac` + `audit` + `observability` plugins but no third-party attestations. |
+| **Webhook ecosystem** | Saleor webhooks have Zapier / Make / n8n recipes. Morpheus has the `webhooks_ui` plugin with the same primitives but the third-party recipe library is still thin — see [`docs/WEBHOOK_RECIPES.md`](docs/WEBHOOK_RECIPES.md) for the starters. |
+
+**One-line summary**: Morpheus is the better pick for a new merchant launching this year with a small/mid catalog and a desire for AI-driven onboarding. Saleor is the safer pick for a $50M+ GMV merchant migrating off Shopify Plus today. We're working on closing both gaps — track progress in the [enterprise roadmap](ENTERPRISE_ROADMAP.md).
 
 ---
 
@@ -638,7 +674,13 @@ PRs welcome. The bar:
 
 ## What's new (recent waves)
 
+- **One-prompt store bootstrap** — new [`store_bootstrap`](plugins/installed/store_bootstrap/) plugin. Merchant types one sentence at `/dashboard/apps/store_bootstrap/start/`; the active LLM gateway returns a strict-JSON plan (brand voice + 4-6 categories + 10-12 products); platform writes everything in ~20 seconds. Idempotent on SHA-256 of the prompt, JSON-repair pass for trailing commas + unescaped newlines + code fences, `Category.get_or_create` so re-runs don't duplicate.
+- **GA4 + GTM tracking plugin** — new [`tracking`](plugins/installed/tracking/) plugin. Server-side Measurement Protocol v2 firing on the hook bus (ORDER_PAID / ADD_TO_CART / BEGIN_CHECKOUT / view_item / view_item_list / search / signup / login / refund), client-side GTM container with **Consent Mode v2 defaults emitted before the container script** (the #1 EEA-compliance bug per Google's own docs), storefront consent banner, dashboard control center at `/dashboard/tracking/` with Connection / Events / Consent / Identity / Filters / Tests tabs.
+- **Money-path concurrency hardening** — Stripe webhook now writes to the previously-unused `StripeWebhookEvent` table first; the unique constraint on `stripe_event_id` turns retried deliveries into IntegrityError → "already processed". `_mark_transaction_failed` mirrors the success path with `atomic()` + `select_for_update()` + terminal-state short-circuit. Audit trail covers every webhook delivery with `is_processed` + `processed_at` + `error`.
+- **Shared LLM-JSON parser** — `core.llm_parsing.parse_llm_json` is the single canonical "extract JSON from an LLM response" helper. Three near-identical parsers across `store_bootstrap`, `populate_descriptions`, `generate_pdp_faqs` are now one shared implementation with code-fence stripping + outermost-block detection + trailing-comma + literal-newline repair. The two older callers inherit the robustness.
+- **Bootstrap as its own plugin** — `store_bootstrap` was extracted out of `admin_dashboard` per the architectural compass. Plugin manifest declares `requires=[catalog, ai_assistant, ai_content]`, contributes its own `DashboardPage`, registers URLs at the standard `dashboard/apps/<plugin>/` prefix.
 - **2026 SEO + AEO rebuild** — Per-bot AI crawler matrix in robots.txt (15 bots: GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Bytespider, Applebot-Extended, Meta-ExternalAgent, CCBot, …); markdown export at `/md/products/<slug>` so LLM crawlers skip HTML parsing; sitemap-index + sitemap-news + sitemap-images; IndexNow auto-push on product save (Bing/Yandex/Naver/Seznam/Yep); `manifest.json` + `opensearch.xml`; Speakable + ProductGroup + MerchantReturnPolicy + shippingDetails + gtin13 + brand + author + sameAs on every PDP; Twitter `label1/data1` + OG `product:price:amount` so Slack/iMessage/Discord previews render price + availability inline; **Core Web Vitals RUM** via `web-vitals@4` beacon → audit log → dashboard p75 panel.
+- **2026 AEO content-quality audit** — new rules in `seo.services.audit_product`: thin description (<100 words → AI search cites long-form 10× more), missing internal links, generic alt text (`image`/`photo`/`cover`/duplicate of product name), no H2/H3 subheadings in long bodies, missing `dateModified` from `Product.updated_at` (Perplexity decays citations after ~13 weeks). Content-quality penalty capped at -25 collectively so it nudges rather than swamps the score. New `manage.py backfill_alt_text` builds content-aware `"{title} by {author} — book cover"` alts in bulk.
 - **Image optimization kit** — Pillow-backed on-the-fly WebP/AVIF generation at `/img/<fmt>/<width>/<path>` with 1-year immutable cache; `{% seo_responsive_image %}` template tag emits `<picture>` with AVIF + WebP `<source>` + JPEG fallback; supports `priority=True` (LCP + fetchpriority=high), `view_transition_name` (preserves PLP→PDP morphs), and `img_id` (PDP gallery thumbnail swap rewrites both source srcsets and `<img>` src). 35–39 % byte reduction on existing covers without any pre-build step.
 - **Checkout WCAG 2.2 AA refresh** — Visible `<label for>` above every input (placeholder-as-label retired); `role="alert" aria-live="assertive"` error summary at the top of the form with auto-focus on submit fail; full `autocomplete` token set + `inputmode` per field; `aria-busy` + defensive timeout on the submit button; 48 px inputs (≥ AA target size); `:focus-visible` 2 px outline @ 3:1 contrast.
 - **Linda assistant page redesign** — Sidebar widget removed; borderless single-column chat; sticky bottom textarea (auto-grows, Enter sends, Shift+Enter newline); circular dark send button; centred empty state with starter chips; page itself never scrolls (only the log).

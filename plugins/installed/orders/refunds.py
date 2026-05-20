@@ -245,7 +245,20 @@ class ReturnService:
         (no money moves through the gateway) instead of a monetary refund.
         Customer keeps the value in-store for a future order — better for
         merchants when the return reason is ``changed_mind``.
+
+        Locks the ReturnRequest row via select_for_update so two staff
+        members approving the same return concurrently can't both pass
+        the state check and both fire a refund. The second caller waits
+        for the lock, then sees state='refunded' and refuses.
         """
+        # Re-fetch the row with a row-level lock so concurrent staff
+        # actions on the same RMA serialise on the database, not on
+        # whoever clicks first in the UI.
+        rr = (
+            ReturnRequest.objects
+            .select_for_update()
+            .get(pk=rr.pk)
+        )
         if rr.state not in ('approved', 'received'):
             raise ValueError(f'Cannot refund from state {rr.state}')
         if rr.state == 'approved':

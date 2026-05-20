@@ -1,0 +1,49 @@
+# API stability contract
+
+> *"You can't build a third-party app on us if we don't tell you what won't move."*
+
+This document is the stability commitment we make for surfaces that integrators build against. Read it before assuming a method, field, or URL is safe to depend on.
+
+## Surfaces and their status
+
+| Surface | Status | What that means |
+|---|---|---|
+| **GraphQL `Query.cartTotals`** | **STABLE** | Field set, input types, error shape: frozen. Additions only; removals require a deprecation cycle. |
+| **GraphQL `Query.product*`, `Query.products`, `Query.category*`, `Query.collection*`** | **STABLE** | Catalog read surface that the storefront depends on. |
+| **GraphQL `Mutation.checkoutComplete`, `cartAdd`, `cartRemove`, `cartUpdate`** | **STABLE** | Checkout state machine. The state names + transitions are frozen. |
+| **REST `/api/graphql/`** | **STABLE** | Endpoint URL + auth header + content-type. |
+| **REST `/api/health/`, `/api/ready/`** | **STABLE** | For load balancers and uptime monitors. |
+| **MCP server at `/mcp/v1/`** | **STABLE** | JSON-RPC 2.0 shape, bearer auth, tool/resource registry. Tool *names* are stable; tool descriptions can be edited. |
+| **Webhook payloads (`order.paid`, `order.cancelled`, …)** | **STABLE** | Event types, top-level keys, HMAC-SHA256 signing. |
+| **`core.hooks.MorpheusEvents.*` constants** | **STABLE** | Plugin hooks the platform fires. Removing one is a breaking change. |
+| **Plugin manifest fields (`name`, `version`, `requires`, `contribute_*`)** | **STABLE** | The plugin contract. |
+| **`/llms.txt`, `/llms-full.txt`, `/md/products/<slug>`** | **STABLE** | AI-crawler discovery surface. Schema additions only. |
+| **Internal Python imports (`plugins.installed.<x>.services.*`)** | **NOT STABLE** | Subject to refactor. Cross-plugin imports should go through `core.hooks` or `core.agents` instead. |
+| **`agent_metadata` schema on Product/Category/etc.** | **NOT STABLE** | Free-form `JSONField` today. Will gain a schema once the surface is exercised by enough integrators. |
+| **`/dashboard/*` URL paths** | **NOT STABLE** | Admin UI URLs can move (e.g. `/dashboard/start/` → `/dashboard/apps/store_bootstrap/start/` in v0.49). Build dashboard customisations on the plugin contribution APIs, not URL scraping. |
+
+## Versioning policy
+
+- Major version bumps signal breaking changes to **STABLE** surfaces.
+- Minor versions add capabilities; never remove.
+- Patches are backwards-compatible bug fixes only.
+- Deprecation cycle: an entire minor version with both the old + new surface live, the old one returning `Deprecation` header + a `deprecated: true` field in GraphQL responses.
+
+## Breaking-change announcement
+
+Anything that breaks a **STABLE** surface ships with:
+
+1. A `CHANGELOG.md` entry tagged `[BREAKING]`.
+2. A migration script (`manage.py migrate_<name>` or equivalent) when DB data moves.
+3. A grep-template integrators can run on their codebase to find references.
+4. The previous minor version stays on a security-only branch for at least 90 days after the major bump.
+
+## What's NOT covered
+
+- Themes — they're freeform templates; we don't promise template tags or CSS class names won't change.
+- Storefront URLs (`/products/<slug>/`, `/journal/<slug>/`) — themable, merchant-controlled.
+- Internal plugin services. If you import `from plugins.installed.orders.services import OrderService`, you're on your own.
+
+## Where to file API concerns
+
+Open an issue tagged `api-stability` with a concrete usage example and the version you're integrating against. Stability is a contract we owe integrators — call us on it.
