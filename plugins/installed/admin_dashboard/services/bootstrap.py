@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from django.db import transaction
+from django.db import transaction  # noqa: F401 — reserved for future per-row savepoints
 from django.utils.text import slugify
 
 logger = logging.getLogger('morpheus.admin_dashboard.bootstrap')
@@ -106,25 +106,30 @@ def _parse_payload(raw: str) -> dict:
 
 
 def _apply_brand_voice(brand: dict) -> None:
-    """Persist the generated brand-voice config into the ai_content plugin."""
+    """Persist the generated brand-voice config into the ai_content plugin.
+
+    Each `set_config` call is wrapped individually — a transient DB
+    error on one field shouldn't drop the other three.
+    """
     if not brand:
         return
-    try:
-        from plugins.registry import plugin_registry
-        plugin = plugin_registry.get('ai_content')
-        if plugin is None:
-            return
-        for src_key, dst_key in (
-            ('name', 'brand_name'),
-            ('audience', 'brand_audience'),
-            ('tone', 'brand_tone'),
-            ('guidelines', 'brand_voice_guidelines'),
-        ):
-            value = (brand.get(src_key) or '').strip()
-            if value:
-                plugin.set_config(dst_key, value)
-    except Exception as e:  # noqa: BLE001
-        logger.warning('bootstrap: brand-voice persist failed: %s', e)
+    from plugins.registry import plugin_registry
+    plugin = plugin_registry.get('ai_content')
+    if plugin is None:
+        return
+    for src_key, dst_key in (
+        ('name', 'brand_name'),
+        ('audience', 'brand_audience'),
+        ('tone', 'brand_tone'),
+        ('guidelines', 'brand_voice_guidelines'),
+    ):
+        value = (brand.get(src_key) or '').strip()
+        if not value:
+            continue
+        try:
+            plugin.set_config(dst_key, value)
+        except Exception as e:  # noqa: BLE001
+            logger.warning('bootstrap: brand-voice %s persist failed: %s', dst_key, e)
 
 
 def _ensure_unique_slug(model, base: str) -> str:
@@ -246,12 +251,16 @@ def bootstrap_store_from_prompt(prompt: str) -> BootstrapResult:
     result.store_name = (payload.get('store_name') or '').strip()
     result.brand = payload.get('brand') or {}
 
-    with transaction.atomic():
-        _apply_brand_voice(result.brand)
-        category_map = _create_categories(payload.get('categories') or [])
-        result.categories_created = [c.slug for c in category_map.values()]
-        result.products_created = _create_products(
-            payload.get('products') or [], category_map,
-        )
+    # No outer transaction.atomic() here: each Category/Product create
+    # is a single autocommitted row, so a partial failure leaves
+    # already-created rows intact rather than poisoning the whole run.
+    # Per-row creates inside `_create_categories` / `_create_products`
+    # swallow row-level exceptions and continue.
+    _apply_brand_voice(result.brand)
+    category_map = _create_categories(payload.get('categories') or [])
+    result.categories_created = [c.slug for c in category_map.values()]
+    result.products_created = _create_products(
+        payload.get('products') or [], category_map,
+    )
 
     return result
