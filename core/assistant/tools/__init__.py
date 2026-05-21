@@ -64,6 +64,7 @@ def get_default_tools() -> list:
         memory_recall_tool,
         memory_remember_tool,
     )
+    from core.assistant.tools.navigation import dashboard_navigate_tool
     return [
         # Database — schema introspection
         list_models_tool,
@@ -104,6 +105,8 @@ def get_default_tools() -> list:
         cms_unpublish_page_tool,
         metafields_set_tool,
         metafields_delete_tool,
+        # Navigation — surface dashboard deep-links as click-through chips.
+        dashboard_navigate_tool,
         # Delegate — diagnostics, content writer, pricing, merchant ops, etc.
         list_available_agents_tool,
         invoke_agent_tool,

@@ -145,6 +145,32 @@
                 if (body) body.textContent = ev.error || JSON.stringify(ev.output, null, 2);
                 delete pendingCards[ev.name];
               }
+              // The dashboard.navigate tool returns {path, reason, kind:'navigate'}.
+              // Surface that as a click-through chip so the merchant gets a
+              // visible deep-link instead of a JSON-tool-result block they
+              // have to copy-paste. Same-origin /dashboard/ only — the tool
+              // enforces that server-side; we re-check here as defense.
+              if (
+                ev.name === 'dashboard.navigate'
+                && !ev.error
+                && ev.output && typeof ev.output === 'object'
+                && typeof ev.output.path === 'string'
+                && ev.output.path.indexOf('/dashboard/') === 0
+              ) {
+                var chip = document.createElement('a');
+                chip.href = ev.output.path;
+                chip.style.cssText = (
+                  'display:inline-flex; align-items:center; gap:.4rem; margin:.4rem 0;'
+                  + ' padding:.5rem .8rem; border-radius:999px;'
+                  + ' background:var(--primary,#1a1a1a); color:var(--primary-fg,#fff);'
+                  + ' font-size:.8rem; text-decoration:none; font-weight:500;'
+                );
+                chip.innerHTML = (
+                  '<span>' + escapeHtml(ev.output.reason || 'Open in dashboard')
+                  + '</span><span style="opacity:.7;">→</span>'
+                );
+                log.appendChild(chip); log.scrollTop = log.scrollHeight;
+              }
             } else if (ev.type === 'assistant_text') {
               if (!assistantTextEl) assistantTextEl = pushLine('assistant', ev.text);
               else assistantTextEl.querySelector('div').textContent = (assistantTextEl.querySelector('div').textContent + '\n' + ev.text).trim();
