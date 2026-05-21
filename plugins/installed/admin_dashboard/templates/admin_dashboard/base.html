@@ -610,12 +610,7 @@
     </button>
     {# Inline AI affordance — context-aware "Ask the Assistant" button. #}
     {% morph_ask %}
-    {% comment %}Theme toggle. Cycles light → dark → system (follow OS). The icon reflects the CURRENTLY-APPLIED theme so a quick glance tells you what's in effect. State persisted in localStorage under `morph:theme`; initial paint happens in the inline script in head above to avoid FOUC.{% endcomment %}
-    <button id="theme-toggle" class="btn btn-ghost p-1.5" aria-label="Toggle theme" title="Toggle light / dark / system">
-      <i data-lucide="sun" data-theme-icon="light" class="h-4 w-4"></i>
-      <i data-lucide="moon" data-theme-icon="dark" class="h-4 w-4" style="display:none;"></i>
-      <i data-lucide="laptop" data-theme-icon="system" class="h-4 w-4" style="display:none;"></i>
-    </button>
+    {% comment %}Theme toggle moved into the user dropdown — 3 explicit choices (light / dark / system) instead of a topbar cycle button.{% endcomment %}
     <a href="{% url 'admin_dashboard:settings' %}" class="btn btn-ghost p-1.5" aria-label="Settings"><i data-lucide="settings" class="h-4 w-4"></i></a>
     <div data-dropdown id="notif-bell" style="position: relative;">
       <button data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
@@ -666,10 +661,29 @@
         </p>
         <a href="{% url 'admin_dashboard:my_account' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="user" class="h-4 w-4"></i> Your account</a>
         <a href="{% url 'admin_dashboard:settings' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="settings" class="h-4 w-4"></i> Store settings</a>
-        <a href="/auth/logout/" class="nav-link" style="font-size:.85rem;"><i data-lucide="log-out" class="h-4 w-4"></i> Sign out</a>
+
+        {% comment %}Theme picker — three explicit choices that flip data-theme on <html>. JS at the bottom of base.html (the theme-mode block) tags the active one with .is-active.{% endcomment %}
+        <div style="margin-top: .35rem; padding-top: .35rem; border-top: 1px solid var(--border);">
+          <p style="padding: .25rem .65rem 0; font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-subtle); margin: 0 0 .15rem;">Appearance</p>
+          <div id="theme-modes" role="group" aria-label="Theme" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .25rem; padding: 0 .35rem .15rem;">
+            <button type="button" data-theme-mode="light"  class="btn btn-ghost" style="flex-direction:column; gap:.2rem; padding: .45rem .25rem; font-size:.7rem;"><i data-lucide="sun"    class="h-4 w-4"></i> Light</button>
+            <button type="button" data-theme-mode="dark"   class="btn btn-ghost" style="flex-direction:column; gap:.2rem; padding: .45rem .25rem; font-size:.7rem;"><i data-lucide="moon"   class="h-4 w-4"></i> Dark</button>
+            <button type="button" data-theme-mode="system" class="btn btn-ghost" style="flex-direction:column; gap:.2rem; padding: .45rem .25rem; font-size:.7rem;"><i data-lucide="laptop" class="h-4 w-4"></i> System</button>
+          </div>
+        </div>
+
+        <a href="/auth/logout/" class="nav-link" style="font-size:.85rem; margin-top: .35rem; border-top: 1px solid var(--border); padding-top: .55rem;"><i data-lucide="log-out" class="h-4 w-4"></i> Sign out</a>
       </div>
     </div>
   </header>
+
+  <style>
+    /* Theme-mode picker — highlight the currently-selected appearance. */
+    #theme-modes button { transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
+    #theme-modes button.is-active { background: var(--brand-soft); color: var(--brand); }
+    #theme-modes button:hover { background: var(--surface-2); }
+    #theme-modes button.is-active:hover { background: var(--brand-soft); }
+  </style>
 
   <main id="main-content" class="flex-1 overflow-y-auto p-3 lg:p-5">
     {% if messages %}
@@ -1006,31 +1020,21 @@
 })();
 </script>
 <script>
-/* Theme toggle — cycles light → dark → system. Persists to
-   localStorage['morph:theme']. Updates the icon to reflect the
-   CURRENTLY-APPLIED theme (resolves system → effective light/dark by
-   reading prefers-color-scheme). Initial paint already done in <head>
-   via the FOUC-prevention script — this only handles user clicks. */
+/* Theme-mode picker — three explicit choices (light / dark / system) inside
+   the user dropdown. Persists to localStorage['morph:theme']. Active choice
+   is highlighted via .is-active. Initial paint already done in <head> via
+   the FOUC-prevention script — this only handles user clicks. */
 (function () {
-  var btn = document.getElementById('theme-toggle');
-  if (!btn) return;
-  var ORDER = ['system', 'light', 'dark'];
+  var modes = document.getElementById('theme-modes');
+  if (!modes) return;
+  var buttons = modes.querySelectorAll('button[data-theme-mode]');
 
-  function effectiveTheme(pref) {
-    if (pref === 'light' || pref === 'dark') return pref;
-    return (window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-  }
-  function showIcon(pref) {
-    var effective = effectiveTheme(pref);
-    btn.querySelectorAll('[data-theme-icon]').forEach(function (i) {
-      var which = i.getAttribute('data-theme-icon');
-      var on = (
-        (pref === 'system' && which === 'system') ||
-        (pref !== 'system' && which === effective)
-      );
-      i.style.display = on ? '' : 'none';
+  function syncActive(pref) {
+    buttons.forEach(function (b) {
+      var on = b.getAttribute('data-theme-mode') === pref;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-    btn.title = 'Theme: ' + pref + ' (click to cycle)';
   }
   function apply(pref) {
     if (pref === 'light' || pref === 'dark') {
@@ -1039,26 +1043,20 @@
       document.documentElement.removeAttribute('data-theme');
     }
     try { localStorage.setItem('morph:theme', pref); } catch (_) {}
-    showIcon(pref);
+    syncActive(pref);
   }
   var current = (function () {
     try { return localStorage.getItem('morph:theme') || 'system'; }
     catch (_) { return 'system'; }
   })();
-  showIcon(current);
+  syncActive(current);
 
-  btn.addEventListener('click', function () {
-    var idx = ORDER.indexOf(current);
-    current = ORDER[(idx + 1) % ORDER.length];
-    apply(current);
-  });
-
-  // If pref === 'system', track OS changes live.
-  try {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-      if (current === 'system') showIcon('system');
+  buttons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      current = b.getAttribute('data-theme-mode') || 'system';
+      apply(current);
     });
-  } catch (_) {}
+  });
 })();
 </script>
 </body>

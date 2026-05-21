@@ -5,15 +5,10 @@
 <div class="linda-page">
 
   <div id="linda-log" class="linda-log">
-    {% if not history %}
+    {% comment %}Empty state — always rendered on page load. Previous-session messages are reachable via the history API; the page itself opens clean.{% endcomment %}
     <div class="linda-empty">
       <h1>How can I help?</h1>
       <p class="linda-empty-lede">Linda knows the store. Ask, and she'll act — explicit approval first.</p>
-      <div class="linda-starters">
-        {% for s in starters %}
-        <button type="button" class="linda-starter" data-prefill="{{ s }}">{{ s }}</button>
-        {% endfor %}
-      </div>
       {% if memories %}
       <details class="linda-memories">
         <summary>{{ memories|length }} thing{{ memories|length|pluralize }} Linda remembers</summary>
@@ -25,37 +20,29 @@
       </details>
       {% endif %}
     </div>
-    {% else %}
-      {% for m in history %}
-      <div class="linda-msg linda-msg-{{ m.role }}">
-        {% if m.role == 'tool' %}
-        <div class="linda-msg-meta">{{ m.tool_name|default:'tool' }}</div>
-        {% endif %}
-        <div class="linda-msg-body">{{ m.content }}</div>
-      </div>
-      {% endfor %}
-    {% endif %}
   </div>
 
-  <form id="linda-form" class="linda-form" autocomplete="off">
-    {% csrf_token %}
-    <textarea name="message" rows="1" placeholder="Ask Linda…" class="linda-input" required></textarea>
-    <button type="submit" class="linda-send" aria-label="Send">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l5-5 5 5M12 6v13"/></svg>
-    </button>
-  </form>
+  <div class="linda-dock">
+    <div id="linda-suggested" class="linda-suggested">
+      {% for s in starters %}
+      <button type="button" class="linda-chip" data-prefill="{{ s }}">{{ s }}</button>
+      {% endfor %}
+    </div>
+    <form id="linda-form" class="linda-form" autocomplete="off">
+      {% csrf_token %}
+      <textarea name="message" rows="1" placeholder="Ask Linda…" class="linda-input" required></textarea>
+      <button type="submit" class="linda-send" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l5-5 5 5M12 6v13"/></svg>
+      </button>
+    </form>
+  </div>
 
 </div>
 
 <style>
-  /* Take over the dashboard main panel. position:relative makes it the
-     positioning parent for the absolute-pinned .linda-page below. */
+  /* Take over the dashboard main panel. */
   #main-content { padding: 0 !important; overflow: hidden !important; position: relative; }
   body.has-admin-bar #main-content { padding: 0 !important; }
-  /* Absolute pin → form sits flush at the bottom of <main> regardless
-     of the flex chain. height:100% had failed on some viewports because
-     parent height didn't propagate cleanly through the dashboard's
-     mixed Tailwind/flex layout. inset:0 is bulletproof. */
   .linda-page {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
@@ -65,15 +52,13 @@
   .linda-log {
     flex: 1 1 auto; min-height: 0;
     overflow-y: auto;
-    padding: 2.5rem 1.5rem 2rem;
+    padding: 3rem 1.5rem 2rem;
     scroll-behavior: smooth;
-    /* Stable scrollbar gutter so the layout doesn't jump when the
-       message log first overflows. */
     scrollbar-gutter: stable;
   }
   .linda-log > .linda-msg + .linda-msg { margin-top: 1.25rem; }
 
-  /* Empty state — centred prompt + starter chips. */
+  /* Empty state */
   .linda-empty {
     max-width: 38rem; margin: 0 auto;
     padding: max(8vh, 3rem) 1rem 0;
@@ -89,22 +74,8 @@
     color: var(--text-muted);
     font-size: .95rem; margin: 0 0 2rem;
   }
-  .linda-starters {
-    display: flex; flex-direction: column; gap: .5rem;
-    max-width: 26rem; margin: 0 auto;
-  }
-  .linda-starter {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: .65rem 1.1rem;
-    font-size: .85rem; color: var(--text);
-    text-align: left; cursor: pointer;
-    transition: background var(--motion-fast, 140ms) ease, border-color var(--motion-fast, 140ms) ease;
-  }
-  .linda-starter:hover { background: var(--surface-2); border-color: var(--border-strong); }
   .linda-memories {
-    margin-top: 2.5rem; text-align: left;
+    margin-top: 3rem; text-align: left;
     max-width: 26rem; margin-left: auto; margin-right: auto;
     font-size: .8rem; color: var(--text-muted);
   }
@@ -112,8 +83,7 @@
   .linda-memories ul { list-style: none; padding: 0; margin: .5rem 0 0; }
   .linda-memories li { padding: .35rem 0; }
 
-  /* Messages — borderless, typography-forward, role-tagged. User right,
-     assistant left, tool inline-muted. */
+  /* Messages */
   .linda-msg {
     max-width: 44rem; margin-left: auto; margin-right: auto;
     line-height: 1.6;
@@ -123,11 +93,7 @@
     font-size: .95rem;
     color: var(--text);
   }
-  .linda-msg-user {
-    /* User turns get a subtle right-anchored pill so the eye can
-       scan turn boundaries without borders on every block. */
-    display: flex; justify-content: flex-end;
-  }
+  .linda-msg-user { display: flex; justify-content: flex-end; }
   .linda-msg-user .linda-msg-body {
     background: var(--surface-2);
     padding: .65rem 1rem;
@@ -136,8 +102,7 @@
   }
   .linda-msg-tool .linda-msg-meta {
     font-family: ui-monospace, Menlo, monospace;
-    font-size: .7rem;
-    color: var(--text-muted);
+    font-size: .7rem; color: var(--text-muted);
     margin-bottom: .25rem;
   }
   .linda-msg-tool .linda-msg-body {
@@ -146,16 +111,11 @@
     font-size: .78rem;
   }
 
-  /* Tool-call card — inline collapsible. Minimal chrome. */
   .linda-tool {
     max-width: 44rem; margin: 1.25rem auto; font-size: .8rem;
     color: var(--text-muted);
   }
-  .linda-tool summary {
-    cursor: pointer; display: inline-flex; gap: .5rem; align-items: center;
-    padding: .25rem 0;
-    list-style: none;
-  }
+  .linda-tool summary { cursor: pointer; display: inline-flex; gap: .5rem; align-items: center; padding: .25rem 0; list-style: none; }
   .linda-tool summary::-webkit-details-marker { display: none; }
   .linda-tool .t-icon { font-family: ui-monospace, monospace; }
   .linda-tool .t-body {
@@ -165,101 +125,118 @@
     white-space: pre-wrap; word-break: break-word;
   }
 
-  /* Input row — sticky bottom, borderless input, single send button. */
-  .linda-form {
+  /* ── Dock — suggested chips + floating chat form ───────────────────── */
+  .linda-dock {
     flex: 0 0 auto;
-    padding: 1rem 1.5rem 1.5rem;
+    padding: .75rem 1.5rem 1.75rem;
+    background: transparent;        /* no full-width bar; the form floats */
+    display: flex; flex-direction: column; align-items: center; gap: .65rem;
+  }
+  /* Suggested-next chips just above the form — wrap on narrow screens. */
+  .linda-suggested {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    max-width: 48rem; width: 100%;
+    justify-content: center;
+    transition: opacity var(--motion-fast, 140ms) ease;
+  }
+  .linda-suggested:empty { display: none; }
+  .linda-chip {
     background: var(--surface);
-    border-top: 1px solid var(--border);
-    display: flex; align-items: flex-end; gap: .5rem;
-    width: 100%;
-  }
-  .linda-form > * { max-width: 48rem; }
-  .linda-form .linda-input { flex: 1 1 auto; }
-  /* Centre the inner cluster on wide screens — the textarea + send
-     button hug a 48rem column even though the form itself spans full
-     width (so the background + border stretch corner to corner). */
-  .linda-form { justify-content: center; }
-  .linda-form > .linda-input { max-width: calc(48rem - 3.5rem); }
-  .linda-input {
-    flex: 1;
-    resize: none;
     border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: .85rem 1.1rem;
-    background: var(--bg);
+    border-radius: 999px;
+    padding: .4rem .85rem;
+    font-size: .78rem; color: var(--text);
+    cursor: pointer; white-space: nowrap;
+    transition:
+      background var(--motion-fast, 140ms) ease,
+      border-color var(--motion-fast, 140ms) ease,
+      transform var(--motion-fast, 140ms) ease;
+  }
+  .linda-chip:hover { background: var(--surface-2); border-color: var(--border-strong); transform: translateY(-1px); }
+  .linda-chip:active { transform: translateY(0); }
+
+  /* Floating chat form — pill-shaped with a soft elevation shadow. */
+  .linda-form {
+    width: 100%; max-width: 48rem;
+    display: flex; align-items: flex-end; gap: .5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: .5rem .5rem .5rem .75rem;
+    box-shadow:
+      0 1px 2px rgba(0,0,0,.04),
+      0 8px 24px -8px rgba(0,0,0,.08),
+      0 24px 48px -16px rgba(0,0,0,.06);
+    transition: box-shadow var(--motion-fast, 140ms) ease, border-color var(--motion-fast, 140ms) ease;
+  }
+  .linda-form:focus-within {
+    border-color: var(--border-strong);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--brand, var(--text)) 14%, transparent),
+      0 1px 2px rgba(0,0,0,.04),
+      0 12px 28px -8px rgba(0,0,0,.1);
+  }
+  .linda-input {
+    flex: 1 1 auto;
+    resize: none;
+    border: 0; outline: none;
+    background: transparent;
+    padding: .55rem .25rem;
     font: inherit; font-size: .95rem; line-height: 1.4;
-    max-height: 12rem; min-height: 2.75rem;
-    outline: none;
-    transition: border-color var(--motion-fast, 140ms) ease, box-shadow var(--motion-fast, 140ms) ease;
+    max-height: 12rem; min-height: 1.8rem;
+    color: var(--text);
   }
-  .linda-input:focus {
-    border-color: var(--text);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 10%, transparent);
-  }
+  .linda-input::placeholder { color: var(--text-muted); }
   .linda-send {
-    width: 44px; height: 44px; flex-shrink: 0;
+    flex: 0 0 auto;
+    border: none; cursor: pointer;
+    width: 2.4rem; height: 2.4rem;
+    border-radius: 999px;
+    background: var(--primary);
+    color: var(--primary-fg);
     display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 50%; border: none;
-    background: var(--text); color: var(--bg);
-    cursor: pointer;
-    transition: transform var(--motion-fast, 140ms) ease, opacity var(--motion-fast, 140ms) ease;
+    transition: filter var(--motion-fast, 140ms) ease, transform 80ms ease;
   }
-  .linda-send:hover { transform: scale(1.04); }
-  .linda-send:active { transform: scale(.97); }
-  .linda-send:disabled { opacity: .4; transform: none; cursor: not-allowed; }
+  .linda-send:hover { filter: brightness(1.08); }
+  .linda-send:active { transform: scale(.95); }
+  .linda-send:disabled { opacity: .55; cursor: not-allowed; }
+  .linda-send svg { transform: translateY(-1px); }
 
   @media (max-width: 640px) {
-    .linda-log { padding: 1.5rem 1rem 1rem; }
-    .linda-form { padding: .75rem 1rem 1rem; }
+    .linda-dock { padding: .5rem 1rem 1rem; }
+    .linda-form { border-radius: 24px; }
   }
 </style>
 
 <script>
-(() => {
-  const form = document.getElementById('linda-form');
-  const log = document.getElementById('linda-log');
-  const csrf = form.querySelector('[name=csrfmiddlewaretoken]').value;
-  const input = form.querySelector('textarea[name=message]');
-  const sendBtn = form.querySelector('.linda-send');
+(function () {
+  var form = document.getElementById('linda-form');
+  var log = document.getElementById('linda-log');
+  var suggested = document.getElementById('linda-suggested');
+  var input = form ? form.querySelector('textarea[name="message"]') : null;
+  if (!form || !log || !input) return;
 
-  // Auto-grow the textarea up to its max-height.
-  function autosize() {
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 192) + 'px';
-  }
-  input.addEventListener('input', autosize);
-  // Enter sends; Shift+Enter inserts newline.
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      form.requestSubmit();
-    }
-  });
-  input.focus();
-
+  var getCsrf = function () {
+    var n = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (n && n.value) return n.value;
+    var c = document.cookie.match(/csrftoken=([^;]+)/);
+    return c ? c[1] : '';
+  };
   function escapeHtml(s) {
-    return String(s == null ? '' : s).replace(/[<>&"]/g, c => (
-      { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]
-    ));
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c];
+    });
   }
 
-  function clearEmptyState() {
-    const empty = log.querySelector('.linda-empty');
+  function clearEmpty() {
+    var empty = log.querySelector('.linda-empty');
     if (empty) empty.remove();
   }
-
-  function pushLine(role, text, toolName) {
-    clearEmptyState();
-    const wrap = document.createElement('div');
+  function pushLine(role, text) {
+    clearEmpty();
+    var wrap = document.createElement('div');
     wrap.className = 'linda-msg linda-msg-' + role;
-    if (role === 'tool' && toolName) {
-      const meta = document.createElement('div');
-      meta.className = 'linda-msg-meta';
-      meta.textContent = toolName;
-      wrap.appendChild(meta);
-    }
-    const body = document.createElement('div');
+    var body = document.createElement('div');
     body.className = 'linda-msg-body';
     body.textContent = text;
     wrap.appendChild(body);
@@ -268,86 +245,156 @@
     return wrap;
   }
 
-  function pushToolCard(name, args) {
-    clearEmptyState();
-    const card = document.createElement('details');
-    card.className = 'linda-tool';
-    const summary = document.createElement('summary');
-    summary.innerHTML = '<span class="t-icon">⋯</span> <strong>' + escapeHtml(name) + '</strong> <span class="t-status">running…</span>';
-    const body = document.createElement('div');
-    body.className = 't-body';
-    body.textContent = JSON.stringify(args || {}, null, 2);
-    card.appendChild(summary); card.appendChild(body);
-    log.appendChild(card);
-    log.scrollTop = log.scrollHeight;
-    return card;
+  /* Suggested-next chips: prefill the textarea on click + focus. After
+     Linda responds we swap in a contextual set. */
+  function setSuggestions(list) {
+    if (!suggested) return;
+    suggested.innerHTML = '';
+    list.forEach(function (text) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'linda-chip';
+      b.textContent = text;
+      b.addEventListener('click', function () {
+        input.value = text;
+        input.focus();
+        autoresize();
+      });
+      suggested.appendChild(b);
+    });
   }
 
-  document.querySelectorAll('.linda-starter').forEach(b => {
-    b.addEventListener('click', () => {
-      input.value = b.dataset.prefill || '';
-      autosize();
-      input.focus();
-    });
+  var FOLLOWUPS = [
+    'Compare this to last week',
+    'Drill into the top 3',
+    'What can I do about it?',
+    'Show me the customers behind this',
+    'Export as a CSV',
+  ];
+
+  // Auto-grow the textarea up to its max-height.
+  function autoresize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 192) + 'px';
+  }
+  input.addEventListener('input', autoresize);
+
+  // Enter sends, Shift+Enter inserts newline.
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.dispatchEvent(new Event('submit', {cancelable: true}));
+    }
   });
 
-  form.addEventListener('submit', e => {
+  // Initial wire-up for the server-rendered starter chips.
+  if (suggested) {
+    suggested.querySelectorAll('.linda-chip').forEach(function (b) {
+      b.addEventListener('click', function () {
+        input.value = b.dataset.prefill || b.textContent;
+        input.focus();
+        autoresize();
+      });
+    });
+  }
+
+  form.addEventListener('submit', function (e) {
     e.preventDefault();
-    const text = (input.value || '').trim();
+    var text = (input.value || '').trim();
     if (!text) return;
     pushLine('user', text);
-    input.value = ''; autosize();
-    sendBtn.disabled = true;
-    const pendingCards = {};
+    input.value = '';
+    autoresize();
 
+    var assistantEl = null;
+    var pendingTools = {};
     fetch('/dashboard/assistant/stream/', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
-      body: JSON.stringify({message: text}),
-    }).then(resp => {
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+      body: JSON.stringify({
+        message: text,
+        page_url: window.location.pathname + window.location.search,
+        page_title: document.title || '',
+      }),
+    }).then(function (resp) {
       if (!resp.ok || !resp.body) throw new Error('stream HTTP ' + resp.status);
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
       function pump() {
-        return reader.read().then(chunk => {
-          if (chunk.done) { sendBtn.disabled = false; return; }
+        return reader.read().then(function (chunk) {
+          if (chunk.done) {
+            // Once the model has replied, swap in contextual follow-ups.
+            setSuggestions(FOLLOWUPS);
+            return;
+          }
           buf += decoder.decode(chunk.value, {stream: true});
-          const blocks = buf.split('\n\n');
+          var blocks = buf.split('\n\n');
           buf = blocks.pop();
-          blocks.forEach(block => {
-            const line = block.split('\n').filter(l => l.startsWith('data: '))[0];
+          blocks.forEach(function (block) {
+            var line = block.split('\n').filter(function (l) { return l.indexOf('data: ') === 0; })[0];
             if (!line) return;
-            let ev; try { ev = JSON.parse(line.slice(6)); } catch (_) { return; }
+            var ev;
+            try { ev = JSON.parse(line.slice(6)); } catch (_) { return; }
             if (ev.type === 'tool_call_started') {
-              pendingCards[ev.name] = pushToolCard(ev.name, ev.arguments);
+              var t = document.createElement('details');
+              t.className = 'linda-tool';
+              t.innerHTML = '<summary><span class="t-icon">⋯</span><span><strong>' + escapeHtml(ev.name) + '</strong> <span class="t-status">running…</span></span></summary><div class="t-body">' + escapeHtml(JSON.stringify(ev.arguments || {}, null, 2)) + '</div>';
+              clearEmpty();
+              log.appendChild(t);
+              log.scrollTop = log.scrollHeight;
+              pendingTools[ev.name] = t;
             } else if (ev.type === 'tool_call_finished') {
-              const card = pendingCards[ev.name];
-              if (card) {
-                const icon = card.querySelector('.t-icon');
-                const status = card.querySelector('.t-status');
+              var t2 = pendingTools[ev.name];
+              if (t2) {
+                var icon = t2.querySelector('.t-icon');
+                var status = t2.querySelector('.t-status');
                 if (icon) icon.textContent = ev.error ? '✖' : '✓';
                 if (status) status.textContent = ev.error ? 'error' : 'done';
-                const body = card.querySelector('.t-body');
+                var body = t2.querySelector('.t-body');
                 if (body) body.textContent = ev.error || JSON.stringify(ev.output, null, 2);
-                delete pendingCards[ev.name];
+                delete pendingTools[ev.name];
+              }
+              // Render dashboard.navigate as a click-through chip in the log.
+              if (
+                ev.name === 'dashboard.navigate' && !ev.error
+                && ev.output && typeof ev.output === 'object'
+                && typeof ev.output.path === 'string'
+                && ev.output.path.indexOf('/dashboard/') === 0
+              ) {
+                var a = document.createElement('a');
+                a.href = ev.output.path;
+                a.className = 'linda-msg';
+                a.style.cssText = 'display:inline-flex; align-items:center; gap:.4rem; padding:.55rem .9rem; border-radius:999px; background:var(--primary); color:var(--primary-fg); font-size:.85rem; text-decoration:none; margin: .5rem auto; max-width: 28rem; justify-content: center;';
+                a.innerHTML = '<span>' + escapeHtml(ev.output.reason || 'Open in dashboard') + '</span><span style="opacity:.7;">→</span>';
+                clearEmpty();
+                log.appendChild(a);
+                log.scrollTop = log.scrollHeight;
               }
             } else if (ev.type === 'assistant_text') {
-              pushLine('assistant', ev.text);
+              if (!assistantEl) assistantEl = pushLine('assistant', ev.text);
+              else {
+                var b = assistantEl.querySelector('.linda-msg-body');
+                if (b) b.textContent = (b.textContent + '\n' + ev.text).trim();
+              }
             } else if (ev.type === 'final') {
-              pushLine('assistant', ev.text || '(no reply)');
+              if (ev.text) {
+                if (!assistantEl) pushLine('assistant', ev.text);
+                else {
+                  var b2 = assistantEl.querySelector('.linda-msg-body');
+                  if (b2) b2.textContent = ev.text;
+                }
+              }
             } else if (ev.type === 'error') {
-              pushLine('assistant', ev.text || ev.error || '(error)');
-              if (ev.error && ev.error !== ev.text) console.warn('[linda]', ev.error);
+              pushLine('assistant', ev.text || ev.error || '(connection error)');
             }
           });
           return pump();
         });
       }
       return pump();
-    }).catch(() => {
-      pushLine('assistant', 'Sorry — connection error.');
-      sendBtn.disabled = false;
+    }).catch(function () {
+      pushLine('assistant', 'Connection lost — try again.');
     });
   });
 })();

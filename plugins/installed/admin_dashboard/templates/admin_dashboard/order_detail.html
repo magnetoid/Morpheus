@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load metafields_tags %}
 {% block title %}Order · Morpheus{% endblock %}
 
 {% block content %}
@@ -216,6 +217,11 @@
         {% else %}
           <p class="mt-2 text-sm text-[color:var(--text-muted)]">No shipping address.</p>
         {% endif %}
+      </div>
+
+      <div class="card card-padded">
+        <h3 class="font-semibold" style="margin-bottom:.65rem;">Custom fields</h3>
+        {% metafields_panel order %}
       </div>
     </div>
   </div>

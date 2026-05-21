@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load metafields_tags %}
 {% block title %}{% if product %}{{ product.name }}{% else %}New product{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
@@ -696,9 +697,20 @@
       </script>
     </div>
 
+    {% if product %}
+    <div class="card card-padded">
+      <h2 class="font-semibold text-sm" style="margin-bottom:.65rem;">Custom fields</h2>
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin-bottom:.65rem;">
+        Schema-less metafields attached to this product. Any plugin that
+        writes a Metafield row here is auto-editable inline.
+      </p>
+      {% metafields_panel product %}
+    </div>
+    {% endif %}
+
   </aside>
 
-  </div>{# /lg:grid-cols-3 #}
+  </div>{% comment %}/lg:grid-cols-3{% endcomment %}
 
   {% if product %}
   <div class="card card-padded">

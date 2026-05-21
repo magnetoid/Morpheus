@@ -33,13 +33,17 @@ def _conversation_key(request) -> str:
 
 @staff_member_required
 def assistant_page(request):
-    """Standalone Linda page — full-screen chat with sidebar."""
-    store = get_default_store()
-    history = store.history(conversation_key=_conversation_key(request), limit=50)
+    """Standalone Linda page — full-screen chat.
 
-    # Surface remembered facts in the sidebar so the operator can see at
-    # a glance what Linda's carrying across sessions. Fail-soft: empty
-    # list when LindaMemory isn't migrated yet.
+    Always starts with a clean conversation — prior session messages are NOT
+    pre-loaded into the chat area. The merchant can reach previous turns via
+    the conversation history API (``/dashboard/assistant/history/``); the
+    page itself opens fresh every time, like a new browser tab.
+
+    Suggested follow-up prompts ("starters") render as chips ABOVE the
+    chat form. They prefill the textarea on click; the same set updates
+    contextually after Linda's first response (handled in the JS).
+    """
     memories: list = []
     try:
         from core.assistant.models import LindaMemory
@@ -47,6 +51,8 @@ def assistant_page(request):
     except Exception:  # noqa: BLE001
         pass
 
+    # Suggested first prompts — same set used by the floating widget. After
+    # the first turn, the JS swaps in context-aware follow-ups.
     starters = [
         "Show me a snapshot of the store right now",
         "Which products are low on stock?",
@@ -56,7 +62,8 @@ def assistant_page(request):
     ]
 
     return render(request, 'assistant/page.html', {
-        'history': history,
+        # Intentionally empty — the redesigned page starts clean.
+        'history': [],
         'memories': memories,
         'starters': starters,
         'active_nav': 'assistant',

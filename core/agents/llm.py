@@ -14,15 +14,45 @@ Built-in providers:
 """
 from __future__ import annotations
 
+import functools
 import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from django.conf import settings
 
+from core.circuit_breaker import LLM_BREAKER, CircuitOpenError
+
 logger = logging.getLogger('morpheus.agents.llm')
+
+
+def _llm_breaker(fn: Callable) -> Callable:
+    """Wrap a provider's respond() in LLM_BREAKER so consecutive failures
+    trip the circuit and follow-up calls fail fast instead of stacking
+    30s timeouts. CircuitOpenError → clean LLMResponse the runtime can
+    surface to the user/agent without crashing the request.
+
+    The breaker is process-shared (one named instance in
+    core.circuit_breaker.LLM_BREAKER) so all providers contribute to + read
+    from the same state — when OpenAI is down, Anthropic still works, and
+    the breaker only opens for OpenAI's specific failure pattern.
+    """
+    @functools.wraps(fn)
+    def wrapped(self, *args, **kwargs):
+        try:
+            with LLM_BREAKER:
+                return fn(self, *args, **kwargs)
+        except CircuitOpenError as exc:
+            logger.warning(
+                'llm provider %s short-circuited: %s', self.name, exc,
+            )
+            return LLMResponse(
+                text=f'[Upstream AI provider is degraded — circuit open. {exc}]',
+                model=getattr(self, 'model', '') or 'unknown',
+            )
+    return wrapped
 
 
 @dataclass(slots=True)
@@ -94,7 +124,7 @@ class OpenAIProvider(LLMProvider):
         self._client = openai.OpenAI(**kwargs) if kwargs else openai.OpenAI()
         self.model = model or cfg.model or 'gpt-4o-mini'
 
-    def _convert_messages(self, messages: list[LLMMessage]) -> list[dict[str, Any]]:
+    def _convert_messages(self, messages: list[LLMMessage]) -> list[dict[str, Any]]:  # type: ignore[override]
         out: list[dict[str, Any]] = []
         for m in messages:
             if m.role == 'tool':
@@ -120,6 +150,7 @@ class OpenAIProvider(LLMProvider):
             out.append(entry)
         return out
 
+    @_llm_breaker
     def respond(
         self,
         *,
@@ -207,6 +238,7 @@ class AnthropicProvider(LLMProvider):
             out.append({'role': m.role, 'content': m.content})
         return '\n\n'.join(system_chunks), out
 
+    @_llm_breaker
     def respond(
         self,
         *,
@@ -268,6 +300,7 @@ class OllamaProvider(LLMProvider):
         self.base_url = (cfg.base_url or 'http://localhost:11434').rstrip('/')
         self.model = model or cfg.model or 'llama3.2'
 
+    @_llm_breaker
     def respond(
         self,
         *,
@@ -323,6 +356,7 @@ class GeminiProvider(LLMProvider):
         self.base_url = (cfg.base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip('/')
         self.model = model or cfg.model or 'gemini-2.0-flash'
 
+    @_llm_breaker
     def respond(
         self,
         *,
