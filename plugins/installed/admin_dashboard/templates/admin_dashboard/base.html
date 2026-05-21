@@ -28,21 +28,32 @@
   [hidden] { display: none !important; }
 
   :root {
-    --bg:           #f6f6f7;
+    /* ── Surface scale — slightly cooler greys than before for a more
+       modern, neutral feel (sRGB rather than perceived-warm whites). ── */
+    --bg:           #f7f7f8;
     --content-bg:   #ffffff;
-    --sidebar-bg:   #fbfbfb;
+    --sidebar-bg:   #fbfbfc;
     --surface:      #ffffff;
-    --surface-2:    #f3f3f3;
-    --border:       #e1e3e5;
+    --surface-2:    #f3f3f5;
+    --surface-3:    #ecedf0;   /* zebra rows, raised hover states */
+    --border:       #e3e5e8;
     --border-strong:#c9cccf;
     --text:         #1a1a1a;
-    --text-muted:   #616161;
-    --text-subtle:  #8a8a8a;
+    --text-muted:   #5e6166;
+    --text-subtle:  #8a8e94;
+    /* ── Primary stays near-black (brand-neutral); accent introduces a
+       single vibrant hue used SPARINGLY per 2026 dashboard best practice
+       (focus rings, active progress bars, AI moments). Indigo is the most
+       widely-accepted "trust + intelligence" hue across Shopify Polaris,
+       Stripe, Linear. ── */
     --primary:      #1a1a1a;
     --primary-fg:   #ffffff;
     --accent:       #303030;
-    --nav-active-bg: #ebebeb;
-    --nav-hover-bg:  #f1f1f1;
+    --brand:        #4f46e5;  /* indigo-600 — AI / focus / progress */
+    --brand-fg:     #ffffff;
+    --brand-soft:   #eef2ff;  /* indigo-50  — subtle hover background */
+    --nav-active-bg: #ebebed;
+    --nav-hover-bg:  #f1f1f3;
     --success:      #1f7a4d;
     --success-bg:   #d6f3e3;
     --warn:         #b86e00;
@@ -51,9 +62,13 @@
     --danger-bg:    #fde7e9;
     --info:         #1d4ed8;
     --info-bg:      #dbeafe;
-    --radius:       8px;
+    --radius:       10px;       /* up from 8 — softer, more modern */
     --radius-sm:    6px;
-    --shadow-card:  0 0 0 1px var(--border), 0 1px 0 rgba(0,0,0,.04);
+    --radius-lg:    14px;
+    /* Layered shadows: a 1px ring + a soft drop. More sophisticated than
+       a single border line, still flat enough to read as a dashboard. */
+    --shadow-card:  0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04), 0 1px 0 rgba(255,255,255,.6) inset;
+    --shadow-card-hover: 0 0 0 1px rgba(0,0,0,.06), 0 4px 12px -4px rgba(0,0,0,.08);
     --shadow-pop:   0 12px 24px -8px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
     --motion-fast:  140ms;
     --motion-med:   240ms;
@@ -62,6 +77,44 @@
     --spring: linear(0, 0.009, 0.141 4.4%, 0.55 10.1%, 1.124,
       1.367 21.5%, 1.397, 1.318 31.2%, 1.043 39.8%, 0.838,
       0.798 56.4%, 0.91 65%, 1.029 76.4%, 1);
+  }
+  /* Dark mode — opt-in via OS preference. Same token names so every
+     existing component recolours automatically. Tuned to feel like a
+     modern command surface (Linear / Vercel) rather than terminal-dark
+     (pure #000). Surface levels keep the same delta as light mode. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:           #0e0f12;
+      --content-bg:   #16181d;
+      --sidebar-bg:   #131418;
+      --surface:      #16181d;
+      --surface-2:    #1d1f25;
+      --surface-3:    #23262d;
+      --border:       #2a2d33;
+      --border-strong:#3a3d44;
+      --text:         #ececef;
+      --text-muted:   #a4a8b0;
+      --text-subtle:  #6f7480;
+      --primary:      #ffffff;
+      --primary-fg:   #0e0f12;
+      --accent:       #d0d2d8;
+      --brand:        #818cf8;  /* indigo-400 — pops more on dark bg */
+      --brand-fg:     #0e0f12;
+      --brand-soft:   #1e1f30;
+      --nav-active-bg: #20232a;
+      --nav-hover-bg:  #1a1c22;
+      --success:      #4ade80;
+      --success-bg:   #14271c;
+      --warn:         #facc15;
+      --warn-bg:      #2c2410;
+      --danger:       #f87171;
+      --danger-bg:    #2b1416;
+      --info:         #60a5fa;
+      --info-bg:      #102035;
+      --shadow-card:  0 0 0 1px rgba(255,255,255,.04), 0 1px 2px rgba(0,0,0,.4);
+      --shadow-card-hover: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px -8px rgba(0,0,0,.6);
+      --shadow-pop:   0 16px 32px -10px rgba(0,0,0,.65), 0 4px 10px rgba(0,0,0,.45);
+    }
   }
   @keyframes ko-reveal-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   @keyframes ko-pop       { 0% { transform: scale(1); } 30% { transform: scale(1.18); } 100% { transform: scale(1); } }
@@ -77,15 +130,41 @@
     }
     .ko-fade { transition-duration: 120ms !important; }
   }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: .8125rem; }
-  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-card); }
-  .card-padded { padding: .9rem 1rem; }
-  .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .7rem; font-size:.8125rem; font-weight:500; border-radius: var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); transition:background .15s, border-color .15s, box-shadow .15s; cursor: pointer; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'InterVariable', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;             /* up from 13px — better legibility */
+    line-height: 1.5;
+    font-feature-settings: 'cv11', 'ss01', 'tnum';   /* Inter tabular nums */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Modern type scale — explicit for headings so plugins don't drift */
+  h1, .h1 { font-size: 1.5rem; line-height: 1.25; font-weight: 600; letter-spacing: -.015em; color: var(--text); }
+  h2, .h2 { font-size: 1.125rem; line-height: 1.3;  font-weight: 600; letter-spacing: -.01em; color: var(--text); }
+  h3, .h3 { font-size: 1rem;     line-height: 1.35; font-weight: 600; color: var(--text); }
+  .meta, small, .text-meta { font-size: .8125rem; color: var(--text-muted); }
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow var(--motion-fast) var(--ease-out);
+  }
+  .card-padded { padding: 1rem 1.1rem; }
+  .card-hoverable:hover { box-shadow: var(--shadow-card-hover); }
+  .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .75rem; font-size:.875rem; font-weight:500; border-radius: var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); transition:background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast); cursor: pointer; }
   .btn:hover { background: var(--surface-2); }
-  .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary); }
+  /* Focus rings use the brand accent — visible against both light + dark
+     bg, satisfies WCAG 2.2 AA on the new neutral palette. */
+  .btn:focus-visible,
+  .input:focus-visible,
+  a:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn-primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
   .btn-primary:hover { background: var(--accent); }
+  .btn-brand { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
+  .btn-brand:hover { filter: brightness(1.08); }
   .btn-ghost { background: transparent; border-color: transparent; }
   .btn-ghost:hover { background: var(--surface-2); }
   .btn-danger { background: var(--surface); color: var(--danger); border-color: var(--border); }
@@ -104,10 +183,21 @@
   .pill-info    { background: var(--info-bg); color: var(--info); }
   .pill-neutral { background: var(--surface-2); color: var(--text-muted); border:1px solid var(--border); }
   table.morph-table { width:100%; border-collapse: separate; border-spacing:0; }
-  table.morph-table th { text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; font-weight:600; color: var(--text-muted); padding:.55rem .8rem; background: var(--surface-2); border-bottom:1px solid var(--border); }
-  table.morph-table td { padding:.6rem .8rem; font-size:.8125rem; border-bottom:1px solid var(--border); vertical-align: middle; }
-  table.morph-table tr:hover td { background: var(--surface-2); }
+  table.morph-table th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color: var(--text-muted); padding:.7rem .9rem; background: var(--surface-2); border-bottom:1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+  table.morph-table td { padding:.75rem .9rem; font-size:.875rem; border-bottom:1px solid var(--border); vertical-align: middle; transition: background var(--motion-fast) var(--ease-out); }
+  table.morph-table tbody tr:hover td { background: var(--nav-hover-bg); }
   table.morph-table tr:last-child td { border-bottom: none; }
+  table.morph-table.morph-table-zebra tbody tr:nth-child(2n) td { background: var(--surface-2); }
+  table.morph-table.morph-table-zebra tbody tr:nth-child(2n):hover td { background: var(--surface-3); }
+  /* Empty state — used by list templates when there are 0 rows. Centred
+     icon + heading + sub-line + optional CTA. The default Tailwind
+     muted-text class doesn't read well at the small size we want, so
+     this gets its own scoped styling. */
+  .empty-state { text-align: center; padding: 3rem 1.5rem; max-width: 32rem; margin: 0 auto; }
+  .empty-state .empty-icon { width: 3rem; height: 3rem; margin: 0 auto 1rem; display:flex; align-items:center; justify-content:center; border-radius: 999px; background: var(--brand-soft); color: var(--brand); }
+  .empty-state h3 { margin: 0 0 .35rem; font-size: 1rem; font-weight: 600; color: var(--text); }
+  .empty-state p  { margin: 0 0 1rem; font-size: .875rem; color: var(--text-muted); line-height: 1.5; }
+  .empty-state .actions { display:flex; gap:.5rem; justify-content:center; }
   /* Sidebar — Shopify-style: tight, subtle, with an arrow indicator
      for the active item and indented submenu links under each parent. */
   .sidebar { background: var(--sidebar-bg); }
