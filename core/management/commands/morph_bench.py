@@ -114,13 +114,42 @@ class Command(BaseCommand):
             '--json', dest='emit_json', action='store_true',
             help='Emit JSON per URL (machine-readable) instead of the table.',
         )
+        parser.add_argument(
+            '--save', metavar='PATH',
+            help='Write this run\'s numbers to PATH as a baseline for future --baseline comparisons.',
+        )
+        parser.add_argument(
+            '--baseline', metavar='PATH',
+            help='Path to a saved baseline (from --save). Prints deltas + exits non-zero on regression.',
+        )
+        parser.add_argument(
+            '--regression-pct', type=float, default=15.0,
+            help='p95 regression threshold (%%) that triggers non-zero exit. Default 15.',
+        )
 
     def handle(self, *args, **opts):
+        import os
         base = opts['base_url'].rstrip('/')
         n = max(1, int(opts['iterations']))
         warmup = max(0, int(opts['warmup']))
         target = opts['target']
         as_json = bool(opts['emit_json'])
+        save_path = opts.get('save')
+        baseline_path = opts.get('baseline')
+        regression_pct = float(opts.get('regression_pct') or 15.0)
+
+        baseline = {}
+        if baseline_path and os.path.exists(baseline_path):
+            with open(baseline_path) as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                        baseline[row.get('name', '')] = row
+                    except json.JSONDecodeError:
+                        continue
 
         paths: list[tuple[str, str]] = []
         if target in ('public', 'all'):
@@ -129,11 +158,16 @@ class Command(BaseCommand):
             paths.extend(_AUTH_PATHS)
 
         results = []
+        regressions: list[tuple[str, float, float, float]] = []  # (name, base_p95, now_p95, delta_pct)
         if not as_json:
             self.stdout.write(self.style.SUCCESS(
                 f'Benchmarking {base} — {n} iterations per URL (warmup={warmup}, target={target})'
+                + (f' [baseline: {baseline_path}]' if baseline else '')
             ))
-            self.stdout.write(f'  {"name":<20} {"path":<32} {"p50":>8} {"p95":>8} {"p99":>8} {"max":>8}  status')
+            header = f'  {"name":<20} {"path":<32} {"p50":>8} {"p95":>8} {"p99":>8} {"max":>8}  status'
+            if baseline:
+                header += '   vs-base'
+            self.stdout.write(header)
             self.stdout.write(f'  {"-" * 20} {"-" * 32} {"-" * 8} {"-" * 8} {"-" * 8} {"-" * 8}  ------')
 
         for name, path in paths:
@@ -162,11 +196,26 @@ class Command(BaseCommand):
                 'statuses': dict(Counter(statuses)),
             }
             results.append(row)
+            delta_str = ''
+            if baseline:
+                prev = baseline.get(name)
+                if prev and prev.get('p95_ms'):
+                    base_p95 = float(prev['p95_ms'])
+                    delta_ms = row['p95_ms'] - base_p95
+                    delta_pct = (delta_ms / base_p95) * 100 if base_p95 > 0 else 0
+                    sign = '+' if delta_ms >= 0 else ''
+                    delta_str = f'  {sign}{delta_pct:>5.1f}%'
+                    if delta_pct > regression_pct:
+                        regressions.append((name, base_p95, row['p95_ms'], delta_pct))
+                        delta_str += ' ⚠'   # warning sign
+                else:
+                    delta_str = '   (new)'
             if not as_json:
                 self.stdout.write(
                     f'  {name:<20} {path:<32} '
                     f'{row["p50_ms"]:>7.0f}ms {row["p95_ms"]:>7.0f}ms '
                     f'{row["p99_ms"]:>7.0f}ms {row["max_ms"]:>7.0f}ms  {status_summary}'
+                    + delta_str
                 )
 
         if as_json:
@@ -178,3 +227,24 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(
                 f'Median p95 across {len(results)} URLs: {overall_p95:.0f}ms'
             ))
+            if regressions:
+                self.stdout.write('')
+                self.stdout.write(self.style.ERROR(
+                    f'{len(regressions)} regression(s) past +{regression_pct:.0f}% threshold:'
+                ))
+                for name, base_p95, now_p95, delta_pct in regressions:
+                    self.stdout.write(self.style.ERROR(
+                        f'  {name:<20} p95 {base_p95:.0f}ms → {now_p95:.0f}ms ({delta_pct:+.1f}%)'
+                    ))
+
+        if save_path:
+            with open(save_path, 'w') as fh:
+                for row in results:
+                    fh.write(json.dumps(row) + '\n')
+            if not as_json:
+                self.stdout.write(self.style.SUCCESS(f'Saved baseline to {save_path}'))
+
+        # Non-zero exit on regression so CI can gate on the bench.
+        if regressions:
+            import sys
+            sys.exit(2)
