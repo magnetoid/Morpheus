@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f1f1f1">
 <title>{% block title %}Morpheus admin{% endblock %}</title>
-{# FOUC-free theme bootstrap. MUST be the first script in <head> so the
-   data-theme attribute lands on <html> before any CSS evaluates the
-   :root[data-theme=...] rules. Reads localStorage['morph:theme'] which
-   is one of 'light' | 'dark' | 'system' (default). #}
+{% comment %}FOUC-free theme bootstrap. MUST be the first script in head so the data-theme attribute lands on html before any CSS evaluates the :root[data-theme=...] rules. Reads localStorage['morph:theme'] which is one of 'light' | 'dark' | 'system' (default).{% endcomment %}
 <script>
 (function () {
   try {
@@ -613,11 +610,7 @@
     </button>
     {# Inline AI affordance — context-aware "Ask the Assistant" button. #}
     {% morph_ask %}
-    {# Theme toggle. Cycles light → dark → system (follow OS). The icon
-       reflects the CURRENTLY-APPLIED theme so a quick glance tells you
-       what's in effect. State persisted in localStorage under
-       `morph:theme`; initial paint happens in the inline <script> in
-       <head> below to avoid FOUC. #}
+    {% comment %}Theme toggle. Cycles light → dark → system (follow OS). The icon reflects the CURRENTLY-APPLIED theme so a quick glance tells you what's in effect. State persisted in localStorage under `morph:theme`; initial paint happens in the inline script in head above to avoid FOUC.{% endcomment %}
     <button id="theme-toggle" class="btn btn-ghost p-1.5" aria-label="Toggle theme" title="Toggle light / dark / system">
       <i data-lucide="sun" data-theme-icon="light" class="h-4 w-4"></i>
       <i data-lucide="moon" data-theme-icon="dark" class="h-4 w-4" style="display:none;"></i>
