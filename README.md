@@ -645,16 +645,26 @@ python manage.py morph_backup               [--dest /var/backups/morpheus] [--ke
 
 ## Documentation
 
-- [`SKILLS.md`](SKILLS.md) — **named procedures** for every common task (add a plugin, fix N+1, deploy to Coolify, …). Start here.
-- [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) — full plugin developer guide.
-- [`docs/THEME_DEVELOPMENT.md`](docs/THEME_DEVELOPMENT.md) — full theme developer guide.
-- [`docs/deploy-coolify.md`](docs/deploy-coolify.md) — Coolify deployment.
-- [`docs/deploy-plesk-nginx.md`](docs/deploy-plesk-nginx.md) — Plesk Nginx → Coolify Traefik reverse proxy config.
-- [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md) — backups, restore, deploy chain, on-call basics.
-- [`RULES.md`](RULES.md) — the platform's immutable laws. Read before PR.
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — system design, plugin lifecycle, the four pillars.
-- [`AI_VISION.md`](AI_VISION.md) — strategic thesis.
-- [`CHANGELOG.md`](CHANGELOG.md) — every shipped PR by phase.
+**Read in this order:**
+
+1. [`CHARTER.md`](CHARTER.md) — **the project constitution.** Mission, audience, the 11 Laws (summary), layered architecture, governance, what Morpheus is and is NOT. When two docs disagree, this one wins.
+2. [`RULES.md`](RULES.md) — the 11 immutable Laws expanded with rationale.
+3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — system design, plugin lifecycle, the four pillars.
+4. [`SKILLS.md`](SKILLS.md) — named procedures for common tasks (add a plugin, fix N+1, deploy, …).
+5. [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) — full plugin developer guide.
+6. [`docs/THEME_DEVELOPMENT.md`](docs/THEME_DEVELOPMENT.md) — full theme developer guide.
+7. [`AI_VISION.md`](AI_VISION.md) — the deep AI-first strategic thesis (intent engine, semantic search).
+
+**Stability + ops:**
+
+- [`docs/API_STABILITY.md`](docs/API_STABILITY.md) — public surface stability contract (what won't move within a major version)
+- [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) — perf levers, baseline, regression-detection workflow
+- [`docs/WEBHOOK_RECIPES.md`](docs/WEBHOOK_RECIPES.md) — Zapier / n8n / Make / curl recipes
+- [`docs/HEADLESS.md`](docs/HEADLESS.md) — using Morpheus without the bundled theme
+- [`docs/deploy-coolify.md`](docs/deploy-coolify.md) — Coolify deployment
+- [`docs/deploy-plesk-nginx.md`](docs/deploy-plesk-nginx.md) — Plesk Nginx → Coolify Traefik proxy
+- [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md) — backups, restore, deploy chain, on-call
+- [`CHANGELOG.md`](CHANGELOG.md) — every shipped PR by phase
 
 ---
 
