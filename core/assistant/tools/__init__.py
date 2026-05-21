@@ -65,6 +65,7 @@ def get_default_tools() -> list:
         memory_remember_tool,
     )
     from core.assistant.tools.navigation import dashboard_navigate_tool
+    from core.assistant.tools.health import platform_circuit_breakers_tool
     return [
         # Database — schema introspection
         list_models_tool,
@@ -107,6 +108,8 @@ def get_default_tools() -> list:
         metafields_delete_tool,
         # Navigation — surface dashboard deep-links as click-through chips.
         dashboard_navigate_tool,
+        # Platform health — circuit breakers, dependency state, "is X down".
+        platform_circuit_breakers_tool,
         # Delegate — diagnostics, content writer, pricing, merchant ops, etc.
         list_available_agents_tool,
         invoke_agent_tool,

@@ -371,11 +371,76 @@
   /* htmx loading indicator — a thin progress strip across the top of main. */
   #htmx-progress {
     position: fixed; top: 0; left: 0; height: 2px; width: 0%;
-    background: var(--text); z-index: 9999; opacity: 0;
+    background: var(--brand); z-index: 9999; opacity: 0;
     transition: width 200ms linear, opacity 200ms var(--ease-out);
     pointer-events: none;
   }
   .htmx-request #htmx-progress { width: 70%; opacity: 1; }
+  /* ── UX polish primitives — used by tables, forms, mobile ───────────── */
+  /* Loading skeleton — wrap with .skeleton + opacity-transition on real
+     content. Standard shimmer gradient, GPU-cheap. Drop into any table
+     cell while data loads: <td><span class="skeleton" style="width: 8ch; height: 1rem;"></span></td> */
+  @keyframes morph-shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+  .skeleton {
+    display: inline-block; border-radius: 4px;
+    background: linear-gradient(
+      90deg,
+      var(--surface-2) 0%,
+      var(--surface-3) 50%,
+      var(--surface-2) 100%
+    );
+    background-size: 200% 100%;
+    animation: morph-shimmer 1.4s linear infinite;
+    color: transparent !important;
+    min-height: 0.85em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; background: var(--surface-2); }
+  }
+  /* Toast notifications — flash messages, save confirmations, error banners.
+     Position fixed top-right. JS sets .toast-show to fade in; setTimeout
+     removes the class to fade out. */
+  #toast-stack {
+    position: fixed; top: 1rem; right: 1rem;
+    z-index: 10000; display: flex; flex-direction: column; gap: .5rem;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--surface); border: 1px solid var(--border);
+    box-shadow: var(--shadow-pop); border-radius: var(--radius-sm);
+    padding: .65rem .85rem; font-size: .85rem; min-width: 240px; max-width: 360px;
+    opacity: 0; transform: translateY(-6px);
+    transition: opacity var(--motion-med) var(--ease-out), transform var(--motion-med) var(--ease-out);
+    pointer-events: auto; display: flex; align-items: flex-start; gap: .5rem;
+  }
+  .toast.toast-show { opacity: 1; transform: none; }
+  .toast-success { border-left: 3px solid var(--success); }
+  .toast-warn    { border-left: 3px solid var(--warn); }
+  .toast-error   { border-left: 3px solid var(--danger); }
+  .toast-info    { border-left: 3px solid var(--brand); }
+  /* Mobile sidebar drawer — was rendering inline on narrow screens. Now
+     slides in from the left, backdrop dims content, swipe-to-close
+     compatible. Triggered by the existing #sidebar-open button + matching
+     #sidebar-close in the drawer. */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+      width: 18rem; max-width: 80vw;
+      transform: translateX(-100%);
+      transition: transform var(--motion-med) var(--ease-out);
+      box-shadow: var(--shadow-pop);
+    }
+    .sidebar.sidebar-open { transform: translateX(0); }
+    #sidebar-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      z-index: 99; opacity: 0; pointer-events: none;
+      transition: opacity var(--motion-fast) var(--ease-out);
+    }
+    #sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
+  }
   /* Subtle row hover on data tables — used everywhere a list renders. */
   table tbody tr { transition: background var(--motion-fast) var(--ease-out); }
   table tbody tr:hover { background: var(--surface-2); }
@@ -890,6 +955,60 @@
     if (e.detail.target && e.detail.target.id === 'main-content') {
       e.detail.target.classList.add('fadein');
     }
+  });
+})();
+</script>
+<div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+<div id="sidebar-backdrop"></div>
+<script>
+/* Toast notifications — global helper. Any code can call window.morphToast(
+   text, {kind: 'success'|'warn'|'error'|'info', timeout: ms}). Toasts stack
+   top-right and auto-dismiss. */
+(function () {
+  var stack = document.getElementById('toast-stack');
+  if (!stack) return;
+  window.morphToast = function (text, opts) {
+    opts = opts || {};
+    var kind = opts.kind || 'info';
+    var timeout = opts.timeout || 3500;
+    var t = document.createElement('div');
+    t.className = 'toast toast-' + kind;
+    t.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    t.textContent = text;
+    stack.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('toast-show'); });
+    setTimeout(function () {
+      t.classList.remove('toast-show');
+      setTimeout(function () { t.remove(); }, 280);
+    }, timeout);
+  };
+  // Surface Django flash messages as toasts on page-load.
+  document.querySelectorAll('[data-django-message]').forEach(function (el) {
+    var kind = el.getAttribute('data-django-message') || 'info';
+    window.morphToast(el.textContent.trim(), {kind: kind});
+    el.remove();
+  });
+})();
+/* Mobile sidebar drawer — wires #sidebar-open + #sidebar-backdrop + the
+   sidebar's own #sidebar-close button (if present) into open/close
+   transitions. Closes on Esc + on click outside the drawer. */
+(function () {
+  var sidebar = document.getElementById('sidebar');
+  var openBtn = document.getElementById('sidebar-open');
+  var backdrop = document.getElementById('sidebar-backdrop');
+  if (!sidebar || !openBtn || !backdrop) return;
+  function open()  { sidebar.classList.add('sidebar-open');    backdrop.classList.add('show'); }
+  function close() { sidebar.classList.remove('sidebar-open'); backdrop.classList.remove('show'); }
+  openBtn.addEventListener('click', open);
+  backdrop.addEventListener('click', close);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && sidebar.classList.contains('sidebar-open')) close();
+  });
+  // Close when a nav link is clicked (mobile UX expectation).
+  sidebar.querySelectorAll('a.nav-link').forEach(function (a) {
+    a.addEventListener('click', function () {
+      if (window.matchMedia('(max-width: 768px)').matches) close();
+    });
   });
 })();
 </script>

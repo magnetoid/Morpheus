@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-05-21",
+  "comment": "Curated catalogue of community + first-party apps installable into Morpheus. This is the static MVP — future iterations move to a remote registry served by an off-Morpheus index. The schema is stable; entries can be added freely.",
+  "apps": [
+    {
+      "slug": "stripe-connect-marketplace",
+      "name": "Stripe Connect Marketplace",
+      "tagline": "Split payments across vendors via Stripe Connect Express accounts.",
+      "category": "Payments",
+      "author": "first-party",
+      "version": "0.1.0",
+      "requires": ["payments", "marketplace"],
+      "repo": "https://github.com/magnetoid/morpheus-stripe-connect",
+      "install": "pip install morpheus-stripe-connect && echo \"morpheus_stripe_connect\" >> .env-MORPHEUS_EXTRA_PLUGINS",
+      "icon": "credit-card",
+      "tags": ["payments", "marketplace", "vendor-payouts"],
+      "status": "planned"
+    },
+    {
+      "slug": "klaviyo-sync",
+      "name": "Klaviyo Sync",
+      "tagline": "Two-way customer + event sync with Klaviyo for email + SMS campaigns.",
+      "category": "Marketing",
+      "author": "community",
+      "version": "0.1.0",
+      "requires": ["customers", "marketing"],
+      "repo": "https://github.com/morpheus-apps/klaviyo-sync",
+      "install": "pip install morpheus-klaviyo-sync",
+      "icon": "mail",
+      "tags": ["marketing", "email", "klaviyo"],
+      "status": "planned"
+    },
+    {
+      "slug": "post-purchase-upsell",
+      "name": "Post-Purchase Upsell",
+      "tagline": "Show a curated upsell offer on the order-confirmation page with one-click add-to-order.",
+      "category": "Conversion",
+      "author": "community",
+      "version": "0.1.0",
+      "requires": ["orders", "promotions"],
+      "repo": "https://github.com/morpheus-apps/post-purchase-upsell",
+      "install": "pip install morpheus-post-purchase-upsell",
+      "icon": "trending-up",
+      "tags": ["conversion", "upsell", "aov"],
+      "status": "planned"
+    },
+    {
+      "slug": "review-import-trustpilot",
+      "name": "Trustpilot review import",
+      "tagline": "Pull verified Trustpilot reviews into Morpheus product pages on a schedule.",
+      "category": "Reviews",
+      "author": "community",
+      "version": "0.1.0",
+      "requires": ["reviews"],
+      "repo": "https://github.com/morpheus-apps/trustpilot-import",
+      "install": "pip install morpheus-trustpilot-import",
+      "icon": "star",
+      "tags": ["reviews", "social-proof", "trustpilot"],
+      "status": "planned"
+    },
+    {
+      "slug": "stock-sync-shopify",
+      "name": "Shopify stock sync",
+      "tagline": "Mirror Morpheus inventory levels to a parallel Shopify store via the Shopify Admin API.",
+      "category": "Inventory",
+      "author": "community",
+      "version": "0.1.0",
+      "requires": ["inventory", "catalog"],
+      "repo": "https://github.com/morpheus-apps/shopify-stock-sync",
+      "install": "pip install morpheus-shopify-stock-sync",
+      "icon": "refresh-cw",
+      "tags": ["inventory", "shopify", "multi-channel"],
+      "status": "planned"
+    },
+    {
+      "slug": "wholesale-pricing",
+      "name": "Wholesale pricing tiers",
+      "tagline": "Customer-group-based price overrides with minimum-order quantities for B2B selling.",
+      "category": "B2B",
+      "author": "community",
+      "version": "0.1.0",
+      "requires": ["b2b", "catalog"],
+      "repo": "https://github.com/morpheus-apps/wholesale-pricing",
+      "install": "pip install morpheus-wholesale-pricing",
+      "icon": "tag",
+      "tags": ["b2b", "wholesale", "pricing"],
+      "status": "planned"
+    }
+  ]
+}

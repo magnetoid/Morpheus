@@ -25,32 +25,71 @@ class HookRegistry:
     """
 
     def __init__(self):
-        # { event_name: [ (priority, handler), ... ] }
-        self._handlers: dict[str, list[tuple[int, Callable]]] = defaultdict(list)
+        # { event_name: [ (priority, handler, mode), ... ] }
+        # mode is 'sync' (default, runs in-request) or 'async' (deferred to
+        # Celery so the request can return immediately).
+        self._handlers: dict[str, list[tuple[int, Callable, str]]] = defaultdict(list)
 
-    def register(self, event: str, handler: Callable, priority: int = 50) -> None:
-        """Register a handler for an event. Lower priority = runs first."""
-        self._handlers[event].append((priority, handler))
+    def register(
+        self,
+        event: str,
+        handler: Callable,
+        priority: int = 50,
+        mode: str = 'sync',
+    ) -> None:
+        """Register a handler for an event. Lower priority = runs first.
+
+        ``mode='sync'`` (default): handler runs in-request, in priority order.
+        ``mode='async'``: handler runs on a Celery worker after the request
+        returns. Use for analytics, embeddings, marketing emails, anything
+        not in the critical path. Critical side effects (inventory decrement,
+        order state transitions, fulfillment) must stay sync.
+
+        Note: async mode requires JSON-serialisable kwargs. Pass model PKs
+        + class names, not raw model instances. The async dispatcher
+        re-resolves them inside the worker. Non-serialisable kwargs cause
+        the handler to fall back to sync execution with a WARNING log.
+        """
+        if mode not in ('sync', 'async'):
+            raise ValueError(f"Invalid hook mode {mode!r} — must be 'sync' or 'async'.")
+        self._handlers[event].append((priority, handler, mode))
         self._handlers[event].sort(key=lambda x: x[0])
-        logger.debug(f"Hook registered: {event} → {handler.__qualname__} (priority={priority})")
+        logger.debug(
+            "Hook registered: %s → %s (priority=%d, mode=%s)",
+            event, handler.__qualname__, priority, mode,
+        )
 
     def unregister(self, event: str, handler: Callable) -> None:
         """Remove a handler from an event."""
         self._handlers[event] = [
-            (p, h) for p, h in self._handlers[event] if h != handler
+            entry for entry in self._handlers[event] if entry[1] != handler
         ]
 
     def fire(self, event: str, **kwargs: Any) -> list[Any]:
         """
         Fire an event. All registered handlers are called in priority order.
+        Sync handlers run in-request; async handlers are enqueued to Celery.
         Also dispatches asynchronous HTTP webhooks to Remote Plugins.
-        Returns list of non-None return values from handlers.
+        Returns list of non-None return values from SYNC handlers only
+        (async handlers return their results to the worker, not the caller).
         """
         results: list[Any] = []
 
         self._dispatch_remote(event, kwargs)
 
-        for _priority, handler in self._handlers.get(event, []):
+        for entry in self._handlers.get(event, []):
+            # Backwards-compat: pre-mode tuples were (priority, handler).
+            # Unpack defensively so plugins registered the old way still work.
+            if len(entry) == 3:
+                _priority, handler, mode = entry
+            else:
+                _priority, handler = entry
+                mode = 'sync'
+
+            if mode == 'async':
+                self._enqueue_async(event, handler, kwargs)
+                continue
+
             try:
                 result = handler(**kwargs)
             except Exception as e:  # noqa: BLE001 — handler isolation, logged with traceback
@@ -64,12 +103,48 @@ class HookRegistry:
                 results.append(result)
         return results
 
+    def _enqueue_async(self, event: str, handler: Callable, kwargs: dict) -> None:
+        """Send a hook-handler invocation to Celery.
+
+        Falls back to sync execution if Celery is unavailable or if the
+        kwargs aren't JSON-serialisable — degrading gracefully is more
+        important than purity.
+        """
+        try:
+            from core.tasks import run_hook_handler_async
+            handler_path = f'{handler.__module__}.{handler.__qualname__}'
+            # Best-effort serialisation check — bail to sync if anything's
+            # non-trivial (Model instances, Decimal, datetime).
+            serialisable = self._serialize_payload(kwargs)
+            run_hook_handler_async.delay(event, handler_path, serialisable)
+        except Exception as exc:  # noqa: BLE001 — never break the fire path
+            logger.warning(
+                'async hook dispatch failed for %s → %s; falling back to sync: %s',
+                event, handler.__qualname__, exc,
+            )
+            try:
+                handler(**kwargs)
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    'async-fallback-sync hook handler error: event=%s handler=%s error=%s',
+                    event, handler.__qualname__, e, exc_info=True,
+                )
+
     def filter(self, event: str, value: Any, **kwargs: Any) -> Any:
         """
         Filter an event — each handler receives the (potentially modified) value
         and returns a new value. Builds a transformation pipeline.
+
+        Filters are ALWAYS sync — the value has to flow through synchronously
+        for the caller to receive the transformed result. async mode on a
+        filter is rejected at registration time? — not yet; for now we
+        silently treat any handler registered for a filter event as sync.
         """
-        for _priority, handler in self._handlers.get(event, []):
+        for entry in self._handlers.get(event, []):
+            if len(entry) == 3:
+                _priority, handler, _mode = entry
+            else:
+                _priority, handler = entry
             try:
                 result = handler(value=value, **kwargs)
             except Exception as e:  # noqa: BLE001 — filter isolation, logged with traceback
@@ -152,7 +227,11 @@ class HookRegistry:
         return bool(self._handlers.get(event))
 
     def list_handlers(self, event: str) -> list[str]:
-        return [h.__qualname__ for _, h in self._handlers.get(event, [])]
+        out: list[str] = []
+        for entry in self._handlers.get(event, []):
+            handler = entry[1]
+            out.append(handler.__qualname__)
+        return out
 
     def clear(self, event: str | None = None) -> None:
         """Clear handlers. If event is None, clears all."""

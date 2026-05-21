@@ -176,3 +176,68 @@ def process_outbox(self) -> None:
                 event.status = 'PUBLISHED'
                 event.published_at = timezone.now()
             event.save(update_fields=['status', 'published_at', 'error_message'])
+
+
+# ── Async hook handler dispatch ───────────────────────────────────────────────
+
+@shared_task(
+    name='core.tasks.run_hook_handler_async',
+    bind=True,
+    max_retries=3,
+    default_retry_delay=10,
+    time_limit=60,
+)
+def run_hook_handler_async(self, event: str, handler_path: str, kwargs: dict) -> None:
+    """Re-invoke a hook handler from a Celery worker.
+
+    Used by HookRegistry when a handler was registered with mode='async'.
+    Resolves the handler from its dotted import path so we don't have to
+    pickle the callable, and invokes it with the serialised kwargs.
+
+    Failures here are NOT re-raised by default — async hook handlers that
+    fail get a structured log line and a retry. After max_retries the
+    event is dropped (we don't want stuck handlers to block the queue).
+    Surfaced to the merchant via the existing observability error log.
+    """
+    import importlib
+
+    module_path, _, attr_name = handler_path.rpartition('.')
+    if not module_path or not attr_name:
+        logger.error('async hook: malformed handler path %s', handler_path)
+        return
+
+    # Walk through dotted attr lookups so `module.Class.method` works.
+    try:
+        mod = importlib.import_module(module_path.split('.', 1)[0] if '.' not in module_path else module_path.rsplit('.', 1)[0] if False else module_path)
+    except Exception as exc:  # noqa: BLE001
+        # Handle qualnames like 'pkg.mod.Class.method' — split on the last dot
+        # of the module path, treat the remainder as attribute chain.
+        try:
+            mod_chain, _, tail = handler_path.rpartition('.')
+            mod = importlib.import_module(mod_chain.rsplit('.', 1)[0])
+        except Exception:  # noqa: BLE001
+            logger.error('async hook: cannot import module for %s: %s', handler_path, exc)
+            return
+
+    # Resolve the handler — walk dotted attrs to support nested methods.
+    target = mod
+    for part in handler_path.split('.')[1:]:
+        target = getattr(target, part, None)
+        if target is None:
+            logger.error('async hook: cannot resolve %s on %s', part, handler_path)
+            return
+
+    try:
+        target(**(kwargs or {}))
+    except Exception as exc:  # noqa: BLE001 — logged + auto-retry
+        logger.warning(
+            'async hook handler %s failed (attempt %s): %s',
+            handler_path, self.request.retries + 1, exc, exc_info=True,
+        )
+        try:
+            raise self.retry(exc=exc)
+        except self.MaxRetriesExceededError:
+            logger.error(
+                'async hook handler %s exhausted retries; dropping event %s',
+                handler_path, event,
+            )

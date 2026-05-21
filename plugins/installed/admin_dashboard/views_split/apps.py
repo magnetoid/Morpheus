@@ -48,6 +48,62 @@ def apps_view(request: HttpRequest) -> HttpResponse:
     })
 
 
+@staff_member_required
+def apps_store_view(request: HttpRequest) -> HttpResponse:
+    """Browse + install surface for community apps.
+
+    Reads from a static registry today
+    (`plugins/installed/admin_dashboard/data/apps_registry.json`); future
+    iterations point this at a remote index. Each entry carries enough
+    metadata for the merchant to decide + a copy-pasteable install
+    command. Auto-install via pip + manifest mutation is a separate PR;
+    this is the MVP browse surface.
+
+    Installed apps (status='installed') are detected against the live
+    plugin registry so the UI shows a green badge instead of an install
+    button. Anything in the JSON that's not yet a real plugin renders
+    with 'planned' or 'available' status.
+    """
+    import json
+    import os
+    from plugins.registry import plugin_registry
+
+    registry_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        'data', 'apps_registry.json',
+    )
+    apps_data = {'apps': []}
+    try:
+        with open(registry_path) as fh:
+            apps_data = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning('apps_store: registry read failed: %s', exc)
+
+    installed_names = set(plugin_registry._classes.keys())
+    rows = []
+    for app in apps_data.get('apps', []):
+        slug = (app.get('slug') or '').strip()
+        # The slug is also the plugin's `name` if it ships as a Morpheus
+        # plugin — installed check on the registry confirms.
+        is_installed = slug.replace('-', '_') in installed_names
+        rows.append({**app, 'is_installed': is_installed})
+
+    # Group by category for the page layout.
+    categories: dict[str, list] = {}
+    for r in rows:
+        cat = r.get('category') or 'Other'
+        categories.setdefault(cat, []).append(r)
+
+    return render(request, 'admin_dashboard/apps_store.html', {
+        'categories': sorted(categories.items()),
+        'total': len(rows),
+        'installed_count': sum(1 for r in rows if r['is_installed']),
+        'registry_version': apps_data.get('version', '?'),
+        'registry_updated_at': apps_data.get('updated_at', ''),
+        'active_nav': 'apps',
+    })
+
+
 def _toggle_plugin(request: HttpRequest):
     """POST handler on the apps page: flip a plugin's enabled state in DB."""
     from morpheus.views import redirect

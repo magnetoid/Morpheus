@@ -1,0 +1,93 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}App store · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <div class="flex items-center justify-between flex-wrap gap-2">
+    <div>
+      <h1 class="h1">App store</h1>
+      <p class="meta">
+        {{ total }} community + first-party apps available
+        {% if installed_count %} · {{ installed_count }} installed{% endif %}
+        · registry v{{ registry_version }} ({{ registry_updated_at }})
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'admin_dashboard:apps' %}" class="btn">
+        <i data-lucide="package" class="h-4 w-4"></i> Installed
+      </a>
+    </div>
+  </div>
+
+  <div class="card card-padded" style="background: var(--brand-soft); border: 1px solid var(--border);">
+    <p style="margin: 0; font-size: .875rem; line-height: 1.5;">
+      <strong>App store is in MVP.</strong> Today this surface is a curated browse
+      view of community apps with copy-pasteable install commands. One-click
+      install + plugin packaging spec are tracked in
+      <code>CHARTER.md §4 Layer 5</code>. Want to publish? Open a PR adding to
+      <code>plugins/installed/admin_dashboard/data/apps_registry.json</code>.
+    </p>
+  </div>
+
+  {% for category, apps in categories %}
+  <section>
+    <h2 class="h2" style="margin: 1.5rem 0 .75rem;">{{ category }}</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {% for a in apps %}
+      <div class="card card-hoverable card-padded" style="display: flex; flex-direction: column; gap: .65rem;">
+        <div style="display:flex; align-items:flex-start; gap:.65rem;">
+          <div style="flex-shrink:0; width:2.25rem; height:2.25rem; border-radius:8px; background:var(--surface-2); display:flex; align-items:center; justify-content:center;">
+            <i data-lucide="{{ a.icon|default:'package' }}" class="h-5 w-5" style="color:var(--text-muted);"></i>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:.4rem; flex-wrap: wrap;">
+              <strong style="font-size:.95rem;">{{ a.name }}</strong>
+              {% if a.is_installed %}
+                <span class="pill pill-success" style="font-size:.65rem;">Installed</span>
+              {% elif a.status == 'planned' %}
+                <span class="pill pill-neutral" style="font-size:.65rem;">Planned</span>
+              {% else %}
+                <span class="pill pill-info" style="font-size:.65rem;">Available</span>
+              {% endif %}
+            </div>
+            <p class="meta" style="margin: .2rem 0 0; font-size:.78rem;">
+              by {{ a.author }} · v{{ a.version }}
+            </p>
+          </div>
+        </div>
+        <p style="margin:0; font-size: .85rem; line-height: 1.45; color: var(--text-muted);">{{ a.tagline }}</p>
+        {% if a.tags %}
+        <div style="display:flex; flex-wrap: wrap; gap:.25rem;">
+          {% for t in a.tags %}
+          <span style="font-size:.68rem; padding: .1rem .45rem; border-radius:999px; background:var(--surface-2); color:var(--text-muted);">{{ t }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div style="display:flex; gap:.4rem; margin-top:auto;">
+          <a href="{{ a.repo }}" target="_blank" rel="noopener" class="btn text-xs" style="flex:1; justify-content:center;">
+            <i data-lucide="github" class="h-3.5 w-3.5"></i> Repo
+          </a>
+          {% if not a.is_installed and a.status != 'planned' %}
+          <details style="position: relative;">
+            <summary class="btn btn-primary text-xs" style="cursor:pointer; list-style:none;">
+              <i data-lucide="download" class="h-3.5 w-3.5"></i> Install
+            </summary>
+            <div class="dropdown-menu" style="display:block; position:absolute; right:0; top:calc(100% + .35rem); min-width: 320px; max-width: 380px; padding: .6rem .75rem;">
+              <strong style="display:block; font-size:.8rem; margin-bottom:.4rem;">Install command</strong>
+              <code style="display:block; padding: .5rem .65rem; background:var(--surface-2); border-radius:6px; font-size:.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all;">{{ a.install }}</code>
+              <p class="meta" style="font-size:.7rem; margin: .5rem 0 0;">
+                Then add <code>plugins.installed.{{ a.slug|cut:"-"|cut:"_" }}</code> to
+                <code>MORPHEUS_DEFAULT_PLUGINS</code> in <code>morph/settings.py</code>
+                and redeploy.
+              </p>
+            </div>
+          </details>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

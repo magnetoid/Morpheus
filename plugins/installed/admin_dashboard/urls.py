@@ -151,6 +151,7 @@ urlpatterns = [
     path('marketing/coupons/<uuid:coupon_id>/', views.coupon_edit, name='coupon_edit'),
     path('marketing/coupons/<uuid:coupon_id>/delete/', views.coupon_delete, name='coupon_delete'),
     path('apps/', views.apps_view, name='apps'),
+    path('apps/store/', views.apps_store_view, name='apps_store'),
     path('apps/<str:plugin>/settings/', plugin_settings_view, name='plugin_settings'),
     path('apps/<str:plugin>/<slug:slug>/', plugin_page_router, name='plugin_page'),
     path('palette/search/', views.palette_search, name='palette_search'),
