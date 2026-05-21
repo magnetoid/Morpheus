@@ -131,12 +131,29 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
     })
 
 
+PROTECTED_PLUGINS = frozenset({
+    'admin_dashboard',  # disabling this hides its own toggle UI — soft brick
+    'catalog', 'customers', 'orders', 'payments',  # core commerce primitives
+})
+
+
 def _toggle_plugin(request: HttpRequest):
-    """POST handler on the apps page: flip a plugin's enabled state in DB."""
+    """POST handler on the apps page: flip a plugin's enabled state in DB.
+
+    Refuses to disable protected plugins — the dashboard plugin's own
+    UI lives in admin_dashboard, so disabling it would lock the
+    merchant out of every dashboard page (including this one)."""
+    from django.contrib import messages
     from morpheus.views import redirect
 
     name = request.POST.get('plugin', '').strip()
     desired = request.POST.get('enabled') == '1'
+    if not desired and name in PROTECTED_PLUGINS:
+        messages.error(
+            request,
+            f'{name!r} cannot be disabled — it is required for the dashboard to function.',
+        )
+        return redirect('admin_dashboard:apps')
     try:
         from plugins.models import PluginConfig
         row, _ = PluginConfig.objects.get_or_create(plugin_name=name)
