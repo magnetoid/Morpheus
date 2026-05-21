@@ -64,3 +64,46 @@ def bulk_set_translations(obj, language_code: str, mapping: dict) -> int:
         set_translation(obj, field, language_code, str(val))
         n += 1
     return n
+
+
+# ── Enabled-languages config ──────────────────────────────────────────────────
+# The localization plugin's "Languages" page calls these helpers. Stored as a
+# comma-separated string in the StoreSettings key/value store so it survives
+# restarts without a dedicated table.
+
+_LANGUAGES_KEY = 'i18n.enabled_languages'
+
+
+def list_enabled_languages() -> list[str]:
+    """Return the list of ISO codes the store is configured to ship to.
+
+    Empty list means "no target languages picked yet" — storefront falls
+    back to LANGUAGE_CODE from settings. Reads from StoreSettings so the
+    setter + getter agree without a migration.
+    """
+    try:
+        from core.models import StoreSettings
+        raw = StoreSettings.get(_LANGUAGES_KEY, '') or ''
+    except Exception:  # noqa: BLE001 — settings table missing in tests
+        return []
+    return [c.strip().lower() for c in raw.split(',') if c.strip()]
+
+
+def set_enabled_languages(codes: list[str]) -> list[str]:
+    """Persist the list of enabled language ISO codes; returns the saved list.
+
+    Normalises (lowercase, strip, dedupe-preserving-order) before storing.
+    """
+    seen: set[str] = set()
+    normalised: list[str] = []
+    for c in codes or []:
+        c2 = (c or '').strip().lower()
+        if c2 and c2 not in seen:
+            seen.add(c2)
+            normalised.append(c2)
+    try:
+        from core.models import StoreSettings
+        StoreSettings.set(_LANGUAGES_KEY, ','.join(normalised))
+    except Exception:  # noqa: BLE001
+        pass
+    return normalised

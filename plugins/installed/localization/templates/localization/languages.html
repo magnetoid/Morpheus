@@ -1,0 +1,38 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Languages · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <div class="flex items-center justify-between flex-wrap gap-2">
+    <h1 class="h1">Languages</h1>
+    <a href="{% url 'localization:translations' %}" class="btn">
+      <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to translations
+    </a>
+  </div>
+
+  <p class="meta">
+    Comma-separated ISO codes (e.g. <code>en, fr, de, ja</code>). The
+    storefront emits hreflang alternates for each enabled language; the
+    translation kernel falls back to the first match in the chain when a
+    requested code is missing.
+  </p>
+
+  <form method="post" class="card card-padded space-y-3" style="max-width: 38rem;">
+    {% csrf_token %}
+    <label class="block">
+      <span class="block text-meta" style="margin-bottom: .35rem;">Enabled language codes</span>
+      <input type="text" name="codes" value="{{ enabled_csv }}"
+             class="input" placeholder="en, fr, de, ja"
+             autocomplete="off">
+    </label>
+    <div class="flex items-center gap-2">
+      <button type="submit" class="btn btn-primary">Save</button>
+      {% if enabled %}
+        <span class="text-meta">
+          Currently: {{ enabled|join:", " }}
+        </span>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

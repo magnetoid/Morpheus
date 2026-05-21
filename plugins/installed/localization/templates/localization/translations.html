@@ -1,0 +1,71 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Translations · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <div class="flex items-center justify-between flex-wrap gap-2">
+    <h1 class="h1">Translations</h1>
+    <a href="{% url 'localization:languages' %}" class="btn">
+      <i data-lucide="globe" class="h-4 w-4"></i> Manage languages
+    </a>
+  </div>
+
+  <p class="meta">
+    {% if enabled_languages %}
+      Active target languages: <strong>{{ enabled_languages|join:", " }}</strong>.
+    {% else %}
+      No target languages configured yet —
+      <a href="{% url 'localization:languages' %}" style="text-decoration: underline;">pick the ones to ship</a>.
+    {% endif %}
+  </p>
+
+  {% if rows %}
+  <div class="card">
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Object</th>
+          <th>Type</th>
+          <th>Languages</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><code style="font-size:.8rem;">{{ r.object_id }}</code></td>
+          <td>{{ r.content_type.app_label }}.{{ r.content_type.model }}</td>
+          <td>
+            {% for lang in r.languages %}
+              <span class="pill pill-neutral" style="margin-right:.25rem;">{{ lang }}</span>
+            {% endfor %}
+          </td>
+          <td class="text-meta">{{ r.updated_at|date:"M j, H:i" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card card-padded">
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i data-lucide="languages" class="h-5 w-5"></i>
+      </div>
+      <h3>No translations yet</h3>
+      <p>
+        Once a Translation row is written for any object (via the agent, an
+        import, or inline edit), it shows up here grouped by source object.
+        The translation kernel itself lives in
+        <code>core/i18n/</code> — this page is the merchant-facing surface.
+      </p>
+      <div class="actions">
+        <a href="{% url 'localization:languages' %}" class="btn btn-primary">
+          <i data-lucide="globe" class="h-4 w-4"></i> Pick target languages
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

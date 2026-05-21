@@ -82,11 +82,11 @@ class AffiliatesPlugin(Plugin):
             DashboardPage(
                 label='Affiliates', slug='list',
                 view='plugins.installed.affiliates.dashboard.affiliates_list',
-                icon='link', section='growth', order=10,
+                icon='link', section='apps', order=10,
             ),
             DashboardPage(
                 label='Payouts', slug='payouts',
                 view='plugins.installed.affiliates.dashboard.payouts_list',
-                icon='wallet', section='growth', order=20,
+                icon='wallet', section='apps', order=20,
             ),
         ]
