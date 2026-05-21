@@ -450,7 +450,7 @@ class GrokProvider(OpenAIProvider):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Packy (packiapi.com) — Chinese LLM gateway, OpenAI-compatible
+# Packy (www.packyapi.com) — Chinese LLM gateway, OpenAI-compatible
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -464,7 +464,7 @@ class PackyProvider(OpenAIProvider):
         kwargs: dict[str, Any] = {}
         if cfg.api_key:
             kwargs['api_key'] = cfg.api_key
-        kwargs['base_url'] = cfg.base_url or 'https://packiapi.com/v1'
+        kwargs['base_url'] = cfg.base_url or 'https://www.packyapi.com/v1'
         self._client = openai.OpenAI(**kwargs)
         self.model = model or cfg.model or 'claude-3-5-sonnet-20241022'
 

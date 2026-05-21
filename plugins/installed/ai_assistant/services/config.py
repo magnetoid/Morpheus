@@ -39,7 +39,7 @@ _DEFAULT_BASE_URLS = {
     # Packy — Chinese LLM gateway proxying OpenAI / Anthropic / etc. through
     # one OpenAI-compatible chat-completions endpoint. Model groups are
     # selected via the model name prefix (e.g. "claude-officially/...").
-    'packy': 'https://packiapi.com/v1',
+    'packy': 'https://www.packyapi.com/v1',
 }
 
 _DEFAULT_MODELS = {

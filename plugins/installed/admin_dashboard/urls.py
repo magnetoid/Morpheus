@@ -60,12 +60,21 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
     if request.method == 'POST':
         # Naive merchant-form save: pull declared keys out of POST and
         # persist them via plugin.set_config. Type coercion is best-effort.
+        # Boolean checkboxes need explicit absence handling — an unchecked
+        # box doesn't submit a key at all — but only for AJAX posts where
+        # we know the form sent every declared boolean intentionally.
+        from django.http import JsonResponse
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        saved: list[str] = []
         for key, prop in (panel.schema.get('properties') or {}).items():
+            ptype = prop.get('type')
             if key not in request.POST:
+                if is_ajax and ptype == 'boolean':
+                    instance.set_config(key, False)
+                    saved.append(key)
                 continue
             raw = request.POST[key]
             value: Any = raw
-            ptype = prop.get('type')
             if ptype == 'boolean':
                 value = raw in ('on', 'true', '1', 'yes')
             elif ptype == 'integer':
@@ -79,6 +88,9 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
                 except (TypeError, ValueError):
                     continue
             instance.set_config(key, value)
+            saved.append(key)
+        if is_ajax:
+            return JsonResponse({'ok': True, 'saved': saved})
         # Honor `_next` so a custom landing page (e.g. /dashboard/settings/ai/)
         # can post into this generic save endpoint and bounce the user
         # back to itself instead of the legacy plugin-settings page.

@@ -177,13 +177,13 @@ def probe_grok(*, api_key: str, base_url: str = '') -> dict:
     return _ok(models)
 
 
-# ── Packy (packiapi.com) — OpenAI-compatible Chinese LLM gateway ────────────
+# ── Packy (www.packyapi.com) — OpenAI-compatible Chinese LLM gateway ────────
 
 
 def probe_packy(*, api_key: str, base_url: str = '') -> dict:
     if not api_key:
         return _fail('Packy API key not set.')
-    base = (base_url or 'https://packiapi.com/v1').rstrip('/')
+    base = (base_url or 'https://www.packyapi.com/v1').rstrip('/')
     data = _http_get(
         f'{base}/models',
         headers={'Authorization': f'Bearer {api_key}'},

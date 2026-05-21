@@ -49,19 +49,22 @@
   {% endif %}
   {% endwith %}
 
-  <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card card-padded flex items-center justify-between gap-3 flex-wrap">
+  <form method="post" action="/dashboard/apps/ai_assistant/settings/"
+        class="card card-padded flex items-center justify-between gap-3 flex-wrap"
+        data-ajax data-autosave-hide-submit>
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="min-w-0">
       <label for="ai_provider" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Active provider</label>
-      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Which provider the kernel assistant + built-in agents call by default.</p>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Which provider the kernel assistant + built-in agents call by default. Saves on change.</p>
     </div>
     <div class="flex items-center gap-2">
-      <select name="ai_provider" id="ai_provider" class="input" style="min-width: 180px;">
+      <select name="ai_provider" id="ai_provider" class="input" style="min-width: 180px;" data-autosave>
         {% for c in cards %}
         <option value="{{ c.slug }}" {% if c.is_active %}selected{% endif %}>{{ c.label }}</option>
         {% endfor %}
       </select>
+      <span class="ai-active-status text-xs text-[color:var(--text-muted)]"></span>
       <button class="btn btn-primary" type="submit"><i data-lucide="check" class="h-4 w-4"></i> Set active</button>
     </div>
   </form>
@@ -97,7 +100,7 @@
       </div>
     </div>
 
-    <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card-padded space-y-3" data-provider-form="{{ c.slug }}">
+    <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card-padded space-y-3" data-provider-form="{{ c.slug }}" data-ajax>
       {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
 
@@ -119,7 +122,7 @@
           <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Base URL</label>
           <input type="text" name="{{ c.slug }}_base_url" class="input mt-1"
                  value="{{ c.base_url }}"
-                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'packy' %}https://packiapi.com/v1{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
+                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'packy' %}https://www.packyapi.com/v1{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
         </div>
         {% endif %}
 
@@ -129,14 +132,15 @@
             <input type="text" name="{{ c.slug }}_model" class="input flex-1 font-mono"
                    value="{{ c.model }}"
                    data-model-input
-                   list="ai-model-list-{{ c.slug }}"
                    placeholder="{{ c.placeholder_model }}"
                    autocomplete="off">
-            <datalist id="ai-model-list-{{ c.slug }}"></datalist>
+            <select class="input ai-model-picker" data-provider="{{ c.slug }}" style="display:none; min-width: 180px;">
+              <option value="">— pick from catalog —</option>
+            </select>
             <button type="button" class="btn ai-fetch-btn" data-provider="{{ c.slug }}"><i data-lucide="download" class="h-3.5 w-3.5"></i> Fetch</button>
             <button type="button" class="btn ai-test-btn" data-provider="{{ c.slug }}"><i data-lucide="zap" class="h-3.5 w-3.5"></i> Test</button>
           </div>
-          <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id; the dropdown shows the live catalog after you click Fetch (cached locally so it survives reloads).</p>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id, or click Fetch to populate a dropdown of models the provider currently exposes.</p>
         </div>
       </div>
 
@@ -147,7 +151,7 @@
   </div>
   {% endfor %}
 
-  <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card overflow-hidden">
+  <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card overflow-hidden" data-ajax>
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="card-padded border-b border-[color:var(--border)]">
@@ -161,7 +165,7 @@
     <div class="card-padded grid grid-cols-1 md:grid-cols-2 gap-3">
       {% for f in features %}
       <label class="inline-flex items-center gap-2 text-sm">
-        <input type="checkbox" name="{{ f.key }}" {% if f.value %}checked{% endif %}>
+        <input type="checkbox" name="{{ f.key }}" {% if f.value %}checked{% endif %} data-autosave>
         {{ f.label }}
       </label>
       {% endfor %}
@@ -262,8 +266,8 @@
     catch { return { ok: false, error: `HTTP ${res.status}` }; }
   }
 
-  // Datalist cache — survives reloads so the dropdown isn't empty until
-  // someone clicks Fetch. Keyed per-provider; one-week TTL.
+  // Cache per provider — survives reloads so the dropdown is pre-populated
+  // on next visit without re-clicking Fetch. One-week TTL.
   function cacheKey(p) { return `ai-models:${p}`; }
   function loadCachedModels(p) {
     try {
@@ -277,21 +281,50 @@
   function saveCachedModels(p, ids) {
     try { localStorage.setItem(cacheKey(p), JSON.stringify({ at: Date.now(), ids })); } catch {}
   }
-  function paintDatalist(p, ids) {
-    const dl = document.getElementById(`ai-model-list-${p}`);
-    if (!dl) return;
-    dl.innerHTML = '';
+  function modelPicker(p) {
+    return document.querySelector(`.ai-model-picker[data-provider="${p}"]`);
+  }
+  function modelInput(p) {
+    return document.querySelector(`form[data-provider-form="${p}"] [data-model-input]`);
+  }
+  function paintPicker(p, ids) {
+    const sel = modelPicker(p);
+    if (!sel || !ids?.length) return;
+    const current = modelInput(p)?.value || '';
+    sel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = `— pick from catalog (${ids.length}) —`;
+    sel.appendChild(blank);
     for (const id of ids) {
       const opt = document.createElement('option');
       opt.value = id;
-      dl.appendChild(opt);
+      opt.textContent = id;
+      if (id === current) opt.selected = true;
+      sel.appendChild(opt);
     }
+    sel.style.display = '';
   }
-  // Hydrate every card's datalist from cache on page load.
+  // Hydrate every card's picker from cache on page load.
   document.querySelectorAll('[data-provider-form]').forEach(form => {
     const p = form.dataset.providerForm;
     const cached = loadCachedModels(p);
-    if (cached) paintDatalist(p, cached);
+    if (cached) paintPicker(p, cached);
+  });
+  // Picking from the catalog copies the model id into the text input
+  // and immediately triggers a Save (form has data-ajax — the change
+  // event bubbles, but we need to manually submit since the picker
+  // isn't a form field itself).
+  document.querySelectorAll('.ai-model-picker').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const p = sel.dataset.provider;
+      const input = modelInput(p);
+      if (input && sel.value) {
+        input.value = sel.value;
+        const form = input.closest('form[data-ajax]');
+        if (form && window.Morph?.ajaxForm?.submit) Morph.ajaxForm.submit(form);
+      }
+    });
   });
 
   document.querySelectorAll('.ai-fetch-btn').forEach(btn => {
@@ -309,7 +342,7 @@
         }
         const ids = (data.models || []).map(m => m.id).filter(Boolean);
         if (ids.length) {
-          paintDatalist(p, ids);
+          paintPicker(p, ids);
           saveCachedModels(p, ids);
         }
         msg.className = 'ai-test-msg text-xs ok';

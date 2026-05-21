@@ -208,16 +208,16 @@ class AIAssistantPlugin(Plugin):
                     "default": "grok-4",
                     "description": "e.g. grok-4 · grok-4-fast-reasoning · grok-3",
                 },
-                # ── Packy (packiapi.com — Chinese LLM gateway) ────────
+                # ── Packy (www.packyapi.com — Chinese LLM gateway) ────
                 "packy_api_key": {
                     "type": "string",
                     "title": "Packy · API Key",
-                    "description": "packiapi.com key. OpenAI-compatible gateway proxying Claude, GPT, Gemini etc.",
+                    "description": "packyapi.com key. OpenAI-compatible gateway proxying Claude, GPT, Gemini etc.",
                 },
                 "packy_base_url": {
                     "type": "string",
                     "title": "Packy · Base URL",
-                    "default": "https://packiapi.com/v1",
+                    "default": "https://www.packyapi.com/v1",
                 },
                 "packy_model": {
                     "type": "string",

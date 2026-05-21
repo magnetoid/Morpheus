@@ -267,7 +267,7 @@ class GrokGateway(OpenAIGateway):
 
 
 class PackyGateway(OpenAIGateway):
-    """Packy (packiapi.com) — Chinese LLM gateway that proxies Claude /
+    """Packy (www.packyapi.com) — Chinese LLM gateway that proxies Claude /
     GPT / Gemini / etc. through one OpenAI-compatible chat-completions
     endpoint. Model groups are selected via name prefix (e.g.
     ``claude-officially/claude-haiku-4-5-20251001``)."""
@@ -275,7 +275,7 @@ class PackyGateway(OpenAIGateway):
     def __init__(self, cfg: ProviderConfig | None = None):
         cfg = cfg or get_provider_config('packy')
         if not cfg.base_url:
-            cfg.base_url = 'https://packiapi.com/v1'
+            cfg.base_url = 'https://www.packyapi.com/v1'
         super().__init__(cfg)
 
     def embed(self, text: str) -> list[float]:

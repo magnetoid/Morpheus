@@ -202,10 +202,10 @@ _AI_PROVIDERS = [
     },
     {
         'slug': 'packy',
-        'label': 'Packy (packiapi.com)',
+        'label': 'Packy (packyapi.com)',
         'icon': 'globe',
         'fields': ('api_key', 'base_url', 'model'),
-        'help_url': 'https://packiapi.com',
+        'help_url': 'https://www.packyapi.com',
         'placeholder_model': 'claude-3-5-sonnet-20241022',
     },
     {

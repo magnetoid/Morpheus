@@ -490,4 +490,129 @@
       root.dataset._morphBound = '1';
     });
   };
+
+  // ── AJAX form submission (no full-page reloads) ───────────────────────
+  //
+  // Opt-in via `<form data-ajax>`. The form's submit button shows a
+  // spinner while the request is in flight and a brief ✓ / ✗ icon when
+  // it returns. The server is expected to recognise the
+  // `X-Requested-With: XMLHttpRequest` header and respond with JSON
+  // instead of a 302 redirect (see plugins/installed/admin_dashboard/
+  // urls.py:plugin_settings_view for the canonical pattern).
+  //
+  // Auto-save: any element with `[data-autosave]` inside a `[data-ajax]`
+  // form triggers submission on `change`. The submit button can also be
+  // hidden via `data-autosave-hide-submit` on the form.
+  Morph.ajaxForm = {};
+
+  function _csrf() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value
+        || document.cookie.match(/csrftoken=([^;]+)/)?.[1]
+        || '';
+  }
+
+  function _setBtnState(btn, state) {
+    if (!btn) return;
+    // Cache the original markup once so we can restore it.
+    if (!btn.dataset._origHtml) btn.dataset._origHtml = btn.innerHTML;
+    const orig = btn.dataset._origHtml;
+    if (state === 'loading') {
+      btn.disabled = true;
+      btn.innerHTML =
+        '<svg class="morph-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>'
+        + '<span class="ml-1">Saving</span>';
+    } else if (state === 'ok') {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg><span class="ml-1">Saved</span>';
+      setTimeout(function () { btn.innerHTML = orig; }, 1500);
+    } else if (state === 'fail') {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg><span class="ml-1">Failed</span>';
+      setTimeout(function () { btn.innerHTML = orig; }, 2500);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  }
+
+  async function _submit(form, srcBtn) {
+    const action = form.getAttribute('action') || window.location.href;
+    const method = (form.getAttribute('method') || 'POST').toUpperCase();
+    const fd = new FormData(form);
+    // FormData omits unchecked checkboxes by default. The server side
+    // (plugin_settings_view) re-coerces booleans intentionally for AJAX
+    // posts; nothing else to do here.
+    const btn = srcBtn || form.querySelector('button[type="submit"], button:not([type])');
+    _setBtnState(btn, 'loading');
+    try {
+      const res = await fetch(action, {
+        method,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': _csrf(),
+          'Accept': 'application/json',
+        },
+        body: fd,
+        credentials: 'same-origin',
+      });
+      let data = null;
+      try { data = await res.json(); } catch { /* non-JSON */ }
+      if (res.ok && (!data || data.ok !== false)) {
+        _setBtnState(btn, 'ok');
+        form.dispatchEvent(new CustomEvent('morph:saved', { detail: data, bubbles: true }));
+      } else {
+        _setBtnState(btn, 'fail');
+        form.dispatchEvent(new CustomEvent('morph:save-failed', {
+          detail: { status: res.status, data }, bubbles: true,
+        }));
+      }
+    } catch (e) {
+      _setBtnState(btn, 'fail');
+      form.dispatchEvent(new CustomEvent('morph:save-failed', {
+        detail: { error: String(e) }, bubbles: true,
+      }));
+    }
+  }
+
+  Morph.ajaxForm.submit = _submit;
+
+  Morph.ajaxForm.init = function (root) {
+    root = root || document;
+    root.querySelectorAll('form[data-ajax]').forEach(function (form) {
+      if (form.dataset._morphAjaxBound === '1') return;
+      form.dataset._morphAjaxBound = '1';
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        _submit(form, document.activeElement?.closest('button'));
+      });
+      // Auto-save on change for marked inputs (selects, checkboxes,
+      // etc.). Skips native submit-button clicks; those already trigger
+      // the form's submit listener.
+      form.querySelectorAll('[data-autosave]').forEach(function (el) {
+        el.addEventListener('change', function () { _submit(form); });
+      });
+      if (form.hasAttribute('data-autosave-hide-submit')) {
+        form.querySelectorAll('[type="submit"]').forEach(function (b) {
+          b.style.display = 'none';
+        });
+      }
+    });
+  };
+
+  // Minimal spinner keyframes — injected once, shared by every spinner.
+  (function injectSpinnerCss() {
+    if (document.getElementById('morph-ajax-css')) return;
+    const s = document.createElement('style');
+    s.id = 'morph-ajax-css';
+    s.textContent =
+      '@keyframes morph-spin{to{transform:rotate(360deg)}}'
+      + '.morph-spin{animation:morph-spin .8s linear infinite;display:inline-block;vertical-align:-2px}';
+    document.head.appendChild(s);
+  })();
+
+  if (document.readyState !== 'loading') {
+    Morph.ajaxForm.init();
+  } else {
+    document.addEventListener('DOMContentLoaded', function () { Morph.ajaxForm.init(); });
+  }
 })();
