@@ -1,10 +1,27 @@
 {% load static morph_assistant %}<!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f1f1f1">
 <title>{% block title %}Morpheus admin{% endblock %}</title>
+{# FOUC-free theme bootstrap. MUST be the first script in <head> so the
+   data-theme attribute lands on <html> before any CSS evaluates the
+   :root[data-theme=...] rules. Reads localStorage['morph:theme'] which
+   is one of 'light' | 'dark' | 'system' (default). #}
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem('morph:theme') || 'system';
+    var el = document.documentElement;
+    if (pref === 'light' || pref === 'dark') {
+      el.setAttribute('data-theme', pref);
+    } else {
+      el.removeAttribute('data-theme');  // 'system' = follow OS
+    }
+  } catch (_) { /* localStorage disabled — leave default (light) */ }
+})();
+</script>
 <!-- crossorigin=anonymous on CORS-serving CDNs only so window.onerror sees
      real error messages + stack frames. cdn.tailwindcss.com does NOT serve
      Access-Control-Allow-Origin, so the crossorigin attribute makes the
@@ -78,12 +95,49 @@
       1.367 21.5%, 1.397, 1.318 31.2%, 1.043 39.8%, 0.838,
       0.798 56.4%, 0.91 65%, 1.029 76.4%, 1);
   }
-  /* Dark mode — opt-in via OS preference. Same token names so every
-     existing component recolours automatically. Tuned to feel like a
-     modern command surface (Linear / Vercel) rather than terminal-dark
-     (pure #000). Surface levels keep the same delta as light mode. */
+  /* Dark mode — applied in two cases:
+     (a) Explicit user choice: <html data-theme="dark"> (toggled by
+         the topbar button, persisted to localStorage).
+     (b) System preference, but only when the user hasn't picked
+         "light" explicitly. Order matters — the explicit selector
+         comes first so it wins specificity ties.
+     Same token names so every existing component recolours automatically.
+     Tuned to feel like a modern command surface (Linear / Vercel)
+     rather than terminal-dark (pure #000). */
+  :root[data-theme="dark"] {
+    --bg:           #0e0f12;
+    --content-bg:   #16181d;
+    --sidebar-bg:   #131418;
+    --surface:      #16181d;
+    --surface-2:    #1d1f25;
+    --surface-3:    #23262d;
+    --border:       #2a2d33;
+    --border-strong:#3a3d44;
+    --text:         #ececef;
+    --text-muted:   #a4a8b0;
+    --text-subtle:  #6f7480;
+    --primary:      #ffffff;
+    --primary-fg:   #0e0f12;
+    --accent:       #d0d2d8;
+    --brand:        #818cf8;
+    --brand-fg:     #0e0f12;
+    --brand-soft:   #1e1f30;
+    --nav-active-bg: #20232a;
+    --nav-hover-bg:  #1a1c22;
+    --success:      #4ade80;
+    --success-bg:   #14271c;
+    --warn:         #facc15;
+    --warn-bg:      #2c2410;
+    --danger:       #f87171;
+    --danger-bg:    #2b1416;
+    --info:         #60a5fa;
+    --info-bg:      #102035;
+    --shadow-card:  0 0 0 1px rgba(255,255,255,.04), 0 1px 2px rgba(0,0,0,.4);
+    --shadow-card-hover: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px -8px rgba(0,0,0,.6);
+    --shadow-pop:   0 16px 32px -10px rgba(0,0,0,.65), 0 4px 10px rgba(0,0,0,.45);
+  }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
       --bg:           #0e0f12;
       --content-bg:   #16181d;
       --sidebar-bg:   #131418;
@@ -494,6 +548,16 @@
     </button>
     {# Inline AI affordance — context-aware "Ask the Assistant" button. #}
     {% morph_ask %}
+    {# Theme toggle. Cycles light → dark → system (follow OS). The icon
+       reflects the CURRENTLY-APPLIED theme so a quick glance tells you
+       what's in effect. State persisted in localStorage under
+       `morph:theme`; initial paint happens in the inline <script> in
+       <head> below to avoid FOUC. #}
+    <button id="theme-toggle" class="btn btn-ghost p-1.5" aria-label="Toggle theme" title="Toggle light / dark / system">
+      <i data-lucide="sun" data-theme-icon="light" class="h-4 w-4"></i>
+      <i data-lucide="moon" data-theme-icon="dark" class="h-4 w-4" style="display:none;"></i>
+      <i data-lucide="laptop" data-theme-icon="system" class="h-4 w-4" style="display:none;"></i>
+    </button>
     <a href="{% url 'admin_dashboard:settings' %}" class="btn btn-ghost p-1.5" aria-label="Settings"><i data-lucide="settings" class="h-4 w-4"></i></a>
     <div data-dropdown id="notif-bell" style="position: relative;">
       <button data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
@@ -827,6 +891,62 @@
       e.detail.target.classList.add('fadein');
     }
   });
+})();
+</script>
+<script>
+/* Theme toggle — cycles light → dark → system. Persists to
+   localStorage['morph:theme']. Updates the icon to reflect the
+   CURRENTLY-APPLIED theme (resolves system → effective light/dark by
+   reading prefers-color-scheme). Initial paint already done in <head>
+   via the FOUC-prevention script — this only handles user clicks. */
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  var ORDER = ['system', 'light', 'dark'];
+
+  function effectiveTheme(pref) {
+    if (pref === 'light' || pref === 'dark') return pref;
+    return (window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  function showIcon(pref) {
+    var effective = effectiveTheme(pref);
+    btn.querySelectorAll('[data-theme-icon]').forEach(function (i) {
+      var which = i.getAttribute('data-theme-icon');
+      var on = (
+        (pref === 'system' && which === 'system') ||
+        (pref !== 'system' && which === effective)
+      );
+      i.style.display = on ? '' : 'none';
+    });
+    btn.title = 'Theme: ' + pref + ' (click to cycle)';
+  }
+  function apply(pref) {
+    if (pref === 'light' || pref === 'dark') {
+      document.documentElement.setAttribute('data-theme', pref);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    try { localStorage.setItem('morph:theme', pref); } catch (_) {}
+    showIcon(pref);
+  }
+  var current = (function () {
+    try { return localStorage.getItem('morph:theme') || 'system'; }
+    catch (_) { return 'system'; }
+  })();
+  showIcon(current);
+
+  btn.addEventListener('click', function () {
+    var idx = ORDER.indexOf(current);
+    current = ORDER[(idx + 1) % ORDER.length];
+    apply(current);
+  });
+
+  // If pref === 'system', track OS changes live.
+  try {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+      if (current === 'system') showIcon('system');
+    });
+  } catch (_) {}
 })();
 </script>
 </body>
