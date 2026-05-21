@@ -67,10 +67,12 @@ The current bench is **sequential** — it measures what one user sees on an oth
 
 **Action**: k6 script at `scripts/load/storefront.js` hitting the bench URLs at concurrency 20-50 for 60 s. Compare p95 sequential vs p95 concurrent — the gap measures how much headroom we have. Target: p95 at concurrency 50 stays within 2× of sequential.
 
-### 2. OpenTelemetry traces end-to-end
-We have `opentelemetry-instrumentation-django` and `init_observability()` wired in `morph/celery.py`, but no exporter endpoint is configured by default and no documentation tells operators how to point it at a collector. Without traces, the question "why is p95 spiky on `/`" is guesswork.
+### 2. OpenTelemetry traces — actually mostly done
+On re-audit, `init_observability()` is called from both [`morph/asgi.py:18`](../morph/asgi.py#L18) AND [`morph/celery.py:41`](../morph/celery.py#L41), so HTTP requests AND Celery tasks are instrumented. The env var (`OTEL_EXPORTER_OTLP_ENDPOINT`) is documented in [`README.md:590`](../README.md), [`docs/deploy-coolify.md:158`](deploy-coolify.md), and [`docs/OPERATIONS_RUNBOOK.md:26`](OPERATIONS_RUNBOOK.md). Instrumentation covers Django, Celery, psycopg2, Redis, requests, and logging.
 
-**Action**: document `OTEL_EXPORTER_OTLP_ENDPOINT` in [README's deployment section](../README.md#quick-start); ship a docker-compose override that starts a Jaeger sidecar; verify the `init_observability` instrumentation actually fires on HTTP requests (not just Celery tasks).
+What IS missing: a one-command "stand up a Jaeger sidecar locally to see your own traces" recipe so a contributor can verify their perf change actually shows up in spans.
+
+**Action**: add a `docker-compose.observability.yml` override file with a Jaeger all-in-one container (`jaegertracing/all-in-one:1.66` listening on 4318/HTTP), wire `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318` in the same override; document `docker compose -f docker-compose.yml -f docker-compose.observability.yml up`. ~30 min of work, gates the "perf change must show in traces" workflow.
 
 ### 3. GraphQL field-level cache hints (M3)
 Strawberry doesn't ship `@cache_control` out of the box, so the GraphQL endpoint (POST-by-default) bypasses every CDN. Frontends that re-fetch `cartTotals` on every navigation pay full origin latency. An extension that emits `Cache-Control` headers based on schema annotations (e.g. `@cache(max_age=30)` on `cartTotals`) would let smart clients (Apollo + persisted queries) cache GET-form queries.
