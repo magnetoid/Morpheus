@@ -72,7 +72,12 @@ On re-audit, `init_observability()` is called from both [`morph/asgi.py:18`](../
 
 What IS missing: a one-command "stand up a Jaeger sidecar locally to see your own traces" recipe so a contributor can verify their perf change actually shows up in spans.
 
-**Action**: add a `docker-compose.observability.yml` override file with a Jaeger all-in-one container (`jaegertracing/all-in-one:1.66` listening on 4318/HTTP), wire `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318` in the same override; document `docker compose -f docker-compose.yml -f docker-compose.observability.yml up`. ~30 min of work, gates the "perf change must show in traces" workflow.
+**Done** in [`docker-compose.observability.yml`](../docker-compose.observability.yml) — Jaeger all-in-one + OTEL_EXPORTER_OTLP_ENDPOINT wired into web/worker/beat. Run:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.observability.yml up
+# UI at http://localhost:16686
+```
 
 ### 3. GraphQL field-level cache hints (M3)
 Strawberry doesn't ship `@cache_control` out of the box, so the GraphQL endpoint (POST-by-default) bypasses every CDN. Frontends that re-fetch `cartTotals` on every navigation pay full origin latency. An extension that emits `Cache-Control` headers based on schema annotations (e.g. `@cache(max_age=30)` on `cartTotals`) would let smart clients (Apollo + persisted queries) cache GET-form queries.

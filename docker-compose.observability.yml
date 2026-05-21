@@ -1,0 +1,51 @@
+# Local observability stack — a Jaeger all-in-one sidecar so a developer
+# can immediately see their own traces while iterating on perf work.
+#
+# Usage:
+#     docker compose -f docker-compose.yml -f docker-compose.observability.yml up
+#
+# Then open http://localhost:16686 (Jaeger UI). Search for the
+# `morpheus` service to see request spans, DB queries, Redis calls,
+# and outbound HTTP — everything `init_observability()` instruments.
+#
+# This override:
+#   1. Starts Jaeger all-in-one on the in-network hostname `jaeger`,
+#      exposing the OTLP/HTTP endpoint on 4318 and the UI on 16686.
+#   2. Injects OTEL_EXPORTER_OTLP_ENDPOINT into web + worker + beat
+#      so init_observability picks it up at boot.
+#
+# Not for production. The all-in-one image keeps traces in memory only
+# and has no auth.
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.66
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4318:4318"     # OTLP HTTP (matches OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf)
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:16686/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: morpheus-web
+    depends_on:
+      jaeger:
+        condition: service_healthy
+
+  worker:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: morpheus-worker
+
+  beat:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: morpheus-beat
