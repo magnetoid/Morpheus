@@ -135,9 +135,66 @@
   }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { background: var(--paper); color: var(--ink); }
-  body { margin: 0; font-family: var(--sans); -webkit-font-smoothing: antialiased; }
-  a { color: inherit; text-decoration: none; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'ss01', 'cv11', 'liga', 'kern';
+  }
+  a { color: inherit; text-decoration: none; transition: color var(--motion-fast) var(--ease-out); }
+  a:hover { color: var(--accent-ink); }
   img { max-width: 100%; display: block; }
+  /* Explicit display type scale — heroes / section heads / body. Plugins
+     and storefront pages can use .display-xl/.display-l/.display-m to
+     pick the right size without re-rolling letter-spacing every time. */
+  .display-xl, h1.hero { font-family: var(--serif); font-size: clamp(2.5rem, 5vw + 1rem, 4.5rem); line-height: 1.02; font-weight: 500; letter-spacing: -.025em; }
+  .display-l                 { font-family: var(--serif); font-size: clamp(2rem, 3vw + 1rem, 3rem);   line-height: 1.1;  font-weight: 500; letter-spacing: -.02em; }
+  .display-m                 { font-family: var(--serif); font-size: clamp(1.5rem, 2vw + .5rem, 2rem); line-height: 1.2;  font-weight: 500; letter-spacing: -.015em; }
+  .eyebrow { font-family: var(--sans); font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+  /* Accent focus rings — replace browser default with the brand red,
+     visible against the warm paper bg. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  /* Product card lift — the existing .book .cover-wrap zoom stays; this
+     adds a subtle elevation cue so the whole card reads as a tappable
+     surface, not just the image. */
+  .book {
+    transition:
+      transform var(--motion-fast) var(--ease-out),
+      filter   var(--motion-fast) var(--ease-out);
+    will-change: transform;
+  }
+  @media (hover: hover) {
+    .book:hover { transform: translateY(-2px); }
+    .book:hover .cover-wrap { box-shadow: 0 16px 36px -16px rgba(0,0,0,.25); }
+    .book .cover-wrap { transition: box-shadow var(--motion-med) var(--ease-out); }
+  }
+  /* Editorial blockquote — used in journal posts + review excerpts. */
+  blockquote.editorial {
+    font-family: var(--serif); font-style: italic;
+    font-size: 1.25rem; line-height: 1.4;
+    padding: .5rem 0 .5rem 1.25rem;
+    margin: 1.5rem 0;
+    border-left: 2px solid var(--accent);
+    color: var(--ink-2);
+  }
+  /* Empty state — used by search/category/wishlist when there are no
+     results. Centred, warm, encourages browsing the rest of the shelf. */
+  .empty-shelf { text-align: center; padding: 4rem 1.5rem; max-width: 38rem; margin: 0 auto; }
+  .empty-shelf .glyph { font-family: var(--serif); font-size: 3.5rem; line-height: 1; color: var(--accent); margin-bottom: .75rem; opacity: .65; }
+  .empty-shelf h2 { font-family: var(--serif); font-size: 1.6rem; font-weight: 500; margin: 0 0 .5rem; letter-spacing: -.015em; }
+  .empty-shelf p  { color: var(--muted); margin: 0 auto 1.5rem; max-width: 30rem; }
+  .empty-shelf .actions { display: flex; gap: .65rem; justify-content: center; flex-wrap: wrap; }
 
   .wrap { max-width: var(--max); margin: 0 auto; padding: 0 1.5rem; }
   @media (min-width: 768px) { .wrap { padding: 0 2.25rem; } }
