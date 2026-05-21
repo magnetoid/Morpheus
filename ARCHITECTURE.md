@@ -1,11 +1,30 @@
-# Morpheus — Living Architecture Document
+# Morpheus — Architecture
 
-> **Status:** Phase 1–5 shipped. **33 plugins**, dot_books theme, hard-coded Assistant in core, kernel agent layer with Skills + background scheduling + observability dashboard, full Saleor-parity commerce (PaymentGateway abstraction · Promotion engine v2 · Draft orders · Multi-warehouse allocator · RBAC · channels · i18n · audit log) plus the agent-first surface (`/llms.txt`, agent receipts, agent GraphQL). v0.1.0 + Phase 5 live at [`dotbooks.store`](https://dotbooks.store/).
-> **Last updated:** 2026-04-26
-> **Procedural companion:** [`SKILLS.md`](SKILLS.md) — every change here must have a matching skill.
-> **Plugin guide:** [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) · **Theme guide:** [`docs/THEME_DEVELOPMENT.md`](docs/THEME_DEVELOPMENT.md)
-> **Deploy:** [`docs/deploy-coolify.md`](docs/deploy-coolify.md) · [`docs/deploy-plesk-nginx.md`](docs/deploy-plesk-nginx.md)
-> **Rule:** This document is the source of truth for *what* and *why*. `SKILLS.md` is the source of truth for *how*. The platform laws live in [`RULES.md`](RULES.md).
+> **This document is the source of truth for *how the platform is built*.**
+> For *what Morpheus is and who decides*, see [`CHARTER.md`](CHARTER.md) — the canonical authority. For the immutable platform laws, see [`RULES.md`](RULES.md). For named procedures (add a plugin, deploy, fix N+1), see [`SKILLS.md`](SKILLS.md).
+>
+> **Status (2026-05-21):** v0.1 in production at [`dotbooks.store`](https://dotbooks.store). **49 plugins** active by default, dot_books theme, Morpheus Assistant hard-coded in core, agent kernel with Skills + background scheduling + observability dashboard, full commerce surface (Stripe + manual gateways · promotion engine v2 · draft orders · multi-warehouse allocator · RBAC · channels · i18n · audit log · gift cards · subscriptions · digital products) plus the agent-first surface (`/llms.txt`, agent GraphQL, MCP server, signed webhooks). Performance baseline (p95 ~250 ms median across storefront URLs) committed at [`docs/perf/baseline-prod-2026-05-21.jsonl`](docs/perf/baseline-prod-2026-05-21.jsonl).
+>
+> **Reading order:** [`CHARTER.md`](CHARTER.md) → [`RULES.md`](RULES.md) → this file → [`SKILLS.md`](SKILLS.md) → [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) → [`docs/THEME_DEVELOPMENT.md`](docs/THEME_DEVELOPMENT.md) → [`AI_VISION.md`](AI_VISION.md).
+>
+> **Deploy:** [`docs/deploy-coolify.md`](docs/deploy-coolify.md) · [`docs/deploy-plesk-nginx.md`](docs/deploy-plesk-nginx.md).
+> **Stability surface:** [`docs/API_STABILITY.md`](docs/API_STABILITY.md).
+
+---
+
+## Layered architecture (canonical from `CHARTER.md` §4)
+
+```
+LAYER 5  APPS         (community marketplace, future)
+LAYER 4  PLUGINS      (49 first-party today, `plugins/installed/<name>/`)
+LAYER 3  THEMES       (storefront-only, `themes/library/<name>/`)
+LAYER 2  MORPHEUS SDK (public Python API, `morpheus/`)
+LAYER 1  CORE         (the engine, `core/`)
+```
+
+**The dependency rule (strict):** a layer may import from *lower* layers only. Never sideways. Never upward. Cross-plugin communication goes through `core.hooks` + GraphQL — *never* by direct Python import.
+
+Detail in [`CHARTER.md` §4](CHARTER.md#4-layered-architecture). The rest of this document is the implementation — how the 4 pillars below realise the layered model.
 
 ---
 
