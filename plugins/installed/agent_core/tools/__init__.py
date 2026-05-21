@@ -18,6 +18,7 @@ from plugins.installed.agent_core.tools.catalog import (
     find_products_tool,
     get_product_tool,
     list_categories_tool,
+    publish_digital_product_tool,
 )
 from plugins.installed.agent_core.tools.cart import (
     add_to_cart_tool,
@@ -75,6 +76,7 @@ def all_builtin_tools() -> list:
         list_categories_tool,
         catalog_stats_tool,
         backfill_alt_text_tool,
+        publish_digital_product_tool,
         add_to_cart_tool,
         get_cart_summary_tool,
         list_recent_orders_tool,

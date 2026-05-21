@@ -142,6 +142,68 @@ def backfill_alt_text_tool(*, slugs: list[str] | None = None, force: bool = Fals
 
 
 @tool(
+    name='catalog.publish_digital_product',
+    description=(
+        'Publish a digital product (PDF book) to the catalog. The agent '
+        'supplies HTTPS URLs for the PDF and (optionally) the cover '
+        'image; Morpheus downloads both server-side, creates the Product '
+        'with product_type="digital", and returns id + slug + storefront '
+        'URL. Status defaults to "active" — the product is live on the '
+        'storefront immediately.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'title': {'type': 'string', 'description': 'Book title.'},
+            'pdf_url': {'type': 'string', 'description': 'HTTPS URL of the PDF (max 50 MB).'},
+            'price_amount': {'type': 'string', 'description': 'Decimal price, e.g. "9.99".'},
+            'price_currency': {'type': 'string', 'default': 'USD'},
+            'description': {'type': 'string', 'description': 'Long product description (Markdown ok).'},
+            'short_description': {'type': 'string'},
+            'author': {'type': 'string', 'description': 'Author name; prepended to description if absent.'},
+            'cover_image_url': {'type': 'string', 'description': 'Optional HTTPS URL of cover (jpg/png/webp, max 8 MB).'},
+            'category_slug': {'type': 'string'},
+            'sku': {'type': 'string', 'description': 'Optional; auto-generated from title if blank.'},
+            'slug': {'type': 'string', 'description': 'Optional; auto-generated from title if blank.'},
+            'status': {'type': 'string', 'enum': ['draft', 'active', 'archived'], 'default': 'active'},
+        },
+        'required': ['title', 'pdf_url', 'price_amount'],
+    },
+)
+def publish_digital_product_tool(
+    *,
+    title: str,
+    pdf_url: str,
+    price_amount: str,
+    price_currency: str = 'USD',
+    description: str = '',
+    short_description: str = '',
+    author: str = '',
+    cover_image_url: str = '',
+    category_slug: str = '',
+    sku: str = '',
+    slug: str = '',
+    status: str = 'active',
+) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, publish_digital_product
+    try:
+        result = publish_digital_product(
+            title=title, pdf_url=pdf_url, price_amount=price_amount,
+            price_currency=price_currency, description=description,
+            short_description=short_description, author=author,
+            cover_image_url=cover_image_url, category_slug=category_slug,
+            sku=sku, slug=slug, status=status,
+        )
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(
+        output=result,
+        display=f'Published {result["name"]!r} → {result["url"]} (sku={result["sku"]})',
+    )
+
+
+@tool(
     name='catalog.stats',
     description=(
         'Catalog-at-a-glance: total active / draft / archived product '
