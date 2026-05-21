@@ -64,8 +64,20 @@ def _percentile(values: list[float], pct: float) -> float:
 
 
 def _hit(url: str, *, timeout: float = 10.0) -> tuple[int, float]:
-    """Return (status_code, elapsed_seconds). Status -1 on transport error."""
-    req = request.Request(url, headers={'User-Agent': 'morph-bench/1.0'})
+    """Return (status_code, elapsed_seconds). Status -1 on transport error.
+
+    Uses a browser-shaped User-Agent because Plesk / mod_security / WAFs
+    on the production proxy chain happily 503 anything that looks
+    "bot-like" (including ``morph-bench/1.0``). The bench is meant to
+    measure what real users experience, not the WAF's mood.
+    """
+    req = request.Request(url, headers={
+        'User-Agent': (
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 '
+            'morph-bench'
+        ),
+    })
     started = time.perf_counter()
     try:
         with request.urlopen(req, timeout=timeout) as resp:

@@ -438,6 +438,14 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
+    # The Docker healthcheck hits `http://localhost:8000/healthz` from
+    # inside the container; without this exemption Django responds 301
+    # → https://localhost:8000 which has no TLS listener. curl returns
+    # exit-0 on the 301 anyway, so the container is marked "healthy"
+    # before Django has finished warming plugins — Coolify swaps
+    # traffic, users see 503 for 10-30s. Exempting /healthz lets the
+    # healthcheck verify real readiness.
+    SECURE_REDIRECT_EXEMPT = [r'^healthz/?$', r'^api/health/?$', r'^api/ready/?$']
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'

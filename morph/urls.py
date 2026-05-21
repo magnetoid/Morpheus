@@ -8,10 +8,30 @@ exposed in production.
 
 Plugin URLs are injected at runtime by the plugin registry.
 """
+from django.http import HttpResponse
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
+
+
+def _healthz(_request):
+    """Liveness probe — always returns 200 once the WSGI app has loaded.
+
+    Hit by the Docker compose healthcheck (curl http://localhost:8000/healthz)
+    AND by Coolify's optional app-level healthcheck. Must be:
+      - Fast (no DB / Redis / network).
+      - Stable (the URL never changes; integrations bake it in).
+      - Exempt from SECURE_SSL_REDIRECT (see settings.SECURE_REDIRECT_EXEMPT)
+        so the in-container check doesn't bounce to https://localhost which
+        has no TLS listener.
+
+    Real readiness — "can serve plugin URLs / DB / Redis" — lives at
+    /api/ready/ from the api plugin. This endpoint is for "the python
+    process answers HTTP", which is enough for orchestrators to start
+    forwarding traffic but NOT enough to declare a release healthy.
+    """
+    return HttpResponse('ok', content_type='text/plain', status=200)
 
 
 # Fake admin namespace exposing only `admin:login` — needed because
@@ -29,6 +49,11 @@ _admin_alias_patterns = [
 
 
 urlpatterns = [
+    # Liveness probe. First in the list so middleware ordering can't
+    # accidentally bury it behind a slow lookup. Returns 200 'ok' the
+    # moment the WSGI app is loaded.
+    path('healthz', _healthz),
+    path('healthz/', _healthz),
     # The Assistant lives in core and mounts at /dashboard/assistant/.
     path('dashboard/assistant/', include('core.assistant.urls', namespace='assistant')),
     # Error capture + dashboard surface — /api/errors/client/ ingest and
