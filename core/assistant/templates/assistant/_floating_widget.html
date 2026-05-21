@@ -104,7 +104,16 @@
     fetch('/dashboard/assistant/stream/', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
-      body: JSON.stringify({message: text}),
+      // Send the URL + title of the dashboard page Linda was opened
+      // from so the assistant can answer "this product / this order"
+      // without forcing the merchant to re-paste a slug. Server-side
+      // handler reads `page_url` and `page_title` and threads them
+      // into the system prompt.
+      body: JSON.stringify({
+        message: text,
+        page_url: window.location.pathname + window.location.search,
+        page_title: document.title || '',
+      }),
     }).then(function(resp) {
       if (!resp.ok || !resp.body) throw new Error('stream HTTP ' + resp.status);
       var reader = resp.body.getReader();

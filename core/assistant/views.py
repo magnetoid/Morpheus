@@ -81,7 +81,18 @@ def assistant_invoke(request):
         result = Assistant().run(
             message=message[:10_000],
             conversation_key=_conversation_key(request),
-            context={'request': request, 'user': getattr(request, 'user', None)},
+            context={
+                'request': request,
+                'user': getattr(request, 'user', None),
+                # Page-scoped affordance: the floating widget on each
+                # dashboard page sends the URL + title it was opened
+                # from so Linda can answer about "this page" without
+                # needing the merchant to re-paste a slug or order
+                # number. The Assistant runtime threads these into
+                # the system prompt prefix.
+                'page_url': (body.get('page_url') or '')[:512],
+                'page_title': (body.get('page_title') or '')[:200],
+            },
         )
     except Exception as e:  # noqa: BLE001 — last-resort safety net
         logger.error('assistant: run crashed: %s', e, exc_info=True)
@@ -129,13 +140,24 @@ def assistant_stream(request):
     user = getattr(request, 'user', None)
     conv_key = _conversation_key(request)
 
+    page_url = (body.get('page_url') or '')[:512]
+    page_title = (body.get('page_title') or '')[:200]
+
     def _event_stream():
         # Outer try: a crash anywhere should still close the stream cleanly.
         try:
             for ev in Assistant().stream(
                 message=message[:10_000],
                 conversation_key=conv_key,
-                context={'user': user},
+                context={
+                    'user': user,
+                    # Same page-scoped affordance as the JSON invoke
+                    # path: the widget sends the URL + title of the
+                    # page it was opened from so Linda can answer
+                    # about "this product / this order / this page".
+                    'page_url': page_url,
+                    'page_title': page_title,
+                },
             ):
                 # Final/error events carry an AssistantRunResult which isn't
                 # JSON-serialisable — flatten to dict before sending.

@@ -101,7 +101,40 @@ def _format_recent_memories() -> str:
     return '\n'.join(lines)
 
 
-def _to_llm_messages(history: list[StoredMessage], user_message: str) -> list[Any]:
+def _page_context_system(context: dict[str, Any] | None) -> str:
+    """Compose the one-line system prefix carrying the URL+title of the
+    dashboard page Linda was opened from.
+
+    Empty when no page context is provided (CLI / API callers / older
+    widget). Kept tiny so it costs near-zero tokens and never derails
+    Linda when irrelevant.
+    """
+    if not context:
+        return ''
+    url = (context.get('page_url') or '').strip()
+    title = (context.get('page_title') or '').strip()
+    if not url and not title:
+        return ''
+    parts = ['You are running in a floating widget on a Morpheus dashboard page.']
+    if title:
+        parts.append(f'The merchant is viewing: "{title}".')
+    if url:
+        parts.append(f'Page URL: {url}.')
+    parts.append(
+        'When the merchant says "this", "this product", "this order", "here", '
+        'they mean the row or object on the page above. Prefer to answer in '
+        'context of that page; offer to open another dashboard page when a '
+        'different surface is the right answer.'
+    )
+    return ' '.join(parts)
+
+
+def _to_llm_messages(
+    history: list[StoredMessage],
+    user_message: str,
+    *,
+    context: dict[str, Any] | None = None,
+) -> list[Any]:
     """Convert stored history + new user msg → LLMMessage objects from agents.llm.
 
     We import lazily so the Assistant survives an agents-kernel import failure;
@@ -124,6 +157,11 @@ def _to_llm_messages(history: list[StoredMessage], user_message: str) -> list[An
     memo = _format_recent_memories()
     if memo:
         msgs.append(LLMMessage(role='system', content=memo))
+    # Inject the page context (URL + title) if the caller supplied one
+    # so Linda can answer about "this product / order / page".
+    page_ctx = _page_context_system(context)
+    if page_ctx:
+        msgs.append(LLMMessage(role='system', content=page_ctx))
     for h in history:
         if h.role == 'tool':
             msgs.append(LLMMessage(
@@ -213,7 +251,7 @@ class Assistant:
             message=StoredMessage(role='user', content=message[:50_000]),
         )
 
-        msgs = _to_llm_messages(history, message)
+        msgs = _to_llm_messages(history, message, context=context)
         tools = self.tools
         tools_by_name = {t.name: t for t in tools}
 
