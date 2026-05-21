@@ -42,6 +42,9 @@
           <div style="flex:1; min-width:0;">
             <div style="display:flex; align-items:center; gap:.4rem; flex-wrap: wrap;">
               <strong style="font-size:.95rem;">{{ a.name }}</strong>
+              {% if a.type == 'theme' %}
+                <span class="pill" style="font-size:.6rem; background: var(--brand-soft); color: var(--brand); border: 1px solid var(--brand-soft);">Theme</span>
+              {% endif %}
               {% if a.is_installed %}
                 <span class="pill pill-success" style="font-size:.65rem;">Installed</span>
               {% elif a.status == 'planned' %}

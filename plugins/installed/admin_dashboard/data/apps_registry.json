@@ -1,8 +1,48 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "updated_at": "2026-05-21",
-  "comment": "Curated catalogue of community + first-party apps installable into Morpheus. This is the static MVP — future iterations move to a remote registry served by an off-Morpheus index. The schema is stable; entries can be added freely.",
+  "comment": "Curated catalogue of community + first-party apps + themes installable into Morpheus. Each entry has a `type` of either 'plugin' or 'theme'. Plugins extend admin/storefront behaviour; themes own the storefront presentation. Both are listed under the same /dashboard/apps/store/ surface so the merchant has one place to extend the platform. Future iterations move to a remote registry served by an off-Morpheus index.",
   "apps": [
+    {
+      "slug": "noir-magazine-theme",
+      "type": "theme",
+      "name": "Noir \u2014 magazine layout",
+      "tagline": "High-contrast editorial theme with serif display + sticky filter rail. Built for indie publishers + lifestyle brands.",
+      "category": "Themes",
+      "author": "first-party",
+      "version": "0.1.0",
+      "requires": [],
+      "repo": "https://github.com/magnetoid/morpheus-theme-noir",
+      "install": "git clone https://github.com/magnetoid/morpheus-theme-noir themes/library/noir && export MORPHEUS_THEME=noir",
+      "icon": "newspaper",
+      "tags": [
+        "theme",
+        "magazine",
+        "publishing",
+        "editorial"
+      ],
+      "status": "planned"
+    },
+    {
+      "slug": "atelier-luxury-theme",
+      "type": "theme",
+      "name": "Atelier \u2014 luxury commerce",
+      "tagline": "Slow-scrolling luxury theme with view-transition product covers and full-bleed hero imagery. For boutique D2C brands.",
+      "category": "Themes",
+      "author": "community",
+      "version": "0.1.0",
+      "requires": [],
+      "repo": "https://github.com/morpheus-themes/atelier",
+      "install": "git clone https://github.com/morpheus-themes/atelier themes/library/atelier && export MORPHEUS_THEME=atelier",
+      "icon": "sparkles",
+      "tags": [
+        "theme",
+        "luxury",
+        "boutique",
+        "d2c"
+      ],
+      "status": "planned"
+    },
     {
       "slug": "stripe-connect-marketplace",
       "name": "Stripe Connect Marketplace",
@@ -10,12 +50,20 @@
       "category": "Payments",
       "author": "first-party",
       "version": "0.1.0",
-      "requires": ["payments", "marketplace"],
+      "requires": [
+        "payments",
+        "marketplace"
+      ],
       "repo": "https://github.com/magnetoid/morpheus-stripe-connect",
       "install": "pip install morpheus-stripe-connect && echo \"morpheus_stripe_connect\" >> .env-MORPHEUS_EXTRA_PLUGINS",
       "icon": "credit-card",
-      "tags": ["payments", "marketplace", "vendor-payouts"],
-      "status": "planned"
+      "tags": [
+        "payments",
+        "marketplace",
+        "vendor-payouts"
+      ],
+      "status": "planned",
+      "type": "plugin"
     },
     {
       "slug": "klaviyo-sync",
@@ -24,12 +72,20 @@
       "category": "Marketing",
       "author": "community",
       "version": "0.1.0",
-      "requires": ["customers", "marketing"],
+      "requires": [
+        "customers",
+        "marketing"
+      ],
       "repo": "https://github.com/morpheus-apps/klaviyo-sync",
       "install": "pip install morpheus-klaviyo-sync",
       "icon": "mail",
-      "tags": ["marketing", "email", "klaviyo"],
-      "status": "planned"
+      "tags": [
+        "marketing",
+        "email",
+        "klaviyo"
+      ],
+      "status": "planned",
+      "type": "plugin"
     },
     {
       "slug": "post-purchase-upsell",
@@ -38,12 +94,20 @@
       "category": "Conversion",
       "author": "community",
       "version": "0.1.0",
-      "requires": ["orders", "promotions"],
+      "requires": [
+        "orders",
+        "promotions"
+      ],
       "repo": "https://github.com/morpheus-apps/post-purchase-upsell",
       "install": "pip install morpheus-post-purchase-upsell",
       "icon": "trending-up",
-      "tags": ["conversion", "upsell", "aov"],
-      "status": "planned"
+      "tags": [
+        "conversion",
+        "upsell",
+        "aov"
+      ],
+      "status": "planned",
+      "type": "plugin"
     },
     {
       "slug": "review-import-trustpilot",
@@ -52,12 +116,19 @@
       "category": "Reviews",
       "author": "community",
       "version": "0.1.0",
-      "requires": ["reviews"],
+      "requires": [
+        "reviews"
+      ],
       "repo": "https://github.com/morpheus-apps/trustpilot-import",
       "install": "pip install morpheus-trustpilot-import",
       "icon": "star",
-      "tags": ["reviews", "social-proof", "trustpilot"],
-      "status": "planned"
+      "tags": [
+        "reviews",
+        "social-proof",
+        "trustpilot"
+      ],
+      "status": "planned",
+      "type": "plugin"
     },
     {
       "slug": "stock-sync-shopify",
@@ -66,12 +137,20 @@
       "category": "Inventory",
       "author": "community",
       "version": "0.1.0",
-      "requires": ["inventory", "catalog"],
+      "requires": [
+        "inventory",
+        "catalog"
+      ],
       "repo": "https://github.com/morpheus-apps/shopify-stock-sync",
       "install": "pip install morpheus-shopify-stock-sync",
       "icon": "refresh-cw",
-      "tags": ["inventory", "shopify", "multi-channel"],
-      "status": "planned"
+      "tags": [
+        "inventory",
+        "shopify",
+        "multi-channel"
+      ],
+      "status": "planned",
+      "type": "plugin"
     },
     {
       "slug": "wholesale-pricing",
@@ -80,12 +159,20 @@
       "category": "B2B",
       "author": "community",
       "version": "0.1.0",
-      "requires": ["b2b", "catalog"],
+      "requires": [
+        "b2b",
+        "catalog"
+      ],
       "repo": "https://github.com/morpheus-apps/wholesale-pricing",
       "install": "pip install morpheus-wholesale-pricing",
       "icon": "tag",
-      "tags": ["b2b", "wholesale", "pricing"],
-      "status": "planned"
+      "tags": [
+        "b2b",
+        "wholesale",
+        "pricing"
+      ],
+      "status": "planned",
+      "type": "plugin"
     }
   ]
 }

@@ -104,3 +104,60 @@ def market_context(request) -> dict:
         'market_currency': m.currency if m is not None else '',
         'market_locale': m.default_locale if m is not None else '',
     }
+
+
+# ── Channel-scoping helpers ───────────────────────────────────────────────────
+#
+# Saleor's "Channel" concept maps to the Market model here. The middleware
+# already stashes `request.market` on every request; these helpers are what
+# plugins call to FILTER their queries by the active channel. Today the
+# scoping is opt-in (no FK on Product yet — that's a planned migration); the
+# helpers degrade to "all rows" so call sites are forward-compatible with
+# the future schema change.
+
+def current_channel(request) -> 'Market | None':  # noqa: F821
+    """Return the channel (Market) resolved for this request, or None.
+
+    Equivalent to `request.market` but safe to call when the middleware
+    didn't run (CLI, tests, async tasks)."""
+    return getattr(request, 'market', None)
+
+
+def channel_scope(queryset, request=None, *, channel=None):
+    """Apply per-channel filtering to a queryset, when meaningful.
+
+    Today this is a no-op for models without a `channels` M2M / `channel`
+    FK (which is most models). Once Tier-1 #1 lands the actual schema
+    migration, this function flips to:
+
+        if hasattr(queryset.model, 'channels'):
+            queryset = queryset.filter(channels=ch)
+        elif hasattr(queryset.model, 'channel'):
+            queryset = queryset.filter(channel=ch)
+
+    Calling it now is forward-compatible — plugin authors get a single
+    canonical chokepoint to thread through, and the day the schema
+    arrives every call site picks up the behaviour for free.
+    """
+    ch = channel or (current_channel(request) if request else None)
+    if ch is None:
+        return queryset
+    model = getattr(queryset, 'model', None)
+    if model is None:
+        return queryset
+    # Forward-compatibility shim — once the FK / M2M ships these branches
+    # actually filter. Today they fall through to the unmodified queryset
+    # because the schema isn't there yet.
+    if hasattr(model, '_meta'):
+        names = {f.name for f in model._meta.get_fields()}
+        if 'channels' in names:
+            return queryset.filter(channels=ch).distinct()
+        if 'channel' in names:
+            return queryset.filter(channel=ch)
+    return queryset
+
+
+def channel_pk(request) -> str:
+    """Convenience: the active channel's PK as a string, or '' if none."""
+    ch = current_channel(request)
+    return str(ch.pk) if ch is not None else ''

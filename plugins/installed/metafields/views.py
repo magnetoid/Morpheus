@@ -262,3 +262,64 @@ def _content_type_choices():
         except ContentType.DoesNotExist:
             continue
     return choices
+
+
+@staff_member_required
+@csrf_protect
+@require_http_methods(['POST'])
+def panel_save(request: HttpRequest) -> HttpResponse:
+    """Save handler for the {% metafields_panel %} auto-rendered form.
+
+    Form fields are named ``mf__<namespace>__<key>`` and carry the new value.
+    Resolves the target object from ``?ct=<content_type_id>&id=<object_id>``,
+    then updates each existing Metafield row in place. Does NOT create new
+    rows here — the panel only edits what's already declared. Boolean values
+    arrive as 'true' when checked, missing-from-POST when unchecked; we
+    treat missing as ``false`` and write that explicitly so toggle-off
+    persists.
+
+    Redirects back to the referer on success with a Django flash message;
+    on failure surfaces an error message but never 500s.
+    """
+    ct_id = request.GET.get('ct') or ''
+    obj_id = request.GET.get('id') or ''
+    if not ct_id or not obj_id:
+        messages.error(request, 'Bad request — missing content_type or object id.')
+        return redirect(request.META.get('HTTP_REFERER', '/dashboard/'))
+    try:
+        ct = ContentType.objects.get(pk=ct_id)
+    except (ContentType.DoesNotExist, ValueError, TypeError):
+        messages.error(request, f'Unknown content type {ct_id}.')
+        return redirect(request.META.get('HTTP_REFERER', '/dashboard/'))
+
+    # Each known field name → (namespace, key). Resolve the row, normalise
+    # the value by value_type, update.
+    qs = Metafield.objects.filter(content_type=ct, object_id=str(obj_id))
+    rows = {f'mf__{m.namespace}__{m.key}': m for m in qs}
+
+    updated = 0
+    for field_name, mf in rows.items():
+        vt = (mf.value_type or 'string').lower()
+        if vt == 'boolean':
+            new_val = 'true' if (request.POST.get(field_name) == 'true') else 'false'
+        else:
+            new_val = request.POST.get(field_name)
+            if new_val is None:
+                continue   # field absent — don't touch
+            new_val = new_val.strip()
+            if vt == 'json':
+                try:
+                    # Validate but preserve canonical form
+                    json.loads(new_val)
+                except ValueError:
+                    messages.warning(
+                        request, f'{mf.namespace}.{mf.key}: invalid JSON — skipped.'
+                    )
+                    continue
+        if mf.value != new_val:
+            mf.value = new_val
+            mf.save(update_fields=['value', 'updated_at'])
+            updated += 1
+
+    messages.success(request, f'Saved {updated} metafield(s).')
+    return redirect(request.META.get('HTTP_REFERER', '/dashboard/'))

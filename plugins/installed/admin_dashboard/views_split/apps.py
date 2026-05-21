@@ -79,14 +79,41 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
     except (OSError, json.JSONDecodeError) as exc:
         logger.warning('apps_store: registry read failed: %s', exc)
 
-    installed_names = set(plugin_registry._classes.keys())
+    installed_plugin_names = set(plugin_registry._classes.keys())
+    # Installed themes are detected by directory presence under
+    # themes/library/<slug>/ — themes don't go through the plugin registry.
+    installed_theme_dirs: set[str] = set()
+    try:
+        themes_root = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__)
+            )))),
+            'themes', 'library',
+        )
+        if os.path.isdir(themes_root):
+            installed_theme_dirs = {
+                d for d in os.listdir(themes_root)
+                if os.path.isdir(os.path.join(themes_root, d))
+                and not d.startswith('_')
+            }
+    except OSError:
+        pass
+
     rows = []
     for app in apps_data.get('apps', []):
         slug = (app.get('slug') or '').strip()
-        # The slug is also the plugin's `name` if it ships as a Morpheus
-        # plugin — installed check on the registry confirms.
-        is_installed = slug.replace('-', '_') in installed_names
-        rows.append({**app, 'is_installed': is_installed})
+        app_type = (app.get('type') or 'plugin').lower()
+        if app_type == 'theme':
+            # Slug → directory name conventions: strip the -theme suffix.
+            dir_candidate = slug.replace('-theme', '').replace('-', '_')
+            is_installed = (
+                dir_candidate in installed_theme_dirs
+                or slug.replace('-', '_') in installed_theme_dirs
+            )
+        else:
+            # Plugins: registry match on slug (kebab → snake).
+            is_installed = slug.replace('-', '_') in installed_plugin_names
+        rows.append({**app, 'type': app_type, 'is_installed': is_installed})
 
     # Group by category for the page layout.
     categories: dict[str, list] = {}

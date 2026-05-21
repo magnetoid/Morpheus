@@ -16,4 +16,7 @@ urlpatterns = [
     path('api/list/', views.api_list, name='api_list'),
     path('api/set/', views.api_set, name='api_set'),
     path('api/delete/', views.api_delete, name='api_delete'),
+    # Bulk-save endpoint for the {% metafields_panel %} auto-rendered form —
+    # one POST with mf__<namespace>__<key> fields for every editable row.
+    path('save/', views.panel_save, name='panel_save'),
 ]
