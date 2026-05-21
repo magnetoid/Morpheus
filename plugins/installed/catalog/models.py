@@ -266,6 +266,13 @@ class Product(models.Model):
             models.Index(fields=['category']),
             models.Index(fields=['vendor']),
             models.Index(fields=['-created_at']),
+            # Storefront PLP + category browse + staff_picks: every
+            # query filters `status='active'` first then narrows by
+            # category/collection. A composite `(status, category)`
+            # index is the right access path — drops the existing
+            # category-only index off the hot path on stores with
+            # many archived products.
+            models.Index(fields=['status', 'category'], name='catalog_product_status_cat_idx'),
         ]
 
     def __str__(self):
@@ -333,6 +340,15 @@ class ProductImage(models.Model):
 
     class Meta:
         ordering = ['sort_order', '-is_primary']
+        indexes = [
+            # PDP fetches `product.images.all().order_by('sort_order')`
+            # on every render. The FK on `product` is auto-indexed but
+            # without the composite `(product, sort_order)` the planner
+            # has to either sort N rows in memory or do a heap fetch
+            # per row to read sort_order. Composite covers the ordered
+            # fetch directly.
+            models.Index(fields=['product', 'sort_order'], name='catalog_image_product_sort_idx'),
+        ]
 
     def __str__(self):
         return f"Image for {self.product.name}"
@@ -445,6 +461,19 @@ class Review(models.Model):
     class Meta:
         unique_together = ('product', 'customer')
         ordering = ['-created_at']
+        indexes = [
+            # PDP "Reader letters" block + generate_pdp_faqs:
+            # Review.objects.filter(product=X, is_approved=True)
+            #   .order_by('-helpful_votes', '-created_at')
+            # Without this index the planner does a seq scan filtered
+            # by product (auto-indexed FK) and then in-memory sort by
+            # helpful_votes. At <1000 reviews per product it's cheap,
+            # but the index is small + cheap and the query is hot.
+            models.Index(
+                fields=['product', 'is_approved', '-helpful_votes'],
+                name='catalog_review_pdp_idx',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.rating}★ review by {self.customer.email} on {self.product.name}"
