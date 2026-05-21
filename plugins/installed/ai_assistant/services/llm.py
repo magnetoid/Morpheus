@@ -1,6 +1,6 @@
 """
 AI Assistant — LLM Gateway
-Swappable provider: OpenAI | Anthropic | Gemini | OpenRouter | Ollama
+Swappable provider: OpenAI | Anthropic | Gemini | OpenRouter | Grok | Packy | Ollama
 Every call is automatically logged to AIInteraction.
 
 All providers source their api keys / base URLs / models from the
@@ -266,6 +266,27 @@ class GrokGateway(OpenAIGateway):
         )
 
 
+class PackyGateway(OpenAIGateway):
+    """Packy (packiapi.com) — Chinese LLM gateway that proxies Claude /
+    GPT / Gemini / etc. through one OpenAI-compatible chat-completions
+    endpoint. Model groups are selected via name prefix (e.g.
+    ``claude-officially/claude-haiku-4-5-20251001``)."""
+
+    def __init__(self, cfg: ProviderConfig | None = None):
+        cfg = cfg or get_provider_config('packy')
+        if not cfg.base_url:
+            cfg.base_url = 'https://packiapi.com/v1'
+        super().__init__(cfg)
+
+    def embed(self, text: str) -> list[float]:
+        oa = get_provider_config('openai')
+        if oa.api_key:
+            return OpenAIGateway(oa).embed(text)
+        raise NotImplementedError(
+            'Packy gateway does not expose embeddings. Configure OpenAI or Ollama for embeddings.'
+        )
+
+
 class OllamaGateway(LLMGateway):
     """Local Ollama instance — full privacy, no data leaves the server."""
 
@@ -322,6 +343,7 @@ _GATEWAYS = {
     'gemini': GeminiGateway,
     'openrouter': OpenRouterGateway,
     'grok': GrokGateway,
+    'packy': PackyGateway,
     'ollama': OllamaGateway,
 }
 

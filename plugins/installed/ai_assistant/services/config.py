@@ -36,6 +36,10 @@ _DEFAULT_BASE_URLS = {
     'openrouter': 'https://openrouter.ai/api/v1',
     'ollama': 'http://localhost:11434',
     'grok': 'https://api.x.ai/v1',
+    # Packy — Chinese LLM gateway proxying OpenAI / Anthropic / etc. through
+    # one OpenAI-compatible chat-completions endpoint. Model groups are
+    # selected via the model name prefix (e.g. "claude-officially/...").
+    'packy': 'https://packiapi.com/v1',
 }
 
 _DEFAULT_MODELS = {
@@ -45,6 +49,7 @@ _DEFAULT_MODELS = {
     'openrouter': 'anthropic/claude-3.5-sonnet',
     'ollama': 'llama3.2',
     'grok': 'grok-4',
+    'packy': 'claude-3-5-sonnet-20241022',
 }
 
 
@@ -104,6 +109,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'openrouter': 'OPENROUTER_API_KEY',
             'ollama': 'OLLAMA_API_KEY',
             'grok': 'XAI_API_KEY',
+            'packy': 'PACKY_API_KEY',
         }
         api_key = getattr(settings, env_keys.get(name, ''), '') or ''
 
@@ -113,6 +119,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'openai': 'OPENAI_BASE_URL',
             'openrouter': 'OPENROUTER_BASE_URL',
             'grok': 'XAI_BASE_URL',
+            'packy': 'PACKY_BASE_URL',
         }
         base_url = (
             getattr(settings, env_base.get(name, ''), '')

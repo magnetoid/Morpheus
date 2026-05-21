@@ -450,6 +450,26 @@ class GrokProvider(OpenAIProvider):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Packy (packiapi.com) — Chinese LLM gateway, OpenAI-compatible
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class PackyProvider(OpenAIProvider):
+    name = 'packy'
+
+    def __init__(self, model: str | None = None) -> None:
+        import openai
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+        cfg = get_provider_config('packy')
+        kwargs: dict[str, Any] = {}
+        if cfg.api_key:
+            kwargs['api_key'] = cfg.api_key
+        kwargs['base_url'] = cfg.base_url or 'https://packiapi.com/v1'
+        self._client = openai.OpenAI(**kwargs)
+        self.model = model or cfg.model or 'claude-3-5-sonnet-20241022'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Mock — deterministic, used in tests + when no provider configured
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -508,6 +528,7 @@ _PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
     'gemini': GeminiProvider,
     'openrouter': OpenRouterProvider,
     'grok': GrokProvider,
+    'packy': PackyProvider,
 }
 
 

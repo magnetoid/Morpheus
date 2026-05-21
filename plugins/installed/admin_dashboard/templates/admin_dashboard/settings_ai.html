@@ -110,7 +110,7 @@
           <input type="password" name="{{ c.slug }}_api_key" class="input mt-1 font-mono"
                  value="{{ c.api_key }}"
                  autocomplete="off" spellcheck="false"
-                 placeholder="{% if c.slug == 'openai' %}sk-...{% elif c.slug == 'anthropic' %}sk-ant-...{% elif c.slug == 'gemini' %}AIza...{% elif c.slug == 'openrouter' %}sk-or-...{% elif c.slug == 'ollama' %}leave blank if self-hosted{% endif %}">
+                 placeholder="{% if c.slug == 'openai' %}sk-...{% elif c.slug == 'anthropic' %}sk-ant-...{% elif c.slug == 'gemini' %}AIza...{% elif c.slug == 'openrouter' %}sk-or-...{% elif c.slug == 'packy' %}sk-...{% elif c.slug == 'ollama' %}leave blank if self-hosted{% endif %}">
         </div>
         {% endif %}
 
@@ -119,7 +119,7 @@
           <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Base URL</label>
           <input type="text" name="{{ c.slug }}_base_url" class="input mt-1"
                  value="{{ c.base_url }}"
-                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
+                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'packy' %}https://packiapi.com/v1{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
         </div>
         {% endif %}
 

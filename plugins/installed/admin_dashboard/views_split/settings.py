@@ -126,7 +126,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     """JSON endpoint backing the "Fetch models" + "Test connection" buttons.
 
     POST body fields:
-        provider — openai | anthropic | gemini | openrouter | grok | ollama
+        provider — openai | anthropic | gemini | openrouter | grok | packy | ollama
         api_key  — optional override; falls back to saved plugin config
         base_url — optional override
 
@@ -199,6 +199,14 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://console.x.ai',
         'placeholder_model': 'grok-4',
+    },
+    {
+        'slug': 'packy',
+        'label': 'Packy (packiapi.com)',
+        'icon': 'globe',
+        'fields': ('api_key', 'base_url', 'model'),
+        'help_url': 'https://packiapi.com',
+        'placeholder_model': 'claude-3-5-sonnet-20241022',
     },
     {
         'slug': 'ollama',

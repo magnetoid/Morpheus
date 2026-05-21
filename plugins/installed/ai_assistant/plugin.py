@@ -208,6 +208,23 @@ class AIAssistantPlugin(Plugin):
                     "default": "grok-4",
                     "description": "e.g. grok-4 · grok-4-fast-reasoning · grok-3",
                 },
+                # ── Packy (packiapi.com — Chinese LLM gateway) ────────
+                "packy_api_key": {
+                    "type": "string",
+                    "title": "Packy · API Key",
+                    "description": "packiapi.com key. OpenAI-compatible gateway proxying Claude, GPT, Gemini etc.",
+                },
+                "packy_base_url": {
+                    "type": "string",
+                    "title": "Packy · Base URL",
+                    "default": "https://packiapi.com/v1",
+                },
+                "packy_model": {
+                    "type": "string",
+                    "title": "Packy · Default model",
+                    "default": "claude-3-5-sonnet-20241022",
+                    "description": "Model group prefix selects upstream — e.g. claude-officially/claude-haiku-4-5-20251001",
+                },
                 # ── Ollama (cloud or self-hosted) ─────────────────────
                 "ollama_base_url": {
                     "type": "string",
@@ -228,7 +245,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Active provider selector ─────────────────────────
                 "ai_provider": {
                     "type": "string",
-                    "enum": ["openai", "anthropic", "gemini", "openrouter", "grok", "ollama"],
+                    "enum": ["openai", "anthropic", "gemini", "openrouter", "grok", "packy", "ollama"],
                     "default": "openai",
                     "title": "Active provider",
                     "description": "Which provider the assistant + agent layer call by default.",
@@ -248,7 +265,7 @@ class AIAssistantPlugin(Plugin):
     def contribute_settings_panel(self):
         return SettingsPanel(
             label='AI providers',
-            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, and Ollama. Pick the active provider with "Active provider".',
+            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, Packy, and Ollama. Pick the active provider with "Active provider".',
             schema=self.get_config_schema(),
             category='ai',
         )

@@ -162,7 +162,8 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
             ai_summary['has_keys'] = any(
                 cfg.get(k) for k in (
                     'openai_api_key', 'anthropic_api_key', 'gemini_api_key',
-                    'openrouter_api_key', 'ollama_api_key',
+                    'openrouter_api_key', 'grok_api_key', 'packy_api_key',
+                    'ollama_api_key',
                 )
             )
     except Exception:  # noqa: BLE001
