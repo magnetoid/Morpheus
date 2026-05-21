@@ -73,3 +73,22 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+
+  api-stability:
+    # Gates docs/API_STABILITY.md — diff the Python SDK public surface
+    # against docs/sdk-baseline.json. Removals block; additions pass.
+    # To refresh the baseline after a deliberate breaking change + major
+    # version bump: `python scripts/check_api_stability.py --save` and
+    # commit the updated baseline in the SAME PR that ships the break.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: API stability — diff against baseline
+        run: python scripts/check_api_stability.py
