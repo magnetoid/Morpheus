@@ -2,56 +2,63 @@
 PDP hero slider — Phase 1 of the product-slider spec
 (docs/plans/product-slider.md).
 
-Renders every ProductImage (capped at 15) as a horizontal slider with
+Renders every product image (capped at 15) as a horizontal slider with
 arrows, thumbnail strip, and keyboard navigation. CSS scroll-snap
 provides the no-JS baseline; arrow/keyboard/dot behaviour is layered
-on with ~80 lines of JS.
+on with ~80 lines of inline JS.
 
 Slot context:
-  product — Product instance (must expose .images.all)
-  alt     — fallback alt text (usually product.name)
+  images — list of image dicts from the GraphQL PRODUCT_DETAIL_QUERY
+           response. Each entry: {url, altText, isPrimary, sortOrder}.
+           Passed in by the storefront PDP view through the parent
+           template context.
+  product — Product dict (used only for name → fallback alt).
+  alt    — fallback alt text (usually product.name).
 
-Backward compatible with single-image products:
-  • 0 images   → placeholder
-  • 1 image    → no arrows, no thumbnails, just the single slide
-  • 2 images   → arrows + 2 dots, thumbnails optional
-  • 3+ images  → full slider experience
+Sort order: by `sortOrder` ASC so slot 0 is always the first slide.
+Cap at 15 entries per the product-slider spec.
+
+Backward compatible with single-image / no-image products:
+  • 0 images → placeholder
+  • 1 image  → no arrows, no thumbnails, just the single slide
+  • 2+       → arrows + thumbnail strip
 {% endcomment %}
 
-{% with images=product.images.all|slice:":15" as_slides=1 %}
+{% with sorted_images=images|dictsort:"sortOrder" as_slides=1 %}
+{% with slides=sorted_images|slice:":15" %}
 
 <div class="pdp-hero" data-pdp-hero
      aria-roledescription="carousel"
-     aria-label="Images of {{ product.name }}">
+     aria-label="Images of {{ product.name|default:alt }}">
 
-  {% if images %}
+  {% if slides %}
   <div class="pdp-hero__track" tabindex="0" data-slider-track
        aria-live="polite">
-    {% for img in images %}
+    {% for img in slides %}
     <figure class="pdp-hero__slide" data-index="{{ forloop.counter0 }}"
-            aria-label="Slide {{ forloop.counter }} of {{ images|length }}"
+            aria-label="Slide {{ forloop.counter }} of {{ slides|length }}"
             style="view-transition-name: cover-{{ product.slug }}{% if forloop.first %}{% else %}-{{ forloop.counter0 }}{% endif %};">
-      {% if img.image %}
-        {% seo_responsive_image img.image alt=img.alt_text|default:alt|default:product.name widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 92vw" %}
+      {% if img.url %}
+        {% seo_responsive_image img.url alt=img.altText|default:alt|default:product.name widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 92vw" %}
       {% endif %}
     </figure>
     {% endfor %}
   </div>
 
-  {% if images|length > 1 %}
+  {% if slides|length > 1 %}
   <button type="button" class="pdp-hero__arrow pdp-hero__arrow--prev"
           data-slider-prev aria-label="Previous slide">‹</button>
   <button type="button" class="pdp-hero__arrow pdp-hero__arrow--next"
           data-slider-next aria-label="Next slide">›</button>
 
   <div class="pdp-hero__thumbs" role="tablist" aria-label="Choose slide">
-    {% for img in images %}
+    {% for img in slides %}
     <button type="button" class="pdp-hero__thumb" role="tab"
             data-slider-thumb="{{ forloop.counter0 }}"
             aria-label="Slide {{ forloop.counter }}"
             aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
-      {% if img.image %}
-        <img src="{{ img.image.url }}" alt="" loading="lazy">
+      {% if img.url %}
+        <img src="{{ img.url }}" alt="" loading="lazy">
       {% endif %}
     </button>
     {% endfor %}
@@ -195,7 +202,6 @@ Backward compatible with single-image products:
       if (i >= slides.length) i = slides.length - 1;
       current = i;
       slides[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      // Update aria + arrow disabled state.
       thumbs.forEach((t, idx) => t.setAttribute('aria-selected', String(idx === i)));
       if (prev) prev.setAttribute('aria-disabled', String(i === 0));
       if (next) next.setAttribute('aria-disabled', String(i === slides.length - 1));
@@ -205,7 +211,6 @@ Backward compatible with single-image products:
     next?.addEventListener('click', () => slideTo(current + 1));
     thumbs.forEach((t, i) => t.addEventListener('click', () => slideTo(i)));
 
-    // Keyboard support — arrow keys when the track is focused.
     track.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft')  { e.preventDefault(); slideTo(current - 1); }
       if (e.key === 'ArrowRight') { e.preventDefault(); slideTo(current + 1); }
@@ -213,7 +218,6 @@ Backward compatible with single-image products:
       if (e.key === 'End')        { e.preventDefault(); slideTo(slides.length - 1); }
     });
 
-    // Sync `current` when the user manually scrolls (touch swipe / mouse drag).
     let scrollTimer;
     track.addEventListener('scroll', () => {
       clearTimeout(scrollTimer);
@@ -229,10 +233,10 @@ Backward compatible with single-image products:
       }, 80);
     }, { passive: true });
 
-    // Initial state.
     slideTo(0);
   });
 })();
 </script>
 
+{% endwith %}
 {% endwith %}
