@@ -241,41 +241,25 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
         messages.error(request, 'That file is not an image.')
         return redirect('admin_dashboard:product_edit', product_id=product.id)
     alt = (request.POST.get('alt_text') or '').strip()[:255]
-    is_primary = bool(request.POST.get('is_primary'))
-    # `cover_slot` is set by the admin's Front/Back cover dropzones.
-    # 'front' → primary + sort_order=0   (becomes the front cover)
-    # 'back'  → primary + sort_order=1   (becomes the back cover)
-    # anything else → slider image (is_primary=False)
-    cover_slot = (request.POST.get('cover_slot') or '').strip().lower()
 
-    if cover_slot in ('front', 'back'):
-        # Replace whatever sits in that slot today so the slot stays unique.
-        slot_sort = 0 if cover_slot == 'front' else 1
-        ProductImage.objects.filter(
-            product=product, is_primary=True, sort_order=slot_sort,
-        ).delete()
-        sort_order = slot_sort
+    # Unified 15-slot model (Phase 1 of docs/plans/product-slider.md):
+    # new uploads append at the end of the slider. The merchant drags
+    # tiles to reorder; slot 0 is the cover.
+    #
+    # First image for a product auto-becomes the cover (is_primary=True,
+    # sort_order=0). Subsequent uploads append with is_primary=False;
+    # the reorder endpoint reconciles primary state when the merchant
+    # drags slots around.
+    max_sort = (
+        ProductImage.objects.filter(product=product)
+        .order_by('-sort_order').values_list('sort_order', flat=True).first()
+    )
+    if max_sort is None:
+        sort_order = 0
         is_primary = True
-    elif is_primary:
-        # Legacy single-primary upload (no cover_slot specified) — preserve
-        # existing front cover if present, take the back slot instead.
-        has_front = ProductImage.objects.filter(
-            product=product, is_primary=True, sort_order=0,
-        ).exists()
-        sort_order = 1 if has_front else 0
-        # Clean any old row at that slot.
-        ProductImage.objects.filter(
-            product=product, is_primary=True, sort_order=sort_order,
-        ).delete()
     else:
-        # Slider image — append after the highest non-primary sort_order
-        # (keep cover slots 0/1 reserved for primaries).
-        max_slider = (
-            ProductImage.objects.filter(product=product, is_primary=False)
-            .order_by('-sort_order').values_list('sort_order', flat=True).first()
-        )
-        # First slider image lands at 2 so slots 0/1 stay free for front/back.
-        sort_order = max(max_slider or 1, 1) + 1
+        sort_order = int(max_sort) + 1
+        is_primary = False
 
     ProductImage.objects.create(
         product=product,
@@ -320,15 +304,25 @@ def image_reorder(request: HttpRequest, product_id: str) -> HttpResponse:
     if not ids:
         return JsonResponse({'ok': False, 'error': 'no ids'}, status=400)
     # Update in a single round-trip per image; the set is small (≤ 15).
+    # Slot 0 is the cover — auto-promote to is_primary so the OG /
+    # JSON-LD / storefront grid thumbnail all surface the right one
+    # without merchant intervention.
     existing = {str(i.pk): i for i in ProductImage.objects.filter(product=product, pk__in=ids)}
     updated = 0
     for idx, image_id in enumerate(ids):
         img = existing.get(image_id)
         if img is None:
             continue
+        should_primary = (idx == 0)
+        fields = []
         if img.sort_order != idx:
             img.sort_order = idx
-            img.save(update_fields=['sort_order'])
+            fields.append('sort_order')
+        if img.is_primary != should_primary:
+            img.is_primary = should_primary
+            fields.append('is_primary')
+        if fields:
+            img.save(update_fields=fields)
             updated += 1
     return JsonResponse({'ok': True, 'count': updated})
 
