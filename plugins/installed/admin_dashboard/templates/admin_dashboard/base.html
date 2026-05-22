@@ -518,8 +518,7 @@
     {% comment %}Assets is core — sits right under Users so the merchant can jump straight from contacts to the file library.{% endcomment %}
     <a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>
 
-    {% comment %}Tracking control center — GA4 + GTM settings, event log, consent. Hardcoded so the merchant always knows where to find it, even with the plugin disabled.{% endcomment %}
-    <a href="/dashboard/tracking/" class="nav-link {% if active_nav == 'tracking' %}active{% endif %}"><i data-lucide="activity" class="h-4 w-4"></i> Tracking</a>
+    {# Tracking moved to the Settings sidebar — see nav-settings below. #}
 
     {# Health: deep error log (server + client). Hardcoded so it's always #}
     {# reachable, even with every plugin disabled. #}
@@ -566,6 +565,12 @@
     {# Apps link: active on /dashboard/apps/ but NOT on a specific plugin page. #}
     <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' and not active_apps_slug %}active{% endif %}">
       <i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps
+    </a>
+
+    {# Tracking control center — GA4 + GTM settings, event log, consent.
+       Hardcoded so it's always reachable, even with the plugin disabled. #}
+    <a href="/dashboard/tracking/" class="nav-link {% if active_nav == 'tracking' %}active{% endif %}">
+      <i data-lucide="activity" class="h-4 w-4"></i> Tracking
     </a>
 
     {% comment %}
@@ -860,6 +865,7 @@
     const path = location.pathname;
     const inSettings = path.startsWith('/dashboard/settings/')
         || path === '/dashboard/apps/' || path === '/dashboard/apps'
+        || path.startsWith('/dashboard/tracking/')
         || /^\/dashboard\/apps\/[^/]+\/settings\/?$/.test(path);
     function showSettingsNav() {
       if (!navMain || !navSettings) return;
