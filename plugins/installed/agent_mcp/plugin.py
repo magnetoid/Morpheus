@@ -38,7 +38,7 @@ class AgentMcpPlugin(Plugin):
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='MCP tokens',
+                label='API tokens',
                 slug='tokens',
                 view='plugins.installed.agent_mcp.dashboard.tokens_view',
                 icon='key-round',

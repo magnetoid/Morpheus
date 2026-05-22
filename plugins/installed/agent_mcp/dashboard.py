@@ -157,5 +157,6 @@ def tokens_view(request):
         'just_created_token': just_created_token,
         'just_created_label': just_created_label,
         'admin_rpc_url': '/mcp/admin/v1/',
+        'graphql_url': '/graphql/',
         'active_nav': 'apps',
     })

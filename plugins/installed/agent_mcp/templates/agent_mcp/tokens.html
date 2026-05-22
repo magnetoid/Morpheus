@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}MCP tokens · Settings · Morpheus{% endblock %}
+{% block title %}API tokens · Settings · Morpheus{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
@@ -7,15 +7,17 @@
   <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
     <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
     <i data-lucide="chevron-right" class="h-3 w-3"></i>
-    <span class="font-medium text-[color:var(--text)]">MCP tokens</span>
+    <span class="font-medium text-[color:var(--text)]">API tokens</span>
   </div>
 
   <div>
-    <h1 class="text-xl font-semibold tracking-tight">MCP admin tokens</h1>
+    <h1 class="text-xl font-semibold tracking-tight">API tokens</h1>
     <p class="text-sm text-[color:var(--text-muted)] mt-1">
-      Bearer tokens for external agents calling
-      <code class="font-mono text-xs px-1 py-0.5 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]">POST {{ admin_rpc_url }}</code>.
-      Each agent should get its own labelled token so you can revoke them independently.
+      One Bearer token works for <strong>both</strong>:
+      <code class="font-mono text-xs px-1 py-0.5 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]">POST {{ admin_rpc_url }}</code>
+      (MCP, JSON-RPC 2.0 for LLM agents) and
+      <code class="font-mono text-xs px-1 py-0.5 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]">POST {{ graphql_url }}</code>
+      (GraphQL, typed schema for scripts). Each agent should get its own labelled token so you can revoke them independently.
     </p>
   </div>
 
@@ -113,9 +115,15 @@
     {% endif %}
   </div>
 
-  <div class="card card-padded">
-    <h3 class="font-semibold">How to call the admin server</h3>
-    <pre class="font-mono text-xs mt-2 p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">curl -X POST {{ request.scheme }}://{{ request.get_host }}{{ admin_rpc_url }} \
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h3 class="font-semibold">Usage examples</h3>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Replace <code class="font-mono">YOUR_TOKEN</code> with any token from the table above.</p>
+    </div>
+    <div class="card-padded space-y-3">
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">MCP — JSON-RPC 2.0 (recommended for LLM agents)</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">curl -X POST {{ request.scheme }}://{{ request.get_host }}{{ admin_rpc_url }} \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -126,13 +134,25 @@
         "title": "Crime and Punishment",
         "author": "Fyodor Dostoevsky",
         "pdf_url": "https://your-cdn.com/crime.pdf",
-        "cover_image_url": "https://your-cdn.com/crime.jpg",
-        "price_amount": "12.99",
-        "price_currency": "USD",
-        "status": "active"
+        "price_amount": "12.99"
       }
     }
   }'</pre>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">GraphQL — typed schema (recommended for scripts)</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">curl -X POST {{ request.scheme }}://{{ request.get_host }}{{ graphql_url }} \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "mutation($i:UpdateProductInput!){updateProduct(input:$i){slug priceAmount status error}}",
+    "variables": {"i": {"slug": "crime-and-punishment", "priceAmount": "7.99", "status": "active"}}
+  }'</pre>
+      </div>
+      <div class="text-xs text-[color:var(--text-muted)]">
+        Same token, both surfaces. Behind the scenes the token resolves to a synthetic <code class="font-mono">mcp-service</code> staff user — every mutation is attributed to that user in audit logs.
+      </div>
+    </div>
   </div>
 </div>
 
