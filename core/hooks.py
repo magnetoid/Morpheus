@@ -168,6 +168,8 @@ class HookRegistry:
         from django.db import models
         from django.db.models.query import QuerySet
 
+        from django.http import HttpRequest
+
         class WebhookEncoder(DjangoJSONEncoder):
             def default(self, o):
                 if isinstance(o, models.Model):
@@ -181,6 +183,18 @@ class HookRegistry:
                     return str(o)
                 if hasattr(o, 'amount') and hasattr(o, 'currency'):  # MoneyField
                     return {'amount': str(o.amount), 'currency': str(o.currency)}
+                # WSGIRequest / ASGIRequest aren't JSON-serialisable. Hook
+                # kwargs (e.g. agent.run.started) sometimes carry the
+                # request through for downstream handlers — we don't want
+                # to ship the whole object to a webhook anyway. Send a
+                # minimal pointer (path + method) instead so subscribers
+                # still know which request triggered the event.
+                if isinstance(o, HttpRequest):
+                    return {
+                        'type': 'http_request',
+                        'path': getattr(o, 'path', ''),
+                        'method': getattr(o, 'method', ''),
+                    }
                 return super().default(o)
 
         return _json.loads(_json.dumps(kwargs, cls=WebhookEncoder))
