@@ -574,7 +574,22 @@ class FulfillmentForm(forms.Form):
 
 
 class VariantForm(forms.Form):
-    """Create/edit a `catalog.ProductVariant` for a given product."""
+    """Create/edit a `catalog.ProductVariant` for a given product.
+
+    Surfaces the six Shopify-parity fields (commit b74aaf9 +
+    migration 0010_variant_shopify_parity): variant_type,
+    requires_shipping, is_taxable, inventory_policy, barcode,
+    digital_file.
+    """
+    VARIANT_TYPE_CHOICES = [
+        ('physical', 'Physical — ships to a customer address'),
+        ('digital',  'Digital — downloadable file'),
+        ('virtual',  'Virtual — service / gift card / booking, no shipment'),
+    ]
+    INVENTORY_POLICY_CHOICES = [
+        ('deny',     'Deny — refuse orders when out of stock'),
+        ('continue', 'Continue — accept backorders'),
+    ]
 
     name = forms.CharField(max_length=200)
     sku = forms.CharField(max_length=100)
@@ -590,6 +605,18 @@ class VariantForm(forms.Form):
     weight = forms.DecimalField(
         max_digits=8, decimal_places=3, required=False, min_value=Decimal('0'),
     )
+    # Shopify-parity fields.
+    variant_type = forms.ChoiceField(
+        choices=VARIANT_TYPE_CHOICES, initial='physical', required=False,
+    )
+    requires_shipping = forms.BooleanField(required=False, initial=True)
+    is_taxable = forms.BooleanField(required=False, initial=True)
+    inventory_policy = forms.ChoiceField(
+        choices=INVENTORY_POLICY_CHOICES, initial='deny', required=False,
+    )
+    barcode = forms.CharField(max_length=50, required=False)
+    digital_file = forms.FileField(required=False)
+
     is_active = forms.BooleanField(required=False, initial=True)
     sort_order = forms.IntegerField(required=False, min_value=0, initial=0)
 
@@ -608,6 +635,11 @@ class VariantForm(forms.Form):
                     instance.cost_price.amount if instance.cost_price else None
                 ),
                 'weight': instance.weight,
+                'variant_type': getattr(instance, 'variant_type', 'physical'),
+                'requires_shipping': getattr(instance, 'requires_shipping', True),
+                'is_taxable': getattr(instance, 'is_taxable', True),
+                'inventory_policy': getattr(instance, 'inventory_policy', 'deny'),
+                'barcode': getattr(instance, 'barcode', ''),
                 'is_active': instance.is_active,
                 'sort_order': instance.sort_order,
             }
@@ -623,6 +655,16 @@ class VariantForm(forms.Form):
             raise forms.ValidationError('Another variant already uses this SKU.')
         return sku
 
+    def clean(self):
+        cleaned = super().clean()
+        vt = cleaned.get('variant_type') or 'physical'
+        # Auto-flip requires_shipping based on variant_type when the
+        # merchant didn't explicitly set the checkbox. Digital + virtual
+        # default to no shipping; physical defaults to requires shipping.
+        if 'requires_shipping' not in self.data:
+            cleaned['requires_shipping'] = (vt == 'physical')
+        return cleaned
+
     def save(self) -> Any:
         from plugins.installed.catalog.models import ProductVariant
         if self.product is None:
@@ -636,8 +678,17 @@ class VariantForm(forms.Form):
         variant.compare_at_price = _money(cd.get('compare_at_price'))
         variant.cost_price = _money(cd.get('cost_price'))
         variant.weight = cd.get('weight')
+        variant.variant_type = cd.get('variant_type') or 'physical'
+        variant.requires_shipping = bool(cd.get('requires_shipping'))
+        variant.is_taxable = bool(cd.get('is_taxable'))
+        variant.inventory_policy = cd.get('inventory_policy') or 'deny'
+        variant.barcode = (cd.get('barcode') or '').strip()
         variant.is_active = bool(cd.get('is_active'))
         variant.sort_order = cd.get('sort_order') or 0
+        # FileField needs explicit save with the upload, not direct assignment.
+        upload = cd.get('digital_file')
+        if upload:
+            variant.digital_file.save(upload.name, upload, save=False)
         variant.save()
         return variant
 
