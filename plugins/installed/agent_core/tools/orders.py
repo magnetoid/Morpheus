@@ -69,3 +69,129 @@ def summarise_order_tool(*, order_number: str) -> ToolResult:
         'items': items,
         'created_at': order.created_at.isoformat(),
     })
+
+
+# ─── Admin write tools — fulfill / ship / cancel / mark refunded ──────────────
+
+
+def _serialize_admin(order) -> dict:
+    return {
+        'order_number': order.order_number,
+        'status': order.status,
+        'payment_status': order.payment_status,
+        'tracking_number': order.tracking_number or '',
+    }
+
+
+@tool(
+    name='orders.mark_fulfilled',
+    description='Mark a paid/processing order as fulfilled (uses the Order FSM).',
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {'order_number': {'type': 'string'}},
+        'required': ['order_number'],
+    },
+)
+def mark_order_fulfilled_tool(*, order_number: str) -> ToolResult:
+    from django_fsm import TransitionNotAllowed
+    from plugins.installed.orders.models import Order
+    order = Order.objects.filter(order_number=order_number).first()
+    if order is None:
+        raise ToolError(f'order {order_number!r} not found')
+    try:
+        order.fulfill()
+        order.save()
+    except TransitionNotAllowed as e:
+        raise ToolError(f'cannot fulfill from status={order.status}: {e}') from None
+    return ToolResult(output=_serialize_admin(order), display=f'#{order.order_number} → {order.status}')
+
+
+@tool(
+    name='orders.mark_shipped',
+    description='Mark a fulfilled order as shipped, optionally with a tracking number.',
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'order_number': {'type': 'string'},
+            'tracking_number': {'type': 'string', 'default': ''},
+        },
+        'required': ['order_number'],
+    },
+)
+def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> ToolResult:
+    from django_fsm import TransitionNotAllowed
+    from plugins.installed.orders.models import Order
+    order = Order.objects.filter(order_number=order_number).first()
+    if order is None:
+        raise ToolError(f'order {order_number!r} not found')
+    try:
+        order.ship(tracking_number=tracking_number)
+        order.save()
+    except TransitionNotAllowed as e:
+        raise ToolError(f'cannot ship from status={order.status}: {e}') from None
+    return ToolResult(
+        output=_serialize_admin(order),
+        display=f'#{order.order_number} shipped' + (f' ({tracking_number})' if tracking_number else ''),
+    )
+
+
+@tool(
+    name='orders.cancel',
+    description='Cancel an order from any status (uses the Order FSM cancel() transition).',
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'order_number': {'type': 'string'},
+            'reason': {'type': 'string', 'default': ''},
+        },
+        'required': ['order_number'],
+    },
+    requires_approval=True,
+)
+def cancel_order_tool(*, order_number: str, reason: str = '') -> ToolResult:
+    from django_fsm import TransitionNotAllowed
+    from plugins.installed.orders.models import Order
+    order = Order.objects.filter(order_number=order_number).first()
+    if order is None:
+        raise ToolError(f'order {order_number!r} not found')
+    try:
+        order.cancel(reason=reason)
+        order.save()
+    except TransitionNotAllowed as e:
+        raise ToolError(f'cannot cancel from status={order.status}: {e}') from None
+    return ToolResult(output=_serialize_admin(order), display=f'#{order.order_number} cancelled')
+
+
+@tool(
+    name='orders.mark_refunded',
+    description=(
+        'Flag an order as refunded — manual, for refunds processed outside '
+        'Morpheus (e.g. directly in Stripe / bank). The FSM has no '
+        'refund() transition because the canonical refund happens in the '
+        'payments plugin; this just lets the merchant flag the row.'
+    ),
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'order_number': {'type': 'string'},
+            'reason': {'type': 'string', 'default': ''},
+        },
+        'required': ['order_number'],
+    },
+    requires_approval=True,
+)
+def mark_order_refunded_tool(*, order_number: str, reason: str = '') -> ToolResult:
+    from plugins.installed.orders.models import Order
+    order = Order.objects.filter(order_number=order_number).first()
+    if order is None:
+        raise ToolError(f'order {order_number!r} not found')
+    Order.objects.filter(pk=order.pk).update(
+        status='refunded', payment_status='refunded',
+    )
+    order.refresh_from_db()
+    order.log_event('ORDER_REFUNDED', message=reason)
+    return ToolResult(output=_serialize_admin(order), display=f'#{order.order_number} refunded')

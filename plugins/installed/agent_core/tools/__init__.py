@@ -13,19 +13,34 @@ from __future__ import annotations
 import logging
 
 from plugins.installed.agent_core.tools.catalog import (
+    archive_category_tool,
+    archive_product_tool,
     backfill_alt_text_tool,
     catalog_stats_tool,
+    create_category_tool,
+    delete_product_tool,
     find_products_tool,
     get_product_tool,
     list_categories_tool,
     publish_digital_product_tool,
+    restore_product_tool,
+    update_category_tool,
+    update_product_tool,
 )
 from plugins.installed.agent_core.tools.cart import (
     add_to_cart_tool,
     get_cart_summary_tool,
 )
+from plugins.installed.agent_core.tools.inventory import (
+    adjust_stock_tool,
+    set_stock_tool,
+)
 from plugins.installed.agent_core.tools.orders import (
+    cancel_order_tool,
     list_recent_orders_tool,
+    mark_order_fulfilled_tool,
+    mark_order_refunded_tool,
+    mark_order_shipped_tool,
     summarise_order_tool,
 )
 from plugins.installed.agent_core.tools.analytics import (
@@ -77,10 +92,23 @@ def all_builtin_tools() -> list:
         catalog_stats_tool,
         backfill_alt_text_tool,
         publish_digital_product_tool,
+        update_product_tool,
+        archive_product_tool,
+        restore_product_tool,
+        delete_product_tool,
+        create_category_tool,
+        update_category_tool,
+        archive_category_tool,
+        set_stock_tool,
+        adjust_stock_tool,
         add_to_cart_tool,
         get_cart_summary_tool,
         list_recent_orders_tool,
         summarise_order_tool,
+        mark_order_fulfilled_tool,
+        mark_order_shipped_tool,
+        cancel_order_tool,
+        mark_order_refunded_tool,
         revenue_summary_tool,
         top_products_tool,
         draft_product_description_tool,

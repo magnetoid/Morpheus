@@ -258,3 +258,203 @@ def catalog_stats_tool() -> ToolResult:
             f'· {missing_primary_image} missing primary image'
         ),
     )
+
+
+# ─── Edit / archive / delete / category tools ─────────────────────────────────
+
+
+@tool(
+    name='catalog.update_product',
+    description=(
+        'Update any field on an existing product (lookup by slug). Every '
+        'argument is optional — only the fields you pass are touched. '
+        'Useful for re-pricing, changing status, editing description, '
+        're-categorising, or flipping SEO flags. Returns the updated '
+        'product summary.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slug': {'type': 'string', 'description': 'Product slug to update.'},
+            'name': {'type': 'string'},
+            'sku': {'type': 'string'},
+            'status': {'type': 'string', 'enum': ['draft', 'active', 'archived']},
+            'product_type': {'type': 'string', 'enum': ['simple', 'variable', 'digital', 'bundle']},
+            'short_description': {'type': 'string'},
+            'description': {'type': 'string'},
+            'price_amount': {'type': 'string', 'description': 'Decimal price, e.g. "9.99".'},
+            'price_currency': {'type': 'string'},
+            'compare_at_amount': {'type': 'string', 'description': 'Pass "" or "null" to clear.'},
+            'cost_amount': {'type': 'string', 'description': 'Pass "" or "null" to clear.'},
+            'category_slug': {'type': 'string', 'description': 'Pass "" to clear.'},
+            'weight': {'type': 'string'},
+            'weight_unit': {'type': 'string'},
+            'requires_shipping': {'type': 'boolean'},
+            'is_featured': {'type': 'boolean'},
+            'is_taxable': {'type': 'boolean'},
+            'track_inventory': {'type': 'boolean'},
+            'meta_title': {'type': 'string'},
+            'meta_description': {'type': 'string'},
+            'focus_keyword': {'type': 'string'},
+            'canonical_url': {'type': 'string'},
+            'noindex': {'type': 'boolean'},
+            'nofollow': {'type': 'boolean'},
+        },
+        'required': ['slug'],
+    },
+)
+def update_product_tool(*, slug: str, **fields) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, update_product
+    try:
+        r = update_product(slug=slug, **fields)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(
+        output=r,
+        display=f'Updated {r["name"]!r} ({r["slug"]}) — fields: {sorted(fields.keys())}',
+    )
+
+
+@tool(
+    name='catalog.archive_product',
+    description='Mark a product as archived (hides from storefront, keeps history).',
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {'slug': {'type': 'string'}},
+        'required': ['slug'],
+    },
+)
+def archive_product_tool(*, slug: str) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, archive_product
+    try:
+        r = archive_product(slug=slug)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Archived {r["slug"]}')
+
+
+@tool(
+    name='catalog.restore_product',
+    description='Restore an archived product back to draft or active.',
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slug': {'type': 'string'},
+            'status': {'type': 'string', 'enum': ['draft', 'active'], 'default': 'active'},
+        },
+        'required': ['slug'],
+    },
+)
+def restore_product_tool(*, slug: str, status: str = 'active') -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, restore_product
+    try:
+        r = restore_product(slug=slug, status=status)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Restored {r["slug"]} → {r["status"]}')
+
+
+@tool(
+    name='catalog.delete_product',
+    description=(
+        'Hard-delete a product. Prefer catalog.archive_product unless you '
+        'really need the row gone — analytics + audit lose history on delete.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {'slug': {'type': 'string'}},
+        'required': ['slug'],
+    },
+    requires_approval=True,
+)
+def delete_product_tool(*, slug: str) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, delete_product
+    try:
+        r = delete_product(slug=slug)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Deleted {r["slug"]}')
+
+
+@tool(
+    name='catalog.create_category',
+    description='Create a new product category. parent_slug is optional (top-level if blank).',
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'slug': {'type': 'string', 'description': 'Auto-generated from name if blank.'},
+            'parent_slug': {'type': 'string'},
+            'description': {'type': 'string'},
+        },
+        'required': ['name'],
+    },
+)
+def create_category_tool(
+    *, name: str, slug: str = '', parent_slug: str = '', description: str = '',
+) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, create_category
+    try:
+        r = create_category(name=name, slug=slug, parent_slug=parent_slug, description=description)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Created category {r["name"]!r} ({r["slug"]})')
+
+
+@tool(
+    name='catalog.update_category',
+    description='Update an existing category. Pass parent_slug="" to detach from parent.',
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slug': {'type': 'string'},
+            'name': {'type': 'string'},
+            'new_slug': {'type': 'string'},
+            'parent_slug': {'type': 'string'},
+            'description': {'type': 'string'},
+        },
+        'required': ['slug'],
+    },
+)
+def update_category_tool(
+    *, slug: str, name: str = '', new_slug: str = '',
+    parent_slug: str | None = None, description: str | None = None,
+) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, update_category
+    try:
+        r = update_category(
+            slug=slug, name=name, new_slug=new_slug,
+            parent_slug=parent_slug, description=description,
+        )
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Updated category {r["slug"]}')
+
+
+@tool(
+    name='catalog.archive_category',
+    description=(
+        'Archive (delete) a category. Products in the category are detached '
+        '(category=null) rather than cascade-deleted.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {'slug': {'type': 'string'}},
+        'required': ['slug'],
+    },
+    requires_approval=True,
+)
+def archive_category_tool(*, slug: str) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, archive_category
+    try:
+        r = archive_category(slug=slug)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Archived category {r["slug"]}')
