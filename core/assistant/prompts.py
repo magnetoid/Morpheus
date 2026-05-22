@@ -61,20 +61,70 @@ LINDA_BASE_PROMPT = (
 )
 
 
-def build_system_prompt() -> str:
-    """Return the full system prompt with brand-voice injected if configured.
+def _inject_memories(base: str, *, limit: int = 20) -> str:
+    """Append up to `limit` top-relevance LindaMemory rows to the
+    system prompt. The model already supports relevance_score() with
+    a 60-day half-life so stale memories naturally drop off.
 
-    Brand voice (per-store name / audience / tone / guidelines from
-    ``ai_content`` plugin config) is *prepended* so Linda inherits the
-    merchant's personality on every turn. Falls back to the base prompt
-    when the plugin or config is absent.
+    Format is compact + LLM-friendly: a ``[MEMORY]`` section with
+    ``- scope.key: value`` lines. Memories are merchant-facing
+    truth ("uses Postmark for email", "runs Black Friday mid-Nov")
+    so they belong in the system prompt, not the user message log.
+
+    Defensive on every layer — table missing, plugin not migrated,
+    relevance_score crashing on a row — falls through to the base
+    prompt unchanged.
     """
     try:
+        from core.assistant.models import LindaMemory
+        rows = list(LindaMemory.objects.all().order_by('-updated_at')[: limit * 3])
+        if not rows:
+            return base
+        scored = []
+        for row in rows:
+            try:
+                score = row.relevance_score()
+            except Exception:  # noqa: BLE001
+                score = 0.0
+            scored.append((score, row))
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        top = [row for _score, row in scored[:limit]]
+        if not top:
+            return base
+        lines = ['[MEMORY] — things Linda knows about this store (most relevant first):']
+        for row in top:
+            # Compact one-liner. Hard-trim the value so a runaway long
+            # memory doesn't blow the context budget.
+            value = (row.value or '').strip().replace('\n', ' ')
+            if len(value) > 240:
+                value = value[:237] + '…'
+            lines.append(f'  - {row.scope}.{row.key}: {value}')
+        return '\n'.join(lines) + '\n\n' + base
+    except Exception as e:  # noqa: BLE001 — never block the LLM call
+        logger.debug('assistant: memory injection skipped: %s', e)
+        return base
+
+
+def build_system_prompt() -> str:
+    """Return the full system prompt with brand-voice + LindaMemory
+    injected when available.
+
+    Layering (top → bottom):
+      1. LindaMemory facts — surface-level "things Linda knows".
+      2. Brand voice — per-store name / audience / tone / guidelines
+         from ``ai_content`` plugin config.
+      3. LINDA_BASE_PROMPT — the hard-coded tool catalogue + style
+         rules. Always present even when plugins / memory are
+         absent.
+    """
+    prompt = LINDA_BASE_PROMPT
+    try:
         from plugins.installed.ai_content.services import with_brand_voice
-        return with_brand_voice(LINDA_BASE_PROMPT)
+        prompt = with_brand_voice(prompt)
     except Exception as e:  # noqa: BLE001 — prompt must always be available
         logger.debug('assistant: brand-voice injection skipped: %s', e)
-        return LINDA_BASE_PROMPT
+    prompt = _inject_memories(prompt)
+    return prompt
 
 
 # Backwards-compatible alias for any caller that still imports the constant.

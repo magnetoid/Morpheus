@@ -26,14 +26,18 @@ logger = logging.getLogger('morpheus.agent_core')
 
 
 class AgentCorePlugin(Plugin):
+    # Internal name kept stable — referenced in PluginConfig rows,
+    # migrations, scoped permissions. User-facing label + description
+    # describe what this plugin actually contributes to Morpheus.
     name = 'agent_core'
-    label = 'Agent Core'
+    label = 'Linda agent tools + sub-agents'
     version = '1.0.0'
     description = (
-        'Kernel agent layer: runtime, registry, persistent runs, streaming '
-        'chat, and four built-in agents (Concierge, Merchant Ops, Pricing, '
-        'Content Writer). Contributes a chat widget to the storefront and '
-        'a console + runs dashboard to the admin.'
+        'Tool catalogue Linda calls on — catalog reads + writes, order ops, '
+        'inventory, content drafting, analytics. Also: the kernel runtime '
+        'shared by sub-agents (Concierge, Merchant Ops, Pricing, Content '
+        'Writer). Linda herself lives in core.assistant (not a plugin); '
+        'this layer provides her capabilities.'
     )
     has_models = True
     requires = ['catalog', 'orders']

@@ -14,13 +14,18 @@ from morpheus import Plugin, SettingsPanel, events
 
 
 class AIAssistantPlugin(Plugin):
+    # Historical name kept stable (referenced everywhere as the
+    # provider-config store + plugin key); label clearly says what
+    # this plugin does NOT include: Linda lives in core.assistant.
     name = "ai_assistant"
-    label = "AI Signals (embeddings, search, pricing)"
+    label = "AI signals (embeddings, search, pricing)"
     version = "2.0.0"
     description = (
         "AI signals layer: product embeddings, semantic search, "
-        "recommendations, dynamic pricing. The agent runtime now lives in "
-        "core.agents + agent_core — see the Agents dashboard."
+        "recommendations, dynamic pricing, AI-providers configuration. "
+        "Linda (the merchant assistant) lives in core.assistant — she's "
+        "always available regardless of this plugin's state. This panel "
+        "is where you wire OpenAI / Anthropic / Packy / Grok / etc. keys."
     )
     has_models = True
     requires = ["catalog", "orders", "customers"]
