@@ -42,6 +42,98 @@ def refresh_product_embedding(self, product_id):
     upsert_product_embedding(product)
 
 
+@shared_task(bind=True, time_limit=600, soft_time_limit=540)
+def refresh_product_embeddings_bulk(self, product_ids):
+    """Compute embeddings for a list of products in a single task.
+
+    Use this when bulk-importing or re-embedding the whole catalog
+    after switching providers — sending 1000 individual
+    `refresh_product_embedding.delay()` calls floods the queue and
+    burns worker slots on overhead. This batches the work so the
+    Celery worker handles N products on one connection.
+
+    Idempotent: `upsert_product_embedding` skips products whose source
+    text hash already matches the stored embedding.
+
+    Args:
+        product_ids: list[str|UUID] — up to 200 ids per call. Split
+            larger sets across multiple invocations.
+    """
+    from plugins.installed.catalog.models import Product
+    from plugins.installed.ai_assistant.services.search import upsert_product_embedding
+
+    ids = list(product_ids or [])[:200]
+    if not ids:
+        return {'processed': 0, 'skipped': 0, 'errored': 0}
+
+    qs = Product.objects.select_related('category').filter(pk__in=ids)
+    processed = 0
+    errored = 0
+    for product in qs.iterator():
+        try:
+            upsert_product_embedding(product)
+            processed += 1
+        except Exception as e:  # noqa: BLE001 — one bad product mustn't stop the batch
+            errored += 1
+            logger.warning(
+                'bulk embed: product=%s failed: %s', product.pk, e, exc_info=True,
+            )
+    logger.info(
+        'bulk embed: processed=%d errored=%d (batch_size=%d)',
+        processed, errored, len(ids),
+    )
+    return {'processed': processed, 'skipped': len(ids) - processed - errored, 'errored': errored}
+
+
+@shared_task(bind=True, time_limit=120, soft_time_limit=90)
+def run_completion_task(self, task_id, prompt, system='', max_tokens=1000, temperature=0.6):
+    """Run an LLM completion off the request thread, write result to cache.
+
+    Pairs with `/api/llm-tasks/` polling endpoint (api/llm_tasks.py).
+    Always writes a final terminal status (done | failed) so the
+    poller doesn't hang on an abandoned task. TTL is 1 hour.
+    """
+    from django.core.cache import cache
+    key = f'llm-task:{task_id}'
+    try:
+        from plugins.installed.ai_assistant.services.llm import get_llm
+        gateway = get_llm()
+        text = gateway.complete(
+            prompt=prompt, system=system,
+            temperature=temperature, max_tokens=max_tokens,
+        )
+        cache.set(key, {'status': 'done', 'result': text or ''}, timeout=3600)
+    except Exception as e:  # noqa: BLE001 — any failure becomes a terminal error
+        logger.warning('run_completion_task %s failed: %s', task_id, e, exc_info=True)
+        cache.set(key, {'status': 'failed', 'error': str(e)[:500]}, timeout=3600)
+
+
+@shared_task
+def reembed_all_products(batch_size: int = 50):
+    """Queue a series of bulk-embed tasks covering every active
+    product. Use after switching embedding providers or when adopting
+    semantic search for the first time. Idempotent — re-running has
+    no effect on products whose source text didn't change.
+
+    Splits work into chunks of `batch_size` and dispatches each as its
+    own `refresh_product_embeddings_bulk` task so the queue stays fluid
+    and one slow chunk doesn't block the rest.
+    """
+    from plugins.installed.catalog.models import Product
+
+    ids = list(Product.objects.filter(status='active').values_list('id', flat=True))
+    if not ids:
+        return {'dispatched_chunks': 0, 'total_products': 0}
+    chunks = [ids[i:i + batch_size] for i in range(0, len(ids), batch_size)]
+    for chunk in chunks:
+        refresh_product_embeddings_bulk.delay([str(i) for i in chunk])
+    logger.info(
+        'reembed_all_products: dispatched %d chunk(s) covering %d product(s)',
+        len(chunks), len(ids),
+    )
+    return {'dispatched_chunks': len(chunks), 'total_products': len(ids)}
+
+
 @shared_task
 def pulse_daily_refresh():
     """Linda's Pulse — refresh proactive insight cards on the dashboard.

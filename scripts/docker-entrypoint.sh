@@ -76,7 +76,16 @@ case "$MODE" in
     # graceful-timeout=10 gives in-flight requests a chance to finish
     # during deploy cutover (previously 30s default, sometimes
     # truncated by Docker's SIGKILL).
-    exec gunicorn morph.wsgi:application \
+    # The app module is env-configurable so a deployment can swap
+    # WSGI for ASGI without editing this file:
+    #
+    #   GUNICORN_APP=morph.asgi:application \
+    #   GUNICORN_WORKER_CLASS=uvicorn.workers.UvicornWorker
+    #
+    # The default keeps the WSGI gthread combo that solved the
+    # ERR_CONNECTION_RESET problem; uvicorn becomes a drop-in upgrade
+    # once async ORM hot paths land (see docs/plans/concurrency-roadmap.md).
+    exec gunicorn "${GUNICORN_APP:-morph.wsgi:application}" \
         --bind "0.0.0.0:${PORT:-8000}" \
         --worker-class "${GUNICORN_WORKER_CLASS:-gthread}" \
         --workers "${GUNICORN_WORKERS:-4}" \
