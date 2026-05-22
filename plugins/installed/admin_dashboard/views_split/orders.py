@@ -9,6 +9,7 @@ from morpheus.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 
+from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
 from plugins.installed.admin_dashboard.forms import (
     AddressForm,
     CouponForm,
@@ -243,7 +244,7 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
         logger.warning('order_action %s on %s failed: %s', action, order_number, e)
         messages.error(request, f'Action failed: {e}')
 
-    return redirect('admin_dashboard:order_detail', order_number=order_number)
+    return ajax_or_redirect(request, 'admin_dashboard:order_detail', order_number=order_number)
 
 
 @staff_member_required

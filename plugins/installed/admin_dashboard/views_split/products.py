@@ -9,6 +9,8 @@ from morpheus.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 
+from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
+
 from plugins.installed.admin_dashboard.forms import (
     AddressForm,
     CouponForm,
@@ -119,7 +121,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             messages.success(request, 'Product saved.')
-            return redirect('admin_dashboard:product_edit', product_id=product.id)
+            return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
     else:
         form = ProductForm(instance=product)
     categories, vendors = _product_form_choices()
@@ -176,7 +178,7 @@ def variant_new(request: HttpRequest, product_id: str) -> HttpResponse:
                 product.product_type = 'variable'
                 product.save(update_fields=['product_type', 'updated_at'])
             messages.success(request, 'Variant added.')
-            return redirect('admin_dashboard:product_edit', product_id=product.id)
+            return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
     else:
         form = VariantForm(product=product)
     return render(request, 'admin_dashboard/variant_form.html', {
@@ -197,7 +199,7 @@ def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> Http
         if form.is_valid():
             form.save()
             messages.success(request, 'Variant saved.')
-            return redirect('admin_dashboard:product_edit', product_id=product.id)
+            return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
     else:
         form = VariantForm(instance=variant, product=product)
     return render(request, 'admin_dashboard/variant_form.html', {

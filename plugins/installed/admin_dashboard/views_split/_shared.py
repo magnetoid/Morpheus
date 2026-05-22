@@ -10,8 +10,43 @@ from typing import Any
 from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
 from morpheus.views import get_object_or_404, redirect, render
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.http import QueryDict
+from django.http import JsonResponse, QueryDict
 from django.utils import timezone
+
+
+def _is_ajax(request: HttpRequest) -> bool:
+    """True when the client opted into the AJAX response branch.
+
+    Forms marked with ``data-ajax`` in dashboard templates pass through
+    ``X-Requested-With: XMLHttpRequest`` so the view can return JSON
+    instead of a 302 redirect — keeps the page from doing a full reload
+    on save.
+    """
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+
+def ajax_or_redirect(
+    request: HttpRequest,
+    *redirect_args,
+    payload: dict | None = None,
+    **redirect_kwargs,
+) -> HttpResponse:
+    """If the request is an AJAX submit, return JSON ``{ok: true, ...}``.
+    Otherwise, fall through to Django's :func:`redirect`.
+
+    Lets every "save and bounce back" handler stay one line:
+
+        return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=p.id)
+
+    Pass ``payload={'id': str(obj.id)}`` to surface freshly-created
+    identifiers to the JS client.
+    """
+    if _is_ajax(request):
+        body = {'ok': True}
+        if payload:
+            body.update(payload)
+        return JsonResponse(body)
+    return redirect(*redirect_args, **redirect_kwargs)
 
 logger = logging.getLogger('morpheus.admin')
 

@@ -9,6 +9,7 @@ from morpheus.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 
+from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
 from plugins.installed.admin_dashboard.forms import (
     AddressForm,
     CouponForm,
@@ -166,7 +167,7 @@ def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             messages.success(request, 'Customer saved.')
-            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+            return ajax_or_redirect(request, 'admin_dashboard:customer_edit', customer_id=customer.id)
     else:
         form = CustomerForm(instance=customer)
     # Quick stats so the edit page also works as a customer profile.
@@ -228,7 +229,7 @@ def address_new(request: HttpRequest, customer_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             messages.success(request, 'Address added.')
-            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+            return ajax_or_redirect(request, 'admin_dashboard:customer_edit', customer_id=customer.id)
     else:
         form = AddressForm(customer=customer)
     return render(request, 'admin_dashboard/address_form.html', {
@@ -249,7 +250,7 @@ def address_edit(request: HttpRequest, customer_id: str, address_id: str) -> Htt
         if form.is_valid():
             form.save()
             messages.success(request, 'Address saved.')
-            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+            return ajax_or_redirect(request, 'admin_dashboard:customer_edit', customer_id=customer.id)
     else:
         form = AddressForm(instance=address, customer=customer)
     return render(request, 'admin_dashboard/address_form.html', {

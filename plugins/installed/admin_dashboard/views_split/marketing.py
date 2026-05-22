@@ -9,6 +9,7 @@ from morpheus.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 
+from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
 from plugins.installed.admin_dashboard.forms import (
     AddressForm,
     CouponForm,
@@ -64,7 +65,7 @@ def coupon_edit(request: HttpRequest, coupon_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             messages.success(request, 'Coupon saved.')
-            return redirect('admin_dashboard:coupon_edit', coupon_id=coupon.id)
+            return ajax_or_redirect(request, 'admin_dashboard:coupon_edit', coupon_id=coupon.id)
     else:
         form = CouponForm(instance=coupon)
     return render(request, 'admin_dashboard/coupon_form.html', {

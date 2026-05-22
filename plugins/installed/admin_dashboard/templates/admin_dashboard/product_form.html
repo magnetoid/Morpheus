@@ -45,7 +45,7 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-  <form method="post" id="product-form" class="space-y-4 lg:col-span-2" enctype="multipart/form-data" data-morph-dirty hx-boost="false">
+  <form method="post" id="product-form" class="space-y-4 lg:col-span-2" enctype="multipart/form-data" data-morph-dirty hx-boost="false" data-ajax>
     {% csrf_token %}
 
     <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">

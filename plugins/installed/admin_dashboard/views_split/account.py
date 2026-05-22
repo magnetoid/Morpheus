@@ -11,6 +11,7 @@ from django.contrib.auth.views import LoginView  # noqa: F401 — re-exported fo
 from django.shortcuts import redirect, render
 
 from morpheus.views import HttpRequest, HttpResponse, staff_member_required
+from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
 
 
 @staff_member_required
@@ -29,7 +30,7 @@ def my_account(request: HttpRequest) -> HttpResponse:
             pwd_form.save()
             update_session_auth_hash(request, pwd_form.user)
             messages.success(request, 'Password updated.')
-            return redirect('/dashboard/me/')
+            return ajax_or_redirect(request, '/dashboard/me/')
 
     recent_logins = []
     try:
