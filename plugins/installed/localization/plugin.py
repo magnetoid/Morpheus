@@ -48,21 +48,27 @@ class LocalizationPlugin(Plugin):
         )
 
     def contribute_dashboard_pages(self) -> list:
+        # One combined entry in the *settings* sidebar — translations +
+        # languages are the same admin concern (the localization
+        # control room). The Languages URL still works directly; we
+        # just don't list it separately in the rail.
         return [
             DashboardPage(
-                label='Translations',
+                label='Translations & languages',
                 slug='translations',
                 view='plugins.installed.localization.views.translations_index',
                 icon='languages',
-                section='apps',
+                section='settings',
                 order=20,
+                nav='settings',
             ),
             DashboardPage(
                 label='Languages',
                 slug='languages',
                 view='plugins.installed.localization.views.languages_index',
                 icon='globe',
-                section='apps',
+                section='settings',
                 order=21,
+                nav='hidden',
             ),
         ]

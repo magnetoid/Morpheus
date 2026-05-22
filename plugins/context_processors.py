@@ -118,8 +118,21 @@ def plugin_context(request):
     pages = plugin_registry.dashboard_pages()
 
     # Split by sidebar destination.
-    main_pages = [p for p in pages if getattr(p, 'nav', 'main') not in ('settings', 'hidden')]
-    settings_pages = [p for p in pages if getattr(p, 'nav', 'main') == 'settings']
+    # The 'apps' section is the catch-all bucket for plugins that
+    # haven't categorised themselves. Render the bucket in the
+    # *settings* sidebar (where the explicit "Apps" link already
+    # lives) rather than at the bottom of the main rail — keeps the
+    # daily-use sidebar focused.
+    main_pages = [
+        p for p in pages
+        if getattr(p, 'nav', 'main') not in ('settings', 'hidden')
+        and getattr(p, 'section', '') != 'apps'
+    ]
+    settings_pages = [
+        p for p in pages
+        if getattr(p, 'nav', 'main') == 'settings'
+        or (getattr(p, 'nav', 'main') == 'main' and getattr(p, 'section', '') == 'apps')
+    ]
 
     # Shopify-style settings categories — drives the settings sidebar.
     # Only show categories that actually have at least one panel inside
