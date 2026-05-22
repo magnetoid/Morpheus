@@ -417,6 +417,7 @@ def product_detail(request, slug):
 
     return render(request, 'storefront/product_detail.html', {
         'product': product,
+        'images': images,          # full list (used by the PDP hero slider)
         'hero_image': hero_image,
         'primary_image': primary_image,
         'primary_images': primary_images,
