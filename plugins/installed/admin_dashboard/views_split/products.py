@@ -300,6 +300,40 @@ def image_delete(request: HttpRequest, product_id: str, image_id: str) -> HttpRe
 
 
 @staff_member_required
+def image_reorder(request: HttpRequest, product_id: str) -> HttpResponse:
+    """Persist new sort_order for a product's images.
+
+    POST body: ``order=<image_id_1>,<image_id_2>,...`` — comma-joined
+    list of image UUIDs in their new visual order. Indices map 1:1
+    to ``sort_order`` so slot 0 → sort_order 0, slot 1 → sort_order 1.
+
+    AJAX-only via the slider grid drag handler in product_form.html.
+    Returns JSON ``{"ok": true, "count": N}``.
+    """
+    from django.http import JsonResponse
+    from plugins.installed.catalog.models import ProductImage
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+    product = _get_product(product_id)
+    raw = (request.POST.get('order') or '').strip()
+    ids = [s.strip() for s in raw.split(',') if s.strip()]
+    if not ids:
+        return JsonResponse({'ok': False, 'error': 'no ids'}, status=400)
+    # Update in a single round-trip per image; the set is small (≤ 15).
+    existing = {str(i.pk): i for i in ProductImage.objects.filter(product=product, pk__in=ids)}
+    updated = 0
+    for idx, image_id in enumerate(ids):
+        img = existing.get(image_id)
+        if img is None:
+            continue
+        if img.sort_order != idx:
+            img.sort_order = idx
+            img.save(update_fields=['sort_order'])
+            updated += 1
+    return JsonResponse({'ok': True, 'count': updated})
+
+
+@staff_member_required
 def image_set_primary(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductImage
     product = _get_product(product_id)

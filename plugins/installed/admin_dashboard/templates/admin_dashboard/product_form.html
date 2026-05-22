@@ -724,13 +724,13 @@
   </div>
 
   <div class="card card-padded">
-    <h2 class="font-semibold text-sm">Slider images</h2>
-    <p class="text-xs text-[color:var(--text-muted)]">Additional images shown above the long description on the storefront. The main image is <strong>not</strong> in the slider. Drop multiple files to upload in one batch.</p>
+    <h2 class="font-semibold text-sm">Slider images <span class="text-xs font-normal text-[color:var(--text-muted)]">({{ images|length }}/15 used)</span></h2>
+    <p class="text-xs text-[color:var(--text-muted)]">Up to 15 portrait images per product. <strong>Drag to reorder</strong> — slot 1 is the first slide on the storefront. Drop multiple files to upload in one batch.</p>
 
     {% with slider_count=0 %}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3" data-image-grid data-reorder-url="{% url 'admin_dashboard:image_reorder' product_id=product.id %}">
       {% for img in images %}{% if not img.is_primary %}
-      <div class="card overflow-hidden">
+      <div class="card overflow-hidden" draggable="true" data-image-id="{{ img.id }}">
         <div style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden;">
           {% if img.image %}
           <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" style="width:100%; height:100%; object-fit:cover;">
@@ -873,6 +873,58 @@
       // dropzones, no separate "alt text then upload" step.
       wireDropzone('img-dropzone-front', 'img-upload-front', 'dz-filename-front', true);
       wireDropzone('img-dropzone-back',  'img-upload-back',  'dz-filename-back',  true);
+
+      // ── Drag-to-reorder for the slider images grid ───────────────────
+      // Phase 1 of docs/plans/product-slider.md — vanilla HTML5 DnD,
+      // no Sortable.js dep. The grid is `[data-image-grid]`; each
+      // tile is `[data-image-id]`. On drop we POST the new order to
+      // the reorder endpoint and rely on the per-tile sort_order
+      // server-side response for the next page load.
+      (function wireImageReorder() {
+        const grid = document.querySelector('[data-image-grid]');
+        if (!grid) return;
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value
+                   || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        let dragged = null;
+
+        grid.addEventListener('dragstart', (e) => {
+          const tile = e.target.closest('[data-image-id]');
+          if (!tile) return;
+          dragged = tile;
+          tile.style.opacity = '0.4';
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        grid.addEventListener('dragend', () => {
+          if (dragged) { dragged.style.opacity = ''; dragged = null; }
+        });
+        grid.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const tile = e.target.closest('[data-image-id]');
+          if (!tile || tile === dragged) return;
+          const rect = tile.getBoundingClientRect();
+          const before = (e.clientY - rect.top) < (rect.height / 2);
+          grid.insertBefore(dragged, before ? tile : tile.nextSibling);
+        });
+        grid.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          const ids = Array.from(grid.querySelectorAll('[data-image-id]'))
+            .map(el => el.dataset.imageId);
+          try {
+            await fetch(grid.dataset.reorderUrl, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: 'order=' + encodeURIComponent(ids.join(',')),
+              credentials: 'same-origin',
+            });
+          } catch (err) {
+            console.error('image reorder failed', err);
+          }
+        });
+      })();
     </script>
   </div>
 

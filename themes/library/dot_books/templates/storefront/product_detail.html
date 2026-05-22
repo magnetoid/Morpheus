@@ -28,10 +28,12 @@
     </p>
 
     <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
-      <!-- Cover stack — product_gallery plugin carousel. -->
+      <!-- Cover hero — PDP slider (Phase 1 of docs/plans/product-slider.md).
+           Renders every ProductImage (up to 15) as a horizontal slider with
+           arrows, thumbnail strip, and keyboard nav. CSS scroll-snap is the
+           no-JS baseline; the small inline script enhances. -->
       <div>
-        {% comment %}Cover column: ONLY the EXPLICITLY-marked primary image (no fallback to slider images). Non-primary images render as the square slider StorefrontBlock above the long description.{% endcomment %}
-        {% include "product_gallery/_main_cover.html" with product=product primary_image=primary_image alt=product.name slug=product.slug %}
+        {% include "product_gallery/_pdp_hero_slider.html" with product=product alt=product.name %}
       </div>
 
       <!-- Details -->

@@ -1,0 +1,238 @@
+{% load seo %}{% comment %}
+PDP hero slider — Phase 1 of the product-slider spec
+(docs/plans/product-slider.md).
+
+Renders every ProductImage (capped at 15) as a horizontal slider with
+arrows, thumbnail strip, and keyboard navigation. CSS scroll-snap
+provides the no-JS baseline; arrow/keyboard/dot behaviour is layered
+on with ~80 lines of JS.
+
+Slot context:
+  product — Product instance (must expose .images.all)
+  alt     — fallback alt text (usually product.name)
+
+Backward compatible with single-image products:
+  • 0 images   → placeholder
+  • 1 image    → no arrows, no thumbnails, just the single slide
+  • 2 images   → arrows + 2 dots, thumbnails optional
+  • 3+ images  → full slider experience
+{% endcomment %}
+
+{% with images=product.images.all|slice:":15" as_slides=1 %}
+
+<div class="pdp-hero" data-pdp-hero
+     aria-roledescription="carousel"
+     aria-label="Images of {{ product.name }}">
+
+  {% if images %}
+  <div class="pdp-hero__track" tabindex="0" data-slider-track
+       aria-live="polite">
+    {% for img in images %}
+    <figure class="pdp-hero__slide" data-index="{{ forloop.counter0 }}"
+            aria-label="Slide {{ forloop.counter }} of {{ images|length }}"
+            style="view-transition-name: cover-{{ product.slug }}{% if forloop.first %}{% else %}-{{ forloop.counter0 }}{% endif %};">
+      {% if img.image %}
+        {% seo_responsive_image img.image alt=img.alt_text|default:alt|default:product.name widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 92vw" %}
+      {% endif %}
+    </figure>
+    {% endfor %}
+  </div>
+
+  {% if images|length > 1 %}
+  <button type="button" class="pdp-hero__arrow pdp-hero__arrow--prev"
+          data-slider-prev aria-label="Previous slide">‹</button>
+  <button type="button" class="pdp-hero__arrow pdp-hero__arrow--next"
+          data-slider-next aria-label="Next slide">›</button>
+
+  <div class="pdp-hero__thumbs" role="tablist" aria-label="Choose slide">
+    {% for img in images %}
+    <button type="button" class="pdp-hero__thumb" role="tab"
+            data-slider-thumb="{{ forloop.counter0 }}"
+            aria-label="Slide {{ forloop.counter }}"
+            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+      {% if img.image %}
+        <img src="{{ img.image.url }}" alt="" loading="lazy">
+      {% endif %}
+    </button>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="pdp-hero__placeholder">
+    <span>No image yet</span>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .pdp-hero {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .pdp-hero__track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    gap: 0;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    border-radius: 8px;
+    background: var(--paper-2, #f4f1ea);
+    outline: none;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;       /* Firefox */
+  }
+  .pdp-hero__track::-webkit-scrollbar { display: none; }
+  .pdp-hero__slide {
+    aspect-ratio: 2 / 3;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    margin: 0;
+    overflow: hidden;
+    box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);
+    border-radius: 8px;
+    background: var(--paper-2, #f4f1ea);
+  }
+  .pdp-hero__slide picture,
+  .pdp-hero__slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pdp-hero__arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(14,14,14,0.55);
+    color: #fff;
+    border: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background 120ms ease, transform 120ms ease;
+    z-index: 2;
+  }
+  .pdp-hero__arrow:hover  { background: rgba(14,14,14,0.8); transform: translateY(-50%) scale(1.05); }
+  .pdp-hero__arrow:focus  { outline: 2px solid #fff; outline-offset: 2px; }
+  .pdp-hero__arrow--prev  { left: -1.25rem; }
+  .pdp-hero__arrow--next  { right: -1.25rem; }
+  @media (max-width: 768px) {
+    .pdp-hero__arrow--prev { left: .5rem; }
+    .pdp-hero__arrow--next { right: .5rem; }
+  }
+  .pdp-hero__arrow[aria-disabled="true"] { opacity: .35; pointer-events: none; }
+
+  .pdp-hero__thumbs {
+    display: flex;
+    gap: .5rem;
+    overflow-x: auto;
+    margin-top: 1rem;
+    padding: .25rem 0;
+    scrollbar-width: thin;
+  }
+  .pdp-hero__thumb {
+    flex: 0 0 auto;
+    width: 56px;
+    aspect-ratio: 2 / 3;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background: var(--paper-2, #f4f1ea);
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+    transition: border-color 120ms ease, transform 120ms ease;
+  }
+  .pdp-hero__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pdp-hero__thumb[aria-selected="true"] {
+    border-color: var(--accent, #c5694e);
+  }
+  .pdp-hero__thumb:hover { transform: translateY(-1px); }
+  .pdp-hero__thumb:focus { outline: 2px solid var(--accent, #c5694e); outline-offset: 2px; }
+
+  .pdp-hero__placeholder {
+    aspect-ratio: 2 / 3;
+    max-width: 480px;
+    background: var(--paper-2, #f4f1ea);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: var(--muted, #8a8a85);
+    font-style: italic;
+  }
+</style>
+
+<script>
+(() => {
+  document.querySelectorAll('[data-pdp-hero]').forEach((root) => {
+    if (root.dataset._heroBound === '1') return;
+    root.dataset._heroBound = '1';
+
+    const track = root.querySelector('[data-slider-track]');
+    const slides = track ? Array.from(track.children) : [];
+    const prev = root.querySelector('[data-slider-prev]');
+    const next = root.querySelector('[data-slider-next]');
+    const thumbs = Array.from(root.querySelectorAll('[data-slider-thumb]'));
+    if (!track || slides.length <= 1) return;
+
+    let current = 0;
+
+    const slideTo = (i) => {
+      if (i < 0) i = 0;
+      if (i >= slides.length) i = slides.length - 1;
+      current = i;
+      slides[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      // Update aria + arrow disabled state.
+      thumbs.forEach((t, idx) => t.setAttribute('aria-selected', String(idx === i)));
+      if (prev) prev.setAttribute('aria-disabled', String(i === 0));
+      if (next) next.setAttribute('aria-disabled', String(i === slides.length - 1));
+    };
+
+    prev?.addEventListener('click', () => slideTo(current - 1));
+    next?.addEventListener('click', () => slideTo(current + 1));
+    thumbs.forEach((t, i) => t.addEventListener('click', () => slideTo(i)));
+
+    // Keyboard support — arrow keys when the track is focused.
+    track.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); slideTo(current - 1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); slideTo(current + 1); }
+      if (e.key === 'Home')       { e.preventDefault(); slideTo(0); }
+      if (e.key === 'End')        { e.preventDefault(); slideTo(slides.length - 1); }
+    });
+
+    // Sync `current` when the user manually scrolls (touch swipe / mouse drag).
+    let scrollTimer;
+    track.addEventListener('scroll', () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const slideWidth = track.clientWidth;
+        const i = Math.round(track.scrollLeft / slideWidth);
+        if (i !== current && i >= 0 && i < slides.length) {
+          current = i;
+          thumbs.forEach((t, idx) => t.setAttribute('aria-selected', String(idx === i)));
+          if (prev) prev.setAttribute('aria-disabled', String(i === 0));
+          if (next) next.setAttribute('aria-disabled', String(i === slides.length - 1));
+        }
+      }, 80);
+    }, { passive: true });
+
+    // Initial state.
+    slideTo(0);
+  });
+})();
+</script>
+
+{% endwith %}
