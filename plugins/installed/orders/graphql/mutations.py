@@ -291,6 +291,150 @@ class OrdersMutationExtension:
             return OrderPayload(errors=[ErrorType(code='CHECKOUT_FAILED', message=str(e)[:300])])
 
 
+# ── Staff-only order admin mutations ──────────────────────────────────────────
+
+
+@strawberry.type
+class OrderAdminResult:
+    order_number: str
+    status: str
+    payment_status: str
+    tracking_number: str
+    error: str
+
+
+def _is_staff(info) -> bool:
+    request = getattr(info.context, 'request', None) or (
+        info.context.get('request') if isinstance(info.context, dict) else None
+    )
+    user = getattr(request, 'user', None) if request else None
+    return bool(user and getattr(user, 'is_staff', False))
+
+
+def _serialize_order_admin(order, *, error: str = '') -> OrderAdminResult:
+    return OrderAdminResult(
+        order_number=order.order_number, status=order.status,
+        payment_status=order.payment_status,
+        tracking_number=order.tracking_number or '', error=error,
+    )
+
+
+def _err_admin(msg: str) -> OrderAdminResult:
+    return OrderAdminResult(
+        order_number='', status='', payment_status='',
+        tracking_number='', error=msg,
+    )
+
+
+@strawberry.input
+class MarkFulfilledInput:
+    order_number: str
+
+
+@strawberry.input
+class MarkShippedInput:
+    order_number: str
+    tracking_number: str = ''
+
+
+@strawberry.input
+class CancelOrderInput:
+    order_number: str
+    reason: str = ''
+
+
+@strawberry.input
+class MarkRefundedInput:
+    order_number: str
+    reason: str = ''
+
+
+@strawberry.type
+class OrdersAdminMutationExtension:
+    """Staff-only order admin mutations — fulfill / ship / cancel /
+    mark refunded. Lives in a separate extension class so the public
+    cart/checkout mutations stay obviously scoped to anonymous use.
+    """
+
+    @strawberry.mutation(
+        description='Mark a paid/processing order as fulfilled. Staff-only.',
+    )
+    def mark_order_fulfilled(
+        self, info: strawberry.Info, input: MarkFulfilledInput,
+    ) -> OrderAdminResult:
+        if not _is_staff(info):
+            return _err_admin('Forbidden — staff only.')
+        from django_fsm import TransitionNotAllowed
+        from plugins.installed.orders.models import Order
+        order = Order.objects.filter(order_number=input.order_number).first()
+        if order is None:
+            return _err_admin(f'order {input.order_number!r} not found')
+        try:
+            order.fulfill()
+            order.save()
+        except TransitionNotAllowed as e:
+            return _err_admin(f'cannot fulfill from status={order.status}: {e}')
+        return _serialize_order_admin(order)
+
+    @strawberry.mutation(
+        description='Mark a fulfilled order as shipped (optionally with tracking number). Staff-only.',
+    )
+    def mark_order_shipped(
+        self, info: strawberry.Info, input: MarkShippedInput,
+    ) -> OrderAdminResult:
+        if not _is_staff(info):
+            return _err_admin('Forbidden — staff only.')
+        from django_fsm import TransitionNotAllowed
+        from plugins.installed.orders.models import Order
+        order = Order.objects.filter(order_number=input.order_number).first()
+        if order is None:
+            return _err_admin(f'order {input.order_number!r} not found')
+        try:
+            order.ship(tracking_number=input.tracking_number)
+            order.save()
+        except TransitionNotAllowed as e:
+            return _err_admin(f'cannot ship from status={order.status}: {e}')
+        return _serialize_order_admin(order)
+
+    @strawberry.mutation(description='Cancel an order from any status. Staff-only.')
+    def cancel_order(
+        self, info: strawberry.Info, input: CancelOrderInput,
+    ) -> OrderAdminResult:
+        if not _is_staff(info):
+            return _err_admin('Forbidden — staff only.')
+        from django_fsm import TransitionNotAllowed
+        from plugins.installed.orders.models import Order
+        order = Order.objects.filter(order_number=input.order_number).first()
+        if order is None:
+            return _err_admin(f'order {input.order_number!r} not found')
+        try:
+            order.cancel(reason=input.reason)
+            order.save()
+        except TransitionNotAllowed as e:
+            return _err_admin(f'cannot cancel from status={order.status}: {e}')
+        return _serialize_order_admin(order)
+
+    @strawberry.mutation(
+        description='Flag an order as refunded — manual, for refunds processed outside Morpheus. Staff-only.',
+    )
+    def mark_order_refunded(
+        self, info: strawberry.Info, input: MarkRefundedInput,
+    ) -> OrderAdminResult:
+        if not _is_staff(info):
+            return _err_admin('Forbidden — staff only.')
+        from plugins.installed.orders.models import Order
+        order = Order.objects.filter(order_number=input.order_number).first()
+        if order is None:
+            return _err_admin(f'order {input.order_number!r} not found')
+        # Bypass FSM protection — manual flag, not a real transition.
+        Order.objects.filter(pk=order.pk).update(
+            status='refunded', payment_status='refunded',
+        )
+        order.refresh_from_db()
+        order.log_event('ORDER_REFUNDED', message=input.reason)
+        return _serialize_order_admin(order)
+
+
 def _address_dict(addr: AddressInput) -> dict:
     return {
         'first_name': addr.first_name or '',

@@ -226,3 +226,283 @@ def publish_digital_product(
         'name': product.name,
         'url': f'/products/{product.slug}/',
     }
+
+
+# ─── update / archive / restore / delete ──────────────────────────────────────
+
+
+_PRODUCT_SCALAR_FIELDS = {
+    # str-like
+    'name', 'sku', 'short_description', 'description',
+    'meta_title', 'meta_description', 'focus_keyword', 'canonical_url',
+    'og_title', 'og_description', 'twitter_title', 'twitter_description',
+    'twitter_card', 'weight_unit',
+    # bool
+    'is_featured', 'is_taxable', 'track_inventory', 'requires_shipping',
+    'noindex', 'nofollow',
+    # numeric (handled in coercion)
+    'weight',
+}
+
+
+def _serialize_product(p) -> dict:
+    return {
+        'id': str(p.id),
+        'slug': p.slug,
+        'sku': p.sku,
+        'name': p.name,
+        'status': p.status,
+        'product_type': p.product_type,
+        'price_amount': str(getattr(p.price, 'amount', '')) if p.price else '',
+        'price_currency': str(getattr(p.price, 'currency', '')) if p.price else '',
+        'url': f'/products/{p.slug}/',
+    }
+
+
+@transaction.atomic
+def update_product(*, slug: str, **fields) -> dict[str, str]:
+    """Update an existing product by slug. Only fields present in `fields`
+    are touched. Unknown fields raise PublishError to catch typos early.
+
+    Recognised field names:
+      • Scalar text/bool/numeric:
+        name, sku, short_description, description, meta_title,
+        meta_description, focus_keyword, canonical_url,
+        og_title, og_description, twitter_title, twitter_description,
+        twitter_card, weight, weight_unit, is_featured, is_taxable,
+        track_inventory, requires_shipping, noindex, nofollow.
+      • Status: status ('draft'|'active'|'archived'), product_type
+        ('simple'|'variable'|'digital'|'bundle').
+      • Pricing: price_amount + optional price_currency,
+        compare_at_amount (None to clear), cost_amount (None to clear).
+      • Category: category_slug ('' or null clears).
+      • SEO JSON: structured_data (dict).
+
+    Returns the serialised product. Raises PublishError on any caller-
+    fixable problem (unknown slug, invalid status, malformed price).
+    """
+    from djmoney.money import Money
+    from plugins.installed.catalog.models import Category, Product
+
+    product = Product.objects.filter(slug=slug).first()
+    if product is None:
+        raise PublishError(f'product slug {slug!r} not found')
+
+    unknown = set(fields.keys()) - _PRODUCT_SCALAR_FIELDS - {
+        'status', 'product_type', 'price_amount', 'price_currency',
+        'compare_at_amount', 'cost_amount', 'category_slug',
+        'structured_data',
+    }
+    if unknown:
+        raise PublishError(f'unknown field(s): {sorted(unknown)}')
+
+    if 'status' in fields:
+        status = fields['status']
+        if status not in {'draft', 'active', 'archived'}:
+            raise PublishError("status must be 'draft'|'active'|'archived'")
+        product.status = status
+
+    if 'product_type' in fields:
+        pt = fields['product_type']
+        if pt not in {'simple', 'variable', 'digital', 'bundle'}:
+            raise PublishError("product_type must be 'simple'|'variable'|'digital'|'bundle'")
+        product.product_type = pt
+
+    if 'price_amount' in fields:
+        amt = _coerce_price(fields['price_amount'])
+        currency = (fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))).upper()
+        product.price = Money(amt, currency)
+
+    if 'compare_at_amount' in fields:
+        v = fields['compare_at_amount']
+        if v in (None, '', 'null'):
+            product.compare_at_price = None
+        else:
+            product.compare_at_price = Money(
+                _coerce_price(v),
+                (fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))).upper(),
+            )
+
+    if 'cost_amount' in fields:
+        v = fields['cost_amount']
+        if v in (None, '', 'null'):
+            product.cost_price = None
+        else:
+            product.cost_price = Money(
+                _coerce_price(v),
+                (fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))).upper(),
+            )
+
+    if 'category_slug' in fields:
+        cs = (fields['category_slug'] or '').strip()
+        if not cs:
+            product.category = None
+        else:
+            cat = Category.objects.filter(slug=cs).first()
+            if cat is None:
+                raise PublishError(f'category_slug {cs!r} not found')
+            product.category = cat
+
+    if 'structured_data' in fields:
+        sd = fields['structured_data']
+        if sd is None:
+            product.structured_data = {}
+        elif isinstance(sd, dict):
+            product.structured_data = sd
+        else:
+            raise PublishError('structured_data must be a JSON object')
+
+    # Scalar copy-over. Booleans coerce to bool; weight to Decimal.
+    for k in _PRODUCT_SCALAR_FIELDS:
+        if k not in fields:
+            continue
+        v = fields[k]
+        if k == 'weight':
+            if v in (None, '', 'null'):
+                v = None
+            else:
+                try:
+                    v = Decimal(str(v))
+                except (InvalidOperation, TypeError, ValueError):
+                    raise PublishError('weight must be a number') from None
+        elif k in {
+            'is_featured', 'is_taxable', 'track_inventory',
+            'requires_shipping', 'noindex', 'nofollow',
+        }:
+            v = bool(v) if isinstance(v, bool) else str(v).lower() in {'1', 'true', 'yes', 'on'}
+        else:
+            v = '' if v is None else str(v)
+        setattr(product, k, v)
+
+    product.save()
+    logger.info('catalog.update_product slug=%s fields=%s', product.slug, sorted(fields.keys()))
+    return _serialize_product(product)
+
+
+@transaction.atomic
+def archive_product(*, slug: str) -> dict[str, str]:
+    from plugins.installed.catalog.models import Product
+    product = Product.objects.filter(slug=slug).first()
+    if product is None:
+        raise PublishError(f'product slug {slug!r} not found')
+    product.status = 'archived'
+    product.save(update_fields=['status', 'updated_at'])
+    return _serialize_product(product)
+
+
+@transaction.atomic
+def restore_product(*, slug: str, status: str = 'active') -> dict[str, str]:
+    if status not in {'draft', 'active'}:
+        raise PublishError("status must be 'draft' or 'active'")
+    from plugins.installed.catalog.models import Product
+    product = Product.objects.filter(slug=slug).first()
+    if product is None:
+        raise PublishError(f'product slug {slug!r} not found')
+    product.status = status
+    product.save(update_fields=['status', 'updated_at'])
+    return _serialize_product(product)
+
+
+@transaction.atomic
+def delete_product(*, slug: str) -> dict[str, str]:
+    """Hard-delete a product. Use archive_product unless you really need
+    the row gone — analytics + audit lose history on delete."""
+    from plugins.installed.catalog.models import Product
+    product = Product.objects.filter(slug=slug).first()
+    if product is None:
+        raise PublishError(f'product slug {slug!r} not found')
+    out = _serialize_product(product)
+    product.delete()
+    return out
+
+
+# ─── categories ───────────────────────────────────────────────────────────────
+
+
+def _serialize_category(c) -> dict:
+    return {
+        'id': str(c.id),
+        'slug': c.slug,
+        'name': c.name,
+        'parent_slug': c.parent.slug if c.parent_id else '',
+    }
+
+
+@transaction.atomic
+def create_category(
+    *, name: str, slug: str = '', parent_slug: str = '', description: str = '',
+) -> dict[str, str]:
+    from plugins.installed.catalog.models import Category
+
+    name = (name or '').strip()
+    if not name:
+        raise PublishError('name is required')
+
+    parent = None
+    if parent_slug:
+        parent = Category.objects.filter(slug=parent_slug).first()
+        if parent is None:
+            raise PublishError(f'parent_slug {parent_slug!r} not found')
+
+    chosen = (slug or '').strip() or slugify(name)
+    if Category.objects.filter(slug=chosen).exists():
+        raise PublishError(f'slug {chosen!r} already taken')
+
+    cat = Category.objects.create(
+        name=name, slug=chosen, parent=parent,
+        description=(description or '').strip(),
+    )
+    logger.info('catalog.create_category slug=%s', cat.slug)
+    return _serialize_category(cat)
+
+
+@transaction.atomic
+def update_category(
+    *, slug: str, name: str = '', new_slug: str = '',
+    parent_slug: str | None = None, description: str | None = None,
+) -> dict[str, str]:
+    from plugins.installed.catalog.models import Category
+
+    cat = Category.objects.filter(slug=slug).first()
+    if cat is None:
+        raise PublishError(f'category slug {slug!r} not found')
+
+    if name:
+        cat.name = name.strip()
+    if new_slug:
+        new_slug = new_slug.strip()
+        if new_slug != cat.slug and Category.objects.filter(slug=new_slug).exists():
+            raise PublishError(f'new_slug {new_slug!r} already taken')
+        cat.slug = new_slug
+    if parent_slug is not None:
+        if not parent_slug:
+            cat.parent = None
+        else:
+            parent = Category.objects.filter(slug=parent_slug).first()
+            if parent is None:
+                raise PublishError(f'parent_slug {parent_slug!r} not found')
+            if parent.pk == cat.pk:
+                raise PublishError('a category cannot be its own parent')
+            cat.parent = parent
+    if description is not None:
+        cat.description = description.strip()
+
+    cat.save()
+    return _serialize_category(cat)
+
+
+@transaction.atomic
+def archive_category(*, slug: str) -> dict[str, str]:
+    """Soft-delete: detach products + remove the category row.
+    Category model has no `status` field so we treat archive as delete."""
+    from plugins.installed.catalog.models import Category
+
+    cat = Category.objects.filter(slug=slug).first()
+    if cat is None:
+        raise PublishError(f'category slug {slug!r} not found')
+    out = _serialize_category(cat)
+    # Detach products so they don't get cascade-killed (Category has
+    # SET_NULL on Product.category already; this is defensive).
+    cat.products.update(category=None)
+    cat.delete()
+    return out
