@@ -61,11 +61,21 @@ def assistant_page(request):
         "Summarise this week vs last week",
     ]
 
+    # Tool-palette modes shown as chips at the top of the page. The
+    # JS picks one (default 'general'), threads it into every stream
+    # POST, and Linda's tool catalogue is filtered server-side.
+    from core.assistant.modes import MODES, DEFAULT_MODE
     return render(request, 'assistant/page.html', {
         # Intentionally empty — the redesigned page starts clean.
         'history': [],
         'memories': memories,
         'starters': starters,
+        'assistant_modes': [
+            {'slug': m.slug, 'label': m.label,
+             'description': m.description, 'icon': m.icon}
+            for m in MODES
+        ],
+        'default_mode': DEFAULT_MODE,
         'active_nav': 'assistant',
     })
 
@@ -99,6 +109,10 @@ def assistant_invoke(request):
                 # the system prompt prefix.
                 'page_url': (body.get('page_url') or '')[:512],
                 'page_title': (body.get('page_title') or '')[:200],
+                # Mode picker — selects which subset of tools Linda
+                # is allowed to dispatch this turn (core/assistant/
+                # modes.py). Falls back to "general" (wildcard).
+                'mode': (body.get('mode') or '')[:32],
             },
         )
     except Exception as e:  # noqa: BLE001 — last-resort safety net
@@ -149,6 +163,7 @@ def assistant_stream(request):
 
     page_url = (body.get('page_url') or '')[:512]
     page_title = (body.get('page_title') or '')[:200]
+    mode = (body.get('mode') or '')[:32]
 
     def _event_stream():
         # Outer try: a crash anywhere should still close the stream cleanly.
@@ -164,6 +179,7 @@ def assistant_stream(request):
                     # about "this product / this order / this page".
                     'page_url': page_url,
                     'page_title': page_title,
+                    'mode': mode,
                 },
             ):
                 # Final/error events carry an AssistantRunResult which isn't

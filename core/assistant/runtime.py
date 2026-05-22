@@ -252,8 +252,23 @@ class Assistant:
         )
 
         msgs = _to_llm_messages(history, message, context=context)
-        tools = self.tools
+        # Tool-palette scoping (core/assistant/modes.py). The merchant
+        # picks a mode per conversation from the chat header chip; it
+        # arrives in `context['mode']`. Filter Linda's tool catalogue
+        # by the mode's scope whitelist BEFORE passing it to the LLM,
+        # so she can't pick a refund tool during a "sales" convo.
+        # Unknown / missing mode → general (wildcard) — full access.
+        from core.assistant.modes import filter_tools_by_mode, get_mode
+        mode_slug = ''
+        if context and isinstance(context, dict):
+            mode_slug = str(context.get('mode') or '').strip().lower()
+        active_mode = get_mode(mode_slug)
+        tools = filter_tools_by_mode(self.tools, mode_slug)
         tools_by_name = {t.name: t for t in tools}
+        logger.info(
+            'assistant: mode=%s tool_count=%d/%d conversation=%s',
+            active_mode.slug, len(tools), len(self.tools), conversation_key,
+        )
 
         prompt_tokens = 0
         completion_tokens = 0
