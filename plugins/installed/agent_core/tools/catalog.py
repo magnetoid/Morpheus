@@ -608,6 +608,87 @@ def update_category_tool(
 
 
 @tool(
+    name='catalog.create_variant',
+    description=(
+        'Create a new variant on an existing product. Required: '
+        'product_slug, name, sku. Variant type controls fulfillment: '
+        '"physical" ships, "digital" delivers a file, "virtual" is a '
+        'service / gift card / booking (no shipment).'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'product_slug': {'type': 'string'},
+            'name': {'type': 'string', 'description': 'Human label, e.g. "Paperback" / "PDF" / "Audiobook MP3".'},
+            'sku': {'type': 'string'},
+            'price_amount': {'type': 'string'},
+            'price_currency': {'type': 'string'},
+            'compare_at_amount': {'type': 'string'},
+            'variant_type': {'type': 'string', 'enum': ['physical', 'digital', 'virtual'], 'default': 'physical'},
+            'requires_shipping': {'type': 'boolean', 'description': 'Auto-defaults from variant_type when omitted.'},
+            'is_taxable': {'type': 'boolean'},
+            'inventory_policy': {'type': 'string', 'enum': ['deny', 'continue'], 'default': 'deny'},
+            'barcode': {'type': 'string'},
+            'is_active': {'type': 'boolean'},
+            'sort_order': {'type': 'integer'},
+        },
+        'required': ['product_slug', 'name', 'sku'],
+    },
+)
+def create_variant_tool(
+    *, product_slug: str, name: str, sku: str, **fields,
+) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, create_variant
+    kwargs = {k: v for k, v in fields.items() if v not in (None, '')}
+    try:
+        r = create_variant(product_slug=product_slug, name=name, sku=sku, **kwargs)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(
+        output=r,
+        display=f'Created variant {r["name"]!r} ({r["sku"]}, {r["variant_type"]}) on {product_slug}',
+    )
+
+
+@tool(
+    name='catalog.update_variant',
+    description=(
+        'Update an existing variant by SKU. Pass only the fields you '
+        'want to change. To rename the SKU itself, pass a `new_sku` '
+        '(NOT yet supported — use a delete + create for now).'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'sku': {'type': 'string'},
+            'name': {'type': 'string'},
+            'price_amount': {'type': 'string'},
+            'price_currency': {'type': 'string'},
+            'compare_at_amount': {'type': 'string'},
+            'variant_type': {'type': 'string', 'enum': ['physical', 'digital', 'virtual']},
+            'requires_shipping': {'type': 'boolean'},
+            'is_taxable': {'type': 'boolean'},
+            'inventory_policy': {'type': 'string', 'enum': ['deny', 'continue']},
+            'barcode': {'type': 'string'},
+            'is_active': {'type': 'boolean'},
+            'sort_order': {'type': 'integer'},
+        },
+        'required': ['sku'],
+    },
+)
+def update_variant_tool(*, sku: str, **fields) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, update_variant
+    kwargs = {k: v for k, v in fields.items() if v not in (None, '')}
+    try:
+        r = update_variant(sku=sku, **kwargs)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Updated variant {r["sku"]}')
+
+
+@tool(
     name='catalog.archive_category',
     description=(
         'Archive (delete) a category. Products in the category are detached '

@@ -247,6 +247,85 @@ class CreateCategoryInput:
 
 
 @strawberry.input
+class CreateVariantInput:
+    product_slug: str
+    name: str
+    sku: str
+    # Pricing — optional, defaults to inheriting from parent product
+    price_amount: Optional[str] = None
+    price_currency: Optional[str] = None
+    compare_at_amount: Optional[str] = None
+    # Shopify-parity fields
+    variant_type: Optional[str] = None       # physical | digital | virtual
+    requires_shipping: Optional[bool] = None
+    is_taxable: Optional[bool] = None
+    inventory_policy: Optional[str] = None   # deny | continue
+    barcode: Optional[str] = None
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+@strawberry.input
+class UpdateVariantInput:
+    sku: str
+    name: Optional[str] = None
+    new_sku: Optional[str] = None
+    price_amount: Optional[str] = None
+    price_currency: Optional[str] = None
+    compare_at_amount: Optional[str] = None
+    variant_type: Optional[str] = None
+    requires_shipping: Optional[bool] = None
+    is_taxable: Optional[bool] = None
+    inventory_policy: Optional[str] = None
+    barcode: Optional[str] = None
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+@strawberry.type
+class VariantMutationResult:
+    id: strawberry.ID
+    product_slug: str
+    name: str
+    sku: str
+    price_amount: str
+    price_currency: str
+    variant_type: str
+    requires_shipping: bool
+    is_taxable: bool
+    inventory_policy: str
+    barcode: str
+    is_active: bool
+    sort_order: int
+    error: str
+
+
+def _err_variant(msg: str) -> VariantMutationResult:
+    return VariantMutationResult(
+        id=strawberry.ID(''), product_slug='', name='', sku='',
+        price_amount='', price_currency='',
+        variant_type='', requires_shipping=False, is_taxable=False,
+        inventory_policy='', barcode='', is_active=False, sort_order=0,
+        error=msg,
+    )
+
+
+def _from_variant_dict(d: dict) -> VariantMutationResult:
+    return VariantMutationResult(
+        id=strawberry.ID(d['id']),
+        product_slug=d['product_slug'],
+        name=d['name'], sku=d['sku'],
+        price_amount=d['price_amount'], price_currency=d['price_currency'],
+        variant_type=d['variant_type'],
+        requires_shipping=d['requires_shipping'],
+        is_taxable=d['is_taxable'],
+        inventory_policy=d['inventory_policy'],
+        barcode=d['barcode'], is_active=d['is_active'],
+        sort_order=d['sort_order'], error='',
+    )
+
+
+@strawberry.input
 class UpdateDigitalPdfInput:
     slug: str
     pdf_url: str
@@ -441,6 +520,68 @@ class CatalogMutationExtension:
             return _from_product_dict(delete_product(slug=slug))
         except PublishError as e:
             return _err_product(str(e))
+
+    # ── Variants (Shopify-parity surface) ─────────────────────────────
+
+    @strawberry.mutation(description='Create a new variant on a product. Staff-only.')
+    def create_variant(
+        self, info: strawberry.Info, input: CreateVariantInput,
+    ) -> VariantMutationResult:
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_variant(err)
+        from plugins.installed.catalog.services import PublishError, create_variant
+        kwargs = {
+            k: v for k, v in {
+                'price_amount': input.price_amount,
+                'price_currency': input.price_currency,
+                'compare_at_amount': input.compare_at_amount,
+                'variant_type': input.variant_type,
+                'requires_shipping': input.requires_shipping,
+                'is_taxable': input.is_taxable,
+                'inventory_policy': input.inventory_policy,
+                'barcode': input.barcode,
+                'is_active': input.is_active,
+                'sort_order': input.sort_order,
+            }.items() if v is not None
+        }
+        try:
+            return _from_variant_dict(create_variant(
+                product_slug=input.product_slug,
+                name=input.name, sku=input.sku,
+                **kwargs,
+            ))
+        except PublishError as e:
+            return _err_variant(str(e))
+
+    @strawberry.mutation(description='Update an existing variant by SKU. Staff-only.')
+    def update_variant(
+        self, info: strawberry.Info, input: UpdateVariantInput,
+    ) -> VariantMutationResult:
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_variant(err)
+        from plugins.installed.catalog.services import PublishError, update_variant
+        kwargs = {
+            k: v for k, v in {
+                'name': input.name,
+                'sku': input.new_sku,   # rename target
+                'price_amount': input.price_amount,
+                'price_currency': input.price_currency,
+                'compare_at_amount': input.compare_at_amount,
+                'variant_type': input.variant_type,
+                'requires_shipping': input.requires_shipping,
+                'is_taxable': input.is_taxable,
+                'inventory_policy': input.inventory_policy,
+                'barcode': input.barcode,
+                'is_active': input.is_active,
+                'sort_order': input.sort_order,
+            }.items() if v is not None
+        }
+        try:
+            return _from_variant_dict(update_variant(sku=input.sku, **kwargs))
+        except PublishError as e:
+            return _err_variant(str(e))
 
     # ── Digital file + images ─────────────────────────────────────────
 

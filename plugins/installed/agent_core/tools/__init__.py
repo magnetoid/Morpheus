@@ -20,6 +20,7 @@ from plugins.installed.agent_core.tools.catalog import (
     catalog_stats_tool,
     create_category_tool,
     create_product_tool,
+    create_variant_tool,
     delete_product_tool,
     find_products_tool,
     get_product_tool,
@@ -31,6 +32,7 @@ from plugins.installed.agent_core.tools.catalog import (
     update_category_tool,
     update_digital_pdf_tool,
     update_product_tool,
+    update_variant_tool,
 )
 from plugins.installed.agent_core.tools.cart import (
     add_to_cart_tool,
@@ -106,6 +108,8 @@ def all_builtin_tools() -> list:
         archive_product_tool,
         restore_product_tool,
         delete_product_tool,
+        create_variant_tool,
+        update_variant_tool,
         create_category_tool,
         update_category_tool,
         archive_category_tool,

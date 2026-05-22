@@ -34,6 +34,14 @@
           </div>
         </fieldset>
 
+        {% if no_shipping_required %}
+        <fieldset class="ck-fieldset" style="background: var(--paper-2); border-radius: 4px; padding: 1.25rem;">
+          <legend class="eyebrow ck-legend">Digital delivery</legend>
+          <p style="margin: .25rem 0 0; font-size: .92rem;">
+            This cart contains only digital or virtual items — we'll send your downloads to the email above. No shipping address needed.
+          </p>
+        </fieldset>
+        {% else %}
         <fieldset class="ck-fieldset">
           <legend class="eyebrow ck-legend">Shipping address</legend>
           <div class="ck-grid-2">
@@ -92,9 +100,12 @@
             </div>
           </div>
         </fieldset>
+        {% endif %}
 
         <button type="submit" id="ck-submit" class="btn btn-primary ck-submit" aria-busy="false">
-          <span class="ck-submit-label">Continue to shipping &rarr;</span>
+          <span class="ck-submit-label">
+            {% if no_shipping_required %}Continue to payment &rarr;{% else %}Continue to shipping &rarr;{% endif %}
+          </span>
         </button>
       </div>
 

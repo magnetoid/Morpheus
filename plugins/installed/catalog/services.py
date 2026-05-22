@@ -740,6 +740,136 @@ def set_primary_image(*, image_id: str) -> dict[str, str]:
     return _serialize_image(img)
 
 
+# ─── Variants (Shopify-parity surface) ────────────────────────────────────────
+
+
+_VALID_VARIANT_TYPES = {'physical', 'digital', 'virtual'}
+_VALID_INVENTORY_POLICIES = {'deny', 'continue'}
+
+
+def _serialize_variant(v) -> dict:
+    return {
+        'id': str(v.id),
+        'product_slug': v.product.slug,
+        'name': v.name,
+        'sku': v.sku,
+        'price_amount': str(getattr(v.price, 'amount', '')) if v.price else '',
+        'price_currency': str(getattr(v.price, 'currency', '')) if v.price else '',
+        'variant_type': getattr(v, 'variant_type', 'physical'),
+        'requires_shipping': bool(getattr(v, 'requires_shipping', True)),
+        'is_taxable': bool(getattr(v, 'is_taxable', True)),
+        'inventory_policy': getattr(v, 'inventory_policy', 'deny'),
+        'barcode': getattr(v, 'barcode', '') or '',
+        'is_active': bool(v.is_active),
+        'sort_order': int(v.sort_order or 0),
+    }
+
+
+def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: bool = True) -> None:
+    """Mutate `variant` in place with whatever fields are present. Skips
+    unspecified keys so partial updates work. Raises PublishError on
+    invalid input."""
+    from djmoney.money import Money
+    from plugins.installed.catalog.models import ProductVariant
+
+    if 'name' in fields:
+        name = (fields['name'] or '').strip()
+        if not name:
+            raise PublishError('variant name is required')
+        variant.name = name
+    if 'sku' in fields:
+        sku = (fields['sku'] or '').strip()
+        if not sku:
+            raise PublishError('variant sku is required')
+        if allow_sku_collision_check:
+            qs = ProductVariant.objects.filter(sku=sku)
+            if variant.pk:
+                qs = qs.exclude(pk=variant.pk)
+            if qs.exists():
+                raise PublishError(f'sku {sku!r} already in use by another variant')
+        variant.sku = sku
+    if 'price_amount' in fields:
+        v = fields['price_amount']
+        if v in (None, '', 'null'):
+            variant.price = None
+        else:
+            currency = (fields.get('price_currency')
+                        or str(getattr(variant.price, 'currency', None) or 'USD')).upper()
+            variant.price = Money(_coerce_price(v), currency)
+    if 'compare_at_amount' in fields:
+        v = fields['compare_at_amount']
+        if v in (None, '', 'null'):
+            variant.compare_at_price = None
+        else:
+            currency = (fields.get('price_currency')
+                        or str(getattr(variant.price, 'currency', None) or 'USD')).upper()
+            variant.compare_at_price = Money(_coerce_price(v), currency)
+    if 'variant_type' in fields:
+        vt = fields['variant_type']
+        if vt not in _VALID_VARIANT_TYPES:
+            raise PublishError(f'variant_type must be one of {sorted(_VALID_VARIANT_TYPES)}')
+        variant.variant_type = vt
+        # Helpful auto: if requires_shipping wasn't explicitly set,
+        # default it from variant_type.
+        if 'requires_shipping' not in fields:
+            variant.requires_shipping = (vt == 'physical')
+    if 'requires_shipping' in fields:
+        variant.requires_shipping = bool(fields['requires_shipping'])
+    if 'is_taxable' in fields:
+        variant.is_taxable = bool(fields['is_taxable'])
+    if 'inventory_policy' in fields:
+        ip = fields['inventory_policy']
+        if ip not in _VALID_INVENTORY_POLICIES:
+            raise PublishError(f'inventory_policy must be one of {sorted(_VALID_INVENTORY_POLICIES)}')
+        variant.inventory_policy = ip
+    if 'barcode' in fields:
+        variant.barcode = (fields['barcode'] or '').strip()[:50]
+    if 'is_active' in fields:
+        variant.is_active = bool(fields['is_active'])
+    if 'sort_order' in fields:
+        try:
+            variant.sort_order = max(0, int(fields['sort_order']))
+        except (TypeError, ValueError):
+            raise PublishError('sort_order must be an integer') from None
+
+
+@transaction.atomic
+def create_variant(*, product_slug: str, **fields) -> dict:
+    """Create a new ProductVariant on the given product. Required:
+    `name` + `sku`. Every other field is optional and follows the
+    same semantics as `update_variant`."""
+    from plugins.installed.catalog.models import Product, ProductVariant
+
+    product = Product.objects.filter(slug=product_slug).first()
+    if product is None:
+        raise PublishError(f'product slug {product_slug!r} not found')
+
+    variant = ProductVariant(product=product)
+    if 'name' not in fields:
+        raise PublishError('name is required')
+    if 'sku' not in fields:
+        raise PublishError('sku is required')
+    _apply_variant_fields(variant, fields)
+    variant.save()
+    logger.info('catalog.create_variant slug=%s sku=%s type=%s',
+                product.slug, variant.sku, variant.variant_type)
+    return _serialize_variant(variant)
+
+
+@transaction.atomic
+def update_variant(*, sku: str, **fields) -> dict:
+    """Update an existing variant identified by SKU. Pass any subset
+    of fields; only the ones present are touched."""
+    from plugins.installed.catalog.models import ProductVariant
+
+    variant = ProductVariant.objects.filter(sku=sku).select_related('product').first()
+    if variant is None:
+        raise PublishError(f'variant sku {sku!r} not found')
+    _apply_variant_fields(variant, fields)
+    variant.save()
+    return _serialize_variant(variant)
+
+
 @transaction.atomic
 def archive_category(*, slug: str) -> dict[str, str]:
     """Soft-delete: detach products + remove the category row.

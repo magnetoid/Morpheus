@@ -81,12 +81,28 @@ class ProductVariantType:
     sku: str = strawberry.field(description="Stock Keeping Unit")
     is_active: bool = strawberry.field(description="Whether this variant is active")
     localized_prices: strawberry.scalars.JSON = strawberry.field(description="JSON dict of explicit price overrides per currency")
+    # Shopify-parity fields (commit b74aaf9 + migration 0010).
+    variant_type: str = strawberry.field(description="physical | digital | virtual")
+    requires_shipping: bool = strawberry.field(description="When false, checkout skips the shipping step for this variant")
+    is_taxable: bool = strawberry.field(description="Per-variant taxability override")
+    inventory_policy: str = strawberry.field(description="deny | continue (backorder behaviour)")
+    barcode: str = strawberry.field(description="UPC / EAN / ISBN")
 
     @strawberry.field(description="Price of the variant")
     def price(self) -> Optional[MoneyType]:
         if not self.price:
             return None
         return MoneyType(amount=str(self.price.amount), currency=str(self.price.currency))
+
+    @strawberry.field(description="Per-variant digital file URL (overrides Product.digital_file)")
+    def digital_file_url(self) -> Optional[str]:
+        f = getattr(self, 'digital_file', None)
+        if f and getattr(f, 'name', ''):
+            try:
+                return f.url
+            except Exception:  # noqa: BLE001
+                return None
+        return None
 
 @strawberry_django.type(models.Product)
 class ProductType:
