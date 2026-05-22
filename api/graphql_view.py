@@ -26,6 +26,19 @@ class MorpheusGraphQLView(GraphQLView):
     agent_only = False
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        # Bearer-token auth: external agents present an MCP token from
+        # /dashboard/apps/agent_mcp/tokens/ in the Authorization header
+        # so they don't have to juggle Django session cookies. When a
+        # valid token is presented, `request.user` is replaced with a
+        # synthetic staff service user so resolvers that check
+        # `is_staff` (the catalog mutations) accept the call. No-op
+        # otherwise; session cookies still work.
+        try:
+            from plugins.installed.agent_mcp.auth import apply_bearer_user
+            apply_bearer_user(request)
+        except Exception as e:  # noqa: BLE001 — never block the request on auth resolver
+            logger.warning('agent_mcp: bearer auth resolver failed: %s', e, exc_info=True)
+
         if self.agent_only and not getattr(request, 'agent_capabilities', None):
             return JsonResponse(
                 {'error': 'Unauthorized: missing or invalid Agent Token'},
