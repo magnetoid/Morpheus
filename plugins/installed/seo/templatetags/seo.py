@@ -455,10 +455,41 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
     url = str(url or '')
     if not url:
         return ''
+
+    # Respect PluginConfig['seo']['lazy_load_below_fold_images']. When
+    # the merchant disabled lazy loading, every <img> renders with
+    # loading="eager" — usually a bad idea (hurts LCP, wastes
+    # bandwidth) but some themes / CDN setups misbehave with the
+    # native lazy-load attribute. Defaults to ON.
+    lazy_enabled = True
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    seo_plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if seo_plugin is not None:
+                    break
+        if seo_plugin is not None:
+            lazy_enabled = bool(seo_plugin.get_config_value(
+                'lazy_load_below_fold_images', True,
+            ))
+    except Exception:  # noqa: BLE001
+        pass
+
+    def _loading_for(is_priority: bool) -> str:
+        if is_priority:
+            return 'eager'
+        return 'lazy' if lazy_enabled else 'eager'
+
     # Strip absolute prefix; we only resize images under MEDIA_ROOT.
     if url.startswith('http://') or url.startswith('https://'):
         # Best-effort: keep the original URL; skip resize for off-site.
-        loading = 'eager' if priority else 'lazy'
+        loading = _loading_for(priority)
         fp = ' fetchpriority="high"' if priority else ''
         return mark_safe(
             f'<img src="{escape(url)}" alt="{escape(alt)}" '
@@ -488,7 +519,7 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
 
     fallback_w = max(requested)
     fallback = f'/img/webp/{fallback_w}/{rel}'
-    loading = 'eager' if priority else 'lazy'
+    loading = _loading_for(priority)
     fp = ' fetchpriority="high"' if priority else ''
     sizes_attr = f' sizes="{escape(sizes)}"' if sizes else ''
     class_attr = f' class="{escape(css_class)}"' if css_class else ''

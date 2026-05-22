@@ -356,10 +356,44 @@ def sitemap_counts() -> dict:
     return counts
 
 
+def _sitemap_max_urls() -> int:
+    """Read the configured per-file cap; clamp to Google's hard limit
+    of 50,000 entries (https://www.sitemaps.org/protocol.html)."""
+    cap = 50000
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    seo_plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if seo_plugin is not None:
+                    break
+        if seo_plugin is not None:
+            try:
+                cap = int(seo_plugin.get_config_value('sitemap_max_urls_per_file', 50000) or 50000)
+            except (TypeError, ValueError):
+                cap = 50000
+    except Exception:  # noqa: BLE001
+        pass
+    return max(100, min(cap, 50000))
+
+
 def render_sitemap_xml() -> str:
+    """Render the primary /sitemap.xml. Capped at
+    `sitemap_max_urls_per_file` so we don't emit a > 50 MB document
+    that Google rejects. Overflow is silently truncated — a split
+    sitemap index is a follow-up (Phase 2 of the SEO knob wiring)."""
+    cap = _sitemap_max_urls()
     parts = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    count = 0
     for e in iter_sitemap_entries():
+        if count >= cap:
+            break
         parts.append('<url>')
         parts.append(f'<loc>{escape(e["loc"])}</loc>')
         if e.get('lastmod'):
@@ -369,6 +403,7 @@ def render_sitemap_xml() -> str:
         if e.get('priority'):
             parts.append(f'<priority>{escape(e["priority"])}</priority>')
         parts.append('</url>')
+        count += 1
     parts.append('</urlset>')
     return ''.join(parts)
 
@@ -433,6 +468,31 @@ def render_robots_txt() -> str:
     """
     base = _site_base_url()
     policy = get_ai_crawler_policy()  # {ua_lowercase: True=allow / False=block}
+
+    # `ai_crawler_default_allow` decides what happens for AI bots the
+    # merchant hasn't explicitly toggled. True (the default) = allow;
+    # flip to False to opt-out aggressively (good for "stop training
+    # crawlers, period" stores). Per-bot overrides still win.
+    default_allow = True
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    seo_plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if seo_plugin is not None:
+                    break
+        if seo_plugin is not None:
+            default_allow = bool(seo_plugin.get_config_value(
+                'ai_crawler_default_allow', True,
+            ))
+    except Exception:  # noqa: BLE001
+        pass
+
     common_disallow = [
         'Disallow: /admin/',
         'Disallow: /dashboard/',
@@ -443,10 +503,11 @@ def render_robots_txt() -> str:
 
     lines: list[str] = []
 
-    # Per-bot blocks. Default is "allow" — we only emit a block when the
-    # merchant has explicitly disallowed a bot.
+    # Per-bot blocks. Default comes from the panel toggle —
+    # `policy.get(...)` only returns the merchant's explicit choice;
+    # use `default_allow` for everything else.
     for ua, _label, _kind in AI_CRAWLERS:
-        allowed = policy.get(ua.lower(), True)
+        allowed = policy.get(ua.lower(), default_allow)
         lines.append(f'User-agent: {ua}')
         if allowed:
             lines.append('Allow: /')
@@ -846,8 +907,11 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         except Exception:  # noqa: BLE001
             pass
 
-    # GTIN / brand via 'book' metafield namespace (used by dotbooks).
+    # GTIN / brand via 'book' metafield namespace (used by dotbooks)
+    # AND via ProductVariant.barcode (Phase 1 of variant Shopify
+    # parity — every variant carries an optional UPC / EAN / ISBN).
     if not isinstance(product, dict):
+        candidate_barcode = ''
         try:
             from django.contrib.contenttypes.models import ContentType
             from plugins.installed.metafields.models import Metafield
@@ -859,13 +923,66 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
                 )
             }
             if book_meta.get('isbn'):
-                out['gtin13'] = str(book_meta['isbn'])[:13]
+                candidate_barcode = str(book_meta['isbn']).strip()
             if book_meta.get('publisher'):
                 out['brand'] = {'@type': 'Brand', 'name': str(book_meta['publisher'])}
             if book_meta.get('author'):
                 out['author'] = {'@type': 'Person', 'name': str(book_meta['author'])}
         except Exception:  # noqa: BLE001
             pass
+        # Variant-level barcode wins when present — closer to source.
+        try:
+            first_variant_barcode = (
+                product.variants.exclude(barcode='').values_list('barcode', flat=True).first()
+            )
+            if first_variant_barcode:
+                candidate_barcode = str(first_variant_barcode).strip()
+        except Exception:  # noqa: BLE001
+            pass
+        if candidate_barcode:
+            # Emit the right schema.org GTIN property based on the
+            # configured preference. 'auto' picks the variant by length:
+            # 8 → gtin8, 12 → gtin12, 13 → gtin13 (also ISBN-13).
+            pref = 'auto'
+            try:
+                from plugins.registry import plugin_registry
+                seo_plugin = None
+                for attr in ('get', 'get_plugin'):
+                    fn = getattr(plugin_registry, attr, None)
+                    if callable(fn):
+                        try:
+                            seo_plugin = fn('seo')
+                        except Exception:  # noqa: BLE001
+                            continue
+                        if seo_plugin is not None:
+                            break
+                if seo_plugin is not None:
+                    pref = (seo_plugin.get_config_value(
+                        'gtin_field_preference', 'auto',
+                    ) or 'auto').lower()
+            except Exception:  # noqa: BLE001
+                pass
+            digits = ''.join(c for c in candidate_barcode if c.isdigit())
+            field_name = 'gtin13'
+            if pref == 'auto':
+                length = len(digits)
+                if length == 8:
+                    field_name = 'gtin8'
+                elif length == 12:
+                    field_name = 'gtin12'
+                elif length == 13:
+                    field_name = 'gtin13'
+                else:
+                    field_name = 'gtin'   # generic fallback
+            elif pref == 'isbn13':
+                field_name = 'gtin13'   # schema.org uses gtin13 for ISBN-13
+                # ALSO emit it as ISBN so Google Books picks it up.
+                out['isbn'] = (digits or candidate_barcode)[:13]
+            elif pref in ('gtin8', 'gtin12', 'gtin13'):
+                field_name = pref
+            out[field_name] = (digits or candidate_barcode)[: int(
+                ''.join(c for c in field_name if c.isdigit()) or 14
+            )]
 
     return out
 
@@ -1301,6 +1418,31 @@ def render_llms_txt(*, full: bool = False) -> str:
                 f'- [Search]({base}/search/?q=)',
                 f'- [Sitemap XML]({base}/sitemap.xml)', ''])
 
+    # Read the two new knobs once for the whole render.
+    include_price = True
+    include_stock = False
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    seo_plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if seo_plugin is not None:
+                    break
+        if seo_plugin is not None:
+            include_price = bool(seo_plugin.get_config_value(
+                'include_pricing_in_llms_txt', True,
+            ))
+            include_stock = bool(seo_plugin.get_config_value(
+                'include_inventory_in_llms_txt', False,
+            ))
+    except Exception:  # noqa: BLE001
+        pass
+
     try:
         from plugins.installed.catalog.models import Category, Product
         out.append('## Categories')
@@ -1316,6 +1458,26 @@ def render_llms_txt(*, full: bool = False) -> str:
             # canonical content without parsing HTML. /md/products/<slug>
             md_url = f'{base}/md/products/{p.slug}'
             line = f'- [{p.name}]({base}/products/{p.slug}/) ({md_url})'
+
+            # Optional pricing — improves AI citation accuracy in
+            # ChatGPT / Perplexity / AI Overviews when they answer
+            # "how much is X" queries.
+            if include_price and p.price:
+                line += f' — {p.price.amount} {p.price.currency}'
+
+            # Optional stock signal — off by default because
+            # inventory churns fast and stale LLM caches embarrass.
+            if include_stock:
+                try:
+                    from plugins.installed.inventory.models import StockLevel
+                    qty = sum(
+                        s.quantity for s in
+                        StockLevel.objects.filter(variant__product=p)
+                    )
+                    line += f' — {"In stock" if qty > 0 else "Out of stock"}'
+                except Exception:  # noqa: BLE001
+                    pass
+
             if full:
                 desc = (p.short_description or p.description or '')[:160]
                 if desc:
