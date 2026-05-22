@@ -67,8 +67,15 @@ def product_markdown(request: HttpRequest, slug: str) -> HttpResponse:
 
 def image_sitemap_xml(request: HttpRequest) -> HttpResponse:
     """Image-only sitemap. Discovered by AI image-search engines for
-    grounding (Google AI Overviews, Bing image search, Perplexity)."""
+    grounding (Google AI Overviews, Bing image search, Perplexity).
+
+    Respects PluginConfig['seo']['image_sitemap_enabled'] — when False,
+    returns a 404 so search engines stop fetching it.
+    """
     from plugins.installed.seo.services import render_image_sitemap_xml
+    if not _seo_flag('image_sitemap_enabled', True):
+        from django.http import Http404
+        raise Http404('Image sitemap disabled by store settings.')
     return HttpResponse(
         render_image_sitemap_xml(),
         content_type='application/xml; charset=utf-8',
@@ -88,12 +95,63 @@ def sitemap_index_xml(request: HttpRequest) -> HttpResponse:
 
 def news_sitemap_xml(request: HttpRequest) -> HttpResponse:
     """News sitemap — journal posts in the last 48h. Empty urlset
-    when nothing is fresh, which is valid per Google's news spec."""
+    when nothing is fresh, which is valid per Google's news spec.
+
+    Respects PluginConfig['seo']['news_sitemap_enabled'] — off by
+    default because Google News has specific eligibility rules and
+    serving an empty-news sitemap to crawlers is wasteful.
+    """
     from plugins.installed.seo.services import render_news_sitemap_xml
+    if not _seo_flag('news_sitemap_enabled', False):
+        from django.http import Http404
+        raise Http404('News sitemap disabled by store settings.')
     return HttpResponse(
         render_news_sitemap_xml(),
         content_type='application/xml; charset=utf-8',
     )
+
+
+def _seo_flag(key: str, default: bool) -> bool:
+    """Read a boolean SEO plugin config value defensively."""
+    try:
+        from plugins.registry import plugin_registry
+        plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if plugin is not None:
+                    break
+        if plugin is None:
+            return default
+        return bool(plugin.get_config_value(key, default))
+    except Exception:  # noqa: BLE001
+        return default
+
+
+def _maybe_ping_sitemap_change() -> None:
+    """Notify Google + Bing + IndexNow when the sitemap changed.
+
+    Driven by PluginConfig['seo']['ping_google_on_sitemap_change']
+    (default True). Async — spawn a daemon thread so the merchant's
+    POST returns immediately. Ping failures are logged and swallowed
+    (search-engine pings are best-effort by design).
+    """
+    if not _seo_flag('ping_google_on_sitemap_change', True):
+        return
+    try:
+        from plugins.installed.seo.services import _site_base_url, ping_indexnow
+        base = _site_base_url().rstrip('/')
+        sitemap_url = f'{base}/sitemap.xml'
+        import threading
+        threading.Thread(
+            target=ping_indexnow, args=([sitemap_url],), daemon=True,
+        ).start()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def opensearch_xml(request: HttpRequest) -> HttpResponse:
@@ -470,6 +528,7 @@ def sitemap_page(request):
                     priority=priority,
                     is_active=request.POST.get('is_active') == 'on',
                 )
+                _maybe_ping_sitemap_change()
             return HttpResponseRedirect('/dashboard/seo/sitemap/')
 
         if action == 'edit_entry':
@@ -486,10 +545,12 @@ def sitemap_page(request):
                     priority=priority,
                     is_active=request.POST.get('is_active') == 'on',
                 )
+                _maybe_ping_sitemap_change()
             return HttpResponseRedirect('/dashboard/seo/sitemap/')
 
         if action == 'delete_entry':
             SitemapEntry.objects.filter(pk=request.POST.get('id') or '').delete()
+            _maybe_ping_sitemap_change()
             return HttpResponseRedirect('/dashboard/seo/sitemap/')
 
         if action == 'save_toggles':
