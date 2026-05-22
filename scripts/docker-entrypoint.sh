@@ -57,10 +57,35 @@ case "$MODE" in
     wait_for_db
     run_migrations
     collect_static
+    # Concurrency model:
+    #   Sync workers handle one request at a time → 4 workers = 4
+    #   concurrent requests max. That's what was causing
+    #   ERR_CONNECTION_RESET under load (slow LLM call holds a worker
+    #   for 8s, healthcheck takes one, two browser requests fill the
+    #   remaining two → 5th request gets TCP RST).
+    #
+    # Switching to `gthread` keeps the sync code path (no async refactor
+    # of the ORM) but lets each worker juggle multiple requests on
+    # threads. With 4 workers × 8 threads = 32 concurrent requests, and
+    # plenty of headroom for the LLM-call-blocks-a-worker scenario.
+    #
+    # max-requests cycles workers periodically to prevent memory leaks
+    # on long-running PDF / image processing — workers cycle gracefully
+    # one at a time so requests don't drop.
+    #
+    # graceful-timeout=10 gives in-flight requests a chance to finish
+    # during deploy cutover (previously 30s default, sometimes
+    # truncated by Docker's SIGKILL).
     exec gunicorn morph.wsgi:application \
         --bind "0.0.0.0:${PORT:-8000}" \
+        --worker-class "${GUNICORN_WORKER_CLASS:-gthread}" \
         --workers "${GUNICORN_WORKERS:-4}" \
-        --timeout "${GUNICORN_TIMEOUT:-60}" \
+        --threads "${GUNICORN_THREADS:-8}" \
+        --timeout "${GUNICORN_TIMEOUT:-30}" \
+        --graceful-timeout "${GUNICORN_GRACEFUL_TIMEOUT:-10}" \
+        --keep-alive "${GUNICORN_KEEPALIVE:-5}" \
+        --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
+        --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-50}" \
         --access-logfile - \
         --error-logfile -
     ;;
