@@ -617,6 +617,129 @@ def update_category(
     return _serialize_category(cat)
 
 
+# ─── Digital file replacement ────────────────────────────────────────────────
+
+
+@transaction.atomic
+def update_digital_pdf(*, slug: str, pdf_url: str) -> dict[str, str]:
+    """Replace the digital_file on an existing product by downloading
+    a new PDF from `pdf_url`. Use this when an agent has a fresh
+    revision of a book and wants to swap the customer download.
+
+    Old file is left on disk for now — orphan cleanup is a separate
+    concern (PR N1 in the security review).
+    """
+    from plugins.installed.catalog.models import Product
+
+    product = Product.objects.filter(slug=slug).first()
+    if product is None:
+        raise PublishError(f'product slug {slug!r} not found')
+    _validate_https_url(pdf_url, field='pdf_url')
+
+    pdf_bytes, pdf_ct, pdf_name = _download(pdf_url, max_bytes=_MAX_PDF_BYTES, field='pdf_url')
+    if pdf_ct and 'pdf' not in pdf_ct and pdf_ct.startswith(('text/', 'image/')):
+        raise PublishError(f'pdf_url returned {pdf_ct!r}, not a PDF')
+    if not pdf_name.lower().endswith('.pdf'):
+        pdf_name = f'{slugify(product.name) or "book"}.pdf'
+
+    product.digital_file.save(pdf_name, ContentFile(pdf_bytes), save=True)
+    logger.info(
+        'catalog.update_digital_pdf slug=%s pdf=%dKB',
+        product.slug, len(pdf_bytes) // 1024,
+    )
+    return {**_serialize_product(product), 'digital_file': product.digital_file.url or ''}
+
+
+# ─── Product image management ────────────────────────────────────────────────
+
+
+def _serialize_image(img) -> dict:
+    return {
+        'id': str(img.id),
+        'product_slug': img.product.slug,
+        'url': img.image.url if img.image else '',
+        'alt_text': img.alt_text or '',
+        'is_primary': bool(img.is_primary),
+        'sort_order': int(img.sort_order or 0),
+    }
+
+
+@transaction.atomic
+def add_product_image(
+    *,
+    slug: str,
+    image_url: str,
+    alt_text: str = '',
+    is_primary: bool = False,
+    sort_order: int = 0,
+) -> dict[str, str]:
+    """Download an image from `image_url` and attach it to the product.
+    If `is_primary` is True, demotes the existing primary image first
+    so there's only ever one."""
+    from plugins.installed.catalog.models import Product, ProductImage
+
+    product = Product.objects.filter(slug=slug).first()
+    if product is None:
+        raise PublishError(f'product slug {slug!r} not found')
+    _validate_https_url(image_url, field='image_url')
+
+    body, ct, fname = _download(
+        image_url, max_bytes=_MAX_IMAGE_BYTES, field='image_url',
+    )
+    if ct and ct not in _ALLOWED_IMAGE_TYPES:
+        raise PublishError(
+            f'image_url returned {ct!r}; allowed: {sorted(_ALLOWED_IMAGE_TYPES)}'
+        )
+    if '.' not in fname:
+        ext = (mimetypes.guess_extension(ct) or '.jpg').lstrip('.')
+        fname = f'{slugify(product.name) or "image"}.{ext}'
+
+    if is_primary:
+        ProductImage.objects.filter(product=product, is_primary=True).update(is_primary=False)
+
+    img = ProductImage(
+        product=product,
+        alt_text=(alt_text or '').strip() or product.name,
+        is_primary=bool(is_primary),
+        sort_order=int(sort_order or 0),
+    )
+    img.image.save(fname, ContentFile(body), save=True)
+    logger.info(
+        'catalog.add_product_image slug=%s img=%s primary=%s',
+        product.slug, img.id, is_primary,
+    )
+    return _serialize_image(img)
+
+
+@transaction.atomic
+def remove_product_image(*, image_id: str) -> dict[str, str]:
+    from plugins.installed.catalog.models import ProductImage
+
+    img = ProductImage.objects.filter(pk=image_id).first()
+    if img is None:
+        raise PublishError(f'image_id {image_id!r} not found')
+    out = _serialize_image(img)
+    img.delete()
+    return out
+
+
+@transaction.atomic
+def set_primary_image(*, image_id: str) -> dict[str, str]:
+    """Promote one image to primary; demote any other primary on the
+    same product."""
+    from plugins.installed.catalog.models import ProductImage
+
+    img = ProductImage.objects.filter(pk=image_id).first()
+    if img is None:
+        raise PublishError(f'image_id {image_id!r} not found')
+    ProductImage.objects.filter(
+        product=img.product, is_primary=True,
+    ).exclude(pk=img.pk).update(is_primary=False)
+    img.is_primary = True
+    img.save(update_fields=['is_primary'])
+    return _serialize_image(img)
+
+
 @transaction.atomic
 def archive_category(*, slug: str) -> dict[str, str]:
     """Soft-delete: detach products + remove the category row.

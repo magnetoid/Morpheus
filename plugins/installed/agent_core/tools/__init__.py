@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 
 from plugins.installed.agent_core.tools.catalog import (
+    add_product_image_tool,
     archive_category_tool,
     archive_product_tool,
     backfill_alt_text_tool,
@@ -24,8 +25,11 @@ from plugins.installed.agent_core.tools.catalog import (
     get_product_tool,
     list_categories_tool,
     publish_digital_product_tool,
+    remove_product_image_tool,
     restore_product_tool,
+    set_primary_image_tool,
     update_category_tool,
+    update_digital_pdf_tool,
     update_product_tool,
 )
 from plugins.installed.agent_core.tools.cart import (
@@ -95,6 +99,10 @@ def all_builtin_tools() -> list:
         publish_digital_product_tool,
         create_product_tool,
         update_product_tool,
+        update_digital_pdf_tool,
+        add_product_image_tool,
+        remove_product_image_tool,
+        set_primary_image_tool,
         archive_product_tool,
         restore_product_tool,
         delete_product_tool,

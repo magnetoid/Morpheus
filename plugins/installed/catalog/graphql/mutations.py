@@ -42,6 +42,17 @@ class CategoryMutationResult:
 
 
 @strawberry.type
+class ProductImageMutationResult:
+    id: strawberry.ID
+    product_slug: str
+    url: str
+    alt_text: str
+    is_primary: bool
+    sort_order: int
+    error: str
+
+
+@strawberry.type
 class PublishDigitalProductResult:
     id: strawberry.ID
     slug: str
@@ -91,6 +102,23 @@ def _from_category_dict(d: dict) -> CategoryMutationResult:
     return CategoryMutationResult(
         id=strawberry.ID(d['id']), slug=d['slug'], name=d['name'],
         parent_slug=d['parent_slug'], error='',
+    )
+
+
+def _err_image(msg: str) -> ProductImageMutationResult:
+    return ProductImageMutationResult(
+        id=strawberry.ID(''), product_slug='', url='', alt_text='',
+        is_primary=False, sort_order=0, error=msg,
+    )
+
+
+def _from_image_dict(d: dict) -> ProductImageMutationResult:
+    return ProductImageMutationResult(
+        id=strawberry.ID(d['id']),
+        product_slug=d['product_slug'],
+        url=d['url'], alt_text=d['alt_text'],
+        is_primary=d['is_primary'], sort_order=d['sort_order'],
+        error='',
     )
 
 
@@ -195,6 +223,21 @@ class CreateCategoryInput:
     slug: str = ''
     parent_slug: str = ''
     description: str = ''
+
+
+@strawberry.input
+class UpdateDigitalPdfInput:
+    slug: str
+    pdf_url: str
+
+
+@strawberry.input
+class AddProductImageInput:
+    slug: str
+    image_url: str
+    alt_text: str = ''
+    is_primary: bool = False
+    sort_order: int = 0
 
 
 @strawberry.input
@@ -371,6 +414,69 @@ class CatalogMutationExtension:
             return _from_product_dict(delete_product(slug=slug))
         except PublishError as e:
             return _err_product(str(e))
+
+    # ── Digital file + images ─────────────────────────────────────────
+
+    @strawberry.mutation(
+        description='Replace the digital_file PDF on an existing product. Staff-only.',
+    )
+    def update_digital_pdf(
+        self, info: strawberry.Info, input: UpdateDigitalPdfInput,
+    ) -> ProductMutationResult:
+        if not _is_staff(info):
+            return _err_product('Forbidden — staff only.')
+        from plugins.installed.catalog.services import PublishError, update_digital_pdf
+        try:
+            r = update_digital_pdf(slug=input.slug, pdf_url=input.pdf_url)
+        except PublishError as e:
+            return _err_product(str(e))
+        # Service returns extra `digital_file` URL we don't surface here;
+        # the basic product summary is what the caller usually wants.
+        return _from_product_dict(r)
+
+    @strawberry.mutation(
+        description='Download an image from an HTTPS URL and attach it as a ProductImage. Staff-only.',
+    )
+    def add_product_image(
+        self, info: strawberry.Info, input: AddProductImageInput,
+    ) -> ProductImageMutationResult:
+        if not _is_staff(info):
+            return _err_image('Forbidden — staff only.')
+        from plugins.installed.catalog.services import PublishError, add_product_image
+        try:
+            return _from_image_dict(add_product_image(
+                slug=input.slug, image_url=input.image_url,
+                alt_text=input.alt_text, is_primary=input.is_primary,
+                sort_order=input.sort_order,
+            ))
+        except PublishError as e:
+            return _err_image(str(e))
+
+    @strawberry.mutation(description='Remove a ProductImage by id. Staff-only.')
+    def remove_product_image(
+        self, info: strawberry.Info, image_id: strawberry.ID,
+    ) -> ProductImageMutationResult:
+        if not _is_staff(info):
+            return _err_image('Forbidden — staff only.')
+        from plugins.installed.catalog.services import PublishError, remove_product_image
+        try:
+            return _from_image_dict(remove_product_image(image_id=str(image_id)))
+        except PublishError as e:
+            return _err_image(str(e))
+
+    @strawberry.mutation(
+        description='Promote an image to primary (demotes any other primary on the same product). Staff-only.',
+    )
+    def set_primary_image(
+        self, info: strawberry.Info, image_id: strawberry.ID,
+    ) -> ProductImageMutationResult:
+        if not _is_staff(info):
+            return _err_image('Forbidden — staff only.')
+        from plugins.installed.catalog.services import PublishError, set_primary_image
+        try:
+            return _from_image_dict(set_primary_image(image_id=str(image_id)))
+        except PublishError as e:
+            return _err_image(str(e))
 
     # ── Categories ────────────────────────────────────────────────────
 

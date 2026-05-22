@@ -1,64 +1,219 @@
-# Morpheus MCP server
+# Morpheus MCP server + GraphQL Bearer auth
 
 Every Morpheus install ships a [Model Context Protocol](https://modelcontextprotocol.io)
-server at `/mcp/v1/`. External AI clients (Claude Desktop, Cursor,
-Continue, custom agents) can list and call a curated subset of the
-catalog read tools without per-vendor integrations.
+cluster — four Shopify-shaped servers mounted at `/mcp/*/v1/` — plus a
+GraphQL endpoint at `/graphql/`. External AI clients (Claude Desktop,
+Cursor, Continue, custom scripts) and SaaS automations can list,
+read, and write through either surface using the **same** Bearer
+token issued from the dashboard.
 
 ## Endpoints
 
 ```
-POST /mcp/v1/                JSON-RPC 2.0 (initialize | tools/list |
-                             tools/call | resources/list | resources/read | ping)
-GET  /mcp/v1/health/         Liveness probe
-GET  /mcp/v1/manifest.json   ChatGPT-style plugin manifest
+# MCP cluster (JSON-RPC 2.0 per /mcp/v1/ legacy + per-audience servers)
+POST /mcp/v1/                    Legacy curated reads (no auth required)
+POST /mcp/storefront/v1/         Public catalog reads
+POST /mcp/cart/v1/               Cart ops
+POST /mcp/checkout/v1/           Checkout ops
+POST /mcp/admin/v1/              Linda's full catalog — writes too (Bearer auth)
+
+GET  /mcp/admin/v1/health/       Liveness probe
+GET  /mcp/admin/v1/manifest.json ChatGPT-style plugin manifest
+
+# GraphQL
+POST /graphql/                   Typed schema, Bearer or session auth
+POST /graphql/agent/             Agent-only path (Cloudflare TAP / MVI)
 ```
 
 ## Authentication
 
-`Authorization: Bearer <api_key>` against the keys stored in
-`PluginConfig['agent_mcp']['public_keys']`.
+A Bearer token issued at **/dashboard/apps/agent_mcp/tokens/** works
+on *both* surfaces:
 
-Without a key, only `initialize` and a redacted `tools/list` (names +
-descriptions, no `inputSchema`) are exposed. With a key, every tool in
-the curated whitelist is callable.
+```
+Authorization: Bearer mph_<32 random urlsafe bytes>
+```
 
-### Issuing a key
+Tokens carry a label, creation timestamp, and last-used timestamp.
+Revoking removes the row from `PluginConfig['agent_mcp']['public_keys']`
+and takes effect immediately on the next call. There is no expiration;
+rotate by creating + revoking.
+
+### Issuing a token
+
+1. **Dashboard** (recommended): Settings → Developer tools →
+   **API tokens** → Create token. Full value is shown ONCE. The
+   table only shows first4…last4 thereafter.
+2. **Shell** (for automation / scripted bootstrap):
 
 ```bash
 docker compose exec web python manage.py shell -c "
-import secrets
-from plugins.models import PluginConfig
-key = 'mcp_' + secrets.token_urlsafe(32)
-cfg, _ = PluginConfig.objects.update_or_create(plugin_name='agent_mcp')
-data = cfg.config or {}
-keys = data.get('public_keys') or []
-if key not in keys:
-    keys.append(key)
-data['public_keys'] = keys
-cfg.config = data
-cfg.save()
-print(key)
+from plugins.installed.agent_mcp.dashboard import _new_token, _load_entries, _save_entries
+import uuid, datetime as dt
+entries = _load_entries()
+new = {
+  'id': str(uuid.uuid4()),
+  'label': 'bootstrap token',
+  'token': _new_token(),
+  'created_at': dt.datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+  'last_used_at': '',
+}
+entries.append(new)
+_save_entries(entries)
+print(new['token'])
 "
 ```
 
-Store the resulting key somewhere safe — keys are not retrievable
-once issued. To revoke, drop the value from the same list.
+### How Bearer auth flows server-side
 
-## Connecting from Claude Desktop
+When the request hits either `/mcp/admin/v1/` or `/graphql/`:
 
-`~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
-`%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+1. Header parsed; presented token compared against
+   `_api_keys()` (reads `PluginConfig['agent_mcp']['public_keys']`).
+2. On match, `request.user` is replaced with a synthetic staff
+   Customer named `mcp-service` (lazily created, `is_staff=True`,
+   `is_active=True`, no usable password). Every mutation attributed
+   to this user in the audit log.
+3. `last_used_at` on the token entry is updated (best-effort).
+
+If the token is missing / wrong, the request falls through to
+Django's session middleware — useful for browser-based admins.
+
+## Write surface (catalog, inventory, orders)
+
+The MCP **admin** server (`/mcp/admin/v1/`) and GraphQL endpoint
+(`/graphql/`) both expose the full Linda write catalog. The server is
+**not** read-only — agents can drive operations end-to-end.
+
+### Catalog
+
+| Tool / Mutation | Purpose | Approval? |
+|---|---|---|
+| `catalog.publish_digital_product` / `publishDigitalProduct` | Publish a PDF book — downloads PDF + cover, creates product | no |
+| `catalog.create_product` / `createProduct` | Create any product type | no |
+| `catalog.update_product` / `updateProduct` | Update any field (~30 fields) | no |
+| `catalog.update_digital_pdf` / `updateDigitalPdf` | Replace the PDF on an existing digital product | no |
+| `catalog.add_product_image` / `addProductImage` | Download + attach an image | no |
+| `catalog.remove_product_image` / `removeProductImage` | Delete one image | no |
+| `catalog.set_primary_image` / `setPrimaryImage` | Promote image to primary | no |
+| `catalog.archive_product` / `archiveProduct` | Status → archived | no |
+| `catalog.restore_product` / `restoreProduct` | Restore archived | no |
+| `catalog.delete_product` / `deleteProduct` | Hard delete | **yes** |
+| `catalog.create_category` / `createCategory` | New category | no |
+| `catalog.update_category` / `updateCategory` | Update category | no |
+| `catalog.archive_category` / `archiveCategory` | Delete category | **yes** |
+
+### Inventory
+
+| Tool / Mutation | Purpose |
+|---|---|
+| `inventory.set_stock` / `setStock` | Absolute quantity per variant |
+| `inventory.adjust_stock` / `adjustStock` | Delta (refuses negative result) |
+
+### Orders
+
+| Tool / Mutation | Purpose | Approval? |
+|---|---|---|
+| `orders.mark_fulfilled` / `markOrderFulfilled` | FSM fulfill() | no |
+| `orders.mark_shipped` / `markOrderShipped` | FSM ship() + tracking number | no |
+| `orders.cancel` / `cancelOrder` | FSM cancel() | **yes** |
+| `orders.mark_refunded` / `markOrderRefunded` | Bypass FSM for external refunds | **yes** |
+
+All write operations enforce `info.context.request.user.is_staff` —
+the Bearer-resolved `mcp-service` user satisfies this; sessionless
+unauthenticated calls do not.
+
+## Read surface
+
+Read tools available on the curated `/mcp/v1/` (no auth):
+
+| Tool | Purpose |
+|---|---|
+| `products.search` / `find_products` | Search catalog |
+| `products.get` / `get_product` | Single product by slug/sku |
+| `cms.pages` | Published CMS pages |
+| `analytics.top_products` | Best-selling products |
+| `memory.recall` | Linda's stored merchant preferences |
+
+Read tools on `/mcp/admin/v1/` additionally include:
+`orders.list_recent`, `orders.summary`, `analytics.revenue_summary`,
+`catalog.stats`, `catalog.list_categories`, `catalog.find_products`,
+`catalog.get_product`, plus all writes above, plus diagnostics
+(`fs.*`, `logs.*`, `plugins.*`).
+
+## Examples
+
+### Publish a PDF book (MCP)
+
+```bash
+curl -X POST https://YOUR-MORPHEUS-DOMAIN/mcp/admin/v1/ \
+  -H "Authorization: Bearer mph_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+    "params": {
+      "name": "catalog.publish_digital_product",
+      "arguments": {
+        "title": "Crime and Punishment",
+        "pdf_url": "https://your-cdn.com/crime.pdf",
+        "cover_image_url": "https://your-cdn.com/crime.jpg",
+        "price_amount": "9.99",
+        "status": "active"
+      }
+    }
+  }'
+```
+
+### Same call via GraphQL
+
+```bash
+curl -X POST https://YOUR-MORPHEUS-DOMAIN/graphql/ \
+  -H "Authorization: Bearer mph_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "mutation($i: PublishDigitalProductInput!){ publishDigitalProduct(input: $i){ id slug url error } }",
+    "variables": { "i": {
+      "title": "Crime and Punishment",
+      "pdfUrl": "https://your-cdn.com/crime.pdf",
+      "coverImageUrl": "https://your-cdn.com/crime.jpg",
+      "priceAmount": "9.99",
+      "status": "active"
+    } }
+  }'
+```
+
+### Full lifecycle from an external agent
+
+```graphql
+# 1. Create a draft
+mutation { createProduct(input: { name: "T-Shirt", priceAmount: "29.99" }) { slug } }
+
+# 2. Add a cover image
+mutation { addProductImage(input: { slug: "t-shirt", imageUrl: "https://…/front.jpg", isPrimary: true }) { id } }
+
+# 3. Set initial stock
+mutation { setStock(input: { productSlug: "t-shirt", quantity: 100 }) { available } }
+
+# 4. Flip to active
+mutation { updateProduct(input: { slug: "t-shirt", status: "active" }) { slug status } }
+
+# 5. Replace the PDF later (digital products)
+mutation { updateDigitalPdf(input: { slug: "my-book", pdfUrl: "https://…/book-v2.pdf" }) { slug error } }
+```
+
+### Connecting from Claude Desktop
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```jsonc
 {
   "mcpServers": {
-    "morpheus": {
+    "morpheus-admin": {
       "transport": {
         "type": "http",
-        "url": "https://YOUR-MORPHEUS-DOMAIN/mcp/v1/",
+        "url": "https://YOUR-MORPHEUS-DOMAIN/mcp/admin/v1/",
         "headers": {
-          "Authorization": "Bearer mcp_YOUR_KEY"
+          "Authorization": "Bearer mph_..."
         }
       }
     }
@@ -66,56 +221,12 @@ once issued. To revoke, drop the value from the same list.
 }
 ```
 
-Restart Claude. The server will appear under Tools as `morpheus-mcp`
-with all 12 tools listed.
-
-## Connecting from Cursor / Continue / custom
-
-Any client that speaks JSON-RPC 2.0 over HTTP works. Minimal example:
-
-```bash
-curl -s -X POST https://YOUR-MORPHEUS-DOMAIN/mcp/v1/ \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer mcp_YOUR_KEY' \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "products.search",
-      "arguments": {"query": "Austen", "limit": 5}
-    }
-  }'
-```
-
-## Tool whitelist
-
-The server exposes 13 read-only tools (no writes, no admin). Updated
-in `plugins/installed/agent_mcp/views.py:_PUBLIC_TOOL_NAMES`:
-
-| Tool | Purpose |
-|---|---|
-| `products.search` | Search catalog by query / category / status |
-| `products.get` | Single product detail by slug or id |
-| `orders.search` | Order listing with filters |
-| `orders.get` | Single order detail by number |
-| `customers.search` | Customer search by email / name |
-| `customers.get` | Single customer profile |
-| `analytics.summary` | Revenue + orders summary for a date range |
-| `analytics.top_products` | Best-selling products |
-| `cms.pages` | Published CMS pages |
-| `db.list_models` | Schema introspection — model names |
-| `db.describe_model` | Field-level schema for one model |
-| `db.count_rows` | Count rows in a model |
-| `memory.recall` | Linda's stored merchant preferences (read-only here) |
-
-Admin tools (`fs.*`, `logs.*`, `plugins.*`, `settings.*`) and write
-tools are **never** exposed here. The MCP server is read-only by
-design — agents drive shoppers, not operations.
+Restart Claude. The server appears under Tools as `morpheus-admin`
+with the full write catalog.
 
 ## Resources
 
-Three discoverable resource URIs (`resources/list` returns these):
+Three discoverable resource URIs (`resources/list`):
 
 - `morpheus://catalog/featured` — featured products
 - `morpheus://catalog/recent` — newest 20 products

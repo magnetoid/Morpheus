@@ -154,6 +154,61 @@
       </div>
     </div>
   </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h3 class="font-semibold">Common product-lifecycle mutations</h3>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Same Bearer token for all of these.</p>
+    </div>
+    <div class="card-padded space-y-3">
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Create a generic product</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: CreateProductInput!){
+  createProduct(input: $i){ slug status error }
+}
+# variables: {"i": {"name": "...", "priceAmount": "29.99",
+#                   "productType": "simple", "status": "draft"}}</pre>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Publish a PDF book (downloads PDF + cover)</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: PublishDigitalProductInput!){
+  publishDigitalProduct(input: $i){ slug url error }
+}
+# variables: {"i": {"title": "...", "pdfUrl": "https://…/book.pdf",
+#                   "coverImageUrl": "https://…/cover.jpg",
+#                   "priceAmount": "9.99"}}</pre>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Replace the PDF on an existing digital product</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: UpdateDigitalPdfInput!){
+  updateDigitalPdf(input: $i){ slug error }
+}
+# variables: {"i": {"slug": "your-book",
+#                   "pdfUrl": "https://…/book-v2.pdf"}}</pre>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Flip draft → active</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: UpdateProductInput!){
+  updateProduct(input: $i){ slug status error }
+}
+# variables: {"i": {"slug": "your-book", "status": "active"}}</pre>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Upload an image to a product</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: AddProductImageInput!){
+  addProductImage(input: $i){ id url isPrimary error }
+}
+# variables: {"i": {"slug": "your-book",
+#                   "imageUrl": "https://…/cover.jpg",
+#                   "isPrimary": true, "altText": "Cover"}}</pre>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Remove or promote an image</p>
+        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation { removeProductImage(imageId: "uuid") { id error } }
+mutation { setPrimaryImage(imageId: "uuid")    { id error } }</pre>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>

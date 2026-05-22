@@ -448,6 +448,109 @@ def delete_product_tool(*, slug: str) -> ToolResult:
 
 
 @tool(
+    name='catalog.update_digital_pdf',
+    description=(
+        'Replace the digital PDF file on an existing product. The new '
+        'PDF is downloaded server-side from `pdf_url` (HTTPS-only, max '
+        '50 MB) and attached. Use when an agent has a fresh revision '
+        'of a book and needs to swap the customer download.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slug': {'type': 'string'},
+            'pdf_url': {'type': 'string'},
+        },
+        'required': ['slug', 'pdf_url'],
+    },
+)
+def update_digital_pdf_tool(*, slug: str, pdf_url: str) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, update_digital_pdf
+    try:
+        r = update_digital_pdf(slug=slug, pdf_url=pdf_url)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Updated PDF on {r["slug"]}')
+
+
+@tool(
+    name='catalog.add_product_image',
+    description=(
+        'Download an image from an HTTPS URL (jpg/png/webp/gif, max '
+        '8 MB) and attach it as a ProductImage. Pass `is_primary=true` '
+        'to demote any existing primary in the same call.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slug': {'type': 'string'},
+            'image_url': {'type': 'string'},
+            'alt_text': {'type': 'string'},
+            'is_primary': {'type': 'boolean', 'default': False},
+            'sort_order': {'type': 'integer', 'default': 0},
+        },
+        'required': ['slug', 'image_url'],
+    },
+)
+def add_product_image_tool(
+    *, slug: str, image_url: str, alt_text: str = '',
+    is_primary: bool = False, sort_order: int = 0,
+) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, add_product_image
+    try:
+        r = add_product_image(
+            slug=slug, image_url=image_url, alt_text=alt_text,
+            is_primary=is_primary, sort_order=sort_order,
+        )
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(
+        output=r,
+        display=f'Added image to {r["product_slug"]}' + (' (primary)' if r['is_primary'] else ''),
+    )
+
+
+@tool(
+    name='catalog.remove_product_image',
+    description='Remove a ProductImage by id.',
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {'image_id': {'type': 'string'}},
+        'required': ['image_id'],
+    },
+)
+def remove_product_image_tool(*, image_id: str) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, remove_product_image
+    try:
+        r = remove_product_image(image_id=image_id)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Removed image {image_id}')
+
+
+@tool(
+    name='catalog.set_primary_image',
+    description='Promote an image to primary; demotes any other primary on the same product.',
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {'image_id': {'type': 'string'}},
+        'required': ['image_id'],
+    },
+)
+def set_primary_image_tool(*, image_id: str) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, set_primary_image
+    try:
+        r = set_primary_image(image_id=image_id)
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(output=r, display=f'Set {image_id} as primary')
+
+
+@tool(
     name='catalog.create_category',
     description='Create a new product category. parent_slug is optional (top-level if blank).',
     scopes=['catalog.write'],
