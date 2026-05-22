@@ -357,40 +357,28 @@ class ProductImage(models.Model):
         super().save(*args, **kwargs)
         if not self.image:
             return
-        # Skip if the source is already WebP, or we already have a variant
-        # for this filename (cheap heuristic — avoids re-encoding on every save).
+        # Skip if the source is already an optimised variant or we
+        # already have one cached for this filename. Avoids re-encoding
+        # on every metadata save (alt_text edit, sort_order drag, …).
         src_name = (self.image.name or '').lower()
-        if src_name.endswith('.webp'):
+        if src_name.endswith('.webp') or src_name.endswith('.avif'):
             return
         expected_webp = f'products/webp/{src_name.rsplit("/", 1)[-1].rsplit(".", 1)[0]}.webp'
         if self.webp_image and self.webp_image.name == expected_webp:
             return
+        # Variant generation respects the store-wide image defaults
+        # (Settings → General → Image defaults, commit a57a4eb). The
+        # configured PDP width / height is applied as a max-resize
+        # (preserves aspect ratio); the configured format becomes the
+        # encoded output. Falls back to WebP @ 800×1200 if the panel
+        # isn't configured.
+        from plugins.installed.catalog.image_pipeline import generate_pdp_variant
         try:
-            from io import BytesIO
-            from django.core.files.base import ContentFile
-            from PIL import Image as PILImage
-
-            self.image.open('rb')
-            try:
-                pil = PILImage.open(self.image)
-                pil.load()
-            finally:
-                self.image.close()
-            if pil.mode in ('P', 'CMYK'):
-                pil = pil.convert('RGB')
-            elif pil.mode == 'RGBA':
-                # Keep alpha — WebP handles it.
-                pass
-            buf = BytesIO()
-            pil.save(buf, format='WEBP', quality=82, method=4)
-            buf.seek(0)
-            base = src_name.rsplit('/', 1)[-1].rsplit('.', 1)[0]
-            self.webp_image.save(f'{base}.webp', ContentFile(buf.read()), save=False)
-            super().save(update_fields=['webp_image'])
-        except Exception:  # noqa: BLE001 — image upload must not fail because of WebP
+            generate_pdp_variant(self)
+        except Exception:  # noqa: BLE001 — image upload must not fail on variant gen
             import logging
             logging.getLogger('morpheus.catalog').warning(
-                'Failed to generate WebP for ProductImage %s', self.pk, exc_info=True,
+                'Failed to generate image variant for ProductImage %s', self.pk, exc_info=True,
             )
 
     def delete(self, *args, **kwargs):
