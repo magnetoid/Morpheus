@@ -93,12 +93,132 @@
     font-size: .95rem;
     color: var(--text);
   }
+  /* Linda's responses get a richer, magazine-y treatment.
+     Plain text wraps; bold/italic/code/blockquote get distinct styling;
+     bullets and numbered lists collapse the leading whitespace. */
+  .linda-msg-assistant .linda-msg-body {
+    white-space: normal;
+    color: var(--text);
+    animation: linda-fade-in 180ms ease-out;
+  }
+  .linda-msg-assistant .linda-msg-body p { margin: 0 0 .7rem; }
+  .linda-msg-assistant .linda-msg-body p:last-child { margin-bottom: 0; }
+  .linda-msg-assistant .linda-msg-body strong { font-weight: 600; color: var(--text); }
+  .linda-msg-assistant .linda-msg-body em { font-style: italic; }
+  .linda-msg-assistant .linda-msg-body ul,
+  .linda-msg-assistant .linda-msg-body ol {
+    margin: .25rem 0 .7rem 1.1rem;
+    padding-left: 0;
+  }
+  .linda-msg-assistant .linda-msg-body li { margin: .1rem 0; }
+  .linda-msg-assistant .linda-msg-body code {
+    background: var(--surface-2);
+    padding: .1rem .35rem;
+    border-radius: 3px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: .85em;
+  }
+  .linda-msg-assistant .linda-msg-body pre {
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: .75rem 1rem;
+    overflow-x: auto;
+    margin: .5rem 0;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: .82rem;
+    line-height: 1.5;
+  }
+  .linda-msg-assistant .linda-msg-body pre code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+  }
+  .linda-msg-assistant .linda-msg-body blockquote {
+    border-left: 3px solid var(--border-strong, #e2e2dc);
+    padding: .15rem 0 .15rem .8rem;
+    color: var(--text-muted);
+    margin: .5rem 0;
+    font-style: italic;
+  }
+  .linda-msg-assistant .linda-msg-body a {
+    color: var(--accent, #c5694e);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  /* Typing caret — a single blinking block at the end of streaming text. */
+  .linda-msg-assistant .linda-msg-body.is-typing::after {
+    content: '';
+    display: inline-block;
+    width: .55rem;
+    height: 1.05em;
+    margin-left: 2px;
+    vertical-align: -.15em;
+    background: currentColor;
+    opacity: .55;
+    animation: linda-caret 0.9s steps(2) infinite;
+  }
+  @keyframes linda-caret {
+    0%, 50% { opacity: .55; }
+    50.01%, 100% { opacity: 0; }
+  }
+  @keyframes linda-fade-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .linda-msg-user { display: flex; justify-content: flex-end; }
   .linda-msg-user .linda-msg-body {
     background: var(--surface-2);
     padding: .65rem 1rem;
     border-radius: 16px 16px 4px 16px;
     max-width: 32rem;
+  }
+  /* "Linda is thinking" — three dots animating between the user's
+     message and the assistant's first token. */
+  .linda-thinking {
+    max-width: 44rem; margin: 1.25rem auto 0;
+    display: flex; align-items: center; gap: .65rem;
+    color: var(--text-muted);
+    font-size: .9rem;
+  }
+  .linda-thinking__dots {
+    display: inline-flex; gap: .25rem;
+  }
+  .linda-thinking__dots span {
+    display: inline-block;
+    width: .42rem; height: .42rem;
+    border-radius: 50%;
+    background: var(--text-muted);
+    opacity: .35;
+    animation: linda-bounce 1.2s ease-in-out infinite;
+  }
+  .linda-thinking__dots span:nth-child(2) { animation-delay: .15s; }
+  .linda-thinking__dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes linda-bounce {
+    0%, 60%, 100% { opacity: .35; transform: translateY(0); }
+    30%           { opacity: 1;   transform: translateY(-3px); }
+  }
+  /* Progress bar shown while a tool call is mid-flight (a search,
+     a DB lookup, a slow LLM call inside a tool). Replaces the dots
+     once we have a more specific signal. */
+  .linda-progress {
+    height: 2px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+    max-width: 44rem; margin: .5rem auto 0;
+    position: relative;
+  }
+  .linda-progress::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 30%;
+    background: linear-gradient(90deg, transparent, var(--accent, #c5694e) 50%, transparent);
+    animation: linda-progress 1.4s linear infinite;
+  }
+  @keyframes linda-progress {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(400%); }
   }
   .linda-msg-tool .linda-msg-meta {
     font-family: ui-monospace, Menlo, monospace;
@@ -238,11 +358,135 @@
     wrap.className = 'linda-msg linda-msg-' + role;
     var body = document.createElement('div');
     body.className = 'linda-msg-body';
-    body.textContent = text;
+    if (role === 'assistant') {
+      body.innerHTML = renderMarkdown(text || '');
+    } else {
+      body.textContent = text;
+    }
     wrap.appendChild(body);
     log.appendChild(wrap);
     log.scrollTop = log.scrollHeight;
     return wrap;
+  }
+
+  /* Minimal Markdown renderer — covers the 90% Linda actually emits:
+     **bold**, *italic*, `inline code`, ```code blocks```, > blockquote,
+     - / 1. lists, [links](url), paragraph breaks. No external dep, no
+     XSS exposure — we escape first, then re-introduce the markup. */
+  function escapeMd(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function renderMarkdown(src) {
+    if (!src) return '';
+    var out = escapeMd(src);
+    // Fenced code blocks first (so their inner content isn't mangled).
+    out = out.replace(/```([\s\S]*?)```/g, function (_, body) {
+      return '<pre><code>' + body.replace(/^\n/, '') + '</code></pre>';
+    });
+    // Inline code.
+    out = out.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    // Bold + italic.
+    out = out.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/(^|[\s\(])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    // Links — [text](https?://…) only.
+    out = out.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g,
+      '<a href="$2" target="_blank" rel="noopener">$1</a>'
+    );
+    // Blockquotes.
+    out = out.replace(/(^|\n)>\s?(.+)(?=\n|$)/g, '$1<blockquote>$2</blockquote>');
+    // Lists — collapse consecutive `- ` or `* ` or `1. ` lines into one <ul>/<ol>.
+    out = out.replace(/((?:(?:^|\n)[-*]\s+.+)+)/g, function (block) {
+      var items = block.trim().split(/\n[-*]\s+/).map(function (s) {
+        return '<li>' + s.replace(/^[-*]\s+/, '') + '</li>';
+      });
+      return '\n<ul>' + items.join('') + '</ul>';
+    });
+    out = out.replace(/((?:(?:^|\n)\d+\.\s+.+)+)/g, function (block) {
+      var items = block.trim().split(/\n\d+\.\s+/).map(function (s) {
+        return '<li>' + s.replace(/^\d+\.\s+/, '') + '</li>';
+      });
+      return '\n<ol>' + items.join('') + '</ol>';
+    });
+    // Paragraph breaks — double newlines become <p>, single newlines
+    // collapse to a single space (Markdown convention).
+    out = out
+      .split(/\n{2,}/)
+      .map(function (chunk) {
+        chunk = chunk.trim();
+        if (!chunk) return '';
+        // Don't wrap block elements in <p>.
+        if (/^<(ul|ol|pre|blockquote|p|h\d)/.test(chunk)) return chunk;
+        return '<p>' + chunk.replace(/\n/g, ' ') + '</p>';
+      })
+      .join('\n');
+    return out;
+  }
+
+  /* "Linda is thinking" indicator — shown between the user's submit
+     and the first assistant_text event. Removed once we have a chunk
+     OR a tool-call event (whichever lands first). */
+  function showThinking() {
+    var existing = log.querySelector('.linda-thinking');
+    if (existing) return existing;
+    var t = document.createElement('div');
+    t.className = 'linda-thinking';
+    t.innerHTML =
+      '<span>Linda is thinking</span>'
+      + '<span class="linda-thinking__dots"><span></span><span></span><span></span></span>';
+    log.appendChild(t);
+    var bar = document.createElement('div');
+    bar.className = 'linda-progress';
+    log.appendChild(bar);
+    log.scrollTop = log.scrollHeight;
+    return t;
+  }
+  function hideThinking() {
+    log.querySelectorAll('.linda-thinking, .linda-progress').forEach(function (el) { el.remove(); });
+  }
+
+  /* Typewriter buffer — assistant_text events arrive in chunks; we
+     render them character-by-character to give the response a paced,
+     ChatGPT-style feel. The buffer drains at ~22 ms/char (~45 chars/s)
+     unless the server is ahead, in which case it speeds up so we
+     never lag the network. */
+  function makeTypewriter(bodyEl) {
+    var queue = [];
+    var raw = '';
+    var draining = false;
+    function drain() {
+      draining = true;
+      function tick() {
+        if (!queue.length) {
+          draining = false;
+          bodyEl.classList.remove('is-typing');
+          return;
+        }
+        // Speed adapts: backlog > 200 chars → flush fast (~5ms);
+        // typical backlog → human-readable 22ms.
+        var delay = queue.length > 200 ? 4 : (queue.length > 60 ? 12 : 22);
+        raw += queue.shift();
+        bodyEl.innerHTML = renderMarkdown(raw);
+        bodyEl.classList.add('is-typing');
+        log.scrollTop = log.scrollHeight;
+        setTimeout(tick, delay);
+      }
+      tick();
+    }
+    return {
+      enqueue: function (text) {
+        for (var i = 0; i < text.length; i++) queue.push(text[i]);
+        if (!draining) drain();
+      },
+      // Force-finish: set the full text instantly (used on `final` event).
+      finalize: function (text) {
+        queue.length = 0;
+        raw = text || raw;
+        bodyEl.innerHTML = renderMarkdown(raw);
+        bodyEl.classList.remove('is-typing');
+        log.scrollTop = log.scrollHeight;
+      },
+    };
   }
 
   /* Suggested-next chips: prefill the textarea on click + focus. After
@@ -305,9 +549,22 @@
     pushLine('user', text);
     input.value = '';
     autoresize();
+    showThinking();
 
     var assistantEl = null;
+    var typer = null;
     var pendingTools = {};
+
+    function ensureAssistant() {
+      if (!assistantEl) {
+        hideThinking();
+        assistantEl = pushLine('assistant', '');
+        var bodyEl = assistantEl.querySelector('.linda-msg-body');
+        typer = makeTypewriter(bodyEl);
+      }
+      return assistantEl;
+    }
+
     fetch('/dashboard/assistant/stream/', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
@@ -324,6 +581,7 @@
       function pump() {
         return reader.read().then(function (chunk) {
           if (chunk.done) {
+            hideThinking();
             // Once the model has replied, swap in contextual follow-ups.
             setSuggestions(FOLLOWUPS);
             return;
@@ -337,11 +595,18 @@
             var ev;
             try { ev = JSON.parse(line.slice(6)); } catch (_) { return; }
             if (ev.type === 'tool_call_started') {
+              hideThinking();
               var t = document.createElement('details');
               t.className = 'linda-tool';
               t.innerHTML = '<summary><span class="t-icon">⋯</span><span><strong>' + escapeHtml(ev.name) + '</strong> <span class="t-status">running…</span></span></summary><div class="t-body">' + escapeHtml(JSON.stringify(ev.arguments || {}, null, 2)) + '</div>';
               clearEmpty();
               log.appendChild(t);
+              // Mini progress bar under each tool call so the user
+              // sees something happening even for long-running tools.
+              var prog = document.createElement('div');
+              prog.className = 'linda-progress';
+              prog.dataset.tool = ev.name;
+              log.appendChild(prog);
               log.scrollTop = log.scrollHeight;
               pendingTools[ev.name] = t;
             } else if (ev.type === 'tool_call_finished') {
@@ -355,6 +620,9 @@
                 if (body) body.textContent = ev.error || JSON.stringify(ev.output, null, 2);
                 delete pendingTools[ev.name];
               }
+              // Drop the per-tool progress bar.
+              log.querySelectorAll('.linda-progress[data-tool="' + ev.name + '"]')
+                .forEach(function (p) { p.remove(); });
               // Render dashboard.navigate as a click-through chip in the log.
               if (
                 ev.name === 'dashboard.navigate' && !ev.error
@@ -372,21 +640,16 @@
                 log.scrollTop = log.scrollHeight;
               }
             } else if (ev.type === 'assistant_text') {
-              if (!assistantEl) assistantEl = pushLine('assistant', ev.text);
-              else {
-                var b = assistantEl.querySelector('.linda-msg-body');
-                if (b) b.textContent = (b.textContent + '\n' + ev.text).trim();
-              }
+              ensureAssistant();
+              if (typer) typer.enqueue((ev.text || '') + '\n');
             } else if (ev.type === 'final') {
-              if (ev.text) {
-                if (!assistantEl) pushLine('assistant', ev.text);
-                else {
-                  var b2 = assistantEl.querySelector('.linda-msg-body');
-                  if (b2) b2.textContent = ev.text;
-                }
-              }
+              ensureAssistant();
+              if (ev.text && typer) typer.finalize(ev.text);
+              hideThinking();
             } else if (ev.type === 'error') {
-              pushLine('assistant', ev.text || ev.error || '(connection error)');
+              hideThinking();
+              ensureAssistant();
+              if (typer) typer.finalize(ev.text || ev.error || '(connection error)');
             }
           });
           return pump();
@@ -394,6 +657,7 @@
       }
       return pump();
     }).catch(function () {
+      hideThinking();
       pushLine('assistant', 'Connection lost — try again.');
     });
   });
