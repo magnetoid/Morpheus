@@ -579,11 +579,35 @@ def organization_jsonld() -> dict | None:
     s = site_settings()
     if not s.organization_name:
         return None
+    # @type comes from PluginConfig['seo']['organization_type'] —
+    # merchant can pick Store / OnlineStore / BookStore / Publisher
+    # to give Google a more accurate signal about what kind of
+    # business this is. Default: 'OnlineStore'.
+    org_type = 'OnlineStore'
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    seo_plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if seo_plugin is not None:
+                    break
+        if seo_plugin is not None:
+            org_type = (seo_plugin.get_config_value(
+                'organization_type', 'OnlineStore',
+            ) or 'OnlineStore').strip() or 'OnlineStore'
+    except Exception:  # noqa: BLE001
+        pass
+
     same_as = [u for u in (s.facebook_url, s.instagram_url, s.linkedin_url,
                            s.youtube_url, s.tiktok_url) if u]
     out = {
         '@context': 'https://schema.org',
-        '@type': 'Organization',
+        '@type': org_type,
         'name': s.organization_name,
         'url': _site_base_url(),
     }

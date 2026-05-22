@@ -24,9 +24,16 @@ register = template.Library()
 
 
 def _canonical_from_request(request) -> tuple[str, bool]:
-    """Build the canonical URL from a request, stripping query params that
-    `SiteSeoSettings.noindex_query_params` marks as duplicate-content
-    generators (page, sort, ref, gclid, …).
+    """Build the canonical URL from a request, stripping query params.
+
+    Two complementary strategies:
+      1. PluginConfig['seo']['canonical_strip_query_params'] — when
+         True, strip EVERY query param from the canonical (standard
+         SEO hygiene; collapses utm_/fbclid/gclid into the clean URL).
+      2. ``SiteSeoSettings.noindex_query_params`` — a per-key
+         blocklist for cases where you want some params kept but
+         signal duplicate-content noindex when the listed ones show
+         up (e.g. ``?sort=price`` → noindex,follow).
 
     Returns ``(canonical_url, had_noindex_param)``. The flag lets the
     caller bump robots to ``noindex, follow`` so faceted SERPs don't
@@ -40,16 +47,48 @@ def _canonical_from_request(request) -> tuple[str, bool]:
     except Exception:  # noqa: BLE001
         return '', False
 
+    parts = urlsplit(absolute)
+    if not parts.query:
+        return absolute, False
+
+    # Read both knobs defensively — never crash the page render.
+    strip_all = True   # default ON (matches the PluginConfig default)
+    blocklist: set[str] = set()
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    seo_plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if seo_plugin is not None:
+                    break
+        if seo_plugin is not None:
+            strip_all = bool(seo_plugin.get_config_value(
+                'canonical_strip_query_params', True,
+            ))
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from plugins.installed.seo.services import site_settings
         blocklist = set(site_settings().noindex_query_params or [])
-    except Exception:  # noqa: BLE001 — settings may not be migrated yet
-        blocklist = set()
-    if not blocklist:
-        return absolute, False
+    except Exception:  # noqa: BLE001
+        pass
 
-    parts = urlsplit(absolute)
-    if not parts.query:
+    if strip_all:
+        # Aggressive: drop EVERY query param from the canonical. Still
+        # raises the noindex flag when one of the blocklisted params
+        # was present so faceted views get noindex,follow.
+        from urllib.parse import parse_qsl
+        pairs = parse_qsl(parts.query, keep_blank_values=True)
+        had_blocked = any(k in blocklist for k, _ in pairs) if blocklist else False
+        rebuilt = urlunsplit(parts._replace(query=''))
+        return rebuilt, had_blocked
+
+    if not blocklist:
         return absolute, False
 
     from urllib.parse import parse_qsl
@@ -161,7 +200,85 @@ def seo_meta(
         # Faceted/paginated SERPs: keep crawl signal (follow) but stop
         # indexing the duplicate URL.
         meta.robots = 'noindex, follow'
+
+    # Auto-noindex thin PDPs (PluginConfig['seo']['noindex_thin_pdp_below_words']).
+    # When a product's description has fewer than N words AND we're
+    # on a page that resolves to that product, bump robots to
+    # noindex,follow so Google doesn't index the shell page until the
+    # merchant fills in the copy. 0 disables — default disabled.
+    try:
+        if (
+            object is not None
+            and 'noindex' not in meta.robots
+            and getattr(object, '_meta', None) is not None
+            and getattr(object._meta, 'model_name', '') == 'product'
+        ):
+            from plugins.registry import plugin_registry
+            seo_plugin = None
+            for attr in ('get', 'get_plugin'):
+                fn = getattr(plugin_registry, attr, None)
+                if callable(fn):
+                    try:
+                        seo_plugin = fn('seo')
+                    except Exception:  # noqa: BLE001
+                        continue
+                    if seo_plugin is not None:
+                        break
+            min_words = 0
+            if seo_plugin is not None:
+                try:
+                    min_words = int(seo_plugin.get_config_value(
+                        'noindex_thin_pdp_below_words', 0,
+                    ) or 0)
+                except (TypeError, ValueError):
+                    min_words = 0
+            if min_words > 0:
+                desc = (getattr(object, 'description', '') or '').strip()
+                # Cheap word count — split on whitespace, skip empties.
+                word_count = len([w for w in desc.split() if w])
+                if word_count < min_words:
+                    meta.robots = 'noindex, follow'
+    except Exception:  # noqa: BLE001 — never break PDP render over an SEO heuristic
+        pass
+
     return mark_safe(meta.to_html())
+
+
+@register.simple_tag
+def seo_preconnect():
+    """Emit <link rel="preconnect"> for the configured CDN host.
+
+    Driven by PluginConfig['seo']['preconnect_to_cdn']. Empty config →
+    no tag. Speeds first image load when product media is served from
+    a separate CDN (Cloudflare Images, S3 + CloudFront, etc.).
+    """
+    host = ''
+    try:
+        from plugins.registry import plugin_registry
+        seo_plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    seo_plugin = fn('seo')
+                except Exception:  # noqa: BLE001
+                    continue
+                if seo_plugin is not None:
+                    break
+        if seo_plugin is not None:
+            host = (seo_plugin.get_config_value('preconnect_to_cdn', '') or '').strip()
+    except Exception:  # noqa: BLE001
+        return ''
+    if not host:
+        return ''
+    # Add the scheme if the merchant only wrote the bare host.
+    if not host.startswith(('http://', 'https://')):
+        host = 'https://' + host
+    safe = escape(host)
+    return mark_safe(
+        f'<link rel="preconnect" href="{safe}" crossorigin>'
+        f'<link rel="dns-prefetch" href="{safe}">'
+    )
 
 
 @register.simple_tag
