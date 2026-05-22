@@ -132,6 +132,16 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     # Convention: sort_order=0 is the front cover, 1 is the back.
     front_image = next((i for i in images if i.is_primary and i.sort_order == 0), None)
     back_image = next((i for i in images if i.is_primary and i.sort_order == 1), None)
+    # Load attached videos for the dashboard video CRUD card. The
+    # plugin may be disabled — fall through to an empty list.
+    videos: list = []
+    try:
+        from plugins.installed.product_videos.models import ProductVideo
+        videos = list(
+            ProductVideo.objects.filter(product=product).order_by('sort_order', 'created_at')
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return render(request, 'admin_dashboard/product_form.html', {
         'form': form,
         'product': product,
@@ -139,6 +149,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         'vendors': vendors,
         'variants': variants,
         'images': images,
+        'videos': videos,
         'front_image': front_image,
         'back_image': back_image,
         'active_nav': 'products',
@@ -242,6 +253,17 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
         return redirect('admin_dashboard:product_edit', product_id=product.id)
     alt = (request.POST.get('alt_text') or '').strip()[:255]
 
+    # 15-image cap (Phase 1 of docs/plans/product-slider.md).
+    # Slider only renders 15 anyway; refuse to accept more so the DB
+    # doesn't accumulate orphan rows the merchant can't see.
+    image_count = ProductImage.objects.filter(product=product).count()
+    if image_count >= 15:
+        messages.error(
+            request,
+            'You can have up to 15 images per product. Delete one before uploading another.',
+        )
+        return redirect('admin_dashboard:product_edit', product_id=product.id)
+
     # Unified 15-slot model (Phase 1 of docs/plans/product-slider.md):
     # new uploads append at the end of the slider. The merchant drags
     # tiles to reorder; slot 0 is the cover.
@@ -325,6 +347,63 @@ def image_reorder(request: HttpRequest, product_id: str) -> HttpResponse:
             img.save(update_fields=fields)
             updated += 1
     return JsonResponse({'ok': True, 'count': updated})
+
+
+@staff_member_required
+def video_add(request: HttpRequest, product_id: str) -> HttpResponse:
+    """Attach a video (YouTube/Vimeo URL, direct mp4, or raw iframe)
+    to a product. Phase 2 of docs/plans/product-slider.md — moves
+    video CRUD off the Django admin and onto the product edit page.
+    """
+    if request.method != 'POST':
+        return redirect('admin_dashboard:product_edit', product_id=product_id)
+    product = _get_product(product_id)
+    try:
+        from plugins.installed.product_videos.models import ProductVideo
+    except ImportError:
+        messages.error(request, 'Product videos plugin is not installed.')
+        return redirect('admin_dashboard:product_edit', product_id=product.id)
+
+    title = (request.POST.get('title') or '').strip()[:200]
+    url = (request.POST.get('url') or '').strip()[:500]
+    poster_url = (request.POST.get('poster_url') or '').strip()[:500]
+    embed_html = (request.POST.get('embed_html') or '').strip()
+    if not (url or embed_html):
+        messages.error(request, 'Provide a video URL or raw embed HTML.')
+        return redirect('admin_dashboard:product_edit', product_id=product.id)
+    # Append at the end — the storefront renders videos AFTER images.
+    max_sort = (
+        ProductVideo.objects.filter(product=product)
+        .order_by('-sort_order').values_list('sort_order', flat=True).first()
+    )
+    sort_order = (int(max_sort) + 1) if max_sort is not None else 0
+    ProductVideo.objects.create(
+        product=product,
+        title=title,
+        url=url,
+        embed_html=embed_html,
+        poster_url=poster_url,
+        sort_order=sort_order,
+        is_active=True,
+    )
+    messages.success(request, 'Video added.')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
+
+
+@staff_member_required
+def video_delete(request: HttpRequest, product_id: str, video_id: str) -> HttpResponse:
+    if request.method != 'POST':
+        return redirect('admin_dashboard:product_edit', product_id=product_id)
+    product = _get_product(product_id)
+    try:
+        from plugins.installed.product_videos.models import ProductVideo
+    except ImportError:
+        return redirect('admin_dashboard:product_edit', product_id=product.id)
+    video = ProductVideo.objects.filter(pk=video_id, product=product).first()
+    if video is not None:
+        video.delete()
+        messages.success(request, 'Video removed.')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
 
 
 @staff_member_required
