@@ -70,12 +70,12 @@ class OpenAIGateway(LLMGateway):
     when a custom base_url is configured (LM Studio, vLLM, etc.)."""
 
     def __init__(self, cfg: ProviderConfig | None = None):
-        import openai
+        # Shared timeout policy with core.agents.llm — keep a single
+        # source of truth.
+        from core.agents.llm import LLM_HTTP_TIMEOUT_SECS, _openai_client
         cfg = cfg or get_provider_config('openai')
-        kwargs = {'api_key': cfg.api_key} if cfg.api_key else {}
-        if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1':
-            kwargs['base_url'] = cfg.base_url
-        self.client = openai.OpenAI(**kwargs) if kwargs else openai.OpenAI()
+        base = cfg.base_url if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1' else ''
+        self.client = _openai_client(api_key=cfg.api_key, base_url=base)
         self.model = cfg.model or 'gpt-4o-mini'
         self.embed_model = cfg.embedding_model
 
@@ -190,7 +190,7 @@ class GeminiGateway(LLMGateway):
         if system:
             body['systemInstruction'] = {'parts': [{'text': system}]}
         try:
-            resp = requests.post(url, json=body, timeout=60)
+            resp = requests.post(url, json=body, timeout=20)
             resp.raise_for_status()
             data = resp.json()
             chunks = []
@@ -315,7 +315,7 @@ class OllamaGateway(LLMGateway):
                     'stream': False,
                     'options': {'temperature': temperature, 'num_predict': max_tokens},
                 },
-                timeout=120,
+                timeout=20,
             )
             resp.raise_for_status()
             result = resp.json().get('response', '')

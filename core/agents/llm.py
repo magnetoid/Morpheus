@@ -28,6 +28,36 @@ from core.circuit_breaker import LLM_BREAKER, CircuitOpenError
 logger = logging.getLogger('morpheus.agents.llm')
 
 
+# How long a single LLM provider call may take before we abort.
+# Must be LESS than `--timeout` in scripts/docker-entrypoint.sh
+# (currently 30s) so the gateway times out cleanly and the worker is
+# released — gunicorn killing the worker mid-flight is much worse than
+# the LLM call failing with a recoverable error.
+LLM_HTTP_TIMEOUT_SECS = 20
+
+
+def _openai_client(api_key: str = '', base_url: str = '', **extra):
+    """Construct an `openai.OpenAI` client with prod-sane defaults.
+
+    The OpenAI SDK retries twice on failures by default (so one Packy
+    503 turns into three calls and ~24s of held-worker time). We
+    disable that — the circuit breaker and the gunicorn timeout are
+    the right layers to handle persistent upstream failure, not the
+    SDK retry loop.
+    """
+    import openai
+    kwargs: dict[str, Any] = {
+        'timeout': LLM_HTTP_TIMEOUT_SECS,
+        'max_retries': 0,
+    }
+    if api_key:
+        kwargs['api_key'] = api_key
+    if base_url:
+        kwargs['base_url'] = base_url
+    kwargs.update(extra)
+    return openai.OpenAI(**kwargs)
+
+
 def _llm_breaker(fn: Callable) -> Callable:
     """Wrap a provider's respond() in LLM_BREAKER so consecutive failures
     trip the circuit and follow-up calls fail fast instead of stacking
@@ -113,15 +143,10 @@ class OpenAIProvider(LLMProvider):
     name = 'openai'
 
     def __init__(self, model: str | None = None) -> None:
-        import openai  # lazy import — provider is only loaded when used
         from plugins.installed.ai_assistant.services.config import get_provider_config
         cfg = get_provider_config('openai')
-        kwargs: dict[str, Any] = {}
-        if cfg.api_key:
-            kwargs['api_key'] = cfg.api_key
-        if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1':
-            kwargs['base_url'] = cfg.base_url
-        self._client = openai.OpenAI(**kwargs) if kwargs else openai.OpenAI()
+        base = cfg.base_url if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1' else ''
+        self._client = _openai_client(api_key=cfg.api_key, base_url=base)
         self.model = model or cfg.model or 'gpt-4o-mini'
 
     def _convert_messages(self, messages: list[LLMMessage]) -> list[dict[str, Any]]:  # type: ignore[override]
@@ -199,9 +224,16 @@ class AnthropicProvider(LLMProvider):
         import anthropic
         from plugins.installed.ai_assistant.services.config import get_provider_config
         cfg = get_provider_config('anthropic')
-        self._client = (
-            anthropic.Anthropic(api_key=cfg.api_key) if cfg.api_key else anthropic.Anthropic()
-        )
+        # Same timeout discipline as the OpenAI client — must be less
+        # than the gunicorn worker timeout so the LLM call fails
+        # cleanly instead of getting SIGKILLed.
+        anth_kwargs: dict[str, Any] = {
+            'timeout': LLM_HTTP_TIMEOUT_SECS,
+            'max_retries': 0,
+        }
+        if cfg.api_key:
+            anth_kwargs['api_key'] = cfg.api_key
+        self._client = anthropic.Anthropic(**anth_kwargs)
         self.model = model or cfg.model or 'claude-3-5-sonnet-latest'
 
     def _convert(self, messages: list[LLMMessage]) -> tuple[str, list[dict[str, Any]]]:
@@ -330,7 +362,7 @@ class OllamaProvider(LLMProvider):
                 'stream': False,
                 'options': {'temperature': temperature, 'num_predict': max_tokens},
             },
-            timeout=120,
+            timeout=LLM_HTTP_TIMEOUT_SECS,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -391,7 +423,7 @@ class GeminiProvider(LLMProvider):
             body['systemInstruction'] = {'parts': [{'text': '\n\n'.join(system_chunks)}]}
 
         url = f'{self.base_url}/models/{self.model}:generateContent?key={self._api_key}'
-        resp = self._requests.post(url, json=body, timeout=120)
+        resp = self._requests.post(url, json=body, timeout=LLM_HTTP_TIMEOUT_SECS)
         resp.raise_for_status()
         data = resp.json()
         chunks: list[str] = []
@@ -418,14 +450,12 @@ class OpenRouterProvider(OpenAIProvider):
     name = 'openrouter'
 
     def __init__(self, model: str | None = None) -> None:
-        import openai
         from plugins.installed.ai_assistant.services.config import get_provider_config
         cfg = get_provider_config('openrouter')
-        kwargs: dict[str, Any] = {}
-        if cfg.api_key:
-            kwargs['api_key'] = cfg.api_key
-        kwargs['base_url'] = cfg.base_url or 'https://openrouter.ai/api/v1'
-        self._client = openai.OpenAI(**kwargs)
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://openrouter.ai/api/v1',
+        )
         self.model = model or cfg.model or 'anthropic/claude-3.5-sonnet'
 
 
@@ -438,14 +468,12 @@ class GrokProvider(OpenAIProvider):
     name = 'grok'
 
     def __init__(self, model: str | None = None) -> None:
-        import openai
         from plugins.installed.ai_assistant.services.config import get_provider_config
         cfg = get_provider_config('grok')
-        kwargs: dict[str, Any] = {}
-        if cfg.api_key:
-            kwargs['api_key'] = cfg.api_key
-        kwargs['base_url'] = cfg.base_url or 'https://api.x.ai/v1'
-        self._client = openai.OpenAI(**kwargs)
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://api.x.ai/v1',
+        )
         self.model = model or cfg.model or 'grok-4'
 
 
@@ -458,14 +486,12 @@ class PackyProvider(OpenAIProvider):
     name = 'packy'
 
     def __init__(self, model: str | None = None) -> None:
-        import openai
         from plugins.installed.ai_assistant.services.config import get_provider_config
         cfg = get_provider_config('packy')
-        kwargs: dict[str, Any] = {}
-        if cfg.api_key:
-            kwargs['api_key'] = cfg.api_key
-        kwargs['base_url'] = cfg.base_url or 'https://www.packyapi.com/v1'
-        self._client = openai.OpenAI(**kwargs)
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://www.packyapi.com/v1',
+        )
         self.model = model or cfg.model or 'claude-3-5-sonnet-20241022'
 
 
