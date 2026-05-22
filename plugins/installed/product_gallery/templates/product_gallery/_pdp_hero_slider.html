@@ -1,4 +1,4 @@
-{% load seo %}{% comment %}
+{% load seo product_videos %}{% comment %}
 PDP hero slider — Phase 1 of the product-slider spec
 (docs/plans/product-slider.md).
 
@@ -24,28 +24,57 @@ Backward compatible with single-image / no-image products:
   • 2+       → arrows + thumbnail strip
 {% endcomment %}
 
-{% with sorted_images=images|dictsort:"sortOrder" as_slides=1 %}
+{% with sorted_images=images|dictsort:"sortOrder" %}
 {% with slides=sorted_images|slice:":15" %}
+{% with video_count=videos|length|default:0 %}
+{% with total_slides=slides|length|add:video_count %}
 
 <div class="pdp-hero" data-pdp-hero
      aria-roledescription="carousel"
      aria-label="Images of {{ product.name|default:alt }}">
 
-  {% if slides %}
+  {% if total_slides %}
   <div class="pdp-hero__track" tabindex="0" data-slider-track
        aria-live="polite">
     {% for img in slides %}
     <figure class="pdp-hero__slide" data-index="{{ forloop.counter0 }}"
-            aria-label="Slide {{ forloop.counter }} of {{ slides|length }}"
+            aria-label="Slide {{ forloop.counter }} of {{ total_slides }}"
             style="view-transition-name: cover-{{ product.slug }}{% if forloop.first %}{% else %}-{{ forloop.counter0 }}{% endif %};">
       {% if img.url %}
         {% seo_responsive_image img.url alt=img.altText|default:alt|default:product.name widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 92vw" %}
       {% endif %}
     </figure>
     {% endfor %}
+
+    {% for v in videos %}
+    <figure class="pdp-hero__slide pdp-hero__slide--video"
+            data-index="{{ forloop.counter0|add:slides|length }}"
+            aria-label="Video {{ forloop.counter }} of {{ video_count }}">
+      {% if v.embed_html %}
+        {{ v.embed_html|safe }}
+      {% elif v.url|youtube_id %}
+        <iframe loading="lazy"
+                src="https://www.youtube-nocookie.com/embed/{{ v.url|youtube_id }}?rel=0&modestbranding=1"
+                title="{{ v.title|default:product.name }}"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+      {% elif v.url|vimeo_id %}
+        <iframe loading="lazy"
+                src="https://player.vimeo.com/video/{{ v.url|vimeo_id }}"
+                title="{{ v.title|default:product.name }}"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowfullscreen></iframe>
+      {% elif v.url %}
+        <video controls preload="none"
+               {% if v.poster_url %}poster="{{ v.poster_url }}"{% endif %}>
+          <source src="{{ v.url }}">
+        </video>
+      {% endif %}
+    </figure>
+    {% endfor %}
   </div>
 
-  {% if slides|length > 1 %}
+  {% if total_slides > 1 %}
   <button type="button" class="pdp-hero__arrow pdp-hero__arrow--prev"
           data-slider-prev aria-label="Previous slide">‹</button>
   <button type="button" class="pdp-hero__arrow pdp-hero__arrow--next"
@@ -59,6 +88,20 @@ Backward compatible with single-image / no-image products:
             aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
       {% if img.url %}
         <img src="{{ img.url }}" alt="" loading="lazy">
+      {% endif %}
+    </button>
+    {% endfor %}
+    {% for v in videos %}
+    <button type="button" class="pdp-hero__thumb pdp-hero__thumb--video" role="tab"
+            data-slider-thumb="{{ forloop.counter0|add:slides|length }}"
+            aria-label="Video {{ forloop.counter }}"
+            aria-selected="false">
+      {% if v.poster_url %}
+        <img src="{{ v.poster_url }}" alt="" loading="lazy">
+      {% elif v.url|youtube_id %}
+        <img src="https://i.ytimg.com/vi/{{ v.url|youtube_id }}/mqdefault.jpg" alt="" loading="lazy">
+      {% else %}
+        <span class="pdp-hero__thumb-play">▶</span>
       {% endif %}
     </button>
     {% endfor %}
@@ -110,6 +153,40 @@ Backward compatible with single-image / no-image products:
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+  /* Video slides — same aspect frame as image slides; iframe/video
+     fills the box. Override aspect when content is landscape (most
+     video). */
+  .pdp-hero__slide--video {
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+  .pdp-hero__slide--video iframe,
+  .pdp-hero__slide--video video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
+  }
+  .pdp-hero__thumb--video { position: relative; }
+  .pdp-hero__thumb-play {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    color: #fff;
+    background: rgba(14,14,14,.65);
+    font-size: 1rem;
+  }
+  .pdp-hero__thumb--video img::after,
+  .pdp-hero__thumb--video::after {
+    content: '▶';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0,0,0,.7);
+    font-size: 14px;
+    pointer-events: none;
   }
   .pdp-hero__arrow {
     position: absolute;
@@ -238,5 +315,7 @@ Backward compatible with single-image / no-image products:
 })();
 </script>
 
+{% endwith %}
+{% endwith %}
 {% endwith %}
 {% endwith %}

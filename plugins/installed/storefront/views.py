@@ -400,11 +400,27 @@ def product_detail(request, slug):
     pid = (product or {}).get('id') if isinstance(product, dict) else None
     if pid and request.user.is_authenticated and request.user.is_staff:
         active_pdp_edit_url = f'/dashboard/products/{pid}/'
+
+    # Videos for the PDP hero slider. The GraphQL response doesn't
+    # surface videos (separate plugin model), so a dedicated ORM
+    # lookup here. Cheap query, kept narrow with select_related.
+    videos: list = []
+    try:
+        from plugins.installed.product_videos.models import ProductVideo
+        videos = list(
+            ProductVideo.objects
+            .filter(product__slug=slug, is_active=True)
+            .order_by('sort_order', 'created_at')[:15]
+        )
+    except Exception:  # noqa: BLE001 — videos plugin may be disabled
+        pass
+
     return render(request, 'storefront/product_detail.html', {
         'product': product,
         'hero_image': hero_image,
         'primary_image': primary_image,
         'primary_images': primary_images,
+        'videos': videos,
         'related_products': related,
         'book_specs': _book_specs(slug),
         'reviews': _published_reviews(slug, product_row=product_row),
