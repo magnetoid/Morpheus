@@ -114,6 +114,41 @@ class PublishDigitalProductInput:
 
 
 @strawberry.input
+class CreateProductInput:
+    """Create a new product. Generic — for digital/PDF books prefer
+    publishDigitalProduct which downloads + attaches the PDF too."""
+    name: str
+    price_amount: str
+    price_currency: str = 'USD'
+    product_type: str = 'simple'          # 'simple' | 'variable' | 'digital' | 'bundle'
+    status: str = 'draft'                 # 'draft' | 'active' | 'archived'
+    sku: Optional[str] = None
+    slug: Optional[str] = None
+    short_description: Optional[str] = None
+    description: Optional[str] = None
+    category_slug: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    # Optional scalars — pass any of these to set them on creation.
+    weight: Optional[str] = None
+    weight_unit: Optional[str] = None
+    requires_shipping: Optional[bool] = None
+    is_featured: Optional[bool] = None
+    is_taxable: Optional[bool] = None
+    track_inventory: Optional[bool] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    focus_keyword: Optional[str] = None
+    canonical_url: Optional[str] = None
+    og_title: Optional[str] = None
+    og_description: Optional[str] = None
+    twitter_title: Optional[str] = None
+    twitter_description: Optional[str] = None
+    twitter_card: Optional[str] = None
+    noindex: Optional[bool] = None
+    nofollow: Optional[bool] = None
+
+
+@strawberry.input
 class UpdateProductInput:
     """Update a product by slug. Every field is optional — only fields
     explicitly set are touched on the existing record."""
@@ -212,7 +247,53 @@ class CatalogMutationExtension:
             name=r['name'], url=r['url'], error='',
         )
 
-    # ── Product edit / archive / restore / delete ─────────────────────
+    # ── Product create / edit / archive / restore / delete ────────────
+
+    @strawberry.mutation(
+        description='Create a new product. Generic — for PDF books use publishDigitalProduct. Staff-only.',
+    )
+    def create_product(
+        self, info: strawberry.Info, input: CreateProductInput,
+    ) -> ProductMutationResult:
+        if not _is_staff(info):
+            return _err_product('Forbidden — staff only.')
+        from plugins.installed.catalog.services import PublishError, create_product as _create
+
+        kwargs = {
+            k: v for k, v in {
+                'sku': input.sku, 'slug': input.slug,
+                'short_description': input.short_description,
+                'description': input.description,
+                'category_slug': input.category_slug,
+                'cover_image_url': input.cover_image_url,
+                'weight': input.weight, 'weight_unit': input.weight_unit,
+                'requires_shipping': input.requires_shipping,
+                'is_featured': input.is_featured,
+                'is_taxable': input.is_taxable,
+                'track_inventory': input.track_inventory,
+                'meta_title': input.meta_title,
+                'meta_description': input.meta_description,
+                'focus_keyword': input.focus_keyword,
+                'canonical_url': input.canonical_url,
+                'og_title': input.og_title,
+                'og_description': input.og_description,
+                'twitter_title': input.twitter_title,
+                'twitter_description': input.twitter_description,
+                'twitter_card': input.twitter_card,
+                'noindex': input.noindex, 'nofollow': input.nofollow,
+            }.items() if v is not None
+        }
+        try:
+            return _from_product_dict(_create(
+                name=input.name,
+                price_amount=input.price_amount,
+                price_currency=input.price_currency,
+                product_type=input.product_type,
+                status=input.status,
+                **kwargs,
+            ))
+        except PublishError as e:
+            return _err_product(str(e))
 
     @strawberry.mutation(description='Update any field on an existing product. Staff-only.')
     def update_product(

@@ -260,7 +260,74 @@ def catalog_stats_tool() -> ToolResult:
     )
 
 
-# ─── Edit / archive / delete / category tools ─────────────────────────────────
+# ─── Create / edit / archive / delete / category tools ───────────────────────
+
+
+@tool(
+    name='catalog.create_product',
+    description=(
+        'Create a new product. Required: name, price_amount. status '
+        'defaults to "draft" so half-built rows do not accidentally go '
+        'live. For digital PDF books prefer catalog.publish_digital_product '
+        '(also downloads + attaches the PDF). Returns the created '
+        'product summary.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'price_amount': {'type': 'string', 'description': 'Decimal price, e.g. "9.99".'},
+            'price_currency': {'type': 'string', 'default': 'USD'},
+            'product_type': {'type': 'string', 'enum': ['simple', 'variable', 'digital', 'bundle'], 'default': 'simple'},
+            'status': {'type': 'string', 'enum': ['draft', 'active', 'archived'], 'default': 'draft'},
+            'sku': {'type': 'string', 'description': 'Auto-generated if blank.'},
+            'slug': {'type': 'string', 'description': 'Auto-generated from name if blank.'},
+            'short_description': {'type': 'string'},
+            'description': {'type': 'string'},
+            'category_slug': {'type': 'string'},
+            'cover_image_url': {'type': 'string', 'description': 'Optional HTTPS URL for the primary image.'},
+            'weight': {'type': 'string'},
+            'weight_unit': {'type': 'string'},
+            'requires_shipping': {'type': 'boolean'},
+            'is_featured': {'type': 'boolean'},
+            'is_taxable': {'type': 'boolean'},
+            'track_inventory': {'type': 'boolean'},
+            'meta_title': {'type': 'string'},
+            'meta_description': {'type': 'string'},
+            'focus_keyword': {'type': 'string'},
+            'canonical_url': {'type': 'string'},
+            'noindex': {'type': 'boolean'},
+            'nofollow': {'type': 'boolean'},
+        },
+        'required': ['name', 'price_amount'],
+    },
+)
+def create_product_tool(
+    *,
+    name: str,
+    price_amount: str,
+    price_currency: str = 'USD',
+    product_type: str = 'simple',
+    status: str = 'draft',
+    **extra,
+) -> ToolResult:
+    from plugins.installed.catalog.services import PublishError, create_product
+    # Drop Nones / empties so the service applies its own defaults.
+    kwargs = {k: v for k, v in extra.items() if v not in (None, '')}
+    try:
+        r = create_product(
+            name=name, price_amount=price_amount,
+            price_currency=price_currency,
+            product_type=product_type, status=status,
+            **kwargs,
+        )
+    except PublishError as e:
+        raise ToolError(str(e)) from None
+    return ToolResult(
+        output=r,
+        display=f'Created {r["name"]!r} ({r["slug"]}, {r["product_type"]}, {r["status"]})',
+    )
 
 
 @tool(

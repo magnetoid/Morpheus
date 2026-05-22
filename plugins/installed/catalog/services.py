@@ -228,7 +228,7 @@ def publish_digital_product(
     }
 
 
-# ─── update / archive / restore / delete ──────────────────────────────────────
+# ─── create / update / archive / restore / delete ────────────────────────────
 
 
 _PRODUCT_SCALAR_FIELDS = {
@@ -243,6 +243,132 @@ _PRODUCT_SCALAR_FIELDS = {
     # numeric (handled in coercion)
     'weight',
 }
+
+
+_VALID_PRODUCT_TYPES = {'simple', 'variable', 'digital', 'bundle'}
+_VALID_STATUSES = {'draft', 'active', 'archived'}
+
+
+@transaction.atomic
+def create_product(
+    *,
+    name: str,
+    price_amount: Any,
+    price_currency: str = 'USD',
+    product_type: str = 'simple',
+    status: str = 'draft',
+    sku: str = '',
+    slug: str = '',
+    short_description: str = '',
+    description: str = '',
+    category_slug: str = '',
+    cover_image_url: str = '',
+    # Optional scalar fields — passed straight through.
+    **extra,
+) -> dict[str, str]:
+    """Create a new product. Generic create — for digital/PDF-specific
+    publishing use :func:`publish_digital_product` instead (handles PDF
+    download + digital_file attachment).
+
+    Required: ``name``, ``price_amount``. Everything else has a sensible
+    default; ``status`` defaults to 'draft' so a half-built product
+    isn't accidentally live.
+
+    Returns the same shape as :func:`update_product`:
+    ``{id, slug, sku, name, status, product_type, price_amount,
+    price_currency, url}``.
+    """
+    from djmoney.money import Money
+    from plugins.installed.catalog.models import Category, Product, ProductImage
+
+    name = (name or '').strip()
+    if not name:
+        raise PublishError('name is required')
+    if product_type not in _VALID_PRODUCT_TYPES:
+        raise PublishError(f'product_type must be one of {sorted(_VALID_PRODUCT_TYPES)}')
+    if status not in _VALID_STATUSES:
+        raise PublishError(f'status must be one of {sorted(_VALID_STATUSES)}')
+
+    if cover_image_url:
+        _validate_https_url(cover_image_url, field='cover_image_url')
+
+    price = Money(_coerce_price(price_amount), (price_currency or 'USD').upper())
+
+    # Reject unknown extra fields up front so typos surface immediately.
+    unknown = set(extra.keys()) - _PRODUCT_SCALAR_FIELDS
+    if unknown:
+        raise PublishError(f'unknown field(s): {sorted(unknown)}')
+
+    cover_blob: tuple[bytes, str, str] | None = None
+    if cover_image_url:
+        body, ct, fname = _download(
+            cover_image_url, max_bytes=_MAX_IMAGE_BYTES, field='cover_image_url',
+        )
+        if ct and ct not in _ALLOWED_IMAGE_TYPES:
+            raise PublishError(
+                f'cover_image_url returned {ct!r}; allowed: {sorted(_ALLOWED_IMAGE_TYPES)}'
+            )
+        if '.' not in fname:
+            ext = (mimetypes.guess_extension(ct) or '.jpg').lstrip('.')
+            fname = f'{slugify(name) or "cover"}.{ext}'
+        cover_blob = (body, ct, fname)
+
+    category = None
+    if category_slug:
+        category = Category.objects.filter(slug=category_slug).first()
+        if category is None:
+            raise PublishError(f'category_slug {category_slug!r} not found')
+
+    chosen_slug = _unique_slug(slug or name)
+    chosen_sku = _unique_sku(sku, fallback_base=chosen_slug)
+
+    product = Product(
+        name=name,
+        slug=chosen_slug,
+        sku=chosen_sku,
+        product_type=product_type,
+        status=status,
+        price=price,
+        description=(description or '').strip(),
+        short_description=(short_description or '').strip(),
+        category=category,
+    )
+    # Apply optional scalars from `extra` (weight, flags, SEO, etc.).
+    for k, v in extra.items():
+        if k == 'weight':
+            if v in (None, '', 'null'):
+                v = None
+            else:
+                try:
+                    v = Decimal(str(v))
+                except (InvalidOperation, TypeError, ValueError):
+                    raise PublishError('weight must be a number') from None
+        elif k in {
+            'is_featured', 'is_taxable', 'track_inventory',
+            'requires_shipping', 'noindex', 'nofollow',
+        }:
+            v = bool(v) if isinstance(v, bool) else str(v).lower() in {'1', 'true', 'yes', 'on'}
+        else:
+            v = '' if v is None else str(v)
+        setattr(product, k, v)
+    product.save()
+
+    if cover_blob is not None:
+        body, _ct, fname = cover_blob
+        img = ProductImage(
+            product=product,
+            alt_text=name,
+            is_primary=True,
+            sort_order=0,
+        )
+        img.image.save(fname, ContentFile(body), save=True)
+
+    logger.info(
+        'catalog.create_product slug=%s sku=%s type=%s status=%s cover=%s',
+        product.slug, product.sku, product.product_type, product.status,
+        bool(cover_blob),
+    )
+    return _serialize_product(product)
 
 
 def _serialize_product(p) -> dict:
