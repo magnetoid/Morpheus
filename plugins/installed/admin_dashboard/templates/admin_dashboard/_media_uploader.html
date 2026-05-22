@@ -1,0 +1,376 @@
+{% comment %}
+Shared media uploader widget. Mounts the Morph.MediaUploader JS
+component (static/admin_dashboard/media-uploader.js).
+
+Caller passes in `product`, `images`, `videos`. Renders a unified
+tile grid (images + video slides), drag-drop dropzone, a "paste
+video URL" input, and a hidden modal for in-line metadata edits.
+
+Usage from a parent template:
+
+  {% include "admin_dashboard/_media_uploader.html" %}
+{% endcomment %}
+
+<div class="muploader card card-padded"
+     data-media-uploader
+     data-cap="15"
+     data-image-upload-url="{% url 'admin_dashboard:image_upload' product_id=product.id %}"
+     data-image-reorder-url="{% url 'admin_dashboard:image_reorder' product_id=product.id %}"
+     data-image-edit-url="{% url 'admin_dashboard:image_edit' product_id=product.id image_id='00000000-0000-0000-0000-000000000000' %}"
+     data-image-delete-url="{% url 'admin_dashboard:image_delete' product_id=product.id image_id='00000000-0000-0000-0000-000000000000' %}"
+     data-video-add-url="{% url 'admin_dashboard:video_add' product_id=product.id %}"
+     data-video-edit-url="{% url 'admin_dashboard:video_edit' product_id=product.id video_id='00000000-0000-0000-0000-000000000000' %}"
+     data-video-delete-url="{% url 'admin_dashboard:video_delete' product_id=product.id video_id='00000000-0000-0000-0000-000000000000' %}">
+
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <h2 class="font-semibold text-sm">Product media</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Drag images here, paste video URLs below. Up to 15 items.
+        Click any tile to edit alt text, title, or poster.
+        First image (slot 1) becomes the cover.
+      </p>
+    </div>
+    <span class="text-xs text-[color:var(--text-muted)]">
+      {{ images|length|add:videos|length }}/15
+    </span>
+  </div>
+
+  <div class="muploader-grid" data-media-grid>
+    {% for img in images %}
+    <div class="muploader-tile{% if forloop.first %} is-cover{% endif %}"
+         draggable="true"
+         data-id="{{ img.id }}"
+         data-kind="image"
+         data-alt="{{ img.alt_text|default:''|escape }}">
+      <div class="muploader-tile__media">
+        {% if img.image %}
+        <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:'' }}" loading="lazy">
+        {% else %}
+        <i data-lucide="image-off" class="h-6 w-6 text-[color:var(--text-subtle)]"></i>
+        {% endif %}
+      </div>
+      <div class="muploader-tile__overlay">
+        <span class="muploader-tile__slot">Slot {{ forloop.counter }}</span>
+        <button type="button" class="muploader-tile__btn" data-edit-tile aria-label="Edit">
+          <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
+        </button>
+      </div>
+      {% if forloop.first %}
+      <span class="muploader-tile__cover-pill">Cover</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% for v in videos %}
+    <div class="muploader-tile muploader-tile--video"
+         data-id="{{ v.id }}"
+         data-kind="video"
+         data-url="{{ v.url|default:''|escape }}"
+         data-title="{{ v.title|default:''|escape }}"
+         data-poster="{{ v.poster_url|default:''|escape }}">
+      <div class="muploader-tile__media">
+        {% if v.poster_url %}
+        <img src="{{ v.poster_url }}" alt="{{ v.title|default:'' }}" loading="lazy">
+        {% else %}
+        <div class="muploader-tile__videoph">
+          <i data-lucide="play-circle" class="h-7 w-7"></i>
+          <span class="text-xs text-[color:var(--text-muted)] mt-1 truncate" style="max-width:90%;">{{ v.url|default:v.title }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="muploader-tile__overlay">
+        <span class="muploader-tile__slot">Video {{ forloop.counter }}</span>
+        <button type="button" class="muploader-tile__btn" data-edit-tile aria-label="Edit">
+          <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
+        </button>
+      </div>
+      <span class="muploader-tile__kind-badge">VIDEO</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ── Drop zone for new images ─────────────────────────────────────── #}
+  <label class="muploader-dropzone mt-3" data-dropzone tabindex="0">
+    <input type="file" multiple accept="image/*" data-file-input hidden>
+    <div class="muploader-dropzone__stack">
+      <i data-lucide="upload-cloud" class="h-7 w-7"></i>
+      <p class="muploader-dropzone__title">
+        <strong>Drop images here</strong> or click to browse
+      </p>
+      <p class="muploader-dropzone__hint">
+        JPEG · PNG · WebP · AVIF · GIF · up to 10 MB each
+      </p>
+    </div>
+  </label>
+
+  {# ── Video URL paster ─────────────────────────────────────────────── #}
+  <form class="muploader-video-form mt-3" data-video-form>
+    {% csrf_token %}
+    <div class="muploader-video-row">
+      <i data-lucide="link" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+      <input type="url" name="url" placeholder="Paste a YouTube or Vimeo URL — or a direct .mp4">
+      <input type="text" name="title" placeholder="Title (optional)">
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="plus" class="h-4 w-4"></i> Add video
+      </button>
+    </div>
+  </form>
+
+  {# ── Edit modal (kind-specific fields shown via [data-show-kind]) ── #}
+  <dialog class="muploader-modal" data-modal>
+    <form method="dialog" class="muploader-modal__inner">
+      <h3 class="muploader-modal__title">Edit media</h3>
+
+      <div class="muploader-modal__preview" data-preview></div>
+
+      <div data-show-kind="image" hidden>
+        <label class="muploader-modal__label">Alt text (for screen readers + SEO)</label>
+        <input type="text" name="alt_text" class="input" maxlength="255"
+               placeholder="Describe what's in the image">
+        <p class="muploader-modal__hint">
+          Good alt text is concise and describes the image content.
+          Examples: "Hardcover edition of Crime and Punishment, dark blue", or "Author Fyodor Dostoevsky in his study, 1872".
+        </p>
+      </div>
+
+      <div data-show-kind="video" hidden>
+        <label class="muploader-modal__label">Title</label>
+        <input type="text" name="title" class="input" maxlength="200"
+               placeholder="e.g. 'Trailer' or 'Author interview'">
+
+        <label class="muploader-modal__label mt-2">Poster image URL (optional)</label>
+        <input type="url" name="poster_url" class="input"
+               placeholder="HTTPS URL to a placeholder image — used for non-YouTube/Vimeo embeds">
+      </div>
+
+      <div class="muploader-modal__actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="button" class="btn btn-ghost text-[color:var(--danger)]" data-delete>
+          <i data-lucide="trash-2" class="h-4 w-4"></i> Delete
+        </button>
+        <button type="button" class="btn btn-primary" data-save>
+          <i data-lucide="check" class="h-4 w-4"></i> Save
+        </button>
+      </div>
+    </form>
+  </dialog>
+</div>
+
+<style>
+  .muploader { position: relative; }
+
+  .muploader-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: .75rem;
+  }
+  .muploader-tile {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface-2);
+    border: 2px solid transparent;
+    cursor: grab;
+    transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  }
+  .muploader-tile:hover {
+    box-shadow: 0 6px 16px -8px rgba(0,0,0,.25);
+    transform: translateY(-1px);
+  }
+  .muploader-tile.is-cover {
+    border-color: var(--accent, #c5694e);
+  }
+  .muploader-tile.is-dragging { opacity: .4; }
+  .muploader-tile__media {
+    width: 100%; height: 100%;
+    display: grid; place-items: center;
+    overflow: hidden;
+  }
+  .muploader-tile__media img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .muploader-tile__videoph {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: .25rem; height: 100%; width: 100%;
+    padding: .5rem;
+    color: var(--text-muted);
+    background: linear-gradient(135deg, rgba(60,60,60,.06), rgba(60,60,60,.18));
+  }
+  .muploader-tile__overlay {
+    position: absolute; inset: auto 0 0 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .35rem .55rem;
+    background: linear-gradient(transparent, rgba(0,0,0,.65));
+    color: #fff;
+    opacity: 0;
+    transition: opacity 140ms ease;
+  }
+  .muploader-tile:hover .muploader-tile__overlay,
+  .muploader-tile:focus-within .muploader-tile__overlay { opacity: 1; }
+  .muploader-tile__slot {
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    opacity: .9;
+  }
+  .muploader-tile__btn {
+    background: rgba(255,255,255,.15);
+    border: 0;
+    color: #fff;
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: background 140ms ease;
+  }
+  .muploader-tile__btn:hover { background: rgba(255,255,255,.3); }
+  .muploader-tile__cover-pill {
+    position: absolute; top: .35rem; left: .35rem;
+    background: var(--accent, #c5694e);
+    color: #fff;
+    font-size: .6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: .15rem .45rem;
+    border-radius: 999px;
+  }
+  .muploader-tile__kind-badge {
+    position: absolute; top: .35rem; right: .35rem;
+    background: rgba(0,0,0,.7);
+    color: #fff;
+    font-size: .55rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    padding: .15rem .4rem;
+    border-radius: 3px;
+  }
+
+  .muploader-dropzone {
+    display: block;
+    cursor: pointer;
+    border: 2px dashed var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface-2);
+    padding: 1.5rem;
+    text-align: center;
+    transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+  }
+  .muploader-dropzone:hover,
+  .muploader-dropzone:focus-within {
+    background: var(--surface);
+    border-color: var(--text-muted);
+  }
+  .muploader-dropzone.is-dragover {
+    border-color: var(--accent, #c5694e);
+    background: var(--surface);
+    transform: scale(1.005);
+  }
+  .muploader-dropzone__stack {
+    display: flex; flex-direction: column;
+    align-items: center; gap: .35rem;
+    color: var(--text-muted);
+  }
+  .muploader-dropzone__title { font-size: .92rem; margin: 0; color: var(--text); }
+  .muploader-dropzone__hint { font-size: .75rem; margin: 0; }
+
+  .muploader-video-form { width: 100%; }
+  .muploader-video-row {
+    display: grid;
+    grid-template-columns: auto 1fr 200px auto;
+    gap: .5rem;
+    align-items: center;
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: .6rem;
+  }
+  .muploader-video-row input {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: .35rem .5rem;
+    border-radius: 4px;
+    font: inherit;
+    color: var(--text);
+  }
+  .muploader-video-row input:focus {
+    outline: none;
+    background: var(--bg);
+    border-color: var(--border);
+  }
+  @media (max-width: 768px) {
+    .muploader-video-row {
+      grid-template-columns: 1fr;
+      gap: .3rem;
+    }
+  }
+
+  /* Modal — uses <dialog>'s built-in backdrop + focus trap. */
+  .muploader-modal {
+    border: 0;
+    padding: 0;
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    max-width: 480px;
+    width: 90vw;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,.5);
+  }
+  .muploader-modal::backdrop {
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(2px);
+  }
+  .muploader-modal__inner {
+    padding: 1.5rem;
+    display: flex; flex-direction: column;
+    gap: .75rem;
+  }
+  .muploader-modal__title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 .25rem;
+  }
+  .muploader-modal__preview {
+    width: 100%;
+    aspect-ratio: 2/3;
+    max-height: 280px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    overflow: hidden;
+    display: grid; place-items: center;
+  }
+  .muploader-modal__preview img {
+    width: 100%; height: 100%; object-fit: contain;
+  }
+  .muploader-modal__video {
+    padding: .75rem;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: .8rem;
+    word-break: break-all;
+    color: var(--text-muted);
+  }
+  .muploader-modal__label {
+    display: block;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+    margin-bottom: .25rem;
+  }
+  .muploader-modal__hint {
+    font-size: .72rem;
+    color: var(--text-muted);
+    margin: .4rem 0 0;
+  }
+  .muploader-modal__actions {
+    display: flex; align-items: center;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin-top: .5rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--border);
+  }
+  .muploader-modal__actions > [data-delete] { margin-right: auto; }
+</style>

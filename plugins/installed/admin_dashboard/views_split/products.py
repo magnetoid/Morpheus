@@ -407,6 +407,51 @@ def video_delete(request: HttpRequest, product_id: str, video_id: str) -> HttpRe
 
 
 @staff_member_required
+def image_edit(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
+    """Inline metadata edit for a ProductImage — alt_text + description.
+
+    Called by the Morph.MediaUploader modal. AJAX-only (returns JSON).
+    """
+    from django.http import JsonResponse
+    from plugins.installed.catalog.models import ProductImage
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+    product = _get_product(product_id)
+    image = ProductImage.objects.filter(pk=image_id, product=product).first()
+    if image is None:
+        return JsonResponse({'ok': False, 'error': 'image not found'}, status=404)
+    alt = (request.POST.get('alt_text') or '').strip()[:255]
+    image.alt_text = alt
+    image.save(update_fields=['alt_text'])
+    return JsonResponse({'ok': True, 'alt_text': alt})
+
+
+@staff_member_required
+def video_edit(request: HttpRequest, product_id: str, video_id: str) -> HttpResponse:
+    """Inline metadata edit for a ProductVideo — title + poster_url.
+
+    Called by the Morph.MediaUploader modal. AJAX-only (returns JSON).
+    """
+    from django.http import JsonResponse
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+    product = _get_product(product_id)
+    try:
+        from plugins.installed.product_videos.models import ProductVideo
+    except ImportError:
+        return JsonResponse({'ok': False, 'error': 'product_videos plugin disabled'}, status=400)
+    video = ProductVideo.objects.filter(pk=video_id, product=product).first()
+    if video is None:
+        return JsonResponse({'ok': False, 'error': 'video not found'}, status=404)
+    title = (request.POST.get('title') or '').strip()[:200]
+    poster_url = (request.POST.get('poster_url') or '').strip()[:500]
+    video.title = title
+    video.poster_url = poster_url
+    video.save(update_fields=['title', 'poster_url', 'updated_at'])
+    return JsonResponse({'ok': True, 'title': title, 'poster_url': poster_url})
+
+
+@staff_member_required
 def image_set_primary(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductImage
     product = _get_product(product_id)
