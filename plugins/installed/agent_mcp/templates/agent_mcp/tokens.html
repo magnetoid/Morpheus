@@ -1,0 +1,154 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}MCP tokens · Settings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
+    <i data-lucide="chevron-right" class="h-3 w-3"></i>
+    <span class="font-medium text-[color:var(--text)]">MCP tokens</span>
+  </div>
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">MCP admin tokens</h1>
+    <p class="text-sm text-[color:var(--text-muted)] mt-1">
+      Bearer tokens for external agents calling
+      <code class="font-mono text-xs px-1 py-0.5 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]">POST {{ admin_rpc_url }}</code>.
+      Each agent should get its own labelled token so you can revoke them independently.
+    </p>
+  </div>
+
+  {% if just_created_token %}
+  <div class="card card-padded" style="border-left: 3px solid var(--success);">
+    <div class="flex items-start gap-3">
+      <div class="ai-tile-icon" style="background:var(--success-bg, var(--surface-2));">
+        <i data-lucide="key-round" class="h-5 w-5"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h2 class="font-semibold">New token for {{ just_created_label }}</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+          Copy it now — Morpheus will only show the last 4 characters from here on.
+        </p>
+        <div class="mt-2 flex items-center gap-2">
+          <input type="text" readonly value="{{ just_created_token }}"
+                 class="input font-mono flex-1" id="new-token-input"
+                 onfocus="this.select();">
+          <button type="button" class="btn" data-copy-target="#new-token-input">
+            <i data-lucide="copy" class="h-3.5 w-3.5"></i> Copy
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Create a token</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+        Use a descriptive label (e.g. <em>External publisher</em>, <em>n8n sync job</em>) so future-you can spot which agent it belongs to.
+      </p>
+    </div>
+    <form method="post" class="card-padded flex items-end gap-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <div class="flex-1 min-w-0">
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Label</label>
+        <input type="text" name="label" class="input mt-1" required maxlength="120"
+               placeholder="External publisher (n8n)">
+      </div>
+      <button class="btn btn-primary" type="submit">
+        <i data-lucide="plus" class="h-3.5 w-3.5"></i> Create token
+      </button>
+    </form>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3">
+      <h2 class="font-semibold">Existing tokens ({{ rows|length }})</h2>
+    </div>
+    {% if rows %}
+    <table class="morph-table w-full text-sm">
+      <thead>
+        <tr>
+          <th class="text-left">Label</th>
+          <th class="text-left">Token</th>
+          <th class="text-left">Created</th>
+          <th class="text-left">Last used</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>
+            {{ r.label }}
+            {% if r.is_legacy %}<span class="pill pill-neutral" style="margin-left:.4rem;">legacy</span>{% endif %}
+          </td>
+          <td><code class="font-mono text-xs">{{ r.token_masked }}</code></td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ r.created_at|default:"—" }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ r.last_used_at|default:"—" }}</td>
+          <td class="text-right">
+            <form method="post" style="display:inline;"
+                  data-confirm="Revoke token {{ r.label }}? Any agent using it will lose access immediately.">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="revoke">
+              {% if r.id %}<input type="hidden" name="id" value="{{ r.id }}">
+              {% else %}<input type="hidden" name="token" value="{{ r.token_full }}">{% endif %}
+              <button class="btn" type="submit" title="Revoke">
+                <i data-lucide="trash-2" class="h-3.5 w-3.5"></i> Revoke
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)] text-center" style="padding: 2rem 1rem;">
+      No tokens yet. Create one above and use it in the
+      <code class="font-mono">Authorization: Bearer …</code> header from your agent.
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card card-padded">
+    <h3 class="font-semibold">How to call the admin server</h3>
+    <pre class="font-mono text-xs mt-2 p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">curl -X POST {{ request.scheme }}://{{ request.get_host }}{{ admin_rpc_url }} \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+    "params": {
+      "name": "catalog.publish_digital_product",
+      "arguments": {
+        "title": "Crime and Punishment",
+        "author": "Fyodor Dostoevsky",
+        "pdf_url": "https://your-cdn.com/crime.pdf",
+        "cover_image_url": "https://your-cdn.com/crime.jpg",
+        "price_amount": "12.99",
+        "price_currency": "USD",
+        "status": "active"
+      }
+    }
+  }'</pre>
+  </div>
+</div>
+
+<script>
+  // Copy helper — used by the "just created" banner.
+  document.querySelectorAll('[data-copy-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.querySelector(btn.dataset.copyTarget);
+      if (!target) return;
+      target.select();
+      try { document.execCommand('copy'); } catch {}
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="check" class="h-3.5 w-3.5"></i> Copied';
+      if (window.lucide) lucide.createIcons();
+      setTimeout(() => { btn.innerHTML = orig; if (window.lucide) lucide.createIcons(); }, 1500);
+    });
+  });
+</script>
+{% endblock %}

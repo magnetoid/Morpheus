@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 
 from morpheus import Plugin
+from plugins.contributions import DashboardPage
 
 logger = logging.getLogger('morpheus.agent_mcp')
 
@@ -33,3 +34,16 @@ class AgentMcpPlugin(Plugin):
             prefix='.well-known/',
             namespace='agent_mcp_well_known',
         )
+
+    def contribute_dashboard_pages(self) -> list:
+        return [
+            DashboardPage(
+                label='MCP tokens',
+                slug='tokens',
+                view='plugins.installed.agent_mcp.dashboard.tokens_view',
+                icon='key-round',
+                section='developer',
+                order=20,
+                nav='settings',
+            ),
+        ]

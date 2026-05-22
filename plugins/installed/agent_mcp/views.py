@@ -91,14 +91,28 @@ def _public_tools() -> list:
 
 
 def _api_keys() -> set[str]:
-    """Active API keys from PluginConfig['agent_mcp']['public_keys']."""
+    """Active API keys from PluginConfig['agent_mcp']['public_keys'].
+
+    Each entry is either a raw string (legacy) or a dict with at least a
+    `token` field. The dict form lets the dashboard token manager label
+    + track tokens for ops; the string form keeps existing integrations
+    working unchanged.
+    """
     try:
         from plugins.models import PluginConfig
         cfg = PluginConfig.objects.filter(plugin_name='agent_mcp').first()
         if cfg is None:
             return set()
         keys = (cfg.config or {}).get('public_keys') or []
-        return {str(k).strip() for k in keys if k}
+        out: set[str] = set()
+        for k in keys:
+            if isinstance(k, dict):
+                tok = (k.get('token') or '').strip()
+            else:
+                tok = str(k).strip()
+            if tok:
+                out.add(tok)
+        return out
     except Exception as e:  # noqa: BLE001
         logger.warning('agent_mcp: api-key lookup failed: %s', e)
         return set()
