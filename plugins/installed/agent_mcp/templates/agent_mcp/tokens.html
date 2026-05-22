@@ -21,6 +21,73 @@
     </p>
   </div>
 
+  {% if edit %}
+  <div class="card overflow-hidden" style="border-left: 3px solid var(--info);">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-start justify-between gap-3 flex-wrap">
+      <div class="min-w-0">
+        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Permissions</p>
+        <h2 class="font-semibold mt-0.5">{{ edit.label }}</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+          Set what this token can do on each surface. Wildcard ★ grants full access on that surface; otherwise only the checked scopes are allowed.
+        </p>
+      </div>
+      <a href="?" class="btn"><i data-lucide="x" class="h-3.5 w-3.5"></i> Cancel</a>
+    </div>
+    <form method="post" class="card-padded">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_scopes">
+      <input type="hidden" name="id" value="{{ edit.id }}">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="inline-flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" name="mcp_wildcard" {% if edit.mcp_wildcard %}checked{% endif %}>
+            <span><i data-lucide="terminal" class="h-3.5 w-3.5 inline -mt-0.5"></i> MCP — ★ full access</span>
+          </label>
+          <p class="text-xs text-[color:var(--text-muted)] mt-0.5 mb-2">Calls to <code class="font-mono">/mcp/admin/v1/</code> and the cluster.</p>
+          <div class="space-y-1.5 pl-1">
+            {% for s in scope_catalog %}
+            <label class="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="mcp_{{ s.id }}" {% if s.id in edit.mcp_active %}checked{% endif %}>
+              <span>
+                <span class="font-medium">{{ s.label }}</span>
+                <span class="block text-xs text-[color:var(--text-muted)]">{{ s.description }}</span>
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div>
+          <label class="inline-flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" name="graphql_wildcard" {% if edit.graphql_wildcard %}checked{% endif %}>
+            <span><i data-lucide="code-2" class="h-3.5 w-3.5 inline -mt-0.5"></i> GraphQL — ★ full access</span>
+          </label>
+          <p class="text-xs text-[color:var(--text-muted)] mt-0.5 mb-2">Calls to <code class="font-mono">/graphql/</code> mutations.</p>
+          <div class="space-y-1.5 pl-1">
+            {% for s in scope_catalog %}
+            <label class="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="graphql_{{ s.id }}" {% if s.id in edit.graphql_active %}checked{% endif %}>
+              <span>
+                <span class="font-medium">{{ s.label }}</span>
+                <span class="block text-xs text-[color:var(--text-muted)]">{{ s.description }}</span>
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end items-center gap-2 pt-3 mt-3 border-t border-[color:var(--border)]">
+        <a href="?" class="btn">Cancel</a>
+        <button class="btn btn-primary" type="submit">
+          <i data-lucide="save" class="h-3.5 w-3.5"></i> Save permissions
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
   {% if just_created_token %}
   <div class="card card-padded" style="border-left: 3px solid var(--success);">
     <div class="flex items-start gap-3">
@@ -76,7 +143,8 @@
         <tr>
           <th class="text-left">Label</th>
           <th class="text-left">Token</th>
-          <th class="text-left">Created</th>
+          <th class="text-left">MCP</th>
+          <th class="text-left">GraphQL</th>
           <th class="text-left">Last used</th>
           <th></th>
         </tr>
@@ -87,11 +155,18 @@
           <td>
             {{ r.label }}
             {% if r.is_legacy %}<span class="pill pill-neutral" style="margin-left:.4rem;">legacy</span>{% endif %}
+            <div class="text-xs text-[color:var(--text-muted)] mt-0.5">Created {{ r.created_at|default:"—" }}</div>
           </td>
           <td><code class="font-mono text-xs">{{ r.token_masked }}</code></td>
-          <td class="text-xs text-[color:var(--text-muted)]">{{ r.created_at|default:"—" }}</td>
+          <td class="text-xs">{{ r.mcp_summary }}</td>
+          <td class="text-xs">{{ r.graphql_summary }}</td>
           <td class="text-xs text-[color:var(--text-muted)]">{{ r.last_used_at|default:"—" }}</td>
           <td class="text-right">
+            {% if r.id %}
+            <a href="?edit={{ r.id }}" class="btn" title="Edit permissions">
+              <i data-lucide="shield" class="h-3.5 w-3.5"></i> Permissions
+            </a>
+            {% endif %}
             <form method="post" style="display:inline;"
                   data-confirm="Revoke token {{ r.label }}? Any agent using it will lose access immediately.">
               {% csrf_token %}

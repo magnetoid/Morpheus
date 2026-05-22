@@ -70,6 +70,27 @@ def _is_staff(info) -> bool:
     return bool(user and getattr(user, 'is_staff', False))
 
 
+def _check_scope(info, required: list[str]) -> str:
+    """Return '' when the request is authorised for the given scope(s),
+    otherwise a human-friendly error string. Session-authenticated
+    staff bypass scope checks (no token means no scope restriction).
+    Bearer-authed requests must have at least one of the required
+    scopes (or the wildcard) on the GraphQL surface."""
+    if not _is_staff(info):
+        return 'Forbidden — staff only.'
+    request = getattr(info.context, 'request', None) or (
+        info.context.get('request') if isinstance(info.context, dict) else None
+    )
+    granted = getattr(request, '_morph_token_scopes_graphql', None)
+    if granted is None:
+        # No bearer scope set → session auth → bypass scope check.
+        return ''
+    from plugins.installed.agent_mcp.scopes import has_any
+    if not has_any(granted, required):
+        return f'token missing scope: needs one of {sorted(required)}'
+    return ''
+
+
 def _err_publish(msg: str) -> PublishDigitalProductResult:
     return PublishDigitalProductResult(
         id=strawberry.ID(''), slug='', sku='', name='', url='', error=msg,
@@ -265,8 +286,9 @@ class CatalogMutationExtension:
         info: strawberry.Info,
         input: PublishDigitalProductInput,
     ) -> PublishDigitalProductResult:
-        if not _is_staff(info):
-            return _err_publish('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_publish(err)
         from plugins.installed.catalog.services import (
             PublishError,
             publish_digital_product as _publish,
@@ -298,8 +320,9 @@ class CatalogMutationExtension:
     def create_product(
         self, info: strawberry.Info, input: CreateProductInput,
     ) -> ProductMutationResult:
-        if not _is_staff(info):
-            return _err_product('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_product(err)
         from plugins.installed.catalog.services import PublishError, create_product as _create
 
         kwargs = {
@@ -342,8 +365,9 @@ class CatalogMutationExtension:
     def update_product(
         self, info: strawberry.Info, input: UpdateProductInput,
     ) -> ProductMutationResult:
-        if not _is_staff(info):
-            return _err_product('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_product(err)
         from plugins.installed.catalog.services import PublishError, update_product
 
         # strawberry sends None for unset Optional fields; strip those
@@ -383,8 +407,9 @@ class CatalogMutationExtension:
 
     @strawberry.mutation(description='Archive a product (sets status=archived). Staff-only.')
     def archive_product(self, info: strawberry.Info, slug: str) -> ProductMutationResult:
-        if not _is_staff(info):
-            return _err_product('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_product(err)
         from plugins.installed.catalog.services import PublishError, archive_product
         try:
             return _from_product_dict(archive_product(slug=slug))
@@ -395,8 +420,9 @@ class CatalogMutationExtension:
     def restore_product(
         self, info: strawberry.Info, slug: str, status: str = 'active',
     ) -> ProductMutationResult:
-        if not _is_staff(info):
-            return _err_product('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_product(err)
         from plugins.installed.catalog.services import PublishError, restore_product
         try:
             return _from_product_dict(restore_product(slug=slug, status=status))
@@ -407,8 +433,9 @@ class CatalogMutationExtension:
         description='Hard-delete a product. Prefer archiveProduct unless you really need the row gone. Staff-only.',
     )
     def delete_product(self, info: strawberry.Info, slug: str) -> ProductMutationResult:
-        if not _is_staff(info):
-            return _err_product('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.delete'])
+        if err:
+            return _err_product(err)
         from plugins.installed.catalog.services import PublishError, delete_product
         try:
             return _from_product_dict(delete_product(slug=slug))
@@ -423,8 +450,9 @@ class CatalogMutationExtension:
     def update_digital_pdf(
         self, info: strawberry.Info, input: UpdateDigitalPdfInput,
     ) -> ProductMutationResult:
-        if not _is_staff(info):
-            return _err_product('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_product(err)
         from plugins.installed.catalog.services import PublishError, update_digital_pdf
         try:
             r = update_digital_pdf(slug=input.slug, pdf_url=input.pdf_url)
@@ -440,8 +468,9 @@ class CatalogMutationExtension:
     def add_product_image(
         self, info: strawberry.Info, input: AddProductImageInput,
     ) -> ProductImageMutationResult:
-        if not _is_staff(info):
-            return _err_image('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_image(err)
         from plugins.installed.catalog.services import PublishError, add_product_image
         try:
             return _from_image_dict(add_product_image(
@@ -456,8 +485,9 @@ class CatalogMutationExtension:
     def remove_product_image(
         self, info: strawberry.Info, image_id: strawberry.ID,
     ) -> ProductImageMutationResult:
-        if not _is_staff(info):
-            return _err_image('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_image(err)
         from plugins.installed.catalog.services import PublishError, remove_product_image
         try:
             return _from_image_dict(remove_product_image(image_id=str(image_id)))
@@ -470,8 +500,9 @@ class CatalogMutationExtension:
     def set_primary_image(
         self, info: strawberry.Info, image_id: strawberry.ID,
     ) -> ProductImageMutationResult:
-        if not _is_staff(info):
-            return _err_image('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_image(err)
         from plugins.installed.catalog.services import PublishError, set_primary_image
         try:
             return _from_image_dict(set_primary_image(image_id=str(image_id)))
@@ -484,8 +515,9 @@ class CatalogMutationExtension:
     def create_category(
         self, info: strawberry.Info, input: CreateCategoryInput,
     ) -> CategoryMutationResult:
-        if not _is_staff(info):
-            return _err_category('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_category(err)
         from plugins.installed.catalog.services import PublishError, create_category
         try:
             return _from_category_dict(create_category(
@@ -499,8 +531,9 @@ class CatalogMutationExtension:
     def update_category(
         self, info: strawberry.Info, input: UpdateCategoryInput,
     ) -> CategoryMutationResult:
-        if not _is_staff(info):
-            return _err_category('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.write'])
+        if err:
+            return _err_category(err)
         from plugins.installed.catalog.services import PublishError, update_category
         try:
             return _from_category_dict(update_category(
@@ -517,8 +550,9 @@ class CatalogMutationExtension:
         description='Archive (delete) a category. Detaches products to category=null. Staff-only.',
     )
     def archive_category(self, info: strawberry.Info, slug: str) -> CategoryMutationResult:
-        if not _is_staff(info):
-            return _err_category('Forbidden — staff only.')
+        err = _check_scope(info, ['catalog.delete'])
+        if err:
+            return _err_category(err)
         from plugins.installed.catalog.services import PublishError, archive_category
         try:
             return _from_category_dict(archive_category(slug=slug))

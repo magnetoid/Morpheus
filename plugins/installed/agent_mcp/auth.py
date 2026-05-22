@@ -100,6 +100,16 @@ def apply_bearer_user(request: HttpRequest) -> bool:
     Returns True when a valid token was applied, False otherwise (and
     in that case `request.user` is left as-is — Django's session
     middleware decides what happens).
+
+    Also stashes the token's per-surface scope sets on the request so
+    downstream checks can authorise without re-looking up the entry:
+
+      request._morph_token_scopes_mcp     : set[str]
+      request._morph_token_scopes_graphql : set[str]
+      request._morph_token_label          : str (for audit logs)
+
+    Legacy raw-string tokens get the wildcard set on both surfaces —
+    fully backward-compatible.
     """
     token = _present_token(request)
     if not token:
@@ -113,5 +123,12 @@ def apply_bearer_user(request: HttpRequest) -> bool:
     except Exception as e:  # noqa: BLE001 — log + fall through to session auth
         logger.warning('agent_mcp: bearer resolve failed: %s', e, exc_info=True)
         return False
+    # Attach per-surface scope sets. Legacy entries (raw strings) get
+    # the wildcard automatically via token_scopes().
+    from plugins.installed.agent_mcp.scopes import find_entry_for_token, token_scopes
+    entry = find_entry_for_token(token)
+    request._morph_token_scopes_mcp = token_scopes(entry, 'mcp')
+    request._morph_token_scopes_graphql = token_scopes(entry, 'graphql')
+    request._morph_token_label = (entry or {}).get('label', '') if isinstance(entry, dict) else ''
     _touch_last_used(token)
     return True

@@ -183,6 +183,19 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
     if tool is None:
         raise _RpcError(_E_METHOD, f'tool not found: {name}')
 
+    # Scope enforcement. The presented token's `mcp_scopes` were stashed
+    # on a thread-local during rpc_endpoint(); legacy / wildcard tokens
+    # always pass. Tools without declared scopes are treated as public
+    # (anyone authed can call them — e.g. read-only diagnostics).
+    from plugins.installed.agent_mcp.scopes import has_any
+    granted = _active_token_scopes()
+    required = list(getattr(tool, 'scopes', None) or [])
+    if not has_any(granted, required):
+        raise _RpcError(
+            _E_AUTH,
+            f'token missing scope: needs one of {required}',
+        )
+
     try:
         result = tool.invoke(args, agent=None, context={'source': 'mcp'})
         output = result.output if hasattr(result, 'output') else result
@@ -293,6 +306,18 @@ class _RpcError(Exception):
 # ── HTTP entry point ───────────────────────────────────────────────────
 
 
+import threading
+_request_state = threading.local()
+
+
+def _active_token_scopes() -> set[str]:
+    """Token scopes for the in-flight request — populated by
+    rpc_endpoint() before dispatch. Falls back to the wildcard so
+    sessions-authed staff (no token) keep working."""
+    from plugins.installed.agent_mcp.scopes import WILDCARD
+    return getattr(_request_state, 'scopes', {WILDCARD})
+
+
 @csrf_exempt
 @require_http_methods(['POST'])
 def rpc_endpoint(request: HttpRequest) -> HttpResponse:
@@ -303,10 +328,21 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         return JsonResponse(_error_envelope(None, _E_PARSE, 'parse error'), status=400)
 
     authed = _is_authed(request)
-
-    if isinstance(body, list):
-        return JsonResponse([_dispatch(m, authed) for m in body], safe=False)
-    return JsonResponse(_dispatch(body, authed))
+    # Resolve Bearer → user + stash scopes for the in-flight handler.
+    # Doing this here covers callers that hit rpc_endpoint directly
+    # (legacy /mcp/v1/) without going through the cluster wrappers.
+    from plugins.installed.agent_mcp.auth import apply_bearer_user
+    apply_bearer_user(request)
+    from plugins.installed.agent_mcp.scopes import WILDCARD
+    _request_state.scopes = getattr(
+        request, '_morph_token_scopes_mcp', {WILDCARD},
+    )
+    try:
+        if isinstance(body, list):
+            return JsonResponse([_dispatch(m, authed) for m in body], safe=False)
+        return JsonResponse(_dispatch(body, authed))
+    finally:
+        _request_state.scopes = {WILDCARD}
 
 
 def _dispatch(message: dict, authed: bool) -> dict:

@@ -90,6 +90,25 @@ def _new_token() -> str:
     return _TOKEN_PREFIX + secrets.token_urlsafe(_TOKEN_BYTES)
 
 
+def _find_entry(entries: list[dict], token_id: str) -> dict | None:
+    for e in entries:
+        if isinstance(e, dict) and e.get('id') == token_id:
+            return e
+    return None
+
+
+def _scope_list_from_form(post, prefix: str) -> list[str]:
+    """Read checked scope names matching `{prefix}_<scope>` from a
+    POST. Used by the permissions form which puts MCP + GraphQL
+    scopes on the same submit."""
+    from plugins.installed.agent_mcp.scopes import AVAILABLE_SCOPES
+    out: list[str] = []
+    for scope in AVAILABLE_SCOPES:
+        if post.get(f'{prefix}_{scope}') == 'on':
+            out.append(scope)
+    return out
+
+
 @staff_member_required
 @require_http_methods(['GET', 'POST'])
 def tokens_view(request):
@@ -131,6 +150,27 @@ def tokens_view(request):
                 messages.success(request, 'Token revoked.')
             else:
                 messages.error(request, 'Token not found.')
+        elif action == 'save_scopes':
+            target_id = (request.POST.get('id') or '').strip()
+            entries = _load_entries()
+            entry = _find_entry(entries, target_id)
+            if entry is None:
+                messages.error(request, 'Token not found.')
+            else:
+                # Wildcard checkbox is a quick "full access on this surface"
+                # shortcut. When checked, store ['*']; otherwise store the
+                # explicit scope list.
+                if request.POST.get('mcp_wildcard') == 'on':
+                    entry['mcp_scopes'] = ['*']
+                else:
+                    entry['mcp_scopes'] = _scope_list_from_form(request.POST, 'mcp')
+                if request.POST.get('graphql_wildcard') == 'on':
+                    entry['graphql_scopes'] = ['*']
+                else:
+                    entry['graphql_scopes'] = _scope_list_from_form(request.POST, 'graphql')
+                _save_entries(entries)
+                messages.success(request, f'Permissions updated for {entry.get("label") or "(unlabelled)"}.')
+            return redirect(request.path)
         else:
             messages.error(request, f'Unknown action {action!r}.')
         # POST/redirect/GET keeps the URL clean — but we want to render
@@ -142,6 +182,8 @@ def tokens_view(request):
     entries = _load_entries()
     rows = []
     for e in entries:
+        mcp_scopes = list(e.get('mcp_scopes')) if e.get('mcp_scopes') is not None else None
+        gql_scopes = list(e.get('graphql_scopes')) if e.get('graphql_scopes') is not None else None
         rows.append({
             'id': e.get('id'),
             'label': e.get('label') or '(unlabelled)',
@@ -150,7 +192,37 @@ def tokens_view(request):
             'created_at': e.get('created_at'),
             'last_used_at': e.get('last_used_at'),
             'is_legacy': not e.get('id'),
+            'mcp_scopes': mcp_scopes,    # None → wildcard inherited
+            'graphql_scopes': gql_scopes,
+            'mcp_summary': _scope_summary(mcp_scopes),
+            'graphql_summary': _scope_summary(gql_scopes),
         })
+
+    # If ?edit=<token_id> is in the query, render the permissions form
+    # inline at the top of the page instead of just the table.
+    edit_id = (request.GET.get('edit') or '').strip()
+    edit_entry = None
+    if edit_id:
+        edit_entry = _find_entry(entries, edit_id)
+
+    from plugins.installed.agent_mcp.scopes import AVAILABLE_SCOPES
+    scope_catalog = [
+        {'id': sid, 'label': label, 'description': desc}
+        for sid, (label, desc) in AVAILABLE_SCOPES.items()
+    ]
+
+    edit_ctx = None
+    if edit_entry is not None:
+        mcp_current = edit_entry.get('mcp_scopes')
+        gql_current = edit_entry.get('graphql_scopes')
+        edit_ctx = {
+            'id': edit_entry.get('id'),
+            'label': edit_entry.get('label') or '(unlabelled)',
+            'mcp_wildcard': mcp_current is None or '*' in (mcp_current or []),
+            'graphql_wildcard': gql_current is None or '*' in (gql_current or []),
+            'mcp_active': set(mcp_current or []),
+            'graphql_active': set(gql_current or []),
+        }
 
     return render(request, 'agent_mcp/tokens.html', {
         'rows': rows,
@@ -158,5 +230,18 @@ def tokens_view(request):
         'just_created_label': just_created_label,
         'admin_rpc_url': '/mcp/admin/v1/',
         'graphql_url': '/graphql/',
+        'scope_catalog': scope_catalog,
+        'edit': edit_ctx,
         'active_nav': 'apps',
     })
+
+
+def _scope_summary(scopes: list[str] | None) -> str:
+    """Human-friendly label for a scope set, used in the table column."""
+    if scopes is None:
+        return 'inherits ★ full access'
+    if not scopes:
+        return 'no access'
+    if '*' in scopes:
+        return '★ full access'
+    return f'{len(scopes)} scope(s)'

@@ -31,6 +31,21 @@ def _is_staff(info) -> bool:
     return bool(user and getattr(user, 'is_staff', False))
 
 
+def _check_scope(info, required: list[str]) -> str:
+    if not _is_staff(info):
+        return 'Forbidden — staff only.'
+    request = getattr(info.context, 'request', None) or (
+        info.context.get('request') if isinstance(info.context, dict) else None
+    )
+    granted = getattr(request, '_morph_token_scopes_graphql', None)
+    if granted is None:
+        return ''
+    from plugins.installed.agent_mcp.scopes import has_any
+    if not has_any(granted, required):
+        return f'token missing scope: needs one of {sorted(required)}'
+    return ''
+
+
 def _err(msg: str) -> StockMutationResult:
     return StockMutationResult(
         variant_sku='', warehouse='', quantity=0, reserved_quantity=0,
@@ -90,8 +105,9 @@ class InventoryMutationExtension:
         description='Replace the absolute stock quantity for a variant. Staff-only.',
     )
     def set_stock(self, info: strawberry.Info, input: SetStockInput) -> StockMutationResult:
-        if not _is_staff(info):
-            return _err('Forbidden — staff only.')
+        err = _check_scope(info, ['inventory.write'])
+        if err:
+            return _err(err)
         if input.quantity < 0:
             return _err('quantity must be >= 0')
 
@@ -115,8 +131,9 @@ class InventoryMutationExtension:
         description='Add or subtract from the current stock quantity. Staff-only.',
     )
     def adjust_stock(self, info: strawberry.Info, input: AdjustStockInput) -> StockMutationResult:
-        if not _is_staff(info):
-            return _err('Forbidden — staff only.')
+        err = _check_scope(info, ['inventory.write'])
+        if err:
+            return _err(err)
 
         from plugins.installed.inventory.models import StockLevel
         variant = _resolve_variant(input.variant_sku, input.product_slug)
