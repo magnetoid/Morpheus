@@ -675,6 +675,62 @@ def cart_add(request, product_id):
     return redirect('/cart/')
 
 
+def _cart_requires_shipping(request) -> bool:
+    """Returns True if any cart item needs a shipping address.
+
+    A digital / virtual cart (every item flagged
+    requires_shipping=False at the variant level, or the parent
+    Product when there's no variant) skips the shipping-address step
+    + shipping-method picker. Feature-flagged so existing merchants
+    can opt out by setting
+    PluginConfig['orders']['skip_shipping_for_digital_carts'] = False.
+    """
+    # Feature flag — default ON. Merchants who want the old "ask for
+    # shipping address even on digital carts" behaviour can flip it off.
+    try:
+        from plugins.registry import plugin_registry
+        plugin = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    plugin = fn('orders')
+                except Exception:  # noqa: BLE001
+                    continue
+                if plugin is not None:
+                    break
+        if plugin is not None:
+            cfg = plugin.get_config() or {}
+            if cfg.get('skip_shipping_for_digital_carts') is False:
+                return True   # opt-out: always require shipping
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        from plugins.installed.orders.models import Cart
+        cart_id = request.session.get('cart_id')
+        if not cart_id:
+            return True   # no cart → safe default: require shipping
+        cart = (
+            Cart.objects.filter(id=cart_id)
+            .prefetch_related('items__product', 'items__variant')
+            .first()
+        )
+        if cart is None or not cart.items.all():
+            return True
+        for item in cart.items.all():
+            # Variant takes precedence; fall back to product flag.
+            if item.variant is not None:
+                if getattr(item.variant, 'requires_shipping', True):
+                    return True
+            else:
+                if getattr(item.product, 'requires_shipping', True):
+                    return True
+        return False   # every item is no-shipping → skip
+    except Exception:  # noqa: BLE001 — be defensive: never break checkout
+        return True
+
+
 def checkout(request):
     """Step 1 of the server-rendered checkout: contact + shipping address.
 
@@ -682,9 +738,17 @@ def checkout(request):
     The legacy single-page JS checkout still renders if a theme overrides
     this template — we just pre-populate values from the visitor's session
     and an authenticated user when present.
+
+    Digital / virtual carts (every item flagged requires_shipping=False)
+    skip the shipping-address form entirely: GET collects email only
+    via a slimmer template, POST stores a minimal "no shipping" address
+    in the session and jumps straight to /checkout/review/.
     """
+    no_shipping = not _cart_requires_shipping(request)
+
     if request.method == 'GET':
         ctx = _checkout_base_context(request)
+        ctx['no_shipping_required'] = no_shipping
         # Fire BEGIN_CHECKOUT once per session for analytics.
         try:
             if not request.session.get('checkout_started'):
@@ -698,12 +762,26 @@ def checkout(request):
             pass
         return render(request, 'storefront/checkout.html', ctx)
     # Save contact + shipping address into the session, then advance to
-    # the shipping-method picker.
+    # the shipping-method picker. Digital-only carts shortcut to /review/.
     fields = (
         'email', 'first_name', 'last_name', 'address_line1', 'address_line2',
         'city', 'state', 'postal_code', 'country', 'phone',
     )
     addr = {f: (request.POST.get(f) or '').strip() for f in fields}
+    if no_shipping:
+        # Digital cart — only email is mandatory. Stash a minimal
+        # address (just email + name) and skip the shipping-method
+        # picker.
+        if not addr['email']:
+            ctx = _checkout_base_context(request)
+            ctx['no_shipping_required'] = True
+            ctx['error'] = 'Please enter the email where we should send your downloads.'
+            ctx['form'] = addr
+            return render(request, 'storefront/checkout.html', ctx)
+        request.session['checkout_address'] = addr
+        request.session['checkout_shipping_rate_id'] = 'no-shipping'
+        request.session['checkout_shipping_rate_label'] = 'No shipping (digital)'
+        return redirect('/checkout/review/')
     if not (addr['email'] and addr['address_line1'] and addr['city'] and addr['country']):
         ctx = _checkout_base_context(request)
         ctx['error'] = 'Please fill in email, address, city, and country.'
@@ -803,10 +881,22 @@ def _checkout_base_context(request):
 
 
 def checkout_shipping(request):
-    """Step 2: pick a shipping rate."""
+    """Step 2: pick a shipping rate.
+
+    Digital carts (every item requires_shipping=False) skip this step
+    entirely — the cart shortcut in /checkout/ already wrote a
+    sentinel rate; if someone navigates here directly, bounce to
+    /checkout/review/.
+    """
     addr = request.session.get('checkout_address')
     if not addr:
         return redirect('/checkout/')
+    if not _cart_requires_shipping(request):
+        # Defensive: shouldn't normally land here, but if the user did
+        # by URL, just continue to review with the sentinel rate.
+        request.session.setdefault('checkout_shipping_rate_id', 'no-shipping')
+        request.session.setdefault('checkout_shipping_rate_label', 'No shipping (digital)')
+        return redirect('/checkout/review/')
     cart_data = internal_graphql(CART_QUERY, request=request) or {}
     cart = cart_data.get('cart') or {}
 
