@@ -570,8 +570,24 @@
     <a href="{% url 'admin_dashboard:settings' %}" class="nav-link {% if active_nav == 'settings' and not active_settings_category %}active{% endif %}">
       <i data-lucide="settings" class="h-4 w-4"></i> Settings overview
     </a>
+
+    {% comment %}
+      Shopify-style flat menu — one link per category. General is the
+      first entry (store name, currency, country basics); other
+      categories follow in the order declared in settings_categories.py.
+      Apps + operational tools (Tracking, Errors) come AFTER so the
+      merchant sees the configuration knobs before the admin tools.
+    {% endcomment %}
+    {% for cat in settings_category_nav %}
+    <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}"
+       class="nav-link {% if active_settings_category == cat.slug %}active{% endif %}">
+      <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> {{ cat.label }}
+    </a>
+    {% endfor %}
+
+    {# ── Operational admin tools — below the configuration categories. ── #}
     {# Apps link: active on /dashboard/apps/ but NOT on a specific plugin page. #}
-    <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' and not active_apps_slug %}active{% endif %}">
+    <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' and not active_apps_slug %}active{% endif %}" style="margin-top: .5rem;">
       <i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps
     </a>
 
@@ -584,18 +600,6 @@
     <a href="{% url 'errors:list' %}" class="nav-link {% if active_nav == 'errors' %}active{% endif %}">
       <i data-lucide="alert-circle" class="h-4 w-4"></i> Errors
     </a>
-
-    {% comment %}
-      Shopify-style flat menu — one link per category, then operational
-      admin pages (webhooks log, role manager…). No section headers in
-      between; the right-hand pane already names what you're looking at.
-    {% endcomment %}
-    {% for cat in settings_category_nav %}
-    <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}"
-       class="nav-link {% if active_settings_category == cat.slug %}active{% endif %}">
-      <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> {{ cat.label }}
-    </a>
-    {% endfor %}
 
     {% for section in settings_sections %}{% for page in section.pages %}
     <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/"

@@ -21,7 +21,7 @@ class SettingsCategory:
 
 # Order here is the order shown in the settings sidebar.
 SETTINGS_CATEGORIES: list[SettingsCategory] = [
-    SettingsCategory('general',       'Store',         'Name, currency, country, basics.',                    'store'),
+    SettingsCategory('general',       'General',       'Store name, currency, country, basics.',              'store'),
     SettingsCategory('payments',      'Payments',      'Gateways and payment methods customers can use.',     'credit-card'),
     SettingsCategory('shipping',      'Shipping',      'Zones, rates, and carriers.',                          'truck'),
     SettingsCategory('taxes',         'Taxes',         'Regional rates and overrides.',                       'percent'),
