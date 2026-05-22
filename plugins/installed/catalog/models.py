@@ -400,20 +400,63 @@ class ProductVariant(models.Model):
     """
     A specific purchasable version of a product.
     e.g. Red T-Shirt / Size XL
+
+    Shopify-parity surface (Phase 1 of docs/plans/variant-shopify-parity.md):
+    every variant is independently flaggable as physical / digital /
+    virtual, with its own requires_shipping, taxability, inventory
+    policy, barcode, and optional digital file. Defaults preserve
+    today's behaviour exactly so existing rows need no data migration.
     """
+    VARIANT_TYPE_CHOICES = [
+        ('physical', 'Physical — ships to a customer address'),
+        ('digital',  'Digital — downloadable file'),
+        ('virtual',  'Virtual — service, gift card, booking, no shipment'),
+    ]
+    INVENTORY_POLICY_CHOICES = [
+        ('deny',     'Deny — refuse orders when out of stock'),
+        ('continue', 'Continue — accept backorders'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
     name = models.CharField(max_length=200)
     sku = models.CharField(max_length=100, unique=True)
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
     compare_at_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
-    
+
     localized_prices = models.JSONField(default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}')
-    
+
     cost_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
     attribute_values = models.ManyToManyField(AttributeValue, blank=True)
     image = models.ForeignKey(ProductImage, on_delete=models.SET_NULL, null=True, blank=True)
     weight = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+
+    # ── Shopify parity — per-variant fulfillment + tax + inventory ─────
+    variant_type = models.CharField(
+        max_length=10, choices=VARIANT_TYPE_CHOICES, default='physical',
+        help_text='Physical (ships), digital (downloadable), or virtual (no fulfillment).',
+    )
+    requires_shipping = models.BooleanField(
+        default=True,
+        help_text='When false, checkout skips the shipping address step. Auto-flipped to false for digital/virtual variants in the dashboard form.',
+    )
+    is_taxable = models.BooleanField(
+        default=True,
+        help_text='Per-variant override of Product.is_taxable. Useful for EU VAT where digital + physical have different rules.',
+    )
+    inventory_policy = models.CharField(
+        max_length=10, choices=INVENTORY_POLICY_CHOICES, default='deny',
+        help_text='What happens when stock hits zero. Continue allows backorders.',
+    )
+    barcode = models.CharField(
+        max_length=50, blank=True,
+        help_text='UPC / EAN / ISBN. Used by POS, wholesale, and inventory sync.',
+    )
+    digital_file = models.FileField(
+        upload_to='digital/variants/', blank=True, null=True,
+        help_text='Per-variant override of Product.digital_file. Use when a single product sells in multiple digital formats (PDF / EPUB / MOBI).',
+    )
+
     is_active = models.BooleanField(default=True)
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
