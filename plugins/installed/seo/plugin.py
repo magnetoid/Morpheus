@@ -127,10 +127,132 @@ class SeoPlugin(Plugin):
             ),
         ]
 
+    def get_config_schema(self):
+        """Site-wide SEO toggles stored on PluginConfig['seo'].
+
+        These are the knobs that don't live on the SiteSeoSettings
+        model (which carries the organization metadata, social URLs,
+        verification codes, etc. and is edited via /dashboard/seo/
+        settings/). Everything here is a boolean or simple scalar
+        the merchant might want to tune from the unified settings
+        panel without diving into the dedicated SEO dashboard.
+        """
+        return {
+            "type": "object",
+            "properties": {
+                # ── Search-engine ping fan-out ────────────────────────
+                "indexnow_enabled": {
+                    "type": "boolean",
+                    "default": True,
+                    "title": "Push updates via IndexNow",
+                    "description": "Notify Bing / Yandex / Naver / Seznam / Yep when a product is created or updated. Fire-and-forget; never blocks the save.",
+                },
+                "ping_google_on_sitemap_change": {
+                    "type": "boolean",
+                    "default": True,
+                    "title": "Ping Google + Bing when the sitemap changes",
+                    "description": "Sends a sitemap-changed ping when SitemapEntry rows are added / removed in the dashboard.",
+                },
+
+                # ── Sitemap shapes ────────────────────────────────────
+                "image_sitemap_enabled": {
+                    "type": "boolean",
+                    "default": True,
+                    "title": "Image sitemap",
+                    "description": "Emit /sitemap-images.xml with product image URLs so Google Images can index them faster.",
+                },
+                "news_sitemap_enabled": {
+                    "type": "boolean",
+                    "default": False,
+                    "title": "Google News sitemap",
+                    "description": "Emit /sitemap-news.xml for blog / press content. Only enable if you run editorial content under Google News guidelines.",
+                },
+                "news_sitemap_max_age_hours": {
+                    "type": "integer",
+                    "default": 168,
+                    "title": "News sitemap max age (hours)",
+                    "description": "Google News wants only entries from the last 48 h, but a wider window helps re-indexing. Default 168 (one week).",
+                },
+                "sitemap_max_urls_per_file": {
+                    "type": "integer",
+                    "default": 50000,
+                    "title": "Sitemap split size (URLs)",
+                    "description": "Hard cap is 50,000 per file (Google requirement). Lower this to chunk earlier if your sitemaps grow large.",
+                },
+
+                # ── AI discovery + LLM training control ───────────────
+                "include_pricing_in_llms_txt": {
+                    "type": "boolean",
+                    "default": True,
+                    "title": "Include pricing in /llms.txt",
+                    "description": "When on, LLM crawlers see live prices in /llms.txt — improves citation accuracy in ChatGPT / Perplexity / AI Overviews.",
+                },
+                "include_inventory_in_llms_txt": {
+                    "type": "boolean",
+                    "default": False,
+                    "title": "Include stock status in /llms.txt",
+                    "description": "Surfaces in-stock / out-of-stock signals. Off by default because inventory can churn fast and stale LLM caches embarrass.",
+                },
+                "ai_crawler_default_allow": {
+                    "type": "boolean",
+                    "default": True,
+                    "title": "Allow unknown AI crawlers by default",
+                    "description": "When a new AI crawler hits us with a UA we don't recognise, default to allow. Tighten by listing specific UAs in /dashboard/seo/settings/.",
+                },
+
+                # ── Schema.org defaults ───────────────────────────────
+                "organization_type": {
+                    "type": "string",
+                    "enum": [
+                        "Organization", "LocalBusiness", "Store",
+                        "OnlineStore", "BookStore", "Publisher",
+                    ],
+                    "default": "OnlineStore",
+                    "title": "Organization @type",
+                    "description": "JSON-LD @type emitted for the site-wide Organization schema. Use BookStore / Publisher for book-focused stores; LocalBusiness adds geo fields.",
+                },
+                "gtin_field_preference": {
+                    "type": "string",
+                    "enum": ["isbn13", "gtin13", "gtin12", "gtin8", "auto"],
+                    "default": "auto",
+                    "title": "Preferred GTIN field",
+                    "description": "Which barcode property to emit in Product JSON-LD. 'auto' picks the right one from the variant.barcode length.",
+                },
+
+                # ── Crawl + indexability ──────────────────────────────
+                "noindex_thin_pdp_below_words": {
+                    "type": "integer",
+                    "default": 0,
+                    "title": "Auto-noindex PDPs with descriptions shorter than (words)",
+                    "description": "0 disables. Setting 50 means any product page whose description has fewer than 50 words gets robots=noindex,follow until the merchant fills it in.",
+                },
+                "canonical_strip_query_params": {
+                    "type": "boolean",
+                    "default": True,
+                    "title": "Strip query params from canonical URLs",
+                    "description": "Standard SEO hygiene — the canonical link should point to the clean URL even when the visitor arrived with utm_/fbclid/gclid params.",
+                },
+
+                # ── Performance + UX signals ──────────────────────────
+                "lazy_load_below_fold_images": {
+                    "type": "boolean",
+                    "default": True,
+                    "title": "Lazy-load below-the-fold images",
+                    "description": "Adds loading=\"lazy\" to img tags below the first viewport. Faster LCP, lower bandwidth.",
+                },
+                "preconnect_to_cdn": {
+                    "type": "string",
+                    "default": "",
+                    "title": "Preconnect <link> to CDN host",
+                    "description": "Optional host to preconnect to (e.g. cdn.example.com). Speeds first image load when you serve media from a separate CDN.",
+                },
+            },
+        }
+
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='SEO',
-            description='Site-wide SEO defaults, JSON-LD, AI discovery feeds, audits.',
-            schema={'type': 'object', 'properties': {}},
+            description='Site-wide SEO defaults, JSON-LD, AI discovery feeds, audits. Per-object meta lives on individual products / categories / pages; this panel is the global knobs.',
+            schema=self.get_config_schema(),
             category='channels',
         )
