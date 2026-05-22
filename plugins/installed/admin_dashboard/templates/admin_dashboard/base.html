@@ -519,6 +519,17 @@
     {% comment %}Assets is core — sits right under Users so the merchant can jump straight from contacts to the file library.{% endcomment %}
     <a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>
 
+    {% if 'affiliates' in active_plugins %}
+    {% comment %}Affiliates + Payouts — moved out of the Apps section into the main sidebar with a parent/child shape, matching the Orders + Products patterns.{% endcomment %}
+    <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' or active_apps_slug == 'affiliates/payouts' %}active{% endif %}">
+      <i data-lucide="link" class="h-4 w-4"></i> Affiliates
+    </a>
+    <div class="nav-children {% if active_apps_slug == 'affiliates/list' or active_apps_slug == 'affiliates/payouts' %}open{% endif %}">
+      <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' %}active{% endif %}">All affiliates</a>
+      <a href="/dashboard/apps/affiliates/payouts/" class="nav-link {% if active_apps_slug == 'affiliates/payouts' %}active{% endif %}">Payouts</a>
+    </div>
+    {% endif %}
+
     {# Tracking + Errors moved to the Settings sidebar — see nav-settings below. #}
 
     {% comment %}

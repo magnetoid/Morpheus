@@ -77,16 +77,22 @@ class AffiliatesPlugin(Plugin):
         ]
 
     def contribute_dashboard_pages(self) -> list:
+        # nav='hidden' because base.html now renders the Affiliates +
+        # Payouts links explicitly in the main sidebar (with the
+        # parent/child shape the merchant expects). The DashboardPage
+        # rows are still registered so the plugin_page_router resolves
+        # the URLs at /dashboard/apps/affiliates/list/ and
+        # /dashboard/apps/affiliates/payouts/.
         from morpheus import DashboardPage
         return [
             DashboardPage(
                 label='Affiliates', slug='list',
                 view='plugins.installed.affiliates.dashboard.affiliates_list',
-                icon='link', section='apps', order=10,
+                icon='link', section='growth', order=10, nav='hidden',
             ),
             DashboardPage(
                 label='Payouts', slug='payouts',
                 view='plugins.installed.affiliates.dashboard.payouts_list',
-                icon='wallet', section='apps', order=20,
+                icon='wallet', section='growth', order=20, nav='hidden',
             ),
         ]
