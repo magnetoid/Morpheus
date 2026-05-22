@@ -1,5 +1,6 @@
 {% extends "storefront/base.html" %}
-{% block title %}Order history — dot books{% endblock %}
+{% load seo %}
+{% block title %}{% seo_title "Order history" %}{% endblock %}
 
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 {% block content %}

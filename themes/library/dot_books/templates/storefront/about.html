@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load seo %}
-{% block title %}About — dot books{% endblock %}
+{% block title %}{% seo_title "About" %}{% endblock %}
 
 {% block extra_head %}
 {% seo_aboutpage_jsonld name="About dot books" description="dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world." %}

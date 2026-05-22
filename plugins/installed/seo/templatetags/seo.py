@@ -60,6 +60,80 @@ def _canonical_from_request(request) -> tuple[str, bool]:
     return rebuilt, had_blocked
 
 
+@register.simple_tag
+def seo_title(title: str, *, category: str = '', site_name: str = '') -> str:
+    """Render the ``<title>`` text using SiteSeoSettings.title_template.
+
+    Variables in the template:
+      ``{title}``      — the page-specific title (passed in)
+      ``{site_name}``  — falls back to SiteSeoSettings.organization_name
+                          → core.StoreSettings.store_name → empty
+      ``{category}``   — optional category name (e.g. on PDPs)
+
+    Truncates the result to ``title_max_length`` (default 60) so we
+    don't ship a 200-char string to Google. Falls back to a clean
+    "title — site_name" when the template is malformed or the
+    SiteSeoSettings row doesn't exist yet (fresh install).
+    """
+    title = (title or '').strip()
+    category = (category or '').strip()
+    site_name = (site_name or '').strip()
+
+    # Resolve the site name + template + length cap. Defensive — never
+    # crash the page render over an SEO formatting issue.
+    template_str = '{title} — {site_name}'
+    max_len = 60
+    try:
+        from plugins.installed.seo.services import site_settings
+        s = site_settings()
+        template_str = (s.title_template or template_str).strip()
+        if s.title_max_length and int(s.title_max_length) > 0:
+            max_len = int(s.title_max_length)
+        if not site_name:
+            site_name = (s.organization_name or '').strip()
+    except Exception:  # noqa: BLE001
+        pass
+
+    if not site_name:
+        # Last-resort: core.StoreSettings.store_name.
+        try:
+            from core.models import StoreSettings
+            store = StoreSettings.objects.first()
+            site_name = getattr(store, 'store_name', '') or ''
+        except Exception:  # noqa: BLE001
+            pass
+
+    try:
+        rendered = template_str.format(
+            title=title or 'Untitled',
+            site_name=site_name or '',
+            category=category or '',
+        )
+    except (KeyError, IndexError, ValueError):
+        # Malformed template (unknown placeholder, stray brace). Fall
+        # back to a safe shape instead of raising.
+        rendered = f'{title} — {site_name}' if site_name else title
+
+    # Collapse the common "Title —  " orphan when site_name is empty
+    # AND the template ended with " — {site_name}".
+    rendered = rendered.replace(' —  ', ' — ').rstrip(' —').strip()
+
+    if len(rendered) > max_len:
+        # Trim title only; keep the "— site_name" suffix intact when
+        # possible.
+        if ' — ' in rendered and site_name:
+            head, _, _ = rendered.partition(' — ')
+            allowed = max_len - len(site_name) - 3   # space-dash-space
+            if allowed > 10:
+                rendered = head[:allowed].rstrip() + ' — ' + site_name
+            else:
+                rendered = rendered[:max_len]
+        else:
+            rendered = rendered[:max_len]
+
+    return rendered
+
+
 @register.simple_tag(takes_context=True)
 def seo_meta(
     context,

@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load tracking %}
-{% block title %}Order received — dot books{% endblock %}
+{% load morph %}{% load tracking %}{% load seo %}
+{% block title %}{% seo_title "Order received" %}{% endblock %}
 
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">
 {% dl_purchase order %}

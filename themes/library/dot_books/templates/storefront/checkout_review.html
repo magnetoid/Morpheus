@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
-{% block title %}Review your order — dot books{% endblock %}
+{% load morph %}{% load seo %}
+{% block title %}{% seo_title "Review your order" %}{% endblock %}
 
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 {% block content %}

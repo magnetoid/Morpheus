@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}
-{% block title %}dot books{% endblock %}
+{% block title %}{% seo_title "" %}{% endblock %}
 
 {% block content %}
 {% storefront_blocks "home_above_grid" %}

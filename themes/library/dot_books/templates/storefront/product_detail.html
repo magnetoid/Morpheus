@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load tracking %}{% load cache %}
-{% block title %}{{ product.name }} — dot books{% endblock %}
+{% load seo %}{% block title %}{% seo_title product.name category=product.category.name %}{% endblock %}
 
 {% block extra_head %}
 {% seo_product_jsonld product %}
