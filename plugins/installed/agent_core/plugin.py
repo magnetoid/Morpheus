@@ -127,6 +127,7 @@ class AgentCorePlugin(Plugin):
                 section='ai',
                 order=10,
                 nav='hidden',
+                url='/dashboard/agents/console/',
             ),
             DashboardPage(
                 label='Agent runs',
@@ -136,6 +137,7 @@ class AgentCorePlugin(Plugin):
                 section='ai',
                 order=20,
                 nav='hidden',
+                url='/dashboard/agents/',
             ),
             DashboardPage(
                 label='Background agents',
@@ -145,6 +147,7 @@ class AgentCorePlugin(Plugin):
                 section='ai',
                 order=30,
                 nav='hidden',
+                url='/dashboard/agents/background/',
             ),
             DashboardPage(
                 label='Observability',
@@ -154,6 +157,7 @@ class AgentCorePlugin(Plugin):
                 section='ai',
                 order=40,
                 nav='hidden',
+                url='/dashboard/agents/observability/',
             ),
         ]
 

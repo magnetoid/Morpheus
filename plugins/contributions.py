@@ -72,6 +72,11 @@ class DashboardPage:
     order: int = 100
     plugin: str = ''
     nav: str = 'main'       # 'main' | 'settings' | 'hidden'
+    # Optional canonical URL — when set, the sidebar links here instead of
+    # /dashboard/apps/<plugin>/<slug>/. Lets a plugin that owns its own
+    # URL prefix (via register_urls) point the sidebar entry at the
+    # primary URL without losing the discovery surface in /dashboard/apps/.
+    url: str = ''
 
 
 @dataclass(slots=True)

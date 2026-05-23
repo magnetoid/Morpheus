@@ -484,14 +484,16 @@
     contributed by the agent_core system plugin but folded under
     Linda visually so the merchant sees one cohesive Linda surface
     instead of two separate apps.{% endcomment %}
-    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or active_apps_slug == 'agent_core/console' or active_apps_slug == 'agent_core/runs' or active_apps_slug == 'agent_core/background' or active_apps_slug == 'agent_core/observability' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Linda</a>
-    <div class="nav-children {% if active_nav == 'assistant' or active_apps_slug == 'agent_core/console' or active_apps_slug == 'agent_core/runs' or active_apps_slug == 'agent_core/background' or active_apps_slug == 'agent_core/observability' %}open{% endif %}">
+    {% with agents_active=request.path|slice:":17" %}
+    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Linda</a>
+    <div class="nav-children {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}open{% endif %}">
       <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}">Chat</a>
-      <a href="/dashboard/apps/agent_core/console/" class="nav-link {% if active_apps_slug == 'agent_core/console' %}active{% endif %}">Ops console</a>
-      <a href="/dashboard/apps/agent_core/runs/" class="nav-link {% if active_apps_slug == 'agent_core/runs' %}active{% endif %}">Run history</a>
-      <a href="/dashboard/apps/agent_core/background/" class="nav-link {% if active_apps_slug == 'agent_core/background' %}active{% endif %}">Background agents</a>
-      <a href="/dashboard/apps/agent_core/observability/" class="nav-link {% if active_apps_slug == 'agent_core/observability' %}active{% endif %}">Observability</a>
+      <a href="/dashboard/agents/console/" class="nav-link {% if request.path == '/dashboard/agents/console/' %}active{% endif %}">Ops console</a>
+      <a href="/dashboard/agents/" class="nav-link {% if request.path == '/dashboard/agents/' %}active{% endif %}">Run history</a>
+      <a href="/dashboard/agents/background/" class="nav-link {% if request.path == '/dashboard/agents/background/' %}active{% endif %}">Background agents</a>
+      <a href="/dashboard/agents/observability/" class="nav-link {% if request.path == '/dashboard/agents/observability/' %}active{% endif %}">Observability</a>
     </div>
+    {% endwith %}
     <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">
       <i data-lucide="lightbulb" class="h-4 w-4"></i> Insights
       {% if nav_badges.insights %}<span class="pill pill-info" style="margin-left:auto;">{{ nav_badges.insights }}</span>{% endif %}
@@ -563,15 +565,15 @@
     {% with first_page=section.pages.0 %}
     <button type="button" class="nav-section-btn {% if section.is_active %}has-active{% endif %}"
             data-section="{{ section.key }}"
-            data-first-href="/dashboard/apps/{{ first_page.plugin }}/{{ first_page.slug }}/">
+            data-first-href="{% if first_page.url %}{{ first_page.url }}{% else %}/dashboard/apps/{{ first_page.plugin }}/{{ first_page.slug }}/{% endif %}">
       <i data-lucide="{{ section.icon|default:'folder' }}" class="h-4 w-4"></i>
       <span>{{ section.label }}</span>
       <i data-lucide="chevron-down" class="chev h-3 w-3"></i>
     </button>
     <div class="nav-group {% if not section.is_active %}collapsed{% endif %}" data-group="{{ section.key }}">
       {% for page in section.pages %}
-      <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/"
-         class="nav-link {% if active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
+      <a href="{% if page.url %}{{ page.url }}{% else %}/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/{% endif %}"
+         class="nav-link {% if page.url and request.path == page.url %}active{% elif active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
         <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
       </a>
       {% endfor %}
@@ -623,8 +625,8 @@
     </a>
 
     {% for section in settings_sections %}{% for page in section.pages %}
-    <a href="/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/"
-       class="nav-link {% if active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
+    <a href="{% if page.url %}{{ page.url }}{% else %}/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/{% endif %}"
+       class="nav-link {% if page.url and request.path == page.url %}active{% elif active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
       <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
     </a>
     {% endfor %}{% endfor %}

@@ -124,41 +124,53 @@ class SeoPlugin(Plugin):
         )]
 
     def contribute_dashboard_pages(self) -> list:
+        # All URLs point at the canonical /dashboard/seo/<slug>/ route
+        # registered via register_urls(prefix='dashboard/seo/'). The
+        # legacy /dashboard/apps/seo/<slug>/ path still works (the
+        # plugin_page_router resolves it) but nothing in the UI links
+        # there anymore — bookmarks survive, sidebar uses canonical.
         return [
             DashboardPage(
                 label='SEO', slug='overview',
                 view='plugins.installed.seo.views.seo_overview',
                 icon='search', section='seo', order=10,
+                url='/dashboard/seo/',
             ),
             DashboardPage(
                 label='Bulk meta', slug='bulk-meta',
                 view='plugins.installed.seo.views.bulk_meta',
                 icon='edit-3', section='seo', order=20,
+                url='/dashboard/seo/bulk-meta/',
             ),
             DashboardPage(
                 label='Audit', slug='audit',
                 view='plugins.installed.seo.views.audit_page',
                 icon='gauge', section='seo', order=30,
+                url='/dashboard/seo/audit/',
             ),
             DashboardPage(
                 label='404s', slug='not-found',
                 view='plugins.installed.seo.views.not_found_log',
                 icon='alert-triangle', section='seo', order=40,
+                url='/dashboard/seo/not-found/',
             ),
             DashboardPage(
                 label='Keywords', slug='keywords',
                 view='plugins.installed.seo.views.keywords_page',
                 icon='hash', section='seo', order=50,
+                url='/dashboard/seo/keywords/',
             ),
             DashboardPage(
                 label='Sitemap', slug='sitemap',
                 view='plugins.installed.seo.views.sitemap_page',
                 icon='map', section='seo', order=55,
+                url='/dashboard/seo/sitemap/',
             ),
             DashboardPage(
                 label='Site SEO settings', slug='settings',
                 view='plugins.installed.seo.views.seo_settings_page',
                 icon='settings', section='seo', order=60,
+                url='/dashboard/seo/settings/',
             ),
         ]
 

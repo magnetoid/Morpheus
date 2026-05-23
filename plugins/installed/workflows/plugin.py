@@ -42,5 +42,6 @@ class WorkflowsPlugin(Plugin):
                 view='plugins.installed.workflows.views.index',
                 order=20,
                 nav='settings',
+                url='/dashboard/workflows/',
             ),
         ]
