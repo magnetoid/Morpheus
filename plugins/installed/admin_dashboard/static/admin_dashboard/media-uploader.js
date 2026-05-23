@@ -157,6 +157,55 @@
       });
     }
 
+    // ── Per-tile quick-delete (X / trash button) ────────────────────
+    // Avoids forcing the user into the edit modal just to remove media.
+    if (grid) {
+      grid.addEventListener('click', async e => {
+        const delBtn = e.target.closest('[data-delete-tile]');
+        if (!delBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const tile = delBtn.closest('[data-id]');
+        if (!tile) return;
+        const kind = tile.dataset.kind;
+        const id = tile.dataset.id;
+        const label = kind === 'video' ? 'this video' : 'this image';
+        if (!confirm(`Remove ${label} from the gallery?`)) return;
+        const tpl = kind === 'image' ? urls.imageDelete : urls.videoDelete;
+        if (!tpl) {
+          flashMessage('Delete not available.');
+          return;
+        }
+        try {
+          const res = await api(tpl.replace('{id}', id), { body: new FormData() });
+          if (res.ok || res.redirected) {
+            tile.remove();
+            // Recompute slot labels on the remaining image tiles so
+            // "Slot 1" / "Cover" stay in sync without a page reload.
+            const imageTiles = grid.querySelectorAll('[data-kind="image"]');
+            imageTiles.forEach((t, i) => {
+              const slot = t.querySelector('.muploader-tile__slot');
+              if (slot) slot.textContent = `Slot ${i + 1}`;
+              t.classList.toggle('is-cover', i === 0);
+              const pill = t.querySelector('.muploader-tile__cover-pill');
+              if (i === 0 && !pill) {
+                const span = document.createElement('span');
+                span.className = 'muploader-tile__cover-pill';
+                span.textContent = 'Cover';
+                t.appendChild(span);
+              } else if (i !== 0 && pill) {
+                pill.remove();
+              }
+            });
+          } else {
+            flashMessage('Delete failed.');
+          }
+        } catch {
+          flashMessage('Delete failed.');
+        }
+      });
+    }
+
     function openModal(tile) {
       const kind = tile.dataset.kind;     // 'image' | 'video'
       const id = tile.dataset.id;
