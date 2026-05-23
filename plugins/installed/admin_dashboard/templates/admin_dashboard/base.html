@@ -529,14 +529,21 @@
     <a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>
 
     {% if 'affiliates' in active_plugins %}
-    {% comment %}Affiliates + Payouts — moved out of the Apps section into the main sidebar with a parent/child shape, matching the Orders + Products patterns.{% endcomment %}
-    <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' or active_apps_slug == 'affiliates/payouts' %}active{% endif %}">
+    {% comment %}
+    Affiliates parent + children. Parent <a> lands on the list page
+    (matches Orders / Products); children carry the rest. The submenu
+    auto-opens whenever any affiliates page is active.
+    {% endcomment %}
+    {% with affiliates_prefix=active_apps_slug|slice:":11" %}
+    <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if affiliates_prefix == 'affiliates/' %}active{% endif %}">
       <i data-lucide="link" class="h-4 w-4"></i> Affiliates
     </a>
-    <div class="nav-children {% if active_apps_slug == 'affiliates/list' or active_apps_slug == 'affiliates/payouts' %}open{% endif %}">
-      <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' %}active{% endif %}">All affiliates</a>
+    <div class="nav-children {% if affiliates_prefix == 'affiliates/' %}open{% endif %}">
+      <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' %}active{% endif %}">Affiliates list</a>
       <a href="/dashboard/apps/affiliates/payouts/" class="nav-link {% if active_apps_slug == 'affiliates/payouts' %}active{% endif %}">Payouts</a>
+      <a href="/dashboard/settings/affiliates/" class="nav-link">Settings</a>
     </div>
+    {% endwith %}
     {% endif %}
 
     {# Tracking + Errors moved to the Settings sidebar — see nav-settings below. #}
@@ -958,10 +965,22 @@
       try { href = new URL(href, location.origin).pathname; } catch (_) {}
       if (href === location.pathname) a.classList.add('active');
     });
-    // Open the submenu containing the active link.
+    // Open the submenu containing the active link — and ALSO open the
+    // sibling submenu when the active link is itself a parent (e.g.
+    // clicking "Orders" lands on /dashboard/orders/ where the active
+    // link IS the parent, not a child). Without this fallback the user
+    // had to click twice to open the submenu after navigating to a
+    // parent page.
     sidebar.querySelectorAll('.nav-link.active').forEach(function (a) {
-      var children = a.closest('.nav-children');
-      if (children) children.classList.add('open');
+      var inside = a.closest('.nav-children');
+      if (inside) {
+        inside.classList.add('open');
+        return;
+      }
+      var next = a.nextElementSibling;
+      if (next && next.classList.contains('nav-children')) {
+        next.classList.add('open');
+      }
     });
   }
 

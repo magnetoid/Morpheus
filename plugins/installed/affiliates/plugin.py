@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from morpheus import events
-from morpheus import Plugin
+from morpheus import Plugin, SettingsPanel
 
 
 class AffiliatesPlugin(Plugin):
@@ -75,6 +75,51 @@ class AffiliatesPlugin(Plugin):
             list_affiliates_tool, pending_payouts_tool,
             mark_payout_paid_tool, create_affiliate_tool,
         ]
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Affiliates',
+            description='Default program rules and payout policy. New AffiliateProgram rows inherit these defaults.',
+            schema=self.get_config_schema(),
+            category='marketing',
+        )
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'default_commission_percent': {
+                    'type': 'number',
+                    'title': 'Default commission %',
+                    'description': 'Percentage of order subtotal an affiliate earns by default.',
+                    'default': 10,
+                },
+                'cookie_window_days': {
+                    'type': 'integer',
+                    'title': 'Cookie window (days)',
+                    'description': 'How long an affiliate click remains attributable. 30 is industry standard.',
+                    'default': 30,
+                },
+                'min_payout_threshold': {
+                    'type': 'number',
+                    'title': 'Minimum payout threshold',
+                    'description': 'Affiliates must accrue at least this much before a payout is generated.',
+                    'default': 25,
+                },
+                'auto_lock_days': {
+                    'type': 'integer',
+                    'title': 'Refund clawback window (days)',
+                    'description': 'After this many days a conversion is locked in and survives any refund.',
+                    'default': 30,
+                },
+                'allow_self_signup': {
+                    'type': 'boolean',
+                    'title': 'Allow public affiliate sign-up',
+                    'description': 'When off, only the merchant can create affiliates via the dashboard.',
+                    'default': True,
+                },
+            },
+        }
 
     def contribute_dashboard_pages(self) -> list:
         # nav='hidden' because base.html now renders the Affiliates +
