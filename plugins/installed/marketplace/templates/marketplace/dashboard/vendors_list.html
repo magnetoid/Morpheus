@@ -1,0 +1,53 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Vendors · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Vendors</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">All merchants selling on this marketplace.</p>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-1.5 text-xs">
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">All</a>
+    <a href="?status=active" class="btn btn-ghost text-xs {% if status_filter == 'active' %}is-active{% endif %}">Active</a>
+    <a href="?status=inactive" class="btn btn-ghost text-xs {% if status_filter == 'inactive' %}is-active{% endif %}">Inactive</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if vendors %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Slug</th>
+          <th class="text-right">Lifetime GMV</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in vendors %}
+        <tr>
+          <td class="font-medium">{{ v.obj.name }}</td>
+          <td><code class="font-mono text-xs">{{ v.obj.slug }}</code></td>
+          <td class="text-right font-mono">{{ v.gross }}</td>
+          <td>
+            {% if v.obj.is_active %}<span class="pill pill-success">Active</span>
+            {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ v.obj.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No vendors yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

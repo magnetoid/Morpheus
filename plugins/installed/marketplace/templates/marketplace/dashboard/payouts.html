@@ -1,0 +1,77 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Vendor payouts · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Vendor payouts</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Track money owed to vendors and their payout status. Mark paid after the transfer leaves the bank.
+      </p>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if payouts %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th class="text-right">Amount</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payouts %}
+        <tr>
+          <td>{% if p.vendor_id %}{{ p.vendor.name }}{% else %}—{% endif %}</td>
+          <td class="text-right font-mono">{{ p.amount }}</td>
+          <td>
+            {% if p.status == 'pending' %}<span class="pill pill-warn">Pending</span>
+            {% elif p.status == 'processing' %}<span class="pill pill-info">Processing</span>
+            {% elif p.status == 'paid' %}<span class="pill pill-success">Paid</span>
+            {% elif p.status == 'failed' %}<span class="pill pill-neutral">Failed</span>
+            {% else %}{{ p.get_status_display }}{% endif %}
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ p.created_at|date:"Y-m-d" }}</td>
+          <td class="text-right">
+            {% if p.status == 'pending' %}
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="payout_id" value="{{ p.id }}">
+              <input type="hidden" name="action" value="mark_processing">
+              <button class="btn btn-ghost text-xs" type="submit">Processing</button>
+            </form>
+            {% endif %}
+            {% if p.status != 'paid' %}
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="payout_id" value="{{ p.id }}">
+              <input type="hidden" name="action" value="mark_paid">
+              <button class="btn btn-ghost text-xs" type="submit" data-confirm="Mark this payout as paid?" data-confirm-cta="Mark paid">Mark paid</button>
+            </form>
+            {% endif %}
+            {% if p.status == 'processing' %}
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="payout_id" value="{{ p.id }}">
+              <input type="hidden" name="action" value="mark_failed">
+              <button class="btn btn-ghost text-xs" type="submit">Failed</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No payouts yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

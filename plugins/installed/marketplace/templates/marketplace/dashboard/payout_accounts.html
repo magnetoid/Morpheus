@@ -1,0 +1,58 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Vendor payout accounts · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Payout accounts</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Bank / payment processor details per vendor. Required before payouts can issue.</p>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if accounts %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th>Method</th>
+          <th>External ref</th>
+          <th class="text-right">Accrued</th>
+          <th class="text-right">Lifetime paid</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr>
+          <td>{{ a.vendor.name }}</td>
+          <td>{{ a.method|default:'—' }}</td>
+          <td><code class="text-xs">{{ a.external_account|default:'—' }}</code></td>
+          <td class="text-right font-mono">{{ a.accrued_balance }}</td>
+          <td class="text-right font-mono">{{ a.lifetime_paid }}</td>
+          <td>
+            {% if a.is_active %}<span class="pill pill-success">Active</span>
+            {% else %}<span class="pill pill-neutral">Paused</span>{% endif %}
+          </td>
+          <td class="text-right">
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="account_id" value="{{ a.id }}">
+              <input type="hidden" name="action" value="toggle">
+              <button class="btn btn-ghost text-xs" type="submit">
+                {% if a.is_active %}Pause{% else %}Resume{% endif %}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No payout accounts configured.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

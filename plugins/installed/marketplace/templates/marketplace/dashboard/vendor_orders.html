@@ -1,0 +1,59 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Vendor orders · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Vendor orders</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Per-vendor slice of every customer order. Each row is one (parent order × vendor) pair.
+      </p>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">All</a>
+    <a href="?status=pending" class="btn btn-ghost text-xs {% if status_filter == 'pending' %}is-active{% endif %}">Pending ({{ counts.pending|default:0 }})</a>
+    <a href="?status=confirmed" class="btn btn-ghost text-xs {% if status_filter == 'confirmed' %}is-active{% endif %}">Confirmed ({{ counts.confirmed|default:0 }})</a>
+    <a href="?status=shipped" class="btn btn-ghost text-xs {% if status_filter == 'shipped' %}is-active{% endif %}">Shipped ({{ counts.shipped|default:0 }})</a>
+    <a href="?status=delivered" class="btn btn-ghost text-xs {% if status_filter == 'delivered' %}is-active{% endif %}">Delivered ({{ counts.delivered|default:0 }})</a>
+    <a href="?status=refunded" class="btn btn-ghost text-xs {% if status_filter == 'refunded' %}is-active{% endif %}">Refunded ({{ counts.refunded|default:0 }})</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if orders %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th>Order #</th>
+          <th>Status</th>
+          <th class="text-right">Gross</th>
+          <th class="text-right">Commission</th>
+          <th class="text-right">Net</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td>{% if o.vendor_id %}{{ o.vendor.name }}{% else %}—{% endif %}</td>
+          <td>{% if o.parent_order_id %}<code class="text-xs">{{ o.parent_order.order_number }}</code>{% else %}—{% endif %}</td>
+          <td>{{ o.get_status_display }}</td>
+          <td class="text-right font-mono">{{ o.gross }}</td>
+          <td class="text-right font-mono">{{ o.commission }}</td>
+          <td class="text-right font-mono">{{ o.net }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ o.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No vendor orders yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

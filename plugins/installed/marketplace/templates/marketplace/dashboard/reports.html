@@ -1,0 +1,78 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Marketplace reports · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Marketplace reports</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Vendor performance over the last {{ days }} day{{ days|pluralize }}.</p>
+    </div>
+    <div class="flex items-center gap-1.5 text-xs">
+      <span class="text-[color:var(--text-muted)]">Window:</span>
+      <a href="?days=7" class="btn btn-ghost text-xs {% if days == 7 %}is-active{% endif %}">7d</a>
+      <a href="?days=30" class="btn btn-ghost text-xs {% if days == 30 %}is-active{% endif %}">30d</a>
+      <a href="?days=90" class="btn btn-ghost text-xs {% if days == 90 %}is-active{% endif %}">90d</a>
+      <a href="?days=365" class="btn btn-ghost text-xs {% if days == 365 %}is-active{% endif %}">1y</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Vendors</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.active_vendors }}</div>
+      <div class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ summary.total_vendors }} total</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Vendor orders</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.orders_period }}</div>
+    </div>
+    <div class="card card-padded col-span-2">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Gross merchandise</div>
+      <div class="text-2xl font-semibold mt-1 font-mono">{{ summary.gross_period }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Commission</div>
+      <div class="text-2xl font-semibold mt-1 font-mono">{{ summary.commission_period }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Paid out</div>
+      <div class="text-2xl font-semibold mt-1 font-mono">{{ summary.paid_period }}</div>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Top vendors by gross</h2>
+    </div>
+    {% if top %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th class="text-right">Orders</th>
+          <th class="text-right">Gross</th>
+          <th class="text-right">Commission</th>
+          <th class="text-right">Net</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in top %}
+        <tr>
+          <td>{{ v.name }}</td>
+          <td class="text-right">{{ v.orders }}</td>
+          <td class="text-right font-mono">{{ v.gross }}</td>
+          <td class="text-right font-mono">{{ v.commission }}</td>
+          <td class="text-right font-mono">{{ v.net }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No vendor orders in this window.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

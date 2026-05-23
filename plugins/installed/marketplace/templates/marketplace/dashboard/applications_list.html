@@ -1,0 +1,88 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Vendor applications · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Vendor applications</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Approving an application materialises a catalog.Vendor row owned by the applicant.
+      </p>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-1.5 text-xs">
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">All</a>
+    <a href="?status=submitted" class="btn btn-ghost text-xs {% if status_filter == 'submitted' %}is-active{% endif %}">Submitted ({{ counts.submitted|default:0 }})</a>
+    <a href="?status=reviewing" class="btn btn-ghost text-xs {% if status_filter == 'reviewing' %}is-active{% endif %}">Reviewing ({{ counts.reviewing|default:0 }})</a>
+    <a href="?status=approved" class="btn btn-ghost text-xs {% if status_filter == 'approved' %}is-active{% endif %}">Approved ({{ counts.approved|default:0 }})</a>
+    <a href="?status=rejected" class="btn btn-ghost text-xs {% if status_filter == 'rejected' %}is-active{% endif %}">Rejected ({{ counts.rejected|default:0 }})</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if applications %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Business</th>
+          <th>Applicant</th>
+          <th>Contact</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in applications %}
+        <tr>
+          <td>
+            <div class="font-medium">{{ a.business_name }}</div>
+            {% if a.description %}<div class="text-xs text-[color:var(--text-muted)] truncate" style="max-width:280px;">{{ a.description }}</div>{% endif %}
+          </td>
+          <td>{{ a.user.email|default:a.user.username }}</td>
+          <td><code class="text-xs">{{ a.contact_email }}</code></td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ a.submitted_at|date:"Y-m-d" }}</td>
+          <td>
+            {% if a.status == 'submitted' %}<span class="pill pill-warn">Submitted</span>
+            {% elif a.status == 'reviewing' %}<span class="pill pill-info">Reviewing</span>
+            {% elif a.status == 'approved' %}<span class="pill pill-success">Approved</span>
+            {% elif a.status == 'rejected' %}<span class="pill pill-neutral">Rejected</span>
+            {% endif %}
+          </td>
+          <td class="text-right">
+            {% if a.status == 'submitted' or a.status == 'reviewing' %}
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="application_id" value="{{ a.id }}">
+              <input type="hidden" name="action" value="approve">
+              <button class="btn btn-ghost text-xs" type="submit" data-confirm="Approve {{ a.business_name|escapejs }} as a vendor?" data-confirm-cta="Approve">Approve</button>
+            </form>
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="application_id" value="{{ a.id }}">
+              <input type="hidden" name="action" value="reject">
+              <button class="btn btn-ghost text-xs" type="submit" data-confirm="Reject this application?" data-confirm-cta="Reject" data-confirm-danger>Reject</button>
+            </form>
+            {% if a.status == 'submitted' %}
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="application_id" value="{{ a.id }}">
+              <input type="hidden" name="action" value="review">
+              <button class="btn btn-ghost text-xs" type="submit">Start review</button>
+            </form>
+            {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No applications {% if status_filter %}with status “{{ status_filter }}”{% else %}yet{% endif %}.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
