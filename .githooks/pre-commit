@@ -111,6 +111,52 @@ if [[ -n "$new_agents" ]]; then
   fi
 fi
 
+# ── Check 4: inline <style> blocks in admin templates ──────────────────────
+#
+# settings_category.html used to have a scoped <style> block that
+# force-cascaded form-widget styles across the page (killed in f6913c9).
+# That hack should not return. Inline styles in admin templates are
+# almost always either (a) the same widget-styling shortcut or (b) a
+# spot where the utility class should be added to the base CSS.
+#
+# EXCEPTIONS (allowed):
+#   - core/emails/templates/  — email HTML legitimately needs inline styles
+#     because Outlook strips <style> tags (see docs/UI_STYLE_GUIDE.md §8)
+#   - any *_layout.html       — the shared layout owns its own styles
+#
+admin_html_files=()
+for f in "${html_files[@]:-}"; do
+  [[ -z "$f" ]] && continue
+  case "$f" in
+    core/emails/*) continue ;;
+    */templates/*_layout.html) continue ;;
+    */_media_uploader.html) continue ;;   # already has its own scoped block
+    */_breadcrumb_trail.html) continue ;;
+    */base.html) continue ;;              # base template owns the global CSS
+  esac
+  if [[ "$f" == */admin_dashboard/* ]] || [[ "$f" == */dashboard/* ]]; then
+    admin_html_files+=("$f")
+  fi
+done
+
+if [[ ${#admin_html_files[@]} -gt 0 ]]; then
+  style_leaks=()
+  for f in "${admin_html_files[@]}"; do
+    [[ ! -f "$f" ]] && continue
+    if git diff --cached "$f" | grep -qE '^\+[[:space:]]*<style'; then
+      style_leaks+=("$f")
+    fi
+  done
+  if [[ ${#style_leaks[@]} -gt 0 ]]; then
+    red "[pre-commit] FAIL — new inline <style> block(s) in admin templates:"
+    for f in "${style_leaks[@]}"; do echo "  $f"; done
+    red "Inline <style> in admin templates → drift. Add the utility class to"
+    red "the base CSS instead, or extend an existing partial. See"
+    red "docs/UI_STYLE_GUIDE.md §3 for the canonical pattern."
+    errors=$((errors + 1))
+  fi
+fi
+
 if [[ $errors -gt 0 ]]; then
   red ""
   red "[pre-commit] $errors check(s) failed. Fix the above or set SKIP_HOOK=1 to bypass."
