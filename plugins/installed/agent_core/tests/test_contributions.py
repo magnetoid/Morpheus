@@ -8,18 +8,16 @@ from core.agents import agent_registry
 
 class AgentCoreContributionsTests(TestCase):
 
-    def test_builtin_agents_are_registered(self):
+    def test_worker_agent_is_registered(self):
+        # Post-pivot (2026-05-23) — single generic Worker, not 5 specialists.
         names = {a.name for a in agent_registry.all_agents()}
-        for required in ('concierge', 'merchant_ops', 'pricing', 'content_writer'):
-            self.assertIn(required, names, f'missing built-in agent {required}')
+        self.assertIn('worker', names)
 
-    def test_audience_filtering(self):
-        storefront = {a.name for a in agent_registry.agents_for_audience('storefront')}
-        self.assertIn('concierge', storefront)
-        self.assertNotIn('merchant_ops', storefront)
-        merchant = {a.name for a in agent_registry.agents_for_audience('merchant')}
-        self.assertIn('merchant_ops', merchant)
-        self.assertIn('content_writer', merchant)
+    def test_worker_visible_to_every_audience(self):
+        # Worker has audience='any' so it appears in storefront + merchant filters.
+        for audience in ('storefront', 'merchant', 'system'):
+            names = {a.name for a in agent_registry.agents_for_audience(audience)}
+            self.assertIn('worker', names, f'worker missing from {audience} audience')
 
     def test_builtin_tools_registered(self):
         tool_names = {t.name for t in agent_registry.platform_tools()}
@@ -43,15 +41,10 @@ class AgentCoreContributionsTests(TestCase):
         self.assertIn('seo.get_meta', names)
         self.assertIn('seo.set_meta', names)
 
-    def test_merchant_ops_sees_inventory_tools_via_scopes(self):
-        agent = agent_registry.get_agent('merchant_ops')
+    def test_worker_sees_inventory_tools_via_scopes(self):
+        agent = agent_registry.get_agent('worker')
         tool_names = {t.name for t in agent.get_tools()}
-        # Merchant ops has 'inventory.read' and 'inventory.write' so it should see both inventory tools.
+        # Worker has the full scope set so it can see every contributed tool.
         self.assertIn('inventory.low_stock_report', tool_names)
         self.assertIn('inventory.adjust_stock', tool_names)
-
-    def test_concierge_does_not_see_inventory_writes(self):
-        agent = agent_registry.get_agent('concierge')
-        tool_names = {t.name for t in agent.get_tools()}
-        self.assertNotIn('inventory.adjust_stock', tool_names)
-        self.assertNotIn('seo.set_meta', tool_names)
+        self.assertIn('seo.set_meta', tool_names)

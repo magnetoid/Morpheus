@@ -1,13 +1,10 @@
 """
 AgentOperator — back-compat shim around `core.agents` runtime.
 
-Historically this was a mocked autonomous loop. The real loop now lives
-in `core.agents.AgentRuntime` + the `agent_core` plugin's Merchant Ops
-agent. This shim exists so existing callers (`listeners.proactive_agent_worker`,
-external scripts) keep working without code changes.
-
-Prefer importing `core.agents.AgentRuntime` or
-`plugins.installed.agent_core.services.run_agent` directly in new code.
+Historically this ran the Merchant Ops agent. Post-pivot (2026-05-23)
+there is just one generic Worker, and this shim hands work to it.
+External callers (proactive_agent_worker, scheduled jobs) keep working
+unchanged. Prefer ``delegate.spawn_workers`` in new code.
 """
 from __future__ import annotations
 
@@ -20,23 +17,23 @@ logger = logging.getLogger('morpheus.ai.operator')
 
 
 class AgentOperator:
-    """Compatibility wrapper that runs the Merchant Ops agent."""
+    """Compatibility wrapper that hands an objective to the generic Worker."""
 
     def __init__(self, provider: str = '') -> None:
         self.provider = provider
 
     def run_workflow(self, objective: str) -> dict[str, Any]:
-        """Run an objective through the Merchant Ops agent."""
+        """Run an objective through the generic Worker."""
         from plugins.installed.agent_core.services import run_agent
 
-        if agent_registry.get_agent('merchant_ops') is None:
+        if agent_registry.get_agent('worker') is None:
             return {
                 'status': 'unavailable',
-                'message': 'merchant_ops agent not registered (agent_core not active?)',
+                'message': 'worker agent not registered (agent_core not active?)',
             }
         try:
             result = run_agent(
-                agent_name='merchant_ops',
+                agent_name='worker',
                 user_message=objective,
                 context={'source': 'proactive_agent_worker'},
             )

@@ -172,11 +172,13 @@ class AgentContributionTests(TestCase):
         self.assertIn('crm.find_leads', tool_names)
         self.assertIn('crm.log_interaction', tool_names)
 
-    def test_concierge_cannot_call_crm_writes(self):
-        agent = agent_registry.get_agent('concierge')
+    def test_worker_can_call_crm_writes_when_scoped(self):
+        # Post-pivot: only one Worker agent, full scope set. CRM writes are
+        # bounded by caller scope (token/session) not agent class.
+        agent = agent_registry.get_agent('worker')
         tool_names = {t.name for t in agent.get_tools()}
-        self.assertNotIn('crm.create_lead', tool_names)
-        self.assertNotIn('crm.advance_deal', tool_names)
+        self.assertIn('crm.create_lead', tool_names)
+        self.assertIn('crm.advance_deal', tool_names)
 
 
 class FindLeadsToolTests(TestCase):
