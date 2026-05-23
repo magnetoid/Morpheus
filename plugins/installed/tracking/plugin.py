@@ -149,17 +149,12 @@ class TrackingPlugin(Plugin):
             logger.warning('tracking: send_event(%s) failed: %s', event_name, exc)
 
     def contribute_dashboard_pages(self) -> list:
-        return [
-            DashboardPage(
-                slug='overview',
-                label='Tracking',
-                section='analytics',
-                icon='activity',
-                view='plugins.installed.tracking.views.overview',
-                order=15,
-                nav='hidden',
-            ),
-        ]
+        # No DashboardPage — Tracking lives at /dashboard/tracking/ via
+        # register_urls above and is hardcoded in admin_dashboard/base.html's
+        # settings sidebar. The previous nav='hidden' DashboardPage was a
+        # duplicate URL surface (/dashboard/apps/tracking/overview/) that
+        # only existed to surface a card in /dashboard/apps/.
+        return []
 
     def get_config_schema(self) -> dict:
         return {
