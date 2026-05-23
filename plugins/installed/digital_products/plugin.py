@@ -98,23 +98,34 @@ class DigitalProductsPlugin(Plugin):
             product = getattr(item, 'product', None)
             if product is None:
                 continue
-            # Issue a token when EITHER:
-            #   - product_type='digital' (single-SKU digital product), OR
-            #   - product_type='variable' AND the ordered variant marks
-            #     itself digital (sku ends in '-digital' OR name='Digital').
+            variant = getattr(item, 'variant', None)
+
+            # Resolve the actual file to deliver. Variant-level file wins
+            # (lets a single product sell PDF + EPUB + MP3 as separate
+            # variants); falls back to the product-level digital_file
+            # (single-SKU digital products).
+            variant_is_digital = bool(
+                variant and getattr(variant, 'variant_type', '') == 'digital'
+            )
+            variant_has_file = bool(
+                variant and getattr(variant, 'digital_file', None)
+            )
+            product_has_file = bool(getattr(product, 'digital_file', None))
+
+            # Issue a token when there's actually a file to deliver:
+            #   - product_type='digital' + product.digital_file set, OR
+            #   - the ordered variant is variant_type='digital' + has its
+            #     own digital_file (most common case for multi-format books).
             ptype = getattr(product, 'product_type', '')
-            if ptype not in ('digital', 'variable'):
+            if variant_is_digital and variant_has_file:
+                # variant-level digital — fine regardless of product_type
+                pass
+            elif ptype == 'digital' and product_has_file:
+                # single-SKU digital — legacy / simple case
+                pass
+            else:
                 continue
-            if not getattr(product, 'digital_file', None):
-                continue
-            if ptype == 'variable':
-                variant = getattr(item, 'variant', None)
-                if variant is None:
-                    continue
-                sku = (getattr(variant, 'sku', '') or '').lower()
-                vname = (getattr(variant, 'name', '') or '').lower()
-                if not (sku.endswith('-digital') or vname == 'digital'):
-                    continue
+
             tok = DownloadToken.objects.create(
                 order=order,
                 order_item=item,

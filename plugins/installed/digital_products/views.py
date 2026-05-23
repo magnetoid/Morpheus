@@ -42,9 +42,20 @@ def download(request, token: str) -> HttpResponse:
     if tok.downloads_used >= tok.max_downloads:
         return _refuse('Download limit reached.', status=410)
 
-    digital = getattr(tok.product, 'digital_file', None)
+    # Variant-level file wins (multi-format products: PDF / EPUB / MP3
+    # as separate variants). Falls back to product-level digital_file
+    # for single-SKU digital products.
+    variant = getattr(tok.order_item, 'variant', None) if tok.order_item_id else None
+    digital = None
+    if variant is not None:
+        digital = getattr(variant, 'digital_file', None) or None
     if not digital:
-        logger.warning('digital token %s points at product with no file', tok.id)
+        digital = getattr(tok.product, 'digital_file', None) or None
+    if not digital:
+        logger.warning(
+            'digital token %s — neither variant nor product carries a file',
+            tok.id,
+        )
         raise Http404('File missing')
 
     # Increment usage BEFORE streaming so a network blip + retry doesn't
