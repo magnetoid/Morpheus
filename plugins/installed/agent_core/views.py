@@ -246,7 +246,7 @@ def merchant_ops_chat_view(request):
     except Exception:  # noqa: BLE001
         pass
     return render(request, 'agent_core/dashboard/console.html', {
-        'agent_name': 'merchant_ops',
+        'agent_name': 'worker',
         'active_provider': active_provider,
         'active_model': active_model,
         'active_nav': 'agents',

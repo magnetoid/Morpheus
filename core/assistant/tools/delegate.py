@@ -1,4 +1,18 @@
-"""Delegate tools — the Assistant routes requests to specialised agents."""
+"""Delegate tools — Linda routes work to background Workers.
+
+After the agent_core pivot (see docs/plans/agent-core-into-core.md),
+there is exactly one agent: ``worker``. Linda primarily fans out N
+workers in parallel through ``delegate.spawn_workers`` /
+``delegate.poll_workers`` / ``delegate.wait_for_workers`` (defined in
+``core.assistant.tools.spawn``).
+
+This module keeps:
+
+  - ``delegate.list_agents`` — for introspection / debugging.
+  - ``delegate.invoke_agent`` — compatibility shim that spawns one
+    worker and waits for it. Old callers (and Linda's pre-pivot system
+    prompt) keep working.
+"""
 from __future__ import annotations
 
 from core.assistant.tools.filesystem import ToolError, ToolResult, tool
@@ -6,7 +20,7 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 
 @tool(
     name='delegate.list_agents',
-    description='List every specialised agent the Assistant can delegate to.',
+    description='List every agent the platform exposes (post-pivot: just `worker`).',
     scopes=['system.read'],
     schema={'type': 'object', 'properties': {}},
 )
@@ -27,42 +41,42 @@ def list_available_agents_tool() -> ToolResult:
 @tool(
     name='delegate.invoke_agent',
     description=(
-        'Hand a task to a specialised agent and return its final answer. '
-        'Use this when the user asks for something an agent owns: pricing → '
-        '`pricing`, order issues → `support` or `account_manager`, copy → '
-        '`content_writer`, store ops (analytics/CRM) → `merchant_ops`, '
-        'storefront browsing → `concierge`.'
+        'Compatibility shim — runs a single Worker and waits for its result. '
+        'For independent sub-tasks that can run in parallel, prefer '
+        'delegate.spawn_workers + delegate.wait_for_workers.'
     ),
     scopes=['system.write'],
     schema={
         'type': 'object',
         'properties': {
-            'agent_name': {'type': 'string'},
-            'objective': {'type': 'string', 'description': 'What you want the agent to do.'},
+            'agent_name': {
+                'type': 'string',
+                'description': 'Ignored post-pivot — always runs the generic worker.',
+            },
+            'objective': {'type': 'string', 'description': 'What the worker should do.'},
         },
-        'required': ['agent_name', 'objective'],
+        'required': ['objective'],
     },
 )
-def invoke_agent_tool(*, agent_name: str, objective: str) -> ToolResult:
-    try:
-        from core.agents import agent_registry
-        from plugins.installed.agent_core.services import run_agent
-    except Exception as e:  # noqa: BLE001
-        raise ToolError(f'agent layer unavailable: {e}') from e
-    if agent_registry.get_agent(agent_name) is None:
-        raise ToolError(f'unknown agent: {agent_name}')
-    try:
-        result = run_agent(
-            agent_name=agent_name,
-            user_message=objective[:10_000],
-            context={'source': 'assistant'},
-        )
-    except Exception as e:  # noqa: BLE001
-        raise ToolError(f'agent run failed: {e}') from e
+def invoke_agent_tool(*, objective: str, agent_name: str = 'worker') -> ToolResult:
+    from core.assistant.tools.spawn import spawn_workers_tool, wait_for_workers_tool
+
+    spawn = spawn_workers_tool.invoke({'jobs': [{'objective': objective}]})
+    spawn_data = spawn.output if hasattr(spawn, 'output') else spawn.get('output', {})
+    run_ids = (spawn_data or {}).get('run_ids') or []
+    if not run_ids:
+        raise ToolError('spawn returned no run_ids')
+
+    wait = wait_for_workers_tool.invoke({'run_ids': run_ids, 'timeout_s': 90})
+    wait_data = wait.output if hasattr(wait, 'output') else wait.get('output', {})
+    runs = (wait_data or {}).get('runs') or []
+    first = runs[0] if runs else {}
     return ToolResult(
         output={
-            'agent': agent_name, 'state': result.state, 'text': result.text,
-            'tool_calls': result.tool_calls,
+            'agent': 'worker',
+            'state': first.get('state', 'unknown'),
+            'text': first.get('final_text', ''),
+            'error': first.get('error', ''),
         },
-        display=f'{agent_name}: {result.text[:120]}…' if len(result.text) > 120 else f'{agent_name}: {result.text}',
+        display=(first.get('final_text') or first.get('error') or '')[:160],
     )

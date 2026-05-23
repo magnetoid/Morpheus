@@ -18,6 +18,11 @@ from core.assistant.tools.delegate import (
     invoke_agent_tool,
     list_available_agents_tool,
 )
+from core.assistant.tools.spawn import (
+    poll_workers_tool,
+    spawn_workers_tool,
+    wait_for_workers_tool,
+)
 from core.assistant.tools.ecommerce import (
     analytics_summary_tool,
     analytics_top_products_tool,
@@ -52,10 +57,11 @@ from core.assistant.tools.ecommerce_writes import (
 def get_default_tools() -> list:
     """Linda's primary tool catalog — commerce + content + memory + delegate.
 
-    The diagnostics tools (filesystem, logs, system, plugin lifecycle) are
-    intentionally NOT here — they live behind ``delegate.invoke_agent(
-    'diagnostics', ...)`` so Linda's selection space stays small. See
-    plugins/installed/agent_core/agents/diagnostics.py.
+    Post-pivot (2026-05-23): the diagnostics / merchant_ops / pricing /
+    content_writer / concierge sub-agents have been collapsed into a single
+    generic ``worker``. Linda fans out N workers in parallel via
+    ``delegate.spawn_workers`` and collects results via
+    ``delegate.poll_workers`` / ``delegate.wait_for_workers``.
     """
     # Local import — keeps `memory.py` lazy so failed imports don't break
     # tool resolution at construct time.
@@ -110,7 +116,12 @@ def get_default_tools() -> list:
         dashboard_navigate_tool,
         # Platform health — circuit breakers, dependency state, "is X down".
         platform_circuit_breakers_tool,
-        # Delegate — diagnostics, content writer, pricing, merchant ops, etc.
+        # Delegate — fan out N parallel Workers, then collect their results.
+        # spawn_workers_tool is the primary path; invoke_agent_tool is a
+        # back-compat shim that wraps spawn + wait_for.
         list_available_agents_tool,
+        spawn_workers_tool,
+        poll_workers_tool,
+        wait_for_workers_tool,
         invoke_agent_tool,
     ]

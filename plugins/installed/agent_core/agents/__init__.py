@@ -1,18 +1,19 @@
-"""Built-in agents shipped by agent_core."""
+"""Agents contributed by agent_core.
+
+Post-pivot (2026-05-23): the 5 specialist sub-agents (Concierge, Diagnostics,
+Merchant Ops, Pricing, Content Writer) have been collapsed into a single
+generic ``core.agents.builtin.Worker``. Linda fans out parallel Workers
+via ``delegate.spawn_workers``; specialization is now a runtime composition
+(skill bundle + objective text), not a class hierarchy.
+
+The 5 specialist files are kept in this directory for one release as a
+fallback — they're not registered. Remove them in Phase 3 once nothing
+references them.
+"""
 from __future__ import annotations
 
-from plugins.installed.agent_core.agents.concierge import ConciergeAgent
-from plugins.installed.agent_core.agents.diagnostics import DiagnosticsAgent
-from plugins.installed.agent_core.agents.merchant_ops import MerchantOpsAgent
-from plugins.installed.agent_core.agents.pricing import PricingAgent
-from plugins.installed.agent_core.agents.content_writer import ContentWriterAgent
+from core.agents.builtin import Worker
 
 
 def all_builtin_agents() -> list:
-    return [
-        ConciergeAgent(),
-        DiagnosticsAgent(),
-        MerchantOpsAgent(),
-        PricingAgent(),
-        ContentWriterAgent(),
-    ]
+    return [Worker()]
