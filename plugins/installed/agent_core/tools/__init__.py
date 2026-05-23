@@ -56,6 +56,7 @@ from plugins.installed.agent_core.tools.analytics import (
 )
 from plugins.installed.agent_core.tools.content import (
     draft_product_description_tool,
+    fill_missing_content_tool,
 )
 
 logger = logging.getLogger('morpheus.agent_core')
@@ -126,5 +127,6 @@ def all_builtin_tools() -> list:
         revenue_summary_tool,
         top_products_tool,
         draft_product_description_tool,
+        fill_missing_content_tool,
         *_diagnostics_tools(),
     ]
