@@ -5,22 +5,12 @@ A `MorpheusAgent` is metadata + a default tool list + a system prompt.
 It is *not* a runtime — execution is the job of `AgentRuntime`. This
 keeps agents trivial to write and trivial to test.
 
-Minimal example::
-
-    from core.agents import MorpheusAgent, Prompt, prompt_registry
-
-    prompt_registry.register(Prompt(
-        name='concierge',
-        version=1,
-        template='You are a friendly bookstore concierge for {store_name}.',
-    ))
-
-    class ConciergeAgent(MorpheusAgent):
-        name = 'concierge'
-        label = 'Storefront Concierge'
-        description = 'Helps shoppers find and buy books.'
-        scopes = ['catalog.read', 'cart.write']
-        prompt_name = 'concierge'
+Post-pivot (2026-05-23): Morpheus ships exactly ONE agent subclass —
+`core.agents.builtin.Worker`. Specialization happens at call time via
+Skills + caller scopes, not via subclassing. Adding a new subclass is
+blocked by the pre-commit hook in `.githooks/pre-commit` (override
+with `SKIP_HOOK=1` only if you have a strong reason and have read
+docs/plans/agent-core-into-core.md).
 """
 from __future__ import annotations
 

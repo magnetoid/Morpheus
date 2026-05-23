@@ -1,26 +1,31 @@
 """Skills — labeled bundles of agent tools + a system-prompt prelude.
 
-A `Skill` is a reusable, named capability pack that an agent can opt into:
+A `Skill` is a reusable, named capability pack — a tools-tuple + a
+system-prompt prelude — that the generic `Worker` opts into at spawn time:
 
     storefront_skill = Skill(
-        name='storefront_concierge',
-        label='Storefront Concierge',
+        name='storefront',
+        label='Storefront Browsing',
         description='Read-only access to catalog, cart, recommendations.',
-        tools=[search_products_tool, get_product_tool, recommend_tool],
+        tools=(search_products_tool, get_product_tool, recommend_tool),
         system_prompt_prelude='You can browse the catalog and recommend products.',
     )
 
-    class ConciergeAgent(MorpheusAgent):
-        uses_skills = ['storefront_concierge']
+Linda passes the skill name through `delegate.spawn_workers`:
 
-When the runtime resolves an agent's tool list it concatenates the
-agent's own `tools` tuple with every Tool from each skill in
-`uses_skills`. The agent's `get_system_prompt()` likewise prepends each
-skill's `system_prompt_prelude`.
+    delegate.spawn_workers(jobs=[{
+        'objective': 'Help this shopper find a poetry book',
+        'skills': ['storefront'],
+    }])
 
-Skills are registered by plugins via `contribute_skills()` and live in a
-process-wide `skill_registry`. They're the canonical replacement for
-the old "stuff a giant tools tuple on every agent class" pattern.
+When the runtime resolves the Worker's tool list it concatenates each
+opted-in Skill's tools, and `get_system_prompt()` prepends each Skill's
+`system_prompt_prelude`.
+
+Skills are registered by plugins via `contribute_skills()` and live in
+a process-wide `skill_registry`. They're the canonical specialization
+mechanism — adding a per-role `MorpheusAgent` subclass is now blocked
+by the pre-commit hook (see `.githooks/pre-commit`).
 """
 from __future__ import annotations
 
