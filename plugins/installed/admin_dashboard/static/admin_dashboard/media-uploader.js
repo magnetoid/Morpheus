@@ -70,6 +70,14 @@
       videoDelete: root.dataset.videoDeleteUrl,
     };
 
+    // Django's <uuid:xxx> URL converter rejects a literal "{id}" during
+    // reverse-resolution, so the templates emit this zero UUID as a
+    // placeholder. fillId() swaps in the real tile ID.
+    const PLACEHOLDER_ID = '00000000-0000-0000-0000-000000000000';
+    function fillId(tpl, id) {
+      return (tpl || '').replace(PLACEHOLDER_ID, id);
+    }
+
     // ── Drag-and-drop file upload ────────────────────────────────────
     function setDragActive(on) {
       if (dropzone) dropzone.classList.toggle('is-dragover', on);
@@ -177,7 +185,7 @@
           return;
         }
         try {
-          const res = await api(tpl.replace('{id}', id), { body: new FormData() });
+          const res = await api(fillId(tpl, id), { body: new FormData() });
           if (res.ok || res.redirected) {
             tile.remove();
             // Recompute slot labels on the remaining image tiles so
@@ -260,8 +268,7 @@
     async function saveModal() {
       const kind = modal.dataset.kind;
       const id = modal.dataset.id;
-      const url = (kind === 'image' ? urls.imageEdit : urls.videoEdit)
-        .replace('{id}', id);
+      const url = fillId(kind === 'image' ? urls.imageEdit : urls.videoEdit, id);
       const fd = new FormData();
       if (kind === 'image') {
         fd.append('alt_text', modal.querySelector('[name="alt_text"]')?.value || '');
@@ -293,8 +300,7 @@
     async function deleteFromModal() {
       const kind = modal.dataset.kind;
       const id = modal.dataset.id;
-      const url = (kind === 'image' ? urls.imageDelete : urls.videoDelete)
-        .replace('{id}', id);
+      const url = fillId(kind === 'image' ? urls.imageDelete : urls.videoDelete, id);
       try {
         const res = await api(url, { body: new FormData() });
         if (res.ok || res.redirected) {

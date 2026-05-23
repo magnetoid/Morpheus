@@ -185,7 +185,9 @@ urlpatterns = [
     path('apps/', views.apps_view, name='apps'),
     path('apps/store/', views.apps_store_view, name='apps_store'),
     # Legacy URL — 301-redirects to the new canonical /dashboard/settings/<plugin>/.
-    path('apps/<str:plugin>/settings/', plugin_settings_redirect, name='plugin_settings_legacy'),
+    # Name kept as `plugin_settings` for backward-compat with templates
+    # (notably apps.html, which surfaces the per-plugin Settings button).
+    path('apps/<str:plugin>/settings/', plugin_settings_redirect, name='plugin_settings'),
     path('apps/<str:plugin>/<slug:slug>/', plugin_page_router, name='plugin_page'),
     path('palette/search/', views.palette_search, name='palette_search'),
     path('ai/draft-description/', views.ai_draft_description, name='ai_draft_description'),

@@ -521,9 +521,6 @@
       <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' %}active{% endif %}">All products</a>
       <a href="{% url 'admin_dashboard:categories' %}" class="nav-link {% if active_nav == 'categories' %}active{% endif %}">Categories</a>
       <a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>
-      {% if 'advanced_ecommerce' in active_plugins %}
-      <a href="/dashboard/apps/advanced_ecommerce/bulk-price/" class="nav-link">Bulk price edit</a>
-      {% endif %}
     </div>
 
     <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Users</a>

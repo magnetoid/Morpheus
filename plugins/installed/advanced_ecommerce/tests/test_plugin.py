@@ -21,12 +21,6 @@ class AdvancedEcommerceContributionsTests(TestCase):
         self.assertIn('cart_summary_extra', slots)
         self.assertIn('pdp_below_price', slots)
 
-    def test_dashboard_pages_declared(self):
-        pages = AdvancedEcommercePlugin().contribute_dashboard_pages()
-        slugs = {p.slug for p in pages}
-        self.assertIn('bulk-price', slugs)
-        self.assertIn('low-stock', slugs)
-
     def test_settings_panel_declared(self):
         panel = AdvancedEcommercePlugin().contribute_settings_panel()
         self.assertIsNotNone(panel)
@@ -74,44 +68,3 @@ class LowStockTemplateTagTests(TestCase):
         self.assertEqual(product_total_stock(product), 3)
 
 
-class BulkPricePreviewTests(TestCase):
-
-    def test_preview_does_not_change_prices(self):
-        from django.contrib.auth import get_user_model
-
-        User = get_user_model()
-        admin = User.objects.create_superuser(
-            username='admin_a', email='a@example.com', password='p',
-        )
-
-        product = Product.objects.create(
-            name='Bulk', slug='bulk', sku='B1', price=Money(20, 'USD'), status='active',
-        )
-        self.client.force_login(admin)
-        resp = self.client.post(
-            '/dashboard/apps/advanced_ecommerce/bulk-price/',
-            {'percent': '10', 'action': 'preview'},
-        )
-        self.assertEqual(resp.status_code, 200)
-        product.refresh_from_db()
-        self.assertEqual(product.price.amount, Decimal('20'))
-
-    def test_apply_updates_prices(self):
-        from django.contrib.auth import get_user_model
-
-        User = get_user_model()
-        admin = User.objects.create_superuser(
-            username='admin_b', email='b@example.com', password='p',
-        )
-
-        product = Product.objects.create(
-            name='Bulk2', slug='bulk2', sku='B2', price=Money(20, 'USD'), status='active',
-        )
-        self.client.force_login(admin)
-        resp = self.client.post(
-            '/dashboard/apps/advanced_ecommerce/bulk-price/',
-            {'percent': '10', 'action': 'apply'},
-        )
-        self.assertEqual(resp.status_code, 302)
-        product.refresh_from_db()
-        self.assertEqual(product.price.amount, Decimal('22.00'))
