@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from morpheus import events
-from morpheus import Plugin
+from morpheus import Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.cloudflare')
 
@@ -48,3 +48,40 @@ class CloudflarePlugin(Plugin):
                 )
         except Exception as e:  # noqa: BLE001
             logger.warning('cloudflare: category hook purge failed: %s', e, exc_info=True)
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Cloudflare',
+            description='API token, zones, and cache-purge policy. Per-zone settings live on CloudflareZone rows.',
+            schema=self.get_config_schema(),
+            category='developer',
+        )
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'api_token': {
+                    'type': 'string',
+                    'title': 'Cloudflare API token',
+                    'description': 'Scoped token with Zone: Cache Purge permission. Per-zone overrides win.',
+                },
+                'auto_purge_product_updates': {
+                    'type': 'boolean',
+                    'title': 'Auto-purge on product update',
+                    'default': True,
+                    'description': 'When on, every PRODUCT_UPDATED / PRODUCT_CREATED hook triggers a per-product URL purge.',
+                },
+                'auto_purge_category_updates': {
+                    'type': 'boolean',
+                    'title': 'Auto-purge on category update',
+                    'default': True,
+                },
+                'purge_delay_seconds': {
+                    'type': 'integer',
+                    'title': 'Purge delay (seconds)',
+                    'default': 0,
+                    'description': 'Wait N seconds before issuing the purge. Lets the upstream cache settle on bulk imports.',
+                },
+            },
+        }

@@ -12,7 +12,7 @@ Configuration is read from env (consumed by the underlying command):
 """
 from __future__ import annotations
 
-from morpheus import Plugin
+from morpheus import Plugin, SettingsPanel
 
 try:
     from celery.schedules import crontab
@@ -41,6 +41,14 @@ class BackupsPlugin(Plugin):
             },
         )
 
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Backups',
+            description='Daily database + media backup schedule and retention.',
+            schema=self.get_config_schema(),
+            category='developer',
+        )
+
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
@@ -49,7 +57,25 @@ class BackupsPlugin(Plugin):
                     'type': 'boolean',
                     'title': 'Include media files',
                     'default': True,
-                    'description': 'When False the task passes --no-media; useful when media is on S3/CDN.',
+                    'description': 'When off the task passes --no-media; useful when media is on S3 / a CDN.',
+                },
+                'backup_dir': {
+                    'type': 'string',
+                    'title': 'Backup directory',
+                    'default': '/tmp/morpheus-backups',
+                    'description': 'Where dumps land. Reads MORPHEUS_BACKUP_DIR env var if this is blank.',
+                },
+                'retention_count': {
+                    'type': 'integer',
+                    'title': 'Keep N most-recent backups',
+                    'default': 7,
+                    'description': 'Older backups are pruned after each run.',
+                },
+                'schedule_hour_utc': {
+                    'type': 'integer',
+                    'title': 'Daily run hour (UTC)',
+                    'default': 3,
+                    'description': 'Hour of day the backup task fires. 0-23.',
                 },
             },
         }
