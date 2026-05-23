@@ -30,15 +30,37 @@ def apps_view(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         return _toggle_plugin(request)
 
+    # Read the intended-enabled state from the DB (PluginConfig) — that's
+    # the source of truth a merchant just edited. The in-memory
+    # `plugin_registry.is_active()` only reflects boot-time state, so it
+    # lags behind by one container restart for newly-enabled plugins.
+    # For disables, _toggle_plugin calls .deactivate() which tears down
+    # contributions in-place, so the runtime DOES match. The "needs
+    # restart to take effect" hint shows up only on plugins flipped ON.
+    db_enabled: dict[str, bool] = {}
+    try:
+        from plugins.models import PluginConfig
+        db_enabled = dict(PluginConfig.objects.values_list('plugin_name', 'is_enabled'))
+    except Exception:  # noqa: BLE001 — table may not be migrated yet
+        pass
+
     plugins = []
     for name, cls in sorted(plugin_registry._classes.items()):
-        instance = plugin_registry.get(name)
+        runtime_active = plugin_registry.is_active(name)
+        db_intends_on = db_enabled.get(name, True)
+        # "Active" is what the merchant sees in the button label.
+        # We prefer the DB intent (matches what they just clicked).
         plugins.append({
             'name': name,
             'label': getattr(cls, 'label', name),
             'description': getattr(cls, 'description', ''),
             'version': getattr(cls, 'version', ''),
-            'active': plugin_registry.is_active(name),
+            'active': db_intends_on,
+            # When the DB says "on" but the runtime didn't pick it up at
+            # boot, we show a "Restart to take effect" hint so the
+            # merchant isn't confused why their just-enabled plugin
+            # doesn't surface its dashboard pages yet.
+            'needs_restart': db_intends_on and not runtime_active,
             'pages': [p for p in plugin_registry.dashboard_pages() if p.plugin == name],
             'has_settings': plugin_registry.settings_panel(name) is not None,
         })
@@ -138,11 +160,22 @@ PROTECTED_PLUGINS = frozenset({
 
 
 def _toggle_plugin(request: HttpRequest):
-    """POST handler on the apps page: flip a plugin's enabled state in DB.
+    """POST handler on the apps page: flip a plugin's enabled state.
+
+    On DISABLE — writes PluginConfig.is_enabled=False AND immediately
+    calls plugin_registry.deactivate() so URLs / hooks / dashboard
+    pages drop out of the running process. The merchant sees the
+    change instantly without a container restart.
+
+    On ENABLE — writes PluginConfig.is_enabled=True. Full activation
+    (running ready() + collecting contributions) happens at the next
+    boot. The apps view surfaces a "Restart to take effect" pill on
+    plugins in this state so the merchant knows what's pending.
 
     Refuses to disable protected plugins — the dashboard plugin's own
     UI lives in admin_dashboard, so disabling it would lock the
-    merchant out of every dashboard page (including this one)."""
+    merchant out of every dashboard page (including this one).
+    """
     from django.contrib import messages
     from morpheus.views import redirect
 
@@ -161,6 +194,27 @@ def _toggle_plugin(request: HttpRequest):
         row.save(update_fields=['is_enabled', 'updated_at'])
     except Exception as e:  # noqa: BLE001 — DB outage shouldn't crash the page
         logger.warning('admin_dashboard: toggle %s failed: %s', name, e, exc_info=True)
+        return redirect('admin_dashboard:apps')
+
+    # Apply the runtime side of the change.
+    try:
+        from plugins.registry import plugin_registry
+        if not desired:
+            # registry.deactivate runs on_disable + drops contributions +
+            # removes the plugin from _active. Idempotent — safe to call
+            # on a plugin that's already inactive.
+            plugin_registry.deactivate(name)
+            messages.success(request, f'{name!r} disabled.')
+        else:
+            # Enabling at runtime is more invasive (URL re-mount, signal
+            # re-wiring) — we punt to the next restart. Surface a
+            # friendly message so the merchant knows the state.
+            messages.success(
+                request,
+                f'{name!r} enabled — restart the web container for it to fully load.',
+            )
+    except Exception as e:  # noqa: BLE001 — never let a runtime hiccup hide the DB write
+        logger.warning('admin_dashboard: runtime toggle for %s failed: %s', name, e, exc_info=True)
     return redirect('admin_dashboard:apps')
 
 

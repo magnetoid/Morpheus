@@ -16,7 +16,10 @@
           <h3 class="font-medium truncate">{{ p.label|default:p.name }}</h3>
           <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ p.name }} · v{{ p.version }}</p>
         </div>
-        {% if p.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          {% if p.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+          {% if p.needs_restart %}<span class="pill pill-warn" title="Enabled in settings, not yet loaded in the running process. Restart the web container to activate fully.">Restart needed</span>{% endif %}
+        </div>
       </div>
       {% if p.description %}<p class="text-sm text-[color:var(--text-muted)] line-clamp-3">{{ p.description }}</p>{% endif %}
 
