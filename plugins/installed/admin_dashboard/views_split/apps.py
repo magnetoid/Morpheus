@@ -156,6 +156,12 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
 PROTECTED_PLUGINS = frozenset({
     'admin_dashboard',  # disabling this hides its own toggle UI — soft brick
     'catalog', 'customers', 'orders', 'payments',  # core commerce primitives
+    # Linda lives in core.assistant (not a plugin), but agent_core
+    # provides her tool catalogue + the five sub-agents she delegates
+    # to. Disabling it would silently strip every catalog / order /
+    # inventory tool Linda can call — chat keeps working, every
+    # answer becomes "I can't access that".
+    'agent_core',
 })
 
 
