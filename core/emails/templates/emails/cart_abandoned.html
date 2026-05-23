@@ -1,0 +1,19 @@
+{% extends "emails/_layout.html" %}
+{% block title %}You left items in your cart{% endblock %}
+{% block preheader %}Your cart is still saved — pick up where you left off.{% endblock %}
+{% block body %}
+  <p>Hi{% if cart.customer.first_name %} {{ cart.customer.first_name }}{% endif %},</p>
+  <p>Looks like you left a few things in your cart. They're still there whenever you want to come back.</p>
+
+  <h2>Your cart</h2>
+  <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    {% for item in cart.items.all %}
+    <tr>
+      <td>{{ item.quantity }}× {{ item.product.name }}{% if item.variant %}<br><span class="muted">{{ item.variant.name }}</span>{% endif %}</td>
+      <td class="right">{{ item.unit_price }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <p style="margin-top:14px;"><a class="btn" href="/cart/">Return to cart</a></p>
+{% endblock %}

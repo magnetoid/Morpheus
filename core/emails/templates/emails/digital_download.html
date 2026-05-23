@@ -1,0 +1,28 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Your downloads — order #{{ order.order_number }}{% endblock %}
+{% block preheader %}Your digital downloads are ready.{% endblock %}
+{% block body %}
+  <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
+  <p>Your downloads are ready for order <strong>#{{ order.order_number }}</strong>.</p>
+
+  {% for link in links %}
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin:10px 0;border:1px solid #f0ede7;border-radius:6px;">
+    <tr>
+      <td style="padding:14px 16px;">
+        <div style="font-weight:600;">
+          {{ link.product_name }}{% if link.variant_name %} — {{ link.variant_name }}{% endif %}{% if link.format_hint %}
+            <span class="pill" style="margin-left:6px;">{{ link.format_hint }}</span>{% endif %}
+        </div>
+        <div style="margin-top:8px;">
+          <a class="btn" href="{{ link.url }}">Download</a>
+        </div>
+        <div class="muted" style="margin-top:6px;">
+          Expires {{ link.expires_at|date:"F j, Y H:i" }} · {{ link.max_downloads }} downloads max
+        </div>
+      </td>
+    </tr>
+  </table>
+  {% endfor %}
+
+  <p class="muted" style="margin-top:16px;">Save the files to your device — the links expire and have a limited number of uses.</p>
+{% endblock %}

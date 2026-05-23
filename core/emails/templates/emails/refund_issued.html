@@ -1,0 +1,17 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Refund issued — order #{{ order.order_number }}{% endblock %}
+{% block preheader %}Refund issued for order #{{ order.order_number }} — {{ refund.amount }}.{% endblock %}
+{% block body %}
+  <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
+  <p>A refund has been issued for order <strong>#{{ order.order_number }}</strong>.</p>
+
+  <table class="totals" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr class="grand"><td>Amount</td><td class="right">{{ refund.amount }}</td></tr>
+  </table>
+
+  {% if refund.notes %}
+  <p class="muted" style="margin-top:14px;"><strong>Note:</strong> {{ refund.notes }}</p>
+  {% endif %}
+
+  <p>The refund will land in your original payment method in a few business days.</p>
+{% endblock %}

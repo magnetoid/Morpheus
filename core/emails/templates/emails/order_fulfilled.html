@@ -1,0 +1,22 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Order #{{ order.order_number }} shipped{% endblock %}
+{% block preheader %}Your order is on the way{% if order.tracking_number %} — tracking {{ order.tracking_number }}{% endif %}.{% endblock %}
+{% block body %}
+  <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
+  <p>Your order <strong>#{{ order.order_number }}</strong> is on the way.</p>
+
+  {% if order.tracking_number %}
+  <p>
+    <strong>Tracking:</strong> {{ order.tracking_number }}{% if order.shipping_method %} <span class="muted">({{ order.shipping_method }})</span>{% endif %}
+  </p>
+  {% endif %}
+
+  <h2>What's in the box</h2>
+  <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    {% for it in order.items.all %}
+    <tr>
+      <td>{{ it.quantity }}× {{ it.product_name }}{% if it.variant_name %}<br><span class="muted">{{ it.variant_name }}</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% endblock %}

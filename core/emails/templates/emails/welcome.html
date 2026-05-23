@@ -1,0 +1,10 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Welcome{% endblock %}
+{% block preheader %}Your account is ready.{% endblock %}
+{% block body %}
+  <p>Hi{% if customer.first_name %} {{ customer.first_name }}{% endif %},</p>
+  <p>Welcome — your account is ready.</p>
+  <p>You can sign in any time to track orders, save addresses, and manage payment methods.</p>
+  <p style="margin-top:10px;"><a class="btn" href="/auth/login/">Sign in</a></p>
+  <p class="muted" style="margin-top:18px;">If you didn't sign up, just ignore this email.</p>
+{% endblock %}

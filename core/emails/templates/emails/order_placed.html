@@ -1,0 +1,33 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Order #{{ order.order_number }} received{% endblock %}
+{% block preheader %}We got order #{{ order.order_number }} — {{ order.total }}.{% endblock %}
+{% block body %}
+  <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
+  <p>Thanks for your order — we got it.</p>
+
+  <p>
+    <span class="pill">Order #{{ order.order_number }}</span><br>
+    <span class="muted">Placed {{ order.placed_at|date:"F j, Y H:i" }}</span>
+  </p>
+
+  <h2>Items</h2>
+  <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    {% for it in order.items.all %}
+    <tr>
+      <td>
+        {{ it.quantity }}× {{ it.product_name }}{% if it.variant_name %}<br><span class="muted">{{ it.variant_name }}</span>{% endif %}
+      </td>
+      <td class="right">{{ it.total_price }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <table class="totals" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr><td>Subtotal</td><td class="right">{{ order.subtotal }}</td></tr>
+    <tr><td>Shipping</td><td class="right">{{ order.shipping_total }}</td></tr>
+    <tr><td>Tax</td><td class="right">{{ order.tax_total }}</td></tr>
+    <tr class="grand"><td>Total</td><td class="right">{{ order.total }}</td></tr>
+  </table>
+
+  <p class="muted" style="margin-top:18px;">You'll get another email once payment is confirmed and your order ships.</p>
+{% endblock %}

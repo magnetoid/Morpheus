@@ -1,0 +1,8 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Payment confirmed — order #{{ order.order_number }}{% endblock %}
+{% block preheader %}Payment confirmed for order #{{ order.order_number }} — {{ order.total }}.{% endblock %}
+{% block body %}
+  <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
+  <p>Payment confirmed for order <strong>#{{ order.order_number }}</strong> — <strong>{{ order.total }}</strong>.</p>
+  <p>We're packing your items now and will email tracking when they ship.</p>
+{% endblock %}
