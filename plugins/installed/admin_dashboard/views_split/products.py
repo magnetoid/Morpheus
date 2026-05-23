@@ -195,7 +195,7 @@ def _get_product(product_id: str):
 def variant_new(request: HttpRequest, product_id: str) -> HttpResponse:
     product = _get_product(product_id)
     if request.method == 'POST':
-        form = VariantForm(request.POST, product=product)
+        form = VariantForm(request.POST, files=request.FILES, product=product)
         if form.is_valid():
             form.save()
             # First variant flips the product to 'variable' as a convenience.
@@ -220,7 +220,7 @@ def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> Http
     product = _get_product(product_id)
     variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
     if request.method == 'POST':
-        form = VariantForm(request.POST, instance=variant, product=product)
+        form = VariantForm(request.POST, files=request.FILES, instance=variant, product=product)
         if form.is_valid():
             form.save()
             messages.success(request, 'Variant saved.')

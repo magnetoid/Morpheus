@@ -616,6 +616,7 @@ class VariantForm(forms.Form):
     )
     barcode = forms.CharField(max_length=50, required=False)
     digital_file = forms.FileField(required=False)
+    digital_file_clear = forms.BooleanField(required=False)
 
     is_active = forms.BooleanField(required=False, initial=True)
     sort_order = forms.IntegerField(required=False, min_value=0, initial=0)
@@ -686,6 +687,11 @@ class VariantForm(forms.Form):
         variant.is_active = bool(cd.get('is_active'))
         variant.sort_order = cd.get('sort_order') or 0
         # FileField needs explicit save with the upload, not direct assignment.
+        # The order matters: a clear+upload in one POST should land on the new
+        # file, not on an empty slot. Process clear first, then upload.
+        if cd.get('digital_file_clear') and variant.digital_file:
+            variant.digital_file.delete(save=False)
+            variant.digital_file = None
         upload = cd.get('digital_file')
         if upload:
             variant.digital_file.save(upload.name, upload, save=False)
