@@ -136,8 +136,28 @@ class AffiliatesPlugin(Plugin):
                 icon='link', section='growth', order=10, nav='hidden',
             ),
             DashboardPage(
+                label='Programs', slug='programs',
+                view='plugins.installed.affiliates.dashboard.programs_list',
+                icon='layers', section='growth', order=15, nav='hidden',
+            ),
+            DashboardPage(
+                label='Links', slug='links',
+                view='plugins.installed.affiliates.dashboard.links_list',
+                icon='link-2', section='growth', order=17, nav='hidden',
+            ),
+            DashboardPage(
+                label='Conversions', slug='conversions',
+                view='plugins.installed.affiliates.dashboard.conversions_list',
+                icon='trending-up', section='growth', order=18, nav='hidden',
+            ),
+            DashboardPage(
                 label='Payouts', slug='payouts',
                 view='plugins.installed.affiliates.dashboard.payouts_list',
                 icon='wallet', section='growth', order=20, nav='hidden',
+            ),
+            DashboardPage(
+                label='Analytics', slug='analytics',
+                view='plugins.installed.affiliates.dashboard.analytics',
+                icon='bar-chart-3', section='growth', order=25, nav='hidden',
             ),
         ]

@@ -1,0 +1,91 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Affiliate conversions · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Conversions</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Orders attributed to an affiliate via cookie or coupon code.
+        Approval triggers the commission credit; rejection (e.g. on refund or fraud) reverses it.
+      </p>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">
+      All <span class="ml-1 opacity-60">({{ counts|length }})</span>
+    </a>
+    {% for status in 'pending,approved,rejected,paid'|cut:' '|safe %}{% endfor %}
+    {% for code, label in 'pending,Pending|approved,Approved|rejected,Rejected|paid,Paid'|cut:' '|safe %}{% endfor %}
+    <a href="?status=pending" class="btn btn-ghost text-xs {% if status_filter == 'pending' %}is-active{% endif %}">Pending ({{ counts.pending|default:0 }})</a>
+    <a href="?status=approved" class="btn btn-ghost text-xs {% if status_filter == 'approved' %}is-active{% endif %}">Approved ({{ counts.approved|default:0 }})</a>
+    <a href="?status=rejected" class="btn btn-ghost text-xs {% if status_filter == 'rejected' %}is-active{% endif %}">Rejected ({{ counts.rejected|default:0 }})</a>
+    <a href="?status=paid" class="btn btn-ghost text-xs {% if status_filter == 'paid' %}is-active{% endif %}">Paid ({{ counts.paid|default:0 }})</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if conversions %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Affiliate</th>
+          <th>Link</th>
+          <th class="text-right">Commission</th>
+          <th>Locked until</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in conversions %}
+        <tr>
+          <td><code class="font-mono">{{ c.order.order_number }}</code></td>
+          <td>
+            <div class="font-medium">{{ c.affiliate.handle }}</div>
+            <div class="text-xs text-[color:var(--text-muted)]">{{ c.affiliate.user.email }}</div>
+          </td>
+          <td>{% if c.link %}<code class="text-xs">/r/{{ c.link.code }}</code>{% else %}<span class="text-[color:var(--text-muted)] text-xs">—</span>{% endif %}</td>
+          <td class="text-right font-mono">{{ c.commission }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">
+            {% if c.locked_until %}{{ c.locked_until|date:"Y-m-d" }}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if c.status == 'pending' %}<span class="pill pill-warn">Pending</span>
+            {% elif c.status == 'approved' %}<span class="pill pill-success">Approved</span>
+            {% elif c.status == 'rejected' %}<span class="pill pill-neutral">Rejected</span>
+            {% elif c.status == 'paid' %}<span class="pill pill-success">Paid</span>
+            {% endif %}
+          </td>
+          <td class="text-right">
+            {% if c.status == 'pending' %}
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="conversion_id" value="{{ c.id }}">
+              <input type="hidden" name="action" value="approve">
+              <button class="btn btn-ghost text-xs" type="submit">Approve</button>
+            </form>
+            <form method="post" style="display:inline-block;margin:0;" data-confirm="Reject this conversion?" data-confirm-cta="Reject" data-confirm-danger>
+              {% csrf_token %}
+              <input type="hidden" name="conversion_id" value="{{ c.id }}">
+              <input type="hidden" name="action" value="reject">
+              <button class="btn btn-ghost text-xs" type="submit">Reject</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">
+      No conversions {% if status_filter %}with status “{{ status_filter }}”{% else %}yet{% endif %}.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

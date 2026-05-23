@@ -1,0 +1,114 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Affiliate analytics · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Affiliate analytics</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Performance over the last {{ days }} day{{ days|pluralize }}.
+      </p>
+    </div>
+    <div class="flex items-center gap-1.5 text-xs">
+      <span class="text-[color:var(--text-muted)]">Window:</span>
+      {% for d in '7,30,90,365'|cut:' '|safe %}{% endfor %}
+      <a href="?days=7" class="btn btn-ghost text-xs {% if days == 7 %}is-active{% endif %}">7d</a>
+      <a href="?days=30" class="btn btn-ghost text-xs {% if days == 30 %}is-active{% endif %}">30d</a>
+      <a href="?days=90" class="btn btn-ghost text-xs {% if days == 90 %}is-active{% endif %}">90d</a>
+      <a href="?days=365" class="btn btn-ghost text-xs {% if days == 365 %}is-active{% endif %}">1y</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Affiliates</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.affiliates_total }}</div>
+      <div class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ summary.affiliates_approved }} approved</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Links</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.links_total }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Clicks</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.clicks_period }}</div>
+      <div class="text-xs text-[color:var(--text-muted)] mt-0.5">last {{ days }}d</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Conversions</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.conversions_period }}</div>
+      <div class="text-xs text-[color:var(--text-muted)] mt-0.5">last {{ days }}d</div>
+    </div>
+    <div class="card card-padded col-span-2">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Commission accrued</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.commission_period }}</div>
+      <div class="text-xs text-[color:var(--text-muted)] mt-0.5">across all approved conversions</div>
+    </div>
+  </div>
+
+  <div class="card card-padded">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold">Conversions — last 14 days</h2>
+    </div>
+    {% if buckets %}
+    <div style="display:flex; align-items:flex-end; gap:.25rem; height:120px;">
+      {% for b in buckets %}
+      <div class="flex-1" title="{{ b.date }}: {{ b.conversions }}" style="background: var(--accent, #c5694e); border-radius: 3px 3px 0 0; height: {% if b.conversions %}{% widthratio b.conversions 10 100 %}{% else %}1{% endif %}%; min-height: 2px; opacity: {% if b.conversions %}1{% else %}0.2{% endif %};"></div>
+      {% endfor %}
+    </div>
+    <div class="flex justify-between text-xs text-[color:var(--text-muted)] mt-2">
+      <span>{{ buckets.0.date }}</span>
+      <span>{{ buckets|last|stringformat:'s'|default:'today' }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Top affiliates by lifetime payout</h2>
+      </div>
+      {% if top_affiliates %}
+      <table class="morph-table">
+        <thead><tr><th>Affiliate</th><th class="text-right">Lifetime paid</th></tr></thead>
+        <tbody>
+          {% for a in top_affiliates %}
+          <tr>
+            <td><div class="font-medium">{{ a.handle }}</div><div class="text-xs text-[color:var(--text-muted)]">{{ a.user.email }}</div></td>
+            <td class="text-right font-mono">{{ a.lifetime_paid }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No approved affiliates yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Top links by conversions</h2>
+      </div>
+      {% if top_links %}
+      <table class="morph-table">
+        <thead><tr><th>Link</th><th class="text-right">Conv.</th><th class="text-right">Clicks</th></tr></thead>
+        <tbody>
+          {% for l in top_links %}
+          <tr>
+            <td><code class="font-mono">/r/{{ l.code }}</code><div class="text-xs text-[color:var(--text-muted)]">{{ l.affiliate.handle }}</div></td>
+            <td class="text-right">{{ l.conversion_count }}</td>
+            <td class="text-right">{{ l.click_count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No links yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

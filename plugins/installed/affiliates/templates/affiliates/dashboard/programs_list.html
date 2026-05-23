@@ -1,0 +1,110 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Affiliate programs · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Affiliate programs</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Commission tiers. Each affiliate belongs to exactly one program.
+      </p>
+    </div>
+  </div>
+
+  <form method="post" class="card card-padded">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1">Name</label>
+        <input type="text" name="name" required placeholder="Default 10%" class="input">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-xs font-medium mb-1">Type</label>
+        <select name="commission_type" class="input">
+          <option value="percent">Percent</option>
+          <option value="fixed">Fixed amount</option>
+        </select>
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-xs font-medium mb-1">Value</label>
+        <input type="number" step="0.01" min="0" name="commission_value" value="10" class="input">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-xs font-medium mb-1">Cookie days</label>
+        <input type="number" min="1" max="365" name="cookie_window_days" value="30" class="input">
+      </div>
+      <div class="md:col-span-2">
+        <button type="submit" class="btn btn-primary w-full">
+          <i data-lucide="plus" class="h-4 w-4"></i> Add program
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div class="card overflow-hidden">
+    {% if programs %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Program</th>
+          <th>Commission</th>
+          <th>Cookie window</th>
+          <th>Affiliates</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in programs %}
+        <tr>
+          <td>
+            <div class="font-medium">{{ p.name }}</div>
+            <div class="text-xs text-[color:var(--text-muted)] font-mono">{{ p.slug }}</div>
+          </td>
+          <td>
+            {% if p.commission_type == 'percent' %}
+              {{ p.commission_value }}%
+            {% else %}
+              {{ p.commission_value }} flat
+            {% endif %}
+          </td>
+          <td>{{ p.cookie_window_days }} days</td>
+          <td>{{ p.affiliate_count }}</td>
+          <td>
+            {% if p.is_active %}<span class="pill pill-success">Active</span>
+            {% else %}<span class="pill pill-neutral">Paused</span>{% endif %}
+          </td>
+          <td class="text-right">
+            <form method="post" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="toggle">
+              <input type="hidden" name="program_id" value="{{ p.id }}">
+              <button class="btn btn-ghost text-xs" type="submit">
+                {% if p.is_active %}Pause{% else %}Resume{% endif %}
+              </button>
+            </form>
+            {% if p.affiliate_count == 0 %}
+            <form method="post" style="display:inline-block;margin:0;" data-confirm="Delete program '{{ p.name|escapejs }}'?" data-confirm-cta="Delete" data-confirm-danger>
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="program_id" value="{{ p.id }}">
+              <button class="btn btn-ghost text-xs" type="submit">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">
+      No programs yet. Create one above to start onboarding affiliates.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

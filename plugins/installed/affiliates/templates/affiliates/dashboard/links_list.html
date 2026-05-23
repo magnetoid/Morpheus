@@ -1,0 +1,69 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Affiliate links · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Affiliate links</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Every tracking link in circulation. Click counts roll up via the storefront redirect; conversion counts roll up on order placement.
+      </p>
+    </div>
+    <div class="flex items-center gap-1.5 text-xs">
+      <span class="text-[color:var(--text-muted)]">Sort by:</span>
+      <a href="?sort=clicks" class="btn btn-ghost text-xs {% if sort == 'clicks' %}is-active{% endif %}">Clicks</a>
+      <a href="?sort=conversions" class="btn btn-ghost text-xs {% if sort == 'conversions' %}is-active{% endif %}">Conversions</a>
+      <a href="?sort=recent" class="btn btn-ghost text-xs {% if sort == 'recent' %}is-active{% endif %}">Recent</a>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if links %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Affiliate</th>
+          <th>Landing</th>
+          <th>Coupon</th>
+          <th class="text-right">Clicks</th>
+          <th class="text-right">Conv.</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in links %}
+        <tr>
+          <td>
+            <code class="font-mono">/r/{{ l.code }}</code>
+            {% if l.label %}<div class="text-xs text-[color:var(--text-muted)]">{{ l.label }}</div>{% endif %}
+          </td>
+          <td>
+            {% if l.affiliate.handle %}<span class="font-medium">{{ l.affiliate.handle }}</span>{% endif %}
+            <div class="text-xs text-[color:var(--text-muted)]">{{ l.affiliate.user.email }}</div>
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]" style="max-width:240px;">
+            <span class="truncate inline-block w-full" title="{{ l.landing_url }}">{{ l.landing_url }}</span>
+          </td>
+          <td>{% if l.coupon_code %}<code class="font-mono">{{ l.coupon_code }}</code>{% else %}<span class="text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+          <td class="text-right">{{ l.click_count }}</td>
+          <td class="text-right">{{ l.conversion_count }}</td>
+          <td>
+            {% if l.is_active %}<span class="pill pill-success">Active</span>
+            {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">
+      No links yet. Approved affiliates can mint their own tracking links from the storefront self-service page.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
