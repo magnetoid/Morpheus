@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from morpheus import events
-from morpheus import Plugin, SettingsPanel
+from morpheus import DashboardPage, Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.cloudflare')
 
@@ -19,9 +19,25 @@ class CloudflarePlugin(Plugin):
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.cloudflare.graphql.queries')
         self.register_graphql_extension('plugins.installed.cloudflare.graphql.mutations')
+        self.register_urls(
+            'plugins.installed.cloudflare.urls',
+            prefix='dashboard/cloudflare/',
+            namespace='cloudflare',
+        )
         self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=85)
         self.register_hook(events.PRODUCT_CREATED, self.on_product_updated, priority=85)
         self.register_hook(events.CATEGORY_UPDATED, self.on_category_updated, priority=85)
+
+    def contribute_dashboard_pages(self) -> list:
+        return [
+            DashboardPage(
+                label='Cloudflare', slug='overview',
+                view='plugins.installed.cloudflare.views.overview',
+                icon='cloud', section='developer', order=15,
+                nav='settings',
+                url='/dashboard/cloudflare/',
+            ),
+        ]
 
     def on_product_updated(self, product, **kwargs):
         try:

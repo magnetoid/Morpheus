@@ -1,0 +1,66 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Analytics · {{ zone.domain }} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Analytics — {{ zone.domain }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Live numbers from Cloudflare Analytics for the last {{ days }} day{{ days|pluralize }}.</p>
+    </div>
+    <div class="flex items-center gap-1.5 text-xs">
+      <span class="text-[color:var(--text-muted)]">Window:</span>
+      <a href="?days=1" class="btn btn-ghost text-xs {% if days == 1 %}is-active{% endif %}">1d</a>
+      <a href="?days=7" class="btn btn-ghost text-xs {% if days == 7 %}is-active{% endif %}">7d</a>
+      <a href="?days=30" class="btn btn-ghost text-xs {% if days == 30 %}is-active{% endif %}">30d</a>
+    </div>
+  </div>
+
+  {% if error %}
+  <div class="card card-padded" style="background:#fff4ef;border:1px solid var(--danger,#c83a3a);">
+    <strong>Cloudflare API error.</strong>
+    <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ error }}</p>
+    <p class="text-xs text-[color:var(--text-muted)] mt-2">If you just added the token, the Analytics permission may be missing. Re-create the token with <code>Analytics:Read</code>.</p>
+  </div>
+  {% else %}
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Total requests</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.requests_total|default:0 }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cached requests</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.requests_cached|default:0 }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cache hit ratio</div>
+      <div class="text-2xl font-semibold mt-1">{{ cache_hit_ratio }}%</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Bandwidth</div>
+      <div class="text-2xl font-semibold mt-1">{{ bandwidth_gb }} GB</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Unique visitors</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.uniques|default:0 }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Threats blocked</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.threats|default:0 }}</div>
+    </div>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold mb-2">Reading the numbers</h2>
+    <ul class="text-sm space-y-1 text-[color:var(--text-muted)]" style="list-style:disc;padding-left:1.25rem;">
+      <li><strong>Cache hit ratio</strong> measures how often Cloudflare answered without hitting the origin. 80%+ is healthy for a typical commerce surface; below 50% suggests cache-busting query params, short TTLs, or Cache-Control headers from Django defeating CF.</li>
+      <li><strong>Bandwidth</strong> is bytes served by Cloudflare (cached + uncached). High bandwidth + low cache hit ratio = paying origin bandwidth you could be saving.</li>
+      <li><strong>Threats blocked</strong> = Cloudflare's WAF / Bot Fight Mode counter. Spikes correlate with credential-stuffing or scraper attacks.</li>
+      <li><strong>Cloudflare's own dashboard</strong> has per-country / per-status-code / per-content-type breakdowns. The CF link in the sidebar opens it.</li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

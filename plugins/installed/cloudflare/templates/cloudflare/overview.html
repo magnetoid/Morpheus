@@ -1,0 +1,126 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Cloudflare · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Cloudflare</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        API tokens, zones, cache purge, analytics. Auto-purge on product
+        + category updates fires through this surface.
+      </p>
+    </div>
+    <a href="{% url 'cloudflare:zones' %}" class="btn btn-primary">
+      <i data-lucide="globe" class="h-4 w-4"></i> All zones ({{ zone_count }})
+    </a>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold mb-3">Add a Cloudflare account</h2>
+    <p class="text-sm text-[color:var(--text-muted)] mb-3">
+      Create a scoped API token at
+      <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener" class="underline">dash.cloudflare.com/profile/api-tokens</a>
+      with these permissions: <code>Zone:Read</code>, <code>Zone Settings:Edit</code>,
+      <code>Zone Cache Purge:Purge</code>, <code>Analytics:Read</code>. Optional:
+      <code>DNS:Edit</code>, <code>Firewall Services:Edit</code>.
+    </p>
+    <form method="post" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_account">
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium mb-1">Label</label>
+        <input type="text" name="label" value="default" required class="input">
+      </div>
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium mb-1">Account ID (optional)</label>
+        <input type="text" name="account_id" placeholder="hex string from CF dashboard" class="input">
+      </div>
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1">API token</label>
+        <input type="password" name="api_token" required class="input">
+      </div>
+      <div class="md:col-span-2">
+        <button class="btn btn-primary w-full" type="submit">
+          <i data-lucide="key" class="h-4 w-4"></i> Verify + save
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if accounts %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Connected accounts</h2>
+    </div>
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Account ID</th>
+          <th>Zones (cached)</th>
+          <th>Updated</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr>
+          <td class="font-medium">{{ a.label }}</td>
+          <td><code class="text-xs">{{ a.account_id|default:"—" }}</code></td>
+          <td>{{ a.zones.count }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ a.updated_at|date:"Y-m-d H:i" }}</td>
+          <td class="text-right">
+            <form method="post" action="{% url 'cloudflare:account_sync' account_id=a.id %}" style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <button class="btn btn-ghost text-xs" type="submit">
+                <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> Sync zones
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Recent cache invalidations</h2>
+    </div>
+    {% if recent_purges %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Zone</th>
+          <th>Scope</th>
+          <th>Status</th>
+          <th>Trigger</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in recent_purges %}
+        <tr>
+          <td>{{ p.zone.domain }}</td>
+          <td>{{ p.get_scope_display }}{% if p.targets %} <span class="text-xs text-[color:var(--text-muted)]">({{ p.targets|length }})</span>{% endif %}</td>
+          <td>
+            {% if p.status == 'succeeded' %}<span class="pill pill-success">✓</span>
+            {% elif p.status == 'failed' %}<span class="pill pill-neutral" title="{{ p.error_message }}">✗</span>
+            {% else %}<span class="pill pill-warn">…</span>{% endif %}
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ p.triggered_by|default:"—" }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ p.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No purges yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ zone.domain }} · Cloudflare · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ zone.domain }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Zone <code class="text-xs">{{ zone.zone_id }}</code> · account <strong>{{ zone.account.label }}</strong></p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'cloudflare:analytics' zone_id=zone.id %}" class="btn">
+        <i data-lucide="bar-chart-3" class="h-4 w-4"></i> Analytics
+      </a>
+      <a href="{% url 'cloudflare:purge' zone_id=zone.id %}" class="btn btn-primary">
+        <i data-lucide="trash-2" class="h-4 w-4"></i> Purge cache
+      </a>
+    </div>
+  </div>
+
+  {% if summary and not settings_error %}
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Requests (7d)</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.requests_total|default:0 }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cached</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.requests_cached|default:0 }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Pageviews</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.pageviews|default:0 }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Unique visitors</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.uniques|default:0 }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Threats blocked</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.threats|default:0 }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if settings_error %}
+  <div class="card card-padded" style="background:#fff4ef;border:1px solid var(--danger,#c83a3a);">
+    <strong>Could not load zone settings.</strong>
+    <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ settings_error }}</p>
+  </div>
+  {% else %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Zone settings (live from Cloudflare)</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Click <em>Apply</em> to PATCH the setting via the CF API. Some fields are plan-gated (Polish, Mirage require Pro+).</p>
+    </div>
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Setting</th>
+          <th>Current value</th>
+          <th>New value</th>
+          <th class="text-right">Apply</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in settings_rows %}
+        <tr>
+          <td>
+            <div class="font-medium">{{ s.label }}</div>
+            <div class="text-xs text-[color:var(--text-muted)]">{{ s.help }}</div>
+          </td>
+          <td><code class="text-xs">{{ s.value }}</code></td>
+          <td>
+            <form method="post" class="flex gap-2 items-center" style="margin:0;" data-setting-form data-setting="{{ s.id }}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="toggle_setting">
+              <input type="hidden" name="setting_id" value="{{ s.id }}">
+              <input type="text" name="value" value="{{ s.value }}" class="input" style="max-width:180px;">
+              <button class="btn btn-ghost text-xs" type="submit">Apply</button>
+            </form>
+          </td>
+          <td></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Recent purges (this zone)</h2>
+    </div>
+    {% if recent_purges %}
+    <table class="morph-table">
+      <thead>
+        <tr><th>Scope</th><th>Targets</th><th>Status</th><th>When</th></tr>
+      </thead>
+      <tbody>
+        {% for p in recent_purges %}
+        <tr>
+          <td>{{ p.get_scope_display }}</td>
+          <td class="text-xs">{% if p.targets %}{{ p.targets|join:", "|truncatechars:80 }}{% else %}—{% endif %}</td>
+          <td>
+            {% if p.status == 'succeeded' %}<span class="pill pill-success">✓</span>
+            {% elif p.status == 'failed' %}<span class="pill pill-neutral" title="{{ p.error_message }}">✗</span>
+            {% else %}<span class="pill pill-warn">…</span>{% endif %}
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ p.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No purges yet for this zone.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -19,7 +19,12 @@ class CloudflareError(RuntimeError):
 
 
 class CloudflareClient:
-    """Thin Cloudflare API v4 client, scoped to a single account."""
+    """Thin Cloudflare API v4 client, scoped to a single account.
+
+    Methods follow the same shape: hit `_request`, raise CloudflareError
+    on non-success, return the full JSON body. Callers pull `result`,
+    `result_info`, etc. as needed. Session injectable for tests.
+    """
 
     BASE_URL = 'https://api.cloudflare.com/client/v4'
 
@@ -27,26 +32,94 @@ class CloudflareClient:
         self._token = api_token
         self._session = session
 
-    def _post(self, path: str, payload: dict | None) -> dict:
+    def _request(self, method: str, path: str,
+                 *, payload: dict | None = None, params: dict | None = None) -> dict:
         if self._session is not None:
-            return self._session.post(path, payload)
+            return self._session.request(method, path, payload=payload, params=params)
         import requests
 
-        resp = requests.post(
+        resp = requests.request(
+            method,
             f'{self.BASE_URL}{path}',
             headers={
                 'Authorization': f'Bearer {self._token}',
                 'Content-Type': 'application/json',
             },
-            json=payload or {},
+            json=payload,
+            params=params,
             timeout=15,
         )
         body = resp.json() if resp.content else {}
         if not body.get('success', False):
+            errors = body.get('errors') or [{'message': f'HTTP {resp.status_code}'}]
             raise CloudflareError(
-                f'Cloudflare API error ({resp.status_code}): {body.get("errors") or body}'
+                f'Cloudflare API error ({resp.status_code}): {errors}'
             )
         return body
+
+    def _get(self, path: str, params: dict | None = None) -> dict:
+        return self._request('GET', path, params=params)
+
+    def _post(self, path: str, payload: dict | None) -> dict:
+        return self._request('POST', path, payload=payload or {})
+
+    def _patch(self, path: str, payload: dict | None) -> dict:
+        return self._request('PATCH', path, payload=payload or {})
+
+    # ── Token / account ──────────────────────────────────────────────────
+
+    def verify_token(self) -> dict:
+        """Confirms the API token is valid and returns its scope summary."""
+        return self._get('/user/tokens/verify')
+
+    def list_accounts(self) -> dict:
+        return self._get('/accounts', params={'per_page': 50})
+
+    # ── Zones ────────────────────────────────────────────────────────────
+
+    def list_zones(self, account_id: str | None = None) -> dict:
+        params = {'per_page': 50}
+        if account_id:
+            params['account.id'] = account_id
+        return self._get('/zones', params=params)
+
+    def get_zone(self, zone_id: str) -> dict:
+        return self._get(f'/zones/{zone_id}')
+
+    def get_zone_settings(self, zone_id: str) -> dict:
+        return self._get(f'/zones/{zone_id}/settings')
+
+    def patch_zone_setting(self, zone_id: str, setting_id: str, value: Any) -> dict:
+        return self._patch(f'/zones/{zone_id}/settings/{setting_id}', {'value': value})
+
+    # ── Analytics ────────────────────────────────────────────────────────
+
+    def get_analytics_dashboard(self, zone_id: str, since: str = '-10080',
+                                until: str = '0') -> dict:
+        """Dashboard summary (requests, bandwidth, threats, cache stats).
+
+        `since` / `until` are negative minutes-from-now per CF docs:
+          since=-1440 → last 24h; since=-10080 → last 7 days.
+        """
+        return self._get(
+            f'/zones/{zone_id}/analytics/dashboard',
+            params={'since': since, 'until': until, 'continuous': 'true'},
+        )
+
+    # ── Firewall / WAF events ───────────────────────────────────────────
+
+    def list_firewall_events(self, zone_id: str, limit: int = 50) -> dict:
+        # GraphQL is the modern endpoint but the legacy REST one works
+        # for an overview and doesn't require account-scoped tokens.
+        return self._get(f'/zones/{zone_id}/security/events',
+                          params={'per_page': limit})
+
+    # ── DNS ──────────────────────────────────────────────────────────────
+
+    def list_dns_records(self, zone_id: str) -> dict:
+        return self._get(f'/zones/{zone_id}/dns_records', params={'per_page': 100})
+
+    # ── Cache ────────────────────────────────────────────────────────────
 
     def purge_cache(
         self,
@@ -167,6 +240,78 @@ def _record_purge(*, zone, scope, targets, triggered_by, client):
         pass
 
     return inv
+
+
+def sync_zones(account) -> dict:
+    """Pull every zone the account's token can see from the CF API and
+    upsert into our `CloudflareZone` table. Returns a summary dict.
+
+    Idempotent — re-running updates existing rows with the latest
+    metadata (status, type, paused) and inserts any new zones.
+    """
+    from plugins.installed.cloudflare.models import CloudflareZone
+
+    cf = CloudflareClient(api_token=account.api_token)
+    try:
+        body = cf.list_zones(account_id=account.account_id or None)
+    except CloudflareError as e:
+        logger.warning('cloudflare: sync_zones failed for account %s: %s',
+                       account.label, e)
+        raise
+
+    zones = body.get('result') or []
+    created = 0
+    updated = 0
+    for z in zones:
+        zone_id = z.get('id') or ''
+        domain = z.get('name') or ''
+        if not zone_id or not domain:
+            continue
+        obj, was_created = CloudflareZone.objects.update_or_create(
+            account=account, zone_id=zone_id,
+            defaults={'domain': domain, 'is_active': True},
+        )
+        if was_created:
+            created += 1
+        else:
+            updated += 1
+    return {'total': len(zones), 'created': created, 'updated': updated}
+
+
+def zone_settings_map(zone) -> dict:
+    """Return zone settings as `{setting_id: value}` for easy template
+    consumption. Caller should wrap in a try (auth errors raise)."""
+    cf = _client_for(zone)
+    body = cf.get_zone_settings(zone.zone_id)
+    return {s['id']: s.get('value') for s in (body.get('result') or [])}
+
+
+def patch_zone_setting(zone, setting_id: str, value: Any) -> dict:
+    """Toggle / set one zone-level feature. Returns the API response."""
+    cf = _client_for(zone)
+    return cf.patch_zone_setting(zone.zone_id, setting_id, value)
+
+
+def analytics_summary(zone, days: int = 7) -> dict:
+    """Return a flat summary of the dashboard metrics over the last N
+    days. Falls back to empty dict on auth error so the template can
+    still render gracefully."""
+    cf = _client_for(zone)
+    since = -int(max(1, days) * 24 * 60)
+    try:
+        body = cf.get_analytics_dashboard(zone.zone_id, since=str(since), until='0')
+    except CloudflareError as e:
+        logger.warning('cloudflare: analytics failed for %s: %s', zone.domain, e)
+        return {'error': str(e)}
+    totals = (body.get('result') or {}).get('totals') or {}
+    return {
+        'requests_total': (totals.get('requests') or {}).get('all', 0),
+        'requests_cached': (totals.get('requests') or {}).get('cached', 0),
+        'bandwidth_bytes': (totals.get('bandwidth') or {}).get('all', 0),
+        'threats': (totals.get('threats') or {}).get('all', 0),
+        'pageviews': (totals.get('pageviews') or {}).get('all', 0),
+        'uniques': (totals.get('uniques') or {}).get('all', 0),
+    }
 
 
 def purge_for_product_update(product) -> list:

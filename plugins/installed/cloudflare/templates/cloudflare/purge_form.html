@@ -1,0 +1,45 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Purge cache · {{ zone.domain }} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Purge cache</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Invalidate Cloudflare's edge cache for <strong>{{ zone.domain }}</strong>.
+      Auto-purge already runs on product / category updates — use this for
+      manual one-off invalidations.
+    </p>
+  </div>
+
+  <form method="post" class="card card-padded space-y-4" data-confirm="Apply purge?" data-confirm-cta="Purge">
+    {% csrf_token %}
+
+    <div class="space-y-2">
+      <label class="block text-sm font-medium">Mode</label>
+      <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="urls" checked> URLs (most specific)</label>
+      <label class="inline-flex items-center gap-2 ml-4"><input type="radio" name="mode" value="hosts"> Hosts (subdomain)</label>
+      <label class="inline-flex items-center gap-2 ml-4"><input type="radio" name="mode" value="everything"> Everything (nukes the whole zone cache)</label>
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium mb-1">URLs (one per line, up to 30)</label>
+      <textarea name="urls" class="input" rows="5" placeholder="https://{{ zone.domain }}/products/some-slug/&#10;https://{{ zone.domain }}/category/books/"></textarea>
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium mb-1">Hosts (comma-separated, up to 5)</label>
+      <input type="text" name="hosts" class="input" placeholder="www.{{ zone.domain }}, cdn.{{ zone.domain }}">
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2 border-t border-[color:var(--border)]">
+      <a href="{% url 'cloudflare:zone_detail' zone_id=zone.id %}" class="btn">Cancel</a>
+      <button class="btn btn-primary" type="submit">
+        <i data-lucide="trash-2" class="h-4 w-4"></i> Purge
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

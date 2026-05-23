@@ -1,0 +1,48 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Purge log · Cloudflare · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Purge log</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Every cache invalidation across all zones. Auto-purge runs (product updates etc.) appear here alongside manual purges.</p>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if rows %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Zone</th>
+          <th>Scope</th>
+          <th>Targets</th>
+          <th>Trigger</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ r.created_at|date:"Y-m-d H:i:s" }}</td>
+          <td>{{ r.zone.domain }}</td>
+          <td>{{ r.get_scope_display }}</td>
+          <td class="text-xs">{% if r.targets %}{{ r.targets|join:", "|truncatechars:90 }}{% else %}—{% endif %}</td>
+          <td class="text-xs">{{ r.triggered_by|default:"—" }}</td>
+          <td>
+            {% if r.status == 'succeeded' %}<span class="pill pill-success">✓</span>
+            {% elif r.status == 'failed' %}<span class="pill pill-neutral" title="{{ r.error_message }}">✗</span>
+            {% else %}<span class="pill pill-warn">…</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No purges logged yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
