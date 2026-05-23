@@ -76,6 +76,20 @@ case "$MODE" in
     # graceful-timeout=10 gives in-flight requests a chance to finish
     # during deploy cutover (previously 30s default, sometimes
     # truncated by Docker's SIGKILL).
+    #
+    # keep-alive=190s — CRITICAL behind a multi-layer proxy chain.
+    # gunicorn's default is 5s but every upstream in our chain holds
+    # connections much longer:
+    #   Cloudflare → Plesk:   ~100s
+    #   Plesk mod_proxy:        60s
+    #   Coolify Traefik:       180s
+    # If gunicorn closes a keepalive socket while Traefik / Apache
+    # thinks it's still good, the next request through that pooled
+    # socket gets RST → browser sees ERR_CONNECTION_CLOSED → "page
+    # eventually loads" after the browser opens a fresh connection.
+    # 190s is higher than every upstream timeout (180s Traefik) so
+    # the upstream always closes first.
+    #
     # The app module is env-configurable so a deployment can swap
     # WSGI for ASGI without editing this file:
     #
@@ -90,9 +104,9 @@ case "$MODE" in
         --worker-class "${GUNICORN_WORKER_CLASS:-gthread}" \
         --workers "${GUNICORN_WORKERS:-4}" \
         --threads "${GUNICORN_THREADS:-8}" \
-        --timeout "${GUNICORN_TIMEOUT:-30}" \
+        --timeout "${GUNICORN_TIMEOUT:-60}" \
         --graceful-timeout "${GUNICORN_GRACEFUL_TIMEOUT:-10}" \
-        --keep-alive "${GUNICORN_KEEPALIVE:-5}" \
+        --keep-alive "${GUNICORN_KEEPALIVE:-190}" \
         --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
         --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-50}" \
         --access-logfile - \
