@@ -102,6 +102,10 @@ def settings_view(request: HttpRequest) -> HttpResponse:
         'cards': cards,
         'store_summary': store_summary,
         'active_nav': 'settings',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Settings'},
+        ],
     })
 
 
@@ -359,8 +363,15 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
 
     cat = get_category(category)
     if cat is None:
+        # Not a category — fall back to per-plugin settings page (the
+        # canonical URL pattern post-2026-05-23: every plugin with a
+        # SettingsPanel is reachable at /dashboard/settings/<plugin>/).
+        from plugins.registry import plugin_registry
+        if plugin_registry.settings_panel(category) is not None:
+            from plugins.installed.admin_dashboard.urls import plugin_settings_view
+            return plugin_settings_view(request, plugin=category)
         from morpheus.views import Http404
-        raise Http404('Unknown settings category')
+        raise Http404('Unknown settings category or plugin')
 
     core_card = None
     core_entry = _core_form_for(category)
@@ -396,7 +407,10 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
             'plugin_name': entry['plugin'],
             'panel': entry['panel'],
             'fields': _build_panel_fields(instance, entry['panel'].schema),
-            'submit_url': f'/dashboard/apps/{entry["plugin"]}/settings/',
+            # New canonical URL — post-2026-05-23. The legacy
+            # /dashboard/apps/<plugin>/settings/ 301-redirects here so
+            # any bookmarks keep working.
+            'submit_url': f'/dashboard/settings/{entry["plugin"]}/',
         })
 
     return render(request, 'admin_dashboard/settings_category.html', {
@@ -404,6 +418,11 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
         'core_card': core_card,
         'cards': cards,
         'active_nav': 'settings',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Settings',  'url': '/dashboard/settings/'},
+            {'label': cat.label},
+        ],
     })
 
 

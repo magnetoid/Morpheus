@@ -1,0 +1,27 @@
+{% comment %}
+Multi-segment breadcrumb. Pass `trail` — a list of {label, url?} dicts:
+
+    {"trail": [
+        {"label": "Dashboard", "url": "/dashboard/"},
+        {"label": "Settings",  "url": "/dashboard/settings/"},
+        {"label": "SEO settings"},
+    ]}
+
+The last segment is rendered without a link (it is the current page).
+If `trail` is empty or missing, the whole row is hidden so the partial
+is safe to drop into every template unconditionally.
+{% endcomment %}
+{% if trail %}
+<nav class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+  {% for crumb in trail %}
+    {% if not forloop.first %}
+    <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+    {% endif %}
+    {% if crumb.url and not forloop.last %}
+    <a href="{{ crumb.url }}" class="hover:underline">{{ crumb.label }}</a>
+    {% else %}
+    <span class="{% if forloop.last %}font-medium text-[color:var(--text)]{% endif %}">{{ crumb.label }}</span>
+    {% endif %}
+  {% endfor %}
+</nav>
+{% endif %}

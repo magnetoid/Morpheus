@@ -3,11 +3,7 @@
 
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-4">
-  <p class="text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:apps' %}" class="hover:underline">Apps</a>
-    <span style="margin: 0 0.4rem;">/</span>
-    <span>{{ plugin.label }}</span>
-  </p>
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
 
   <div>
     <h1 class="text-xl font-semibold tracking-tight">{{ panel.label }}</h1>

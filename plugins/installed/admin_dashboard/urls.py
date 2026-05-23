@@ -119,8 +119,23 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         'plugin': instance,
         'panel': panel,
         'fields': fields,
-        'active_nav': 'apps',
+        'active_nav': 'settings',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Settings',  'url': '/dashboard/settings/'},
+            {'label': f'{panel.label or instance.label or plugin} settings'},
+        ],
     })
+
+
+@staff_member_required
+def plugin_settings_redirect(request: HttpRequest, plugin: str) -> HttpResponse:
+    """301 from the legacy /dashboard/apps/<plugin>/settings/ to the new
+    canonical /dashboard/settings/<plugin>/. Keeps old bookmarks and
+    cards on the apps page working.
+    """
+    from django.http import HttpResponsePermanentRedirect
+    return HttpResponsePermanentRedirect(f'/dashboard/settings/{plugin}/')
 
 
 urlpatterns = [
@@ -169,7 +184,8 @@ urlpatterns = [
     path('marketing/coupons/<uuid:coupon_id>/delete/', views.coupon_delete, name='coupon_delete'),
     path('apps/', views.apps_view, name='apps'),
     path('apps/store/', views.apps_store_view, name='apps_store'),
-    path('apps/<str:plugin>/settings/', plugin_settings_view, name='plugin_settings'),
+    # Legacy URL — 301-redirects to the new canonical /dashboard/settings/<plugin>/.
+    path('apps/<str:plugin>/settings/', plugin_settings_redirect, name='plugin_settings_legacy'),
     path('apps/<str:plugin>/<slug:slug>/', plugin_page_router, name='plugin_page'),
     path('palette/search/', views.palette_search, name='palette_search'),
     path('ai/draft-description/', views.ai_draft_description, name='ai_draft_description'),
