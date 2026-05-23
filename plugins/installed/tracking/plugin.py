@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 
 from morpheus import events
-from morpheus import DashboardPage, Plugin
+from morpheus import DashboardPage, Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.tracking')
 
@@ -156,11 +156,40 @@ class TrackingPlugin(Plugin):
         # only existed to surface a card in /dashboard/apps/.
         return []
 
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Google Ads conversions',
+            description=(
+                'Optional. Fires a Google Ads conversion event on the order '
+                'confirmation page. GA4 + GTM main settings live at '
+                '/dashboard/tracking/ — these knobs are the Ads-specific bolt-on.'
+            ),
+            schema=self.get_config_schema(),
+            category='channels',
+        )
+
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
             'properties': {
-                'measurement_id': {'type': 'string'},
-                'gtm_container_id': {'type': 'string'},
+                # Legacy mirrors of the TrackingSettings model — kept for
+                # back-compat. The model is the source of truth.
+                'measurement_id': {'type': 'string', 'title': 'GA4 Measurement ID (mirror)'},
+                'gtm_container_id': {'type': 'string', 'title': 'GTM Container ID (mirror)'},
+
+                # Google Ads — live ONLY in PluginConfig (no model migration
+                # needed). Read by the conversion-pixel template tag below.
+                'google_ads_conversion_id': {
+                    'type': 'string',
+                    'title': 'Google Ads conversion ID',
+                    'description': 'Format: AW-123456789. Leave blank to disable Ads conversion firing.',
+                    'default': '',
+                },
+                'google_ads_purchase_label': {
+                    'type': 'string',
+                    'title': 'Purchase conversion label',
+                    'description': 'The label half of the AW-XXX/yyy pair, e.g. "abc123XYZ".',
+                    'default': '',
+                },
             },
         }

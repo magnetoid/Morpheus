@@ -168,6 +168,80 @@ def dl_purchase(order):
     return _datalayer_push('purchase', ecommerce)
 
 
+def _ads_config():
+    """Read Google Ads conversion knobs from the tracking plugin's
+    PluginConfig (kept in JSON to avoid a TrackingSettings model migration).
+    """
+    try:
+        from plugins.registry import plugin_registry
+        p = plugin_registry.get('tracking')
+        if p is None:
+            return '', ''
+        cfg = p.get_config() or {}
+        return (
+            (cfg.get('google_ads_conversion_id') or '').strip(),
+            (cfg.get('google_ads_purchase_label') or '').strip(),
+        )
+    except Exception:  # noqa: BLE001
+        return '', ''
+
+
+@register.simple_tag
+def gads_purchase_conversion(order):
+    """Emit a Google Ads `conversion` event for the order. Only fires
+    when both google_ads_conversion_id (AW-XXXXXXXXX) AND
+    google_ads_purchase_label are configured on the tracking plugin.
+
+    Loads gtag.js inline if not already on the page (Consent Mode v2
+    defaults emitted via {% gtm_consent_default %} still apply because
+    they set on the shared dataLayer before any container boot).
+
+    Usage on order_confirmation.html:
+
+        {% load tracking %}
+        {% gads_purchase_conversion order %}
+    """
+    if not order:
+        return ''
+    conv_id, label = _ads_config()
+    if not conv_id or not label:
+        return ''
+
+    s = _settings()
+    if s is not None and not s.client_side_enabled:
+        return ''
+
+    # Derive value/currency from the order. Reuse the same event_mapping
+    # surface as GA4 so AOV / value semantics stay aligned across the
+    # two networks.
+    try:
+        from plugins.installed.tracking.services.event_mapping import purchase
+        _, params = purchase(order)
+    except Exception:  # noqa: BLE001
+        params = {}
+
+    value = params.get('value', 0)
+    currency = params.get('currency', 'USD')
+    transaction_id = params.get('transaction_id', getattr(order, 'order_number', '')) or ''
+
+    payload = {
+        'send_to': f'{conv_id}/{label}',
+        'value': value,
+        'currency': currency,
+        'transaction_id': transaction_id,
+    }
+    return mark_safe(
+        '<script async '
+        f'src="https://www.googletagmanager.com/gtag/js?id={conv_id}"></script>'
+        '<script>'
+        'window.dataLayer=window.dataLayer||[];'
+        'function gtag(){dataLayer.push(arguments);}'
+        f'gtag("js", new Date()); gtag("config", "{conv_id}");'
+        f'gtag("event","conversion",{json.dumps(payload)});'
+        '</script>'
+    )
+
+
 @register.simple_tag
 def tracking_consent_banner():
     """Tiny consent banner (off by default). When enabled the
