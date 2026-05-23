@@ -1,13 +1,18 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Agent runs · Morpheus admin{% endblock %}
+{% block title %}Linda activity · Morpheus{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-xl font-semibold">Agent runs</h1>
-  <a href="{% url 'agent_core_dash:console' %}" class="btn btn-primary">
-    <i data-lucide="terminal" class="h-4 w-4"></i> Open console
-  </a>
-</div>
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div class="flex items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Linda activity</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Every Worker Linda has spawned — both her direct chat answers and the parallel background jobs she fans out via <code>delegate.spawn_workers</code>.</p>
+    </div>
+    <a href="/dashboard/assistant/" class="btn btn-primary">
+      <i data-lucide="sparkles" class="h-4 w-4"></i> Open chat
+    </a>
+  </div>
 
 <div class="card">
   <table class="morph-table">
@@ -53,4 +58,5 @@
   </div>
 {% endfor %}
 </div>
+</div>{# /max-w-6xl wrapper #}
 {% endblock %}

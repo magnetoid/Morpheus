@@ -218,6 +218,11 @@ def runs_dashboard_view(request):
         'runs': runs,
         'agents': agent_registry.all_agents(),
         'active_nav': 'agents',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Linda',     'url': '/dashboard/assistant/'},
+            {'label': 'Activity'},
+        ],
     })
 
 
@@ -301,6 +306,11 @@ def observability_view(request):
         'top_tools': top_tools,
         'failures': failures,
         'active_nav': 'agents',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Linda',     'url': '/dashboard/assistant/'},
+            {'label': 'Insights'},
+        ],
     })
 
 
@@ -332,6 +342,11 @@ def background_agents_view(request):
         'background_agents': rows,
         'agents': agent_registry.all_agents(),
         'active_nav': 'agents',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Linda',     'url': '/dashboard/assistant/'},
+            {'label': 'Automations'},
+        ],
     })
 
 

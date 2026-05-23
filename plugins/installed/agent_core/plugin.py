@@ -118,19 +118,15 @@ class AgentCorePlugin(Plugin):
         # The merchant reaches them via the Linda sub-menu, not the
         # apps catalog (which now hides agent_core entirely — it's a
         # SYSTEM_PLUGIN, see admin_dashboard.views_split.apps).
+        # Linda-aligned labels (2026-05-23). The legacy "Ops console"
+        # DashboardPage entry was removed — Linda's Chat is the ops
+        # console now since every objective routes through
+        # delegate.spawn_workers anyway. The merchant_ops_chat_view +
+        # /dashboard/agents/console/ URL still resolve for back-compat;
+        # they just aren't surfaced in the sidebar or apps catalog.
         return [
             DashboardPage(
-                label='Ops console',
-                slug='console',
-                view='plugins.installed.agent_core.views.merchant_ops_chat_view',
-                icon='sparkles',
-                section='ai',
-                order=10,
-                nav='hidden',
-                url='/dashboard/agents/console/',
-            ),
-            DashboardPage(
-                label='Agent runs',
+                label='Linda activity',
                 slug='runs',
                 view='plugins.installed.agent_core.views.runs_dashboard_view',
                 icon='activity',
@@ -140,7 +136,7 @@ class AgentCorePlugin(Plugin):
                 url='/dashboard/agents/',
             ),
             DashboardPage(
-                label='Background agents',
+                label='Linda automations',
                 slug='background',
                 view='plugins.installed.agent_core.views.background_agents_view',
                 icon='clock',
@@ -150,7 +146,7 @@ class AgentCorePlugin(Plugin):
                 url='/dashboard/agents/background/',
             ),
             DashboardPage(
-                label='Observability',
+                label='Linda insights',
                 slug='observability',
                 view='plugins.installed.agent_core.views.observability_view',
                 icon='gauge',

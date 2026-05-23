@@ -1,9 +1,14 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Agent observability · Morpheus{% endblock %}
+{% block title %}Linda insights · Morpheus{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-xl font-semibold">Agent observability</h1>
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+<div class="flex items-end justify-between gap-3 mb-4">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Linda insights</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Cost, latency, error rate, and token usage across every Worker run.</p>
+  </div>
   <form method="get" style="display:flex;gap:.5rem;align-items:center;">
     <label class="meta">Window
       <select name="days" onchange="this.form.submit()" class="form-input">
@@ -101,4 +106,5 @@
     </tbody>
   </table>
 </div>
+</div>{# /max-w-6xl wrapper #}
 {% endblock %}

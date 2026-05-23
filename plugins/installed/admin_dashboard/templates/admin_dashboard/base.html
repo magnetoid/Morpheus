@@ -492,19 +492,21 @@
       capability, so they sit above the standard ecommerce CRUD instead
       of behind a collapsible.
     {% endcomment %}
-    {% comment %}Linda — Morpheus's core AI surface. Lives in
-    core.assistant (not a plugin). The four sub-pages below are URLs
-    contributed by the agent_core system plugin but folded under
-    Linda visually so the merchant sees one cohesive Linda surface
-    instead of two separate apps.{% endcomment %}
+    {% comment %}
+    Linda — Morpheus's core AI surface. Lives in core.assistant (not a
+    plugin). The three sub-pages below show what Linda has been doing:
+    every Worker she spawned, the recurring jobs she runs in the
+    background, and the cost/latency rollup. The legacy "Ops console"
+    chat surface was removed — Chat IS the ops console now since Linda
+    routes every objective through delegate.spawn_workers internally.
+    {% endcomment %}
     {% with agents_active=request.path|slice:":17" %}
     <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Linda</a>
     <div class="nav-children {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}open{% endif %}">
       <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}">Chat</a>
-      <a href="/dashboard/agents/console/" class="nav-link {% if request.path == '/dashboard/agents/console/' %}active{% endif %}">Ops console</a>
-      <a href="/dashboard/agents/" class="nav-link {% if request.path == '/dashboard/agents/' %}active{% endif %}">Run history</a>
-      <a href="/dashboard/agents/background/" class="nav-link {% if request.path == '/dashboard/agents/background/' %}active{% endif %}">Background agents</a>
-      <a href="/dashboard/agents/observability/" class="nav-link {% if request.path == '/dashboard/agents/observability/' %}active{% endif %}">Observability</a>
+      <a href="/dashboard/agents/" class="nav-link {% if request.path == '/dashboard/agents/' %}active{% endif %}">Activity</a>
+      <a href="/dashboard/agents/background/" class="nav-link {% if request.path == '/dashboard/agents/background/' %}active{% endif %}">Automations</a>
+      <a href="/dashboard/agents/observability/" class="nav-link {% if request.path == '/dashboard/agents/observability/' %}active{% endif %}">Insights</a>
     </div>
     {% endwith %}
     <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">

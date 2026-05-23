@@ -1,15 +1,20 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Background agents · Morpheus{% endblock %}
+{% block title %}Linda automations · Morpheus{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-xl font-semibold">Background agents</h1>
-  <a href="{% url 'agent_core_dash:runs' %}" class="btn-link">All runs →</a>
-</div>
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div class="flex items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Linda automations</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Recurring background jobs Linda runs on a schedule. Different from chat-driven Workers — these fire on the clock (daily digest, hourly stock sweep, etc.) without anyone asking.</p>
+    </div>
+    <a href="{% url 'agent_core_dash:runs' %}" class="btn">See activity →</a>
+  </div>
 
 <p class="meta mb-4">
-  Schedule a registered agent to run on a fixed interval. The scheduler
-  fires every minute and will auto-pause an agent after repeated failures.
+  Schedule one of Linda's registered jobs to run on a fixed interval. The scheduler
+  fires every minute and will auto-pause a job after repeated failures.
 </p>
 
 <div class="card mb-6">
@@ -78,4 +83,5 @@
     <button type="submit" class="btn btn-primary">Schedule</button>
   </form>
 </div>
+</div>{# /max-w-6xl wrapper #}
 {% endblock %}
