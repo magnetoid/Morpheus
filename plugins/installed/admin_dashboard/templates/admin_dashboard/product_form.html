@@ -713,9 +713,11 @@
   </div>{% comment %}/lg:grid-cols-3{% endcomment %}
 
   {% if product %}
-  {# Unified media uploader — drag-drop images + paste video URLs +
-     per-tile alt/title modal editor. JS in static/admin_dashboard/
-     media-uploader.js, loaded once at the bottom of this template. #}
+  {% comment %}
+  Unified media uploader — drag-drop images + paste video URLs +
+  per-tile alt/title modal editor. JS in static/admin_dashboard/
+  media-uploader.js, loaded once at the bottom of this template.
+  {% endcomment %}
   {% include "admin_dashboard/_media_uploader.html" %}
   <div style="display:none;">
 

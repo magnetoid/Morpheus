@@ -137,9 +137,11 @@
             <button type="button" class="btn ai-fetch-btn" data-provider="{{ c.slug }}"><i data-lucide="download" class="h-3.5 w-3.5"></i> Fetch</button>
             <button type="button" class="btn ai-test-btn" data-provider="{{ c.slug }}"><i data-lucide="zap" class="h-3.5 w-3.5"></i> Test</button>
           </div>
-          {# Model picker — sits on its OWN row below the input so a long
-             model list isn't squeezed beside the buttons. Hidden until
-             the merchant hits Fetch and we have a non-empty list. #}
+          {% comment %}
+          Model picker — sits on its OWN row below the input so a long
+          model list isn't squeezed beside the buttons. Hidden until
+          the merchant hits Fetch and we have a non-empty list.
+          {% endcomment %}
           <div class="ai-model-picker-row mt-2" data-picker-row="{{ c.slug }}" hidden>
             <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Pick from catalog</label>
             <select class="input ai-model-picker w-full" data-provider="{{ c.slug }}">
