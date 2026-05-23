@@ -1,0 +1,60 @@
+{% comment %}
+Shared tab bar for the merged "General settings" surface.
+
+The four pages (General, Markets, Translations, Languages) live at
+their own URLs but share this tab strip so the merchant perceives them
+as one tabbed settings page. Drop it under the page H1.
+
+Pass `active_tab` = 'general' | 'markets' | 'translations' | 'languages'.
+{% endcomment %}
+<div class="general-tabs">
+  <a href="/dashboard/settings/general/"
+     class="general-tab {% if active_tab == 'general' %}active{% endif %}">
+    <i data-lucide="store" class="h-4 w-4"></i> General
+  </a>
+  {% if 'markets' in active_plugins %}
+  <a href="/dashboard/markets/"
+     class="general-tab {% if active_tab == 'markets' %}active{% endif %}">
+    <i data-lucide="globe" class="h-4 w-4"></i> Markets
+  </a>
+  {% endif %}
+  {% if 'localization' in active_plugins %}
+  <a href="/dashboard/apps/localization/translations/"
+     class="general-tab {% if active_tab == 'translations' %}active{% endif %}">
+    <i data-lucide="languages" class="h-4 w-4"></i> Translations
+  </a>
+  <a href="/dashboard/apps/localization/languages/"
+     class="general-tab {% if active_tab == 'languages' %}active{% endif %}">
+    <i data-lucide="flag" class="h-4 w-4"></i> Languages
+  </a>
+  {% endif %}
+</div>
+
+<style>
+  .general-tabs {
+    display: flex;
+    gap: .25rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+    overflow-x: auto;
+  }
+  .general-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem .9rem;
+    font-size: .85rem;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .general-tab:hover { color: var(--text); }
+  .general-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent, #c5694e);
+    font-weight: 600;
+  }
+</style>

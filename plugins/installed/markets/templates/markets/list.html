@@ -4,6 +4,9 @@
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-4">
 
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  {% include "admin_dashboard/_general_tabs.html" with active_tab='markets' %}
+
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Markets</h1>

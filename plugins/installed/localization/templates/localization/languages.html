@@ -3,11 +3,11 @@
 
 {% block content %}
 <div class="space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  {% include "admin_dashboard/_general_tabs.html" with active_tab='languages' %}
+
   <div class="flex items-center justify-between flex-wrap gap-2">
     <h1 class="h1">Languages</h1>
-    <a href="{% url 'localization:translations' %}" class="btn">
-      <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to translations
-    </a>
   </div>
 
   <p class="meta">
