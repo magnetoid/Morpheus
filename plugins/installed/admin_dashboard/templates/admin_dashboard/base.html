@@ -479,7 +479,19 @@
       capability, so they sit above the standard ecommerce CRUD instead
       of behind a collapsible.
     {% endcomment %}
-    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Assistant</a>
+    {% comment %}Linda — Morpheus's core AI surface. Lives in
+    core.assistant (not a plugin). The four sub-pages below are URLs
+    contributed by the agent_core system plugin but folded under
+    Linda visually so the merchant sees one cohesive Linda surface
+    instead of two separate apps.{% endcomment %}
+    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or active_apps_slug == 'agent_core/console' or active_apps_slug == 'agent_core/runs' or active_apps_slug == 'agent_core/background' or active_apps_slug == 'agent_core/observability' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Linda</a>
+    <div class="nav-children {% if active_nav == 'assistant' or active_apps_slug == 'agent_core/console' or active_apps_slug == 'agent_core/runs' or active_apps_slug == 'agent_core/background' or active_apps_slug == 'agent_core/observability' %}open{% endif %}">
+      <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}">Chat</a>
+      <a href="/dashboard/apps/agent_core/console/" class="nav-link {% if active_apps_slug == 'agent_core/console' %}active{% endif %}">Ops console</a>
+      <a href="/dashboard/apps/agent_core/runs/" class="nav-link {% if active_apps_slug == 'agent_core/runs' %}active{% endif %}">Run history</a>
+      <a href="/dashboard/apps/agent_core/background/" class="nav-link {% if active_apps_slug == 'agent_core/background' %}active{% endif %}">Background agents</a>
+      <a href="/dashboard/apps/agent_core/observability/" class="nav-link {% if active_apps_slug == 'agent_core/observability' %}active{% endif %}">Observability</a>
+    </div>
     <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">
       <i data-lucide="lightbulb" class="h-4 w-4"></i> Insights
       {% if nav_badges.insights %}<span class="pill pill-info" style="margin-left:auto;">{{ nav_badges.insights }}</span>{% endif %}

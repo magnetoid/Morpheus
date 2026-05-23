@@ -107,11 +107,17 @@ class AgentCorePlugin(Plugin):
         ]
 
     def contribute_dashboard_pages(self) -> list:
-        # AI-first: the Ops console is Morpheus's defining surface,
-        # so it lives at the TOP of the main sidebar under "AI &
-        # agents" — not buried in settings. The operational pages
-        # (run history, background scheduling, observability) stay
-        # in settings since they're admin/setup affordances.
+        # All four pages are hidden from the sidebar — they're folded
+        # into Linda's domain (the "Linda" parent nav in
+        # admin_dashboard/base.html). The DashboardPage rows stay
+        # registered so the plugin_page_router resolves the URLs:
+        #   /dashboard/apps/agent_core/console/         → Ops console
+        #   /dashboard/apps/agent_core/runs/            → Agent runs
+        #   /dashboard/apps/agent_core/background/      → Background agents
+        #   /dashboard/apps/agent_core/observability/   → Observability
+        # The merchant reaches them via the Linda sub-menu, not the
+        # apps catalog (which now hides agent_core entirely — it's a
+        # SYSTEM_PLUGIN, see admin_dashboard.views_split.apps).
         return [
             DashboardPage(
                 label='Ops console',
@@ -120,7 +126,7 @@ class AgentCorePlugin(Plugin):
                 icon='sparkles',
                 section='ai',
                 order=10,
-                nav='main',
+                nav='hidden',
             ),
             DashboardPage(
                 label='Agent runs',
@@ -129,7 +135,7 @@ class AgentCorePlugin(Plugin):
                 icon='activity',
                 section='ai',
                 order=20,
-                nav='settings',
+                nav='hidden',
             ),
             DashboardPage(
                 label='Background agents',
@@ -138,7 +144,7 @@ class AgentCorePlugin(Plugin):
                 icon='clock',
                 section='ai',
                 order=30,
-                nav='settings',
+                nav='hidden',
             ),
             DashboardPage(
                 label='Observability',
@@ -147,17 +153,19 @@ class AgentCorePlugin(Plugin):
                 icon='gauge',
                 section='ai',
                 order=40,
-                nav='settings',
+                nav='hidden',
             ),
         ]
 
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Agents',
-            description='Configure the agent runtime and built-in agents.',
-            schema=self.get_config_schema(),
-            category='ai',
-        )
+    # No SettingsPanel — agent_core is a system component, not a
+    # user-configurable plugin. Linda's behaviour is tuned via her
+    # own dashboard at /dashboard/assistant/ + the AI providers panel
+    # (ai_assistant plugin, which carries the actual config knobs:
+    # which model, what brand voice, etc.). Surfacing a second
+    # "Agents" settings panel here just added noise.
+    # The get_config_schema() method below is kept because the kernel
+    # reads a few internal flags via plugin.get_config_value(); they
+    # just aren't merchant-editable through the dashboard.
 
     def get_config_schema(self) -> dict:
         return {

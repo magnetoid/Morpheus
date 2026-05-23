@@ -46,6 +46,11 @@ def apps_view(request: HttpRequest) -> HttpResponse:
 
     plugins = []
     for name, cls in sorted(plugin_registry._classes.items()):
+        if name in SYSTEM_PLUGINS:
+            # Hide system plugins from the apps catalog — they belong
+            # to a higher-level concept the merchant edits elsewhere
+            # (Linda for agent_core, etc.).
+            continue
         runtime_active = plugin_registry.is_active(name)
         db_intends_on = db_enabled.get(name, True)
         # "Active" is what the merchant sees in the button label.
@@ -162,6 +167,15 @@ PROTECTED_PLUGINS = frozenset({
     # inventory tool Linda can call — chat keeps working, every
     # answer becomes "I can't access that".
     'agent_core',
+})
+
+
+# Plugins that are technically present (Django apps, models, migrations)
+# but should NEVER appear in the /dashboard/apps/ catalogue. They're
+# part of a higher-level concept the merchant interacts with directly.
+# Hiding them stops the "what is this app, can I disable it?" confusion.
+SYSTEM_PLUGINS = frozenset({
+    'agent_core',   # surfaced via Linda's UI (core/assistant/)
 })
 
 
