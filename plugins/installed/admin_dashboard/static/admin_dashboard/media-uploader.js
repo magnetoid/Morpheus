@@ -54,10 +54,10 @@
     root.dataset._mediaUploaderBound = '1';
 
     const grid = root.querySelector('[data-media-grid]');
-    const dropzone = root.querySelector('[data-dropzone]');
     const fileInput = root.querySelector('[data-file-input]');
     const videoForm = root.querySelector('[data-video-form]');
     const modal = root.querySelector('[data-modal]');
+    const addTile = root.querySelector('[data-add-tile]');
     const cap = parseInt(root.dataset.cap || '15', 10);
 
     const urls = {
@@ -78,26 +78,51 @@
       return (tpl || '').replace(PLACEHOLDER_ID, id);
     }
 
-    // ── Drag-and-drop file upload ────────────────────────────────────
-    function setDragActive(on) {
-      if (dropzone) dropzone.classList.toggle('is-dragover', on);
+    // ── Drag-and-drop file upload (anywhere on .muploader) ───────────
+    // Discriminates external file drops (dataTransfer.types contains
+    // 'Files') from internal tile-reorder drags so the wrong handler
+    // doesn't fire. Counter pattern handles dragenter/dragleave on
+    // nested children without flicker.
+    let dragCounter = 0;
+    function isFileDrag(e) {
+      return Array.from(e.dataTransfer?.types || []).includes('Files');
     }
-    if (dropzone) {
-      ['dragenter', 'dragover'].forEach(ev =>
-        dropzone.addEventListener(ev, e => {
-          e.preventDefault();
-          e.stopPropagation();
-          setDragActive(true);
-        }));
-      ['dragleave', 'drop'].forEach(ev =>
-        dropzone.addEventListener(ev, e => {
-          e.preventDefault();
-          e.stopPropagation();
-          setDragActive(false);
-        }));
-      dropzone.addEventListener('drop', e => {
-        const files = Array.from(e.dataTransfer?.files || []);
-        uploadImages(files);
+    root.addEventListener('dragenter', e => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault();
+      dragCounter += 1;
+      root.classList.add('is-dragover');
+    });
+    root.addEventListener('dragleave', e => {
+      if (!isFileDrag(e)) return;
+      dragCounter = Math.max(0, dragCounter - 1);
+      if (dragCounter === 0) root.classList.remove('is-dragover');
+    });
+    root.addEventListener('dragover', e => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    });
+    root.addEventListener('drop', e => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault();
+      dragCounter = 0;
+      root.classList.remove('is-dragover');
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length) uploadImages(files);
+    });
+
+    // Click-to-browse — the "Add" tile and any empty area inside the
+    // grid (but NOT on existing tiles).
+    function openPicker() {
+      if (fileInput) fileInput.click();
+    }
+    if (addTile) addTile.addEventListener('click', openPicker);
+    if (grid) {
+      grid.addEventListener('click', e => {
+        // Only trigger on the grid background itself — not on tiles or
+        // controls. Tiles handle their own clicks (edit / delete).
+        if (e.target === grid) openPicker();
       });
     }
     if (fileInput) {
@@ -110,7 +135,10 @@
 
     async function uploadImages(files) {
       if (!files.length || !urls.imageUpload) return;
-      const existingCount = grid?.children.length || 0;
+      // Count real media tiles only — exclude the trailing "Add" tile.
+      const existingCount = grid
+        ? grid.querySelectorAll('[data-id]').length
+        : 0;
       let added = 0;
       for (const file of files) {
         if (!file.type.startsWith('image/')) continue;
@@ -340,6 +368,11 @@
         grid.insertBefore(dragged, before ? over : over.nextSibling);
       });
       grid.addEventListener('drop', async e => {
+        // Only handle this drop when an internal tile is being dragged.
+        // External file drops are handled at the .muploader level above;
+        // letting them fall through here would fire a no-op reorder API
+        // call with the unchanged IDs.
+        if (!dragged) return;
         e.preventDefault();
         const imageIds = Array.from(
           grid.querySelectorAll('[data-kind="image"][data-id]')

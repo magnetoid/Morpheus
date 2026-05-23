@@ -94,21 +94,30 @@ Usage from a parent template:
       <span class="muploader-tile__kind-badge">VIDEO</span>
     </div>
     {% endfor %}
+
+    {% comment %}
+    Trailing "Add" tile — clicking opens the file picker. Drag-and-drop
+    works anywhere on the surrounding .muploader; this tile is just an
+    explicit affordance for click-to-browse.
+    {% endcomment %}
+    <button type="button" class="muploader-tile muploader-tile--add" data-add-tile aria-label="Add images">
+      <div class="muploader-tile__add-stack">
+        <i data-lucide="plus" class="h-6 w-6"></i>
+        <span class="muploader-tile__add-label">Add images</span>
+      </div>
+    </button>
   </div>
 
-  {# ── Drop zone for new images ─────────────────────────────────────── #}
-  <label class="muploader-dropzone mt-3" data-dropzone tabindex="0">
-    <input type="file" multiple accept="image/*" data-file-input hidden>
-    <div class="muploader-dropzone__stack">
-      <i data-lucide="upload-cloud" class="h-7 w-7"></i>
-      <p class="muploader-dropzone__title">
-        <strong>Drop images here</strong> or click to browse
-      </p>
-      <p class="muploader-dropzone__hint">
-        JPEG · PNG · WebP · AVIF · GIF · up to 10 MB each
-      </p>
-    </div>
-  </label>
+  {% comment %}
+  Hidden file input — triggered by the "Add" tile in the grid OR by
+  clicking any empty area inside .muploader. Drag-and-drop is wired
+  to the .muploader wrapper itself, so dropping anywhere works.
+  {% endcomment %}
+  <input type="file" multiple accept="image/*" data-file-input hidden>
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">
+    Drag images anywhere here or click the "Add images" tile.
+    JPEG · PNG · WebP · AVIF · GIF · up to 10 MB each.
+  </p>
 
   {# ── Video URL paster ─────────────────────────────────────────────── #}
   <form class="muploader-video-form mt-3" data-video-form>
@@ -164,7 +173,59 @@ Usage from a parent template:
 </div>
 
 <style>
-  .muploader { position: relative; }
+  .muploader {
+    position: relative;
+    /* Drop-target highlight when the user drags a file anywhere over
+       the whole uploader. Set by JS via .is-dragover. */
+    transition: background 120ms ease, outline-color 120ms ease;
+    outline: 2px dashed transparent;
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+  .muploader.is-dragover {
+    background: rgba(197, 105, 78, .06);
+    outline-color: var(--accent, #c5694e);
+  }
+  .muploader.is-dragover::after {
+    content: 'Drop to upload';
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--accent, #c5694e);
+    background: rgba(197, 105, 78, .08);
+    backdrop-filter: blur(1px);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* Trailing "Add" tile — clickable affordance inside the grid. Same
+     2/3 ratio as image tiles so it slots into the masonry cleanly. */
+  .muploader-tile--add {
+    background: var(--surface-2);
+    border: 2px dashed var(--border-strong);
+    cursor: pointer;
+    color: var(--text-muted);
+    display: grid;
+    place-items: center;
+    transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+  }
+  .muploader-tile--add:hover {
+    border-color: var(--accent, #c5694e);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .muploader-tile__add-stack {
+    display: flex; flex-direction: column;
+    align-items: center; gap: .35rem;
+  }
+  .muploader-tile__add-label {
+    font-size: .78rem;
+    font-weight: 500;
+  }
 
   .muploader-grid {
     display: grid;
@@ -277,34 +338,6 @@ Usage from a parent template:
     padding: .15rem .4rem;
     border-radius: 3px;
   }
-
-  .muploader-dropzone {
-    display: block;
-    cursor: pointer;
-    border: 2px dashed var(--border-strong);
-    border-radius: 10px;
-    background: var(--surface-2);
-    padding: 1.5rem;
-    text-align: center;
-    transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
-  }
-  .muploader-dropzone:hover,
-  .muploader-dropzone:focus-within {
-    background: var(--surface);
-    border-color: var(--text-muted);
-  }
-  .muploader-dropzone.is-dragover {
-    border-color: var(--accent, #c5694e);
-    background: var(--surface);
-    transform: scale(1.005);
-  }
-  .muploader-dropzone__stack {
-    display: flex; flex-direction: column;
-    align-items: center; gap: .35rem;
-    color: var(--text-muted);
-  }
-  .muploader-dropzone__title { font-size: .92rem; margin: 0; color: var(--text); }
-  .muploader-dropzone__hint { font-size: .75rem; margin: 0; }
 
   .muploader-video-form { width: 100%; }
   .muploader-video-row {

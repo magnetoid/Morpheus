@@ -27,6 +27,34 @@
   </a>
   {% endif %}
 
+  {% if category.slug == 'general' %}
+  {% comment %}
+  Markets + Localization folded into General — Shopify-style. These have
+  rich editors that don't compress into a single form, so they live as
+  deep-links rather than inline panels.
+  {% endcomment %}
+  {% if 'markets' in active_plugins %}
+  <a href="/dashboard/markets/" class="card card-padded flex items-start gap-3 hover:bg-[color:var(--surface-2)]">
+    <div class="settings-tile-icon"><i data-lucide="globe" class="h-5 w-5"></i></div>
+    <div class="min-w-0 flex-1">
+      <div class="font-medium">Markets</div>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Per-country pricing, currency, and locale overrides.</p>
+    </div>
+    <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)] mt-1"></i>
+  </a>
+  {% endif %}
+  {% if 'localization' in active_plugins %}
+  <a href="/dashboard/apps/localization/translations/" class="card card-padded flex items-start gap-3 hover:bg-[color:var(--surface-2)]">
+    <div class="settings-tile-icon"><i data-lucide="languages" class="h-5 w-5"></i></div>
+    <div class="min-w-0 flex-1">
+      <div class="font-medium">Translations & languages</div>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Pick target languages and edit translations of products, categories, pages.</p>
+    </div>
+    <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)] mt-1"></i>
+  </a>
+  {% endif %}
+  {% endif %}
+
   {% if core_card %}
   <div class="card">
     <div class="card-padded border-b border-[color:var(--border)]">
