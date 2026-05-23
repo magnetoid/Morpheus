@@ -61,20 +61,6 @@
       </div>
     </form>
   </div>
-  <style>
-    /* Force core form widgets to use the dashboard input style without
-       changing each form's field widget=… per-field. */
-    form input[type="text"], form input[type="email"], form input[type="number"],
-    form input[type="password"], form input[type="url"], form select, form textarea {
-      width: 100%; height: 2.25rem; padding: 0 .75rem; font-size: .875rem;
-      border-radius: 6px; border: 1px solid var(--border); background: var(--surface);
-      color: var(--text);
-    }
-    form textarea { height: auto; padding: .5rem .75rem; min-height: 5rem; }
-    form input:focus, form select:focus, form textarea:focus {
-      outline: none; border-color: var(--text); box-shadow: 0 0 0 2px rgba(0,0,0,.08);
-    }
-  </style>
   {% endif %}
 
   {% if cards %}

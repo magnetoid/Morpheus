@@ -696,7 +696,32 @@ class VariantForm(forms.Form):
 # ── Store settings (core) ────────────────────────────────────────────────────
 
 
-class StoreGeneralForm(forms.Form):
+class DashboardFormMixin:
+    """Auto-attach the dashboard's semantic ``.input`` CSS class to every
+    widget so `{{ field }}` renders without needing an inline-CSS fallback
+    in the template. Inherit from this BEFORE `forms.Form` (or wrap in MRO
+    after) and every text/email/number/etc. widget picks up the same look
+    as the schema-driven panel widgets.
+
+    Skips checkbox + radio widgets — those use their own dashboard styles.
+    """
+
+    _DASHBOARD_INPUT_CLASS = 'input'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for bound in self.visible_fields():
+            widget = bound.field.widget
+            existing = widget.attrs.get('class', '').split()
+            if isinstance(widget, (forms.CheckboxInput, forms.RadioSelect,
+                                   forms.CheckboxSelectMultiple)):
+                continue
+            if self._DASHBOARD_INPUT_CLASS not in existing:
+                existing.append(self._DASHBOARD_INPUT_CLASS)
+                widget.attrs['class'] = ' '.join(existing).strip()
+
+
+class StoreGeneralForm(DashboardFormMixin, forms.Form):
     """Editable subset of `core.StoreSettings` shown under Settings → General."""
 
     store_name = forms.CharField(max_length=200)
@@ -728,7 +753,7 @@ class StoreGeneralForm(forms.Form):
         return instance
 
 
-class StoreNotificationsForm(forms.Form):
+class StoreNotificationsForm(DashboardFormMixin, forms.Form):
     """SMTP / outbound email — under Settings → Notifications."""
 
     default_from_email = forms.CharField(max_length=200, required=False)
