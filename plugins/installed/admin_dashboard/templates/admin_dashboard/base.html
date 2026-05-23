@@ -290,6 +290,19 @@
     margin: .15rem 0 .35rem;
   }
   .nav-children .nav-link { font-weight: 400; padding: .3rem .6rem; font-size: .8125rem; color: var(--text-muted); }
+  /* Sub-header inside a .nav-children block — groups children under a
+     small italic label. Used by Affiliates (People / Performance / Money)
+     and any future parent that benefits from sub-grouping. */
+  .nav-children .nav-subheader {
+    display: block;
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-subtle, var(--text-muted));
+    padding: .55rem .6rem .2rem;
+    font-weight: 600;
+  }
+  .nav-children .nav-subheader:first-child { padding-top: .25rem; }
   .nav-children .nav-link:hover { color: var(--text); }
   .nav-children .nav-link.active { color: var(--text); background: transparent; font-weight: 600; }
   .nav-children .nav-link.active::before { display: none; }
@@ -542,12 +555,17 @@
       <i data-lucide="link" class="h-4 w-4"></i> Affiliates
     </a>
     <div class="nav-children {% if affiliates_prefix == 'affiliates/' %}open{% endif %}">
+      <span class="nav-subheader">People</span>
       <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' %}active{% endif %}">Affiliates list</a>
       <a href="/dashboard/apps/affiliates/programs/" class="nav-link {% if active_apps_slug == 'affiliates/programs' %}active{% endif %}">Programs</a>
+
+      <span class="nav-subheader">Performance</span>
       <a href="/dashboard/apps/affiliates/links/" class="nav-link {% if active_apps_slug == 'affiliates/links' %}active{% endif %}">Links</a>
       <a href="/dashboard/apps/affiliates/conversions/" class="nav-link {% if active_apps_slug == 'affiliates/conversions' %}active{% endif %}">Conversions</a>
-      <a href="/dashboard/apps/affiliates/payouts/" class="nav-link {% if active_apps_slug == 'affiliates/payouts' %}active{% endif %}">Payouts</a>
       <a href="/dashboard/apps/affiliates/analytics/" class="nav-link {% if active_apps_slug == 'affiliates/analytics' %}active{% endif %}">Analytics</a>
+
+      <span class="nav-subheader">Money</span>
+      <a href="/dashboard/apps/affiliates/payouts/" class="nav-link {% if active_apps_slug == 'affiliates/payouts' %}active{% endif %}">Payouts</a>
       <a href="/dashboard/settings/affiliates/" class="nav-link">Settings</a>
     </div>
     {% endwith %}
