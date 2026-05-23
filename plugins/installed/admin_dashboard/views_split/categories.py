@@ -69,4 +69,9 @@ def categories_list(request: HttpRequest) -> HttpResponse:
         'total_active': total_active,
         'total_inactive': total_inactive,
         'active_nav': 'categories',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Products',  'url': '/dashboard/products/'},
+            {'label': 'Categories'},
+        ],
     })

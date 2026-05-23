@@ -75,6 +75,10 @@ def products_list(request: HttpRequest) -> HttpResponse:
         'status_counts': status_counts,
         'search': search,
         'active_nav': 'products',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Products'},
+        ],
         **paging_ctx,
     })
 
@@ -109,6 +113,11 @@ def product_new(request: HttpRequest) -> HttpResponse:
         'categories': categories,
         'vendors': vendors,
         'active_nav': 'products',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Products',  'url': '/dashboard/products/'},
+            {'label': 'New product'},
+        ],
     })
 
 
@@ -153,6 +162,11 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         'front_image': front_image,
         'back_image': back_image,
         'active_nav': 'products',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Products',  'url': '/dashboard/products/'},
+            {'label': product.name[:60]},
+        ],
     })
 
 

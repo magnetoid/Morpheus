@@ -91,6 +91,10 @@ def orders_list(request: HttpRequest) -> HttpResponse:
         'draft_count': draft_count,
         'drafts_url': drafts_url,
         'active_nav': 'orders',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Orders'},
+        ],
         **paging_ctx,
     })
 
@@ -151,6 +155,11 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         'status_steps': status_steps,
         'fulfillments': fulfillments,
         'active_nav': 'orders',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Orders',    'url': '/dashboard/orders/'},
+            {'label': f'#{order.order_number}' if order else order_number},
+        ],
     })
 
 

@@ -4,11 +4,7 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-4">
-  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:orders' %}" class="hover:underline">Orders</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span class="font-medium text-[color:var(--text)]">#{{ order.order_number|default:"—" }}</span>
-  </div>
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
 
   {% if order %}
   <div class="flex items-center justify-between flex-wrap gap-3">

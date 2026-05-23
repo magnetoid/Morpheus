@@ -136,6 +136,10 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         'admin_filter': admin_filter,
         'admin_count': admin_count,
         'active_nav': 'admins' if admin_filter else 'customers',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Users'},
+        ],
         **paging_ctx,
     })
 
