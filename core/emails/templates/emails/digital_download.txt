@@ -2,7 +2,7 @@ Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
 
 Your downloads are ready for order #{{ order.order_number }}.
 
-{% for link in links %}- {{ link.product_name }}
+{% for link in links %}- {{ link.product_name }}{% if link.variant_name %} — {{ link.variant_name }}{% endif %}{% if link.format_hint %} ({{ link.format_hint }}){% endif %}
   {{ link.url }}
   Expires {{ link.expires_at|date:"F j, Y H:i" }} · {{ link.max_downloads }} downloads max
 {% endfor %}

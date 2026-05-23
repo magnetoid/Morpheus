@@ -89,15 +89,28 @@ def on_digital_tokens_issued(order: Any = None, tokens: Any = None, **kwargs: An
         base = _site_base_url() or ''
     except Exception:  # noqa: BLE001
         pass
-    download_links = [
-        {
+    import os
+
+    def _row(t):
+        variant = getattr(t.order_item, 'variant', None) if t.order_item_id else None
+        # Pick the file we'll actually serve, so the format hint reflects
+        # the real download (variant-level file wins when present).
+        digital = (
+            getattr(variant, 'digital_file', None) if variant else None
+        ) or getattr(t.product, 'digital_file', None)
+        ext = ''
+        if digital and getattr(digital, 'name', ''):
+            ext = os.path.splitext(digital.name)[1].lstrip('.').upper()
+        return {
             'product_name': t.product.name,
+            'variant_name': getattr(variant, 'name', '') if variant else '',
+            'format_hint': ext,  # 'PDF' / 'EPUB' / 'MP3' / ''
             'url': f'{base.rstrip("/")}/digital/download/{t.token}/',
             'expires_at': t.expires_at,
             'max_downloads': t.max_downloads,
         }
-        for t in tokens
-    ]
+
+    download_links = [_row(t) for t in tokens]
     _send(
         template_base='emails/digital_download',
         subject=f'Your downloads — order #{order.order_number}',
