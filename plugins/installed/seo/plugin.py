@@ -88,6 +88,41 @@ class SeoPlugin(Plugin):
             apply_internal_links_tool,
         ]
 
+    def contribute_skills(self) -> list:
+        """The SEO skill — Linda's Worker opts in via skills=['seo'] when
+        the merchant asks about meta tags, redirects, 404s, or sitemap.
+        The prelude tells the Worker the proper audit-then-propose-then-apply
+        workflow, which would otherwise leak across every conversation.
+        """
+        from core.agents import Skill
+        from plugins.installed.seo.agent_tools import (
+            apply_internal_links_tool, audit_all_tool, audit_product_tool,
+            bulk_set_meta_tool, create_redirect_tool, get_meta_tool,
+            list_404s_tool, set_meta_tool, set_site_settings_tool,
+        )
+        return [Skill(
+            name='seo',
+            label='SEO Management',
+            description='Audit + tune SEO across the catalog. Meta tags, redirects, 404 cleanup.',
+            tools=(
+                get_meta_tool, set_meta_tool,
+                audit_product_tool, audit_all_tool,
+                list_404s_tool, create_redirect_tool,
+                bulk_set_meta_tool, set_site_settings_tool,
+                apply_internal_links_tool,
+            ),
+            system_prompt_prelude=(
+                'You are working on SEO for this store. Standard workflow:\n'
+                '  1. Audit first — call seo.audit_product or seo.audit_all to '
+                'find what is broken. Never assume.\n'
+                '  2. Propose specific edits with before/after values.\n'
+                '  3. Apply with confirmed=true only after the merchant agrees.\n'
+                'Avoid keyword stuffing; favour natural prose that matches the '
+                'store voice. For 404s, prefer a 301 redirect to a relevant '
+                'live URL over a generic homepage redirect.'
+            ),
+        )]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(

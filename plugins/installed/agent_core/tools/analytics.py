@@ -56,9 +56,11 @@ def top_products_tool(*, days: int = 30, limit: int = 10) -> ToolResult:
     days = max(1, min(int(days or 30), 365))
     limit = max(1, min(int(limit or 10), 25))
     since = timezone.now() - timedelta(days=days)
+    # Order's timestamp field is `placed_at`, not `created_at`. The previous
+    # filter raised FieldError on every call — fixed 2026-05-23.
     rows = (
         OrderItem.objects
-        .filter(order__created_at__gte=since, product__isnull=False)
+        .filter(order__placed_at__gte=since, product__isnull=False)
         .values('product__name', 'product__slug')
         .annotate(units=Sum('quantity'))
         .order_by('-units')[:limit]

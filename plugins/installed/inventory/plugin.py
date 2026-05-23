@@ -74,3 +74,31 @@ class InventoryPlugin(Plugin):
             low_stock_report_tool, adjust_stock_tool,
             list_back_in_stock_tool, schedule_price_change_tool,
         ]
+
+    def contribute_skills(self) -> list:
+        """The Inventory skill — opt in via skills=['inventory'] for stock
+        queries, restocks, and scheduled price changes."""
+        from core.agents import Skill
+        from plugins.installed.inventory.agent_tools import (
+            adjust_stock_tool, list_back_in_stock_tool,
+            low_stock_report_tool, schedule_price_change_tool,
+        )
+        return [Skill(
+            name='inventory',
+            label='Inventory Operations',
+            description='Stock levels, restocks, scheduled price changes.',
+            tools=(
+                low_stock_report_tool, adjust_stock_tool,
+                list_back_in_stock_tool, schedule_price_change_tool,
+            ),
+            system_prompt_prelude=(
+                'You are working on inventory. Standard workflow:\n'
+                '  • Read first with low_stock_report to see what needs '
+                'attention; never assume stock state.\n'
+                '  • Be extremely careful with adjust_stock — always confirm '
+                'the SKU and quantity with the merchant before applying. A '
+                'wrong adjust_stock corrupts the audit trail.\n'
+                '  • Scheduled price changes are reversible — surface the '
+                'effective date so the merchant can spot conflicts.'
+            ),
+        )]

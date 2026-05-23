@@ -382,18 +382,40 @@ class ProductImage(models.Model):
             )
 
     def delete(self, *args, **kwargs):
-        # Django's default delete removes the DB row but leaves the
-        # underlying file in MEDIA_ROOT — that's a slow file-system leak
-        # whenever the admin replaces a cover image. Strip the file (and
-        # its WebP sibling) first; ignore missing-file errors so the
-        # delete is idempotent across re-uploads + restored backups.
-        for field in (self.image, self.webp_image):
-            if field and field.name:
-                try:
-                    field.delete(save=False)
-                except (FileNotFoundError, OSError):
-                    pass
+        # Strip files before the row goes away. The pre_delete signal
+        # registered below covers the cascade / queryset-delete paths
+        # that bypass this method.
+        _strip_image_files(self)
         return super().delete(*args, **kwargs)
+
+
+def _strip_image_files(instance):
+    """Remove the underlying media files for a ProductImage.
+
+    Idempotent on missing files. Called from both the model's delete()
+    override (explicit instance.delete()) and the pre_delete signal
+    handler (cascade + queryset.delete()) so files don't leak whichever
+    code path triggers the removal.
+    """
+    for field in (instance.image, instance.webp_image):
+        if field and field.name:
+            try:
+                field.delete(save=False)
+            except (FileNotFoundError, OSError):
+                pass
+
+
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
+
+
+@receiver(pre_delete, sender='catalog.ProductImage')
+def _productimage_pre_delete(sender, instance, **kwargs):
+    """Cascade/queryset.delete() bypass Model.delete() — so they leak
+    files. The pre_delete signal DOES fire for every instance, even via
+    cascade, so we hook the file-strip here.
+    """
+    _strip_image_files(instance)
 
 
 class ProductVariant(models.Model):

@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook for Morpheus.
+#
+# Enables: git config core.hooksPath .githooks
+#
+# Each check below has been added because the same bug shipped MORE
+# than once. Don't add speculative checks here — only promote rules
+# from CLAUDE.md after they've been violated twice.
+#
+# Override (use sparingly): SKIP_HOOK=1 git commit ...
+#
+set -euo pipefail
+
+if [[ "${SKIP_HOOK:-}" == "1" ]]; then
+  echo "[pre-commit] SKIP_HOOK=1 set — skipping all checks." >&2
+  exit 0
+fi
+
+red()   { printf '\033[31m%s\033[0m\n' "$*"; }
+green() { printf '\033[32m%s\033[0m\n' "$*"; }
+
+errors=0
+
+# Files staged for this commit (added / copied / modified — no deletions).
+# Use `while read` so this works on macOS's default bash 3.2 too.
+staged=()
+while IFS= read -r line; do
+  staged+=("$line")
+done < <(git diff --cached --name-only --diff-filter=ACM)
+if [[ ${#staged[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+# ── Check 1: multi-line {# ... #} comments in .html files ───────────────────
+#
+# Django's {# ... #} is single-line only. Multi-line forms render
+# everything past the first newline as visible text. Shipped 8 times.
+# Fix: rewrite as {% comment %}...{% endcomment %}.
+#
+html_files=()
+for f in "${staged[@]}"; do
+  [[ "$f" == *.html ]] && [[ -f "$f" ]] && html_files+=("$f")
+done
+
+if [[ ${#html_files[@]} -gt 0 ]]; then
+  leaks=$(python3 - "${html_files[@]}" <<'PY'
+import re, sys
+COMMENT = re.compile(r'\{#[\s\S]*?#\}')
+bad = []
+for path in sys.argv[1:]:
+    try:
+        text = open(path, encoding='utf-8', errors='replace').read()
+    except OSError:
+        continue
+    for m in COMMENT.finditer(text):
+        if '\n' in m.group(0):
+            line = text[:m.start()].count('\n') + 1
+            bad.append(f'{path}:{line}')
+for b in bad:
+    print(b)
+PY
+  )
+  if [[ -n "$leaks" ]]; then
+    red "[pre-commit] FAIL — multi-line {# … #} Django comments found (shipped 8 times)."
+    red "Use {% comment %}…{% endcomment %} for multi-line. Locations:"
+    echo "$leaks"
+    errors=$((errors + 1))
+  fi
+fi
+
+# ── Check 2: py_compile on staged Python files ──────────────────────────────
+#
+# Catches syntax errors before they reach prod. Every push deploys
+# straight to dotbooks.store, so a SyntaxError = 502 for everyone.
+#
+py_files=()
+for f in "${staged[@]}"; do
+  [[ "$f" == *.py ]] && [[ -f "$f" ]] && py_files+=("$f")
+done
+
+if [[ ${#py_files[@]} -gt 0 ]]; then
+  if ! python3 -m py_compile "${py_files[@]}" 2>/tmp/morpheus-pyc.err; then
+    red "[pre-commit] FAIL — Python syntax errors in staged files:"
+    cat /tmp/morpheus-pyc.err
+    errors=$((errors + 1))
+  fi
+fi
+
+# ── Check 3: new MorpheusAgent subclasses outside core/agents/builtin/ ──────
+#
+# Post-pivot (2026-05-23): exactly ONE generic Worker. Specialization
+# happens via Skills, not subclasses. Soft-warns so an exception is
+# possible, but breaks the commit on the default path.
+#
+new_agents=$(git diff --cached --diff-filter=AM -G'class +\w+ *\(MorpheusAgent\)' --name-only \
+  -- '*.py' ':!core/agents/builtin/*' ':!**/test_*.py' ':!**/tests/*.py' || true)
+if [[ -n "$new_agents" ]]; then
+  changed_subclass=$(echo "$new_agents" | while read -r f; do
+    if [[ -f "$f" ]] && git diff --cached "$f" | grep -qE '^\+\s*class +\w+ *\(MorpheusAgent\)'; then
+      echo "$f"
+    fi
+  done)
+  if [[ -n "$changed_subclass" ]]; then
+    red "[pre-commit] FAIL — new MorpheusAgent subclass detected outside core/agents/builtin/."
+    red "Morpheus has ONE Worker; specialization should be a Skill, not a subclass."
+    red "(see [[feedback_generic_agents]] memory + docs/plans/agent-core-into-core.md)"
+    echo "$changed_subclass"
+    red "If you really need an agent class, set SKIP_HOOK=1 — but reconsider first."
+    errors=$((errors + 1))
+  fi
+fi
+
+if [[ $errors -gt 0 ]]; then
+  red ""
+  red "[pre-commit] $errors check(s) failed. Fix the above or set SKIP_HOOK=1 to bypass."
+  exit 1
+fi
+
+green "[pre-commit] all checks passed."
+exit 0

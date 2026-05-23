@@ -132,6 +132,36 @@ class CrmPlugin(Plugin):
             list_open_tasks_tool, advance_deal_tool, customer_timeline_tool,
         ]
 
+    def contribute_skills(self) -> list:
+        """The CRM skill — opt in via skills=['crm'] for sales-pipeline work.
+
+        Once the account_manager specialist is collapsed (planned), this is
+        the durable home of its prompt — same capabilities, runtime composition.
+        """
+        from core.agents import Skill
+        from plugins.installed.crm.agent_tools import (
+            advance_deal_tool, create_lead_tool, customer_timeline_tool,
+            find_leads_tool, list_open_tasks_tool, log_interaction_tool,
+        )
+        return [Skill(
+            name='crm',
+            label='CRM Pipeline',
+            description='Lead management, deal pipeline, customer timeline.',
+            tools=(
+                find_leads_tool, create_lead_tool, log_interaction_tool,
+                list_open_tasks_tool, advance_deal_tool, customer_timeline_tool,
+            ),
+            system_prompt_prelude=(
+                'You are working on CRM / sales-pipeline tasks. Always:\n'
+                '  • Search for an existing lead before creating a new one — '
+                'duplicates pollute the pipeline.\n'
+                '  • Confirm before advancing a deal stage; that change is '
+                'visible to the whole team.\n'
+                '  • When logging an interaction, include the channel '
+                '(email/call/meeting) and a one-line outcome.'
+            ),
+        )]
+
     def contribute_agents(self) -> list:
         from plugins.installed.crm.agents import AccountManagerAgent
         return [AccountManagerAgent()]

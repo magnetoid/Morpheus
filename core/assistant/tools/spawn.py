@@ -38,12 +38,20 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 logger = logging.getLogger('morpheus.assistant.spawn')
 
 
-def _execute_worker_run(*, run_id: str, objective: str, context: dict[str, Any]) -> None:
+def _execute_worker_run(
+    *, run_id: str, objective: str, context: dict[str, Any],
+    skills: tuple[str, ...] = (),
+) -> None:
     """Run the Worker agent for a pre-created AgentRun row.
 
     Runs inline (no further threading) — caller is already on a worker
     thread. All exceptions are caught and persisted onto the run row so
     the caller (poll_workers) can surface them.
+
+    If `skills` is non-empty, a fresh Worker instance is constructed with
+    those skill names assigned to `uses_skills` — the system prompt then
+    picks up the relevant skill preludes and the tool list narrows to
+    the skill's tool set ∪ default tools.
     """
     from django.db import DatabaseError
     from django.utils import timezone
@@ -66,6 +74,12 @@ def _execute_worker_run(*, run_id: str, objective: str, context: dict[str, Any])
         run.ended_at = timezone.now()
         run.save(update_fields=['state', 'error', 'ended_at'])
         return
+
+    # Per-job skill narrowing — instantiate a fresh Worker so the
+    # `uses_skills` override doesn't leak across sibling threads.
+    if skills:
+        agent = type(agent)()
+        agent.uses_skills = tuple(skills)
 
     seq = {'i': 0}
 
@@ -126,10 +140,10 @@ def _execute_worker_run(*, run_id: str, objective: str, context: dict[str, Any])
     name='delegate.spawn_workers',
     description=(
         'Fan out N parallel background Workers. Each job carries one focused '
-        'objective. Returns run_ids immediately — use delegate.poll_workers '
-        'or delegate.wait_for_workers to collect results. Prefer this over '
-        'delegate.invoke_agent when you have independent sub-tasks that can '
-        'run concurrently.'
+        'objective and optional `skills` list to opt the Worker into specific '
+        'capability bundles (e.g. ["seo"], ["crm"], ["inventory"]). Returns '
+        'run_ids immediately — use delegate.poll_workers or '
+        'delegate.wait_for_workers to collect results.'
     ),
     scopes=['system.write'],
     schema={
@@ -137,11 +151,16 @@ def _execute_worker_run(*, run_id: str, objective: str, context: dict[str, Any])
         'properties': {
             'jobs': {
                 'type': 'array',
-                'description': 'List of {objective, context?} dicts. Up to 6 per call.',
+                'description': 'List of {objective, skills?, context?} dicts. Up to 6 per call.',
                 'items': {
                     'type': 'object',
                     'properties': {
                         'objective': {'type': 'string'},
+                        'skills': {
+                            'type': 'array',
+                            'items': {'type': 'string'},
+                            'description': 'Skill names to opt into (e.g. ["seo"]). Narrows the system prompt + may narrow tools.',
+                        },
                         'context': {'type': 'object'},
                     },
                     'required': ['objective'],
@@ -175,20 +194,34 @@ def spawn_workers_tool(*, jobs: list[dict[str, Any]]) -> ToolResult:
         ctx = job.get('context') or {}
         if not isinstance(ctx, dict):
             raise ToolError(f'job {i}: context must be an object')
+        raw_skills = job.get('skills') or []
+        if not isinstance(raw_skills, list):
+            raise ToolError(f'job {i}: skills must be an array of strings')
+        skills = tuple(str(s).strip() for s in raw_skills if str(s).strip())
 
         run = AgentRun.objects.create(
             agent_name='worker',
             audience='any',
             user_message=objective[:50_000],
             state='running',
-            metadata={'batch_id': batch_id, 'spawned_by': 'linda'},
+            metadata={
+                'batch_id': batch_id, 'spawned_by': 'linda',
+                'skills': list(skills),
+            },
         )
         run_ids.append(str(run.id))
-        started.append({'run_id': str(run.id), 'objective': objective[:120]})
+        started.append({
+            'run_id': str(run.id),
+            'objective': objective[:120],
+            'skills': list(skills),
+        })
 
         t = threading.Thread(
             target=_execute_worker_run,
-            kwargs={'run_id': str(run.id), 'objective': objective, 'context': ctx},
+            kwargs={
+                'run_id': str(run.id), 'objective': objective,
+                'context': ctx, 'skills': skills,
+            },
             daemon=True,
             name=f'worker-{run.id}',
         )
