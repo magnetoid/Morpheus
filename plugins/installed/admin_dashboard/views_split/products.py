@@ -514,4 +514,175 @@ def products_bulk(request: HttpRequest) -> HttpResponse:
     return redirect('admin_dashboard:products')
 
 
+# ── Content Audit — fill missing short/long descriptions + categorization ─────
+
+
+def _content_audit_queryset():
+    """Return products missing any of: short_description, description, category.
+
+    The query is intentionally not paginated — the merchant wants a clear
+    picture of how much copy work is outstanding. Cap at 500 to stay safe.
+    """
+    from plugins.installed.catalog.models import Product
+    from django.db.models import Q
+
+    return (
+        Product.objects
+        .filter(
+            Q(short_description='') | Q(description='') | Q(category__isnull=True),
+        )
+        .select_related('category')
+        .order_by('status', 'name')
+    )
+
+
+@staff_member_required
+def content_audit(request: HttpRequest) -> HttpResponse:
+    """List every product missing copy or categorization."""
+    from plugins.installed.catalog.models import Category, Product
+
+    qs = _content_audit_queryset()
+    rows = []
+    for p in qs[:500]:
+        rows.append({
+            'product': p,
+            'missing_short': not (p.short_description or '').strip(),
+            'missing_long': not (p.description or '').strip(),
+            'missing_category': p.category_id is None,
+        })
+    summary = {
+        'total': qs.count(),
+        'missing_short': qs.filter(short_description='').count(),
+        'missing_long': qs.filter(description='').count(),
+        'missing_category': qs.filter(category__isnull=True).count(),
+        'product_total': Product.objects.count(),
+    }
+    categories = list(Category.objects.values('id', 'name').order_by('name')[:200])
+    return render(request, 'admin_dashboard/content_audit.html', {
+        'rows': rows,
+        'summary': summary,
+        'categories': categories,
+        'active_nav': 'products',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Products',  'url': '/dashboard/products/'},
+            {'label': 'Content audit'},
+        ],
+    })
+
+
+@staff_member_required
+def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
+    """Generate missing short + long descriptions for ONE product via the LLM.
+
+    Idempotent on fields already populated — only fills what's empty.
+    Category suggestion is best-effort: the LLM returns a name, we map
+    it to an existing Category row (no auto-create — merchants resent
+    category sprawl).
+    """
+    from django.http import JsonResponse
+    from plugins.installed.catalog.models import Category, Product
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+
+    p = get_object_or_404(Product, pk=product_id)
+    fields_updated: list[str] = []
+
+    try:
+        from core.agents.llm import LLMMessage, get_llm_provider
+        provider = get_llm_provider()
+    except Exception as e:  # noqa: BLE001
+        return JsonResponse({'ok': False, 'error': f'llm unavailable: {e}'}, status=502)
+
+    if not (p.short_description or '').strip():
+        try:
+            resp = provider.respond(
+                messages=[
+                    LLMMessage(role='system', content=(
+                        'You are a bookstore copywriter. Write a single '
+                        'sentence (12–25 words) summarising the book. No '
+                        'hype, no spoilers, no marketing adjectives.'
+                    )),
+                    LLMMessage(role='user', content=(
+                        f'Title: {p.name}\n'
+                        f'Existing long description: {(p.description or "")[:600]}'
+                    )),
+                ],
+                tools=None, temperature=0.5, max_tokens=120,
+            )
+            short = (resp.text or '').strip().strip('"').strip()
+            if short:
+                p.short_description = short[:600]
+                fields_updated.append('short_description')
+        except Exception as e:  # noqa: BLE001
+            logger.warning('content_fill: short failed for %s: %s', p.pk, e)
+
+    if not (p.description or '').strip():
+        try:
+            resp = provider.respond(
+                messages=[
+                    LLMMessage(role='system', content=(
+                        'You are a literary but unfussy bookstore copywriter. '
+                        'Write an 80–140 word product description. Avoid spoilers, '
+                        'hype, and generic adjectives. Plain prose, short sentences.'
+                    )),
+                    LLMMessage(role='user', content=(
+                        f'Title: {p.name}\n'
+                        f'Category: {p.category.name if p.category_id else "—"}\n'
+                        f'Existing short: {p.short_description or ""}'
+                    )),
+                ],
+                tools=None, temperature=0.6, max_tokens=400,
+            )
+            long_desc = (resp.text or '').strip()
+            if long_desc:
+                p.description = long_desc[:5000]
+                fields_updated.append('description')
+        except Exception as e:  # noqa: BLE001
+            logger.warning('content_fill: long failed for %s: %s', p.pk, e)
+
+    if p.category_id is None:
+        try:
+            cat_names = list(Category.objects.values_list('name', flat=True)[:200])
+            if cat_names:
+                resp = provider.respond(
+                    messages=[
+                        LLMMessage(role='system', content=(
+                            'Pick the SINGLE best-fit category for this book '
+                            'from the list provided. Reply with EXACTLY the '
+                            'category name and nothing else. If none fit well, '
+                            'reply with the word NONE.'
+                        )),
+                        LLMMessage(role='user', content=(
+                            f'Title: {p.name}\n'
+                            f'Description: {(p.description or p.short_description or "")[:600]}\n\n'
+                            f'Categories:\n- ' + '\n- '.join(cat_names)
+                        )),
+                    ],
+                    tools=None, temperature=0.1, max_tokens=40,
+                )
+                guess = (resp.text or '').strip().strip('"').strip()
+                if guess and guess.upper() != 'NONE':
+                    cat = Category.objects.filter(name__iexact=guess).first()
+                    if cat:
+                        p.category = cat
+                        fields_updated.append('category')
+        except Exception as e:  # noqa: BLE001
+            logger.warning('content_fill: category failed for %s: %s', p.pk, e)
+
+    if fields_updated:
+        fields_updated.append('updated_at')
+        p.save(update_fields=fields_updated)
+
+    return JsonResponse({
+        'ok': True,
+        'product_id': str(p.pk),
+        'updated': [f for f in fields_updated if f != 'updated_at'],
+        'short_description': p.short_description,
+        'description': p.description,
+        'category': p.category.name if p.category_id else '',
+    })
+
+
 

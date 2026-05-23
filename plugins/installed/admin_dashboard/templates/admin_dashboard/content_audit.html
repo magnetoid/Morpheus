@@ -1,0 +1,178 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Content audit · Products · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Content audit</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Products missing a short description, long description, or category.
+        Click <strong>Generate</strong> on a row to fill the gaps via the
+        configured AI provider, or <strong>Fill all</strong> to fan out across
+        the list in parallel.
+      </p>
+    </div>
+    {% if rows %}
+    <button type="button" class="btn btn-primary" data-fill-all>
+      <i data-lucide="sparkles" class="h-4 w-4"></i> Fill all ({{ rows|length }})
+    </button>
+    {% endif %}
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Total products</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.product_total }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Incomplete</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.total }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Missing short</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.missing_short }}</div>
+    </div>
+    <div class="card card-padded">
+      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Missing long / category</div>
+      <div class="text-2xl font-semibold mt-1">{{ summary.missing_long }} / {{ summary.missing_category }}</div>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if rows %}
+    <table class="morph-table morph-table-zebra" id="audit-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Status</th>
+          <th>Missing</th>
+          <th>Result</th>
+          <th class="text-right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr data-product-id="{{ r.product.id }}">
+          <td>
+            <a href="{% url 'admin_dashboard:product_edit' product_id=r.product.id %}" class="font-medium hover:underline">
+              {{ r.product.name }}
+            </a>
+            <div class="text-xs text-[color:var(--text-muted)] font-mono">{{ r.product.slug }}</div>
+          </td>
+          <td>
+            {% if r.product.status == 'active' %}<span class="pill pill-success">Active</span>
+            {% elif r.product.status == 'draft' %}<span class="pill pill-warn">Draft</span>
+            {% else %}<span class="pill pill-neutral">{{ r.product.status|title }}</span>{% endif %}
+          </td>
+          <td class="text-xs">
+            {% if r.missing_short %}<span class="pill pill-neutral" style="margin-right:.25rem;">short</span>{% endif %}
+            {% if r.missing_long %}<span class="pill pill-neutral" style="margin-right:.25rem;">long</span>{% endif %}
+            {% if r.missing_category %}<span class="pill pill-neutral">category</span>{% endif %}
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]" data-result-cell></td>
+          <td class="text-right">
+            <button type="button" class="btn btn-ghost text-xs" data-fill-one>
+              <i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Generate
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">
+      Every product has a short description, long description, and category. Nothing to fix.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function () {
+  function csrf() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value
+        || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  }
+
+  async function fillOne(row) {
+    const id = row.dataset.productId;
+    const btn = row.querySelector('[data-fill-one]');
+    const resultCell = row.querySelector('[data-result-cell]');
+    if (!id || !btn) return false;
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="h-3.5 w-3.5"></i> Working…';
+    if (window.lucide) lucide.createIcons();
+    try {
+      const res = await fetch(`/dashboard/products/${id}/content-fill/`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'X-CSRFToken': csrf(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      const data = await res.json();
+      if (data.ok && data.updated && data.updated.length) {
+        resultCell.innerHTML = '<span style="color: var(--success, #2c8a3e);">✓ filled ' + data.updated.join(', ') + '</span>';
+        btn.innerHTML = '<i data-lucide="check" class="h-3.5 w-3.5"></i> Done';
+        if (window.lucide) lucide.createIcons();
+        return true;
+      }
+      if (data.ok) {
+        resultCell.textContent = 'no changes';
+        btn.innerHTML = '<i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Retry';
+        btn.disabled = false;
+        if (window.lucide) lucide.createIcons();
+        return false;
+      }
+      resultCell.innerHTML = '<span style="color: var(--danger);">error: ' + (data.error || '?') + '</span>';
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Retry';
+      if (window.lucide) lucide.createIcons();
+      return false;
+    } catch (e) {
+      resultCell.innerHTML = '<span style="color: var(--danger);">network error</span>';
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Retry';
+      if (window.lucide) lucide.createIcons();
+      return false;
+    }
+  }
+
+  document.querySelectorAll('[data-fill-one]').forEach(btn => {
+    btn.addEventListener('click', () => fillOne(btn.closest('tr[data-product-id]')));
+  });
+
+  const fillAllBtn = document.querySelector('[data-fill-all]');
+  if (fillAllBtn) {
+    fillAllBtn.addEventListener('click', async () => {
+      if (!confirm('Generate missing content for every product in the list? This calls the AI provider for each row in turn.')) return;
+      fillAllBtn.disabled = true;
+      const original = fillAllBtn.innerHTML;
+      const rows = Array.from(document.querySelectorAll('tr[data-product-id]'));
+      // Process 3 at a time so we don't blast the LLM provider with 500 requests.
+      const CONCURRENCY = 3;
+      let i = 0;
+      let done = 0;
+      async function worker() {
+        while (i < rows.length) {
+          const row = rows[i++];
+          await fillOne(row);
+          done += 1;
+          fillAllBtn.innerHTML = `<i data-lucide="loader" class="h-4 w-4"></i> ${done}/${rows.length}`;
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+      await Promise.all(Array.from({length: CONCURRENCY}, () => worker()));
+      fillAllBtn.innerHTML = `<i data-lucide="check" class="h-4 w-4"></i> Done — reload to see remaining`;
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+})();
+</script>
+
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+{% endblock %}
