@@ -27,9 +27,6 @@ class MarketsPlugin(Plugin):
         )
 
     def contribute_dashboard_pages(self) -> list:
-        # nav='hidden' — Markets now surfaces as a card on the General
-        # settings page (/dashboard/settings/general/). The URL still
-        # resolves so deep-links keep working.
         return [
             DashboardPage(
                 slug='index',
@@ -38,6 +35,6 @@ class MarketsPlugin(Plugin):
                 icon='globe',
                 view='plugins.installed.markets.views.index',
                 order=15,
-                nav='hidden',
+                nav='settings',
             ),
         ]
