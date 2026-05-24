@@ -467,6 +467,12 @@
   // root element and uses element-bound listeners.
   Morph.reinit = function (root) {
     var scope = root || document;
+    // Drain any toasts buffered by the just-swapped fragment. Django's
+    // messages framework pushes onto Morph._toastQueue from a server-rendered
+    // inline <script>; htmx executes that script during swap so the queue
+    // grows, but without this drain the toasts never reach the screen and
+    // every form action looks like a silent no-op to the merchant.
+    drainToasts();
     scope.querySelectorAll('[data-morph-bulk]').forEach(function (el) {
       try { Morph.bulk.init(el); } catch (_) { /* swallow */ }
     });
