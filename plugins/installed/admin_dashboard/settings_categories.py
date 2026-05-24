@@ -29,6 +29,7 @@ SETTINGS_CATEGORIES: list[SettingsCategory] = [
     SettingsCategory('ai',            'AI',            'Provider, model, and agent settings.',                'sparkles'),
     SettingsCategory('marketing',     'Marketing',     'Coupons, email campaigns, CRM defaults.',             'megaphone'),
     SettingsCategory('notifications', 'Notifications', 'Transactional email templates, SMS, and outbound webhooks.', 'bell'),
+    SettingsCategory('caching',       'Caching',       'Page cache, Redis backend, Cloudflare edge — all the layers that make the storefront fast.', 'zap'),
     SettingsCategory('developer',     'Developer',     'API keys, webhooks, agent tokens, observability.',    'code'),
     SettingsCategory('apps',          'Other plugins', 'Settings exposed by individual plugins.',             'puzzle'),
 ]

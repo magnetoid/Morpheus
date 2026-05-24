@@ -225,6 +225,126 @@ _AI_PROVIDERS = [
 
 
 @staff_member_required
+def settings_caching(request: HttpRequest) -> HttpResponse:
+    """Unified caching dashboard — Django cache backend status, Redis
+    stats, storefront page-cache TTL, and Cloudflare zone summary.
+
+    POST actions:
+      action=clear_default  — flush the Django default cache
+      action=save_storefront — persist storefront.page_cache_ttl + asset_max_age
+    """
+    from django.conf import settings as dj_settings
+    from django.core.cache import cache
+    from plugins.installed.admin_dashboard.settings_categories import get_category
+    from plugins.registry import plugin_registry
+
+    if request.method == 'POST':
+        action = request.POST.get('action') or ''
+        if action == 'clear_default':
+            try:
+                cache.clear()
+                messages.success(request, 'Django default cache cleared.')
+            except Exception as e:  # noqa: BLE001
+                messages.error(request, f'Cache clear failed: {e}')
+        elif action == 'save_storefront':
+            sf = plugin_registry.get('storefront')
+            if sf is not None:
+                try:
+                    sf.set_config('page_cache_ttl', int(request.POST.get('page_cache_ttl') or 0))
+                    sf.set_config('asset_max_age_seconds', int(request.POST.get('asset_max_age_seconds') or 0))
+                    sf.set_config('html_cache_control', (request.POST.get('html_cache_control') or '').strip())
+                    messages.success(request, 'Storefront cache settings saved.')
+                except (TypeError, ValueError):
+                    messages.error(request, 'TTL fields must be integers.')
+        elif action == 'ping_redis':
+            pass  # handled below; just refreshes the page
+        return HttpResponseRedirect(request.path)
+
+    # ── Django cache backend status ────────────────────────────────────────
+    default_backend = (dj_settings.CACHES.get('default') or {}).get('BACKEND', '')
+    default_location = (dj_settings.CACHES.get('default') or {}).get('LOCATION', '')
+    cache_alive = False
+    cache_round_trip_ms = None
+    cache_error = ''
+    try:
+        import time
+        sentinel_key = '_morpheus_health_ping'
+        t0 = time.monotonic()
+        cache.set(sentinel_key, 'ok', 5)
+        got = cache.get(sentinel_key)
+        cache_round_trip_ms = int((time.monotonic() - t0) * 1000)
+        cache_alive = (got == 'ok')
+    except Exception as e:  # noqa: BLE001
+        cache_error = f'{type(e).__name__}: {e}'
+
+    # ── Redis INFO (when backend is Redis) ─────────────────────────────────
+    redis_stats: dict = {}
+    if 'redis' in default_backend.lower():
+        try:
+            from django_redis import get_redis_connection
+            conn = get_redis_connection('default')
+            info = conn.info(section='stats')
+            mem = conn.info(section='memory')
+            keyspace = conn.info(section='keyspace')
+            redis_stats = {
+                'used_memory_human': mem.get('used_memory_human', '—'),
+                'connected_clients': info.get('connected_clients', 0),
+                'total_commands': info.get('total_commands_processed', 0),
+                'keyspace_hits': info.get('keyspace_hits', 0),
+                'keyspace_misses': info.get('keyspace_misses', 0),
+                'evicted_keys': info.get('evicted_keys', 0),
+                'expired_keys': info.get('expired_keys', 0),
+                'db0_keys': (keyspace.get('db0') or {}).get('keys', 0) if isinstance(keyspace.get('db0'), dict) else 0,
+            }
+            hits = redis_stats['keyspace_hits']
+            misses = redis_stats['keyspace_misses']
+            redis_stats['hit_ratio'] = round(100 * hits / max(hits + misses, 1), 1)
+        except Exception as e:  # noqa: BLE001
+            redis_stats = {'error': f'{type(e).__name__}: {e}'}
+
+    # ── Storefront cache knobs (stored in PluginConfig) ────────────────────
+    storefront_plugin = plugin_registry.get('storefront')
+    sf_cfg = storefront_plugin.get_config() if storefront_plugin else {}
+    storefront = {
+        'page_cache_ttl': int(sf_cfg.get('page_cache_ttl') or 0),
+        'asset_max_age_seconds': int(sf_cfg.get('asset_max_age_seconds') or 31536000),  # 1 year default
+        'html_cache_control': (sf_cfg.get('html_cache_control') or 'public, max-age=0, s-maxage=300, must-revalidate'),
+    }
+
+    # ── Cloudflare zone summary ────────────────────────────────────────────
+    cf_zones = []
+    cf_account_count = 0
+    try:
+        from plugins.installed.cloudflare.models import (
+            CacheInvalidation, CloudflareAccount, CloudflareZone,
+        )
+        cf_zones = list(CloudflareZone.objects.select_related('account')[:10])
+        cf_account_count = CloudflareAccount.objects.count()
+        recent_purges_count = CacheInvalidation.objects.count()
+    except Exception:  # noqa: BLE001
+        recent_purges_count = 0
+
+    return render(request, 'admin_dashboard/settings_caching.html', {
+        'category': get_category('caching'),
+        'default_backend': default_backend.split('.')[-1] or default_backend,
+        'default_location': default_location,
+        'cache_alive': cache_alive,
+        'cache_round_trip_ms': cache_round_trip_ms,
+        'cache_error': cache_error,
+        'redis_stats': redis_stats,
+        'storefront': storefront,
+        'cf_zones': cf_zones,
+        'cf_account_count': cf_account_count,
+        'recent_purges_count': recent_purges_count,
+        'active_nav': 'settings',
+        'breadcrumb_trail': [
+            {'label': 'Dashboard', 'url': '/dashboard/'},
+            {'label': 'Settings',  'url': '/dashboard/settings/'},
+            {'label': 'Caching'},
+        ],
+    })
+
+
 def settings_ai(request: HttpRequest) -> HttpResponse:
     """Custom AI providers settings page — card per provider.
 
@@ -360,6 +480,8 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
     # buttons rather than a single schema-driven form.
     if category == 'ai':
         return settings_ai(request)
+    if category == 'caching':
+        return settings_caching(request)
 
     cat = get_category(category)
     if cat is None:

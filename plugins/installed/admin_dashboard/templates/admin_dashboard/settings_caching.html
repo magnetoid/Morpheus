@@ -1,0 +1,162 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Caching · Settings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex items-start gap-3">
+    <div class="settings-tile-icon"><i data-lucide="zap" class="h-5 w-5"></i></div>
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Caching</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">All the layers between the merchant and the customer — Django app cache (Redis), storefront page cache, browser asset cache, and Cloudflare edge.</p>
+    </div>
+  </div>
+
+  {# ───── Django default cache backend ──────────────────────────────── #}
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3">
+      <div>
+        <h2 class="font-semibold">Application cache</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">The Django <code>cache</code> object — used by ORM caching, session storage, rate limits, recompute-avoidance.</p>
+      </div>
+      <form method="post" style="margin:0;" data-confirm="Flush the entire Django cache?" data-confirm-cta="Clear" data-confirm-danger>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="clear_default">
+        <button class="btn" type="submit"><i data-lucide="trash-2" class="h-4 w-4"></i> Clear default cache</button>
+      </form>
+    </div>
+    <div class="card-padded grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Backend</div>
+        <div class="font-mono text-sm mt-1">{{ default_backend }}</div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Location</div>
+        <div class="font-mono text-xs mt-1 truncate" title="{{ default_location }}">{{ default_location|default:"—" }}</div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Status</div>
+        <div class="mt-1">
+          {% if cache_alive %}
+            <span class="pill pill-success">✓ alive</span>
+            {% if cache_round_trip_ms %}<span class="text-xs text-[color:var(--text-muted)]">round-trip {{ cache_round_trip_ms }} ms</span>{% endif %}
+          {% else %}
+            <span class="pill pill-warn">⚠ unreachable</span>
+            {% if cache_error %}<div class="text-xs text-[color:var(--danger)] mt-1">{{ cache_error }}</div>{% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if redis_stats %}
+    <div class="card-padded border-t border-[color:var(--border)]">
+      <h3 class="font-medium text-sm mb-2">Redis live stats</h3>
+      {% if redis_stats.error %}
+      <div class="text-sm text-[color:var(--danger)]">{{ redis_stats.error }}</div>
+      {% else %}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div><span class="text-[color:var(--text-muted)]">Memory:</span> <strong>{{ redis_stats.used_memory_human }}</strong></div>
+        <div><span class="text-[color:var(--text-muted)]">Clients:</span> <strong>{{ redis_stats.connected_clients }}</strong></div>
+        <div><span class="text-[color:var(--text-muted)]">Keys (db0):</span> <strong>{{ redis_stats.db0_keys }}</strong></div>
+        <div><span class="text-[color:var(--text-muted)]">Hit ratio:</span> <strong>{{ redis_stats.hit_ratio }}%</strong></div>
+        <div><span class="text-[color:var(--text-muted)]">Hits:</span> {{ redis_stats.keyspace_hits }}</div>
+        <div><span class="text-[color:var(--text-muted)]">Misses:</span> {{ redis_stats.keyspace_misses }}</div>
+        <div><span class="text-[color:var(--text-muted)]">Evicted:</span> {{ redis_stats.evicted_keys }}</div>
+        <div><span class="text-[color:var(--text-muted)]">Expired:</span> {{ redis_stats.expired_keys }}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {# ───── Storefront page cache + browser asset cache ───────────────── #}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_storefront">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Storefront caching</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Tune what Django emits to <strong>Cache-Control</strong> headers — Cloudflare honours these for its edge cache, browsers honour them for local cache. Per-product/category invalidation still happens via the hooks layer.</p>
+    </div>
+    <div class="card-padded grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Page cache TTL (seconds)</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">In-app cache for rendered HTML responses. 0 = off. 300 = 5 min (recommended baseline for non-logged-in customers).</p>
+        <input type="number" name="page_cache_ttl" value="{{ storefront.page_cache_ttl }}" min="0" max="86400" class="input">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Static asset max-age (seconds)</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">Cache-Control <code>max-age</code> emitted for <code>/static/</code> and <code>/media/</code>. 31536000 = 1 year (standard, paired with hashed filenames).</p>
+        <input type="number" name="asset_max_age_seconds" value="{{ storefront.asset_max_age_seconds }}" min="0" class="input">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">HTML Cache-Control header</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">Sent on storefront HTML responses. CF interprets <code>s-maxage</code> for its edge; browsers honour <code>max-age</code>. Recommended: <code>public, max-age=0, s-maxage=300, must-revalidate</code>.</p>
+        <input type="text" name="html_cache_control" value="{{ storefront.html_cache_control }}" class="input">
+      </div>
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save storefront caching</button>
+    </div>
+  </form>
+
+  {# ───── Cloudflare edge cache ─────────────────────────────────────── #}
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3">
+      <div>
+        <h2 class="font-semibold">Cloudflare edge</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Origin-side cache settings, zone analytics, manual purge — managed from the full Cloudflare app.</p>
+      </div>
+      <a href="/dashboard/cloudflare/" class="btn btn-primary"><i data-lucide="cloud" class="h-4 w-4"></i> Open Cloudflare</a>
+    </div>
+    <div class="card-padded grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Accounts connected</div>
+        <div class="text-2xl font-semibold mt-1">{{ cf_account_count }}</div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Zones synced</div>
+        <div class="text-2xl font-semibold mt-1">{{ cf_zones|length }}</div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Lifetime purges</div>
+        <div class="text-2xl font-semibold mt-1">{{ recent_purges_count }}</div>
+      </div>
+    </div>
+    {% if cf_zones %}
+    <div class="card-padded border-t border-[color:var(--border)]">
+      <h3 class="font-medium text-sm mb-2">Synced zones</h3>
+      <div class="text-sm space-y-1">
+        {% for z in cf_zones %}
+        <div class="flex items-center justify-between gap-2">
+          <a href="/dashboard/cloudflare/zones/{{ z.id }}/" class="hover:underline">{{ z.domain }}</a>
+          <span class="text-xs text-[color:var(--text-muted)]">{% if z.last_purge_at %}last purge {{ z.last_purge_at|date:"Y-m-d H:i" }}{% else %}no purges yet{% endif %}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card-padded border-t border-[color:var(--border)] text-sm text-[color:var(--text-muted)]">
+      No Cloudflare account configured yet.
+      <a href="/dashboard/cloudflare/" class="underline">Add one</a> to enable edge caching + auto-purge on product updates.
+    </div>
+    {% endif %}
+  </div>
+
+  {# ───── Headless storefront note ──────────────────────────────────── #}
+  <div class="card card-padded" style="background:var(--surface-2);">
+    <h2 class="font-semibold mb-2">Works with a headless storefront?</h2>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Yes. The three layers operate independently:
+    </p>
+    <ul class="text-sm mt-2 space-y-1 text-[color:var(--text-muted)]" style="list-style:disc;padding-left:1.25rem;">
+      <li><strong>Cloudflare edge</strong> sits in front of HTTP regardless of what serves the response — Django, Next.js, Nuxt, anything. It caches the response by URL + Vary headers. The <code>Cache-Control</code> headers above (<code>s-maxage</code>) drive it.</li>
+      <li><strong>Application cache (Redis)</strong> is used by GraphQL resolvers, ORM, computed prices — the headless frontend benefits because every query Linda or the headless storefront sends through <code>/graphql/</code> hits this cache first.</li>
+      <li><strong>Storefront page cache</strong> only applies to Django-rendered HTML pages (the dot_books theme). In a headless setup these views aren't served; the setting is harmless if unused.</li>
+    </ul>
+    <p class="text-sm text-[color:var(--text-muted)] mt-2">
+      <strong>One thing to add for a real headless stack:</strong> emit explicit <code>Cache-Control: public, s-maxage=N</code> headers on your GraphQL responses (Strawberry hook) so CF caches identical queries at the edge. Currently GraphQL responses are uncached by default. Want me to wire that?
+    </p>
+  </div>
+</div>
+{% endblock %}
