@@ -376,12 +376,13 @@
     })();
     </script>
 
-    <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
+    {# Pricing card — hidden on Variable (per-variant pricing); parent price auto-set to 0 by the form. #}
+    <div class="card card-padded space-y-3" data-pt-show="simple,digital,bundle" id="pricing-card">
       <h2 class="font-semibold text-sm">Pricing</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">Price</label>
-          <input type="number" step="0.01" min="0" name="price" class="input" required value="{{ form.price.value|default:'' }}">
+          <input type="number" step="0.01" min="0" name="price" class="input" value="{{ form.price.value|default:'' }}">
           {% if form.price.errors %}<p class="field-error">{{ form.price.errors.0 }}</p>{% endif %}
         </div>
         <div>
@@ -396,11 +397,227 @@
     </div>
 
     {% comment %}
+    Variants — shown only on Variable / Bundle. Each variant can
+    independently be physical, digital, or virtual; the parent
+    product's price/inventory/shipping fields above are hidden
+    because variants override them at the data level. Requires a
+    saved Product, so wrapped in the {% templatetag openblock %} if product {% templatetag closeblock %} below.
+    {% endcomment %}
+    {% if product %}
+    <div class="card" data-pt-show="variable,bundle" id="variants-card">
+      <div class="card-padded">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="font-semibold text-sm">Variants</h2>
+            <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+              Variants can be <strong>physical</strong>, <strong>digital</strong>, or <strong>virtual</strong> —
+              each sets its own price, SKU, weight, and fulfillment.
+            </p>
+          </div>
+          <button type="button" class="btn"
+                  onclick="document.getElementById('variant-new-modal').showModal()">
+            <i data-lucide="plus" class="h-4 w-4"></i> Add variant
+          </button>
+        </div>
+      </div>
+
+      {% if variants %}
+      <table class="morph-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>SKU</th>
+            <th class="text-right">Price</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in variants %}
+          <tr data-variant-id="{{ v.id }}">
+            <td>
+              <button type="button" class="font-medium hover:underline"
+                      onclick="document.getElementById('variant-edit-{{ v.id }}').showModal()">{{ v.name }}</button>
+            </td>
+            <td class="text-[color:var(--text-muted)]"><code>{{ v.sku }}</code></td>
+            <td class="text-right">{{ v.effective_price|default:"—" }}</td>
+            <td>
+              {% if v.variant_type == 'digital' %}<span class="pill pill-info">Digital</span>
+              {% elif v.variant_type == 'virtual' %}<span class="pill pill-neutral">Virtual</span>
+              {% else %}<span class="pill pill-neutral">Physical</span>{% endif %}
+            </td>
+            <td>
+              {% if v.is_active %}<span class="pill pill-success">Active</span>
+              {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+            </td>
+            <td class="text-right">
+              <button type="button" class="btn btn-ghost p-1.5" title="Edit variant"
+                      onclick="document.getElementById('variant-edit-{{ v.id }}').showModal()">
+                <i data-lucide="pencil" class="h-4 w-4"></i>
+              </button>
+              <form method="post" action="{% url 'admin_dashboard:variant_delete' product_id=product.id variant_id=v.id %}"
+                    data-confirm="Delete variant '{{ v.name|escapejs }}'?" data-confirm-cta="Delete" data-confirm-danger
+                    style="display:inline-block; margin:0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost p-1.5" title="Delete variant">
+                  <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">
+        No variants yet. Click <strong>Add variant</strong> above to create one.
+      </div>
+      {% endif %}
+
+      {# Per-variant edit modals — one <dialog> per row, server-rendered with values; Cancel discards. #}
+      {% for v in variants %}
+      <dialog id="variant-edit-{{ v.id }}" class="morph-modal" data-variant-id="{{ v.id }}">
+        <div class="morph-modal__head">
+          <h3 class="font-semibold text-sm">Edit variant — {{ v.name }}</h3>
+          <button type="button" class="btn btn-ghost p-1" aria-label="Close"
+                  onclick="this.closest('dialog').close()">
+            <i data-lucide="x" class="h-4 w-4"></i>
+          </button>
+        </div>
+        <form method="post" enctype="multipart/form-data"
+              action="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}"
+              class="morph-modal__body grid grid-cols-1 md:grid-cols-12 gap-3">
+          {% csrf_token %}
+          <div class="md:col-span-8">
+            <label class="block text-xs font-medium mb-1">Name *</label>
+            <input type="text" name="name" value="{{ v.name }}" required class="input">
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">SKU *</label>
+            <input type="text" name="sku" value="{{ v.sku }}" required class="input">
+          </div>
+
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">Type</label>
+            <select name="variant_type" class="input"
+                    onchange="
+                      var f = this.closest('form');
+                      f.querySelector('[data-digital-only]').hidden  = this.value !== 'digital';
+                      f.querySelector('[data-physical-only]').hidden = this.value !== 'physical';
+                    ">
+              <option value="physical" {% if v.variant_type == 'physical' %}selected{% endif %}>Physical — ships</option>
+              <option value="digital"  {% if v.variant_type == 'digital'  %}selected{% endif %}>Digital — download</option>
+              <option value="virtual"  {% if v.variant_type == 'virtual'  %}selected{% endif %}>Virtual — no shipment</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">Price</label>
+            <input type="number" step="0.01" min="0" name="price" value="{% if v.price %}{{ v.price.amount }}{% endif %}" class="input">
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">Compare-at</label>
+            <input type="number" step="0.01" min="0" name="compare_at_price" value="{% if v.compare_at_price %}{{ v.compare_at_price.amount }}{% endif %}" class="input">
+          </div>
+
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">Cost</label>
+            <input type="number" step="0.01" min="0" name="cost_price" value="{% if v.cost_price %}{{ v.cost_price.amount }}{% endif %}" class="input">
+          </div>
+          <div class="md:col-span-4" data-physical-only {% if v.variant_type != 'physical' %}hidden{% endif %}>
+            <label class="block text-xs font-medium mb-1">Weight</label>
+            <input type="number" step="0.001" min="0" name="weight" value="{{ v.weight|default:'' }}" class="input">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium mb-1">Sort order</label>
+            <input type="number" min="0" name="sort_order" value="{{ v.sort_order|default:'0' }}" class="input">
+          </div>
+          <div class="md:col-span-2 flex items-end pb-2">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" name="is_active" {% if v.is_active %}checked{% endif %}> Active
+            </label>
+          </div>
+
+          <div class="md:col-span-12" data-digital-only {% if v.variant_type != 'digital' %}hidden{% endif %}>
+            <label class="block text-xs font-medium mb-1">Digital file (PDF / EPUB / MP3)</label>
+            {% if v.digital_file %}
+            <div class="text-xs text-[color:var(--text-muted)] mb-1">
+              Current: <a href="{{ v.digital_file.url }}" target="_blank" rel="noopener" class="underline">{{ v.digital_file.name }}</a>
+              <label class="inline-flex items-center gap-1 ml-2">
+                <input type="checkbox" name="digital_file_clear"> Remove
+              </label>
+            </div>
+            {% endif %}
+            <input type="file" name="digital_file" class="input" style="padding:.4rem .55rem;">
+          </div>
+
+          <div class="md:col-span-12 morph-modal__foot">
+            <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save variant</button>
+          </div>
+        </form>
+      </dialog>
+      {% endfor %}
+
+      {# New-variant modal — opened by the Add variant button; minimal fields, edit-after-create to fill type-specific ones. #}
+      <dialog id="variant-new-modal" class="morph-modal">
+        <div class="morph-modal__head">
+          <h3 class="font-semibold text-sm">Add a new variant</h3>
+          <button type="button" class="btn btn-ghost p-1" aria-label="Close"
+                  onclick="this.closest('dialog').close()">
+            <i data-lucide="x" class="h-4 w-4"></i>
+          </button>
+        </div>
+        <form method="post" action="{% url 'admin_dashboard:variant_new' product_id=product.id %}"
+              class="morph-modal__body grid grid-cols-1 md:grid-cols-12 gap-3">
+          {% csrf_token %}
+          <div class="md:col-span-8">
+            <label class="block text-xs font-medium mb-1">Name *</label>
+            <input type="text" name="name" required class="input" placeholder="e.g. Hardcover · Signed · Red XL">
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">SKU *</label>
+            <input type="text" name="sku" required class="input" placeholder="auto-uppercase">
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">Type</label>
+            <select name="variant_type" class="input">
+              <option value="physical" selected>Physical — ships</option>
+              <option value="digital">Digital — download</option>
+              <option value="virtual">Virtual — no shipment</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">Price</label>
+            <input type="number" step="0.01" min="0" name="price" class="input">
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium mb-1">Compare-at</label>
+            <input type="number" step="0.01" min="0" name="compare_at_price" class="input">
+          </div>
+          <div class="md:col-span-12 flex items-center gap-2">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" name="is_active" checked> Active
+            </label>
+          </div>
+
+          <div class="md:col-span-12 morph-modal__foot">
+            <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Create variant</button>
+          </div>
+        </form>
+      </dialog>
+    </div>
+
+    {% endif %}
+
+    {% comment %}
     Inventory & shipping — full section visible for physical products
     (simple, variable, bundle). For digital we render a slim "Delivery"
     card below instead, since weight + shipping don't apply.
     {% endcomment %}
-    <div class="card card-padded space-y-3" data-pt-show="simple,variable,bundle">
+    {# Inventory & shipping — per-variant on Variable products, so the parent card is hidden when product_type=variable. #}
+    <div class="card card-padded space-y-3" data-pt-show="simple,bundle">
       <h2 class="font-semibold text-sm">Inventory &amp; shipping</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
@@ -945,202 +1162,7 @@
   </div>
   </div>{% comment %}/legacy-hidden-wrapper closing the videos card{% endcomment %}
 
-  <div class="card" data-pt-show="variable,bundle">
-    <div class="card-padded">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="font-semibold text-sm">Variants</h2>
-          <p class="text-xs text-[color:var(--text-muted)]">Specific purchasable versions (e.g. size, color). Edit inline below — no navigation required.</p>
-        </div>
-        <button type="button" class="btn" onclick="document.getElementById('variant-new-row').open=true; document.querySelector('#variant-new-row input[name=\'name\']').focus();">
-          <i data-lucide="plus" class="h-4 w-4"></i> Add variant
-        </button>
-      </div>
-    </div>
-
-    {% if variants %}
-    <table class="morph-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>SKU</th>
-          <th class="text-right">Price</th>
-          <th>Status</th>
-          <th class="text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for v in variants %}
-        {# Two rows per variant: the always-visible summary, and the inline edit form (hidden until expanded). #}
-        <tr data-variant-id="{{ v.id }}">
-          <td>
-            <button type="button" class="font-medium hover:underline" onclick="this.closest('tr').nextElementSibling.classList.toggle('inline-edit-open')">{{ v.name }}</button>
-          </td>
-          <td class="text-[color:var(--text-muted)]"><code>{{ v.sku }}</code></td>
-          <td class="text-right">{{ v.effective_price|default:"—" }}</td>
-          <td>
-            {% if v.is_active %}<span class="pill pill-success">Active</span>
-            {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
-          </td>
-          <td class="text-right">
-            <button type="button" class="btn btn-ghost p-1.5" title="Edit inline"
-                    onclick="this.closest('tr').nextElementSibling.classList.toggle('inline-edit-open')">
-              <i data-lucide="pencil" class="h-4 w-4"></i>
-            </button>
-            <form method="post" action="{% url 'admin_dashboard:variant_delete' product_id=product.id variant_id=v.id %}"
-                  data-confirm="Delete variant '{{ v.name|escapejs }}'?" data-confirm-cta="Delete" data-confirm-danger
-                  style="display:inline-block; margin:0;">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-ghost p-1.5" title="Delete">
-                <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
-              </button>
-            </form>
-          </td>
-        </tr>
-        <tr class="inline-edit-row" data-variant-id="{{ v.id }}">
-          <td colspan="5" style="padding: 0;">
-            <div class="inline-edit-wrap" style="background: var(--surface-2); padding: 1rem 1.25rem; border-top: 1px dashed var(--border);">
-              <form method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}"
-                    class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end"
-                    onsubmit="try { sessionStorage.setItem('morph:lastEditedVariant', '{{ v.id }}'); } catch (_) {}">
-                {% csrf_token %}
-                <div class="md:col-span-4">
-                  <label class="block text-xs font-medium mb-1">Name</label>
-                  <input type="text" name="name" value="{{ v.name }}" required class="input">
-                </div>
-                <div class="md:col-span-3">
-                  <label class="block text-xs font-medium mb-1">SKU</label>
-                  <input type="text" name="sku" value="{{ v.sku }}" required class="input">
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-medium mb-1">Price</label>
-                  <input type="number" step="0.01" min="0" name="price" value="{% if v.price %}{{ v.price.amount }}{% endif %}" class="input">
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-medium mb-1">Compare-at</label>
-                  <input type="number" step="0.01" min="0" name="compare_at_price" value="{% if v.compare_at_price %}{{ v.compare_at_price.amount }}{% endif %}" class="input">
-                </div>
-                <div class="md:col-span-1 flex items-center pt-5">
-                  <label class="inline-flex items-center gap-1 text-xs">
-                    <input type="checkbox" name="is_active" {% if v.is_active %}checked{% endif %}> Active
-                  </label>
-                </div>
-                <div class="md:col-span-3">
-                  <label class="block text-xs font-medium mb-1">Type</label>
-                  <select name="variant_type" class="input"
-                          onchange="this.closest('form').querySelector('[data-digital-only]').hidden = this.value !== 'digital'">
-                    <option value="physical" {% if v.variant_type == 'physical' %}selected{% endif %}>Physical — ships</option>
-                    <option value="digital"  {% if v.variant_type == 'digital'  %}selected{% endif %}>Digital — download</option>
-                    <option value="virtual"  {% if v.variant_type == 'virtual'  %}selected{% endif %}>Virtual — no shipment</option>
-                  </select>
-                </div>
-                <div class="md:col-span-3">
-                  <label class="block text-xs font-medium mb-1">Cost</label>
-                  <input type="number" step="0.01" min="0" name="cost_price" value="{% if v.cost_price %}{{ v.cost_price.amount }}{% endif %}" class="input">
-                </div>
-                <div class="md:col-span-6" data-digital-only {% if v.variant_type != 'digital' %}hidden{% endif %}>
-                  <label class="block text-xs font-medium mb-1">Digital file (PDF / EPUB / MP3)</label>
-                  {% if v.digital_file %}
-                  <div class="text-xs text-[color:var(--text-muted)] mb-1">
-                    Current: <a href="{{ v.digital_file.url }}" target="_blank" rel="noopener" class="underline">{{ v.digital_file.name }}</a>
-                    <label class="inline-flex items-center gap-1 ml-2">
-                      <input type="checkbox" name="digital_file_clear"> Remove
-                    </label>
-                  </div>
-                  {% endif %}
-                  <input type="file" name="digital_file" class="input" style="padding:.4rem .55rem;">
-                </div>
-                <div class="md:col-span-3">
-                  <label class="block text-xs font-medium mb-1">Weight</label>
-                  <input type="number" step="0.001" min="0" name="weight" value="{{ v.weight|default:'' }}" class="input">
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-medium mb-1">Sort order</label>
-                  <input type="number" min="0" name="sort_order" value="{{ v.sort_order|default:'0' }}" class="input">
-                </div>
-                <div class="md:col-span-4 flex justify-end gap-2">
-                  <button type="button" class="btn" onclick="this.closest('tr').classList.remove('inline-edit-open')">Cancel</button>
-                  <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
-                </div>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="card-padded text-sm text-[color:var(--text-muted)]">
-      No variants yet. Click <strong>Add variant</strong> to create one inline below.
-    </div>
-    {% endif %}
-
-    {# Inline new-variant form — collapsed until the "Add variant" button opens it. #}
-    <details id="variant-new-row" class="card-padded" style="border-top: 1px solid var(--border);">
-      <summary class="font-medium text-sm cursor-pointer" style="list-style:none;">
-        <i data-lucide="plus-circle" class="h-4 w-4 inline"></i> New variant
-      </summary>
-      <form method="post" action="{% url 'admin_dashboard:variant_new' product_id=product.id %}"
-            class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end mt-3">
-        {% csrf_token %}
-        <div class="md:col-span-4">
-          <label class="block text-xs font-medium mb-1">Name *</label>
-          <input type="text" name="name" required class="input" placeholder="e.g. Hardcover · Signed · Red XL">
-        </div>
-        <div class="md:col-span-3">
-          <label class="block text-xs font-medium mb-1">SKU *</label>
-          <input type="text" name="sku" required class="input" placeholder="auto-uppercase">
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-xs font-medium mb-1">Price</label>
-          <input type="number" step="0.01" min="0" name="price" class="input">
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-xs font-medium mb-1">Compare-at</label>
-          <input type="number" step="0.01" min="0" name="compare_at_price" class="input">
-        </div>
-        <div class="md:col-span-1 flex items-center pt-5">
-          <label class="inline-flex items-center gap-1 text-xs">
-            <input type="checkbox" name="is_active" checked> Active
-          </label>
-        </div>
-        <div class="md:col-span-12 flex justify-end gap-2">
-          <button type="submit" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Create variant</button>
-        </div>
-      </form>
-    </details>
-  </div>
-
-  <style>
-    /* Inline-edit rows collapsed by default; expand when sibling toggle adds .inline-edit-open. */
-    .morph-table tr.inline-edit-row > td { padding: 0; }
-    .morph-table tr.inline-edit-row .inline-edit-wrap {
-      max-height: 0; overflow: hidden;
-      transition: max-height 220ms ease, padding 220ms ease;
-      padding-top: 0 !important; padding-bottom: 0 !important;
-    }
-    .morph-table tr.inline-edit-row.inline-edit-open .inline-edit-wrap {
-      max-height: 600px; padding-top: 1rem !important; padding-bottom: 1rem !important;
-    }
-  </style>
-
-  <script>
-    // Restore the variant inline-edit state across a save → redirect →
-    // reload cycle. Without this, every save collapses every row and
-    // the merchant loses their place after editing 30 variants in a row.
-    (function () {
-      try {
-        var id = sessionStorage.getItem('morph:lastEditedVariant');
-        if (!id) return;
-        sessionStorage.removeItem('morph:lastEditedVariant');
-        var editRow = document.querySelector('tr.inline-edit-row[data-variant-id="' + id + '"]');
-        if (editRow) {
-          editRow.classList.add('inline-edit-open');
-          editRow.scrollIntoView({behavior: 'smooth', block: 'center'});
-        }
-      } catch (_) { /* sessionStorage disabled — no-op */ }
-    })();
-  </script>
+  {# Variants card was here — moved to right below Pricing (see line ~405); old inline-edit-row replaced with <dialog> modal. #}
   {% endif %}
 
 </div>

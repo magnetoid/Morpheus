@@ -109,7 +109,11 @@ class ProductForm(forms.Form):
         ('digital', 'Digital'),
         ('bundle', 'Bundle'),
     ], initial='simple')
-    price = forms.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0'))
+    # Variable products have a per-variant price, so the parent's `price` is
+    # cosmetic — the form-level clean() lets it default to 0 when the user
+    # picks Variable. `required=False` here flips the field from "always
+    # required" to "validated in clean() based on product_type".
+    price = forms.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False)
     compare_at_price = forms.DecimalField(
         max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
     )
@@ -230,6 +234,23 @@ class ProductForm(forms.Form):
         if qs.exists():
             raise forms.ValidationError('Another product already uses this SKU.')
         return sku
+
+    def clean(self):
+        """Variable products: per-variant price/weight/shipping is canonical.
+        The parent product's pricing/inventory/shipping fields are hidden in
+        the UI and irrelevant at the model level, so we let them slide and
+        default the required `price` to 0 instead of failing validation.
+        """
+        cleaned = super().clean()
+        product_type = (cleaned.get('product_type') or '').strip()
+        if product_type == 'variable':
+            if not cleaned.get('price'):
+                cleaned['price'] = Decimal('0')
+        else:
+            # Simple / digital / bundle still need a real price.
+            if cleaned.get('price') is None:
+                self.add_error('price', 'Price is required for this product type.')
+        return cleaned
 
     def save(self) -> Any:
         from plugins.installed.catalog.models import Product, Category, Vendor

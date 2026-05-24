@@ -468,6 +468,27 @@
   /* Body class toggled by Morph.dirty so the sticky save bar doesn't
      overlap the last form rows when it's visible. */
   body.has-save-bar main { padding-bottom: 4.5rem; }
+
+  /* Native <dialog> modal — used by the product form's variant editor
+     and any other "edit-in-place" flow that wants a full-width sheet
+     with backdrop + ESC-to-close + focus trap. Caps at 720px on
+     desktop; on mobile fills the viewport minus 1rem each side. */
+  .morph-modal {
+    padding: 0; border: none; border-radius: var(--radius);
+    max-width: 720px; width: calc(100vw - 2rem);
+    box-shadow: 0 30px 60px -20px rgba(14,14,14,.45);
+  }
+  .morph-modal::backdrop { background: rgba(14,14,14,.4); backdrop-filter: blur(2px); }
+  .morph-modal__head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .9rem 1.2rem; border-bottom: 1px solid var(--border);
+  }
+  .morph-modal__body { padding: 1.1rem 1.2rem; margin: 0; }
+  .morph-modal__foot {
+    display: flex; justify-content: flex-end; gap: .5rem;
+    padding-top: 1rem; margin-top: .25rem;
+    border-top: 1px dashed var(--border);
+  }
 </style>
 </head>
 <body class="min-h-screen flex" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
