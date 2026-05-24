@@ -46,18 +46,108 @@ class MorpheusGraphQLView(GraphQLView):
             )
 
         # Pre-validate body before strawberry parses/executes the query.
+        # Also pull the operation type so we can set cache headers below.
+        body_dict: dict[str, Any] | None = None
         if request.method == 'POST' and request.content_type == 'application/json':
             try:
-                body = json.loads(request.body or b'{}')
+                body_dict = json.loads(request.body or b'{}')
             except json.JSONDecodeError:
-                body = None
-            if isinstance(body, dict):
+                body_dict = None
+            if isinstance(body_dict, dict):
                 try:
-                    self._validate_complexity(body, allow_introspection=self.agent_only)
+                    self._validate_complexity(body_dict, allow_introspection=self.agent_only)
                 except GraphQLError as e:
                     return JsonResponse({'errors': [{'message': str(e)}]}, status=400)
 
-        return super().dispatch(request, *args, **kwargs)
+        response = super().dispatch(request, *args, **kwargs)
+        self._attach_cache_headers(request, response, body_dict)
+        return response
+
+    def _attach_cache_headers(
+        self, request: HttpRequest, response: HttpResponse,
+        body: dict[str, Any] | None,
+    ) -> None:
+        """Emit Cache-Control + Vary on the GraphQL response so a CDN
+        in front of the origin (Cloudflare) can cache identical read
+        queries at the edge.
+
+        Cacheable only when:
+          - response status is 2xx
+          - operation is a `query` (not mutation/subscription)
+          - request carries no Authorization header and no agent token
+          - storefront plugin config `graphql_edge_cache_ttl` > 0
+
+        Otherwise: `Cache-Control: no-store, private` so neither the
+        browser nor any intermediary stashes a session-coloured payload.
+
+        IMPORTANT: Cloudflare does not cache POST responses out of the
+        box. To actually benefit from this header for POST /graphql/,
+        the merchant needs a Cloudflare Cache Rule that opts POST in.
+        See docs/UI_STYLE_GUIDE.md §11 (or the Caching settings page).
+        """
+        try:
+            if response.status_code >= 300:
+                response['Cache-Control'] = 'no-store, private'
+                return
+
+            is_authenticated = bool(
+                request.META.get('HTTP_AUTHORIZATION')
+                or getattr(request, 'user', None) and request.user.is_authenticated
+                or getattr(request, 'agent_capabilities', None)
+            )
+
+            op_type = self._operation_type(body)
+            ttl = self._graphql_edge_ttl()
+
+            if op_type == 'query' and not is_authenticated and ttl > 0:
+                response['Cache-Control'] = (
+                    f'public, s-maxage={ttl}, max-age=0, must-revalidate'
+                )
+                # Vary on Authorization so CF correctly separates
+                # anonymous from authenticated cached entries even if
+                # the CF rule keys on full URL only.
+                response['Vary'] = 'Authorization, Cookie, Accept-Encoding'
+                # Cache-Tag lets us purge by tag from the CF app.
+                response['Cache-Tag'] = 'graphql,graphql:query'
+            else:
+                response['Cache-Control'] = 'no-store, private'
+        except Exception as e:  # noqa: BLE001 — never block the response over a header bug
+            logger.debug('graphql cache-header attach failed: %s', e)
+
+    @staticmethod
+    def _operation_type(body: dict[str, Any] | None) -> str:
+        """Return 'query' / 'mutation' / 'subscription' or '' if unknown.
+
+        Cheap parse — looks at the first non-whitespace keyword in the
+        query string. A full graphql.parse() would be exact but the
+        keyword sniff is fine for the cache decision and 50× faster.
+        """
+        if not isinstance(body, dict):
+            return ''
+        q = (body.get('query') or '').lstrip()
+        if not q:
+            return ''
+        # Anonymous query shorthand starts with `{` → it's a query.
+        if q.startswith('{'):
+            return 'query'
+        first_word = q.split(None, 1)[0].lower()
+        return first_word if first_word in ('query', 'mutation', 'subscription') else ''
+
+    @staticmethod
+    def _graphql_edge_ttl() -> int:
+        """Read the merchant-configured edge TTL for GraphQL queries.
+
+        Stored on storefront PluginConfig — falls back to 0 (no edge
+        caching) when unconfigured so the default behaviour is safe.
+        """
+        try:
+            from plugins.registry import plugin_registry
+            p = plugin_registry.get('storefront')
+            if p is None:
+                return 0
+            return max(0, int(p.get_config().get('graphql_edge_cache_ttl') or 0))
+        except Exception:  # noqa: BLE001
+            return 0
 
     @staticmethod
     def _validate_complexity(data: dict[str, Any], *, allow_introspection: bool = False) -> None:

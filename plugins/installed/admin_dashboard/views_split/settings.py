@@ -253,6 +253,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                     sf.set_config('page_cache_ttl', int(request.POST.get('page_cache_ttl') or 0))
                     sf.set_config('asset_max_age_seconds', int(request.POST.get('asset_max_age_seconds') or 0))
                     sf.set_config('html_cache_control', (request.POST.get('html_cache_control') or '').strip())
+                    sf.set_config('graphql_edge_cache_ttl', int(request.POST.get('graphql_edge_cache_ttl') or 0))
                     messages.success(request, 'Storefront cache settings saved.')
                 except (TypeError, ValueError):
                     messages.error(request, 'TTL fields must be integers.')
@@ -309,6 +310,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
         'page_cache_ttl': int(sf_cfg.get('page_cache_ttl') or 0),
         'asset_max_age_seconds': int(sf_cfg.get('asset_max_age_seconds') or 31536000),  # 1 year default
         'html_cache_control': (sf_cfg.get('html_cache_control') or 'public, max-age=0, s-maxage=300, must-revalidate'),
+        'graphql_edge_cache_ttl': int(sf_cfg.get('graphql_edge_cache_ttl') or 0),
     }
 
     # ── Cloudflare zone summary ────────────────────────────────────────────
