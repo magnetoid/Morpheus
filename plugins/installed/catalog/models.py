@@ -300,6 +300,36 @@ class Product(models.Model):
         return round((diff / self.compare_at_price.amount) * 100)
 
     @property
+    def display_price(self):
+        """Storefront-visible price.
+
+        Variable products: the LOWEST active variant.effective_price, so
+        PLP cards render "From $X" instead of the parent's $0 (which
+        ProductForm.clean() auto-sets when product_type='variable').
+        Simple / Digital / Bundle: just self.price.
+        """
+        if self.product_type == 'variable':
+            cheapest = None
+            for v in self.variants.filter(is_active=True):
+                ep = v.effective_price
+                if ep is None:
+                    continue
+                if cheapest is None or ep.amount < cheapest.amount:
+                    cheapest = ep
+            if cheapest is not None:
+                return cheapest
+        return self.price
+
+    @property
+    def price_starts_from(self) -> bool:
+        """True when display_price reflects the minimum across 2+ active
+        variants — PLP templates prefix with "From " when set.
+        """
+        if self.product_type != 'variable':
+            return False
+        return self.variants.filter(is_active=True).count() > 1
+
+    @property
     def primary_image(self):
         return self.images.filter(is_primary=True).first() or self.images.first()
 

@@ -116,7 +116,7 @@
         <div>
           <p class="title">{{ p.name }}</p>
           <p class="author">{{ p.short_description|striptags|truncatewords:8 }}</p>
-          <p class="price">{{ p.price|money }}{% if p.compare_at_price %}<span class="compare">{{ p.compare_at_price|money }}</span>{% endif %}</p>
+          <p class="price">{% if p.price_starts_from %}<span class="text-meta">From </span>{% endif %}{{ p.display_price|money }}{% if p.compare_at_price %}<span class="compare">{{ p.compare_at_price|money }}</span>{% endif %}</p>
         </div>
       </a>
       {% endfor %}
