@@ -269,6 +269,31 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
             sf.set_config('service_worker_enabled', request.POST.get('service_worker_enabled') == 'on')
             sf.set_config('offline_page_path', (request.POST.get('offline_page_path') or '/offline/').strip())
             messages.success(request, 'PWA settings saved.')
+        elif action == 'save_compression' and sf is not None:
+            sf.set_config('brotli_enabled', request.POST.get('brotli_enabled') == 'on')
+            sf.set_config('gzip_enabled', request.POST.get('gzip_enabled') == 'on')
+            sf.set_config('min_compress_bytes', int(request.POST.get('min_compress_bytes') or 1024))
+            messages.success(request, 'Compression settings saved.')
+        elif action == 'save_critical' and sf is not None:
+            sf.set_config('inline_critical_css', request.POST.get('inline_critical_css') == 'on')
+            sf.set_config('defer_non_critical_js', request.POST.get('defer_non_critical_js') == 'on')
+            sf.set_config('font_display', (request.POST.get('font_display') or 'swap').strip())
+            sf.set_config('preload_fonts', (request.POST.get('preload_fonts') or '').strip())
+            messages.success(request, 'Critical-path settings saved.')
+        elif action == 'save_ttls' and sf is not None:
+            try:
+                sf.set_config('home_cache_ttl', int(request.POST.get('home_cache_ttl') or 0))
+                sf.set_config('product_cache_ttl', int(request.POST.get('product_cache_ttl') or 0))
+                sf.set_config('category_cache_ttl', int(request.POST.get('category_cache_ttl') or 0))
+                sf.set_config('search_cache_ttl', int(request.POST.get('search_cache_ttl') or 0))
+                messages.success(request, 'Per-route TTLs saved.')
+            except (TypeError, ValueError):
+                messages.error(request, 'TTL fields must be integers.')
+        elif action == 'save_warmup' and sf is not None:
+            sf.set_config('post_deploy_warmup', request.POST.get('post_deploy_warmup') == 'on')
+            sf.set_config('warmup_top_n', int(request.POST.get('warmup_top_n') or 20))
+            sf.set_config('warmup_extra_urls', (request.POST.get('warmup_extra_urls') or '').strip())
+            messages.success(request, 'Cache-warmup settings saved.')
         return HttpResponseRedirect(request.path)
 
     # ── Django cache backend status ────────────────────────────────────────
@@ -335,6 +360,39 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
         'service_worker_enabled': bool(sf_cfg.get('service_worker_enabled', False)),
         'offline_page_path': sf_cfg.get('offline_page_path') or '/offline/',
     }
+    compression = {
+        'brotli_enabled': bool(sf_cfg.get('brotli_enabled', True)),
+        'gzip_enabled': bool(sf_cfg.get('gzip_enabled', True)),
+        'min_compress_bytes': int(sf_cfg.get('min_compress_bytes') or 1024),
+    }
+    critical = {
+        'inline_critical_css': bool(sf_cfg.get('inline_critical_css', False)),
+        'defer_non_critical_js': bool(sf_cfg.get('defer_non_critical_js', True)),
+        'font_display': sf_cfg.get('font_display') or 'swap',
+        'preload_fonts': sf_cfg.get('preload_fonts') or '',
+    }
+    route_ttls = {
+        'home_cache_ttl': int(sf_cfg.get('home_cache_ttl') or 600),
+        'product_cache_ttl': int(sf_cfg.get('product_cache_ttl') or 300),
+        'category_cache_ttl': int(sf_cfg.get('category_cache_ttl') or 180),
+        'search_cache_ttl': int(sf_cfg.get('search_cache_ttl') or 0),
+    }
+    warmup = {
+        'post_deploy_warmup': bool(sf_cfg.get('post_deploy_warmup', False)),
+        'warmup_top_n': int(sf_cfg.get('warmup_top_n') or 20),
+        'warmup_extra_urls': sf_cfg.get('warmup_extra_urls') or '',
+    }
+
+    # ── Recent cache activity (across all CF zones) — last 10 purges ───────
+    recent_activity = []
+    try:
+        from plugins.installed.cloudflare.models import CacheInvalidation
+        recent_activity = list(
+            CacheInvalidation.objects.select_related('zone')
+            .order_by('-created_at')[:10]
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
     # ── Cloudflare zone summary ────────────────────────────────────────────
     cf_zones = []
@@ -361,6 +419,11 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
         'assets': assets,
         'hints': hints,
         'pwa': pwa,
+        'compression': compression,
+        'critical': critical,
+        'route_ttls': route_ttls,
+        'warmup': warmup,
+        'recent_activity': recent_activity,
         'cf_zones': cf_zones,
         'cf_account_count': cf_account_count,
         'recent_purges_count': recent_purges_count,

@@ -222,7 +222,195 @@
     </div>
   </form>
 
-  {# ── 6. REDIS — app cache (feeds everything above) ───────────────── #}
+  {# ── 6. PER-ROUTE TTL OVERRIDES ──────────────────────────────────── #}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_ttls">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center gap-3">
+      <i data-lucide="clock" class="h-5 w-5 text-[color:var(--accent,#c5694e)]"></i>
+      <div>
+        <h2 class="font-semibold">Per-route cache TTLs</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Override <code>s-maxage</code> per route type. Home and category lists change rarely → cache longer. Search results are user-specific → short or off.</p>
+      </div>
+    </div>
+    <div class="card-padded grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Home (s)</label>
+        <input type="number" name="home_cache_ttl" value="{{ route_ttls.home_cache_ttl }}" min="0" max="86400" class="input">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Product page (s)</label>
+        <input type="number" name="product_cache_ttl" value="{{ route_ttls.product_cache_ttl }}" min="0" max="86400" class="input">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Category page (s)</label>
+        <input type="number" name="category_cache_ttl" value="{{ route_ttls.category_cache_ttl }}" min="0" max="86400" class="input">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Search (s)</label>
+        <input type="number" name="search_cache_ttl" value="{{ route_ttls.search_cache_ttl }}" min="0" max="86400" class="input">
+      </div>
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+
+  {# ── 7. COMPRESSION ──────────────────────────────────────────────── #}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_compression">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center gap-3">
+      <i data-lucide="package" class="h-5 w-5 text-[color:var(--accent,#c5694e)]"></i>
+      <div>
+        <h2 class="font-semibold">Compression</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Origin-side response compression. Cloudflare also compresses at the edge, but origin compression saves bytes on the CF↔origin hop AND keeps things compressed for clients that bypass CF.</p>
+      </div>
+    </div>
+    <div class="card-padded space-y-3">
+      <label class="flex items-start gap-3">
+        <input type="checkbox" name="brotli_enabled" {% if compression.brotli_enabled %}checked{% endif %} class="mt-1">
+        <div>
+          <div class="font-medium text-sm">Brotli (preferred)</div>
+          <div class="text-xs text-[color:var(--text-muted)]">~20% smaller than gzip for HTML/CSS/JS. Browsers signal support via <code>Accept-Encoding: br</code>. Django middleware encodes on-the-fly.</div>
+        </div>
+      </label>
+      <label class="flex items-start gap-3">
+        <input type="checkbox" name="gzip_enabled" {% if compression.gzip_enabled %}checked{% endif %} class="mt-1">
+        <div>
+          <div class="font-medium text-sm">Gzip (fallback)</div>
+          <div class="text-xs text-[color:var(--text-muted)]">Used when the client doesn't accept Brotli. Universal browser support since IE6.</div>
+        </div>
+      </label>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Minimum bytes to compress</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">Skip compression for responses below this size — the CPU cost outweighs the wire savings. 1024 (1 KB) is the standard threshold.</p>
+        <input type="number" name="min_compress_bytes" value="{{ compression.min_compress_bytes }}" min="0" max="65536" class="input">
+      </div>
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+
+  {# ── 8. CRITICAL CSS + FONT LOADING ─────────────────────────────── #}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_critical">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center gap-3">
+      <i data-lucide="type" class="h-5 w-5 text-[color:var(--accent,#c5694e)]"></i>
+      <div>
+        <h2 class="font-semibold">Critical CSS + fonts</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Strategies that shave seconds off First Contentful Paint. The biggest LCP / FCP wins come from controlling what blocks the first render.</p>
+      </div>
+    </div>
+    <div class="card-padded space-y-4">
+      <label class="flex items-start gap-3">
+        <input type="checkbox" name="inline_critical_css" {% if critical.inline_critical_css %}checked{% endif %} class="mt-1">
+        <div>
+          <div class="font-medium text-sm">Inline critical (above-the-fold) CSS</div>
+          <div class="text-xs text-[color:var(--text-muted)]">Extract ATF styles into a <code>&lt;style&gt;</code> tag in <code>&lt;head&gt;</code>; defer the full stylesheet via <code>media="print"</code> swap. Cuts render-blocking CSS to zero on first paint.</div>
+        </div>
+      </label>
+      <label class="flex items-start gap-3">
+        <input type="checkbox" name="defer_non_critical_js" {% if critical.defer_non_critical_js %}checked{% endif %} class="mt-1">
+        <div>
+          <div class="font-medium text-sm">Defer non-critical JavaScript</div>
+          <div class="text-xs text-[color:var(--text-muted)]">Adds <code>defer</code> to <code>&lt;script&gt;</code> tags outside <code>&lt;head&gt;</code>. Browser parses HTML without blocking on JS download / execution.</div>
+        </div>
+      </label>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Font display strategy</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">CSS <code>font-display</code> property. <strong>swap</strong> shows fallback text immediately, swaps when web font loads (no invisible text). <strong>optional</strong> uses fallback if font isn't ready in 100ms (best for performance, worst for design fidelity). <strong>block</strong> waits up to 3s before showing fallback.</p>
+        <select name="font_display" class="input">
+          <option value="swap" {% if critical.font_display == 'swap' %}selected{% endif %}>swap (recommended)</option>
+          <option value="optional" {% if critical.font_display == 'optional' %}selected{% endif %}>optional (fastest)</option>
+          <option value="fallback" {% if critical.font_display == 'fallback' %}selected{% endif %}>fallback</option>
+          <option value="block" {% if critical.font_display == 'block' %}selected{% endif %}>block</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Preload fonts (one URL per line)</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">Emits <code>&lt;link rel="preload" as="font" type="font/woff2" crossorigin&gt;</code>. Use for the 1-2 critical font files only — preloading too many slows everything down.</p>
+        <textarea name="preload_fonts" class="input" rows="3">{{ critical.preload_fonts }}</textarea>
+      </div>
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+
+  {# ── 9. CACHE WARMING ────────────────────────────────────────────── #}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_warmup">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center gap-3">
+      <i data-lucide="flame" class="h-5 w-5 text-[color:var(--accent,#c5694e)]"></i>
+      <div>
+        <h2 class="font-semibold">Cache warming</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">After a deploy or purge, the cache is cold — the first visitor pays for the slow render. Warming pre-fetches the most popular pages so customers always hit a warm cache.</p>
+      </div>
+    </div>
+    <div class="card-padded space-y-3">
+      <label class="flex items-start gap-3">
+        <input type="checkbox" name="post_deploy_warmup" {% if warmup.post_deploy_warmup %}checked{% endif %} class="mt-1">
+        <div>
+          <div class="font-medium text-sm">Run after every deploy</div>
+          <div class="text-xs text-[color:var(--text-muted)]">Celery task fetches the top N pages right after Coolify rolls a new container — populates CF edge + Redis + Django page caches before any customer arrives.</div>
+        </div>
+      </label>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Warmup top N most-popular pages</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">Ranked by last-7-day analytics. 20 is a safe default; 100+ noticeably slows the deploy.</p>
+        <input type="number" name="warmup_top_n" value="{{ warmup.warmup_top_n }}" min="0" max="500" class="input">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Extra warmup URLs (one per line)</label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-1">Pages that aren't in the top-N but you always want warm — campaign landing pages, checkout, login.</p>
+        <textarea name="warmup_extra_urls" class="input" rows="3" placeholder="/&#10;/checkout/&#10;/campaign/black-friday/">{{ warmup.warmup_extra_urls }}</textarea>
+      </div>
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+
+  {# ── 10. RECENT ACTIVITY ─────────────────────────────────────────── #}
+  {% if recent_activity %}
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center gap-3">
+      <i data-lucide="history" class="h-5 w-5"></i>
+      <div>
+        <h2 class="font-semibold">Recent cache activity</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Last 10 cache invalidations across every Cloudflare zone. Includes auto-purges from product / category writes.</p>
+      </div>
+    </div>
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>When</th><th>Zone</th><th>Scope</th><th>Targets</th><th>Trigger</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for r in recent_activity %}
+        <tr>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ r.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ r.zone.domain }}</td>
+          <td>{{ r.get_scope_display }}</td>
+          <td class="text-xs">{% if r.targets %}{{ r.targets|join:", "|truncatechars:60 }}{% else %}—{% endif %}</td>
+          <td class="text-xs">{{ r.triggered_by|default:"—" }}</td>
+          <td>
+            {% if r.status == 'succeeded' %}<span class="pill pill-success">✓</span>
+            {% elif r.status == 'failed' %}<span class="pill pill-neutral" title="{{ r.error_message }}">✗</span>
+            {% else %}<span class="pill pill-warn">…</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="card-padded border-t border-[color:var(--border)] text-xs text-[color:var(--text-muted)]">
+      <a href="/dashboard/cloudflare/log/" class="underline">Full purge log →</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── 11. REDIS — app cache (feeds everything above) ──────────────── #}
   <div class="card">
     <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
