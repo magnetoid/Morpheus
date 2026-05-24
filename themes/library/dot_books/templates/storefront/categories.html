@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load seo %}
+{% load seo %}{% load caching %}
 {% block title %}Categories — dot books{% endblock %}
 
 {% block extra_head %}
@@ -21,7 +21,7 @@
       <a href="/category/{{ cat.slug }}/" class="book" style="display: block; text-decoration: none;">
         <div class="cover-wrap" style="aspect-ratio: 16/9; border-radius: 6px;">
           {% if cat.image %}
-            <img src="{{ cat.image.url }}" alt="{{ cat.name }}" loading="lazy" decoding="async">
+            <img src="{{ cat.image.url }}" alt="{{ cat.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
           {% else %}
             <div class="placeholder">{{ cat.name }}</div>
           {% endif %}

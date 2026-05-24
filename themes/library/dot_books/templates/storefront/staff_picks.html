@@ -1,6 +1,7 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
 {% load seo %}
+{% load caching %}
 {% block title %}{% seo_title "Staff picks" %}{% endblock %}
 
 {% block extra_head %}
@@ -29,7 +30,7 @@
       <a href="/products/{{ p.slug }}/" class="book">
         <div class="cover-wrap">
           {% if p.primary_image %}
-            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}" loading="lazy" decoding="async">
+            <img src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text|default:p.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
           {% else %}
             <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
           {% endif %}

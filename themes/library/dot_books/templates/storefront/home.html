@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}
+{% load morph %}{% load seo %}{% load caching %}
 {% block title %}{% seo_title "" %}{% endblock %}
 
 {% block content %}
@@ -72,7 +72,7 @@
       <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
         <div class="cover-wrap">
           {% if product.primaryImage and product.primaryImage.url %}
-            <img src="{{ product.primaryImage.url }}" alt="{{ product.primaryImage.altText|default:product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
+            <img src="{{ product.primaryImage.url }}" alt="{{ product.primaryImage.altText|default:product.name }}" loading="{% caching_img_loading_attr %}" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}
@@ -127,7 +127,7 @@
       <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
         <div class="cover-wrap">
           {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
+            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="{% caching_img_loading_attr %}" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}

@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load caching %}
 {% block title %}Your cart — dot books{% endblock %}
 
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
@@ -26,7 +26,7 @@
               <td style="padding: 1.25rem 0;">
                 <div style="display:flex; gap: 1rem; align-items: flex-start;">
                   {% if item.product.primaryImage %}
-                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 2/3; flex-shrink: 0;"><img src="{{ item.product.primaryImage.url }}" alt="" loading="lazy" decoding="async"></div>
+                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 2/3; flex-shrink: 0;"><img src="{{ item.product.primaryImage.url }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async"></div>
                   {% endif %}
                   <div>
                     <p style="font-family: var(--serif); font-size: 1.05rem; font-weight: 500;">{{ item.product.name }}</p>
