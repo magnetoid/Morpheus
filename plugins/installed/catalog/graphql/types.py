@@ -80,8 +80,6 @@ class ProductVariantType:
     name: str = strawberry.field(description="Variant name")
     sku: str = strawberry.field(description="Stock Keeping Unit")
     size: str = strawberry.field(description="Free-text size label (e.g. 'XL', '300 ml'). Independent of the AttributeValue M2M.")
-    short_description: str = strawberry.field(description="Per-variant one-line description. Storefronts should fall back to Product.short_description when blank.")
-    description: str = strawberry.field(description="Per-variant long-form description (HTML / Markdown). Storefronts should fall back to Product.description when blank.")
     is_active: bool = strawberry.field(description="Whether this variant is active")
     sort_order: int = strawberry.field(description="Display order (lower = first)")
     localized_prices: strawberry.scalars.JSON = strawberry.field(description="JSON dict of explicit price overrides per currency")
@@ -92,11 +90,32 @@ class ProductVariantType:
     inventory_policy: str = strawberry.field(description="deny | continue (backorder behaviour)")
     barcode: str = strawberry.field(description="UPC / EAN / ISBN")
 
-    @strawberry.field(description="Price of the variant")
+    @strawberry.field(description="Per-variant one-line description. Falls back to Product.short_description when the variant's own field is blank, so storefronts can render the field unconditionally.")
+    def short_description(self) -> str:
+        own = (getattr(self, 'short_description', '') or '').strip()
+        if own:
+            return own
+        parent = getattr(self, 'product', None)
+        return (getattr(parent, 'short_description', '') or '') if parent else ''
+
+    @strawberry.field(description="Per-variant long-form description (HTML / Markdown). Falls back to Product.description when blank.")
+    def description(self) -> str:
+        own = (getattr(self, 'description', '') or '').strip()
+        if own:
+            return own
+        parent = getattr(self, 'product', None)
+        return (getattr(parent, 'description', '') or '') if parent else ''
+
+    @strawberry.field(description="Price of the variant. Falls back to Product.price when the variant has no override (Shopify-parity behaviour).")
     def price(self) -> Optional[MoneyType]:
-        if not self.price:
-            return None
-        return MoneyType(amount=str(self.price.amount), currency=str(self.price.currency))
+        own = self.price
+        if own:
+            return MoneyType(amount=str(own.amount), currency=str(own.currency))
+        parent = getattr(self, 'product', None)
+        parent_price = getattr(parent, 'price', None) if parent else None
+        if parent_price:
+            return MoneyType(amount=str(parent_price.amount), currency=str(parent_price.currency))
+        return None
 
     @strawberry.field(description="Per-variant digital file URL (overrides Product.digital_file)")
     def digital_file_url(self) -> Optional[str]:
