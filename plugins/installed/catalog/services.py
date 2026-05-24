@@ -753,6 +753,9 @@ def _serialize_variant(v) -> dict:
         'product_slug': v.product.slug,
         'name': v.name,
         'sku': v.sku,
+        'size': getattr(v, 'size', '') or '',
+        'short_description': getattr(v, 'short_description', '') or '',
+        'description': getattr(v, 'description', '') or '',
         'price_amount': str(getattr(v.price, 'amount', '')) if v.price else '',
         'price_currency': str(getattr(v.price, 'currency', '')) if v.price else '',
         'variant_type': getattr(v, 'variant_type', 'physical'),
@@ -824,6 +827,12 @@ def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: b
         variant.inventory_policy = ip
     if 'barcode' in fields:
         variant.barcode = (fields['barcode'] or '').strip()[:50]
+    if 'size' in fields:
+        variant.size = (fields['size'] or '').strip()[:50]
+    if 'short_description' in fields:
+        variant.short_description = (fields['short_description'] or '').strip()
+    if 'description' in fields:
+        variant.description = (fields['description'] or '').strip()
     if 'is_active' in fields:
         variant.is_active = bool(fields['is_active'])
     if 'sort_order' in fields:

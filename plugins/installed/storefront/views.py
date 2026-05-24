@@ -25,7 +25,11 @@ query ProductDetail($slug: String!) {
     price { amount currency }
     compareAtPrice { amount }
     images { url altText isPrimary sortOrder }
-    variants { id name sku price { amount currency } isActive }
+    variants {
+      id name sku size shortDescription description
+      variantType sortOrder isActive
+      price { amount currency }
+    }
     tags category { name slug }
     averageRating
     reviews { rating title body customer { fullName } createdAt }

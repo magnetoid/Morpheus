@@ -79,7 +79,11 @@ class ProductVariantType:
     id: strawberry.ID = strawberry.field(description="Unique variant identifier (UUID)")
     name: str = strawberry.field(description="Variant name")
     sku: str = strawberry.field(description="Stock Keeping Unit")
+    size: str = strawberry.field(description="Free-text size label (e.g. 'XL', '300 ml'). Independent of the AttributeValue M2M.")
+    short_description: str = strawberry.field(description="Per-variant one-line description. Storefronts should fall back to Product.short_description when blank.")
+    description: str = strawberry.field(description="Per-variant long-form description (HTML / Markdown). Storefronts should fall back to Product.description when blank.")
     is_active: bool = strawberry.field(description="Whether this variant is active")
+    sort_order: int = strawberry.field(description="Display order (lower = first)")
     localized_prices: strawberry.scalars.JSON = strawberry.field(description="JSON dict of explicit price overrides per currency")
     # Shopify-parity fields (commit b74aaf9 + migration 0010).
     variant_type: str = strawberry.field(description="physical | digital | virtual")

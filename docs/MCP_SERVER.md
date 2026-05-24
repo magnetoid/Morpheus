@@ -102,6 +102,35 @@ The MCP **admin** server (`/mcp/admin/v1/`) and GraphQL endpoint
 | `catalog.create_category` / `createCategory` | New category | no |
 | `catalog.update_category` / `updateCategory` | Update category | no |
 | `catalog.archive_category` / `archiveCategory` | Delete category | **yes** |
+| `catalog.create_variant` / `createVariant` | Add a new variant to a product | no |
+| `catalog.update_variant` / `updateVariant` | Update any variant field (matched by SKU) | no |
+
+#### Variant fields
+
+`create_variant` and `update_variant` accept (every field optional except
+`name` + `sku` on create):
+
+| Field | Type | Purpose |
+|---|---|---|
+| `name` | str | Display name ("Hardcover", "Audiobook narrated by author") |
+| `sku` | str | Stock Keeping Unit (unique across all variants) |
+| `size` | str(50) | Free-text size label ("XL", "300 ml"). Independent of the AttributeValue M2M. |
+| `short_description` | str | One-line per-variant pitch. Storefront falls back to `Product.short_description` when blank. |
+| `description` | str | Full per-variant description (HTML/Markdown). Storefront falls back to `Product.description` when blank. |
+| `price_amount` | decimal | Variant price. Pass with `price_currency` (defaults to USD). |
+| `price_currency` | str(3) | ISO currency code (USD, EUR, …). |
+| `compare_at_amount` | decimal | Strike-through price for sale display. |
+| `variant_type` | enum | `physical` (default, ships), `digital` (downloadable), `virtual` (no fulfillment). |
+| `requires_shipping` | bool | Auto-derived from `variant_type` when omitted. |
+| `is_taxable` | bool | Per-variant override of Product.is_taxable. |
+| `inventory_policy` | enum | `deny` (default, refuse oversell) or `continue` (allow backorder). |
+| `barcode` | str(50) | UPC / EAN / ISBN. |
+| `is_active` | bool | When false, the variant is hidden from the storefront. |
+| `sort_order` | int | Display order (lower = first). |
+
+Both calls return the full variant dict via `_serialize_variant` — useful
+for chained agent flows ("create variant, then upload the digital file
+using the returned `id`").
 
 ### Inventory
 
