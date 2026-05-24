@@ -2,6 +2,12 @@
 {% load morph %}{% load seo %}{% load caching %}
 {% block title %}{% seo_title "" %}{% endblock %}
 
+{% block extra_head %}
+{% with featured_products|first as pick %}
+{% if pick.primaryImage and pick.primaryImage.url %}{% caching_preload_lcp pick.primaryImage.url %}{% endif %}
+{% endwith %}
+{% endblock %}
+
 {% block content %}
 {% storefront_blocks "home_above_grid" %}
 

@@ -3,6 +3,7 @@
 {% load seo %}{% block title %}{% seo_title product.name category=product.category.name %}{% endblock %}
 
 {% block extra_head %}
+{% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
 {% seo_product_jsonld product %}
 {% seo_product_og product %}
 {% seo_product_md_link product.slug %}
