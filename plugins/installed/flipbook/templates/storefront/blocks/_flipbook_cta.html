@@ -1,0 +1,10 @@
+{# Flipbook CTA injected into the pdp_below_form slot for any product with a PDF digital_file (parent or variant). #}
+{% if product.product_type == 'digital' or product.digital_file or product.variants %}
+<div style="margin: .5rem 0 1.25rem;">
+  <a href="/p/{{ product.slug }}/flipbook/"
+     class="btn btn-ghost"
+     style="font-size: .85rem; padding: .4rem .9rem; gap: .4rem;">
+    <i data-lucide="book-open" class="h-4 w-4"></i> Flip through a preview
+  </a>
+</div>
+{% endif %}

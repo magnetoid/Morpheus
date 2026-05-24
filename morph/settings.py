@@ -55,6 +55,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.affiliates',
     'plugins.installed.marketplace',
     'plugins.installed.cloudflare',
+    'plugins.installed.flipbook',
     'plugins.installed.seo',
     'plugins.installed.demo_data',
     'plugins.installed.advanced_ecommerce',

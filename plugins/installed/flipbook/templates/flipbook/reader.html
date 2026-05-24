@@ -1,0 +1,150 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ product.name }} — Preview · dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block content %}
+<section class="flipbook-wrap" data-theme="{{ theme }}">
+  <header class="flipbook-head">
+    <div>
+      <p class="eyebrow">Preview</p>
+      <h1 class="display display-m" style="margin: .25rem 0 .15rem;">{{ product.name }}<span class="text-accent">.</span></h1>
+      <p class="meta">A {{ max_pages }}-page preview. Buy the full book to read on.</p>
+    </div>
+    <a href="/products/{{ product.slug }}/" class="btn">
+      <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to product
+    </a>
+  </header>
+
+  <div id="flipbook-stage" aria-busy="true" aria-live="polite">
+    <div id="flipbook-loading" class="flipbook-loading">
+      <div class="flipbook-spinner" aria-hidden="true"></div>
+      <p class="meta">Loading preview…</p>
+    </div>
+    <div id="flipbook" hidden></div>
+  </div>
+
+  <nav class="flipbook-controls" aria-label="Flipbook controls">
+    <button type="button" id="flip-prev" class="btn">
+      <i data-lucide="chevron-left" class="h-4 w-4"></i> Prev
+    </button>
+    <span class="flipbook-page-indicator" id="flip-pageinfo">— / —</span>
+    <button type="button" id="flip-next" class="btn">
+      Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+    </button>
+  </nav>
+</section>
+
+<style>
+.flipbook-wrap { max-width: 1100px; margin: 1.5rem auto 4rem; padding: 0 1rem; }
+.flipbook-head { display:flex; align-items:end; justify-content:space-between; gap:1rem; margin-bottom: 1.5rem; }
+#flipbook-stage {
+  position: relative;
+  min-height: 70vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--paper);
+  border-radius: 8px;
+}
+.flipbook-wrap[data-theme="cream"] #flipbook-stage { background: #faf6e8; }
+.flipbook-wrap[data-theme="dark"]  #flipbook-stage { background: #1a1d22; }
+.flipbook-wrap[data-theme="dark"]  .meta,
+.flipbook-wrap[data-theme="dark"]  .eyebrow { color: rgba(255,255,255,.7); }
+.flipbook-loading { text-align: center; }
+.flipbook-spinner {
+  width: 36px; height: 36px; margin: 0 auto .75rem;
+  border: 3px solid var(--rule);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: flipbook-spin .8s linear infinite;
+}
+@keyframes flipbook-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .flipbook-spinner { animation: none; border-top-color: var(--rule); }
+}
+#flipbook canvas { box-shadow: 0 10px 30px rgba(14,14,14,.18); }
+.flipbook-controls {
+  margin-top: 1.25rem;
+  display: flex; align-items: center; justify-content: center;
+  gap: 1rem;
+}
+.flipbook-page-indicator { font-family: var(--serif); font-size: .95rem; color: var(--muted); min-width: 80px; text-align: center; }
+</style>
+
+{# PDF.js + StPageFlip from cdnjs / jsdelivr. Both MIT licensed. #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.76/pdf.min.mjs" type="module" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js" crossorigin="anonymous"></script>
+<script type="module">
+  /* Render the source PDF into per-page canvases, then hand them to
+     StPageFlip for the 3D-flip experience. Truncates at MAX_PAGES so
+     the preview stays bounded even on long PDFs. */
+  const SRC       = {{ source_url|escapejs|stringformat:"'%s'" }};
+  const MAX_PAGES = {{ max_pages|default:20 }} || 9999;
+
+  const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+  if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.76/pdf.worker.min.mjs';
+  }
+
+  const stage      = document.getElementById('flipbook-stage');
+  const loading    = document.getElementById('flipbook-loading');
+  const bookEl     = document.getElementById('flipbook');
+  const pageInfo   = document.getElementById('flip-pageinfo');
+  const prevBtn    = document.getElementById('flip-prev');
+  const nextBtn    = document.getElementById('flip-next');
+
+  async function renderPages() {
+    if (!pdfjsLib) {
+      loading.querySelector('.meta').textContent = 'PDF renderer failed to load.';
+      stage.setAttribute('aria-busy', 'false');
+      return;
+    }
+    try {
+      const pdf = await pdfjsLib.getDocument(SRC).promise;
+      const total = Math.min(pdf.numPages, MAX_PAGES);
+      const pages = [];
+      for (let i = 1; i <= total; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.4 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width  = '100%';
+        canvas.style.height = '100%';
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const wrap = document.createElement('div');
+        wrap.className = 'flipbook-page';
+        wrap.appendChild(canvas);
+        pages.push(wrap);
+      }
+
+      bookEl.hidden = false;
+      loading.style.display = 'none';
+      stage.setAttribute('aria-busy', 'false');
+
+      const flip = new window.St.PageFlip(bookEl, {
+        width: 480, height: 680, size: 'stretch',
+        minWidth: 240, maxWidth: 600,
+        minHeight: 340, maxHeight: 850,
+        maxShadowOpacity: 0.4,
+        showCover: true,
+        useMouseEvents: true,
+        flippingTime: 600,
+      });
+      flip.loadFromHTML(pages);
+
+      const updateInfo = () => {
+        pageInfo.textContent = (flip.getCurrentPageIndex() + 1) + ' / ' + flip.getPageCount();
+      };
+      flip.on('flip', updateInfo);
+      updateInfo();
+      prevBtn.addEventListener('click', () => flip.flipPrev());
+      nextBtn.addEventListener('click', () => flip.flipNext());
+    } catch (err) {
+      console.error('flipbook:', err);
+      loading.querySelector('.meta').textContent = 'Could not load the preview.';
+      stage.setAttribute('aria-busy', 'false');
+    }
+  }
+  renderPages();
+</script>
+{% endblock %}
