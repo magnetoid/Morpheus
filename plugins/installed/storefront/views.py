@@ -9,7 +9,8 @@ from api.client import internal_graphql
 PRODUCT_LIST_QUERY = """
 query ProductList($first: Int!, $search: String, $category: String) {
   products(first: $first, search: $search, category: $category) {
-    id name slug price { amount currency }
+    id name slug productType
+    price { amount currency } priceStartsFrom
     compareAtPrice { amount }
     primaryImage { url altText }
     isOnSale discountPercentage
@@ -21,8 +22,8 @@ query ProductList($first: Int!, $search: String, $category: String) {
 PRODUCT_DETAIL_QUERY = """
 query ProductDetail($slug: String!) {
   product(slug: $slug) {
-    id name slug description shortDescription
-    price { amount currency }
+    id name slug description shortDescription productType
+    price { amount currency } priceStartsFrom
     compareAtPrice { amount }
     images { url altText isPrimary sortOrder }
     variants {
@@ -57,7 +58,8 @@ def home(request):
     data = internal_graphql("""
         query Home {
           featuredProducts: products(first: 8, featured: true) {
-            id name slug price { amount currency }
+            id name slug productType
+            price { amount currency } priceStartsFrom
             primaryImage { url altText }
             isOnSale discountPercentage
           }

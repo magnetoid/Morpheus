@@ -187,9 +187,28 @@ class ProductType:
     def reviews(self) -> List['ReviewType']:
         return list(self.reviews.filter(is_approved=True))
 
-    @strawberry.field(description="Base price of the product")
+    @strawberry.field(description="Display price. For Variable products with active variants returns the LOWEST variant.effective_price (so storefronts can render 'From $X' without a per-template min() reduction). For Simple / Digital / Bundle returns the parent price. Always non-null — falls back to Money(0, USD) when there is genuinely no price.")
     def price(self) -> MoneyType:
-        return MoneyType(amount=str(self.price.amount), currency=str(self.price.currency))
+        if getattr(self, 'product_type', '') == 'variable':
+            cheapest = None
+            for v in self.variants.filter(is_active=True):
+                ep = v.effective_price
+                if ep is None:
+                    continue
+                if cheapest is None or ep.amount < cheapest.amount:
+                    cheapest = ep
+            if cheapest is not None:
+                return MoneyType(amount=str(cheapest.amount), currency=str(cheapest.currency))
+        own = self.price
+        if own:
+            return MoneyType(amount=str(own.amount), currency=str(own.currency))
+        return MoneyType(amount='0', currency='USD')
+
+    @strawberry.field(description="True when the displayed price is the minimum of multiple variants — storefronts should prefix with 'From '. False for Simple / Digital products.")
+    def price_starts_from(self) -> bool:
+        if getattr(self, 'product_type', '') != 'variable':
+            return False
+        return self.variants.filter(is_active=True).count() > 1
 
     @strawberry.field(description="Compare at price (original price before discount)")
     def compare_at_price(self) -> Optional[MoneyType]:
