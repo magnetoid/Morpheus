@@ -153,6 +153,7 @@ plugin_registry.discover(ALL_MORPHEUS_PLUGINS)
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'core.security_headers.SecurityHeadersMiddleware',
+    'core.storefront_cache.StorefrontCacheMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',

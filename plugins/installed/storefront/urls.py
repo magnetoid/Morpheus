@@ -1,8 +1,10 @@
 from django.urls import path
-from plugins.installed.storefront import views
+from plugins.installed.storefront import views, sw
 
 app_name = 'storefront'
 urlpatterns = [
+    path('sw.js', sw.service_worker_js, name='service_worker'),
+    path('offline/', sw.offline_page, name='offline'),
     path('', views.home, name='home'),
     path('products/', views.product_list, name='product_list'),
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),

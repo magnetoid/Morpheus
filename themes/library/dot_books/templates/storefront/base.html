@@ -1,4 +1,4 @@
-{% load morph %}{% load seo %}{% load tracking %}<!DOCTYPE html>
+{% load morph %}{% load seo %}{% load tracking %}{% load caching %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -11,7 +11,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 {% seo_preconnect %}
+{% caching_resource_hints %}
+{% caching_preload_fonts %}
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% caching_font_display %}
+{% caching_service_worker_register %}
 
 <style>
   :root {
