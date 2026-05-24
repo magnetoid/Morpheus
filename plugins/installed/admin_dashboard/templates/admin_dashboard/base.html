@@ -489,6 +489,24 @@
     padding-top: 1rem; margin-top: .25rem;
     border-top: 1px dashed var(--border);
   }
+
+  /* Skeleton loader — drop .morph-skeleton on any block while waiting
+     for async content. Shimmer respects prefers-reduced-motion. */
+  .morph-skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
+    background-size: 200% 100%;
+    border-radius: var(--radius-sm);
+    animation: morph-skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+  .morph-skeleton--line { height: .85rem; margin: .35rem 0; }
+  .morph-skeleton--block { min-height: 4.5rem; }
+  @keyframes morph-skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .morph-skeleton { animation: none; background: var(--surface-2); }
+  }
 </style>
 </head>
 <body class="min-h-screen flex" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
