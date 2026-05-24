@@ -51,7 +51,9 @@ class CloudflarePlugin(Plugin):
             return
         try:
             from plugins.installed.cloudflare.models import CloudflareZone
-            from plugins.installed.cloudflare.services import purge_urls
+            from plugins.installed.cloudflare.services import (
+                purge_for_category_update, purge_urls,
+            )
 
             qs = CloudflareZone.objects.filter(
                 is_active=True, auto_purge_on_collection_update=True,
@@ -62,6 +64,9 @@ class CloudflarePlugin(Plugin):
                     urls=[f'https://{zone.domain}/c/{getattr(category, "slug", "")}'],
                     triggered_by=f'category:{getattr(category, "id", "")}',
                 )
+            # Tag purge — drops matching GraphQL responses (see
+            # MorpheusGraphQLView._extract_entity_tags).
+            purge_for_category_update(category)
         except Exception as e:  # noqa: BLE001
             logger.warning('cloudflare: category hook purge failed: %s', e, exc_info=True)
 

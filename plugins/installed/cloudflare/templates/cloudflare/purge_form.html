@@ -20,6 +20,7 @@
     <div class="space-y-2">
       <label class="block text-sm font-medium">Mode</label>
       <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="urls" checked> URLs (most specific)</label>
+      <label class="inline-flex items-center gap-2 ml-4"><input type="radio" name="mode" value="tags"> Tags (surgical, GraphQL entries)</label>
       <label class="inline-flex items-center gap-2 ml-4"><input type="radio" name="mode" value="hosts"> Hosts (subdomain)</label>
       <label class="inline-flex items-center gap-2 ml-4"><input type="radio" name="mode" value="everything"> Everything (nukes the whole zone cache)</label>
     </div>
@@ -27,6 +28,17 @@
     <div>
       <label class="block text-xs font-medium mb-1">URLs (one per line, up to 30)</label>
       <textarea name="urls" class="input" rows="5" placeholder="https://{{ zone.domain }}/products/some-slug/&#10;https://{{ zone.domain }}/category/books/"></textarea>
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium mb-1">Cache Tags (one per line or comma-separated, up to 30)</label>
+      <p class="text-xs text-[color:var(--text-muted)] mb-1">
+        Set by the GraphQL view on every anonymous read query. Examples:
+        <code>product:hamlet</code>, <code>category:fiction</code>, <code>graphql:query</code>
+        (nuke all GraphQL responses). <strong>Tag purges require CF Enterprise plan
+        or a Cache Tag rule on the zone.</strong>
+      </p>
+      <textarea name="tags" class="input" rows="3" placeholder="product:hamlet&#10;category:fiction"></textarea>
     </div>
 
     <div>

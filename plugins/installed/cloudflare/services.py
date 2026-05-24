@@ -315,7 +315,19 @@ def analytics_summary(zone, days: int = 7) -> dict:
 
 
 def purge_for_product_update(product) -> list:
-    """Auto-purge cache for any zone with `auto_purge_on_product_update=True`."""
+    """Auto-purge cache for any zone with `auto_purge_on_product_update=True`.
+
+    Fires TWO purges per zone:
+
+      1. URL purge for /p/<slug> and /products/<slug> — invalidates the
+         storefront PDP HTML responses CF cached.
+      2. Tag purge for `product:<slug>` (and `product:<id>`) —
+         invalidates every GraphQL response that mentioned this product
+         identifier. The tags come from
+         MorpheusGraphQLView._extract_entity_tags, which emits
+         `Cache-Tag: product:<slug>` on every query whose AST resolved
+         a productBySlug / productById field referencing this product.
+    """
     from plugins.installed.cloudflare.models import CloudflareZone
 
     invalidations = []
@@ -323,6 +335,9 @@ def purge_for_product_update(product) -> list:
         is_active=True, auto_purge_on_product_update=True,
     ).select_related('account')
     paths = [f'/p/{product.slug}', f'/products/{product.slug}']
+    tags = [f'product:{product.slug}']
+    if getattr(product, 'id', None):
+        tags.append(f'product:{product.id}')
 
     for zone in qs:
         urls = [f'https://{zone.domain}{path}' for path in paths]
@@ -331,5 +346,40 @@ def purge_for_product_update(product) -> list:
                 purge_urls(zone=zone, urls=urls, triggered_by=f'product:{product.id}')
             )
         except Exception as e:  # noqa: BLE001 — never raise from a hook
-            logger.warning('cloudflare: purge_for_product_update failed: %s', e)
+            logger.warning('cloudflare: purge_for_product_update URL failed: %s', e)
+        try:
+            invalidations.append(
+                purge_tags(zone=zone, tags=tags, triggered_by=f'product:{product.id}')
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cloudflare: purge_for_product_update tag failed: %s', e)
+    return invalidations
+
+
+def purge_for_category_update(category) -> list:
+    """Tag-based companion to the URL-based hook in plugin.py.
+
+    Tag namespace: `category:<slug>` + `category:<id>`. The plugin
+    hook layer fires URL purges for /c/<slug>; this complements with
+    tag purges that drop matching GraphQL responses.
+    """
+    from plugins.installed.cloudflare.models import CloudflareZone
+
+    invalidations = []
+    qs = CloudflareZone.objects.filter(
+        is_active=True, auto_purge_on_collection_update=True,
+    ).select_related('account')
+    slug = getattr(category, 'slug', '') or ''
+    pk = getattr(category, 'id', '') or getattr(category, 'pk', '') or ''
+    tags = [t for t in (f'category:{slug}', f'category:{pk}') if not t.endswith(':')]
+    if not tags:
+        return invalidations
+
+    for zone in qs:
+        try:
+            invalidations.append(
+                purge_tags(zone=zone, tags=tags, triggered_by=f'category:{pk}')
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cloudflare: purge_for_category_update tag failed: %s', e)
     return invalidations

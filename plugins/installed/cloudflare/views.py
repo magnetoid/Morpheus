@@ -191,7 +191,7 @@ def purge_form(request, zone_id):
     """Manual cache-purge UI: URL list, host list, or purge everything."""
     from plugins.installed.cloudflare.models import CloudflareZone
     from plugins.installed.cloudflare.services import (
-        CloudflareError, purge_everything, purge_urls,
+        CloudflareError, purge_everything, purge_tags, purge_urls,
     )
 
     zone = get_object_or_404(CloudflareZone, pk=zone_id)
@@ -215,6 +215,21 @@ def purge_form(request, zone_id):
                         triggered_by=f'dashboard:{request.user.username}',
                     )
                     messages.success(request, f'Purged {len(urls)} URL(s).')
+            elif mode == 'tags':
+                # CF Cache Tags — set by MorpheusGraphQLView for GraphQL
+                # responses (product:<slug>, category:<slug>, graphql:query).
+                # Tag-based purges require Enterprise plan OR a Cache Tag
+                # rule on the zone configuration in CF.
+                raw = (request.POST.get('tags') or '').strip()
+                tags = [t.strip() for t in raw.replace('\n', ',').split(',') if t.strip()][:30]
+                if not tags:
+                    messages.warning(request, 'No tags supplied.')
+                else:
+                    purge_tags(
+                        zone=zone, tags=tags,
+                        triggered_by=f'dashboard:{request.user.username}',
+                    )
+                    messages.success(request, f'Purged tag(s): {", ".join(tags)}.')
             elif mode == 'hosts':
                 # Wire host-level purge by reusing the underlying client.
                 from plugins.installed.cloudflare.services import _record_purge

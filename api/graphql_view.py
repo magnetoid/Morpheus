@@ -107,8 +107,17 @@ class MorpheusGraphQLView(GraphQLView):
                 # anonymous from authenticated cached entries even if
                 # the CF rule keys on full URL only.
                 response['Vary'] = 'Authorization, Cookie, Accept-Encoding'
-                # Cache-Tag lets us purge by tag from the CF app.
-                response['Cache-Tag'] = 'graphql,graphql:query'
+                # Cache-Tag = comma-list of tags CF can purge by. We
+                # always emit the generic `graphql:query` tag for
+                # nuclear "purge all queries" + per-entity tags derived
+                # from the query so a single product change can
+                # invalidate only the entries that reference it.
+                tags = ['graphql', 'graphql:query']
+                tags.extend(self._extract_entity_tags(body))
+                # CF caps Cache-Tag headers at 16 KB and 1000 tags.
+                # In practice a single query touches a handful of
+                # entities — slice defensively anyway.
+                response['Cache-Tag'] = ','.join(tags[:200])
             else:
                 response['Cache-Control'] = 'no-store, private'
         except Exception as e:  # noqa: BLE001 — never block the response over a header bug
@@ -132,6 +141,91 @@ class MorpheusGraphQLView(GraphQLView):
             return 'query'
         first_word = q.split(None, 1)[0].lower()
         return first_word if first_word in ('query', 'mutation', 'subscription') else ''
+
+    @staticmethod
+    def _extract_entity_tags(body: dict[str, Any] | None) -> list[str]:
+        """Derive per-entity Cache-Tags from the GraphQL query.
+
+        Scans the parsed query AST for fields whose names match a
+        known entity-resolver (productBySlug, productById, category,
+        categoryBySlug, page, collection…) and extracts the entity
+        identifier from the field's arguments. Returns tags like:
+
+            product:hamlet, product:macbeth, category:fiction, page:about
+
+        That lets the cloudflare-purge hooks fire surgical purges:
+
+            on product update for slug=hamlet
+              → purge_tags(['product:hamlet'])
+              → CF drops only the cached responses that reference Hamlet
+
+        Best-effort: any parse failure / unknown shape returns []
+        rather than blocking the response.
+        """
+        if not isinstance(body, dict):
+            return []
+        query_str = body.get('query') or ''
+        if not query_str:
+            return []
+        variables = body.get('variables') if isinstance(body.get('variables'), dict) else {}
+
+        # Field-name → tag-prefix + argument-name mapping. Only fields
+        # the storefront actually queries are listed here; adding a new
+        # entity = one row.
+        TAG_MAP = {
+            # field name              tag prefix       id-arg names (try in order)
+            'product':               ('product',        ('slug', 'id')),
+            'productBySlug':         ('product',        ('slug',)),
+            'productById':           ('product',        ('id',)),
+            'category':              ('category',       ('slug', 'id')),
+            'categoryBySlug':        ('category',       ('slug',)),
+            'collection':            ('collection',     ('slug', 'id')),
+            'collectionBySlug':      ('collection',     ('slug',)),
+            'page':                  ('page',           ('slug', 'id')),
+            'pageBySlug':            ('page',           ('slug',)),
+            'author':                ('author',         ('slug', 'id')),
+            'authorBySlug':          ('author',         ('slug',)),
+            'vendor':                ('vendor',         ('slug', 'id')),
+        }
+
+        try:
+            from graphql import parse
+            from graphql.language.ast import (
+                FieldNode, StringValueNode, IntValueNode, VariableNode,
+            )
+            document = parse(query_str)
+        except Exception:  # noqa: BLE001 — strawberry will surface the canonical error
+            return []
+
+        tags: set[str] = set()
+
+        def _arg_value(arg_value_node, variables):
+            if isinstance(arg_value_node, (StringValueNode, IntValueNode)):
+                return str(arg_value_node.value)
+            if isinstance(arg_value_node, VariableNode):
+                return variables.get(arg_value_node.name.value)
+            return None
+
+        def visit(node):
+            for selection in (getattr(node.selection_set, 'selections', []) if getattr(node, 'selection_set', None) else []):
+                if isinstance(selection, FieldNode):
+                    fname = selection.name.value
+                    mapping = TAG_MAP.get(fname)
+                    if mapping is not None:
+                        prefix, id_args = mapping
+                        args = {a.name.value: a.value for a in (selection.arguments or [])}
+                        for id_arg in id_args:
+                            if id_arg in args:
+                                val = _arg_value(args[id_arg], variables or {})
+                                if val:
+                                    tags.add(f'{prefix}:{val}')
+                                    break
+                    visit(selection)
+
+        for definition in document.definitions:
+            visit(definition)
+
+        return sorted(tags)
 
     @staticmethod
     def _graphql_edge_ttl() -> int:
