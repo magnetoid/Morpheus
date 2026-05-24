@@ -446,6 +446,28 @@ class ProductVariant(models.Model):
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
     compare_at_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
 
+    # Per-variant copy — used when a variant has its own marketing pitch
+    # distinct from the parent product (e.g. "Signed hardcover" gets a
+    # paragraph the paperback doesn't). Both fall back to Product's text
+    # at storefront-render time when blank, so adding these is non-breaking.
+    short_description = models.TextField(
+        blank=True,
+        help_text='One-line variant pitch. Falls back to Product.short_description when blank.',
+    )
+    description = models.TextField(
+        blank=True,
+        help_text='Full variant description. Falls back to Product.description when blank.',
+    )
+
+    # Free-text size label (e.g. "XL", "300 ml", "9.5 US"). Independent of the
+    # AttributeValue M2M so merchants can ship variants without setting up the
+    # full attribute system. When you DO use attributes, leave this blank and
+    # use the structured attribute_values M2M below instead.
+    size = models.CharField(
+        max_length=50, blank=True,
+        help_text='Quick free-text size label, e.g. "XL" or "300 ml". For structured size pickers, use attribute_values.',
+    )
+
     localized_prices = models.JSONField(default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}')
 
     cost_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)

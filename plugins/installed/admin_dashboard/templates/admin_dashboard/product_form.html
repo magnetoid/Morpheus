@@ -489,13 +489,17 @@
               action="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}"
               class="morph-modal__body grid grid-cols-1 md:grid-cols-12 gap-3">
           {% csrf_token %}
-          <div class="md:col-span-8">
+          <div class="md:col-span-6">
             <label class="block text-xs font-medium mb-1">Name *</label>
             <input type="text" name="name" value="{{ v.name }}" required class="input">
           </div>
           <div class="md:col-span-4">
             <label class="block text-xs font-medium mb-1">SKU *</label>
             <input type="text" name="sku" value="{{ v.sku }}" required class="input">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium mb-1">Size</label>
+            <input type="text" name="size" value="{{ v.size|default:'' }}" class="input" placeholder="e.g. XL, 300 ml">
           </div>
 
           <div class="md:col-span-4">
@@ -538,6 +542,18 @@
             </label>
           </div>
 
+          {# Per-variant copy — both fall back to Product's text on the storefront when blank. #}
+          <div class="md:col-span-12">
+            <label class="block text-xs font-medium mb-1">Short description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+            <textarea name="short_description" rows="2" class="input"
+                      placeholder="One-line variant pitch — falls back to the product's short description when blank.">{{ v.short_description|default:'' }}</textarea>
+          </div>
+          <div class="md:col-span-12">
+            <label class="block text-xs font-medium mb-1">Long description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+            <textarea name="description" rows="5" class="input"
+                      placeholder="Full variant description — falls back to the product's description when blank.">{{ v.description|default:'' }}</textarea>
+          </div>
+
           <div class="md:col-span-12" data-digital-only {% if v.variant_type != 'digital' %}hidden{% endif %}>
             <label class="block text-xs font-medium mb-1">Digital file (PDF / EPUB / MP3)</label>
             {% if v.digital_file %}
@@ -571,13 +587,17 @@
         <form method="post" action="{% url 'admin_dashboard:variant_new' product_id=product.id %}"
               class="morph-modal__body grid grid-cols-1 md:grid-cols-12 gap-3">
           {% csrf_token %}
-          <div class="md:col-span-8">
+          <div class="md:col-span-6">
             <label class="block text-xs font-medium mb-1">Name *</label>
             <input type="text" name="name" required class="input" placeholder="e.g. Hardcover · Signed · Red XL">
           </div>
           <div class="md:col-span-4">
             <label class="block text-xs font-medium mb-1">SKU *</label>
             <input type="text" name="sku" required class="input" placeholder="auto-uppercase">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium mb-1">Size</label>
+            <input type="text" name="size" class="input" placeholder="XL / 300 ml">
           </div>
           <div class="md:col-span-4">
             <label class="block text-xs font-medium mb-1">Type</label>
@@ -595,6 +615,18 @@
             <label class="block text-xs font-medium mb-1">Compare-at</label>
             <input type="number" step="0.01" min="0" name="compare_at_price" class="input">
           </div>
+
+          <div class="md:col-span-12">
+            <label class="block text-xs font-medium mb-1">Short description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+            <textarea name="short_description" rows="2" class="input"
+                      placeholder="One-line variant pitch — leave blank to fall back to the product's short description."></textarea>
+          </div>
+          <div class="md:col-span-12">
+            <label class="block text-xs font-medium mb-1">Long description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+            <textarea name="description" rows="4" class="input"
+                      placeholder="Full variant description — leave blank to fall back to the product's description."></textarea>
+          </div>
+
           <div class="md:col-span-12 flex items-center gap-2">
             <label class="inline-flex items-center gap-2 text-sm">
               <input type="checkbox" name="is_active" checked> Active

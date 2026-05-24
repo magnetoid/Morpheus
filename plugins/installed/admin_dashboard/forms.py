@@ -614,6 +614,9 @@ class VariantForm(forms.Form):
 
     name = forms.CharField(max_length=200)
     sku = forms.CharField(max_length=100)
+    size = forms.CharField(max_length=50, required=False)
+    short_description = forms.CharField(widget=forms.Textarea, required=False)
+    description = forms.CharField(widget=forms.Textarea, required=False)
     price = forms.DecimalField(
         max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
     )
@@ -649,6 +652,9 @@ class VariantForm(forms.Form):
             kwargs['initial'] = {
                 'name': instance.name,
                 'sku': instance.sku,
+                'size': getattr(instance, 'size', '') or '',
+                'short_description': getattr(instance, 'short_description', '') or '',
+                'description': getattr(instance, 'description', '') or '',
                 'price': instance.price.amount if instance.price else None,
                 'compare_at_price': (
                     instance.compare_at_price.amount if instance.compare_at_price else None
@@ -696,6 +702,9 @@ class VariantForm(forms.Form):
         variant = self.instance or ProductVariant(product=self.product)
         variant.name = cd['name']
         variant.sku = cd['sku']
+        variant.size = (cd.get('size') or '').strip()
+        variant.short_description = (cd.get('short_description') or '').strip()
+        variant.description = (cd.get('description') or '').strip()
         variant.price = _money(cd.get('price'))
         variant.compare_at_price = _money(cd.get('compare_at_price'))
         variant.cost_price = _money(cd.get('cost_price'))
