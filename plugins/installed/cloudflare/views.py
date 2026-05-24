@@ -427,3 +427,96 @@ def invalidations_log(request):
         'active_nav': 'cloudflare',
         'breadcrumb_trail': _trail({'label': 'Purge log'}),
     })
+
+
+@staff_member_required
+def dns_records(request, zone_id):
+    """DNS records for a zone — list + add + delete.
+
+    Add: POST action=add_record (type, name, content, ttl, proxied).
+    Delete: POST action=delete_record (record_id).
+    """
+    from plugins.installed.cloudflare.models import CloudflareZone
+    from plugins.installed.cloudflare.services import (
+        CloudflareClient, CloudflareError,
+    )
+
+    zone = get_object_or_404(CloudflareZone, pk=zone_id)
+    cf = CloudflareClient(api_token=zone.account.api_token)
+
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+        try:
+            if action == 'add_record':
+                cf.create_dns_record(
+                    zone.zone_id,
+                    type=(request.POST.get('type') or 'A').strip().upper()[:10],
+                    name=(request.POST.get('name') or '').strip()[:255],
+                    content=(request.POST.get('content') or '').strip()[:500],
+                    ttl=int(request.POST.get('ttl') or 1),
+                    proxied=(request.POST.get('proxied') == 'on'),
+                )
+                messages.success(request, 'DNS record added.')
+            elif action == 'delete_record':
+                rid = (request.POST.get('record_id') or '').strip()
+                if rid:
+                    cf.delete_dns_record(zone.zone_id, rid)
+                    messages.success(request, 'DNS record deleted.')
+        except CloudflareError as e:
+            messages.error(request, f'Cloudflare error: {e}')
+        return HttpResponseRedirect(request.path)
+
+    records = []
+    error = ''
+    try:
+        body = cf.list_dns_records(zone.zone_id)
+        records = body.get('result') or []
+    except CloudflareError as e:
+        error = str(e)
+
+    return render(request, 'cloudflare/dns_records.html', {
+        'zone': zone,
+        'records': records,
+        'error': error,
+        'active_nav': 'cloudflare',
+        'breadcrumb_trail': _trail(
+            {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
+            {'label': 'DNS'},
+        ),
+    })
+
+
+@staff_member_required
+def firewall_events(request, zone_id):
+    """Recent WAF / firewall events (blocks, challenges, JS challenges).
+
+    Read-only — surface the last 50 events so the merchant can see what
+    Cloudflare's blocked. Creating WAF rules from this UI is intentionally
+    out of scope (footgun: a wrong rule blocks the storefront).
+    """
+    from plugins.installed.cloudflare.models import CloudflareZone
+    from plugins.installed.cloudflare.services import (
+        CloudflareClient, CloudflareError,
+    )
+
+    zone = get_object_or_404(CloudflareZone, pk=zone_id)
+    cf = CloudflareClient(api_token=zone.account.api_token)
+
+    events = []
+    error = ''
+    try:
+        body = cf.list_firewall_events(zone.zone_id, limit=50)
+        events = body.get('result') or []
+    except CloudflareError as e:
+        error = str(e)
+
+    return render(request, 'cloudflare/firewall_events.html', {
+        'zone': zone,
+        'events': events,
+        'error': error,
+        'active_nav': 'cloudflare',
+        'breadcrumb_trail': _trail(
+            {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
+            {'label': 'Firewall events'},
+        ),
+    })

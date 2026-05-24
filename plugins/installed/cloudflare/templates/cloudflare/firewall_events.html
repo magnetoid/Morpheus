@@ -1,0 +1,71 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Firewall events · {{ zone.domain }} · Cloudflare{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Firewall events — {{ zone.domain }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Last 50 WAF / security events: blocked, challenged, JS-challenged.
+        Read-only — create custom rules in the Cloudflare dashboard.
+      </p>
+    </div>
+    <a href="{% url 'cloudflare:zone_detail' zone_id=zone.id %}" class="btn">
+      <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to zone
+    </a>
+  </div>
+
+  {% if error %}
+  <div class="card card-padded" style="background:#fff4ef;border:1px solid var(--danger,#c83a3a);">
+    <strong>Could not load firewall events.</strong>
+    <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Events ({{ events|length }})</h2>
+    </div>
+    {% if events %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Source</th>
+          <th>Path</th>
+          <th>Country</th>
+          <th>UA</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td>
+            {% if e.action == 'block' %}<span class="pill pill-warn">Block</span>
+            {% elif e.action == 'challenge' %}<span class="pill pill-info">Challenge</span>
+            {% elif e.action == 'jschallenge' %}<span class="pill pill-info">JS challenge</span>
+            {% elif e.action == 'managed_challenge' %}<span class="pill pill-info">Managed challenge</span>
+            {% elif e.action == 'log' %}<span class="pill pill-neutral">Log</span>
+            {% else %}<span class="pill pill-neutral">{{ e.action }}</span>{% endif %}
+          </td>
+          <td><code class="text-xs">{{ e.source|default:"—" }}</code></td>
+          <td class="text-xs"><code>{{ e.uri|default:e.host|truncatechars:50 }}</code></td>
+          <td class="text-xs">{{ e.country|default:"—" }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ e.user_agent|truncatechars:40 }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ e.occurred_at|default:e.timestamp|truncatechars:19 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">
+      No firewall events in the last 24h — Cloudflare hasn't blocked or challenged any requests.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

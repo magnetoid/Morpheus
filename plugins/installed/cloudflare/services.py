@@ -119,6 +119,27 @@ class CloudflareClient:
     def list_dns_records(self, zone_id: str) -> dict:
         return self._get(f'/zones/{zone_id}/dns_records', params={'per_page': 100})
 
+    def create_dns_record(self, zone_id: str, *, type: str, name: str,
+                          content: str, ttl: int = 1, proxied: bool = False) -> dict:
+        """Create a new DNS record. ttl=1 means 'auto' per CF docs."""
+        return self._post(f'/zones/{zone_id}/dns_records', {
+            'type': type, 'name': name, 'content': content,
+            'ttl': ttl, 'proxied': proxied,
+        })
+
+    def delete_dns_record(self, zone_id: str, record_id: str) -> dict:
+        return self._request('DELETE', f'/zones/{zone_id}/dns_records/{record_id}')
+
+    # ── Bot Fight Mode + always-use-HTTPS (one-line security wins) ───────
+
+    def get_bot_fight_mode(self, zone_id: str) -> dict:
+        return self._get(f'/zones/{zone_id}/bot_management')
+
+    def patch_bot_fight_mode(self, zone_id: str, enabled: bool) -> dict:
+        return self._request('PUT', f'/zones/{zone_id}/bot_management', payload={
+            'fight_mode': bool(enabled),
+        })
+
     # ── Speed / cache top-level toggles ──────────────────────────────────
 
     def get_tiered_cache(self, zone_id: str) -> dict:

@@ -14,5 +14,7 @@ urlpatterns = [
     path('zones/<uuid:zone_id>/', views.zone_detail, name='zone_detail'),
     path('zones/<uuid:zone_id>/purge/', views.purge_form, name='purge'),
     path('zones/<uuid:zone_id>/analytics/', views.analytics, name='analytics'),
+    path('zones/<uuid:zone_id>/dns/', views.dns_records, name='dns_records'),
+    path('zones/<uuid:zone_id>/firewall/', views.firewall_events, name='firewall_events'),
     path('log/', views.invalidations_log, name='log'),
 ]

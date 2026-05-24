@@ -1,0 +1,113 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}DNS · {{ zone.domain }} · Cloudflare{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">DNS records — {{ zone.domain }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Live from Cloudflare. Proxied (orange-cloud) records flow through CF;
+        DNS-only (grey-cloud) bypass the edge. Auto TTL = 1.
+      </p>
+    </div>
+    <a href="{% url 'cloudflare:zone_detail' zone_id=zone.id %}" class="btn">
+      <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to zone
+    </a>
+  </div>
+
+  {% if error %}
+  <div class="card card-padded" style="background:#fff4ef;border:1px solid var(--danger,#c83a3a);">
+    <strong>Could not load DNS records.</strong>
+    <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  <div class="card card-padded">
+    <h2 class="font-semibold text-sm mb-3">Add a record</h2>
+    <form method="post" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_record">
+      <div class="md:col-span-2">
+        <label class="block text-xs font-medium mb-1">Type</label>
+        <select name="type" class="input">
+          <option value="A">A</option>
+          <option value="AAAA">AAAA</option>
+          <option value="CNAME">CNAME</option>
+          <option value="MX">MX</option>
+          <option value="TXT">TXT</option>
+          <option value="NS">NS</option>
+          <option value="SRV">SRV</option>
+        </select>
+      </div>
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium mb-1">Name *</label>
+        <input type="text" name="name" required class="input" placeholder="@ or sub.{{ zone.domain }}">
+      </div>
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1">Content *</label>
+        <input type="text" name="content" required class="input" placeholder="IPv4 / hostname / TXT value">
+      </div>
+      <div class="md:col-span-1">
+        <label class="block text-xs font-medium mb-1">TTL</label>
+        <input type="number" name="ttl" value="1" min="1" class="input" title="1 = Auto">
+      </div>
+      <div class="md:col-span-1 flex items-end pb-2">
+        <label class="inline-flex items-center gap-1 text-xs">
+          <input type="checkbox" name="proxied"> Proxied
+        </label>
+      </div>
+      <div class="md:col-span-1">
+        <button class="btn btn-primary w-full" type="submit">
+          <i data-lucide="plus" class="h-4 w-4"></i> Add
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Records ({{ records|length }})</h2>
+    </div>
+    {% if records %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Name</th>
+          <th>Content</th>
+          <th>TTL</th>
+          <th>Proxy</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td><span class="pill pill-neutral">{{ r.type }}</span></td>
+          <td class="font-medium">{{ r.name }}</td>
+          <td class="text-xs"><code>{{ r.content|truncatechars:60 }}</code></td>
+          <td class="text-xs">{% if r.ttl == 1 %}Auto{% else %}{{ r.ttl }}s{% endif %}</td>
+          <td>{% if r.proxied %}<span class="pill pill-warn">Proxied</span>{% else %}<span class="pill pill-neutral">DNS only</span>{% endif %}</td>
+          <td class="text-right">
+            <form method="post" data-confirm="Delete the {{ r.type }} record for {{ r.name }}?" data-confirm-cta="Delete" data-confirm-danger style="display:inline-block;margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_record">
+              <input type="hidden" name="record_id" value="{{ r.id }}">
+              <button type="submit" class="btn btn-ghost p-1.5" title="Delete record">
+                <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No DNS records yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

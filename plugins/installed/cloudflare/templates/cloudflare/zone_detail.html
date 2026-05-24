@@ -10,7 +10,13 @@
       <h1 class="text-xl font-semibold tracking-tight">{{ zone.domain }}</h1>
       <p class="text-sm text-[color:var(--text-muted)]">Zone <code class="text-xs">{{ zone.zone_id }}</code> · account <strong>{{ zone.account.label }}</strong></p>
     </div>
-    <div class="flex gap-2">
+    <div class="flex gap-2 flex-wrap">
+      <a href="{% url 'cloudflare:dns_records' zone_id=zone.id %}" class="btn">
+        <i data-lucide="server" class="h-4 w-4"></i> DNS
+      </a>
+      <a href="{% url 'cloudflare:firewall_events' zone_id=zone.id %}" class="btn">
+        <i data-lucide="shield" class="h-4 w-4"></i> Firewall
+      </a>
       <a href="{% url 'cloudflare:analytics' zone_id=zone.id %}" class="btn">
         <i data-lucide="bar-chart-3" class="h-4 w-4"></i> Analytics
       </a>
