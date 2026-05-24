@@ -240,25 +240,35 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
 
     if request.method == 'POST':
         action = request.POST.get('action') or ''
+        sf = plugin_registry.get('storefront')
         if action == 'clear_default':
             try:
                 cache.clear()
-                messages.success(request, 'Django default cache cleared.')
+                messages.success(request, 'App cache cleared.')
             except Exception as e:  # noqa: BLE001
                 messages.error(request, f'Cache clear failed: {e}')
-        elif action == 'save_storefront':
-            sf = plugin_registry.get('storefront')
-            if sf is not None:
-                try:
-                    sf.set_config('page_cache_ttl', int(request.POST.get('page_cache_ttl') or 0))
-                    sf.set_config('asset_max_age_seconds', int(request.POST.get('asset_max_age_seconds') or 0))
-                    sf.set_config('html_cache_control', (request.POST.get('html_cache_control') or '').strip())
-                    sf.set_config('graphql_edge_cache_ttl', int(request.POST.get('graphql_edge_cache_ttl') or 0))
-                    messages.success(request, 'Storefront cache settings saved.')
-                except (TypeError, ValueError):
-                    messages.error(request, 'TTL fields must be integers.')
-        elif action == 'ping_redis':
-            pass  # handled below; just refreshes the page
+        elif action == 'save_storefront' and sf is not None:
+            try:
+                sf.set_config('html_cache_control', (request.POST.get('html_cache_control') or '').strip())
+                sf.set_config('asset_max_age_seconds', int(request.POST.get('asset_max_age_seconds') or 0))
+                sf.set_config('graphql_edge_cache_ttl', int(request.POST.get('graphql_edge_cache_ttl') or 0))
+                messages.success(request, 'Cache-Control headers saved.')
+            except (TypeError, ValueError):
+                messages.error(request, 'TTL fields must be integers.')
+        elif action == 'save_assets' and sf is not None:
+            sf.set_config('lazy_load_images', request.POST.get('lazy_load_images') == 'on')
+            sf.set_config('serve_webp', request.POST.get('serve_webp') == 'on')
+            sf.set_config('preload_lcp', request.POST.get('preload_lcp') == 'on')
+            sf.set_config('responsive_srcset', request.POST.get('responsive_srcset') == 'on')
+            messages.success(request, 'Image optimization settings saved.')
+        elif action == 'save_hints' and sf is not None:
+            sf.set_config('preconnect_origins', (request.POST.get('preconnect_origins') or '').strip())
+            sf.set_config('dns_prefetch_origins', (request.POST.get('dns_prefetch_origins') or '').strip())
+            messages.success(request, 'Resource hints saved.')
+        elif action == 'save_pwa' and sf is not None:
+            sf.set_config('service_worker_enabled', request.POST.get('service_worker_enabled') == 'on')
+            sf.set_config('offline_page_path', (request.POST.get('offline_page_path') or '/offline/').strip())
+            messages.success(request, 'PWA settings saved.')
         return HttpResponseRedirect(request.path)
 
     # ── Django cache backend status ────────────────────────────────────────
@@ -307,10 +317,23 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     storefront_plugin = plugin_registry.get('storefront')
     sf_cfg = storefront_plugin.get_config() if storefront_plugin else {}
     storefront = {
-        'page_cache_ttl': int(sf_cfg.get('page_cache_ttl') or 0),
         'asset_max_age_seconds': int(sf_cfg.get('asset_max_age_seconds') or 31536000),  # 1 year default
-        'html_cache_control': (sf_cfg.get('html_cache_control') or 'public, max-age=0, s-maxage=300, must-revalidate'),
+        'html_cache_control': (sf_cfg.get('html_cache_control') or 'public, max-age=0, s-maxage=300, must-revalidate, stale-while-revalidate=86400, stale-if-error=86400'),
         'graphql_edge_cache_ttl': int(sf_cfg.get('graphql_edge_cache_ttl') or 0),
+    }
+    assets = {
+        'lazy_load_images': bool(sf_cfg.get('lazy_load_images', True)),
+        'serve_webp': bool(sf_cfg.get('serve_webp', True)),
+        'preload_lcp': bool(sf_cfg.get('preload_lcp', True)),
+        'responsive_srcset': bool(sf_cfg.get('responsive_srcset', True)),
+    }
+    hints = {
+        'preconnect_origins': sf_cfg.get('preconnect_origins') or '',
+        'dns_prefetch_origins': sf_cfg.get('dns_prefetch_origins') or '',
+    }
+    pwa = {
+        'service_worker_enabled': bool(sf_cfg.get('service_worker_enabled', False)),
+        'offline_page_path': sf_cfg.get('offline_page_path') or '/offline/',
     }
 
     # ── Cloudflare zone summary ────────────────────────────────────────────
@@ -335,6 +358,9 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
         'cache_error': cache_error,
         'redis_stats': redis_stats,
         'storefront': storefront,
+        'assets': assets,
+        'hints': hints,
+        'pwa': pwa,
         'cf_zones': cf_zones,
         'cf_account_count': cf_account_count,
         'recent_purges_count': recent_purges_count,
