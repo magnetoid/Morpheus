@@ -6,7 +6,7 @@
 
 **Open source · Plugin-first · Event-sourced · Production-grade · Agentic-commerce ready**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live-dotbooks.store-ff5722.svg)](https://dotbooks.store)
 [![Plugins](https://img.shields.io/badge/plugins-49%20active-blue.svg)](#whats-inside)
 [![MCP](https://img.shields.io/badge/MCP-ready-7c3aed.svg)](#agentic-commerce-surfaces)
@@ -706,7 +706,13 @@ See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
 
 ## License
 
-MIT. Build whatever you want with it.
+Apache 2.0 — see [LICENSE](LICENSE). Build whatever you want with it.
+
+Morpheus is open-core: the platform you see in this repo is Apache 2.0.
+Future enterprise plugins (advanced AI, multi-store, SSO/SCIM) may ship
+under separate licensing in their own repos. Contributions to this repo
+are always Apache 2.0 — see [CONTRIBUTING.md](CONTRIBUTING.md) and
+[SECURITY.md](SECURITY.md).
 
 <div align="center">
 <sub>Built by people who think AI agents deserve a real commerce platform, not a chatbot tab.</sub>

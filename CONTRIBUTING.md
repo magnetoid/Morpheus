@@ -76,5 +76,9 @@ to humans too.
 
 ## License
 
-MIT. By submitting a contribution, you agree it's licensed under the
-same terms as the rest of the repo.
+Apache 2.0 — see [LICENSE](LICENSE). By submitting a contribution, you
+agree it's licensed under the same terms as the rest of the repo.
+
+Morpheus is open-core: the platform is Apache 2.0, but future enterprise
+features may ship as proprietary plugins in separate repos. Contributions
+to this repo are always Apache 2.0.
