@@ -16,6 +16,54 @@ from django.shortcuts import get_object_or_404, render
 logger = logging.getLogger('morpheus.cloudflare')
 
 
+def _install_graphql_cache_rule(zone) -> None:
+    """Idempotently install a CF Cache Rule that caches anonymous
+    POST /graphql/ responses. Without this rule, the s-maxage header
+    we emit from the GraphQL view is ignored (CF doesn't cache POST
+    by default).
+
+    The expression matches POST /graphql/ with no Authorization
+    header AND no sessionid cookie, so logged-in dashboard queries
+    stay uncached. Per-response cache-key includes the body so
+    different queries don't collide.
+    """
+    from plugins.installed.cloudflare.services import _client_for, CloudflareError
+
+    cf = _client_for(zone)
+    DESC = 'Morpheus — cache anonymous GraphQL POSTs'
+    rule_body = {
+        'description': DESC,
+        'expression': (
+            '(http.request.uri.path eq "/graphql/" and '
+            'http.request.method eq "POST" and '
+            'not http.request.headers["authorization"][0] in {"present"})'
+        ),
+        'action': 'set_cache_settings',
+        'action_parameters': {
+            'cache': True,
+            'edge_ttl': {'mode': 'respect_origin', 'default': 300},
+            'browser_ttl': {'mode': 'override_origin', 'default': 0},
+            'cache_key': {
+                'ignore_query_strings_order': True,
+                'cache_deception_armor': True,
+            },
+            'origin_cache_control': True,
+            'respect_strong_etags': True,
+        },
+        'enabled': True,
+    }
+
+    # Read existing ruleset, replace any rule with the same description,
+    # or append.
+    try:
+        existing = (cf.get_cache_ruleset(zone.zone_id).get('result') or {}).get('rules') or []
+    except CloudflareError:
+        existing = []
+    rules = [r for r in existing if r.get('description') != DESC]
+    rules.append(rule_body)
+    cf.put_cache_ruleset(zone.zone_id, rules)
+
+
 def _trail(*items):
     trail = [
         {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -118,13 +166,33 @@ def zone_detail(request, zone_id):
 
     zone = get_object_or_404(CloudflareZone, pk=zone_id)
 
-    if request.method == 'POST' and request.POST.get('action') == 'toggle_setting':
-        setting_id = (request.POST.get('setting_id') or '').strip()
-        raw_value = (request.POST.get('value') or '').strip()
-        # Booleans come in as 'on'/'off'; map → CF's 'on'/'off' strings.
+    if request.method == 'POST':
+        action = request.POST.get('action') or 'toggle_setting'
         try:
-            patch_zone_setting(zone, setting_id, raw_value)
-            messages.success(request, f'Set {setting_id} = {raw_value}.')
+            if action == 'toggle_setting':
+                setting_id = (request.POST.get('setting_id') or '').strip()
+                raw_value = (request.POST.get('value') or '').strip()
+                patch_zone_setting(zone, setting_id, raw_value)
+                messages.success(request, f'Set {setting_id} = {raw_value}.')
+            elif action == 'toggle_tiered_cache':
+                from plugins.installed.cloudflare.services import _client_for
+                _client_for(zone).patch_tiered_cache(zone.zone_id, request.POST.get('value', 'on'))
+                messages.success(request, f'Tiered Cache → {request.POST.get("value")}.')
+            elif action == 'toggle_cache_reserve':
+                from plugins.installed.cloudflare.services import _client_for
+                _client_for(zone).patch_cache_reserve(zone.zone_id, request.POST.get('value', 'on'))
+                messages.success(request, f'Cache Reserve → {request.POST.get("value")}.')
+            elif action == 'toggle_argo':
+                from plugins.installed.cloudflare.services import _client_for
+                _client_for(zone).patch_argo_smart_routing(zone.zone_id, request.POST.get('value', 'on'))
+                messages.success(request, f'Argo Smart Routing → {request.POST.get("value")}.')
+            elif action == 'install_graphql_cache_rule':
+                _install_graphql_cache_rule(zone)
+                messages.success(
+                    request,
+                    'Cache Rule installed — anonymous POST /graphql/ is now '
+                    'cached at the edge.',
+                )
         except CloudflareError as e:
             messages.error(request, f'CF API error: {e}')
         return HttpResponseRedirect(request.path)
@@ -141,6 +209,39 @@ def zone_detail(request, zone_id):
         settings_error = f'{type(e).__name__}: {e}'
 
     summary = analytics_summary(zone, days=7) if not settings_error else {}
+
+    # Top-level toggles — Tiered Cache + Cache Reserve + Argo. These live on
+    # their own endpoints, not /zones/{id}/settings, so they need separate
+    # reads.
+    from plugins.installed.cloudflare.services import _client_for
+    tiered_cache_state = ''
+    cache_reserve_state = ''
+    argo_state = ''
+    graphql_rule_installed = False
+    if not settings_error:
+        try:
+            cf = _client_for(zone)
+            r = cf.get_tiered_cache(zone.zone_id)
+            tiered_cache_state = ((r.get('result') or {}).get('value') or '')
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            r = cf.get_cache_reserve(zone.zone_id)
+            cache_reserve_state = ((r.get('result') or {}).get('value') or '')
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            r = cf.get_argo_smart_routing(zone.zone_id)
+            argo_state = ((r.get('result') or {}).get('value') or '')
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            existing = (cf.get_cache_ruleset(zone.zone_id).get('result') or {}).get('rules') or []
+            graphql_rule_installed = any(
+                'GraphQL' in (r.get('description') or '') for r in existing
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     # Curated subset of settings the merchant actually wants to see.
     # Full list is 50+ — we just expose the load-bearing ones.
@@ -181,6 +282,10 @@ def zone_detail(request, zone_id):
         'settings_error': settings_error,
         'summary': summary,
         'recent_purges': recent_purges,
+        'tiered_cache_state': tiered_cache_state,
+        'cache_reserve_state': cache_reserve_state,
+        'argo_state': argo_state,
+        'graphql_rule_installed': graphql_rule_installed,
         'active_nav': 'cloudflare',
         'breadcrumb_trail': _trail({'label': zone.domain}),
     })

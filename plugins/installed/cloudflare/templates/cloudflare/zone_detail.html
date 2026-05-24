@@ -51,6 +51,71 @@
     <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ settings_error }}</p>
   </div>
   {% else %}
+
+  {# Top-level toggles — live on their own CF endpoints, not /zones/{id}/settings #}
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Cache + Speed top-level toggles</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Big-impact knobs that live on their own CF endpoints. Always pair Cache Reserve with Tiered Cache to keep write costs predictable.</p>
+    </div>
+    <div class="card-padded grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="card card-padded" style="margin:0;">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-medium text-sm">Tiered Cache</h3>
+            <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Smart-topology — lower-tier datacenters fill from upper tiers instead of origin. Cuts origin load + p99 latency.</p>
+          </div>
+          <span class="pill {% if tiered_cache_state == 'on' %}pill-success{% else %}pill-neutral{% endif %}">{{ tiered_cache_state|default:'unknown' }}</span>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="toggle_tiered_cache"><input type="hidden" name="value" value="on"><button class="btn btn-ghost text-xs" type="submit" {% if tiered_cache_state == 'on' %}disabled{% endif %}>Turn on</button></form>
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="toggle_tiered_cache"><input type="hidden" name="value" value="off"><button class="btn btn-ghost text-xs" type="submit" {% if tiered_cache_state == 'off' %}disabled{% endif %}>Turn off</button></form>
+        </div>
+      </div>
+
+      <div class="card card-padded" style="margin:0;">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-medium text-sm">Cache Reserve</h3>
+            <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Persistent cache for cold/long-tail content. $0.015/GB-mo + per-op pricing — only enable for catalogs with long-tail traffic.</p>
+          </div>
+          <span class="pill {% if cache_reserve_state == 'on' %}pill-success{% else %}pill-neutral{% endif %}">{{ cache_reserve_state|default:'unknown' }}</span>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <form method="post" style="margin:0;" data-confirm="Cache Reserve has per-op pricing. Enable?" data-confirm-cta="Enable">{% csrf_token %}<input type="hidden" name="action" value="toggle_cache_reserve"><input type="hidden" name="value" value="on"><button class="btn btn-ghost text-xs" type="submit" {% if cache_reserve_state == 'on' %}disabled{% endif %}>Turn on</button></form>
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="toggle_cache_reserve"><input type="hidden" name="value" value="off"><button class="btn btn-ghost text-xs" type="submit" {% if cache_reserve_state == 'off' %}disabled{% endif %}>Turn off</button></form>
+        </div>
+      </div>
+
+      <div class="card card-padded" style="margin:0;">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-medium text-sm">Argo Smart Routing</h3>
+            <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Live network telemetry picks the fastest path to origin. Account-level Argo subscription required.</p>
+          </div>
+          <span class="pill {% if argo_state == 'on' %}pill-success{% else %}pill-neutral{% endif %}">{{ argo_state|default:'unknown' }}</span>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="toggle_argo"><input type="hidden" name="value" value="on"><button class="btn btn-ghost text-xs" type="submit" {% if argo_state == 'on' %}disabled{% endif %}>Turn on</button></form>
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="toggle_argo"><input type="hidden" name="value" value="off"><button class="btn btn-ghost text-xs" type="submit" {% if argo_state == 'off' %}disabled{% endif %}>Turn off</button></form>
+        </div>
+      </div>
+
+      <div class="card card-padded" style="margin:0;">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-medium text-sm">GraphQL edge caching</h3>
+            <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Installs the Cache Rule that lets CF cache anonymous POST /graphql/ responses. Pairs with the s-maxage headers Morpheus already emits.</p>
+          </div>
+          <span class="pill {% if graphql_rule_installed %}pill-success{% else %}pill-neutral{% endif %}">{% if graphql_rule_installed %}installed{% else %}not installed{% endif %}</span>
+        </div>
+        <div class="mt-3">
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="install_graphql_cache_rule"><button class="btn {% if graphql_rule_installed %}btn-ghost{% else %}btn-primary{% endif %} text-xs" type="submit">{% if graphql_rule_installed %}Re-apply rule{% else %}Install Cache Rule{% endif %}</button></form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="card overflow-hidden">
     <div class="card-padded border-b border-[color:var(--border)]">
       <h2 class="font-semibold">Zone settings (live from Cloudflare)</h2>

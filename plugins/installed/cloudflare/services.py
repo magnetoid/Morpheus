@@ -119,6 +119,52 @@ class CloudflareClient:
     def list_dns_records(self, zone_id: str) -> dict:
         return self._get(f'/zones/{zone_id}/dns_records', params={'per_page': 100})
 
+    # ── Speed / cache top-level toggles ──────────────────────────────────
+
+    def get_tiered_cache(self, zone_id: str) -> dict:
+        """Tiered Cache (smart topology) status."""
+        return self._get(f'/zones/{zone_id}/cache/tiered_cache_smart_topology_enable')
+
+    def patch_tiered_cache(self, zone_id: str, value: str) -> dict:
+        """value: 'on' / 'off' — flips smart-topology Tiered Cache."""
+        return self._patch(
+            f'/zones/{zone_id}/cache/tiered_cache_smart_topology_enable',
+            {'value': value},
+        )
+
+    def get_cache_reserve(self, zone_id: str) -> dict:
+        """Cache Reserve status. Eligible objects need Content-Length + TTL ≥ 10h."""
+        return self._get(f'/zones/{zone_id}/cache/cache_reserve')
+
+    def patch_cache_reserve(self, zone_id: str, value: str) -> dict:
+        """value: 'on' / 'off'. ALWAYS pair with Tiered Cache to keep write costs down."""
+        return self._patch(
+            f'/zones/{zone_id}/cache/cache_reserve',
+            {'value': value},
+        )
+
+    def get_argo_smart_routing(self, zone_id: str) -> dict:
+        return self._get(f'/zones/{zone_id}/argo/smart_routing')
+
+    def patch_argo_smart_routing(self, zone_id: str, value: str) -> dict:
+        return self._patch(f'/zones/{zone_id}/argo/smart_routing', {'value': value})
+
+    # ── Cache Rules (Rulesets API — replaces legacy Page Rules) ─────────
+
+    def get_cache_ruleset(self, zone_id: str) -> dict:
+        """Read the http_request_cache_settings ruleset entrypoint."""
+        return self._get(
+            f'/zones/{zone_id}/rulesets/phases/http_request_cache_settings/entrypoint'
+        )
+
+    def put_cache_ruleset(self, zone_id: str, rules: list[dict]) -> dict:
+        """Replace the entire cache-settings ruleset with `rules`."""
+        return self._request(
+            'PUT',
+            f'/zones/{zone_id}/rulesets/phases/http_request_cache_settings/entrypoint',
+            payload={'rules': rules},
+        )
+
     # ── Cache ────────────────────────────────────────────────────────────
 
     def purge_cache(
