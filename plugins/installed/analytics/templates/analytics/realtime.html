@@ -5,26 +5,11 @@
 <h1 class="text-xl font-semibold mb-4">Real-time</h1>
 
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Sessions</p>
-    <p id="rt-sessions" class="text-2xl font-semibold mt-1">{{ data.sessions }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Events</p>
-    <p id="rt-events" class="text-2xl font-semibold mt-1">{{ data.events }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Pageviews</p>
-    <p id="rt-pv" class="text-2xl font-semibold mt-1">{{ data.pageviews }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cart adds</p>
-    <p id="rt-cart" class="text-2xl font-semibold mt-1">{{ data.cart_adds }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Orders</p>
-    <p id="rt-orders" class="text-2xl font-semibold mt-1">{{ data.orders }}</p>
-  </div>
+  <div class="card card-padded kpi"><span class="kpi__label">Sessions</span><span id="rt-sessions" class="kpi__value">{{ data.sessions }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Events</span><span id="rt-events" class="kpi__value">{{ data.events }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Pageviews</span><span id="rt-pv" class="kpi__value">{{ data.pageviews }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Cart adds</span><span id="rt-cart" class="kpi__value">{{ data.cart_adds }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Orders</span><span id="rt-orders" class="kpi__value">{{ data.orders }}</span></div>
 </div>
 
 <div class="card">

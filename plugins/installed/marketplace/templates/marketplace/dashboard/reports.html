@@ -20,26 +20,26 @@
   </div>
 
   <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Vendors</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.active_vendors }}</div>
-      <div class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ summary.total_vendors }} total</div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Vendors</span>
+      <span class="kpi__value">{{ summary.active_vendors }}</span>
+      <span class="text-xs text-[color:var(--text-muted)]">{{ summary.total_vendors }} total</span>
     </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Vendor orders</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.orders_period }}</div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Vendor orders</span>
+      <span class="kpi__value">{{ summary.orders_period }}</span>
     </div>
-    <div class="card card-padded col-span-2">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Gross merchandise</div>
-      <div class="text-2xl font-semibold mt-1 font-mono">{{ summary.gross_period }}</div>
+    <div class="card card-padded col-span-2 kpi">
+      <span class="kpi__label">Gross merchandise</span>
+      <span class="kpi__value">{{ summary.gross_period }}</span>
     </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Commission</div>
-      <div class="text-2xl font-semibold mt-1 font-mono">{{ summary.commission_period }}</div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Commission</span>
+      <span class="kpi__value">{{ summary.commission_period }}</span>
     </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Paid out</div>
-      <div class="text-2xl font-semibold mt-1 font-mono">{{ summary.paid_period }}</div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Paid out</span>
+      <span class="kpi__value">{{ summary.paid_period }}</span>
     </div>
   </div>
 

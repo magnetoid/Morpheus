@@ -15,41 +15,17 @@
 </div>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Sessions</p>
-    <p class="text-2xl font-semibold mt-1">{{ summary.sessions }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Pageviews</p>
-    <p class="text-2xl font-semibold mt-1">{{ summary.pageviews }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Orders</p>
-    <p class="text-2xl font-semibold mt-1">{{ summary.orders }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Revenue</p>
-    <p class="text-2xl font-semibold mt-1">{% if summary.revenue %}{{ summary.revenue }}{% else %}—{% endif %}</p>
-  </div>
+  <div class="card card-padded kpi"><span class="kpi__label">Sessions</span><span class="kpi__value">{{ summary.sessions }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Pageviews</span><span class="kpi__value">{{ summary.pageviews }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Orders</span><span class="kpi__value">{{ summary.orders }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Revenue</span><span class="kpi__value">{% if summary.revenue %}{{ summary.revenue }}{% else %}—{% endif %}</span></div>
 </div>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Product views</p>
-    <p class="text-xl font-semibold mt-1">{{ summary.product_views }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cart adds</p>
-    <p class="text-xl font-semibold mt-1">{{ summary.cart_adds }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Checkouts started</p>
-    <p class="text-xl font-semibold mt-1">{{ summary.checkouts_started }}</p>
-  </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Searches</p>
-    <p class="text-xl font-semibold mt-1">{{ summary.searches }}</p>
-  </div>
+  <div class="card card-padded kpi"><span class="kpi__label">Product views</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.product_views }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Cart adds</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.cart_adds }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Checkouts started</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.checkouts_started }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Searches</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.searches }}</span></div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">

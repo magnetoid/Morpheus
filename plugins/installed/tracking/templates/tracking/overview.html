@@ -21,11 +21,11 @@
 {% endif %}
 
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Sent (24 h)</p><p class="text-2xl font-semibold mt-1">{{ stats.sent_24h }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Errored</p><p class="text-2xl font-semibold mt-1" {% if stats.errored_24h %}style="color:var(--danger);"{% endif %}>{{ stats.errored_24h }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Deduped</p><p class="text-2xl font-semibold mt-1">{{ stats.deduped_24h }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Success rate</p><p class="text-2xl font-semibold mt-1" {% if stats.success_rate >= 95 %}style="color:var(--success);"{% elif stats.success_rate < 80 %}style="color:var(--warn);"{% endif %}>{{ stats.success_rate|floatformat:1 }}%</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Last sent</p><p class="text-sm font-medium mt-1">{% if last_sent_at %}{{ last_sent_at|timesince }} ago{% else %}—{% endif %}</p></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Sent (24 h)</span><span class="kpi__value">{{ stats.sent_24h }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Errored</span><span class="kpi__value" {% if stats.errored_24h %}style="color:var(--danger);"{% endif %}>{{ stats.errored_24h }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Deduped</span><span class="kpi__value">{{ stats.deduped_24h }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Success rate</span><span class="kpi__value" {% if stats.success_rate >= 95 %}style="color:var(--success);"{% elif stats.success_rate < 80 %}style="color:var(--warn);"{% endif %}>{{ stats.success_rate|floatformat:1 }}%</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Last sent</span><span class="kpi__value" style="font-size:.95rem; font-weight:500;">{% if last_sent_at %}{{ last_sent_at|timesince }} ago{% else %}—{% endif %}</span></div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

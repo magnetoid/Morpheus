@@ -5,11 +5,11 @@
 <h1 class="text-xl font-semibold mb-4">SEO</h1>
 
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Meta overrides</p><p class="text-2xl font-semibold mt-1">{{ meta_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Active redirects</p><p class="text-2xl font-semibold mt-1">{{ redirect_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Open 404s</p><p class="text-2xl font-semibold mt-1" {% if not_found_count %}style="color:var(--warn);"{% endif %}>{{ not_found_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Audited products</p><p class="text-2xl font-semibold mt-1">{{ audit_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Tracked keywords</p><p class="text-2xl font-semibold mt-1">{{ tracked_keywords }}</p></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Meta overrides</span><span class="kpi__value">{{ meta_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Active redirects</span><span class="kpi__value">{{ redirect_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Open 404s</span><span class="kpi__value" {% if not_found_count %}style="color:var(--warn);"{% endif %}>{{ not_found_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Audited products</span><span class="kpi__value">{{ audit_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Tracked keywords</span><span class="kpi__value">{{ tracked_keywords }}</span></div>
 </div>
 
 <div class="card card-padded mb-6">
