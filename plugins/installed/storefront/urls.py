@@ -17,6 +17,7 @@ urlpatterns = [
     path('checkout/gift-card/apply/', views.checkout_apply_gift_card, name='checkout_apply_gift_card'),
     path('checkout/gift-card/remove/', views.checkout_remove_gift_card, name='checkout_remove_gift_card'),
     path('search/', views.search, name='search'),
+    path('api/quick-search/', views.quick_search, name='quick_search'),
 
     # Content / static
     path('about/', views.about, name='about'),

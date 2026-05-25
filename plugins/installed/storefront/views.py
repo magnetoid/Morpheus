@@ -1546,6 +1546,59 @@ def categories(request):
     })
 
 
+def quick_search(request):
+    """Lightweight JSON endpoint for the topbar quick-results dropdown.
+
+    Returns up to 6 matches keyed off the visitor's typed query. Uses
+    the same hybrid search helper as the full PLP so the top hits
+    match what they'd see at /products/?q=…. Shape:
+
+      {"results": [{"id", "name", "slug", "price", "image_url"}, ...]}
+
+    No pagination, no facets, no review counts — this is autocomplete,
+    not a results page. Empty / short queries get an empty results array
+    rather than every product.
+    """
+    from django.http import JsonResponse
+    from plugins.installed.catalog.models import Product
+
+    q = (request.GET.get('q') or '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+
+    try:
+        qs = Product.objects.filter(status='active')
+        qs = _apply_search(qs, q)
+        rows = list(qs[:6])
+    except Exception:  # noqa: BLE001 — quick-search must never 500 the topbar
+        rows = []
+
+    results = []
+    for p in rows:
+        img = ''
+        primary = p.primary_image
+        if primary and getattr(primary, 'image', None):
+            try:
+                img = primary.image.url
+            except Exception:  # noqa: BLE001
+                img = ''
+        price_str = ''
+        if p.price:
+            try:
+                price_str = f'${p.price.amount:.2f}' if str(p.price.currency) == 'USD' else f'{p.price.currency} {p.price.amount}'
+            except Exception:  # noqa: BLE001
+                price_str = ''
+        results.append({
+            'id':        str(p.id),
+            'name':      p.name,
+            'slug':      p.slug,
+            'price':     price_str,
+            'image_url': img,
+        })
+    from django.http import JsonResponse as _JR
+    return _JR({'results': results})
+
+
 def shipping(request):
     """Real shipping policy page — replaces the coming_soon placeholder.
     Static content; merchant can extend via a CMS Page override later.
