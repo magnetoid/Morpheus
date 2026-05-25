@@ -47,6 +47,16 @@
         {% endif %}
       </article>
 
+      {% if vendor and application.status == 'approved' %}
+      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0;">Manage your catalogue</h3>
+          <p style="margin: .35rem 0 0; color: var(--muted); font-size: .9rem;">Edit title, description, pricing, and status across every book attributed to you.</p>
+        </div>
+        <a href="/vendor/me/products/" class="btn btn-primary">Your products →</a>
+      </article>
+      {% endif %}
+
       {% if vendor_orders %}
       <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
         <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Recent vendor orders</h3>

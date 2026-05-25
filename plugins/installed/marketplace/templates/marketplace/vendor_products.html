@@ -1,0 +1,96 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}Your products — Vendor dashboard{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 980px;">
+
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      Your products
+    </p>
+
+    <p class="eyebrow">Your catalogue</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">Your products<span class="text-accent">.</span></h1>
+
+    {% if not vendor %}
+      <div class="vp-empty">
+        <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">You're not an approved vendor yet.</p>
+        <p style="color: var(--muted); max-width: 50ch; margin: 0 auto 1.5rem;">
+          Apply to sell on dot books — once approved, every product attributed to you appears here for editing.
+        </p>
+        <a href="/vendor/apply/" class="btn btn-primary">Apply to sell →</a>
+      </div>
+    {% elif not products %}
+      <div class="vp-empty">
+        <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">No products listed yet.</p>
+        <p style="color: var(--muted); max-width: 50ch; margin: 0 auto 1.5rem;">
+          Products are added by the dot books team based on what comes in from your imprint. Once an editor accessions one, it'll show up here for you to manage copy, pricing, and status.
+        </p>
+        <a href="/contact/" class="btn">Get in touch →</a>
+      </div>
+    {% else %}
+
+    <table class="vp-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Status</th>
+          <th class="vp-right">Price</th>
+          <th>Last updated</th>
+          <th class="vp-right">Edit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td>
+            <a href="/vendor/me/products/{{ p.id }}/" class="vp-title">{{ p.name }}</a>
+            <span class="vp-sku">{{ p.sku|default:"—" }}</span>
+          </td>
+          <td>
+            {% if p.status == 'active' %}<span class="vp-pill vp-pill--ok">Active</span>
+            {% elif p.status == 'draft' %}<span class="vp-pill vp-pill--wait">Draft</span>
+            {% else %}<span class="vp-pill vp-pill--off">Archived</span>{% endif %}
+          </td>
+          <td class="vp-right">{{ p.price|money }}</td>
+          <td class="vp-when">{{ p.updated_at|date:"M j, Y" }}</td>
+          <td class="vp-right">
+            <a href="/vendor/me/products/{{ p.id }}/" class="btn btn-ghost vp-edit-btn">Edit</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p class="meta" style="margin-top: 2rem; color: var(--muted); font-size: .82rem;">
+      Showing {{ products|length }} product{{ products|length|pluralize }}. To add a new title, send the manuscript + cover to our acquisitions team — we accession everything by hand.
+    </p>
+
+    {% endif %}
+  </div>
+</section>
+
+<style>
+.vp-empty { text-align: center; padding: 3.5rem 2rem; background: var(--surface-2, rgba(0,0,0,.02)); border-radius: 12px; }
+.vp-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.vp-table th, .vp-table td { padding: .85rem .65rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: middle; }
+.vp-table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--rule); }
+.vp-table .vp-right { text-align: right; }
+.vp-title { font-family: var(--serif); font-size: 1.05rem; color: var(--ink); display: block; border-bottom: 1px dotted var(--rule); padding-bottom: 1px; }
+.vp-sku { display: block; font-size: .72rem; color: var(--muted); margin-top: .15rem; }
+.vp-when { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vp-pill { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 600; }
+.vp-pill--ok   { background: rgba(16,185,129,.15); color: #047857; }
+.vp-pill--wait { background: rgba(245,158,11,.15); color: #b45309; }
+.vp-pill--off  { background: rgba(0,0,0,.06); color: var(--muted); }
+.vp-edit-btn { font-size: .82rem; padding: .35rem .85rem; }
+@media (max-width: 600px) {
+  .vp-when { display: none; }
+  .vp-table th:nth-child(4), .vp-table td:nth-child(4) { display: none; }
+}
+</style>
+{% endblock %}

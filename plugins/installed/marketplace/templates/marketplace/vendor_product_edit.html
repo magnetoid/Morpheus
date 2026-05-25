@@ -1,0 +1,112 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}Edit {{ product.name }} — Vendor{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/vendor/me/products/" style="color: var(--muted);">Your products</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      Edit
+    </p>
+
+    <p class="eyebrow">Editing</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">{{ product.name }}<span class="text-accent">.</span></h1>
+
+    {% if error %}
+    <div class="vpe-error" role="alert">
+      <strong>Couldn't save.</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" class="vpe-form">
+      {% csrf_token %}
+
+      <div class="vpe-field">
+        <label for="vpe-name">Title *</label>
+        <input type="text" id="vpe-name" name="name" value="{{ product.name }}" required maxlength="300">
+      </div>
+
+      <div class="vpe-row">
+        <div class="vpe-field">
+          <label for="vpe-status">Status</label>
+          <select id="vpe-status" name="status">
+            <option value="draft"    {% if product.status == 'draft' %}selected{% endif %}>Draft — not shown publicly</option>
+            <option value="active"   {% if product.status == 'active' %}selected{% endif %}>Active — on the shelf</option>
+            <option value="archived" {% if product.status == 'archived' %}selected{% endif %}>Archived — hidden, kept for history</option>
+          </select>
+        </div>
+
+        <div class="vpe-field">
+          <label for="vpe-price">Price ({% if product.price %}{{ product.price.currency }}{% else %}USD{% endif %})</label>
+          <input type="number" id="vpe-price" name="price" step="0.01" min="0"
+                 value="{% if product.price %}{{ product.price.amount }}{% endif %}">
+          <p class="vpe-help">For variable products this is the floor — the storefront shows "From $X" automatically.</p>
+        </div>
+      </div>
+
+      <div class="vpe-field">
+        <label for="vpe-short">Short description</label>
+        <textarea id="vpe-short" name="short_description" rows="3"
+                  placeholder="One-line pitch — appears under the title on category pages.">{{ product.short_description }}</textarea>
+        <p class="vpe-help">Typically 1-2 sentences. Plain text or basic HTML; you can mark up author names with &lt;em&gt;.</p>
+      </div>
+
+      <div class="vpe-field">
+        <label for="vpe-long">Long description</label>
+        <textarea id="vpe-long" name="description" rows="14"
+                  placeholder="The full description — back-cover copy, blurbs, reviewer quotes.">{{ product.description }}</textarea>
+        <p class="vpe-help">HTML is OK (paragraphs, bold, italic, links, blockquotes). Avoid embedding scripts or stylesheets.</p>
+      </div>
+
+      <div class="vpe-actions">
+        <a href="/vendor/me/products/" class="btn">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save changes</button>
+      </div>
+    </form>
+
+    <p class="meta" style="margin-top: 2.5rem; color: var(--muted); font-size: .82rem; max-width: 60ch;">
+      For changes to ISBN, format, page count, vendor information, or pricing currency, contact our acquisitions team — those fields are platform-managed so the canonical record stays clean across imprints.
+    </p>
+  </div>
+</section>
+
+<style>
+.vpe-error {
+  padding: .9rem 1rem;
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.25);
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: .9rem;
+  margin-bottom: 1.5rem;
+}
+.vpe-form { display: grid; gap: 1.5rem; }
+.vpe-row { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+@media (min-width: 600px) { .vpe-row { grid-template-columns: 1fr 1fr; } }
+.vpe-field label {
+  display: block; font-size: .82rem; font-weight: 500; color: var(--ink);
+  margin-bottom: .35rem;
+}
+.vpe-field input, .vpe-field textarea, .vpe-field select {
+  width: 100%; padding: .6rem .75rem;
+  border: 1px solid var(--rule); border-radius: 6px;
+  background: var(--paper); font-family: inherit; font-size: .95rem;
+  line-height: 1.4; color: var(--ink);
+}
+.vpe-field textarea { line-height: 1.55; resize: vertical; min-height: 80px; }
+.vpe-field input:focus, .vpe-field textarea:focus, .vpe-field select:focus {
+  outline: 2px solid var(--ink); outline-offset: -2px; border-color: var(--ink);
+}
+.vpe-help { font-size: .75rem; color: var(--muted); margin: .3rem 0 0; line-height: 1.5; }
+.vpe-actions {
+  display: flex; gap: .75rem; justify-content: flex-end;
+  margin-top: .5rem;
+}
+</style>
+{% endblock %}
