@@ -82,38 +82,48 @@
   </div>
   {% endif %}
 
-  <!-- Metric tiles -->
+  {# Tremor-style KPI tiles — uppercase label, large tabular-nums value, delta with arrow. #}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
     {% for m in metrics %}
-    <div class="card card-padded">
-      <div class="flex items-center justify-between text-[color:var(--text-muted)]">
-        <span class="text-xs uppercase tracking-wide font-medium">{{ m.label }}</span>
-        <i data-lucide="{{ m.icon }}" class="h-4 w-4"></i>
+    <div class="card card-padded kpi">
+      <div class="flex items-center justify-between">
+        <span class="kpi__label">{{ m.label }}</span>
+        <i data-lucide="{{ m.icon }}" class="h-4 w-4 text-[color:var(--text-muted)]" aria-hidden="true"></i>
       </div>
-      <div class="mt-2 flex items-end justify-between gap-2">
-        <div class="text-2xl font-semibold">{{ m.value }}</div>
-        {% if m.series %}
-          {% sparkline m.series stroke=m.trend %}
-        {% endif %}
+      <div class="flex items-end justify-between gap-2">
+        <div class="kpi__value">{{ m.value }}</div>
+        {% if m.series %}{% sparkline m.series stroke=m.trend %}{% endif %}
       </div>
       {% if m.delta %}
-      <div class="mt-1 text-xs flex items-center gap-1
-        {% if m.trend == 'up' %}text-[color:var(--success)]
-        {% elif m.trend == 'down' %}text-[color:var(--danger)]
-        {% else %}text-[color:var(--text-muted)]{% endif %}">
-        {% if m.trend == 'up' %}<i data-lucide="trending-up" class="h-3.5 w-3.5"></i>
-        {% elif m.trend == 'down' %}<i data-lucide="trending-down" class="h-3.5 w-3.5"></i>
-        {% else %}<i data-lucide="minus" class="h-3.5 w-3.5"></i>{% endif %}
-        {{ m.delta }} <span class="text-[color:var(--text-muted)]">vs previous</span>
+      <div class="kpi__delta {% if m.trend == 'up' %}kpi__delta--up{% elif m.trend == 'down' %}kpi__delta--down{% else %}kpi__delta--flat{% endif %}">
+        {% if m.trend == 'up' %}<i data-lucide="trending-up" class="h-3.5 w-3.5" aria-hidden="true"></i>
+        {% elif m.trend == 'down' %}<i data-lucide="trending-down" class="h-3.5 w-3.5" aria-hidden="true"></i>
+        {% else %}<i data-lucide="minus" class="h-3.5 w-3.5" aria-hidden="true"></i>{% endif %}
+        {{ m.delta }} <span class="text-[color:var(--text-muted)] font-normal">vs previous</span>
       </div>
       {% endif %}
     </div>
     {% empty %}
-    <div class="col-span-full card card-padded text-center text-[color:var(--text-muted)] text-sm">
-      No data yet — once you ship your first order, summaries will appear here.
+    <div class="col-span-full callout callout-info">
+      <i data-lucide="info" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+      <div class="callout__body">
+        <p class="callout__title">No data yet</p>
+        Once you ship your first order, KPI tiles will appear here.
+      </div>
     </div>
     {% endfor %}
   </div>
+
+  {% if ai_summary and not ai_summary.has_keys %}
+  <div class="callout callout-warn">
+    <i data-lucide="key" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+    <div class="callout__body">
+      <p class="callout__title">No AI API keys configured</p>
+      Linda and the agent system will fall back to offline mode until you add keys.
+      <a href="{% url 'admin_dashboard:settings_category' category='ai' %}" class="underline ml-1">Configure AI →</a>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="card overflow-hidden">
     <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">

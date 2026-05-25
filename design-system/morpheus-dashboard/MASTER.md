@@ -200,3 +200,99 @@ Before delivering any UI code, verify:
 - [ ] Responsive: 375px, 768px, 1024px, 1440px
 - [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
+
+---
+
+## Tremor-inspired Utility Classes (visual-style adoption)
+
+After research into Tremor (the dashboard component library Vercel
+acquired in 2024), we adopted its visual recipe inside the existing
+Django/CSS dashboard. **No React, no build pipeline** — utility classes
+live in `admin_dashboard/base.html` next to `.btn` / `.card` / `.pill`.
+
+Use these when building new dashboard pages. They compose with the
+existing utility set; nothing in the older system was changed.
+
+### KPI tile
+
+```html
+<div class="card card-padded kpi">
+  <div class="flex items-center justify-between">
+    <span class="kpi__label">Revenue (7d)</span>
+    <i data-lucide="dollar-sign" class="h-4 w-4" aria-hidden="true"></i>
+  </div>
+  <div class="kpi__value">$12,480</div>
+  <div class="kpi__delta kpi__delta--up">
+    <i data-lucide="trending-up" class="h-3.5 w-3.5" aria-hidden="true"></i>
+    +12.4% vs previous
+  </div>
+</div>
+```
+
+`.kpi__value` uses `font-variant-numeric: tabular-nums` so dashboards
+don't jitter when figures change.
+
+### Callout
+
+```html
+<div class="callout callout-warn">
+  <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">No API keys configured</p>
+    Linda falls back to offline mode until you add keys.
+  </div>
+</div>
+```
+
+Variants: `.callout-info`, `.callout-success`, `.callout-warn`,
+`.callout-error`. The left-edge stripe is the visual signature.
+
+### Soft Badge
+
+`.badge-soft` companion to the existing solid `.pill`. Use when you
+want the lighter opacity-tinted look (Tremor default) instead of
+the firmer `.pill` block colour.
+
+```html
+<span class="badge-soft badge-soft-success">Active</span>
+<span class="badge-soft badge-soft-warn">Low stock</span>
+```
+
+Variants: `.badge-soft-info`, `-success`, `-warn`, `-error`, `-neutral`.
+
+### Tab list
+
+Underline-only sub-navigation (no pill backgrounds — doesn't compete
+with the topbar):
+
+```html
+<nav class="tab-list">
+  <a href="?tab=overview" class="tab is-active">Overview</a>
+  <a href="?tab=variants" class="tab">Variants</a>
+  <a href="?tab=seo" class="tab">SEO</a>
+</nav>
+```
+
+### Color tokens
+
+Tremor accent tokens (do **not** override the existing Morpheus
+ink-on-paper palette):
+
+| Token | Light | Dark |
+|---|---|---|
+| `--tremor-blue` | `#3b82f6` | inherited |
+| `--tremor-blue-bg` | `rgba(59,130,246,.08)` | inherited |
+| `--tremor-blue-fg` | `#1d4ed8` | `#93c5fd` |
+| `--tremor-emerald-bg/fg` | tinted bg + `#047857` | bg + `#6ee7b7` |
+| `--tremor-amber-bg/fg`   | tinted bg + `#b45309` | bg + `#fcd34d` |
+| `--tremor-red-bg/fg`     | tinted bg + `#b91c1c` | bg + `#fca5a5` |
+
+### What we deliberately did NOT adopt
+
+- **Tremor's font** (Inter is already in use; no swap needed).
+- **Tremor's React `<Card>` / `<Badge>` / `<Callout>` components** — the
+  Morpheus dashboard is Django templates; a full React port is a
+  multi-week initiative outside the visual-style scope.
+- **Tremor's blue primary** as the brand color. The dashboard's
+  ink-on-paper aesthetic stays; the blue is reserved for callouts /
+  focus rings / data emphasis.

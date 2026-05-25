@@ -507,6 +507,126 @@
   @media (prefers-reduced-motion: reduce) {
     .morph-skeleton { animation: none; background: var(--surface-2); }
   }
+
+  /* ─── Tremor-inspired utility classes ─────────────────────────────────
+     Visual-language adoption from tremor.so (Vercel acquisition). No
+     React, no build pipeline — just the design tokens + utility classes
+     that gave Tremor its clean analytics-dashboard look. All opt-in:
+     existing .btn / .input / .card / .pill / .morph-table are untouched. */
+
+  /* Tremor accent — used by .callout-info, focus rings, and brand emphasis.
+     Falls back gracefully on dark mode via the existing surface token. */
+  :root {
+    --tremor-blue:     #3b82f6;
+    --tremor-blue-bg:  rgba(59, 130, 246, .08);
+    --tremor-blue-fg:  #1d4ed8;
+    --tremor-emerald-bg: rgba(16, 185, 129, .10);
+    --tremor-emerald-fg: #047857;
+    --tremor-amber-bg:   rgba(245, 158, 11, .12);
+    --tremor-amber-fg:   #b45309;
+    --tremor-red-bg:     rgba(239, 68, 68, .10);
+    --tremor-red-fg:     #b91c1c;
+  }
+  html[data-theme="dark"], html[data-color-mode="dark"] {
+    --tremor-blue-fg:    #93c5fd;
+    --tremor-emerald-fg: #6ee7b7;
+    --tremor-amber-fg:   #fcd34d;
+    --tremor-red-fg:     #fca5a5;
+  }
+
+  /* Tremor KPI card — label uppercase tracking-wide, then big number,
+     optional delta below. Wraps an existing .card so vendors keep working. */
+  .kpi { display: grid; gap: .35rem; }
+  .kpi__label {
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .kpi__value {
+    font-size: 1.65rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi__delta {
+    display: inline-flex; align-items: center; gap: .25rem;
+    font-size: .78rem; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi__delta--up   { color: var(--success); }
+  .kpi__delta--down { color: var(--danger); }
+  .kpi__delta--flat { color: var(--text-muted); }
+
+  /* Tremor Callout — inline alert / context banner. Four severity
+     variants. The left-edge accent stripe is the visual signature. */
+  .callout {
+    display: flex; gap: .65rem;
+    padding: .85rem 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    font-size: .875rem;
+    line-height: 1.5;
+    border-left-width: 3px;
+  }
+  .callout__icon  { flex-shrink: 0; margin-top: .15rem; }
+  .callout__body  { min-width: 0; flex: 1; }
+  .callout__title { font-weight: 600; margin: 0 0 .15rem; color: var(--text); }
+  .callout-info    { border-left-color: var(--tremor-blue);    background: var(--tremor-blue-bg);    color: var(--tremor-blue-fg); }
+  .callout-success { border-left-color: var(--success);        background: var(--tremor-emerald-bg); color: var(--tremor-emerald-fg); }
+  .callout-warn    { border-left-color: var(--warn, #d97706);  background: var(--tremor-amber-bg);   color: var(--tremor-amber-fg); }
+  .callout-error   { border-left-color: var(--danger);         background: var(--tremor-red-bg);     color: var(--tremor-red-fg); }
+  .callout-info    .callout__title,
+  .callout-success .callout__title,
+  .callout-warn    .callout__title,
+  .callout-error   .callout__title { color: inherit; }
+
+  /* Tremor soft Badge — companion to the existing .pill (which uses
+     solid backgrounds). Use .badge-soft-* when you want the lighter
+     opacity-tinted look without breaking existing .pill usage. */
+  .badge-soft {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .15rem .55rem;
+    border-radius: 6px;
+    font-size: .72rem;
+    font-weight: 500;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+  }
+  .badge-soft-info    { background: var(--tremor-blue-bg);    color: var(--tremor-blue-fg); }
+  .badge-soft-success { background: var(--tremor-emerald-bg); color: var(--tremor-emerald-fg); }
+  .badge-soft-warn    { background: var(--tremor-amber-bg);   color: var(--tremor-amber-fg); }
+  .badge-soft-error   { background: var(--tremor-red-bg);     color: var(--tremor-red-fg); }
+  .badge-soft-neutral { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+
+  /* Tremor Tab list — sub-navigation under a page heading. Underline-only
+     style (no pill bg) so it doesn't compete with the topbar. */
+  .tab-list {
+    display: flex; gap: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .tab {
+    position: relative;
+    padding: .55rem 0;
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--motion-fast) var(--ease-out);
+  }
+  .tab:hover { color: var(--text); }
+  .tab.is-active { color: var(--text); }
+  .tab.is-active::after {
+    content: ''; position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 2px;
+    background: var(--tremor-blue);
+    border-radius: 2px 2px 0 0;
+  }
 </style>
 </head>
 <body class="min-h-screen flex" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
