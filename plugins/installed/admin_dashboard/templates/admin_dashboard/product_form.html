@@ -482,7 +482,7 @@
           <h3 class="font-semibold text-sm">Edit variant — {{ v.name }}</h3>
           <button type="button" class="btn btn-ghost p-1" aria-label="Close"
                   onclick="this.closest('dialog').close()">
-            <i data-lucide="x" class="h-4 w-4"></i>
+            <i data-lucide="x" class="h-4 w-4" aria-hidden="true"></i>
           </button>
         </div>
         <form method="post" enctype="multipart/form-data"
@@ -569,7 +569,7 @@
 
           <div class="md:col-span-12 morph-modal__foot">
             <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save variant</button>
+            <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4" aria-hidden="true"></i> Save variant</button>
           </div>
         </form>
       </dialog>
@@ -581,7 +581,7 @@
           <h3 class="font-semibold text-sm">Add a new variant</h3>
           <button type="button" class="btn btn-ghost p-1" aria-label="Close"
                   onclick="this.closest('dialog').close()">
-            <i data-lucide="x" class="h-4 w-4"></i>
+            <i data-lucide="x" class="h-4 w-4" aria-hidden="true"></i>
           </button>
         </div>
         <form method="post" action="{% url 'admin_dashboard:variant_new' product_id=product.id %}"

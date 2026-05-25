@@ -55,13 +55,14 @@
         {% if product.variants %}
         {# Variant picker: card shows name+size+badge+price+desc, selecting one swaps the price + hidden variant_id sent to /cart/add/. #}
         <div class="pdp-variants-wrap" data-pdp-variant-picker style="margin: 1.5rem 0;">
-          <p class="eyebrow" style="margin-bottom: 0.75rem;">Choose an edition</p>
-          <div class="pdp-variants" role="radiogroup" aria-label="Available editions">
+          <p class="eyebrow" style="margin-bottom: 0.75rem;" id="pdp-variants-label">Choose an edition</p>
+          <div class="pdp-variants" role="radiogroup" aria-labelledby="pdp-variants-label">
             {% for v in product.variants %}{% if v.isActive %}
             <button type="button"
                     class="pdp-variant{% if forloop.first %} is-selected{% endif %}"
                     role="radio"
-                    aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"
+                    aria-checked="{% if forloop.first %}true{% else %}false{% endif %}"
+                    tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
                     data-variant-id="{{ v.id }}"
                     data-variant-type="{{ v.variantType|default:'physical' }}"
                     data-variant-price="{% if v.price %}{{ v.price|money }}{% endif %}"
@@ -90,7 +91,10 @@
           {% with product.variants|first as first_v %}
           <input type="hidden" name="variant_id" value="{{ first_v.id|default:'' }}" data-pdp-variant-input>
           {% endwith %}
-          <input type="number" name="quantity" value="1" min="1" max="20" style="width: 80px; height: 48px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
+          <label for="pdp-qty" class="sr-only">Quantity</label>
+          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20"
+                 inputmode="numeric" autocomplete="off"
+                 style="width: 80px; height: 48px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
           <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta>Add to cart</button>
         </form>
 
@@ -168,6 +172,13 @@
 @media (prefers-reduced-motion: reduce) {
   /* Sticky doesn't animate, so reduced-motion users still get the pin —
      no override needed. Listed here as documentation. */
+}
+
+/* Visually hide while remaining available to screen readers. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
 /* Variant picker — rich cards. Editorial: paper bg, 1px rule, serif heading;
@@ -251,16 +262,16 @@
     virtual: 'Get access',
     physical: 'Add to cart',
   };
-  picker.addEventListener('click', function (e) {
-    var card = e.target.closest('.pdp-variant');
+  function select(card) {
     if (!card) return;
-    e.preventDefault();
     picker.querySelectorAll('.pdp-variant').forEach(function (c) {
       c.classList.remove('is-selected');
-      c.setAttribute('aria-pressed', 'false');
+      c.setAttribute('aria-checked', 'false');
+      c.setAttribute('tabindex', '-1');
     });
     card.classList.add('is-selected');
-    card.setAttribute('aria-pressed', 'true');
+    card.setAttribute('aria-checked', 'true');
+    card.setAttribute('tabindex', '0');
 
     if (hiddenInput && card.dataset.variantId) {
       hiddenInput.value = card.dataset.variantId;
@@ -278,6 +289,37 @@
       longWrap.innerHTML = longHtml;
       longWrap.hidden = !longHtml.trim();
     }
+  }
+
+  picker.addEventListener('click', function (e) {
+    var card = e.target.closest('.pdp-variant');
+    if (!card) return;
+    e.preventDefault();
+    select(card);
+    card.focus();
+  });
+
+  /* Arrow-key navigation per WAI-ARIA radiogroup pattern. Left/Up moves
+     selection back, Right/Down moves forward; Home/End jump to the ends.
+     Mirrors what a native <input type="radio"> group does. */
+  picker.addEventListener('keydown', function (e) {
+    var cards = Array.prototype.slice.call(picker.querySelectorAll('.pdp-variant'));
+    if (!cards.length) return;
+    var cur = cards.indexOf(document.activeElement);
+    if (cur < 0) return;
+    var next = cur;
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown': next = (cur + 1) % cards.length; break;
+      case 'ArrowLeft':
+      case 'ArrowUp':   next = (cur - 1 + cards.length) % cards.length; break;
+      case 'Home':      next = 0; break;
+      case 'End':       next = cards.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    select(cards[next]);
+    cards[next].focus();
   });
 })();
 </script>

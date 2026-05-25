@@ -11,7 +11,7 @@
       <p class="meta">A {{ max_pages }}-page preview. Buy the full book to read on.</p>
     </div>
     <a href="/products/{{ product.slug }}/" class="btn">
-      <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to product
+      <i data-lucide="arrow-left" class="h-4 w-4" aria-hidden="true"></i> Back to product
     </a>
   </header>
 
@@ -25,11 +25,11 @@
 
   <nav class="flipbook-controls" aria-label="Flipbook controls">
     <button type="button" id="flip-prev" class="btn">
-      <i data-lucide="chevron-left" class="h-4 w-4"></i> Prev
+      <i data-lucide="chevron-left" class="h-4 w-4" aria-hidden="true"></i> Prev
     </button>
-    <span class="flipbook-page-indicator" id="flip-pageinfo">— / —</span>
+    <span class="flipbook-page-indicator" id="flip-pageinfo" aria-live="polite">— / —</span>
     <button type="button" id="flip-next" class="btn">
-      Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+      Next <i data-lucide="chevron-right" class="h-4 w-4" aria-hidden="true"></i>
     </button>
   </nav>
 </section>
@@ -66,12 +66,12 @@
   display: flex; align-items: center; justify-content: center;
   gap: 1rem;
 }
-.flipbook-page-indicator { font-family: var(--serif); font-size: .95rem; color: var(--muted); min-width: 80px; text-align: center; }
+.flipbook-page-indicator { font-family: var(--serif); font-size: .95rem; color: var(--muted); min-width: 80px; text-align: center; font-variant-numeric: tabular-nums; }
 </style>
 
 {# PDF.js + StPageFlip from cdnjs / jsdelivr. Both MIT licensed. #}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.76/pdf.min.mjs" type="module" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js" crossorigin="anonymous" defer></script>
 <script type="module">
   /* Render the source PDF into per-page canvases, then hand them to
      StPageFlip for the 3D-flip experience. Truncates at MAX_PAGES so

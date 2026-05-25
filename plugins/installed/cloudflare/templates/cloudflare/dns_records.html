@@ -14,7 +14,7 @@
       </p>
     </div>
     <a href="{% url 'cloudflare:zone_detail' zone_id=zone.id %}" class="btn">
-      <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to zone
+      <i data-lucide="arrow-left" class="h-4 w-4" aria-hidden="true"></i> Back to zone
     </a>
   </div>
 
@@ -44,11 +44,15 @@
       </div>
       <div class="md:col-span-3">
         <label class="block text-xs font-medium mb-1">Name *</label>
-        <input type="text" name="name" required class="input" placeholder="@ or sub.{{ zone.domain }}">
+        <input type="text" name="name" required class="input"
+               autocomplete="off" spellcheck="false"
+               placeholder="@ or sub.{{ zone.domain }}…">
       </div>
       <div class="md:col-span-4">
         <label class="block text-xs font-medium mb-1">Content *</label>
-        <input type="text" name="content" required class="input" placeholder="IPv4 / hostname / TXT value">
+        <input type="text" name="content" required class="input"
+               autocomplete="off" spellcheck="false"
+               placeholder="IPv4 / hostname / TXT value…">
       </div>
       <div class="md:col-span-1">
         <label class="block text-xs font-medium mb-1">TTL</label>
@@ -61,7 +65,7 @@
       </div>
       <div class="md:col-span-1">
         <button class="btn btn-primary w-full" type="submit">
-          <i data-lucide="plus" class="h-4 w-4"></i> Add
+          <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i> Add
         </button>
       </div>
     </form>
@@ -86,9 +90,9 @@
       <tbody>
         {% for r in records %}
         <tr>
-          <td><span class="pill pill-neutral">{{ r.type }}</span></td>
-          <td class="font-medium">{{ r.name }}</td>
-          <td class="text-xs"><code>{{ r.content|truncatechars:60 }}</code></td>
+          <td><span class="pill pill-neutral" translate="no">{{ r.type }}</span></td>
+          <td class="font-medium" translate="no">{{ r.name }}</td>
+          <td class="text-xs" translate="no"><code>{{ r.content|truncatechars:60 }}</code></td>
           <td class="text-xs">{% if r.ttl == 1 %}Auto{% else %}{{ r.ttl }}s{% endif %}</td>
           <td>{% if r.proxied %}<span class="pill pill-warn">Proxied</span>{% else %}<span class="pill pill-neutral">DNS only</span>{% endif %}</td>
           <td class="text-right">
@@ -96,8 +100,9 @@
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_record">
               <input type="hidden" name="record_id" value="{{ r.id }}">
-              <button type="submit" class="btn btn-ghost p-1.5" title="Delete record">
-                <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+              <button type="submit" class="btn btn-ghost p-1.5"
+                      aria-label="Delete {{ r.type }} record for {{ r.name }}">
+                <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]" aria-hidden="true"></i>
               </button>
             </form>
           </td>
