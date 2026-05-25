@@ -19,37 +19,22 @@
   </div>
 
   {% if error %}
-  <div class="card card-padded" style="background:#fff4ef;border:1px solid var(--danger,#c83a3a);">
-    <strong>Cloudflare API error.</strong>
-    <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ error }}</p>
-    <p class="text-xs text-[color:var(--text-muted)] mt-2">If you just added the token, the Analytics permission may be missing. Re-create the token with <code>Analytics:Read</code>.</p>
+  <div class="callout callout-error">
+    <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+    <div class="callout__body">
+      <p class="callout__title">Cloudflare API error</p>
+      {{ error }}
+      <p class="text-xs mt-1 opacity-90">If you just added the token, the Analytics permission may be missing. Re-create the token with <code>Analytics:Read</code>.</p>
+    </div>
   </div>
   {% else %}
   <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Total requests</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.requests_total|default:0 }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cached requests</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.requests_cached|default:0 }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cache hit ratio</div>
-      <div class="text-2xl font-semibold mt-1">{{ cache_hit_ratio }}%</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Bandwidth</div>
-      <div class="text-2xl font-semibold mt-1">{{ bandwidth_gb }} GB</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Unique visitors</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.uniques|default:0 }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Threats blocked</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.threats|default:0 }}</div>
-    </div>
+    <div class="card card-padded kpi"><span class="kpi__label">Total requests</span><span class="kpi__value">{{ summary.requests_total|default:0 }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Cached requests</span><span class="kpi__value">{{ summary.requests_cached|default:0 }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Cache hit ratio</span><span class="kpi__value">{{ cache_hit_ratio }}%</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Bandwidth</span><span class="kpi__value">{{ bandwidth_gb }} GB</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Unique visitors</span><span class="kpi__value">{{ summary.uniques|default:0 }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Threats blocked</span><span class="kpi__value">{{ summary.threats|default:0 }}</span></div>
   </div>
 
   <div class="card card-padded">

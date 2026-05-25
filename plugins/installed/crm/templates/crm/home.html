@@ -5,23 +5,21 @@
 <h1 class="text-xl font-semibold mb-4">CRM</h1>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Open leads</p>
-    <p class="text-2xl font-semibold mt-1">{{ metrics.open_leads }}</p>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Open leads</span>
+    <span class="kpi__value">{{ metrics.open_leads }}</span>
   </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Open tasks</p>
-    <p class="text-2xl font-semibold mt-1">{{ metrics.open_tasks }}</p>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Open tasks</span>
+    <span class="kpi__value">{{ metrics.open_tasks }}</span>
   </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Overdue</p>
-    <p class="text-2xl font-semibold mt-1" style="{% if metrics.overdue_tasks %}color:var(--danger);{% endif %}">
-      {{ metrics.overdue_tasks }}
-    </p>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Overdue</span>
+    <span class="kpi__value" {% if metrics.overdue_tasks %}style="color: var(--danger);"{% endif %}>{{ metrics.overdue_tasks }}</span>
   </div>
-  <div class="card card-padded">
-    <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Open deals</p>
-    <p class="text-2xl font-semibold mt-1">{{ metrics.open_deals }}</p>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Open deals</span>
+    <span class="kpi__value">{{ metrics.open_deals }}</span>
   </div>
 </div>
 

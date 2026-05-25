@@ -28,33 +28,21 @@
 
   {% if summary and not settings_error %}
   <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Requests (7d)</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.requests_total|default:0 }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Cached</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.requests_cached|default:0 }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Pageviews</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.pageviews|default:0 }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Unique visitors</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.uniques|default:0 }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Threats blocked</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.threats|default:0 }}</div>
-    </div>
+    <div class="card card-padded kpi"><span class="kpi__label">Requests (7d)</span><span class="kpi__value">{{ summary.requests_total|default:0 }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Cached</span><span class="kpi__value">{{ summary.requests_cached|default:0 }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Pageviews</span><span class="kpi__value">{{ summary.pageviews|default:0 }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Unique visitors</span><span class="kpi__value">{{ summary.uniques|default:0 }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Threats blocked</span><span class="kpi__value">{{ summary.threats|default:0 }}</span></div>
   </div>
   {% endif %}
 
   {% if settings_error %}
-  <div class="card card-padded" style="background:#fff4ef;border:1px solid var(--danger,#c83a3a);">
-    <strong>Could not load zone settings.</strong>
-    <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ settings_error }}</p>
+  <div class="callout callout-error">
+    <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+    <div class="callout__body">
+      <p class="callout__title">Could not load zone settings</p>
+      {{ settings_error }}
+    </div>
   </div>
   {% else %}
 
