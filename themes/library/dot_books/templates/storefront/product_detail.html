@@ -539,6 +539,74 @@
 {% endif %}
 {% endcache %}
 
+{# Recently Viewed — localStorage; rendered empty server-side; JS hydrates from the visitor's last 8 PDP visits. #}
+<section class="recently-viewed-section" data-recently-viewed-section hidden>
+  <div class="wrap">
+    <p class="eyebrow">Picking up where you left off</p>
+    <h2 class="display display-m" style="margin: .5rem 0 2rem;">Recently viewed<span class="text-accent">.</span></h2>
+    <div class="grid-books" data-recently-viewed-list></div>
+  </div>
+</section>
+
+<script>
+/* Recently Viewed — runs on every PDP. Two responsibilities:
+   1. Push the current product onto a per-visitor localStorage list (cap 8).
+   2. Render the OTHER (non-current) entries into the rail.
+
+   We store the bare minimum to render a card — no server fetch needed.
+   Falls silent if localStorage is unavailable (private window, quota). */
+(function () {
+  if (!window.localStorage) return;
+  var KEY = 'morph:recently_viewed';
+  var current = {
+    slug:  '{{ product.slug|escapejs }}',
+    name:  '{{ product.name|escapejs }}',
+    image: '{% if hero_image and hero_image.url %}{{ hero_image.url|escapejs }}{% endif %}',
+    price: '{% if product.price %}{{ product.price.amount|escapejs }}{% endif %}',
+    currency: '{% if product.price %}{{ product.price.currency|escapejs }}{% else %}USD{% endif %}'
+  };
+  var list = [];
+  try { list = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { list = []; }
+  if (!Array.isArray(list)) list = [];
+
+  // Render OTHERS (everything except current) before pushing current.
+  var others = list.filter(function (p) { return p && p.slug && p.slug !== current.slug; }).slice(0, 8);
+  var wrap = document.querySelector('[data-recently-viewed-section]');
+  var ul   = document.querySelector('[data-recently-viewed-list]');
+  if (wrap && ul && others.length) {
+    ul.innerHTML = others.map(function (p) {
+      var price = p.price ? (
+        (p.currency === 'USD' ? '$' : (p.currency + ' '))
+        + parseFloat(p.price).toFixed(2)
+      ) : '';
+      var imgHtml = p.image
+        ? '<img src="' + p.image.replace(/"/g, '&quot;') + '" alt="" loading="lazy" decoding="async">'
+        : '<div class="placeholder">' + (p.name || '').slice(0, 24) + '</div>';
+      // Text is rendered through textContent below, not interpolated raw,
+      // to keep this XSS-clean even though the source is the visitor's
+      // own localStorage.
+      var card = document.createElement('a');
+      card.href = '/products/' + p.slug + '/';
+      card.className = 'book';
+      card.innerHTML = '<div class="cover-wrap">' + imgHtml + '</div><div><p class="title"></p><p class="price"></p></div>';
+      card.querySelector('.title').textContent = p.name || '';
+      card.querySelector('.price').textContent = price;
+      return card.outerHTML;
+    }).join('');
+    wrap.hidden = false;
+  }
+
+  // Now push current to the front, dedupe by slug, cap at 8.
+  var deduped = [current].concat(list.filter(function (p) { return p && p.slug && p.slug !== current.slug; }));
+  try { localStorage.setItem(KEY, JSON.stringify(deduped.slice(0, 8))); } catch (_) { /* quota or private mode */ }
+})();
+</script>
+
+<style>
+.recently-viewed-section { padding: 3rem 0 4rem; background: var(--paper-2, transparent); }
+.recently-viewed-section[hidden] { display: none; }
+</style>
+
 {# Mobile-only sticky add-to-cart bar — mirrors the inline form and proxies clicks to the inline submit. #}
 <div class="pdp-sticky-cart" data-pdp-sticky aria-hidden="false">
   <span class="pdp-sticky-cart__price">
