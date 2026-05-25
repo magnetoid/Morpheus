@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}
 {% load seo %}{% block title %}{% seo_title product.name category=product.category.name %}{% endblock %}
 
 {% block extra_head %}
@@ -45,7 +45,7 @@
         <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:""|safe }}</p>
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
-          <span data-pdp-price style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">From </span>{% endif %}{{ product.price|money }}</span>
+          <span data-pdp-price style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</span>
           {% if product.isOnSale %}<span class="meta" style="text-decoration: line-through;">{{ product.compareAtPrice|money }}</span>{% endif %}
         </div>
         {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}

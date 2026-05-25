@@ -186,6 +186,11 @@ def zone_detail(request, zone_id):
                 from plugins.installed.cloudflare.services import _client_for
                 _client_for(zone).patch_argo_smart_routing(zone.zone_id, request.POST.get('value', 'on'))
                 messages.success(request, f'Argo Smart Routing → {request.POST.get("value")}.')
+            elif action == 'toggle_bot_fight':
+                from plugins.installed.cloudflare.services import _client_for
+                enabled = request.POST.get('value') == 'on'
+                _client_for(zone).patch_bot_fight_mode(zone.zone_id, enabled)
+                messages.success(request, f'Bot Fight Mode → {"on" if enabled else "off"}.')
             elif action == 'install_graphql_cache_rule':
                 _install_graphql_cache_rule(zone)
                 messages.success(
@@ -217,6 +222,7 @@ def zone_detail(request, zone_id):
     tiered_cache_state = ''
     cache_reserve_state = ''
     argo_state = ''
+    bot_fight_state = ''
     graphql_rule_installed = False
     if not settings_error:
         try:
@@ -233,6 +239,11 @@ def zone_detail(request, zone_id):
         try:
             r = cf.get_argo_smart_routing(zone.zone_id)
             argo_state = ((r.get('result') or {}).get('value') or '')
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            r = cf.get_bot_fight_mode(zone.zone_id)
+            bot_fight_state = 'on' if (r.get('result') or {}).get('fight_mode') else 'off'
         except Exception:  # noqa: BLE001
             pass
         try:
@@ -285,6 +296,7 @@ def zone_detail(request, zone_id):
         'tiered_cache_state': tiered_cache_state,
         'cache_reserve_state': cache_reserve_state,
         'argo_state': argo_state,
+        'bot_fight_state': bot_fight_state,
         'graphql_rule_installed': graphql_rule_installed,
         'active_nav': 'cloudflare',
         'breadcrumb_trail': _trail({'label': zone.domain}),

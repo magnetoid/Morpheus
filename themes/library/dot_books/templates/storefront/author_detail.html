@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load caching %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
 {% block title %}{{ author_name }} — dot books{% endblock %}
 
 {% block extra_head %}
@@ -51,7 +51,7 @@
         <div>
           <p class="title">{{ p.name }}</p>
           <p class="author">{{ p.short_description|striptags|truncatewords:8 }}</p>
-          <p class="price">{% if p.price_starts_from %}<span class="text-meta">From </span>{% endif %}{{ p.display_price|money }}</p>
+          <p class="price">{% if p.price_starts_from %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ p.display_price|money }}</p>
         </div>
       </a>
       {% endfor %}

@@ -1,5 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}
+{% load morph %}
+{% load i18n %}{% load seo %}{% load tracking %}
 {% block title %}{% if selected_author %}Books by {{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }} titles{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif search_query %}Search: {{ search_query }}{% else %}All books{% endif %} — dot books{% endblock %}
 
 {% block extra_head %}
@@ -116,7 +117,7 @@
         <div>
           <p class="title">{{ p.name }}</p>
           <p class="author">{{ p.short_description|striptags|truncatewords:8 }}</p>
-          <p class="price">{% if p.price_starts_from %}<span class="text-meta">From </span>{% endif %}{{ p.display_price|money }}{% if p.compare_at_price %}<span class="compare">{{ p.compare_at_price|money }}</span>{% endif %}</p>
+          <p class="price">{% if p.price_starts_from %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ p.display_price|money }}{% if p.compare_at_price %}<span class="compare">{{ p.compare_at_price|money }}</span>{% endif %}</p>
         </div>
       </a>
       {% endfor %}

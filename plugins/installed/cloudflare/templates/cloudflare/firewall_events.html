@@ -19,9 +19,12 @@
   </div>
 
   {% if error %}
-  <div class="card card-padded" style="background:#fff4ef;border:1px solid var(--danger,#c83a3a);">
-    <strong>Could not load firewall events.</strong>
-    <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ error }}</p>
+  <div class="callout callout-error">
+    <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+    <div class="callout__body">
+      <p class="callout__title">Could not load firewall events</p>
+      {{ error }}
+    </div>
   </div>
   {% endif %}
 
@@ -62,9 +65,7 @@
       </tbody>
     </table>
     {% else %}
-    <div class="card-padded text-sm text-[color:var(--text-muted)]">
-      No firewall events in the last 24h — Cloudflare hasn't blocked or challenged any requests.
-    </div>
+    {% include "admin_dashboard/_empty_state.html" with icon="shield-check" title="No firewall events" hint="Cloudflare hasn't blocked or challenged any requests in the last 24h." %}
     {% endif %}
   </div>
 </div>

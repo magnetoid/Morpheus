@@ -113,10 +113,24 @@
             <h3 class="font-medium text-sm">GraphQL edge caching</h3>
             <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Installs the Cache Rule that lets CF cache anonymous POST /graphql/ responses. Pairs with the s-maxage headers Morpheus already emits.</p>
           </div>
-          <span class="pill {% if graphql_rule_installed %}pill-success{% else %}pill-neutral{% endif %}">{% if graphql_rule_installed %}installed{% else %}not installed{% endif %}</span>
+          <span class="badge-soft {% if graphql_rule_installed %}badge-soft-success{% else %}badge-soft-neutral{% endif %}">{% if graphql_rule_installed %}installed{% else %}not installed{% endif %}</span>
         </div>
         <div class="mt-3">
           <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="install_graphql_cache_rule"><button class="btn {% if graphql_rule_installed %}btn-ghost{% else %}btn-primary{% endif %} text-xs" type="submit">{% if graphql_rule_installed %}Re-apply rule{% else %}Install Cache Rule{% endif %}</button></form>
+        </div>
+      </div>
+
+      <div class="card card-padded" style="margin:0;">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-medium text-sm">Bot Fight Mode</h3>
+            <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Challenges traffic from known bot networks. Free on every plan. Doesn't touch verified bots (Google, Bing, etc.).</p>
+          </div>
+          <span class="badge-soft {% if bot_fight_state == 'on' %}badge-soft-success{% else %}badge-soft-neutral{% endif %}">{{ bot_fight_state|default:'unknown' }}</span>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="toggle_bot_fight"><input type="hidden" name="value" value="on"><button class="btn btn-ghost text-xs" type="submit" {% if bot_fight_state == 'on' %}disabled{% endif %}>Turn on</button></form>
+          <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="toggle_bot_fight"><input type="hidden" name="value" value="off"><button class="btn btn-ghost text-xs" type="submit" {% if bot_fight_state == 'off' %}disabled{% endif %}>Turn off</button></form>
         </div>
       </div>
     </div>

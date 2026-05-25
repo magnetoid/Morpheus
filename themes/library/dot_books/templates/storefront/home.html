@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load caching %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
 {% block title %}{% seo_title "" %}{% endblock %}
 
 {% block extra_head %}
@@ -88,7 +88,7 @@
           <p class="title">{{ product.name }}</p>
           <p class="author">{{ product.category.name|default:"Independent press" }}</p>
           <p class="price">
-            {% if product.priceStartsFrom %}<span class="text-meta">From </span>{% endif %}{{ product.price|money }}
+            {% if product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ product.price|money }}
             {% if product.isOnSale %}<span class="compare">{{ product.compareAtPrice|money }}</span>{% endif %}
           </p>
         </div>
@@ -141,7 +141,7 @@
         <div>
           <p class="title">{{ product.name }}</p>
           <p class="author">{{ product.category.name|default:"Independent press" }}</p>
-          <p class="price">{% if product.priceStartsFrom %}<span class="text-meta">From </span>{% endif %}{{ product.price|money }}</p>
+          <p class="price">{% if product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</p>
         </div>
       </a>
       {% endfor %}
