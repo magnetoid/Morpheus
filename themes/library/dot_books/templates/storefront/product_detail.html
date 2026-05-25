@@ -105,6 +105,20 @@
           <p class="meta">Free shipping over $40 · Independent press · Always read first</p>
         </div>
 
+        {% if pdp_vendor %}
+        <div style="margin: 1.25rem 0; padding: .9rem 1rem; background: var(--surface-2, rgba(0,0,0,.025)); border-radius: 8px; display: flex; align-items: center; gap: .85rem;">
+          {% if pdp_vendor.logo %}
+            <img src="{{ pdp_vendor.logo.url }}" alt="" loading="lazy" decoding="async"
+                 style="width: 44px; height: 44px; border-radius: 6px; object-fit: contain; background: var(--paper); padding: 4px; border: 1px solid var(--rule); flex-shrink: 0;">
+          {% endif %}
+          <div style="min-width: 0; flex: 1;">
+            <p class="meta" style="font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; margin: 0;">Published by</p>
+            <a href="/vendor/{{ pdp_vendor.slug }}/" style="font-family: var(--serif); font-size: 1.05rem; color: var(--ink); border-bottom: 1px dotted var(--rule);">{{ pdp_vendor.name }}</a>
+          </div>
+          <a href="/vendor/{{ pdp_vendor.slug }}/" class="btn btn-ghost" style="font-size: .75rem; padding: .35rem .75rem; flex-shrink: 0;">More from {{ pdp_vendor.name }} →</a>
+        </div>
+        {% endif %}
+
         {% if book_specs %}
         <hr class="rule">
         <div style="margin: 1.5rem 0;">

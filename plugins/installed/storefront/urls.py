@@ -26,6 +26,8 @@ urlpatterns = [
     path('categories/', views.categories, name='categories'),
     path('category/<slug:slug>/', views.category_detail, name='category_detail'),
     path('author/<slug:slug>/', views.author_detail, name='author_detail'),
+    path('vendors/', views.vendors_directory, name='vendors'),
+    path('vendor/<slug:slug>/', views.vendor_detail, name='vendor_detail'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
 
     # Customer account
