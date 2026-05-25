@@ -1527,6 +1527,34 @@ def categories(request):
     })
 
 
+def shipping(request):
+    """Real shipping policy page — replaces the coming_soon placeholder.
+    Static content; merchant can extend via a CMS Page override later.
+    """
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Shipping', 'url': request.build_absolute_uri(request.path)},
+    ]
+    return render(request, 'storefront/shipping.html', {
+        'breadcrumb_items': breadcrumb_items,
+        'seo_title':       'Shipping — dot books',
+        'seo_description': 'How dot books ships your order — tracked, signed-for, free over $40. Domestic + international rates.',
+    })
+
+
+def returns(request):
+    """Real returns policy page — replaces the coming_soon placeholder."""
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Returns', 'url': request.build_absolute_uri(request.path)},
+    ]
+    return render(request, 'storefront/returns.html', {
+        'breadcrumb_items': breadcrumb_items,
+        'seo_title':       'Returns — dot books',
+        'seo_description': "Send a book back inside 30 days. Here's how — and what we cover.",
+    })
+
+
 def vendors_directory(request):
     """Public vendor directory — every active publisher / maker with a logo
     and a product count. Editorial intro mirrors the dot books voice.

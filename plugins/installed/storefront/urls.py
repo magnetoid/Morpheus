@@ -51,6 +51,6 @@ urlpatterns = [
     # Generic placeholder pages (footer links without first-class content yet)
     path('stockists/', views.coming_soon, {'slug': 'stockists'}, name='stockists'),
     path('staff-picks/', views.staff_picks, name='staff_picks'),
-    path('shipping/', views.coming_soon, {'slug': 'shipping'}, name='shipping'),
-    path('returns/', views.coming_soon, {'slug': 'returns'}, name='returns'),
+    path('shipping/', views.shipping, name='shipping'),
+    path('returns/', views.returns, name='returns'),
 ]
