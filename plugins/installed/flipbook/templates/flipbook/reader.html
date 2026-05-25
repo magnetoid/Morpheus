@@ -31,7 +31,24 @@
     <button type="button" id="flip-next" class="btn">
       Next <i data-lucide="chevron-right" class="h-4 w-4" aria-hidden="true"></i>
     </button>
+
+    <span class="flipbook-controls-divider" aria-hidden="true"></span>
+
+    <button type="button" id="flip-fullscreen" class="btn btn-ghost"
+            aria-label="Toggle fullscreen">
+      <i data-lucide="maximize-2" class="h-4 w-4" aria-hidden="true"></i>
+      <span class="flipbook-controls-label">Fullscreen</span>
+    </button>
+    <button type="button" id="flip-share" class="btn btn-ghost"
+            aria-label="Share this preview">
+      <i data-lucide="share-2" class="h-4 w-4" aria-hidden="true"></i>
+      <span class="flipbook-controls-label">Share</span>
+    </button>
   </nav>
+
+  <p class="meta flipbook-keyboard-hint" aria-hidden="true">
+    Tip: use ← / → on desktop or swipe on touch devices.
+  </p>
 </section>
 
 <style>
@@ -67,6 +84,33 @@
   gap: 1rem;
 }
 .flipbook-page-indicator { font-family: var(--serif); font-size: .95rem; color: var(--muted); min-width: 80px; text-align: center; font-variant-numeric: tabular-nums; }
+.flipbook-controls-divider {
+  width: 1px; height: 22px; background: var(--rule); margin: 0 .35rem;
+}
+.flipbook-controls-label { margin-left: .1rem; }
+@media (max-width: 520px) {
+  .flipbook-controls-label { display: none; }
+  .flipbook-controls { gap: .5rem; flex-wrap: wrap; justify-content: center; }
+}
+.flipbook-keyboard-hint {
+  text-align: center; margin-top: .65rem; font-size: .78rem;
+  color: var(--muted); opacity: .85;
+}
+/* Fullscreen mode — stretch the stage to fill the viewport. The
+   Fullscreen API targets the .flipbook-wrap so the controls remain
+   visible inside the fullscreen layer (a stage-only fullscreen would
+   trap the user with no exit button). */
+.flipbook-wrap:fullscreen {
+  background: var(--paper);
+  padding: 1.5rem 2rem;
+  display: flex; flex-direction: column;
+}
+.flipbook-wrap:fullscreen #flipbook-stage {
+  flex: 1;
+  min-height: 0;
+}
+.flipbook-wrap:fullscreen .flipbook-head { margin-bottom: .75rem; }
+.flipbook-wrap[data-theme="dark"]:fullscreen { background: #14171c; color: #ebebeb; }
 </style>
 
 {# PDF.js + StPageFlip from cdnjs / jsdelivr. Both MIT licensed. #}
@@ -139,6 +183,15 @@
       updateInfo();
       prevBtn.addEventListener('click', () => flip.flipPrev());
       nextBtn.addEventListener('click', () => flip.flipNext());
+
+      /* Keyboard arrow nav at the document level — StPageFlip ships its
+         own internal handler but it requires the book to be focused.
+         Mirroring it here means the keys work as soon as the page loads. */
+      document.addEventListener('keydown', (e) => {
+        if (e.target.matches('input, textarea, select, [contenteditable]')) return;
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); flip.flipPrev(); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); flip.flipNext(); }
+      });
     } catch (err) {
       console.error('flipbook:', err);
       loading.querySelector('.meta').textContent = 'Could not load the preview.';
@@ -146,5 +199,65 @@
     }
   }
   renderPages();
+
+  /* Fullscreen toggle — targets .flipbook-wrap (not the stage) so the
+     controls + page indicator stay visible inside the fullscreen layer.
+     Graceful no-op when the browser doesn't support the API. */
+  const fullscreenBtn = document.getElementById('flip-fullscreen');
+  const wrap = document.querySelector('.flipbook-wrap');
+  if (fullscreenBtn && wrap && document.fullscreenEnabled) {
+    fullscreenBtn.addEventListener('click', () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        wrap.requestFullscreen().catch((err) => {
+          console.warn('flipbook fullscreen:', err);
+        });
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const inFs = !!document.fullscreenElement;
+      fullscreenBtn.setAttribute('aria-label', inFs ? 'Exit fullscreen' : 'Toggle fullscreen');
+      const icon = fullscreenBtn.querySelector('[data-lucide]');
+      if (icon) icon.setAttribute('data-lucide', inFs ? 'minimize-2' : 'maximize-2');
+      const label = fullscreenBtn.querySelector('.flipbook-controls-label');
+      if (label) label.textContent = inFs ? 'Exit' : 'Fullscreen';
+      if (window.lucide) window.lucide.createIcons();
+    });
+  } else if (fullscreenBtn) {
+    fullscreenBtn.hidden = true;
+  }
+
+  /* Share — Web Share API on touch / mobile, clipboard fallback elsewhere.
+     The share URL is just window.location so the recipient lands on the
+     same preview page; copying surfaces a brief toast via Morph.toast if
+     it exists (storefront context — Morph may not be loaded). */
+  const shareBtn = document.getElementById('flip-share');
+  if (shareBtn) {
+    const shareData = {
+      title: document.title,
+      text: 'Preview: ' + document.title.split(' — ')[0],
+      url: window.location.href,
+    };
+    shareBtn.addEventListener('click', async () => {
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(window.location.href);
+          shareBtn.querySelector('.flipbook-controls-label').textContent = 'Copied!';
+          setTimeout(() => {
+            const label = shareBtn.querySelector('.flipbook-controls-label');
+            if (label) label.textContent = 'Share';
+          }, 1600);
+        } else {
+          window.prompt('Copy this link:', window.location.href);
+        }
+      } catch (err) {
+        /* User dismissed the share sheet — silent. */
+        if (err && err.name !== 'AbortError') console.warn('flipbook share:', err);
+      }
+    });
+  }
 </script>
 {% endblock %}
