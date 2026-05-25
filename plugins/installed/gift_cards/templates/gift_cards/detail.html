@@ -38,18 +38,18 @@
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-    <div class="card card-padded">
-      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Initial value</p>
-      <p class="text-2xl font-semibold mt-1">{{ card.initial_value|money }}</p>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Initial value</span>
+      <span class="kpi__value">{{ card.initial_value|money }}</span>
     </div>
-    <div class="card card-padded">
-      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Current balance</p>
-      <p class="text-2xl font-semibold mt-1">{{ card.balance|money }}</p>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Current balance</span>
+      <span class="kpi__value">{{ card.balance|money }}</span>
     </div>
-    <div class="card card-padded">
-      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Issued</p>
-      <p class="text-sm mt-1">{{ card.created_at|date:"M j, Y H:i" }}</p>
-      {% if card.expires_at %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">Expires {{ card.expires_at|date:"M j, Y" }}</p>{% endif %}
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Issued</span>
+      <span class="kpi__value" style="font-size: .95rem; font-weight: 500;">{{ card.created_at|date:"M j, Y H:i" }}</span>
+      {% if card.expires_at %}<span class="text-xs text-[color:var(--text-muted)]">Expires {{ card.expires_at|date:"M j, Y" }}</span>{% endif %}
     </div>
   </div>
 

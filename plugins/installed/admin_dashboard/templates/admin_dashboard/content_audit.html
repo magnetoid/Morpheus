@@ -23,22 +23,10 @@
   </div>
 
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Total products</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.product_total }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Incomplete</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.total }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Missing short</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.missing_short }}</div>
-    </div>
-    <div class="card card-padded">
-      <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Missing long / category</div>
-      <div class="text-2xl font-semibold mt-1">{{ summary.missing_long }} / {{ summary.missing_category }}</div>
-    </div>
+    <div class="card card-padded kpi"><span class="kpi__label">Total products</span><span class="kpi__value">{{ summary.product_total }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Incomplete</span><span class="kpi__value">{{ summary.total }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Missing short</span><span class="kpi__value">{{ summary.missing_short }}</span></div>
+    <div class="card card-padded kpi"><span class="kpi__label">Missing long / category</span><span class="kpi__value">{{ summary.missing_long }} / {{ summary.missing_category }}</span></div>
   </div>
 
   <div class="card overflow-hidden">

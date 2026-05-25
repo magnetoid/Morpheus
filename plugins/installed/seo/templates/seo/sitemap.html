@@ -15,12 +15,12 @@
 
 {% comment %}── Top counters ──{% endcomment %}
 <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Total URLs</p><p class="text-2xl font-semibold mt-1">{{ counts.total }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Products</p><p class="text-2xl font-semibold mt-1">{{ counts.product_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Categories</p><p class="text-2xl font-semibold mt-1">{{ counts.category_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Journal</p><p class="text-2xl font-semibold mt-1">{{ counts.journal_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Static pages</p><p class="text-2xl font-semibold mt-1">{{ counts.static_count }}</p></div>
-  <div class="card card-padded"><p class="text-xs uppercase text-[color:var(--text-muted)]">Manual entries</p><p class="text-2xl font-semibold mt-1">{{ counts.manual_count }}</p></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Total URLs</span><span class="kpi__value">{{ counts.total }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Products</span><span class="kpi__value">{{ counts.product_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Categories</span><span class="kpi__value">{{ counts.category_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Journal</span><span class="kpi__value">{{ counts.journal_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Static pages</span><span class="kpi__value">{{ counts.static_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Manual entries</span><span class="kpi__value">{{ counts.manual_count }}</span></div>
 </div>
 
 {% comment %}── Live URLs ──{% endcomment %}

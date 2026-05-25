@@ -31,24 +31,13 @@
       <a href="/dashboard/cloudflare/" class="btn"><i data-lucide="external-link" class="h-4 w-4"></i> Open workspace</a>
     </div>
     <div class="card-padded grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div>
-        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Accounts</div>
-        <div class="text-2xl font-semibold mt-1">{{ cf_account_count }}</div>
-      </div>
-      <div>
-        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Zones synced</div>
-        <div class="text-2xl font-semibold mt-1">{{ cf_zones|length }}</div>
-      </div>
-      <div>
-        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Lifetime purges</div>
-        <div class="text-2xl font-semibold mt-1">{{ recent_purges_count }}</div>
-      </div>
-      <div>
-        <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Tag-based purge</div>
-        <div class="text-sm mt-1">
-          {% if cf_account_count %}<span class="pill pill-success">wired</span>
-          {% else %}<span class="pill pill-neutral">connect a token</span>{% endif %}
-        </div>
+      <div class="kpi"><span class="kpi__label">Accounts</span><span class="kpi__value">{{ cf_account_count }}</span></div>
+      <div class="kpi"><span class="kpi__label">Zones synced</span><span class="kpi__value">{{ cf_zones|length }}</span></div>
+      <div class="kpi"><span class="kpi__label">Lifetime purges</span><span class="kpi__value">{{ recent_purges_count }}</span></div>
+      <div class="kpi">
+        <span class="kpi__label">Tag-based purge</span>
+        {% if cf_account_count %}<span class="badge-soft badge-soft-success">wired</span>
+        {% else %}<span class="badge-soft badge-soft-neutral">connect a token</span>{% endif %}
       </div>
     </div>
     {% if cf_zones %}
