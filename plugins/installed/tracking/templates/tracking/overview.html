@@ -14,9 +14,12 @@
 </div>
 
 {% if not configured %}
-<div class="card card-padded mb-4" style="border-color: var(--warn);">
-  <p class="font-semibold">Tracking is not configured yet.</p>
-  <p class="text-xs text-[color:var(--text-muted)]">Add your <strong>GA4 measurement ID</strong> + <strong>API secret</strong> + <strong>GTM container ID</strong> in <a href="/dashboard/tracking/settings/?tab=connection" class="hover:underline">Settings → Connection</a>. Server-side firing needs the measurement ID + API secret; GTM script needs the container ID.</p>
+<div class="callout callout-warn mb-4">
+  <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Tracking is not configured yet</p>
+    Add your <strong>GA4 measurement ID</strong> + <strong>API secret</strong> + <strong>GTM container ID</strong> in <a href="/dashboard/tracking/settings/?tab=connection" class="underline">Settings → Connection</a>. Server-side firing needs the measurement ID + API secret; GTM script needs the container ID.
+  </div>
 </div>
 {% endif %}
 

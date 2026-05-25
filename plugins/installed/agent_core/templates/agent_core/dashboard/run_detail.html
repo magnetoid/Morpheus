@@ -23,9 +23,12 @@
 {% endif %}
 
 {% if run.error %}
-<div class="card card-padded mt-3" style="border-color: var(--danger);">
-  <p class="text-xs uppercase tracking-wide" style="color: var(--danger);">Error</p>
-  <pre style="white-space: pre-wrap; margin-top: .5rem;">{{ run.error }}</pre>
+<div class="callout callout-error mt-3">
+  <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Run error</p>
+    <pre style="white-space: pre-wrap; margin: .35rem 0 0; font-size: .85rem;">{{ run.error }}</pre>
+  </div>
 </div>
 {% endif %}
 

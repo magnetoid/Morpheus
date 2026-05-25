@@ -8,8 +8,12 @@
   weight, category_slug, is_featured, compare_at_price</code>. Rows are upserted by SKU when present, else by slug.</p>
 
 {% if error %}
-<div class="card card-padded" style="border-color:var(--danger);margin-bottom:1rem;">
-  <strong>Import failed.</strong> {{ error }}
+<div class="callout callout-error" style="margin-bottom:1rem;">
+  <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Import failed</p>
+    {{ error }}
+  </div>
 </div>
 {% endif %}
 

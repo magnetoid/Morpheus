@@ -28,8 +28,12 @@
       <dt class="text-[color:var(--text-muted)]">User ID</dt><dd><code>{{ row.user_id|default:"—" }}</code></dd>
     </dl>
     {% if row.error_message %}
-    <div class="mt-3 p-2 rounded" style="background: rgba(220,50,50,0.07); border: 1px solid var(--danger); color: var(--danger);">
-      <p class="text-xs"><strong>Error:</strong> {{ row.error_message }}</p>
+    <div class="callout callout-error mt-3">
+      <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+      <div class="callout__body">
+        <p class="callout__title">Error</p>
+        {{ row.error_message }}
+      </div>
     </div>
     {% endif %}
   </div>
