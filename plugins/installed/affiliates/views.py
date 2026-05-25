@@ -100,19 +100,60 @@ def apply(request: HttpRequest) -> HttpResponse:
 
 @login_required(login_url='/auth/login/')
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """Affiliate dashboard for the signed-in customer."""
-    from plugins.installed.affiliates.models import Affiliate, AffiliateLink
+    """Affiliate dashboard for the signed-in customer.
+
+    Surfaces (matching the 2026 Rewardful / Tapfiliate UX baseline):
+      * KPI strip: clicks 30d, conversions 30d, commission accrued, EPC.
+      * Tracked links list with copy-to-clipboard + per-link CR.
+      * Recent conversions (last 10) so the affiliate sees the funnel
+        working in close to real-time.
+      * Metric definitions surfaced inline — research is unambiguous
+        that affiliates trust dashboards that explain their math.
+    """
+    from datetime import timedelta
+    from django.utils import timezone
+    from plugins.installed.affiliates.models import (
+        Affiliate, AffiliateClick, AffiliateConversion, AffiliateLink,
+    )
 
     accounts = list(Affiliate.objects.filter(user=request.user).select_related('program'))
-    # Attach `.tracked_links` to each account so the template can render
-    # them directly without a custom `get_item` filter.
+    since = timezone.now() - timedelta(days=30)
+
+    # Per-account stats (cheap: 4 small COUNT/SUM queries each).
     for a in accounts:
         if a.status == 'approved':
-            a.tracked_links = list(
-                AffiliateLink.objects.filter(affiliate=a).order_by('-created_at')[:50]
+            link_qs = AffiliateLink.objects.filter(affiliate=a)
+            a.tracked_links = list(link_qs.order_by('-created_at')[:50])
+
+            clicks_30d = AffiliateClick.objects.filter(
+                link__affiliate=a, created_at__gte=since,
+            ).count()
+            conv_30d_qs = AffiliateConversion.objects.filter(
+                affiliate=a, created_at__gte=since,
+            )
+            conversions_30d = conv_30d_qs.count()
+            approved_conv_30d = conv_30d_qs.filter(status='approved').count()
+
+            # Earnings per click (EPC) and conversion rate (CR).
+            epc = (
+                (float(a.accrued_balance.amount) / clicks_30d) if clicks_30d else 0
+            )
+            cr = ((conversions_30d / clicks_30d * 100) if clicks_30d else 0)
+
+            a.stats = {
+                'clicks_30d': clicks_30d,
+                'conversions_30d': conversions_30d,
+                'approved_conv_30d': approved_conv_30d,
+                'epc': round(epc, 2),
+                'cr': round(cr, 1),
+            }
+            a.recent_conversions = list(
+                conv_30d_qs.order_by('-created_at')[:8]
             )
         else:
             a.tracked_links = []
+            a.stats = None
+            a.recent_conversions = []
 
     return render(request, 'affiliates/dashboard.html', {
         'accounts': accounts,

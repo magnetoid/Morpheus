@@ -1,74 +1,146 @@
 {% extends "storefront/base.html" %}
+{% load morph %}
 {% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 880px;">
+  <div class="wrap" style="max-width: 980px;">
 
     <p class="eyebrow">Your account</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">Affiliate dashboard<span class="text-accent">.</span></h1>
+    <h1 class="display display-l" style="margin: 1rem 0 .5rem;">Affiliate dashboard<span class="text-accent">.</span></h1>
+    <p class="lede" style="max-width: 60ch; margin: 0 0 2.5rem;">
+      Track your tracked links, your clicks, your conversions, and your commission accrued — all in one place. Numbers update in real time as readers buy.
+    </p>
 
     {% if not accounts %}
-      <div class="card card-padded" style="background: var(--paper-2); padding: 2rem; border-radius: 6px;">
-        <p style="margin: 0 0 1rem;">You don't have an affiliate account yet.</p>
-        <a href="/affiliates/apply/" class="btn btn-primary">Apply →</a>
+      <div class="aff-empty">
+        <p style="font-family: var(--serif); font-size: 1.25rem; margin: 0 0 1rem;">You don't have an affiliate account yet.</p>
+        <p style="color: var(--muted); max-width: 50ch; margin: 0 auto 1.5rem;">
+          Apply once, get approved, then earn commission every time a reader you sent us buys a book.
+        </p>
+        <a href="/affiliates/apply/" class="btn btn-primary">Apply to join →</a>
       </div>
     {% else %}
 
     {% for a in accounts %}
-    <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
-      <header style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem;">
+    <article class="aff-card">
+      <header class="aff-card__head">
         <div>
           <p class="eyebrow">{{ a.program.name }}</p>
-          <h2 style="font-family: var(--serif); font-size: 1.4rem; margin: .25rem 0 0;">@{{ a.handle }}</h2>
+          <h2 class="aff-card__handle">@{{ a.handle }}</h2>
         </div>
-        <div style="text-align: right;">
-          {% if a.status == 'approved' %}
-            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#d6f3e3; color:#1f7a4d; font-size:.75rem; font-weight:600;">Approved</span>
-          {% elif a.status == 'pending' %}
-            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#ffeacc; color:#b86e00; font-size:.75rem; font-weight:600;">Pending review</span>
-          {% elif a.status == 'suspended' %}
-            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#fde7e9; color:#b3261e; font-size:.75rem; font-weight:600;">Suspended</span>
-          {% else %}
-            <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#eee; color:#666; font-size:.75rem; font-weight:600;">{{ a.get_status_display }}</span>
-          {% endif %}
-          <p style="margin: .5rem 0 0; font-size: .85rem; color: var(--muted);">Accrued: <strong style="color: var(--ink);">{{ a.accrued_balance }}</strong></p>
+        <div class="aff-card__status">
+          {% if a.status == 'approved' %}<span class="aff-pill aff-pill--ok">Approved</span>
+          {% elif a.status == 'pending' %}<span class="aff-pill aff-pill--wait">Pending review</span>
+          {% elif a.status == 'suspended' %}<span class="aff-pill aff-pill--bad">Suspended</span>
+          {% else %}<span class="aff-pill aff-pill--neutral">{{ a.get_status_display }}</span>{% endif %}
         </div>
       </header>
 
+      {% if a.status == 'approved' and a.stats %}
+      {# KPI strip — Tremor-style metrics aligned to Rewardful's 2026 dashboard baseline. #}
+      <div class="aff-kpis">
+        <div class="aff-kpi">
+          <p class="aff-kpi__label">Clicks · 30d</p>
+          <p class="aff-kpi__value">{{ a.stats.clicks_30d }}</p>
+        </div>
+        <div class="aff-kpi">
+          <p class="aff-kpi__label">Conversions · 30d</p>
+          <p class="aff-kpi__value">{{ a.stats.conversions_30d }}</p>
+          {% if a.stats.approved_conv_30d %}<p class="aff-kpi__sub">{{ a.stats.approved_conv_30d }} approved</p>{% endif %}
+        </div>
+        <div class="aff-kpi">
+          <p class="aff-kpi__label">Commission accrued</p>
+          <p class="aff-kpi__value">{{ a.accrued_balance }}</p>
+          <p class="aff-kpi__sub">paid out at threshold</p>
+        </div>
+        <div class="aff-kpi" title="Earnings per Click — accrued commission ÷ clicks in the last 30 days. The headline number for an affiliate program; aim for $0.20+.">
+          <p class="aff-kpi__label">EPC</p>
+          <p class="aff-kpi__value">${{ a.stats.epc }}</p>
+          <p class="aff-kpi__sub">earnings / click</p>
+        </div>
+        <div class="aff-kpi" title="Conversion Rate — what % of clicks turn into orders. Industry average is 2-4% for ecommerce; literary niches tend to be higher.">
+          <p class="aff-kpi__label">CR</p>
+          <p class="aff-kpi__value">{{ a.stats.cr }}%</p>
+          <p class="aff-kpi__sub">clicks → orders</p>
+        </div>
+      </div>
+      {% endif %}
+
       {% if a.status == 'approved' %}
-        <div style="margin-top: 1.5rem;">
-          <p class="eyebrow" style="margin-bottom: .75rem;">Your tracked links</p>
+        <div class="aff-section">
+          <p class="eyebrow">Your tracked links</p>
           {% for link in a.tracked_links %}
-          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid var(--rule);">
-            <code style="font-size: .85rem; color: var(--ink);">{{ site_base }}/r/{{ link.code }}</code>
-            <span style="font-size: .8rem; color: var(--muted);">→ {{ link.landing_url }}</span>
-            {% if link.label %}<span style="font-size: .8rem; color: var(--muted); font-style: italic;">{{ link.label }}</span>{% endif %}
-            <span style="margin-left:auto; font-size: .8rem; color: var(--muted);">{{ link.click_count }} click{{ link.click_count|pluralize }} · {{ link.conversion_count }} conv.</span>
+          {% with link_url=site_base|add:"/r/"|add:link.code %}
+          <div class="aff-link">
+            <button type="button" class="aff-link__copy"
+                    data-aff-copy="{{ link_url }}"
+                    aria-label="Copy {{ link.code }} to clipboard">
+              <code>{{ link_url }}</code>
+              <span class="aff-link__copy-icon" aria-hidden="true">⧉</span>
+            </button>
+            <div class="aff-link__meta">
+              <span>→ {{ link.landing_url }}</span>
+              {% if link.label %}<span class="aff-link__label">{{ link.label }}</span>{% endif %}
+            </div>
+            <div class="aff-link__stats">
+              <span>{{ link.click_count }} click{{ link.click_count|pluralize }}</span>
+              <span>{{ link.conversion_count }} conv.</span>
+            </div>
           </div>
+          {% endwith %}
           {% empty %}
-          <p style="color: var(--muted); font-size: .9rem;">No links yet — create your first below.</p>
+          <p class="aff-empty-inline">No links yet — create your first below.</p>
           {% endfor %}
 
-          <form method="post" action="/affiliates/me/links/new/"
-                style="display: grid; grid-template-columns: 1fr 1fr auto; gap: .5rem; margin-top: 1rem; align-items: end;">
+          <form method="post" action="/affiliates/me/links/new/" class="aff-newlink">
             {% csrf_token %}
             <input type="hidden" name="affiliate_id" value="{{ a.id }}">
             <div>
-              <label style="font-size: .75rem; color: var(--muted);">Landing path</label>
-              <input type="text" name="landing_url" value="/" required
-                     style="width:100%; padding:.5rem .65rem; border:1px solid var(--rule); border-radius:4px; font-family: ui-monospace, monospace;">
+              <label class="aff-newlink__lbl">Landing path</label>
+              <input type="text" name="landing_url" value="/" required class="aff-newlink__in"
+                     placeholder="/products/example-book/">
             </div>
             <div>
-              <label style="font-size: .75rem; color: var(--muted);">Label (optional)</label>
+              <label class="aff-newlink__lbl">Label (optional)</label>
               <input type="text" name="label" maxlength="100" placeholder="e.g. Newsletter Jan"
-                     style="width:100%; padding:.5rem .65rem; border:1px solid var(--rule); border-radius:4px;">
+                     class="aff-newlink__in">
             </div>
-            <button type="submit" class="btn btn-primary" style="height: 38px;">Create link</button>
+            <button type="submit" class="btn btn-primary aff-newlink__btn">Create link</button>
           </form>
         </div>
+
+        {% if a.recent_conversions %}
+        <div class="aff-section">
+          <p class="eyebrow">Recent conversions · last 30d</p>
+          <ul class="aff-conversions">
+            {% for c in a.recent_conversions %}
+            <li>
+              <span class="aff-conversions__when">{{ c.created_at|date:"M j, H:i" }}</span>
+              <span class="aff-conversions__commission">+{{ c.commission_amount }}</span>
+              <span class="aff-conversions__status aff-conversions__status--{{ c.status }}">{{ c.get_status_display }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <details class="aff-howto">
+          <summary>How affiliate works · payouts · the math</summary>
+          <div class="aff-howto__body">
+            <p><strong>How a click becomes commission.</strong> A reader clicks your tracked link, lands on dot books, and a 30-day cookie is set. If they buy any book in that window — even a different one than they clicked through to — the order is attributed to you and the program's commission rate is applied to the subtotal.</p>
+            <p><strong>EPC</strong> (Earnings per Click) is the headline number — your accrued commission divided by your clicks over the last 30 days. A good EPC for a literary affiliate sits around $0.20–$0.60. Below $0.05 means either your audience isn't a fit or your landing pages need work.</p>
+            <p><strong>CR</strong> (Conversion Rate) is what percentage of clicks turn into orders. Industry ecommerce average is 2–4%; literary niches with engaged audiences often hit 5–8%.</p>
+            <p><strong>Payouts</strong> are issued monthly once your accrued balance crosses the program's payout threshold (usually $25). We pay via the method on file in your <a href="/account/profile/">profile</a>.</p>
+            <p><strong>Approved vs pending</strong> conversions: an order is pending until the return window closes (14 days for physical books, immediate for digital). Pending conversions count toward your visible metrics but only approved ones are paid.</p>
+          </div>
+        </details>
+
       {% elif a.status == 'pending' %}
-        <p style="color: var(--muted); font-size: .9rem;">We're reviewing your application. You'll be able to create tracked links here once approved.</p>
+        <p class="aff-section-text">We're reviewing your application. You'll be able to create tracked links here once approved — typically within 2 business days.</p>
+      {% elif a.status == 'suspended' %}
+        <p class="aff-section-text">Your account is suspended. Email us if you think this is an error.</p>
       {% endif %}
     </article>
     {% endfor %}
@@ -76,4 +148,171 @@
     {% endif %}
   </div>
 </section>
+
+<style>
+.aff-empty {
+  text-align: center; padding: 3.5rem 2rem;
+  background: var(--surface-2, rgba(0,0,0,.02));
+  border-radius: 12px;
+}
+.aff-card {
+  padding: 1.75rem;
+  border: 1px solid var(--rule); border-radius: 12px;
+  background: var(--paper);
+  margin-bottom: 1.75rem;
+}
+.aff-card__head {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.5rem;
+}
+.aff-card__handle {
+  font-family: var(--serif); font-size: 1.5rem; font-weight: 500;
+  margin: .25rem 0 0;
+}
+.aff-pill {
+  display: inline-block; padding: .25rem .65rem;
+  border-radius: 999px; font-size: .75rem; font-weight: 600;
+}
+.aff-pill--ok      { background: rgba(16,185,129,.15); color: #047857; }
+.aff-pill--wait    { background: rgba(245,158,11,.15); color: #b45309; }
+.aff-pill--bad     { background: rgba(239,68,68,.15);  color: #b91c1c; }
+.aff-pill--neutral { background: rgba(0,0,0,.06);      color: var(--muted); }
+
+.aff-kpis {
+  display: grid; gap: .85rem;
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 1.5rem;
+}
+@media (min-width: 700px) { .aff-kpis { grid-template-columns: repeat(5, 1fr); } }
+.aff-kpi {
+  padding: .85rem 1rem;
+  background: var(--surface-2, rgba(0,0,0,.025));
+  border-radius: 8px;
+  cursor: help;
+}
+.aff-kpi__label {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin: 0;
+}
+.aff-kpi__value {
+  font-family: var(--serif); font-size: 1.6rem; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1; margin: .35rem 0 0;
+}
+.aff-kpi__sub { font-size: .7rem; color: var(--muted); margin: .15rem 0 0; }
+
+.aff-section { margin-top: 1.75rem; }
+.aff-section-text { color: var(--muted); font-size: .9rem; margin: 1.5rem 0 0; }
+
+.aff-link {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .85rem;
+  padding: .85rem 0; border-bottom: 1px solid var(--rule);
+}
+.aff-link:last-child { border-bottom: 0; }
+.aff-link__copy {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: var(--surface-2, rgba(0,0,0,.04));
+  padding: .35rem .65rem; border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit; color: inherit;
+  transition: border-color .15s ease, background .15s ease;
+}
+.aff-link__copy:hover { border-color: var(--rule); background: var(--paper); }
+.aff-link__copy:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.aff-link__copy code { font-size: .82rem; }
+.aff-link__copy-icon { font-size: .85rem; color: var(--muted); }
+.aff-link__copy.is-copied { background: rgba(16,185,129,.12); color: #047857; }
+.aff-link__copy.is-copied::after { content: ' copied'; font-size: .75rem; }
+.aff-link__meta {
+  display: flex; gap: .65rem; align-items: center;
+  font-size: .8rem; color: var(--muted); flex-wrap: wrap;
+}
+.aff-link__label { font-style: italic; }
+.aff-link__stats {
+  margin-left: auto; display: flex; gap: .85rem;
+  font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+
+.aff-empty-inline { color: var(--muted); font-size: .9rem; padding: 1rem 0; }
+
+.aff-newlink {
+  display: grid; grid-template-columns: 1fr; gap: .65rem;
+  margin-top: 1.25rem; align-items: end;
+}
+@media (min-width: 640px) { .aff-newlink { grid-template-columns: 1fr 1fr auto; } }
+.aff-newlink__lbl { font-size: .72rem; color: var(--muted); display: block; margin-bottom: .25rem; }
+.aff-newlink__in {
+  width: 100%; padding: .55rem .65rem;
+  border: 1px solid var(--rule); border-radius: 6px;
+  background: var(--paper); font-family: inherit;
+}
+.aff-newlink__in:focus { outline: 2px solid var(--ink); outline-offset: -2px; border-color: var(--ink); }
+.aff-newlink__btn { height: 40px; }
+
+.aff-conversions { list-style: none; margin: 0; padding: 0; }
+.aff-conversions li {
+  display: flex; gap: 1rem; align-items: center;
+  padding: .5rem 0; border-bottom: 1px solid var(--rule);
+  font-size: .88rem;
+}
+.aff-conversions li:last-child { border-bottom: 0; }
+.aff-conversions__when { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 8rem; }
+.aff-conversions__commission { font-family: var(--serif); font-size: 1rem; color: var(--ink); flex: 1; }
+.aff-conversions__status {
+  font-size: .7rem; padding: .15rem .55rem; border-radius: 999px; font-weight: 500;
+}
+.aff-conversions__status--approved  { background: rgba(16,185,129,.12); color: #047857; }
+.aff-conversions__status--pending   { background: rgba(245,158,11,.12); color: #b45309; }
+.aff-conversions__status--rejected,
+.aff-conversions__status--refunded  { background: rgba(239,68,68,.12);  color: #b91c1c; }
+.aff-conversions__status--paid      { background: rgba(99,102,241,.12); color: #4338ca; }
+
+.aff-howto {
+  margin-top: 2rem; padding: 1rem 1.25rem;
+  background: var(--surface-2, rgba(0,0,0,.02));
+  border-radius: 8px; border-left: 3px solid var(--ink);
+}
+.aff-howto summary {
+  cursor: pointer; font-family: var(--serif); font-size: 1rem; color: var(--ink);
+}
+.aff-howto__body { font-size: .9rem; line-height: 1.65; color: var(--ink-2); margin-top: 1rem; }
+.aff-howto__body p { margin: 0 0 .85rem; }
+</style>
+
+<script>
+/* Copy-to-clipboard for tracked links. Uses navigator.clipboard with a
+   document.execCommand fallback so it works on file://-style previews
+   and older browsers. Visual confirmation via .is-copied class. */
+(function () {
+  function copy(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        ta.remove();
+        resolve();
+      } catch (e) {
+        ta.remove();
+        reject(e);
+      }
+    });
+  }
+  document.querySelectorAll('[data-aff-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      copy(btn.dataset.affCopy).then(function () {
+        btn.classList.add('is-copied');
+        setTimeout(function () { btn.classList.remove('is-copied'); }, 1500);
+      }).catch(function () { /* silent — keep UX clean */ });
+    });
+  });
+})();
+</script>
 {% endblock %}
