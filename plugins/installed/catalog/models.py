@@ -340,6 +340,12 @@ class Product(models.Model):
             return reviews.aggregate(models.Avg('rating'))['rating__avg']
         return None
 
+    @property
+    def review_count(self) -> int:
+        """Approved-only count. Storefront PDP renders this next to the
+        average rating; the JSON-LD aggregateRating uses it too."""
+        return self.reviews.filter(is_approved=True).count()
+
 
 class ProductAttribute(models.Model):
     """Assigns attribute values to a product."""
