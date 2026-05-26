@@ -1,0 +1,447 @@
+"""JSON-LD generators for every storefront surface.
+
+Each function returns a dict ready to be ``json.dumps``-ed into a
+``<script type="application/ld+json">``. They never raise; the broad
+``except`` blocks below are intentional — a malformed product or
+missing metafield should not block a page render.
+"""
+from __future__ import annotations
+
+from ._helpers import _seo_plugin, _seo_plugin_cfg, _site_base_url, site_settings
+
+
+def organization_jsonld() -> dict | None:
+    s = site_settings()
+    if not s.organization_name:
+        return None
+    # @type comes from PluginConfig['seo']['organization_type'] —
+    # merchant can pick Store / OnlineStore / BookStore / Publisher
+    # to give Google a more accurate signal about what kind of
+    # business this is. Default: 'OnlineStore'.
+    org_type = 'OnlineStore'
+    seo_plugin = _seo_plugin()
+    if seo_plugin is not None:
+        try:
+            org_type = (seo_plugin.get_config_value(
+                'organization_type', 'OnlineStore',
+            ) or 'OnlineStore').strip() or 'OnlineStore'
+        except Exception:  # noqa: BLE001
+            pass
+
+    same_as = [u for u in (s.facebook_url, s.instagram_url, s.linkedin_url,
+                           s.youtube_url, s.tiktok_url) if u]
+    out = {
+        '@context': 'https://schema.org',
+        '@type': org_type,
+        'name': s.organization_name,
+        'url': _site_base_url(),
+    }
+    if s.organization_logo_url:
+        out['logo'] = s.organization_logo_url
+    if same_as:
+        out['sameAs'] = same_as
+    return out
+
+
+def website_jsonld() -> dict | None:
+    s = site_settings()
+    base = _site_base_url()
+    out = {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        'url': base,
+    }
+    if s.organization_name:
+        out['name'] = s.organization_name
+    if s.enable_sitelinks_search:
+        out['potentialAction'] = {
+            '@type': 'SearchAction',
+            'target': f'{base}/search/?q={{search_term_string}}',
+            'query-input': 'required name=search_term_string',
+        }
+    return out
+
+
+def breadcrumb_jsonld(items: list[dict]) -> dict:
+    """`items` = [{'name': str, 'url': str}, …] in order."""
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {'@type': 'ListItem', 'position': i + 1,
+             'name': it['name'], 'item': it['url']}
+            for i, it in enumerate(items)
+        ],
+    }
+
+
+def product_jsonld(product, *, base_url: str = '') -> dict:
+    """Rich Product structured data.
+
+    `product` may be a Django model instance (SSR path) OR a dict (when
+    fed by GraphQL via a template tag). Accessor helper normalises both.
+    """
+    base = base_url or _site_base_url()
+
+    def g(name, default=None):
+        if isinstance(product, dict):
+            return product.get(name, default)
+        return getattr(product, name, default)
+
+    slug = g('slug') or ''
+    if not slug:
+        return {}
+
+    url = f'{base.rstrip("/")}/products/{slug}/'
+    description = g('short_description') or g('description') or ''
+    out: dict = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        'name': g('name') or '',
+        'sku': g('sku') or '',
+        'url': url,
+        'description': description[:500],
+    }
+    # dateModified — Perplexity decays citations after ~13 weeks and AI
+    # Overviews favour ≤60-day content. updated_at is auto_now=True on
+    # the Product model so it bumps on every save.
+    updated = g('updated_at') or g('updatedAt')
+    if updated:
+        try:
+            out['dateModified'] = updated.isoformat() if hasattr(updated, 'isoformat') else str(updated)
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Image: model exposes .primary_image.image.url; GraphQL exposes
+    # primary_image_url or primaryImage.url.
+    primary = g('primary_image')
+    if primary:
+        if isinstance(primary, dict):
+            out['image'] = primary.get('url') or primary.get('image_url') or ''
+        elif getattr(primary, 'image', None):
+            out['image'] = primary.image.url
+    elif g('primary_image_url'):
+        out['image'] = g('primary_image_url')
+
+    # Category: model has .category.name; dict has .category as nested.
+    cat = g('category')
+    if cat:
+        out['category'] = cat.get('name') if isinstance(cat, dict) else getattr(cat, 'name', '')
+
+    # Offer
+    offer_price = ''
+    offer_curr = 'USD'
+    price = g('price')
+    if price is not None:
+        avail = 'https://schema.org/InStock'
+        # Stock check is ORM-only; skip silently for dicts.
+        try:
+            if not isinstance(product, dict):
+                from plugins.installed.inventory.models import StockLevel
+                from django.db.models import Sum, F
+                stock = StockLevel.objects.filter(variant__product=product).aggregate(
+                    qty=Sum(F('quantity') - F('reserved_quantity'))
+                )['qty'] or 0
+                if stock <= 0:
+                    avail = 'https://schema.org/OutOfStock'
+        except Exception:  # noqa: BLE001
+            pass
+        if isinstance(price, dict):
+            offer_price = str(price.get('amount', ''))
+            offer_curr = str(price.get('currency', 'USD'))
+        else:
+            offer_price = str(getattr(price, 'amount', price))
+            offer_curr = str(getattr(price, 'currency', 'USD'))
+        out['offers'] = {
+            '@type': 'Offer',
+            'price': offer_price,
+            'priceCurrency': offer_curr,
+            'availability': avail,
+            'url': url,
+        }
+        # MerchantReturnPolicy + OfferShippingDetails — 2026 Required
+        # for Merchant free listings + AI shopping comparisons. Values
+        # live in the SEO plugin's PluginConfig JSON so no migration.
+        commerce_cfg = _seo_plugin_cfg()
+        return_days = int(commerce_cfg.get('return_days') or 0)
+        ship_fee = commerce_cfg.get('shipping_fee_amount') or '0'
+        free_over = commerce_cfg.get('free_shipping_over') or '0'
+        country = (commerce_cfg.get('shipping_country') or 'US').upper()
+        if return_days:
+            out['offers']['hasMerchantReturnPolicy'] = {
+                '@type': 'MerchantReturnPolicy',
+                'applicableCountry': country,
+                'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
+                'merchantReturnDays': return_days,
+                'returnMethod': 'https://schema.org/ReturnByMail',
+                'returnFees': 'https://schema.org/FreeReturn',
+            }
+        out['offers']['shippingDetails'] = {
+            '@type': 'OfferShippingDetails',
+            'shippingDestination': {
+                '@type': 'DefinedRegion',
+                'addressCountry': country,
+            },
+            'shippingRate': {
+                '@type': 'MonetaryAmount',
+                'value': str(ship_fee),
+                'currency': offer_curr,
+            },
+            'deliveryTime': {
+                '@type': 'ShippingDeliveryTime',
+                'handlingTime': {
+                    '@type': 'QuantitativeValue',
+                    'minValue': 0, 'maxValue': 1, 'unitCode': 'DAY',
+                },
+                'transitTime': {
+                    '@type': 'QuantitativeValue',
+                    'minValue': 2, 'maxValue': 5, 'unitCode': 'DAY',
+                },
+            },
+        }
+        if free_over:
+            out['offers']['shippingDetails']['freeShippingThreshold'] = {
+                '@type': 'MonetaryAmount',
+                'value': str(free_over),
+                'currency': offer_curr,
+            }
+
+    # Aggregate rating — ORM only.
+    if not isinstance(product, dict):
+        try:
+            from django.db.models import Avg, Count
+            agg = product.reviews.aggregate(avg=Avg('rating'), n=Count('id'))
+            if agg['n']:
+                out['aggregateRating'] = {
+                    '@type': 'AggregateRating',
+                    'ratingValue': round(float(agg['avg'] or 0), 1),
+                    'reviewCount': agg['n'],
+                }
+        except Exception:  # noqa: BLE001
+            pass
+
+    # AI shopping hint — `agent_metadata` already structured for agents.
+    am = g('agent_metadata')
+    if am:
+        out['additionalProperty'] = [
+            {'@type': 'PropertyValue', 'name': k, 'value': str(v)[:200]}
+            for k, v in (am if isinstance(am, dict) else {}).items()
+        ][:25]
+
+    # ProductGroup variants — schema.org's hasVariant unlocks variant
+    # cards in Google AI Shopping. Only emit when variants exist.
+    if not isinstance(product, dict):
+        try:
+            variants = list(getattr(product, 'variants', None).filter(is_active=True)[:20]) \
+                if getattr(product, 'variants', None) else []
+            if variants:
+                out['@type'] = 'ProductGroup'
+                out['productGroupID'] = str(getattr(product, 'id', '') or slug)
+                out['hasVariant'] = [
+                    {
+                        '@type': 'Product',
+                        'sku': v.sku or '',
+                        'name': v.name or '',
+                        'offers': {
+                            '@type': 'Offer',
+                            'price': str(getattr(v, 'price', None).amount if getattr(v, 'price', None) else (offer_price if price is not None else '')),
+                            'priceCurrency': str(getattr(v, 'price', None).currency if getattr(v, 'price', None) else (offer_curr if price is not None else 'USD')),
+                            'availability': 'https://schema.org/InStock',
+                        },
+                    }
+                    for v in variants
+                ]
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Entity-graph sameAs links via metafield 'seo.same_as' (comma- or
+    # newline-separated URLs). March-2026 core update made this the #1
+    # leverage point for AI engines.
+    if not isinstance(product, dict):
+        try:
+            from django.contrib.contenttypes.models import ContentType
+            from plugins.installed.metafields.models import Metafield
+            ct = ContentType.objects.get_for_model(type(product))
+            m = Metafield.objects.filter(
+                content_type=ct, object_id=product.pk,
+                namespace='seo', key='same_as',
+            ).first()
+            if m and m.value:
+                urls = [u.strip() for u in str(m.value).replace('\n', ',').split(',') if u.strip()]
+                if urls:
+                    out['sameAs'] = urls[:10]
+        except Exception:  # noqa: BLE001
+            pass
+
+    # GTIN / brand via 'book' metafield namespace (used by dotbooks)
+    # AND via ProductVariant.barcode (Phase 1 of variant Shopify
+    # parity — every variant carries an optional UPC / EAN / ISBN).
+    if not isinstance(product, dict):
+        candidate_barcode = ''
+        try:
+            from django.contrib.contenttypes.models import ContentType
+            from plugins.installed.metafields.models import Metafield
+            ct = ContentType.objects.get_for_model(type(product))
+            book_meta = {
+                row.key: row.value for row in
+                Metafield.objects.filter(
+                    content_type=ct, object_id=product.pk, namespace='book',
+                )
+            }
+            if book_meta.get('isbn'):
+                candidate_barcode = str(book_meta['isbn']).strip()
+            if book_meta.get('publisher'):
+                out['brand'] = {'@type': 'Brand', 'name': str(book_meta['publisher'])}
+            if book_meta.get('author'):
+                out['author'] = {'@type': 'Person', 'name': str(book_meta['author'])}
+        except Exception:  # noqa: BLE001
+            pass
+        # Variant-level barcode wins when present — closer to source.
+        try:
+            first_variant_barcode = (
+                product.variants.exclude(barcode='').values_list('barcode', flat=True).first()
+            )
+            if first_variant_barcode:
+                candidate_barcode = str(first_variant_barcode).strip()
+        except Exception:  # noqa: BLE001
+            pass
+        if candidate_barcode:
+            # Emit the right schema.org GTIN property based on the
+            # configured preference. 'auto' picks the variant by length:
+            # 8 → gtin8, 12 → gtin12, 13 → gtin13 (also ISBN-13).
+            pref = 'auto'
+            seo_plugin = _seo_plugin()
+            if seo_plugin is not None:
+                try:
+                    pref = (seo_plugin.get_config_value(
+                        'gtin_field_preference', 'auto',
+                    ) or 'auto').lower()
+                except Exception:  # noqa: BLE001
+                    pass
+            digits = ''.join(c for c in candidate_barcode if c.isdigit())
+            field_name = 'gtin13'
+            if pref == 'auto':
+                length = len(digits)
+                if length == 8:
+                    field_name = 'gtin8'
+                elif length == 12:
+                    field_name = 'gtin12'
+                elif length == 13:
+                    field_name = 'gtin13'
+                else:
+                    field_name = 'gtin'   # generic fallback
+            elif pref == 'isbn13':
+                field_name = 'gtin13'   # schema.org uses gtin13 for ISBN-13
+                # ALSO emit it as ISBN so Google Books picks it up.
+                out['isbn'] = (digits or candidate_barcode)[:13]
+            elif pref in ('gtin8', 'gtin12', 'gtin13'):
+                field_name = pref
+            out[field_name] = (digits or candidate_barcode)[: int(
+                ''.join(c for c in field_name if c.isdigit()) or 14
+            )]
+
+    return out
+
+
+def speakable_jsonld(selectors: list[str] | None = None) -> dict:
+    """SpeakableSpecification — tells voice assistants which CSS selectors
+    contain text suitable for spoken reading.
+
+    Defaults target the page's headline + the lede paragraph, which work
+    on every storefront template we ship.
+    """
+    css = selectors or ['h1', '.lede', '[itemprop="description"]']
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        'speakable': {
+            '@type': 'SpeakableSpecification',
+            'cssSelector': css,
+        },
+    }
+
+
+def collection_page_jsonld(*, name: str, url: str, description: str,
+                            items: list[dict]) -> dict:
+    """CollectionPage + ItemList for PLP/category pages.
+
+    Each `items[i]` is a dict with at least {name, url, image}. Tells AI
+    engines that this URL is a list of products under a topic — Google
+    AI Overviews use this to assemble "show me [topic] from X" answers.
+    """
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        'name': name[:120],
+        'url': url,
+        'description': (description or '')[:400],
+        'mainEntity': {
+            '@type': 'ItemList',
+            'numberOfItems': len(items),
+            'itemListElement': [
+                {
+                    '@type': 'ListItem',
+                    'position': idx + 1,
+                    'url': it.get('url') or '',
+                    'name': (it.get('name') or '')[:120],
+                    **({'image': it['image']} if it.get('image') else {}),
+                }
+                for idx, it in enumerate(items[:60])
+            ],
+        },
+    }
+
+
+def qa_page_jsonld(*, name: str, url: str, qa: list[dict]) -> dict:
+    """QAPage schema — ChatGPT cites QAPage ~58% more than FAQPage
+    (per Searchless research, May 2026). Use for any "ask a question →
+    answer" surface; FAQPage stays useful for static FAQs.
+    """
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'QAPage',
+        'name': name[:120],
+        'url': url,
+        'mainEntity': [
+            {
+                '@type': 'Question',
+                'name': item.get('q', '')[:200],
+                'answerCount': 1,
+                'acceptedAnswer': {
+                    '@type': 'Answer',
+                    'text': item.get('a', '')[:2000],
+                },
+            }
+            for item in qa
+        ],
+    }
+
+
+def article_jsonld(*, headline: str, body: str, url: str,
+                   author: str = '', published_at=None, image: str = '') -> dict:
+    out = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        'headline': headline[:110],
+        'url': url,
+        'articleBody': body[:5000],
+    }
+    if author:
+        out['author'] = {'@type': 'Person', 'name': author}
+    if published_at:
+        out['datePublished'] = published_at.isoformat()
+    if image:
+        out['image'] = image
+    return out
+
+
+def faq_jsonld(qa: list[dict]) -> dict:
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+            {'@type': 'Question', 'name': item['q'],
+             'acceptedAnswer': {'@type': 'Answer', 'text': item['a']}}
+            for item in qa
+        ],
+    }
