@@ -398,6 +398,10 @@
   padding: 4rem 1rem 1rem;
   animation: quicksearch-fade .15s ease-out;
 }
+/* Critical: CSS display: flex above would override the [hidden] attribute's
+   default display: none. Without this rule, the panel is permanently
+   visible and the toggle button can't dismiss it. */
+.quicksearch[hidden] { display: none; }
 @keyframes quicksearch-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .quicksearch { animation: none; } }
 .quicksearch__backdrop {
