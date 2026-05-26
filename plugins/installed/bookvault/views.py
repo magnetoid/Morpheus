@@ -142,10 +142,14 @@ def resend_order(request: HttpRequest, order_id) -> HttpResponseRedirect:
 @require_http_methods(['POST'])
 def bulk_link_products(request: HttpRequest) -> HttpResponseRedirect:
     """302 to BV's hosted Bulk Products linker with the selected
-    product IDs in the query string."""
+    product IDs in the query string.
+
+    Accepts both ``ids`` (the admin products-list bulk-form field
+    name) and ``product_id`` (the dashboard overview's direct-link
+    field name) so this view is callable from either surface."""
     from plugins.installed.bookvault.services import bulk_products_link
 
-    ids = request.POST.getlist('product_id')
+    ids = request.POST.getlist('ids') or request.POST.getlist('product_id')
     if not ids:
         messages.warning(request, 'No products selected.')
         return HttpResponseRedirect('/dashboard/apps/bookvault/')

@@ -68,12 +68,33 @@ def products_list(request: HttpRequest) -> HttpResponse:
         products = list(page_obj.object_list)
     except Exception:  # noqa: BLE001
         products = []
+
+    # Bookvault is an optional plugin. Surface the per-row link status
+    # column only when BV is configured + authed; otherwise the column
+    # is hidden so non-BV stores don't see noise.
+    bv_authed = False
+    try:
+        from plugins.installed.bookvault import services as bv_services
+        bv_authed = bv_services.is_authenticated()
+        if bv_authed and products:
+            bv_status = bv_services.bulk_link_status_for(
+                [p.id for p in products]
+            )
+            # Annotate each product so the template can read it without
+            # needing a dict-lookup filter. (Django templates reject
+            # attrs that start with an underscore, hence the public name.)
+            for p in products:
+                p.bv_link_status = bv_status.get(p.id, 'Unlinked')
+    except Exception:  # noqa: BLE001 — never break the product list if BV is wedged
+        bv_authed = False
+
     return render(request, 'admin_dashboard/products.html', {
         'products': products,
         'status_filter': status,
         'status_choices': PRODUCT_STATUS_CHOICES,
         'status_counts': status_counts,
         'search': search,
+        'bv_authed': bv_authed,
         'active_nav': 'products',
         'breadcrumb_trail': [
             {'label': 'Dashboard', 'url': '/dashboard/'},

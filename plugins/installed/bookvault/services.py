@@ -410,29 +410,42 @@ def bulk_products_link(product_ids: list[str]) -> str:
 def product_link_status(product) -> str:
     """Aggregate status across a product's variants for the admin
     list column: 'Linked' / 'Partial' / 'Unlinked'."""
+    return bulk_link_status_for([product.id]).get(product.id, 'Unlinked')
+
+
+def bulk_link_status_for(product_ids) -> dict:
+    """One-query batched version of ``product_link_status`` for the
+    admin product list, which renders 50-100 rows per page and would
+    fan out to N+1 queries with the per-row helper.
+
+    Returns ``{product_id: 'Linked' | 'Partial' | 'Unlinked'}``.
+    Unknown / not-yet-recorded products are returned as 'Unlinked'."""
     from plugins.installed.bookvault.models import BookvaultProductLink
 
-    has_linked = False
-    has_unlinked = False
-    variants = getattr(product, 'variants', None)
-    variant_iter = list(variants.all()) if (variants is not None and hasattr(variants, 'all')) else []
+    ids = list(product_ids or [])
+    if not ids:
+        return {}
 
-    if variant_iter:
-        for v in variant_iter:
-            link = BookvaultProductLink.objects.filter(product=product, variant=v).first()
-            if link and link.is_linked:
-                has_linked = True
-            else:
-                has_unlinked = True
-    else:
-        link = BookvaultProductLink.objects.filter(product=product, variant__isnull=True).first()
-        if link and link.is_linked:
-            has_linked = True
+    # Aggregate by (product_id, is_linked) so we know per product
+    # whether any link row is linked AND whether any is unlinked.
+    has_linked: set = set()
+    has_unlinked: set = set()
+    rows = BookvaultProductLink.objects.filter(product_id__in=ids).values_list(
+        'product_id', 'is_linked',
+    )
+    for pid, linked in rows:
+        (has_linked if linked else has_unlinked).add(pid)
+
+    out: dict = {}
+    for pid in ids:
+        is_l = pid in has_linked
+        is_u = pid in has_unlinked
+        if is_l and is_u:
+            out[pid] = 'Partial'
+        elif is_l:
+            out[pid] = 'Linked'
         else:
-            has_unlinked = True
-
-    if has_linked and has_unlinked:
-        return 'Partial'
-    if has_linked:
-        return 'Linked'
-    return 'Unlinked'
+            # A product with zero BookvaultProductLink rows is treated
+            # as Unlinked (BV doesn't know about it yet).
+            out[pid] = 'Unlinked'
+    return out

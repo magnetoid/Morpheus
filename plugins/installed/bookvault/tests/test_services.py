@@ -248,3 +248,28 @@ class ProductLinkStatusTests(TestCase):
             locations=[1, 3], is_linked=True,
         )
         self.assertEqual(services.product_link_status(self.product), 'Linked')
+
+    def test_bulk_helper_one_query_per_page(self):
+        """bulk_link_status_for must NOT fan out N+1 — it should hit
+        the DB exactly once regardless of how many product IDs are
+        passed in. This is what makes it safe to call from the
+        50-100-row admin products list page."""
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+
+        # Two products: one linked, one not.
+        p2 = Product.objects.create(
+            name='Status Test 2', slug='status-test-2',
+            sku='9787777777777', status='active',
+            price=Money(Decimal('10.00'), 'USD'),
+            product_type='simple',
+        )
+        BookvaultProductLink.objects.create(
+            product=self.product, variant=None, locations=[1], is_linked=True,
+        )
+
+        with CaptureQueriesContext(connection) as ctx:
+            out = services.bulk_link_status_for([self.product.id, p2.id])
+        self.assertEqual(len(ctx), 1, f'expected 1 query, got {len(ctx)}')
+        self.assertEqual(out[self.product.id], 'Linked')
+        self.assertEqual(out[p2.id], 'Unlinked')

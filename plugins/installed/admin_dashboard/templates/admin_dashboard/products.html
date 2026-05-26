@@ -38,6 +38,12 @@
   <form id="bulk-form" method="post" action="{% url 'admin_dashboard:products_bulk' %}" style="display:none;">
     {% csrf_token %}
   </form>
+  {% if bv_authed %}
+  {# Sibling form that POSTs selected IDs to Bookvault's bulk linker. #}
+  <form id="bulk-form-bookvault" method="post" action="{% url 'bookvault:bulk_link' %}" style="display:none;">
+    {% csrf_token %}
+  </form>
+  {% endif %}
   <div data-bulk-bar
        data-bulk-form-id="bulk-form" data-bulk-entity="product" data-bulk-entity-plural="products"
        hidden
@@ -48,6 +54,11 @@
       <button type="button" class="btn text-sm" data-bulk-action="activate" disabled>Activate</button>
       <button type="button" class="btn text-sm" data-bulk-action="draft" disabled>Mark draft</button>
       <button type="button" class="btn text-sm" data-bulk-action="archive" disabled>Archive</button>
+      {% if bv_authed %}
+      <button type="button" class="btn text-sm" id="bulk-bv-submit" disabled>
+        <i data-lucide="book-open" class="h-3 w-3"></i> Send to Bookvault
+      </button>
+      {% endif %}
       <button type="button" class="btn btn-danger text-sm" data-bulk-action="delete" data-bulk-danger disabled>Delete</button>
     </div>
   </div>
@@ -62,6 +73,7 @@
           <th>SKU</th>
           <th>Category</th>
           <th>Vendor</th>
+          {% if bv_authed %}<th>BV</th>{% endif %}
           <th>{% sort_link "status" "Status" %}</th>
           <th class="text-right">{% sort_link "price" "Price" %}</th>
           <th></th>
@@ -91,6 +103,13 @@
           <td class="text-[color:var(--text-muted)]">{{ p.sku|default:"—" }}</td>
           <td class="text-[color:var(--text-muted)]">{{ p.category.name|default:"—" }}</td>
           <td class="text-[color:var(--text-muted)]">{{ p.vendor.name|default:"—" }}</td>
+          {% if bv_authed %}
+          <td>
+            {% if p.bv_link_status == 'Linked' %}<span class="pill pill-success">Linked</span>
+            {% elif p.bv_link_status == 'Partial' %}<span class="pill pill-warn">Partial</span>
+            {% else %}<span class="pill pill-neutral">Unlinked</span>{% endif %}
+          </td>
+          {% endif %}
           <td>
             {% if p.status == 'active' %}<span class="pill pill-success">Active</span>
             {% elif p.status == 'draft' %}<span class="pill pill-warn">Draft</span>
@@ -110,4 +129,47 @@
   </div>
 
 </div>
+
+{% if bv_authed %}
+<script>
+  // "Send to Bookvault" — gathers selected product IDs, appends them as
+  // hidden inputs into #bulk-form-bookvault, then submits to BV's
+  // hosted Bulk Products linker. Enables/disables in lockstep with the
+  // existing bulk-bar selection (data-bulk-row checkboxes).
+  (function () {
+    var btn = document.getElementById('bulk-bv-submit');
+    var bvForm = document.getElementById('bulk-form-bookvault');
+    if (!btn || !bvForm) return;
+    function selectedIds() {
+      var out = [];
+      document.querySelectorAll('[data-bulk-row]:checked').forEach(function (c) {
+        out.push(c.value);
+      });
+      return out;
+    }
+    function sync() {
+      btn.disabled = selectedIds().length === 0;
+    }
+    document.addEventListener('change', function (e) {
+      if (e.target && e.target.matches && e.target.matches('[data-bulk-row], [data-bulk-all]')) {
+        sync();
+      }
+    });
+    btn.addEventListener('click', function () {
+      var ids = selectedIds();
+      if (ids.length === 0) return;
+      // Wipe any previous hidden inputs, then re-append the current
+      // selection. Leaves the CSRF token + form attrs untouched.
+      bvForm.querySelectorAll('input[name="ids"]').forEach(function (i) { i.remove(); });
+      ids.forEach(function (id) {
+        var i = document.createElement('input');
+        i.type = 'hidden'; i.name = 'ids'; i.value = id;
+        bvForm.appendChild(i);
+      });
+      bvForm.submit();
+    });
+    sync();
+  })();
+</script>
+{% endif %}
 {% endblock %}
