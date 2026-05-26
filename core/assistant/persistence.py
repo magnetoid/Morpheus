@@ -40,7 +40,11 @@ def _fallback_dir() -> Path:
 @dataclass
 class StoredMessage:
     role: str
-    content: str
+    # `content` defaults to '' because tool-role messages carry their
+    # payload in `tool_output` (structured) rather than as plain text;
+    # forcing content there would just be `''` boilerplate at every
+    # call site and was the source of a TypeError in the Linda runtime.
+    content: str = ''
     tool_name: str = ''
     tool_args: dict = field(default_factory=dict)
     tool_output: Any = None
