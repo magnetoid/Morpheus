@@ -65,6 +65,7 @@ class ShippingRate(models.Model):
         ('free_over', 'Free over threshold'),
         ('carrier_shippo', 'Shippo (live rates)'),
         ('carrier_easypost', 'EasyPost (live rates)'),
+        ('carrier_bookvault', 'Bookvault (live rates · POD books)'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

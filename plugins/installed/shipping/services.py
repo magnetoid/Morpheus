@@ -75,6 +75,8 @@ def _carrier_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
         return _shippo_quote(rate, subtotal=subtotal, total_weight_kg=total_weight_kg)
     if rate.computation == 'carrier_easypost':
         return _easypost_quote(rate, subtotal=subtotal, total_weight_kg=total_weight_kg)
+    if rate.computation == 'carrier_bookvault':
+        return _bookvault_quote(rate, subtotal=subtotal, total_weight_kg=total_weight_kg)
     logger.debug('shipping: unknown carrier rule %s', rate.computation)
     return None
 
@@ -272,6 +274,58 @@ def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
     return Money(amount, currency)
 
 
+def _bookvault_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
+    """Live rate from Bookvault's POD shipping API.
+
+    Cart-aware (uses ISBN-13 line items + destination country/postcode)
+    and binding-aware (if ``rate.metadata['bookvault_servid']`` is set,
+    we return the matching BV service; otherwise the cheapest).
+
+    Returns ``None`` when:
+      * Bookvault isn't configured (no token/storeID)
+      * the cart has no ISBN-13 lines (= not a book-fulfilment cart)
+      * the destination country isn't on the rate's zone
+      * BV's API is down / returns no services
+    """
+    cart = getattr(rate, '_cart', None)
+    if cart is None:
+        return None
+    country = getattr(rate, '_country', '') or ''
+    if not country:
+        return None
+
+    # Destination postcode — prefer cart.metadata.shipping_address.zip,
+    # but BV's API accepts an empty postcode for international quotes
+    # so we soft-fall-through if absent.
+    cart_meta = getattr(cart, 'metadata', None) or {}
+    dest = cart_meta.get('shipping_address') or {}
+    postcode = dest.get('zip') or dest.get('postal_code') or ''
+
+    try:
+        from plugins.installed.bookvault.services import get_shipping_rates
+    except Exception as e:  # noqa: BLE001
+        logger.warning('bookvault: import failed: %s', e)
+        return None
+
+    services = get_shipping_rates(
+        cart=cart, country_code=country, postcode=postcode,
+    )
+    if not services:
+        return None
+
+    # If the merchant pinned a specific BV service ID on the rate row,
+    # honour it; else return the cheapest BV service.
+    metadata = getattr(rate, 'metadata', None) or {}
+    target_servid = (metadata.get('bookvault_servid') or '').strip()
+    if target_servid:
+        services = [s for s in services if s['id'] == target_servid]
+        if not services:
+            return None
+
+    cheapest = min(services, key=lambda s: s['amount'])
+    return Money(cheapest['amount'], str(subtotal.currency))
+
+
 def list_available_rates(*, cart, country: str, region: str = ''):
     """Return all shippable rates for the cart + address."""
     items = list(cart.items.select_related('product').all())
@@ -311,6 +365,13 @@ def list_available_rates(*, cart, country: str, region: str = ''):
             continue
         seen_zones.add(zone.id)
         for rate in zone.rates.filter(is_active=True).order_by('priority'):
+            # Carrier adapters (Shippo, EasyPost, Bookvault) read these
+            # transient attributes off the rate instance. Setting them
+            # here is the only place the cart + destination cross the
+            # function boundary into _quote_one → _carrier_quote.
+            rate._cart = cart
+            rate._country = country
+            rate._region = region
             amount = _quote_one(rate, subtotal=subtotal, total_weight_kg=total_weight_kg)
             if amount is None:
                 continue
