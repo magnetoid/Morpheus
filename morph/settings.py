@@ -91,6 +91,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.tracking',
     'plugins.installed.store_bootstrap',
     'plugins.installed.localization',
+    'plugins.installed.bookvault',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

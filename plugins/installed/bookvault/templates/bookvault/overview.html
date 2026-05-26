@@ -1,0 +1,115 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Bookvault · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Bookvault</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Print-on-demand fulfilment for books. Live shipping at checkout,
+        auto-send on paid orders, per-product link tracking.
+      </p>
+    </div>
+    {% if cfg.authenticated %}
+      <span class="pill pill-success">
+        <i data-lucide="check-circle" class="h-3 w-3"></i>
+        Connected · Store {{ cfg.store_id }}
+      </span>
+    {% else %}
+      <span class="pill pill-warn">
+        <i data-lucide="alert-circle" class="h-3 w-3"></i>
+        Not connected
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold mb-2">Connection</h2>
+    <p class="text-sm text-[color:var(--text-muted)] mb-3">
+      Mints a fresh client token from
+      <a href="https://auth.bookvault.app" target="_blank" rel="noopener" class="underline">auth.bookvault.app</a>
+      for this store URL. Run this once after installing the plugin,
+      and again if you change the store URL.
+    </p>
+    <form method="post" action="{% url 'bookvault:connect' %}" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+      {% csrf_token %}
+      <div class="md:col-span-8">
+        <label class="block text-xs font-medium mb-1">Store URL (override — leave blank to use the default)</label>
+        <input type="url" name="store_url" placeholder="{{ store_url }}" class="input">
+      </div>
+      <div class="md:col-span-4">
+        <button type="submit" class="btn btn-primary w-full">
+          <i data-lucide="link" class="h-4 w-4"></i>
+          {% if cfg.authenticated %}Re-mint token{% else %}Connect{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="card card-padded">
+      <h3 class="font-semibold mb-1">Linked products</h3>
+      <p class="text-3xl font-semibold">{{ link_counts.linked }}</p>
+      <p class="text-xs text-[color:var(--text-muted)]">Have a matching BV title.</p>
+    </div>
+    <div class="card card-padded">
+      <h3 class="font-semibold mb-1">Pending</h3>
+      <p class="text-3xl font-semibold">{{ link_counts.pending }}</p>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Recorded on BV but not yet matched to a BV title (cover / interior PDF still missing).
+      </p>
+    </div>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold mb-2">Recent orders sent to Bookvault</h2>
+    {% if recent_orders %}
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-[color:var(--text-muted)]">
+            <th class="py-1">Order</th>
+            <th class="py-1">BV ref</th>
+            <th class="py-1">Sent</th>
+            <th class="py-1 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for link in recent_orders %}
+          <tr class="border-t border-[color:var(--border)]">
+            <td class="py-2"><code>{{ link.order.order_number|default:link.order.id }}</code></td>
+            <td class="py-2">
+              {% if link.bv_ref %}
+                <a href="https://portal.bookvault.app/order?ID={{ link.bv_ref }}"
+                   target="_blank" rel="noopener" class="underline">
+                  {{ link.bv_ref }}
+                </a>
+              {% else %}
+                <span class="text-[color:var(--text-muted)]">—</span>
+              {% endif %}
+            </td>
+            <td class="py-2">{{ link.last_sent_at|date:"Y-m-d H:i" }}</td>
+            <td class="py-2 text-right">
+              <form method="post" action="{% url 'bookvault:resend_order' link.order.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost p-1" title="Resend to Bookvault">
+                  <i data-lucide="refresh-cw" class="h-3 w-3"></i> Resend
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-sm text-[color:var(--text-muted)]">
+        No orders have been forwarded to Bookvault yet. Paid orders containing
+        ISBN-13 line items will appear here automatically.
+      </p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
