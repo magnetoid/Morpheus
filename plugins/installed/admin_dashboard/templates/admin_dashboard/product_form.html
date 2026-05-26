@@ -36,9 +36,10 @@
   </div>
   {% endif %}
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  {# Single-column layout per request; right-rail cards stack inline. #}
+  <div class="max-w-3xl mx-auto space-y-4">
 
-  <form method="post" id="product-form" class="space-y-4 lg:col-span-2" enctype="multipart/form-data" data-morph-dirty hx-boost="false" data-ajax>
+  <form method="post" id="product-form" class="space-y-4" enctype="multipart/form-data" data-morph-dirty hx-boost="false" data-ajax>
     {% csrf_token %}
 
     <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
@@ -47,6 +48,21 @@
         <label class="block text-sm font-medium mb-1">Name</label>
         <input type="text" name="name" class="input" required value="{{ form.name.value|default:'' }}">
         {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      {# URL slug + live preview chip under the name. #}
+      <div>
+        <label class="block text-sm font-medium mb-1" for="product-slug-input">URL slug</label>
+        <div class="flex items-center gap-1 text-sm text-[color:var(--text-muted)]" style="margin-bottom:.3rem;">
+          <span>https://your-site/products/</span><strong id="product-slug-preview" style="color:var(--text);">{{ form.slug.value|default:'(auto-from-name)' }}</strong><span>/</span>
+        </div>
+        <input id="product-slug-input" type="text" name="slug" class="input"
+               value="{{ form.slug.value|default:'' }}" placeholder="auto-from-name"
+               pattern="[a-z0-9-]+"
+               oninput="(function(el){var p=document.getElementById('product-slug-preview');if(p)p.textContent=el.value.toLowerCase().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'') || '(auto-from-name)';})(this)">
+        {% if form.slug.errors %}<p class="field-error">{{ form.slug.errors.0 }}</p>{% endif %}
+        <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">
+          Lowercase letters, digits, and hyphens. Leave blank to use the product name. Renaming the product never changes an existing slug.
+        </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
@@ -71,6 +87,21 @@
             {% endfor %}
           </select>
         </div>
+        {# Vendor dropdown from the marketplace plugin; renders below Category. #}
+        {% if vendors %}
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium mb-1">Vendor</label>
+          <select name="vendor" class="input">
+            <option value="">— None —</option>
+            {% for v in vendors %}
+            <option value="{{ v.id }}" {% if form.vendor.value == v.id %}selected{% endif %}>{{ v.name }}</option>
+            {% endfor %}
+          </select>
+          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">
+            From the Marketplace plugin. Each vendor sees only their own products in the Vendor Dashboard.
+          </p>
+        </div>
+        {% endif %}
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Short description</label>
@@ -152,7 +183,21 @@
       .rte-content { min-height: 280px; padding: 12px 14px; font-size: 14px; line-height: 1.6; color: var(--text); outline: none; }
       .rte-content-short { min-height: 80px; }
       .rte-source-short { min-height: 80px; }
-      .rte-content:focus { outline: none; }
+      .rte-content:focus, .rte-content:focus-visible { outline: none; box-shadow: none; }
+      /* Suppress ProseMirror's "node-selected" blue halo + the
+         empty-line gap-cursor pill that show by default on the
+         focused editor. We want a plain caret only — no selection
+         rectangle when no text is actually highlighted. */
+      .rte-content .ProseMirror-selectednode { outline: none !important; box-shadow: none !important; }
+      .rte-content .ProseMirror-gapcursor { display: none !important; }
+      .rte-content::selection,
+      .rte-content *::selection { background: transparent; }
+      .rte-content::-moz-selection,
+      .rte-content *::-moz-selection { background: transparent; }
+      /* Real text selection still needs a visible band, but soften it
+         from the browser default screaming-blue to the brand muted. */
+      .rte-content:focus::selection,
+      .rte-content:focus *::selection { background: rgba(180, 180, 180, .35); }
       .rte-content > * + * { margin-top: .7em; }
       .rte-content h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1.2em; }
       .rte-content h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1em; }
@@ -648,19 +693,10 @@
     (simple, variable, bundle). For digital we render a slim "Delivery"
     card below instead, since weight + shipping don't apply.
     {% endcomment %}
-    {# Inventory & shipping — per-variant on Variable products, so the parent card is hidden when product_type=variable. #}
+    {# Inventory & shipping — per-variant on Variable products, so the parent card is hidden when product_type=variable. Vendor select moved to Basics so it's only rendered once. #}
     <div class="card card-padded space-y-3" data-pt-show="simple,bundle">
       <h2 class="font-semibold text-sm">Inventory &amp; shipping</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label class="block text-sm font-medium mb-1">Vendor</label>
-          <select name="vendor" class="input">
-            <option value="">— None —</option>
-            {% for v in vendors %}
-            <option value="{{ v.id }}" {% if form.vendor.value == v.id %}selected{% endif %}>{{ v.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">Weight</label>
           <input type="number" step="0.001" min="0" name="weight" class="input" value="{{ form.weight.value|default:'' }}">
@@ -693,17 +729,6 @@
         order is paid. Token TTL + max-downloads-per-token are configured in
         <a href="/dashboard/settings/general/" class="underline">Settings → Digital downloads</a>.
       </p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-sm font-medium mb-1">Vendor</label>
-          <select name="vendor" class="input">
-            <option value="">— None —</option>
-            {% for v in vendors %}
-            <option value="{{ v.id }}" {% if form.vendor.value == v.id %}selected{% endif %}>{{ v.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
       <div>
         <label class="block text-sm font-medium mb-1">Downloadable file</label>
         {% if product and product.digital_file %}
@@ -737,7 +762,9 @@
     </div>
 
     {% if bv_authed and product %}
-    <div class="card card-padded space-y-3" id="bookvault-card">
+    {# Bookvault POD: parent card only on non-variable products. #}
+    <div class="card card-padded space-y-3" id="bookvault-card"
+         data-pt-show="simple,digital,bundle">
       <div class="flex items-start justify-between gap-3">
         <div>
           <h2 class="font-semibold text-sm">Bookvault fulfilment</h2>

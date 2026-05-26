@@ -14,6 +14,11 @@ class ProductForm(forms.Form):
     """Create/edit a `catalog.Product`. Variants/images live in their own flows."""
 
     name = forms.CharField(max_length=300)
+    # `slug` is the URL component (/products/<slug>/). Optional in
+    # the form — left blank we slugify(name) at save time, matching
+    # the historical create flow. When set, the form save updates the
+    # row's slug in place.
+    slug = forms.SlugField(max_length=300, required=False)
     sku = forms.CharField(max_length=100, required=False)
     status = forms.ChoiceField(choices=[
         ('draft', 'Draft'),
@@ -86,6 +91,7 @@ class ProductForm(forms.Form):
             import json
             kwargs['initial'] = {
                 'name': instance.name,
+                'slug': instance.slug,
                 'sku': instance.sku,
                 'status': instance.status,
                 'product_type': instance.product_type,
@@ -151,6 +157,20 @@ class ProductForm(forms.Form):
         if qs.exists():
             raise forms.ValidationError('Another product already uses this SKU.')
         return sku
+
+    def clean_slug(self):
+        slug = (self.cleaned_data.get('slug') or '').strip()
+        if not slug:
+            return ''
+        from plugins.installed.catalog.models import Product
+        qs = Product.objects.filter(slug=slug)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                'That URL slug is already used by another product.'
+            )
+        return slug
 
     def clean(self):
         """Variable products: per-variant price/weight/shipping is canonical.
@@ -234,7 +254,15 @@ class ProductForm(forms.Form):
             if new_file:
                 product.digital_file = new_file
 
-        if not product.slug:
+        # Slug: explicit form value wins; on create, fall back to a
+        # slugified product name. On edit with no value supplied, the
+        # existing slug stays untouched (we don't auto-replace it from
+        # the name, otherwise renaming a product would silently break
+        # its URL and every inbound link).
+        new_slug = (cd.get('slug') or '').strip()
+        if new_slug:
+            product.slug = new_slug
+        elif not product.slug:
             product.slug = slugify(product.name)[:300] or 'product'
         product.save()
         return product
