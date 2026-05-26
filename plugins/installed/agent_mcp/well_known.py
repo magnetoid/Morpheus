@@ -44,7 +44,7 @@ def ucp_manifest(request: HttpRequest) -> JsonResponse:
             'cart':       f'{base}/mcp/cart/v1/',
             'checkout':   f'{base}/mcp/checkout/v1/',
         },
-        'compat': ['mcp', 'a2a'],
+        'compat': ['mcp', 'mcp-streamable', 'a2a'],
         'auth': {
             'type': 'bearer',
             'required_for': ['admin'],

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from typing import Any
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -339,9 +340,22 @@ def _active_token_scopes() -> set[str]:
 
 
 @csrf_exempt
-@require_http_methods(['POST'])
+@require_http_methods(['POST', 'GET'])
 def rpc_endpoint(request: HttpRequest) -> HttpResponse:
-    """Single JSON-RPC 2.0 entry point. Accepts a single message or batch."""
+    """Single JSON-RPC 2.0 entry point.
+
+    Implements the MCP Streamable HTTP transport (2025-03-26+):
+      * POST with Accept: application/json → standard JSON response
+      * POST with Accept: text/event-stream → SSE-wrapped JSON-RPC payload
+      * GET → 405 (no server-initiated streams; we're request/response only)
+      * Mcp-Session-Id is minted on initialize and echoed by the client
+        on subsequent calls.
+    """
+    if request.method == 'GET':
+        # Server-initiated SSE streams aren't supported; per the spec the
+        # server MAY return 405 when it has no notifications to push.
+        return HttpResponse(status=405)
+
     try:
         body = json.loads(request.body or b'{}')
     except json.JSONDecodeError:
@@ -359,8 +373,28 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
     )
     try:
         if isinstance(body, list):
-            return JsonResponse([_dispatch(m, authed) for m in body], safe=False)
-        return JsonResponse(_dispatch(body, authed))
+            payload: Any = [_dispatch(m, authed) for m in body]
+            had_init = any(
+                isinstance(m, dict) and m.get('method') == 'initialize'
+                for m in body
+            )
+        else:
+            payload = _dispatch(body, authed)
+            had_init = isinstance(body, dict) and body.get('method') == 'initialize'
+
+        session_id = request.headers.get('Mcp-Session-Id') or (
+            uuid.uuid4().hex if had_init else ''
+        )
+
+        if 'text/event-stream' in request.headers.get('Accept', '').lower():
+            sse = f'data: {json.dumps(payload, default=str)}\n\n'
+            resp: HttpResponse = HttpResponse(sse, content_type='text/event-stream')
+        else:
+            resp = JsonResponse(payload, safe=False)
+
+        if session_id:
+            resp['Mcp-Session-Id'] = session_id
+        return resp
     finally:
         _request_state.scopes = {WILDCARD}
 
