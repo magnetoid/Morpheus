@@ -183,18 +183,7 @@
 
     {% storefront_blocks "pdp_above_long_description" %}
 
-    {# Desktop sticky TOC; active section underlines as the viewport scrolls. #}
-    {% if product.description or reviews or pdp_faqs or related_products %}
-    <aside class="pdp-toc" aria-label="On this page" data-pdp-toc>
-      <p class="pdp-toc__label">On this page</p>
-      <ul>
-        {% if product.description %}<li><a href="#about">About</a></li>{% endif %}
-        {% if reviews %}<li><a href="#reviews">Reviews{% if review_summary %} <span class="pdp-toc__count">·  {{ review_summary.count }}</span>{% endif %}</a></li>{% endif %}
-        {% if pdp_faqs %}<li><a href="#faqs">Reader questions</a></li>{% endif %}
-        {% if related_products %}<li><a href="#related">You might like</a></li>{% endif %}
-      </ul>
-    </aside>
-    {% endif %}
+    {# PDP TOC removed (10762f1) — position:fixed math overlapped the wrap; #about / #reviews / #faqs / #related anchors below still work. #}
 
     {% if product.description %}
     <section class="pdp-about wrap-narrow" id="about" style="scroll-margin-top: 80px;">
@@ -306,49 +295,6 @@
 @media (prefers-reduced-motion: reduce) {
   .pdp-variant { transition: none; }
 }
-
-/* PDP table of contents — desktop-only sticky sidebar that scrolls
-   with the long-content sections (About / Reviews / FAQs / Related).
-   The active link tracks via IntersectionObserver in the script below.
-   Mobile gets no TOC (the sticky cart already eats the bottom edge). */
-.pdp-toc {
-  display: none;
-}
-@media (min-width: 1100px) {
-  .pdp-toc {
-    display: block;
-    position: fixed;
-    top: 140px;
-    right: max(2rem, calc((100vw - 1100px) / 2 + 1.5rem));
-    width: 180px;
-    z-index: 30;
-    padding: 0;
-  }
-  .pdp-toc__label {
-    font-size: .65rem; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--muted);
-    margin: 0 0 .75rem;
-  }
-  .pdp-toc ul {
-    list-style: none; margin: 0; padding: 0;
-    border-left: 1px solid var(--rule);
-  }
-  .pdp-toc li { margin: 0; }
-  .pdp-toc a {
-    display: block;
-    padding: .35rem .85rem;
-    margin-left: -1px;
-    font-size: .85rem;
-    color: var(--muted);
-    border-left: 1px solid transparent;
-    text-decoration: none;
-    transition: color var(--motion-fast, 140ms) ease, border-color var(--motion-fast, 140ms) ease;
-  }
-  .pdp-toc a:hover { color: var(--ink); }
-  .pdp-toc a.is-active { color: var(--ink); border-left-color: var(--ink); font-weight: 500; }
-  .pdp-toc__count { font-variant-numeric: tabular-nums; color: var(--muted); }
-}
-@media (prefers-reduced-motion: reduce) { .pdp-toc a { transition: none; } }
 
 /* Above-the-fold rating summary — Baymard 2026 data: surfacing the
    review count + average above the price drives ~32% lift on PDPs
@@ -594,44 +540,6 @@
 </section>
 {% endif %}
 {% endcache %}
-
-{# PDP TOC scrollspy — highlights the active section as the viewport moves. #}
-<script>
-(function () {
-  var toc = document.querySelector('[data-pdp-toc]');
-  if (!toc) return;
-  var links = Array.prototype.slice.call(toc.querySelectorAll('a'));
-  if (!links.length) return;
-  var byId = {};
-  links.forEach(function (a) {
-    var id = a.getAttribute('href').replace(/^#/, '');
-    var el = document.getElementById(id);
-    if (el) byId[id] = a;
-  });
-  if (!Object.keys(byId).length) return;
-
-  /* IntersectionObserver-based scrollspy. rootMargin pushes the active
-     band up to ~30% from the top so a section becomes active as it
-     enters the upper third of the viewport, not when it touches the
-     edge. Falls back to no spy if IO unavailable (old browsers). */
-  if (!('IntersectionObserver' in window)) return;
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      var a = byId[e.target.id];
-      if (!a) return;
-      if (e.isIntersecting) {
-        links.forEach(function (l) { l.classList.remove('is-active'); });
-        a.classList.add('is-active');
-      }
-    });
-  }, { rootMargin: '-30% 0px -55% 0px', threshold: 0 });
-
-  Object.keys(byId).forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) io.observe(el);
-  });
-})();
-</script>
 
 {# Recently Viewed — localStorage; rendered empty server-side; JS hydrates from the visitor's last 8 PDP visits. #}
 <section class="recently-viewed-section" data-recently-viewed-section hidden>
