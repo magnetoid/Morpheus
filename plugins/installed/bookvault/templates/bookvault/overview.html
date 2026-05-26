@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load static %}
 {% block title %}Bookvault · Morpheus{% endblock %}
 
 {% block content %}
@@ -6,12 +7,15 @@
   {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
 
   <div class="flex flex-wrap items-end justify-between gap-3">
-    <div>
-      <h1 class="text-xl font-semibold tracking-tight">Bookvault</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">
-        Print-on-demand fulfilment for books. Live shipping at checkout,
-        auto-send on paid orders, per-product link tracking.
-      </p>
+    <div class="flex items-center gap-3">
+      <img src="{% static 'bookvault/img/bv-logo.png' %}" alt="Bookvault" style="height: 36px;">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Bookvault</h1>
+        <p class="text-sm text-[color:var(--text-muted)]">
+          Print-on-demand fulfilment for books. Live shipping at checkout,
+          auto-send on paid orders, per-product link tracking.
+        </p>
+      </div>
     </div>
     {% if cfg.authenticated %}
       <span class="pill pill-success">
@@ -26,29 +30,74 @@
     {% endif %}
   </div>
 
-  <div class="card card-padded">
-    <h2 class="font-semibold mb-2">Connection</h2>
-    <p class="text-sm text-[color:var(--text-muted)] mb-3">
-      Mints a fresh client token from
-      <a href="https://auth.bookvault.app" target="_blank" rel="noopener" class="underline">auth.bookvault.app</a>
-      for this store URL. Run this once after installing the plugin,
-      and again if you change the store URL.
-    </p>
-    <form method="post" action="{% url 'bookvault:connect' %}" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-      {% csrf_token %}
-      <div class="md:col-span-8">
-        <label class="block text-xs font-medium mb-1">Store URL (override — leave blank to use the default)</label>
-        <input type="url" name="store_url" placeholder="{{ store_url }}" class="input">
+  {% if cfg.authenticated %}
+    {# ── Connected state: surface BV portal deep links + disconnect. ── #}
+    <div class="card card-padded">
+      <h2 class="font-semibold mb-2">You're all set up</h2>
+      <p class="text-sm text-[color:var(--text-muted)] mb-3">
+        Push products from your Bookvault account and have them
+        automatically printed and dispatched. Paid orders containing
+        ISBN-13 line items are forwarded to BV automatically.
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <a href="{{ portal_apps_url }}" target="_blank" rel="noopener" class="btn btn-primary">
+          <i data-lucide="plus-circle" class="h-4 w-4"></i> Add Products
+        </a>
+        <a href="{{ portal_orders_url }}" target="_blank" rel="noopener" class="btn btn-secondary">
+          <i data-lucide="package" class="h-4 w-4"></i> View Orders on Bookvault
+        </a>
+        <form method="post" action="{% url 'bookvault:connect' %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-ghost" title="Re-mint the BV client token (use after changing your store URL)">
+            <i data-lucide="refresh-cw" class="h-4 w-4"></i> Re-mint token
+          </button>
+        </form>
+        <form method="post" action="{% url 'bookvault:disconnect' %}"
+              data-confirm="Disconnect from Bookvault? This clears the local token and tells BV to release this store."
+              data-confirm-cta="Disconnect" data-confirm-danger style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-ghost text-[color:var(--danger)]">
+            <i data-lucide="unplug" class="h-4 w-4"></i> Disconnect
+          </button>
+        </form>
       </div>
-      <div class="md:col-span-4">
-        <button type="submit" class="btn btn-primary w-full">
-          <i data-lucide="link" class="h-4 w-4"></i>
-          {% if cfg.authenticated %}Re-mint token{% else %}Connect{% endif %}
-        </button>
+    </div>
+  {% else %}
+    {# ── Not-yet-authed state: welcome + register / login + manual mint. ── #}
+    <div class="card card-padded">
+      <h2 class="font-semibold mb-2">Welcome to Bookvault</h2>
+      <p class="text-sm text-[color:var(--text-muted)] mb-3">
+        Create titles in your Bookvault dashboard, push them to your
+        store, and we'll handle printing + dispatch within 3 working
+        days of each paid order.
+      </p>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{{ register_url }}" target="_blank" rel="noopener" class="btn btn-primary">
+          <i data-lucide="user-plus" class="h-4 w-4"></i> Create an account
+        </a>
+        <a href="{{ login_url }}" target="_blank" rel="noopener" class="btn btn-secondary">
+          <i data-lucide="log-in" class="h-4 w-4"></i> Log in
+        </a>
       </div>
-    </form>
-  </div>
+      <details class="text-sm">
+        <summary class="cursor-pointer text-[color:var(--text-muted)]">Or mint a token directly (advanced)</summary>
+        <form method="post" action="{% url 'bookvault:connect' %}" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end mt-3">
+          {% csrf_token %}
+          <div class="md:col-span-8">
+            <label class="block text-xs font-medium mb-1">Store URL (override — blank uses MORPHEUS_SITE_URL)</label>
+            <input type="url" name="store_url" placeholder="{{ store_url }}" class="input">
+          </div>
+          <div class="md:col-span-4">
+            <button type="submit" class="btn btn-primary w-full">
+              <i data-lucide="link" class="h-4 w-4"></i> Connect
+            </button>
+          </div>
+        </form>
+      </details>
+    </div>
+  {% endif %}
 
+  {% if cfg.authenticated %}
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="card card-padded">
       <h3 class="font-semibold mb-1">Linked products</h3>
@@ -110,6 +159,7 @@
       </p>
     {% endif %}
   </div>
+  {% endif %}
 
 </div>
 {% endblock %}

@@ -38,7 +38,9 @@ def overview(request: HttpRequest) -> HttpResponse:
     from plugins.installed.bookvault.models import (
         BookvaultOrderLink, BookvaultProductLink,
     )
-    from plugins.installed.bookvault.services import _config, store_url
+    from plugins.installed.bookvault.services import (
+        _config, authorize_url, portal_apps_url, portal_orders_url, store_url,
+    )
 
     cfg = _config()
     recent_orders = list(
@@ -55,12 +57,37 @@ def overview(request: HttpRequest) -> HttpResponse:
         'store_url': store_url(),
         'recent_orders': recent_orders,
         'link_counts': link_counts,
+        'portal_apps_url': portal_apps_url(),
+        'portal_orders_url': portal_orders_url(),
+        'register_url': authorize_url(action='register'),
+        'login_url': authorize_url(),
         'active_nav': 'bookvault',
         'breadcrumb_trail': [
             {'label': 'Dashboard', 'url': '/dashboard/'},
             {'label': 'Bookvault'},
         ],
     })
+
+
+@staff_member_required
+@require_http_methods(['POST'])
+def disconnect(request: HttpRequest) -> HttpResponseRedirect:
+    """Tell BV to clean up + clear local credentials. Equivalent to
+    the WP plugin's uninstall.php — but as an explicit admin action,
+    not a plugin-delete side effect, so the merchant can resurrect
+    the connection without re-installing the plugin."""
+    from plugins.installed.bookvault.services import disconnect as svc_disconnect
+
+    result = svc_disconnect()
+    if 'error' in result:
+        messages.warning(
+            request,
+            'Local credentials cleared. BV uninstall webhook failed: '
+            + str(result['error']),
+        )
+    else:
+        messages.success(request, 'Disconnected from Bookvault.')
+    return HttpResponseRedirect('/dashboard/apps/bookvault/')
 
 
 @staff_member_required

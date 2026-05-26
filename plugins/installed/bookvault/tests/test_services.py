@@ -177,6 +177,57 @@ class SendOrderTests(TestCase):
         self.assertIn('error', out)
 
 
+class UninstallTests(TestCase):
+    """send_uninstall_notification: POSTs the site URL to BV's uninstall
+    webhook. disconnect: wipes local creds even if the webhook fails."""
+
+    def setUp(self):
+        _seed_config()
+
+    def test_disconnect_wipes_local_credentials_on_success(self):
+        fake = MagicMock()
+        fake.content = b'{"ok": true}'
+        fake.json.return_value = {'ok': True}
+        fake.raise_for_status = MagicMock()
+        with patch.object(services, 'store_url', return_value='https://example.test/'), \
+             patch.object(services.requests, 'post', return_value=fake):
+            services.disconnect()
+        cfg = services._config()
+        # Whatever the BV webhook returned, the local creds are gone.
+        self.assertEqual(cfg.get('token', ''), '')
+        self.assertEqual(cfg.get('store_id', ''), '')
+        self.assertFalse(cfg.get('authenticated', False))
+
+    def test_disconnect_wipes_even_when_webhook_fails(self):
+        from requests import RequestException
+        with patch.object(services, 'store_url', return_value='https://example.test/'), \
+             patch.object(services.requests, 'post', side_effect=RequestException('boom')):
+            result = services.disconnect()
+        self.assertIn('error', result)
+        cfg = services._config()
+        # Critical: webhook failure must NOT block local cleanup —
+        # otherwise a merchant can't disconnect when BV is down.
+        self.assertFalse(cfg.get('authenticated', False))
+
+
+class AuthorizeUrlTests(TestCase):
+    """authorize_url builds register/login OAuth-style URLs for the
+    unauthed empty state, mirroring the WP plugin's two buttons."""
+
+    def test_register_url_includes_action_param(self):
+        with patch.object(services, 'store_url', return_value='https://example.test/'):
+            url = services.authorize_url(action='register')
+        self.assertIn('action=register', url)
+        self.assertIn('Store=https://example.test/', url)
+        self.assertIn('returnUrl=https://example.test/', url)
+
+    def test_login_url_has_no_action_param(self):
+        with patch.object(services, 'store_url', return_value='https://example.test/'):
+            url = services.authorize_url()
+        self.assertNotIn('action=', url)
+        self.assertIn('Store=https://example.test/', url)
+
+
 class ProductLinkStatusTests(TestCase):
     """product_link_status: Linked / Partial / Unlinked aggregate."""
 

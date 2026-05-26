@@ -38,9 +38,13 @@ logger = logging.getLogger('morpheus.bookvault')
 
 
 _AUTH_URL = 'https://auth.bookvault.app/api/WooAuth'
+_AUTHORIZE_URL = 'https://auth.bookvault.app/authorize'
 _SHIPPING_URL = 'https://webhooks.bookvault.app/woocommerce/shipping'
 _ORDERS_URL = 'https://webhooks.bookvault.app/woocommerce/orders/create'
+_UNINSTALL_URL = 'https://webhooks.bookvault.app/woocommerce/Uninstall'
 _PORTAL_ORDER_URL = 'https://portal.bookvault.app/order'
+_PORTAL_APPS_URL = 'https://portal.bookvault.app/apps'
+_PORTAL_ORDERS_URL = 'https://portal.bookvault.app/orders'
 _BULK_PRODUCTS_URL = 'https://apps.bookvault.app/woocommerce/BulkProducts'
 _TIMEOUT = 60
 
@@ -315,6 +319,76 @@ def portal_order_url(bv_ref: str) -> str:
     if not bv_ref:
         return _PORTAL_ORDER_URL
     return f'{_PORTAL_ORDER_URL}?ID={bv_ref}'
+
+
+def portal_apps_url() -> str:
+    """The 'Add Products' CTA on the dashboard once the store is authed."""
+    return _PORTAL_APPS_URL
+
+
+def portal_orders_url() -> str:
+    """The 'View Orders' CTA on the dashboard once the store is authed."""
+    return _PORTAL_ORDERS_URL
+
+
+def authorize_url(*, action: str = '') -> str:
+    """Build the OAuth-style register / login URL the unauthed empty
+    state directs the merchant to.
+
+    Mirrors the WP plugin's two buttons:
+      * action='register' → "Create An Account"
+      * action=''        → "Log In"
+    Both pass ``Store`` (home URL) + ``returnUrl`` (site URL), which
+    BV uses to round-trip back to this dashboard with a fresh token."""
+    url = store_url()
+    params: list[str] = []
+    if action:
+        params.append(f'action={action}')
+    if url:
+        params.append(f'Store={url}')
+        params.append(f'returnUrl={url}')
+    qs = '&'.join(params)
+    return f'{_AUTHORIZE_URL}?{qs}' if qs else _AUTHORIZE_URL
+
+
+# ─── Uninstall / disconnect ───────────────────────────────────────────────────
+
+
+def send_uninstall_notification() -> dict:
+    """POST to /woocommerce/Uninstall so BV's backend can clean up.
+
+    Triggered by the dashboard "Disconnect" button or by an explicit
+    management command. Does NOT touch local config — that's the
+    caller's job (see ``disconnect()``)."""
+    url = store_url()
+    if not url:
+        return {'error': 'no store URL configured'}
+    try:
+        resp = requests.post(
+            _UNINSTALL_URL,
+            data=json.dumps({'Url': url.rstrip('/')}),
+            headers={'Content-Type': 'application/json'},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json() if resp.content else {'ok': True}
+    except requests.RequestException as e:
+        logger.warning('bookvault: uninstall webhook failed: %s', e)
+        return {'error': str(e)}
+    except ValueError:
+        return {'ok': True}
+
+
+def disconnect() -> dict:
+    """Hard-disconnect: tell BV to clean up + drop local credentials.
+
+    Equivalent of the WP plugin's ``uninstall.php`` running on
+    plugin deletion. The Morpheus equivalent is an explicit admin
+    action — Django plugins don't have a clean "uninstall" hook
+    so this is what the merchant clicks."""
+    result = send_uninstall_notification()
+    _save_config({'token': '', 'store_id': '', 'authenticated': False})
+    return result
 
 
 def bulk_products_link(product_ids: list[str]) -> str:
