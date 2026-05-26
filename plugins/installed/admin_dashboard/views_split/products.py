@@ -172,6 +172,36 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         )
     except Exception:  # noqa: BLE001
         pass
+
+    # Bookvault per-product panel — same gate as the product list.
+    # Pulls every BookvaultProductLink row for this product (one per
+    # variant + one for the parent) so the template can render the
+    # fulfilment-locations + linked-status block the WP plugin's
+    # `bvlt_product_meta` showed.
+    bv_authed = False
+    bv_links: list = []
+    bv_locations: list = []
+    bv_bulk_link_url = ''
+    try:
+        from plugins.installed.bookvault import services as bv_services
+        from plugins.installed.bookvault.models import (
+            BookvaultProductLink, BV_LOCATION_CHOICES,
+        )
+        bv_authed = bv_services.is_authenticated()
+        if bv_authed:
+            bv_locations = [
+                {'id': lid, 'name': name} for lid, name in BV_LOCATION_CHOICES
+            ]
+            bv_links = list(
+                BookvaultProductLink.objects
+                .filter(product=product)
+                .select_related('variant')
+                .order_by('variant__sort_order', 'variant__name')
+            )
+            bv_bulk_link_url = bv_services.bulk_products_link([str(product.id)])
+    except Exception:  # noqa: BLE001 — never break the product page if BV is wedged
+        bv_authed = False
+
     return render(request, 'admin_dashboard/product_form.html', {
         'form': form,
         'product': product,
@@ -182,6 +212,10 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         'videos': videos,
         'front_image': front_image,
         'back_image': back_image,
+        'bv_authed': bv_authed,
+        'bv_links': bv_links,
+        'bv_locations': bv_locations,
+        'bv_bulk_link_url': bv_bulk_link_url,
         'active_nav': 'products',
         'breadcrumb_trail': [
             {'label': 'Dashboard', 'url': '/dashboard/'},

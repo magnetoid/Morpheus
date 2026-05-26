@@ -249,6 +249,20 @@ class ProductLinkStatusTests(TestCase):
         )
         self.assertEqual(services.product_link_status(self.product), 'Linked')
 
+    def test_locations_stored_as_int_list(self):
+        """The product_form template renders fulfilment-location pills
+        by checking ``loc.id in link.locations``. The webhook stores
+        the list as-given, so verify the model accepts the int-list
+        shape the BV webhook posts."""
+        BookvaultProductLink.objects.create(
+            product=self.product, variant=None,
+            locations=[1, 3], is_linked=True,
+        )
+        link = BookvaultProductLink.objects.get(product=self.product)
+        self.assertEqual(link.locations, [1, 3])
+        self.assertIn(1, link.locations)
+        self.assertNotIn(5, link.locations)
+
     def test_bulk_helper_one_query_per_page(self):
         """bulk_link_status_for must NOT fan out N+1 — it should hit
         the DB exactly once regardless of how many product IDs are

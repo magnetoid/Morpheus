@@ -475,6 +475,17 @@
       longWrap.innerHTML = longHtml;
       longWrap.hidden = !longHtml.trim();
     }
+    // Persist the selection in the URL hash so reloads + back/forward
+    // restore the same variant, and a URL like
+    //   /p/some-book/#v=<variant-id>
+    // deep-links straight to a specific edition. replaceState (not
+    // pushState) so the picker doesn't pollute the browser history
+    // with every click.
+    if (card.dataset.variantId) {
+      try {
+        history.replaceState(null, '', '#v=' + card.dataset.variantId);
+      } catch (_) { /* file:// origins / locked-down browsers */ }
+    }
   }
 
   picker.addEventListener('click', function (e) {
@@ -484,6 +495,18 @@
     select(card);
     card.focus();
   });
+
+  // On initial load, honour #v=<id> if it points at a real card.
+  // Falls through to the server-side first-active default if the hash
+  // is missing or the variant has been removed since the URL was made.
+  function selectFromHash() {
+    var m = (location.hash || '').match(/[#&]v=([0-9a-f-]+)/i);
+    if (!m) return;
+    var target = picker.querySelector('.pdp-variant[data-variant-id="' + m[1] + '"]');
+    if (target) select(target);
+  }
+  selectFromHash();
+  window.addEventListener('hashchange', selectFromHash);
 
   /* Arrow-key navigation per WAI-ARIA radiogroup pattern. Left/Up moves
      selection back, Right/Down moves forward; Home/End jump to the ends.
