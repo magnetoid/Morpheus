@@ -133,6 +133,68 @@ class VariantCopyFallbackTests(TestCase):
         self.assertEqual(result, 'Variant long.')
 
 
+class VariantSalePriceTests(TestCase):
+    """GraphQL ProductVariantType exposes compare_at_price / is_on_sale /
+    discount_percentage so the PDP picker can show a per-variant sale
+    pill + strikethrough was-price. Per-variant overrides win over the
+    parent product's compare_at."""
+
+    def _get_resolver(self, attr):
+        from plugins.installed.catalog.graphql.types import ProductVariantType
+        for source_attr in (attr, f'_{attr}'):
+            cls_attr = ProductVariantType.__dict__.get(source_attr)
+            if cls_attr is None:
+                continue
+            return getattr(cls_attr, 'base_resolver', None) or cls_attr
+        return ProductVariantType.__dict__[attr]
+
+    def test_is_on_sale_when_variant_has_compare_above_price(self):
+        p = _make_product(slug='sale-1', sku='S1')
+        v = _make_variant(
+            p, sku='S1-V1',
+            price=Money(Decimal('12.00'), 'USD'),
+            compare_at_price=Money(Decimal('20.00'), 'USD'),
+        )
+        is_on_sale = self._get_resolver('is_on_sale')(v)
+        self.assertTrue(is_on_sale)
+        pct = self._get_resolver('discount_percentage')(v)
+        # (20 - 12) / 20 = 40%
+        self.assertEqual(pct, 40)
+
+    def test_no_sale_when_compare_below_price(self):
+        # Misconfigured row — compare_at LOWER than price. Must not
+        # render a fake sale pill (would otherwise show "−(negative)%").
+        p = _make_product(slug='sale-2', sku='S2')
+        v = _make_variant(
+            p, sku='S2-V1',
+            price=Money(Decimal('25.00'), 'USD'),
+            compare_at_price=Money(Decimal('15.00'), 'USD'),
+        )
+        self.assertFalse(self._get_resolver('is_on_sale')(v))
+        self.assertEqual(self._get_resolver('discount_percentage')(v), 0)
+
+    def test_compare_at_falls_back_to_parent_product(self):
+        # Variant has no compare_at of its own; parent product does. The
+        # resolver should return the parent's value so the strikethrough
+        # renders on per-product sales even when the variant is plain.
+        p = _make_product(
+            slug='sale-3', sku='S3',
+            price=Money(Decimal('10.00'), 'USD'),
+            compare_at_price=Money(Decimal('18.00'), 'USD'),
+        )
+        v = _make_variant(p, sku='S3-V1')  # no own price or compare
+        cap = self._get_resolver('compare_at_price')(v)
+        self.assertIsNotNone(cap)
+        self.assertEqual(str(cap.amount), '18.00')
+        self.assertTrue(self._get_resolver('is_on_sale')(v))
+
+    def test_no_compare_means_no_sale(self):
+        p = _make_product(slug='sale-4', sku='S4')
+        v = _make_variant(p, sku='S4-V1', price=Money(Decimal('10.00'), 'USD'))
+        self.assertIsNone(self._get_resolver('compare_at_price')(v))
+        self.assertFalse(self._get_resolver('is_on_sale')(v))
+
+
 class FlipbookViewTests(TestCase):
     def test_404_when_product_missing(self):
         from django.test import Client

@@ -57,7 +57,7 @@
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
           <span data-pdp-price style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</span>
-          {% if product.isOnSale %}<span class="meta" style="text-decoration: line-through;">{{ product.compareAtPrice|money }}</span>{% endif %}
+          <span data-pdp-compare class="meta" style="text-decoration: line-through;{% if not product.isOnSale %} display:none;{% endif %}">{% if product.isOnSale %}{{ product.compareAtPrice|money }}{% endif %}</span>
         </div>
         {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}
 
@@ -70,20 +70,30 @@
           <div class="pdp-variants" role="radiogroup" aria-labelledby="pdp-variants-label">
             {% for v in product.variants %}{% if v.isActive %}
             <button type="button"
-                    class="pdp-variant{% if forloop.first %} is-selected{% endif %}"
+                    class="pdp-variant{% if forloop.first %} is-selected{% endif %}{% if v.isOnSale %} is-on-sale{% endif %}"
                     role="radio"
                     aria-checked="{% if forloop.first %}true{% else %}false{% endif %}"
                     tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
                     data-variant-id="{{ v.id }}"
                     data-variant-type="{{ v.variantType|default:'physical' }}"
                     data-variant-price="{% if v.price %}{{ v.price|money }}{% endif %}"
+                    data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
+                    data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
                     data-variant-desc="{{ v.shortDescription|default:''|escape }}"
                     data-variant-long="{{ v.description|default:''|escape }}">
               <span class="pdp-variant__badge pdp-variant__badge--{{ v.variantType|default:'physical' }}">
                 {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'virtual' %}Access{% else %}Physical{% endif %}
               </span>
+              {% if v.isOnSale and v.discountPercentage %}
+                <span class="pdp-variant__sale-pill" title="On sale">−{{ v.discountPercentage }}%</span>
+              {% endif %}
               <span class="pdp-variant__name">{{ v.name }}{% if v.size %} <span class="pdp-variant__size">· {{ v.size }}</span>{% endif %}</span>
-              {% if v.price %}<span class="pdp-variant__price">{{ v.price|money }}</span>{% endif %}
+              {% if v.price %}
+              <span class="pdp-variant__price-line">
+                <span class="pdp-variant__price">{{ v.price|money }}</span>
+                {% if v.isOnSale and v.compareAtPrice %}<span class="pdp-variant__compare">{{ v.compareAtPrice|money }}</span>{% endif %}
+              </span>
+              {% endif %}
               {% if v.shortDescription %}<span class="pdp-variant__desc">{{ v.shortDescription|truncatewords:14 }}</span>{% endif %}
             </button>
             {% endif %}{% endfor %}
@@ -281,7 +291,29 @@
   padding-right: 5.5rem; /* room for the badge */
 }
 .pdp-variant__size { color: var(--muted); font-weight: 400; }
+.pdp-variant__price-line {
+  display: inline-flex; align-items: baseline; gap: .45rem;
+}
 .pdp-variant__price { font-family: var(--serif); font-size: 1rem; color: var(--ink); }
+.pdp-variant__compare {
+  font-family: var(--sans);
+  font-size: .8rem;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.pdp-variant__sale-pill {
+  position: absolute; top: .5rem; right: .5rem;
+  background: var(--sale, #b91c1c);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: .15rem .4rem;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+.pdp-variant { position: relative; }
 .pdp-variant__desc { font-size: .85rem; color: var(--ink-2); line-height: 1.45; }
 .pdp-variant-long {
   margin-top: 1rem; padding: .9rem 1rem;
@@ -393,6 +425,7 @@
   if (!picker) return;
   var hiddenInput = document.querySelector('[data-pdp-variant-input]');
   var priceMain   = document.querySelector('[data-pdp-price]');
+  var priceCompare = document.querySelector('[data-pdp-compare]');
   var ctaButton   = document.querySelector('[data-pdp-cta]');
   var longWrap    = picker.querySelector('[data-pdp-variant-long]');
   var ctaLabel = {
@@ -416,6 +449,21 @@
     }
     var p = card.dataset.variantPrice;
     if (p && priceMain) priceMain.textContent = p;
+    // Sale-price swap: show the variant's compare-at when this variant
+    // is on sale, hide it otherwise. Keeps the top price block in sync
+    // with the picker — a non-sale variant after a sale variant must
+    // drop the strikethrough, not leave a stale "was $X" hanging.
+    if (priceCompare) {
+      var onSale = card.dataset.variantOnSale === '1';
+      var compare = card.dataset.variantCompare || '';
+      if (onSale && compare) {
+        priceCompare.textContent = compare;
+        priceCompare.style.display = '';
+      } else {
+        priceCompare.textContent = '';
+        priceCompare.style.display = 'none';
+      }
+    }
     if (ctaButton && card.dataset.variantType) {
       ctaButton.textContent = ctaLabel[card.dataset.variantType] || 'Add to cart';
     }

@@ -30,6 +30,8 @@ query ProductDetail($slug: String!) {
       id name sku size shortDescription description
       variantType sortOrder isActive
       price { amount currency }
+      compareAtPrice { amount currency }
+      isOnSale discountPercentage
     }
     tags category { name slug }
     averageRating

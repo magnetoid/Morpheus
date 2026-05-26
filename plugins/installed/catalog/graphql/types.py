@@ -117,6 +117,51 @@ class ProductVariantType:
             return MoneyType(amount=str(parent_price.amount), currency=str(parent_price.currency))
         return None
 
+    @strawberry.field(description="Compare-at (was-price) for the variant. Falls back to Product.compare_at_price when blank, so the strikethrough renders on per-product sales even if the variant has no override.")
+    def compare_at_price(self) -> Optional[MoneyType]:
+        own = getattr(self, 'compare_at_price', None)
+        if own:
+            return MoneyType(amount=str(own.amount), currency=str(own.currency))
+        parent = getattr(self, 'product', None)
+        parent_cap = getattr(parent, 'compare_at_price', None) if parent else None
+        if parent_cap:
+            return MoneyType(amount=str(parent_cap.amount), currency=str(parent_cap.currency))
+        return None
+
+    @strawberry.field(description="True when this specific variant is discounted (compare_at_price > price). Computed per-variant so the picker can badge only the discounted editions.")
+    def is_on_sale(self) -> bool:
+        try:
+            from decimal import Decimal
+            own_price = self.price or (getattr(getattr(self, 'product', None), 'price', None))
+            own_cap = (
+                getattr(self, 'compare_at_price', None)
+                or getattr(getattr(self, 'product', None), 'compare_at_price', None)
+            )
+            if not (own_price and own_cap):
+                return False
+            return Decimal(str(own_cap.amount)) > Decimal(str(own_price.amount))
+        except Exception:  # noqa: BLE001
+            return False
+
+    @strawberry.field(description="Integer percent off when this variant is on sale, else 0.")
+    def discount_percentage(self) -> int:
+        try:
+            from decimal import Decimal
+            own_price = self.price or (getattr(getattr(self, 'product', None), 'price', None))
+            own_cap = (
+                getattr(self, 'compare_at_price', None)
+                or getattr(getattr(self, 'product', None), 'compare_at_price', None)
+            )
+            if not (own_price and own_cap):
+                return 0
+            p = Decimal(str(own_price.amount))
+            c = Decimal(str(own_cap.amount))
+            if c <= p:
+                return 0
+            return int((c - p) / c * 100)
+        except Exception:  # noqa: BLE001
+            return 0
+
     @strawberry.field(description="Per-variant digital file URL (overrides Product.digital_file)")
     def digital_file_url(self) -> Optional[str]:
         f = getattr(self, 'digital_file', None)
