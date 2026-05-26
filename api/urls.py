@@ -33,4 +33,8 @@ urlpatterns = [
     # the gunicorn pool isn't held. (docs/plans/concurrency-roadmap.md)
     path('api/llm-tasks/', llm_task_create, name='llm_task_create'),
     path('api/llm-tasks/<str:task_id>/', llm_task_status, name='llm_task_status'),
+    # CSP report-only sink (see core/security_headers.py). Logs every
+    # violation; we'll mine the log to tighten the policy before flipping
+    # to enforcing.
+    path('api/csp-report/', views.csp_report, name='csp_report'),
 ]

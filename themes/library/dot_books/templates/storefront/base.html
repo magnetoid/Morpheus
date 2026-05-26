@@ -307,6 +307,26 @@
 
 <link rel="manifest" href="/manifest.json">
 <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="dot books">
+
+{# Speculation Rules API — hover-prerenders PDP/category/vendor links. Skips side-effect-y paths. #}
+<script type="speculationrules">
+{
+  "prerender": [{
+    "where": {
+      "and": [
+        { "href_matches": "/*" },
+        { "not": { "href_matches": "/cart/*" } },
+        { "not": { "href_matches": "/checkout/*" } },
+        { "not": { "href_matches": "/account/*" } },
+        { "not": { "href_matches": "/auth/*" } },
+        { "not": { "href_matches": "/api/*" } },
+        { "not": { "href_matches": "/r/*" } }
+      ]
+    },
+    "eagerness": "moderate"
+  }]
+}
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="dot books">
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png">

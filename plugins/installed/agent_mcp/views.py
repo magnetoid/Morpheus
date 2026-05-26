@@ -196,11 +196,31 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
             f'token missing scope: needs one of {required}',
         )
 
+    # OpenTelemetry span wrap — agent traffic now shows in the same
+    # APM dashboards as human requests, attributed by tool name +
+    # token scopes. Silent no-op when OTel isn't installed so the MCP
+    # surface stays working in plain installs.
     try:
-        result = tool.invoke(args, agent=None, context={'source': 'mcp'})
-        output = result.output if hasattr(result, 'output') else result
-    except Exception as e:  # noqa: BLE001 — surface as JSON-RPC error
-        raise _RpcError(_E_TOOL_FAIL, f'{type(e).__name__}: {e}') from e
+        from opentelemetry import trace
+        tracer = trace.get_tracer('morpheus.mcp')
+        _span_ctx = tracer.start_as_current_span(
+            f'mcp.tools.call.{name}',
+            attributes={
+                'mcp.tool_name': name,
+                'mcp.granted_scopes': ','.join(sorted(granted)) or '(legacy)',
+                'mcp.arg_count': len(args),
+            },
+        )
+    except Exception:  # noqa: BLE001 — OTel optional
+        from contextlib import nullcontext
+        _span_ctx = nullcontext()
+
+    with _span_ctx:
+        try:
+            result = tool.invoke(args, agent=None, context={'source': 'mcp'})
+            output = result.output if hasattr(result, 'output') else result
+        except Exception as e:  # noqa: BLE001 — surface as JSON-RPC error
+            raise _RpcError(_E_TOOL_FAIL, f'{type(e).__name__}: {e}') from e
 
     # MCP tools/call returns content blocks; we wrap the structured
     # output as a single JSON text block so MCP clients can consume it

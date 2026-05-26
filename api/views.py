@@ -1,18 +1,78 @@
 from __future__ import annotations
 
+import json
 import logging
 
 from django.core.cache import cache
 from django.core.cache.backends.base import CacheKeyWarning
 from django.db import DatabaseError, connection
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger('morpheus.api.health')
+csp_logger = logging.getLogger('morpheus.security.csp')
 
 
 def healthz(request: HttpRequest) -> JsonResponse:
     """Liveness — process is up and able to respond."""
     return JsonResponse({'status': 'ok'})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def csp_report(request: HttpRequest) -> HttpResponse:
+    """Content-Security-Policy violation receiver.
+
+    Receives the JSON envelope browsers POST when a page violates the
+    CSP-Report-Only policy in core/security_headers.py. We log a
+    structured event per report; if Sentry / OTel is wired in
+    production, that's where these end up. Rate-limited at the LB
+    layer; here we just trust the body and never let a single bad
+    report break the page that triggered it.
+
+    Browser sends either:
+      Content-Type: application/csp-report  (legacy)
+      Content-Type: application/reports+json (modern Reporting API)
+    """
+    try:
+        body = request.body[:8192]  # cap report size; nothing legitimate is bigger
+        if not body:
+            return HttpResponse(status=204)
+        report = json.loads(body)
+    except (ValueError, TypeError, UnicodeDecodeError):
+        return HttpResponse(status=204)  # malformed — silently drop
+
+    # Both envelope shapes get normalised to a single log line.
+    if isinstance(report, dict) and 'csp-report' in report:
+        # Legacy CSP report-uri shape: { "csp-report": { ... } }
+        r = report['csp-report'] or {}
+        csp_logger.warning(
+            'csp_violation directive=%s blocked=%s document=%s '
+            'referrer=%s line=%s file=%s',
+            r.get('violated-directive', '?'),
+            r.get('blocked-uri', '?')[:200],
+            r.get('document-uri', '?')[:200],
+            r.get('referrer', '?')[:200],
+            r.get('line-number', '?'),
+            r.get('source-file', '?')[:200],
+        )
+    elif isinstance(report, list):
+        # Reporting API shape: [{ "type": "csp-violation", "body": {...}}, …]
+        for entry in report[:10]:
+            if not isinstance(entry, dict):
+                continue
+            b = entry.get('body') or {}
+            csp_logger.warning(
+                'csp_violation directive=%s blocked=%s document=%s '
+                'line=%s file=%s',
+                b.get('effectiveDirective', '?'),
+                b.get('blockedURL', '?')[:200],
+                b.get('documentURL', '?')[:200],
+                b.get('lineNumber', '?'),
+                b.get('sourceFile', '?')[:200],
+            )
+    return HttpResponse(status=204)
 
 
 def readyz(request: HttpRequest) -> JsonResponse:
