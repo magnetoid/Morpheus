@@ -172,8 +172,13 @@ def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_Unifi
     if view in ('all', 'document', 'pdf', 'spreadsheet', 'word', 'other'):
         try:
             from plugins.installed.catalog.models import Product
+            # Archived products are dead inventory — their digital files
+            # shouldn't appear in the media library, otherwise admins see
+            # files belonging to dead listings alongside live assets.
+            # Drafts stay surfaced (they're work-in-progress, not dead).
             dp_qs = (Product.objects
                      .filter(product_type='digital')
+                     .exclude(status='archived')
                      .exclude(digital_file='')
                      .exclude(digital_file__isnull=True)
                      .order_by('-updated_at'))
