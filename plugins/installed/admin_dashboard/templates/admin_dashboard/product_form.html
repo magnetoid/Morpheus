@@ -83,9 +83,10 @@
           <select name="category" class="input">
             <option value="">— None —</option>
             {% for c in categories %}
-            <option value="{{ c.id }}" {% if form.category.value == c.id %}selected{% endif %}>{{ c.name }}</option>
+            <option value="{{ c.id }}" {% if form.category.value == c.id %}selected{% endif %}>{{ c.tree_prefix }}{{ c.name }}</option>
             {% endfor %}
           </select>
+          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">Nested categories are indented under their parent.</p>
         </div>
         {# Vendor dropdown from the marketplace plugin; renders below Category. #}
         {% if vendors %}
@@ -906,6 +907,13 @@
       </summary>
 
       <div class="card-padded space-y-4">
+        {% if seo_defaults %}
+        <p class="text-xs text-[color:var(--text-muted)]" style="margin:0;">
+          <i data-lucide="info" class="inline h-3 w-3"></i>
+          Greyed text shows what the storefront renders by default (from
+          global SEO settings + this product). Type to override per-product.
+        </p>
+        {% endif %}
         {# Search snippet — meta_title + meta_description + focus keyword. #}
         <div class="space-y-3">
           <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Search snippet</h3>
@@ -913,12 +921,13 @@
             <label class="block text-sm font-medium mb-1">Meta title</label>
             <input type="text" name="meta_title" class="input" maxlength="200"
                    value="{{ form.meta_title.value|default:'' }}"
-                   placeholder="Defaults to product name">
+                   placeholder="{{ seo_defaults.meta_title|default:'Defaults to product name' }}">
             <p class="text-xs text-[color:var(--text-muted)] mt-1">~60 characters works best in Google.</p>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Meta description</label>
-            <textarea name="meta_description" rows="2" class="input">{{ form.meta_description.value|default:'' }}</textarea>
+            <textarea name="meta_description" rows="2" class="input"
+                      placeholder="{{ seo_defaults.meta_description|default:'~155 characters. Plain text only.' }}">{{ form.meta_description.value|default:'' }}</textarea>
             <p class="text-xs text-[color:var(--text-muted)] mt-1">~155 characters. Plain text only.</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -932,7 +941,7 @@
               <label class="block text-sm font-medium mb-1">Canonical URL</label>
               <input type="url" name="canonical_url" class="input"
                      value="{{ form.canonical_url.value|default:'' }}"
-                     placeholder="Default: /products/{{ product.slug|default:'…' }}/">
+                     placeholder="{{ seo_defaults.canonical_url|default:'Default: /products/…/' }}">
             </div>
           </div>
         </div>
@@ -944,11 +953,12 @@
             <label class="block text-sm font-medium mb-1">OG title</label>
             <input type="text" name="og_title" class="input" maxlength="200"
                    value="{{ form.og_title.value|default:'' }}"
-                   placeholder="Falls back to meta title">
+                   placeholder="{{ seo_defaults.og_title|default:'Falls back to meta title' }}">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">OG description</label>
-            <textarea name="og_description" rows="2" class="input">{{ form.og_description.value|default:'' }}</textarea>
+            <textarea name="og_description" rows="2" class="input"
+                      placeholder="{{ seo_defaults.og_description|default:'Falls back to meta description' }}">{{ form.og_description.value|default:'' }}</textarea>
           </div>
           <p class="text-xs text-[color:var(--text-muted)]">OG image upload coming next — for now, the product's primary image is used.</p>
         </div>
@@ -969,12 +979,13 @@
               <label class="block text-sm font-medium mb-1">Twitter title</label>
               <input type="text" name="twitter_title" class="input" maxlength="200"
                      value="{{ form.twitter_title.value|default:'' }}"
-                     placeholder="Falls back to OG / meta title">
+                     placeholder="{{ seo_defaults.twitter_title|default:'Falls back to OG / meta title' }}">
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Twitter description</label>
-            <textarea name="twitter_description" rows="2" class="input">{{ form.twitter_description.value|default:'' }}</textarea>
+            <textarea name="twitter_description" rows="2" class="input"
+                      placeholder="{{ seo_defaults.twitter_description|default:'Falls back to OG / meta description' }}">{{ form.twitter_description.value|default:'' }}</textarea>
           </div>
         </div>
 

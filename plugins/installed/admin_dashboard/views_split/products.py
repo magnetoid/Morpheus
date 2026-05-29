@@ -105,16 +105,95 @@ def products_list(request: HttpRequest) -> HttpResponse:
 
 
 def _product_form_choices():
-    """Categories + vendors for the product form selects."""
+    """Categories (tree-ordered) + vendors for the product form selects."""
     categories: list[Any] = []
     vendors: list[Any] = []
     try:
         from plugins.installed.catalog.models import Category, Vendor
-        categories = list(Category.objects.filter(is_active=True).order_by('name'))
+        categories = _ordered_categories()
         vendors = list(Vendor.objects.filter(is_active=True).order_by('name'))
     except Exception:  # noqa: BLE001
         pass
     return categories, vendors
+
+
+def _ordered_categories() -> list:
+    """Return active categories in parent→child tree order, each tagged
+    with a ``tree_prefix`` ("— " per depth level) so the flat <select>
+    renders the hierarchy. Categories can be nested arbitrarily deep
+    via Category.parent."""
+    from plugins.installed.catalog.models import Category
+
+    cats = list(Category.objects.filter(is_active=True).select_related('parent'))
+    by_parent: dict = {}
+    for c in cats:
+        by_parent.setdefault(c.parent_id, []).append(c)
+    for siblings in by_parent.values():
+        siblings.sort(key=lambda c: (c.name or '').lower())
+
+    ordered: list = []
+
+    def _walk(parent_id, depth):
+        for c in by_parent.get(parent_id, []):
+            c.tree_prefix = '— ' * depth
+            c.tree_depth = depth
+            ordered.append(c)
+            _walk(c.id, depth + 1)
+
+    _walk(None, 0)
+    # Orphans whose parent is inactive / filtered out — surface flat so
+    # they're still selectable rather than silently dropped.
+    seen = {c.id for c in ordered}
+    for c in cats:
+        if c.id not in seen:
+            c.tree_prefix = ''
+            c.tree_depth = 0
+            ordered.append(c)
+    return ordered
+
+
+def _seo_field_defaults(product) -> dict:
+    """Resolved SEO values the storefront would render for this product
+    when each field is left blank — surfaced as gray placeholders in
+    the product form so the merchant sees the effective value before
+    deciding to override it.
+
+    Computed from the same fallback chain `seo.services.resolve_meta`
+    uses (product name + store name suffix for the title, stripped
+    short/long description for the meta description), so the placeholder
+    matches what actually ships."""
+    if product is None:
+        return {}
+    import re as _re
+    try:
+        from django.conf import settings as _settings
+        from plugins.installed.seo.services import _site_base_url, site_settings
+        s = site_settings()
+        store_name = (
+            getattr(s, 'organization_name', '')
+            or getattr(_settings, 'STORE_NAME', '')
+            or ''
+        )
+        name = product.name or ''
+        title_default = (f'{name} — {store_name}'.strip(' —')) if name else ''
+        desc_src = product.short_description or product.description or ''
+        desc_default = _re.sub(r'<[^>]+>', '', desc_src).strip()[:160]
+        base = _site_base_url().rstrip('/')
+        canonical_default = (
+            f'{base}/products/{product.slug}/' if product.slug else ''
+        )
+        return {
+            'meta_title': title_default,
+            'meta_description': desc_default,
+            'og_title': title_default,
+            'og_description': desc_default,
+            'twitter_title': title_default,
+            'twitter_description': desc_default,
+            'canonical_url': canonical_default,
+            'twitter_card': getattr(s, 'twitter_card_default', '') or 'summary_large_image',
+        }
+    except Exception:  # noqa: BLE001 — seo plugin optional; fall back to static placeholders
+        return {}
 
 
 @staff_member_required
@@ -133,6 +212,7 @@ def product_new(request: HttpRequest) -> HttpResponse:
         'product': None,
         'categories': categories,
         'vendors': vendors,
+        'seo_defaults': {},
         'active_nav': 'products',
         'breadcrumb_trail': [
             {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -216,6 +296,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         'bv_links': bv_links,
         'bv_locations': bv_locations,
         'bv_bulk_link_url': bv_bulk_link_url,
+        'seo_defaults': _seo_field_defaults(product),
         'active_nav': 'products',
         'breadcrumb_trail': [
             {'label': 'Dashboard', 'url': '/dashboard/'},
