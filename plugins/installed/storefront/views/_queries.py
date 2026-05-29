@@ -3,8 +3,8 @@
 Kept private (leading underscore in the filename) so this module isn't
 treated as a public submodule — it's a private constant bag.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 PRODUCT_LIST_QUERY = """
 query ProductList($first: Int!, $search: String, $category: String) {
@@ -35,6 +35,7 @@ query ProductDetail($slug: String!) {
       imageUrl
     }
     tags category { name slug }
+    collections { name slug }
     averageRating
     reviews { rating title body customer { fullName } createdAt }
   }

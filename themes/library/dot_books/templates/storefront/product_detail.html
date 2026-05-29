@@ -176,6 +176,17 @@
         </div>
         {% endif %}
 
+        {% if product.collections %}
+        <div class="pdp-collections" style="margin: 1.25rem 0;">
+          <p class="eyebrow" style="margin-bottom: 0.6rem;">Featured in</p>
+          <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+            {% for col in product.collections %}
+            <a href="/products/?collection={{ col.slug }}" class="pdp-collection-chip">{{ col.name }}</a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
         {% if product.tags %}
         <div style="margin-top: 2rem; display:flex; flex-wrap: wrap; gap: 0.4rem;">
           {% for tag in product.tags %}
@@ -209,6 +220,21 @@
   max-width: 70ch;
   padding: 0;
 }
+.pdp-collection-chip {
+  display: inline-block;
+  font-family: var(--sans);
+  font-size: .8rem;
+  color: var(--ink-2);
+  padding: .3rem .75rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+.pdp-collection-chip:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--surface-2, rgba(0,0,0,.02));
+}
 .pdp-long-desc {
   line-height: 1.75;
   color: var(--ink);
@@ -219,7 +245,10 @@
 .pdp-long-desc h2 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; line-height: 1.25; margin: 2rem 0 0.75rem; color: var(--ink); }
 .pdp-long-desc h3 { font-family: var(--serif); font-size: 1.15rem; font-weight: 500; line-height: 1.3; margin: 1.5rem 0 0.5rem; color: var(--ink); }
 @media (min-width: 900px) {
-  .pdp-grid { grid-template-columns: 1fr 1fr !important; gap: 5rem !important; align-items: start !important; }
+  /* Gallery (left) narrower than details (right) — a portrait book cover
+     doesn't need half the page. 2fr/3fr ≈ 40/60, the editorial "old"
+     proportion rather than the 50/50 Shopify split. */
+  .pdp-grid { grid-template-columns: 2fr 3fr !important; gap: 4rem !important; align-items: start !important; }
   /* Pin the cover column while the details column scrolls past. Top offset
      clears the sticky topbar (64px) + a comfortable breathing margin. */
   .pdp-grid > div:first-child { position: sticky; top: 84px; align-self: start; }
