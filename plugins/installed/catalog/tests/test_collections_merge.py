@@ -126,3 +126,37 @@ class ProductFormDualWriteTests(TestCase):
         product = form.save()
         self.assertEqual(product.categories.count(), 0)
         self.assertIsNone(product.category_id)
+
+
+class ProductCollectionsGraphQLTests(TestCase):
+    """Phase 3b (additive): ProductType.collections returns the M2M
+    memberships, falling back to the primary category when empty.
+
+    Calls the resolver directly with a Product instance — the full
+    `product(slug:)` query can't execute under the SQLite test DB
+    (a pre-existing 'int too large for SQLite' limitation in that
+    resolver; prod runs Postgres), so we test the field in isolation
+    the same way test_variant_fallback does.
+    """
+
+    def setUp(self):
+        self.fiction = Category.objects.create(name='Fiction', slug='fiction')
+        self.classics = Category.objects.create(name='Classics', slug='classics')
+
+    def _resolve(self, product):
+        from plugins.installed.catalog.graphql.types import ProductType
+        attr = ProductType.__dict__['collections']
+        fn = getattr(attr, 'base_resolver', None) or attr
+        fn = getattr(fn, 'wrapped_func', fn)  # unwrap strawberry's StrawberryResolver
+        return [c.slug for c in fn(product)]
+
+    def test_returns_m2m_memberships(self):
+        p = _product('dune', category=self.fiction)
+        p.categories.set([self.fiction, self.classics])
+        self.assertEqual(set(self._resolve(p)), {'fiction', 'classics'})
+
+    def test_falls_back_to_primary_when_m2m_empty(self):
+        # A product the backfill hasn't touched (no M2M) still surfaces
+        # its primary category, so the storefront never sees it uncollected.
+        p = _product('emma', category=self.fiction)
+        self.assertEqual(set(self._resolve(p)), {'fiction'})
