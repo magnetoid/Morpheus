@@ -186,15 +186,6 @@ class Product(models.Model):
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products'
     )
-    # Collections-merge Phase 1 (docs/plans/collections-merge.md): the
-    # unified "Collections" concept is hierarchical (Category/MPTT) +
-    # many-per-product. `categories` is that M2M membership. During the
-    # dual-write window the legacy single `category` FK and the
-    # `collections` M2M still exist; Phase 2 backfills both into here,
-    # Phase 3 reads from here, Phase 4 drops `collections`.
-    categories = models.ManyToManyField(
-        Category, blank=True, related_name='member_products',
-    )
     collections = models.ManyToManyField(Collection, blank=True, related_name='products')
     tags = TaggableManager(blank=True)
     attributes = models.ManyToManyField(Attribute, blank=True, through='ProductAttribute')

@@ -79,15 +79,14 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">Collections</label>
-          <select name="categories" multiple class="input" size="6" style="height:auto;">
+          <label class="block text-sm font-medium mb-1">Category</label>
+          <select name="category" class="input">
+            <option value="">— None —</option>
             {% for c in categories %}
-            <option value="{{ c.id }}" {% if c.id in selected_category_ids %}selected{% endif %}>{{ c.tree_prefix }}{{ c.name }}</option>
+            <option value="{{ c.id }}" {% if form.category.value == c.id %}selected{% endif %}>{{ c.tree_prefix }}{{ c.name }}</option>
             {% endfor %}
           </select>
-          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">
-            A product can belong to multiple Collections (hold ⌘/Ctrl to pick several). Nested Collections are indented under their parent; the first selected is the primary.
-          </p>
+          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">Nested categories are indented under their parent.</p>
         </div>
         {# Vendor dropdown from the marketplace plugin; renders below Category. #}
         {% if vendors %}

@@ -211,18 +211,8 @@ class ProductType:
     short_description: str = strawberry.field(description="Short summary description")
     description: str = strawberry.field(description="Full HTML or Markdown description")
     is_featured: bool = strawberry.field(description="Whether this product is featured")
-    category: Optional[CategoryType] = strawberry.field(description="Primary collection (legacy single-FK; = first of `collections`). Kept for breadcrumb/canonical back-compat during the collections merge.")
+    category: Optional[CategoryType] = strawberry.field(description="Primary category")
     variants: List[ProductVariantType] = strawberry.field(description="Available variants if variable product")
-
-    @strawberry.field(description="All Collections this product belongs to (the unified hierarchical grouping; many-per-product). Falls back to the primary category when the membership M2M is empty, so consumers always get at least the primary.")
-    def collections(self) -> List[CategoryType]:
-        # Return Category model instances — strawberry_django maps them
-        # to CategoryType (its image/structured_data resolvers need a
-        # real model instance, so never hand-construct CategoryType).
-        rows = list(self.categories.all()) if hasattr(self, 'categories') else []
-        if not rows and self.category_id:
-            rows = [self.category]
-        return rows
     is_on_sale: bool = strawberry.field(description="Whether the product is currently on sale")
     discount_percentage: int = strawberry.field(description="Discount percentage if on sale")
     average_rating: Optional[float] = strawberry.field(description="Average rating from reviews")
