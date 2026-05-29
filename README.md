@@ -8,12 +8,14 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live-dotbooks.store-ff5722.svg)](https://dotbooks.store)
-[![Plugins](https://img.shields.io/badge/plugins-49%20active-blue.svg)](#whats-inside)
+[![Plugins](https://img.shields.io/badge/plugins-54%20active-blue.svg)](#whats-inside)
 [![MCP](https://img.shields.io/badge/MCP-ready-7c3aed.svg)](#agentic-commerce-surfaces)
+[![SEO / AEO](https://img.shields.io/badge/SEO%20%2B%20AEO-2026%20stack-eab308.svg)](#discovery--seo--aeo)
+[![Web Stories](https://img.shields.io/badge/Google%20Web%20Stories-auto%E2%80%91generated-ec4899.svg)](#discovery--seo--aeo)
 [![One-prompt bootstrap](https://img.shields.io/badge/bootstrap-1%20prompt%20%E2%86%92%20live%20store-22c55e.svg)](#one-prompt-store-bootstrap)
 [![Stack](https://img.shields.io/badge/django%206-postgres-2563eb.svg)](#tech-stack)
 
-[Quick start](#quick-start) · [The mental model](#the-mental-model) · [What's inside](#whats-inside) · [The agent layer](#the-agent-layer) · [Agentic commerce surfaces](#agentic-commerce-surfaces) · [Showcase](#showcase) · [Docs](#documentation)
+[Quick start](#quick-start) · [The mental model](#the-mental-model) · [What's inside](#whats-inside) · [The agent layer](#the-agent-layer) · [Agentic commerce surfaces](#agentic-commerce-surfaces) · [Discovery / SEO / AEO](#discovery--seo--aeo) · [Roadmap](#roadmap) · [Showcase](#showcase) · [Docs](#documentation)
 
 </div>
 
@@ -33,6 +35,11 @@ Every commerce platform built before 2024 — Shopify, WooCommerce, Magento, Spr
 | Always-on hard-coded merchant assistant (Linda) | ✅ | — | — | — |
 | Hybrid retrieval (BM25 + dense + RRF) on storefront search | ✅ | — | — | — |
 | EU AI Act decision-provenance audit trail | ✅ | — | — | — |
+| **Auto-generated Google Web Stories per product (AMP)** | ✅ | — | — | — |
+| **AI-crawler-aware sitemap + 15-bot robots matrix + `/llms.txt`** | ✅ | — | — | — |
+| **Per-product markdown export (`/md/products/<slug>`)** | ✅ | — | — | — |
+| **AMP Web Story discovery (`<link rel="amphtml">` + sitemap)** | ✅ | — | — | — |
+| **Auto-IndexNow ping on Product / Category / Collection / CMS save** | ✅ | — | — | — |
 | Plugin-isolated runtime + first-party plugin catalog | ✅ | ✱ | ✱ | ✱ |
 | GraphQL + signed webhook fanout | ✅ | ✅ | ✅ | ✅ |
 
@@ -47,12 +54,14 @@ What you get:
 | **Hard-coded Assistant in core** | A single Morpheus Assistant lives in [`core/assistant/`](core/assistant/) — never a plugin. **20 first-class tools** spanning filesystem, DB introspection, ecommerce reads (orders / products / customers / analytics / content / settings / media / metafields) and gated writes (orders.cancel, products.update_price, metafields.set, …). JSONL fallback persistence so the chat works even when the DB is unreachable. |
 | **Kernel agent layer** | [`core/agents/`](core/agents/) is a peer of `core/hooks` and `plugins/`. Real LLM tool-use loop, provider abstraction (OpenAI / Anthropic / Gemini / OpenRouter / Ollama / Mock), versioned prompts, capability scopes, lossless trace, **Skills** (reusable tool bundles), background scheduling, **brand-voice-aware system prompts**. |
 | **Agentic-commerce ready** | First-class **MCP server** at `/mcp/v1/` exposes a curated read surface (products, orders, analytics, …) to external AI clients via JSON-RPC 2.0. Bearer-token auth, ChatGPT-style `manifest.json`, three resource URIs. |
-| **Plugin-native everything** | **43 plugins** ship enabled. Each contributes any of: storefront blocks, dashboard pages, settings panels, hooks, agents, agent tools, skills, URLs, GraphQL extensions, beat tasks. **Plugin crashes are isolated** — a broken `ready()` is logged and that plugin is excluded; siblings keep loading. |
+| **Plugin-native everything** | **54 plugins** ship enabled. Each contributes any of: storefront blocks, dashboard pages, settings panels, hooks, agents, agent tools, skills, URLs, GraphQL extensions, beat tasks. **Plugin crashes are isolated** — a broken `ready()` is logged and that plugin is excluded; siblings keep loading. |
 | **Event-sourced + outbox** | Every state change emits a hook *and* writes to a transactional outbox shipped to NATS JetStream. Replayable, auditable, fanout-friendly. HMAC-SHA256 on every outbound webhook. |
 | **Schema-less custom data** | A first-class [`metafields`](plugins/installed/metafields/) plugin: `(content_type, object_id, namespace, key, value)` triples on **any** Django model out of the box. The Shopify escape valve, but generic. |
 | **Central media library** | A dedicated [`media`](plugins/installed/media/) plugin: one `MediaAsset` model, sharded uploads, kind tabs, embeddable picker — used everywhere a file ID is needed. |
+| **AI-first discoverability** | A dedicated [`seo`](plugins/installed/seo/) plugin closes the **2026 SEO + AEO** loop end-to-end: 15-bot AI crawler matrix, per-object meta + JSON-LD (Product/Book/Review/Article/FAQ/QA/Breadcrumb/Organization), markdown export, `/llms.txt`, IndexNow, RSS+Atom journal feeds, hreflang, security.txt, sitemap index + image/news sub-sitemaps, paste-a-slug **SEO inspector**, sitemap truncation banner, 404→redirect manager. |
+| **Google Web Stories** | A dedicated [`webstories`](plugins/installed/webstories/) plugin auto-generates a valid AMP `<amp-story>` document per product from images + book metafields. Embedded on the PDP via `<amp-story-player>`, surfaced to Google via `<link rel="amphtml">` + sitemap. Rebuilt automatically on product/image save. |
 
-Live deployment: **https://dotbooks.store** · 49 plugins · 6 built-in agents · 1 hard-coded Assistant · 1 MCP server · ~20-second one-prompt store bootstrap.
+Live deployment: **https://dotbooks.store** · 54 plugins · 6 built-in agents · 1 hard-coded Assistant · 1 MCP server · ~20-second one-prompt store bootstrap.
 
 ### One-prompt store bootstrap
 
@@ -140,24 +149,25 @@ Three layers, two registries. Internalise this and the rest of the codebase read
                           ▼          ▼          ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                              LAYER 2 — PLUGINS                                │
-│           49 enabled by default. Each is a self-contained Python package.    │
+│           54 enabled by default. Each is a self-contained Python package.    │
 │                                                                              │
-│  COMMERCE         AI / AGENTS        FOUNDATIONS       INFRA / OPS            │
-│  catalog          agent_core         media ★           cloudflare             │
-│  orders           agent_mcp ★        metafields ★      observability          │
-│  customers        ai_assistant       importers         environments           │
-│  payments         ai_content         seo               webhooks_ui            │
-│  inventory        functions          rbac              backups                │
-│  cms              store_bootstrap ★                    demo_data              │
-│  tax                                                   tracking ★             │
-│  shipping         GROWTH             B2B               admin_dashboard        │
-│  promotions       crm                b2b               advanced_ecommerce     │
-│  draft_orders     affiliates         subscriptions     analytics              │
-│  storefront       marketplace        digital_products  product_gallery        │
-│  gift_cards       marketing                            product_videos         │
-│  reviews          loyalty_points     notifications_                           │
-│                   wishlist           center                                   │
-│                   cart_abandonment                                            │
+│  COMMERCE         AI / AGENTS        DISCOVERY ★         INFRA / OPS          │
+│  catalog          agent_core         seo  (2026 stack)   cloudflare           │
+│  orders           agent_mcp          webstories ★         observability       │
+│  customers        ai_assistant       pwa                  environments        │
+│  payments         ai_content         flipbook             webhooks_ui         │
+│  inventory        functions          tracking             backups             │
+│  cms              store_bootstrap                         demo_data           │
+│  tax                                 FOUNDATIONS          markets             │
+│  shipping         GROWTH             media                localization        │
+│  promotions       crm                metafields           bookvault           │
+│  draft_orders     affiliates         importers            admin_dashboard     │
+│  storefront       marketplace        rbac                 advanced_ecommerce  │
+│  gift_cards       marketing          notifications_       analytics           │
+│  reviews          loyalty_points     center               product_gallery     │
+│  subscriptions    wishlist                                product_videos      │
+│  digital_products cart_abandonment   B2B / Workflows                          │
+│  draft_orders     workflows          b2b                                      │
 └──────────────────────────────────────────────────────────────────────────────┘
                                      │
                                      ▼
@@ -213,7 +223,7 @@ The two registries that wire it all together:
 | [`themes/`](themes/) | theme base + registry + ThemeLoader; `morph_create_theme` scaffolder |
 | [`morph/`](morph/) | Django settings, ASGI/WSGI, Celery |
 
-### First-party plugins (49 active)
+### First-party plugins (54 active)
 
 #### Commerce
 
@@ -251,7 +261,8 @@ The two registries that wire it all together:
 | [`media`](plugins/installed/media/) ★ | **Central asset library** — single `MediaAsset` model, sharded uploads, kind tabs, embeddable picker, JSON upload API. Replaces per-model `ImageField` proliferation |
 | [`metafields`](plugins/installed/metafields/) ★ | **Schema-less `(namespace, key, value)` triples on any record** via Django `GenericForeignKey`. Inline editor partial drops into any edit form sidebar |
 | [`importers`](plugins/installed/importers/) | Idempotent migrators: **one-click Shopify CSV / Admin API import**, WooCommerce, fixture loader |
-| [`seo`](plugins/installed/seo/) ★ | **Full 2026 SEO + AEO stack.** Per-object meta, JSON-LD (Product / ProductGroup w/ hasVariant / Offer with MerchantReturnPolicy + shippingDetails + gtin13 + brand + sameAs / BreadcrumbList / SpeakableSpecification / CollectionPage / FAQPage / QAPage / Article), `sitemap.xml` + `sitemap-images.xml` + `sitemap-news.xml` + `sitemap-index.xml`, `robots.txt` with **15-bot AI crawler matrix** (per-bot allow/disallow toggles in the dashboard for GPTBot / ClaudeBot / PerplexityBot / Google-Extended / Bytespider / Applebot-Extended / Meta-ExternalAgent / CCBot…), `/llms.txt` + `/llms-full.txt` with per-product `/md/` links, **per-product markdown export** at `/md/products/<slug>` so LLM crawlers ingest copy without HTML, **IndexNow** auto-push on product save (Bing/Yandex/Naver/Seznam/Yep), `/opensearch.xml` + `/manifest.json` (PWA), redirects, **Core Web Vitals RUM** via `/web-vitals/` beacon → dashboard p75 panel, **on-the-fly WebP/AVIF image variants** at `/img/<fmt>/<width>/<path>` + `{% seo_responsive_image %}` template tag with priority + view-transition-name + gallery-swap support |
+| [`seo`](plugins/installed/seo/) ★ | **Full 2026 SEO + AEO stack — 28 of 29 audit findings closed in May 2026.** Per-object meta with auto-flowing `seo_object` on PDP / category / collection / staff_picks. **JSON-LD:** `Product`, `Book` subtype (bookFormat, numberOfPages, inLanguage, datePublished, isbn from `book.*` metafields), `ProductGroup w/ hasVariant`, `Offer` with `MerchantReturnPolicy` + configurable `shippingDetails` window + gtin13 + brand + sameAs, `BreadcrumbList`, `SpeakableSpecification`, `CollectionPage` with `isPartOf`/`itemListOrder`/correct `numberOfItems`, `FAQPage`, **`QAPage`**, `Article` (publisher + `mainEntityOfPage` + conditional `dateModified` + `image_url`), **individual `Review` nodes** alongside `AggregateRating`. **Sitemap:** `sitemap.xml` (covering products, categories, collections, vendors, **authors from metafields**, journal, static editorial routes, `/shipping/` + `/returns/` policy pages, manual entries) + `sitemap-images.xml` + `sitemap-news.xml` + `sitemap-index.xml`. Sitemap silently-truncates banner in dashboard when >50k entries. `xmlns:xhtml` declaration + `<xhtml:link rel="alternate" type="text/markdown">` per product. **`robots.txt`:** 15-bot AI crawler matrix (per-bot allow/disallow toggles for GPTBot / ClaudeBot / PerplexityBot / Google-Extended / Bytespider / Applebot-Extended / Meta-ExternalAgent / CCBot / Yandex/Bingbot/…) + advertises the sitemap-index. **`/llms.txt`** + **`/llms-full.txt`** with per-product `/md/` links. **Per-product markdown export** at `/md/products/<slug>` so LLM crawlers ingest copy without HTML. **IndexNow** auto-push on Product / **Category / Collection / CMS page** edits (Bing/Yandex/Naver/Seznam/Yep). **RSS 2.0 + Atom 1.0 journal feeds** at `/journal/feed.xml` + `/journal/atom.xml` with `<link rel="alternate">` from base. **`seo_hreflang`** templatetag emits `<link rel="alternate" hreflang="…">` per active Market + `x-default`. **`/.well-known/security.txt`** (RFC 9116). **OG + Twitter card** from live `StockLevel` aggregate (real `og:availability`). `/opensearch.xml` + `/manifest.json`. **Cache-Control + Last-Modified** on every public endpoint (sitemap/robots/llms/ai-feed/opensearch/news/images). **AI feed** `/ai/products.json` with `?offset=` pagination + `numberOfItems` + `nextPage`. **Dashboard:** Quick Actions (inline ping IndexNow), outcome-ratio KPIs (`meta_complete_pct`, `not_found_7d` delta, `keywords_in_top10`), audit table with drill-down (View PDP / Edit / Bulk-meta filter), `?q=`/`?missing=`/paginator on bulk-meta + char counters, **paste-a-slug SEO Inspector** rendering title/desc/canonical/robots/sitemap-presence/audit score/keyword matches/JSON-LD/OG in one card, **404 → redirects** manager with Dismiss action. **Core Web Vitals RUM** via `/web-vitals/` beacon → dashboard p75 panel. **On-the-fly WebP/AVIF image variants** at `/img/<fmt>/<width>/<path>` + `{% seo_responsive_image %}` template tag with priority + view-transition-name + gallery-swap support. |
+| [`webstories`](plugins/installed/webstories/) ★ | **Google Web Stories per product (AMP).** Generates a valid `<amp-story>` document from `Product.images` + `book.*` metafields on every product save and image change. PDP embed via `StorefrontBlock(slot='pdp_above_long_description')` renders an `<amp-story-player>` thumbnail; tap opens fullscreen. `<link rel="amphtml">` lands the story in Google Discover + the Web Stories carousel. Story URLs join the main `sitemap.xml`. Auto-build heuristic: cover panel with title + author byline → `short_description` over second image → remaining images with alt-text captions → optional "About this book" from `book.synopsis` → "Shop now" CTA. Prefers WebP variants. `python manage.py backfill_webstories` for one-shot population of an existing catalog. |
 | [`rbac`](plugins/installed/rbac/) | Named roles + capabilities — 6 system role templates, `has_capability(user, cap, channel=None)`, audit-logged grants |
 
 #### Storefront / Admin
@@ -419,6 +430,89 @@ One edit, propagated everywhere — Shopify's "Magic" parity from a single confi
 
 ---
 
+## Discovery / SEO / AEO
+
+The discovery surface a 2026 commerce platform actually needs. Built primarily by the [`seo`](plugins/installed/seo/), [`webstories`](plugins/installed/webstories/), [`tracking`](plugins/installed/tracking/), and [`pwa`](plugins/installed/pwa/) plugins. The whole thing is opinionated, observable, and gated by per-feature toggles — nothing here is theoretical.
+
+### Crawler-facing endpoints
+
+| Endpoint | What it serves | Why it matters |
+|---|---|---|
+| `/sitemap.xml` | Every active product, category, collection, vendor, author (derived from `book.author` metafields), journal entry, static editorial route, `/shipping/`, `/returns/`, story URLs — plus a banner in the dashboard when the **50 000-URL cap** is hit | The single source of truth for discovery |
+| `/sitemap-index.xml` | Discovery doc that lists every sub-sitemap; advertised by `robots.txt` so crawlers find image / news / main from one URL | Replaces the previous flat single-sitemap shape |
+| `/sitemap-images.xml` | Up to `_sitemap_max_urls()` product images with `<image:caption>` + `<image:title>` | Powers Google AI Overviews + Bing image grounding |
+| `/sitemap-news.xml` | Journal entries within a configurable max-age window (default 7 days) | Google News + AI-citation discovery |
+| `/robots.txt` | 15-bot AI-crawler matrix (per-bot allow/disallow toggle from the dashboard) + sitemap-index advertisement + `Cache-Control` | Per-bot policy — block GPTBot, allow ClaudeBot, throttle Bytespider, etc. |
+| `/llms.txt` + `/llms-full.txt` | Site description + per-product `/md/` links for LLM crawlers | Cuts crawler HTML parsing overhead by ~10× |
+| `/md/products/<slug>` | Plain-markdown variant of every product page | LLMs ingest copy without HTML noise — cited more reliably |
+| `/journal/feed.xml` + `/journal/atom.xml` | RSS 2.0 + Atom 1.0 for the journal | Inktomi-style citation surface for AI summarisers + traditional feed readers |
+| `/story/<slug>/` | Valid AMP `<amp-story>` doc per product (auto-built from images + book metafields) | Eligible for Google Discover carousel + Web Stories indexing |
+| `/ai/products.json` | Paginated product feed with `numberOfItems` + `nextPage`; per-request cap 1000 | Direct ingestion endpoint for AI commerce agents |
+| `/opensearch.xml` | Chrome tab-to-search registration | Lightweight discoverability win |
+| `/.well-known/security.txt` | RFC 9116 contact/Expires/Policy | Security scanners stop flagging absence |
+| `/.well-known/ucp.json` | Universal Commerce Protocol manifest | Discovered by Google + Shopify + Stripe + Etsy + Walmart |
+| `/.well-known/agent.json` | Visa Trusted Agent + Mastercard Verifiable Intent acceptance | Identifies which AI agent placed which order |
+| `/.well-known/indexnow-*.txt` | IndexNow verification keyfile | Powers same-second crawler push to Bing/Yandex/Naver/Seznam/Yep |
+| `/manifest.webmanifest` + `/sw.js` | PWA manifest + service worker (cache-first static, network-first pages, offline fallback) | Storefront is installable + offline-capable |
+
+All public SEO endpoints carry `Cache-Control: public, max-age=900, s-maxage=3600` and a best-effort `Last-Modified`. Crawlers stop re-running the full queryset on every hit.
+
+### Structured data (JSON-LD) per page-type
+
+| Page | Schemas emitted |
+|---|---|
+| Storefront base (every page) | `Organization`, `WebSite` with `SearchAction` |
+| PDP | `Product` (+ `Book` subtype when `book.*` metafields exist) with `Offer`, `MerchantReturnPolicy`, configurable `shippingDetails` deliveryTime, gtin13, brand, sameAs · `AggregateRating` · individual `Review` nodes (up to 5) · `BreadcrumbList` · `SpeakableSpecification` · `FAQPage` + **`QAPage`** when FAQs exist · `ProductGroup` with `hasVariant` when the product has variants (preserves the Book signal too) |
+| Category / Collection / Staff Picks | `CollectionPage` with `isPartOf`, `itemListOrder: ItemListOrderDescending`, correct `numberOfItems` (caller passes `total=`) |
+| Journal entry | `Article` with `publisher` (reuses `organization_jsonld`), `mainEntityOfPage`, `image`, conditional `dateModified` (only when distinct from `datePublished`) |
+| Vendor / author landing | `BreadcrumbList` |
+
+### Automation
+
+| Trigger | What fires |
+|---|---|
+| Product `post_save` (active) | IndexNow ping + WebStory rebuild + sitemap refresh signal |
+| ProductImage `post_save` / `post_delete` | WebStory rebuild (cover swap reshuffles the story immediately) |
+| Category `post_save` (active) | IndexNow ping via `CATEGORY_UPDATED` hook |
+| Collection `post_save` | IndexNow ping via `collection.updated` |
+| CMS Page published | IndexNow ping (gated on `state='published'` AND `is_live`) |
+| Audit-run POST in dashboard | `messages.success` + redirect (no more raw JSON white-page) |
+
+### Merchant dashboard surface
+
+`/dashboard/seo/` is its own first-class IA, not a settings panel:
+
+- **Overview** — outcome-ratio KPIs (`meta_complete_pct`, `not_found_7d` w/ delta, `keywords_in_top10`), one-click Ping IndexNow form, llms.txt freshness note
+- **Sitemap** — per-type counts (Products / Categories / Collections / Vendors / Authors / Journal / Static / Manual), live URL table, IndexNow controls, sitemap-validate, manual `SitemapEntry` editor, truncation banner when over the cap
+- **Audit** — per-product audit score with drill-down (View PDP / Edit / Bulk-meta filter), collapsible `<details>` for full issues + suggestions list
+- **Bulk meta** — `?q=` search + `?missing=desc|title|both` filter + Paginator(50/page) + dynamic `maxlength` bound to `SiteSeoSettings` + inline char counters with warn/danger thresholds
+- **404 log** — per-row Dismiss + Create redirect actions; sticky link to the new **Redirects manager** for full CRUD
+- **Inspector** — paste a slug + type (product / category / collection / journal) and see the rendered head as a crawler does: title, description, canonical, robots, sitemap-presence, audit score, matching tracked keywords, JSON-LD, OG tags — all in one card
+- **Keywords** — tracked keyword positions + delta over time
+- **Settings** — `news_sitemap_max_age_hours`, sitemap caps, robots-meta defaults, shippingDetails handling/transit windows, per-bot allow/deny
+
+### Web Stories at a glance
+
+```
+Product.images + book.* metafields
+        │
+        ▼ (post_save signal)
+ensure_story(product)  ──── idempotent panel build
+        │
+        ├──→ panels = [cover, short_desc, …images, synopsis?, CTA]
+        ▼
+WebStory  (one row per product, OneToOne)
+        │
+        ├──→ /story/<slug>/           ←  valid <amp-story> doc (cache-headers + Last-Modified)
+        ├──→ PDP <amp-story-player>   ←  StorefrontBlock(slot='pdp_above_long_description')
+        ├──→ <link rel="amphtml">     ←  Google Discover hook
+        └──→ /sitemap.xml             ←  Web Stories indexing
+```
+
+Backfill an existing catalog with `python manage.py backfill_webstories` (idempotent, `--dry-run` + `--limit` flags).
+
+---
+
 ## Saleor parity
 
 A live tracker of how Morpheus compares to Saleor, the previous open-source benchmark.
@@ -471,6 +565,59 @@ We won't pretend. Saleor has ~5 years of production mileage on thousands of stor
 | **Webhook ecosystem** | Saleor webhooks have Zapier / Make / n8n recipes. Morpheus has the `webhooks_ui` plugin with the same primitives but the third-party recipe library is still thin — see [`docs/WEBHOOK_RECIPES.md`](docs/WEBHOOK_RECIPES.md) for the starters. |
 
 **One-line summary**: Morpheus is the better pick for a new merchant launching this year with a small/mid catalog and a desire for AI-driven onboarding. Saleor is the safer pick for a $50M+ GMV merchant migrating off Shopify Plus today. We're working on closing both gaps — track progress in the [enterprise roadmap](ENTERPRISE_ROADMAP.md).
+
+---
+
+## Roadmap
+
+A live snapshot of where we are and where we're going. Items move between tiers as they ship; this list is rebuilt with intent every couple of weeks. Anything marked **[done]** is already in `main`.
+
+### Near term (May–July 2026)
+
+| Track | Status | Notes |
+|---|---|---|
+| 2026 SEO + AEO bundle — 28 of 29 audit findings | **[done]** May 30 · `41df4cf` | Head-metadata wiring, crawler discovery via `sitemap-index`, JSON-LD depth (Book + Review nodes), Cache-Control on every endpoint, IndexNow on Category/Collection/CMS, dashboard usability (drill-down, inspector, redirects, sitemap banner), RSS + Atom, hreflang, security.txt |
+| Web Stories plugin (auto-AMP per product + PDP embed) | **[done]** May 30 · `28119e6` | Story URLs in sitemap + `<link rel="amphtml">` from PDP. Backfill command shipped. |
+| Robots-meta consolidation across cart/checkout/account/search (~19 templates) | in progress | Extend `seo_meta` with `noindex=True` flag → remove duplicated `<meta name="robots">` everywhere. Deferred from the SEO bundle because it exceeded the per-batch safety threshold. |
+| Web Stories v2 — admin per-panel editor + theme overlay | queued | Reorder panels, edit captions / titles, set background overlay tint per merchant. v1 is auto-only. |
+| Polling endpoint for Linda JSON mode (concurrency Phase 1) | queued | Async `/api/llm-tasks/` so the synchronous assistant path doesn't hold a gunicorn thread for 12 s LLM calls. ~2 hours. |
+| API stability contract for catalog/orders/cart GraphQL | queued | `docs/API_STABILITY.md` skeleton exists; we need versioned breaking-change cadence on the public surface. |
+
+### Mid term (Q3 2026)
+
+| Track | Notes |
+|---|---|
+| **Headless-friendly REST/GraphQL completeness** | Move the operations that still live in Django views (search facets, account management, journal listing) into the public GraphQL schema. Saleor parity gap. |
+| **Multi-warehouse stock reservation** | `inventory.allocator.plan_allocation` ships the cheapest-warehouse selector; the next step is per-warehouse reservations across split fulfillments with hard timeouts on hold expiry. |
+| **Channel-specific pricing depth** | `ProductChannelListing` exists; we still need country-specific tax stacks + FX-aware refunds at multiple rate snapshots. |
+| **Web Vitals p75 → SEO Audit feedback loop** | RUM already collects p75 per route; route them into the per-product SEO audit score so low-LCP PDPs surface in the dashboard. |
+| **Background-agent visualisation timeline** | Per-agent timeline of runs / tokens / failures over a configurable window; tap into the run trace for the failing call. |
+| **Marketplace payout automation** | Vendor onboarding + per-vendor order splitting is shipped; payouts go through draft `VendorPayout` rows. Wire to Stripe Connect / Wise. |
+
+### Long term (H2 2026 and beyond)
+
+| Track | Notes |
+|---|---|
+| **Concurrency Phases 2 + 3** | Async-first GraphQL view, async-converted hot paths (`product_detail`, `cart_totals`), warm-pool of LLM provider connections. Lift per-container capacity from ~32 concurrent → ~250. |
+| **Public-API stability tier** | Publish a versioned schema with a 6-month breaking-change deprecation window. The first published version waits for the headless-completeness gap above to close. |
+| **Multi-store** (single deploy serves N storefronts) | `core.StoreChannel` already models the per-channel cut; routing host → channel + admin isolation per store is the missing piece. |
+| **Enterprise compliance posture** | Third-party attestations on RBAC + audit log + data export — GDPR, PCI DSS SAQ-A, SOC 2 Type I as a starting set. |
+| **Visual page builder for CMS Pages + Storefront Blocks** | A drag-and-drop block composer that targets the existing `cms.Page` + `StorefrontBlock` shape — no proprietary JSON format. |
+| **Real-time agent presence on storefront** | Already foreshadowed by `core/channels.py`. Concierge agent can see who's on the site, what they're looking at, and proactively engage (with consent). |
+| **Federated catalog (`morpheus://`) discovery** | Cross-store product search via the same MCP shape the platform already exposes for AI clients. |
+
+### Architectural cleanup (in flight)
+
+The **[2026 Architecture Audit](docs/plans/architecture-2026-audit.md)** identified three files that crossed the "needs splitting" threshold. Status:
+
+| File | Before | Status |
+|---|---|---|
+| `plugins/installed/storefront/views.py` | 2098 LOC | **[done]** split into `home.py` / `catalog.py` / `cart.py` / `checkout.py` / `account.py` / `content.py` / `vendor.py` |
+| `plugins/installed/seo/services.py` | 1907 LOC | **[done]** split into `services/sitemaps.py` / `crawler_files.py` / `jsonld.py` / `ai_feeds.py` / `feeds.py` / `_helpers.py` / `audit.py` etc. |
+| `plugins/installed/admin_dashboard/forms.py` | 944 LOC | **[done]** decomposed into `forms/` package |
+| `plugins/installed/catalog/services.py` | 896 LOC | queued — split per-entity (product / variant / category CRUD) |
+
+The audit is rolling — re-run periodically against the current tree to spot new growth before it bakes in.
 
 ---
 
@@ -684,6 +831,8 @@ PRs welcome. The bar:
 
 ## What's new (recent waves)
 
+- **Web Stories plugin (May 30, 2026 · `28119e6`)** — new [`webstories`](plugins/installed/webstories/) plugin auto-generates a valid Google AMP `<amp-story>` document per product from images + book metafields, embeds an `<amp-story-player>` on the PDP, and exposes the story to Google via `<link rel="amphtml">` + sitemap inclusion. Auto-rebuilds on Product / ProductImage save. `python manage.py backfill_webstories` populates an existing catalog idempotently.
+- **2026 SEO + AEO bundle (May 30, 2026 · `41df4cf`)** — a multi-dimensional audit found 31 verified improvements; **28 of 29 P0/P1/P2 items shipped in one commit** (+2311 / −420 across 21 files). Highlights: every storefront view now passes `seo_object` so the head-metadata pipeline actually runs; `robots.txt` advertises `/sitemap-index.xml`; every public SEO endpoint gained Cache-Control + Last-Modified; IndexNow now pings on Category / Collection / CMS-page edits, not just Product; **Book subtype JSON-LD** from `book.*` metafields; **individual `Review` nodes** alongside AggregateRating; **paste-a-slug SEO Inspector**; **404 redirects manager + Dismiss**; **`/.well-known/security.txt`** (RFC 9116); **RSS + Atom journal feeds**; **`seo_hreflang` templatetag** for multi-market stores; `/ai/products.json` paginated with `nextPage` + `numberOfItems`; bulk-meta with `?q=`/`?missing=`/Paginator + char counters; audit table drill-down; sitemap silently-truncated banner.
 - **One-prompt store bootstrap** — new [`store_bootstrap`](plugins/installed/store_bootstrap/) plugin. Merchant types one sentence at `/dashboard/apps/store_bootstrap/start/`; the active LLM gateway returns a strict-JSON plan (brand voice + 4-6 categories + 10-12 products); platform writes everything in ~20 seconds. Idempotent on SHA-256 of the prompt, JSON-repair pass for trailing commas + unescaped newlines + code fences, `Category.get_or_create` so re-runs don't duplicate.
 - **GA4 + GTM tracking plugin** — new [`tracking`](plugins/installed/tracking/) plugin. Server-side Measurement Protocol v2 firing on the hook bus (ORDER_PAID / ADD_TO_CART / BEGIN_CHECKOUT / view_item / view_item_list / search / signup / login / refund), client-side GTM container with **Consent Mode v2 defaults emitted before the container script** (the #1 EEA-compliance bug per Google's own docs), storefront consent banner, dashboard control center at `/dashboard/tracking/` with Connection / Events / Consent / Identity / Filters / Tests tabs.
 - **Money-path concurrency hardening** — Stripe webhook now writes to the previously-unused `StripeWebhookEvent` table first; the unique constraint on `stripe_event_id` turns retried deliveries into IntegrityError → "already processed". `_mark_transaction_failed` mirrors the success path with `atomic()` + `select_for_update()` + terminal-state short-circuit. Audit trail covers every webhook delivery with `is_processed` + `processed_at` + `error`.
