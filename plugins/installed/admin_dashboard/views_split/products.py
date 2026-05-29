@@ -212,6 +212,7 @@ def product_new(request: HttpRequest) -> HttpResponse:
         'product': None,
         'categories': categories,
         'vendors': vendors,
+        'selected_category_ids': set(),
         'seo_defaults': {},
         'active_nav': 'products',
         'breadcrumb_trail': [
@@ -282,11 +283,23 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     except Exception:  # noqa: BLE001 — never break the product page if BV is wedged
         bv_authed = False
 
+    # Collections multi-select pre-selection: the product's M2M
+    # memberships, unioned with the legacy single category FK so the
+    # form is correct whether or not the prod backfill has run yet.
+    selected_category_ids = set()
+    try:
+        selected_category_ids = set(product.categories.values_list('id', flat=True))
+    except Exception:  # noqa: BLE001
+        pass
+    if product.category_id:
+        selected_category_ids.add(product.category_id)
+
     return render(request, 'admin_dashboard/product_form.html', {
         'form': form,
         'product': product,
         'categories': categories,
         'vendors': vendors,
+        'selected_category_ids': selected_category_ids,
         'variants': variants,
         'images': images,
         'videos': videos,

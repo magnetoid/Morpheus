@@ -225,8 +225,25 @@ class ProductForm(forms.Form):
         if hasattr(product, 'structured_data'):
             product.structured_data = cd.get('structured_data') or {}
 
-        if cd.get('category'):
+        # Collections (= the unified hierarchical grouping; UI label
+        # "Collections", model still `Category`). Multi-select posts
+        # `categories`. Dual-write during the merge window: the M2M is
+        # the source of truth going forward, and we keep the legacy
+        # single `category` FK pointed at the FIRST selection as the
+        # "primary" so the public storefront (still reading `category`
+        # for breadcrumbs/canonical) keeps working until its read
+        # cutover. The M2M itself is set after save() (needs a PK).
+        cat_ids = (
+            self.data.getlist('categories')
+            if hasattr(self.data, 'getlist') else []
+        )
+        cat_ids = [c for c in cat_ids if c]
+        if cat_ids:
+            product.category = Category.objects.filter(pk=cat_ids[0]).first()
+        elif cd.get('category'):
+            # Back-compat: a caller still posting the old single field.
             product.category = Category.objects.filter(pk=cd['category']).first()
+            cat_ids = [cd['category']]
         else:
             product.category = None
         if cd.get('vendor'):
@@ -265,6 +282,14 @@ class ProductForm(forms.Form):
         elif not product.slug:
             product.slug = slugify(product.name)[:300] or 'product'
         product.save()
+
+        # M2M set after save (needs a PK). Mirrors the primary FK +
+        # any additional selected collections.
+        if hasattr(product, 'categories'):
+            if cat_ids:
+                product.categories.set(Category.objects.filter(pk__in=cat_ids))
+            else:
+                product.categories.clear()
         return product
 
 

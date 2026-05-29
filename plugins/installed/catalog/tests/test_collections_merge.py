@@ -77,3 +77,52 @@ class BackfillTests(TestCase):
         call_command('merge_collections_into_categories', '--dry-run')
         self.assertEqual(p.categories.count(), 0)
         self.assertFalse(Category.objects.filter(slug='staff-picks').exists())
+
+
+class ProductFormDualWriteTests(TestCase):
+    """Phase 3: the admin product form's multi-select Collections picker
+    writes the new `categories` M2M AND keeps the legacy `category` FK
+    pointed at the first selection (primary), so the public storefront
+    keeps working during the read-cutover window."""
+
+    def setUp(self):
+        self.fiction = Category.objects.create(name='Fiction', slug='fiction')
+        self.classics = Category.objects.create(name='Classics', slug='classics')
+
+    def _post(self, category_ids):
+        # Mirror request.POST — a QueryDict, which is what ProductForm
+        # always receives in production (its save() reads
+        # self.data.getlist('categories')).
+        from django.http import QueryDict
+        q = QueryDict('', mutable=True)
+        q.update({
+            'name': 'Crime and Punishment',
+            'slug': 'crime-and-punishment',
+            'sku': 'CP-1',
+            'status': 'active',
+            'product_type': 'simple',
+            'price': '12.00',
+        })
+        q.setlist('categories', [str(c) for c in category_ids])
+        return q
+
+    def test_multi_select_sets_m2m_and_primary_fk(self):
+        from plugins.installed.admin_dashboard.forms import ProductForm
+        form = ProductForm(self._post([self.fiction.id, self.classics.id]))
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        # M2M holds both selected collections.
+        self.assertEqual(
+            set(product.categories.values_list('slug', flat=True)),
+            {'fiction', 'classics'},
+        )
+        # Legacy FK = first selection (primary) for storefront back-compat.
+        self.assertEqual(product.category_id, self.fiction.id)
+
+    def test_no_selection_clears_both(self):
+        from plugins.installed.admin_dashboard.forms import ProductForm
+        form = ProductForm(self._post([]))
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertEqual(product.categories.count(), 0)
+        self.assertIsNone(product.category_id)
