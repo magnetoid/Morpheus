@@ -16,21 +16,57 @@ from django.utils.html import escape
 from ._helpers import _seo_plugin, _site_base_url, logger, site_settings
 
 
+def _iter_author_entries(base: str) -> Iterable[dict]:
+    """Authors are derived from ``Metafield`` rows
+    (``namespace='book'``, ``key='author'``). ``author_detail`` enumerates
+    by ``slugify(name)`` — match the same shape here so the sitemap URLs
+    actually resolve."""
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from django.utils.text import slugify
+
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.metafields.models import Metafield
+
+        ct = ContentType.objects.get_for_model(Product)
+        names = (
+            Metafield.objects.filter(content_type=ct, namespace='book', key='author')
+            .exclude(value='')
+            .values_list('value', flat=True)
+            .distinct()
+        )
+        seen: set[str] = set()
+        for name in names:
+            slug = slugify(name)
+            if not slug or slug in seen:
+                continue
+            seen.add(slug)
+            yield {
+                'loc': urljoin(base, f'/author/{slug}/'),
+                'changefreq': 'weekly',
+                'priority': '0.5',
+            }
+    except Exception as e:  # noqa: BLE001 — metafields plugin optional
+        logger.debug('seo: sitemap authors skipped: %s', e)
+
+
 def iter_sitemap_entries() -> Iterable[dict]:
     """Yield entries that should appear in the sitemap. Pulls from:
 
     1. Active products (catalog)
     2. Active categories (catalog)
     3. Active collections (catalog)
-    4. Journal entries (cms)
-    5. Manually-curated SitemapEntry rows
+    4. Active vendors (catalog)
+    5. Authors — distinct values from book/author metafields
+    6. Journal entries (cms)
+    7. Manually-curated SitemapEntry rows
     """
     base = _site_base_url()
 
     yield {'loc': base, 'changefreq': 'daily', 'priority': '1.0'}
 
     try:
-        from plugins.installed.catalog.models import Category, Collection, Product
+        from plugins.installed.catalog.models import Category, Collection, Product, Vendor
 
         for p in Product.objects.filter(status='active').only('slug', 'updated_at'):
             yield {
@@ -38,6 +74,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'lastmod': p.updated_at.isoformat() if p.updated_at else '',
                 'changefreq': 'weekly',
                 'priority': '0.8',
+                'md_alternate': urljoin(base, f'/md/products/{p.slug}'),
             }
         for c in Category.objects.filter(is_active=True).only('slug', 'updated_at'):
             yield {
@@ -53,13 +90,33 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'changefreq': 'weekly',
                 'priority': '0.6',
             }
+        for v in Vendor.objects.filter(is_active=True).only('slug', 'updated_at'):
+            yield {
+                'loc': urljoin(base, f'/vendor/{v.slug}/'),
+                'lastmod': v.updated_at.isoformat() if v.updated_at else '',
+                'changefreq': 'weekly',
+                'priority': '0.6',
+            }
     except Exception as e:  # noqa: BLE001 — catalog plugin is optional
         logger.debug('seo: sitemap catalog skipped: %s', e)
 
+    yield from _iter_author_entries(base)
+
     # Static editorial routes shipped by the storefront plugin. These don't
     # have model rows so they're hard-coded here; cheap and stable.
-    for path in ('/products/', '/staff-picks/', '/about/', '/contact/', '/journal/'):
+    for path in (
+        '/products/',
+        '/staff-picks/',
+        '/categories/',
+        '/vendors/',
+        '/about/',
+        '/contact/',
+        '/journal/',
+    ):
         yield {'loc': urljoin(base, path), 'changefreq': 'weekly', 'priority': '0.7'}
+    # Policy pages — low priority, change rarely.
+    for path in ('/shipping/', '/returns/'):
+        yield {'loc': urljoin(base, path), 'changefreq': 'monthly', 'priority': '0.4'}
 
     # Journal entries — pulled from cms.Page rows tagged metadata.category=='journal'.
     try:
@@ -81,8 +138,12 @@ def iter_sitemap_entries() -> Iterable[dict]:
         from plugins.installed.seo.models import SitemapEntry
 
         for row in SitemapEntry.objects.filter(is_active=True):
+            raw = (row.location or '').strip()
+            if not raw:
+                continue
+            loc = raw if raw.startswith(('http://', 'https://')) else urljoin(base, raw)
             yield {
-                'loc': row.location,
+                'loc': loc,
                 'lastmod': row.last_modified.isoformat() if row.last_modified else '',
                 'changefreq': row.changefreq,
                 'priority': str(row.priority),
@@ -109,12 +170,28 @@ def sitemap_counts() -> dict:
         'product_count': 0,
         'category_count': 0,
         'collection_count': 0,
+        'vendor_count': 0,
+        'author_count': 0,
         'journal_count': 0,
         'static_count': 0,
         'manual_count': 0,
         'last_modified': '',
+        'truncated': False,
     }
     base = _site_base_url().rstrip('/')
+    static_routes = (
+        '/',
+        '/products/',
+        '/staff-picks/',
+        '/categories/',
+        '/vendors/',
+        '/about/',
+        '/contact/',
+        '/journal/',
+        '/shipping/',
+        '/returns/',
+    )
+    cap = _sitemap_max_urls()
     latest = ''
     for e in iter_sitemap_entries():
         counts['total'] += 1
@@ -126,9 +203,13 @@ def sitemap_counts() -> dict:
             counts['category_count'] += 1
         elif path.startswith('/collection/'):
             counts['collection_count'] += 1
+        elif path.startswith('/vendor/'):
+            counts['vendor_count'] += 1
+        elif path.startswith('/author/'):
+            counts['author_count'] += 1
         elif path.startswith('/journal/') and path != '/journal/':
             counts['journal_count'] += 1
-        elif path in ('/', '/products/', '/staff-picks/', '/about/', '/contact/', '/journal/'):
+        elif path in static_routes:
             counts['static_count'] += 1
         else:
             counts['manual_count'] += 1
@@ -136,6 +217,8 @@ def sitemap_counts() -> dict:
         if lm > latest:
             latest = lm
     counts['last_modified'] = latest
+    if counts['total'] > cap:
+        counts['truncated'] = True
     return counts
 
 
@@ -160,11 +243,13 @@ def render_sitemap_xml() -> str:
     cap = _sitemap_max_urls()
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+        'xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     ]
     count = 0
     for e in iter_sitemap_entries():
         if count >= cap:
+            logger.warning('seo: sitemap truncated at %d entries (cap=%d)', count, cap)
             break
         parts.append('<url>')
         parts.append(f'<loc>{escape(e["loc"])}</loc>')
@@ -174,6 +259,11 @@ def render_sitemap_xml() -> str:
             parts.append(f'<changefreq>{escape(e["changefreq"])}</changefreq>')
         if e.get('priority'):
             parts.append(f'<priority>{escape(e["priority"])}</priority>')
+        if e.get('md_alternate'):
+            parts.append(
+                f'<xhtml:link rel="alternate" type="text/markdown" '
+                f'href="{escape(e["md_alternate"])}"/>'
+            )
         parts.append('</url>')
         count += 1
     parts.append('</urlset>')
@@ -290,7 +380,12 @@ def render_image_sitemap_xml() -> str:
     try:
         from plugins.installed.catalog.models import Product
 
-        for p in Product.objects.filter(status='active').prefetch_related('images')[:5000]:
+        cap = _sitemap_max_urls()
+        qs = Product.objects.filter(status='active')
+        total = qs.count()
+        if total > cap:
+            logger.warning('seo: image sitemap truncated at %d entries', cap)
+        for p in qs.prefetch_related('images')[:cap]:
             page_url = f'{base}/products/{p.slug}/'
             imgs = list(p.images.all())
             if not imgs:

@@ -5,9 +5,14 @@
 <a href="{% url 'seo_dashboard:overview' %}" class="text-sm text-[color:var(--text-muted)]">← SEO</a>
 <h1 class="text-xl font-semibold mt-2 mb-4">404 log</h1>
 
+<div class="card card-padded mb-4" style="position:sticky; top:.5rem; z-index:5; display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+  <span class="text-sm">Need to manage existing 301/302 rules?</span>
+  <a href="{% url 'seo_dashboard:redirects' %}" class="btn">Open redirects manager</a>
+</div>
+
 <div class="card">
   <table class="morph-table">
-    <thead><tr><th>Path</th><th>Hits</th><th>Last hit</th><th>Suggested target</th><th></th></tr></thead>
+    <thead><tr><th>Path</th><th>Hits</th><th>Last hit</th><th>Suggested target</th><th>Actions</th></tr></thead>
     <tbody>
     {% for r in rows %}
       <tr>
@@ -15,12 +20,17 @@
         <td>{{ r.hit_count }}</td>
         <td>{{ r.last_seen_at|date:"M j H:i" }}</td>
         <td>{{ r.suggested_target|default:"—" }}</td>
-        <td>
+        <td style="display:flex; gap:.35rem; flex-wrap:wrap;">
           <form method="post" action="{% url 'seo_dashboard:not_found_redirect' r.id %}" style="display:inline-flex; gap:.35rem;">
             {% csrf_token %}
-            <input type="text" name="to_path" value="{{ r.suggested_target }}" placeholder="/products/foo/" class="input" style="height:2rem;">
+            <input type="text" name="to_path" value="{{ r.suggested_target }}" placeholder="/products/foo/" class="input" style="height:2rem;" aria-label="Redirect target for {{ r.path }}">
             <button type="submit" class="btn">Redirect</button>
           </form>
+          <form method="post" action="{% url 'seo_dashboard:not_found_dismiss' r.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost" title="Mark as resolved without creating a redirect">Dismiss</button>
+          </form>
+          <a href="{% url 'seo_dashboard:inspector' %}?slug={{ r.path|urlencode }}" class="btn btn-ghost" title="Try resolving this path in the SEO inspector">Inspect</a>
         </td>
       </tr>
     {% empty %}

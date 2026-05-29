@@ -1,0 +1,87 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Redirects · SEO · Morpheus{% endblock %}
+
+{% block content %}
+<a href="{% url 'seo_dashboard:overview' %}" class="text-sm text-[color:var(--text-muted)]">← SEO</a>
+<div class="flex items-center justify-between mt-2 mb-4">
+  <h1 class="text-xl font-semibold">301 / 302 redirects</h1>
+  <a href="{% url 'seo_dashboard:not_found' %}" class="text-sm text-[color:var(--text-muted)] hover:underline">404 log →</a>
+</div>
+
+<div class="card mb-6">
+  <table class="morph-table">
+    <thead>
+      <tr>
+        <th>From path</th>
+        <th>To path</th>
+        <th>Code</th>
+        <th>Hits</th>
+        <th>Active</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><code style="font-size:.85rem;">{{ r.from_path|truncatechars:60 }}</code></td>
+          <td><code style="font-size:.85rem;">{{ r.to_path|truncatechars:60 }}</code></td>
+          <td><span class="pill">{{ r.status_code }}</span></td>
+          <td>{{ r.hit_count }}</td>
+          <td>{% if r.is_active %}<span class="pill pill-success">on</span>{% else %}<span class="pill pill-neutral">off</span>{% endif %}</td>
+          <td style="white-space:nowrap;">
+            <a class="btn-link" href="?edit={{ r.id }}#redirect-form">Edit</a>
+            ·
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this redirect?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="id" value="{{ r.id }}">
+              <button type="submit" class="btn-link" style="color:var(--danger);">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No redirects yet — add one below.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card card-padded max-w-3xl" id="redirect-form">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="font-semibold">{% if edit_row %}Edit redirect{% else %}Add redirect{% endif %}</h3>
+    {% if edit_row %}<a href="{% url 'seo_dashboard:redirects' %}" class="text-xs text-[color:var(--text-muted)] hover:underline">Cancel</a>{% endif %}
+  </div>
+  <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="{% if edit_row %}edit{% else %}create{% endif %}">
+    {% if edit_row %}<input type="hidden" name="id" value="{{ edit_row.id }}">{% endif %}
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="from-path">From path</label>
+      <input id="from-path" class="input w-full" name="from_path" required placeholder="/old-url/" value="{{ edit_row.from_path|default:'' }}">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="to-path">To path</label>
+      <input id="to-path" class="input w-full" name="to_path" required placeholder="/new-url/" value="{{ edit_row.to_path|default:'' }}">
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="status-code">Status code</label>
+      {% with current=edit_row.status_code|default:301 %}
+      <select id="status-code" class="input w-full" name="status_code">
+        <option value="301"{% if current == 301 %} selected{% endif %}>301 Permanent</option>
+        <option value="302"{% if current == 302 %} selected{% endif %}>302 Temporary</option>
+      </select>
+      {% endwith %}
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="note-input">Note (optional)</label>
+      <input id="note-input" class="input w-full" name="note" value="{{ edit_row.note|default:'' }}" maxlength="200">
+    </div>
+    <div class="md:col-span-2 flex items-center gap-2">
+      <label><input type="checkbox" name="is_active"{% if not edit_row or edit_row.is_active %} checked{% endif %}> Active</label>
+    </div>
+    <div class="md:col-span-2 mt-2">
+      <button type="submit" class="btn btn-primary">{% if edit_row %}Save changes{% else %}Add redirect{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

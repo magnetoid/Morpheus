@@ -3,6 +3,7 @@
 Also home to the AI-crawler catalogue + per-bot policy resolver, which
 robots.txt uses to emit per-UA blocks.
 """
+
 from __future__ import annotations
 
 from urllib.parse import urljoin
@@ -16,28 +17,28 @@ from ._helpers import _seo_plugin, _site_base_url, site_settings
 # bots default to "allow" too so the merchant opts out, not in.
 AI_CRAWLERS = [
     # OpenAI
-    ('GPTBot',           'OpenAI · ChatGPT training crawler',          'training'),
-    ('OAI-SearchBot',    'OpenAI · ChatGPT Search retrieval',          'search'),
-    ('ChatGPT-User',     'OpenAI · ChatGPT user-triggered fetch',      'user'),
+    ('GPTBot', 'OpenAI · ChatGPT training crawler', 'training'),
+    ('OAI-SearchBot', 'OpenAI · ChatGPT Search retrieval', 'search'),
+    ('ChatGPT-User', 'OpenAI · ChatGPT user-triggered fetch', 'user'),
     # Anthropic
-    ('ClaudeBot',        'Anthropic · Claude training crawler',        'training'),
-    ('Claude-User',      'Anthropic · Claude user-triggered fetch',    'user'),
-    ('Claude-SearchBot', 'Anthropic · Claude search retrieval',        'search'),
+    ('ClaudeBot', 'Anthropic · Claude training crawler', 'training'),
+    ('Claude-User', 'Anthropic · Claude user-triggered fetch', 'user'),
+    ('Claude-SearchBot', 'Anthropic · Claude search retrieval', 'search'),
     # Perplexity
-    ('PerplexityBot',    'Perplexity · indexing crawler',              'search'),
-    ('Perplexity-User',  'Perplexity · user-triggered fetch',          'user'),
+    ('PerplexityBot', 'Perplexity · indexing crawler', 'search'),
+    ('Perplexity-User', 'Perplexity · user-triggered fetch', 'user'),
     # Google
-    ('Google-Extended',  'Google · Bard / Vertex AI training opt-out', 'training'),
+    ('Google-Extended', 'Google · Bard / Vertex AI training opt-out', 'training'),
     # Apple
-    ('Applebot-Extended','Apple · Apple Intelligence training opt-out','training'),
+    ('Applebot-Extended', 'Apple · Apple Intelligence training opt-out', 'training'),
     # Meta
-    ('Meta-ExternalAgent','Meta · AI training crawler',                'training'),
+    ('Meta-ExternalAgent', 'Meta · AI training crawler', 'training'),
     # ByteDance (TikTok)
-    ('Bytespider',       'ByteDance · LLM training crawler',           'training'),
+    ('Bytespider', 'ByteDance · LLM training crawler', 'training'),
     # Amazon
-    ('Amazonbot',        'Amazon · Alexa + AI fetcher',                'search'),
+    ('Amazonbot', 'Amazon · Alexa + AI fetcher', 'search'),
     # Common Crawl
-    ('CCBot',            'Common Crawl · public web archive',          'training'),
+    ('CCBot', 'Common Crawl · public web archive', 'training'),
 ]
 
 
@@ -78,9 +79,12 @@ def render_robots_txt() -> str:
     seo_plugin = _seo_plugin()
     if seo_plugin is not None:
         try:
-            default_allow = bool(seo_plugin.get_config_value(
-                'ai_crawler_default_allow', True,
-            ))
+            default_allow = bool(
+                seo_plugin.get_config_value(
+                    'ai_crawler_default_allow',
+                    True,
+                )
+            )
         except Exception:  # noqa: BLE001
             pass
 
@@ -108,14 +112,35 @@ def render_robots_txt() -> str:
         lines.append('')
 
     # Universal fallback for every other crawler (Googlebot, Bingbot, …).
-    lines.extend([
-        'User-agent: *',
-        'Allow: /',
-        *common_disallow,
-        '',
-        f'Sitemap: {urljoin(base, "/sitemap.xml")}',
-        f'Sitemap: {urljoin(base, "/sitemap-images.xml")}',
-    ])
+    lines.extend(
+        [
+            'User-agent: *',
+            'Allow: /',
+            *common_disallow,
+            '',
+            # Single sitemap-index entry — discovery doc that lists every
+            # sub-sitemap (main, images, news). Crawlers prefer the index
+            # over a flat per-file list.
+            f'Sitemap: {urljoin(base, "/sitemap-index.xml")}',
+        ]
+    )
+
+    # Advertise the news sitemap separately when enabled — Google News
+    # specifically looks for a dedicated `Sitemap: …-news.xml` line.
+    news_enabled = False
+    if seo_plugin is not None:
+        try:
+            news_enabled = bool(
+                seo_plugin.get_config_value(
+                    'news_sitemap_enabled',
+                    False,
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if news_enabled:
+        lines.append(f'Sitemap: {urljoin(base, "/sitemap-news.xml")}')
+
     return '\n'.join(lines).rstrip() + '\n'
 
 
@@ -137,11 +162,17 @@ def render_llms_txt(*, full: bool = False) -> str:
     else:
         out.extend([f'> {name} — visit {base} to browse.', ''])
 
-    out.extend(['## Site map', f'- [Home]({base}/)',
-                f'- [All products]({base}/products/)',
-                f'- [Categories]({base}/categories/)',
-                f'- [Search]({base}/search/?q=)',
-                f'- [Sitemap XML]({base}/sitemap.xml)', ''])
+    out.extend(
+        [
+            '## Site map',
+            f'- [Home]({base}/)',
+            f'- [All products]({base}/products/)',
+            f'- [Categories]({base}/categories/)',
+            f'- [Search]({base}/search/?q=)',
+            f'- [Sitemap XML]({base}/sitemap.xml)',
+            '',
+        ]
+    )
 
     # Read the two new knobs once for the whole render.
     include_price = True
@@ -149,17 +180,24 @@ def render_llms_txt(*, full: bool = False) -> str:
     seo_plugin = _seo_plugin()
     if seo_plugin is not None:
         try:
-            include_price = bool(seo_plugin.get_config_value(
-                'include_pricing_in_llms_txt', True,
-            ))
-            include_stock = bool(seo_plugin.get_config_value(
-                'include_inventory_in_llms_txt', False,
-            ))
+            include_price = bool(
+                seo_plugin.get_config_value(
+                    'include_pricing_in_llms_txt',
+                    True,
+                )
+            )
+            include_stock = bool(
+                seo_plugin.get_config_value(
+                    'include_inventory_in_llms_txt',
+                    False,
+                )
+            )
         except Exception:  # noqa: BLE001
             pass
 
     try:
         from plugins.installed.catalog.models import Category, Product
+
         out.append('## Categories')
         for c in Category.objects.filter(parent__isnull=True).order_by('name')[:50]:
             out.append(f'- [{c.name}]({base}/products/?category={c.slug})')
@@ -185,10 +223,8 @@ def render_llms_txt(*, full: bool = False) -> str:
             if include_stock:
                 try:
                     from plugins.installed.inventory.models import StockLevel
-                    qty = sum(
-                        s.quantity for s in
-                        StockLevel.objects.filter(variant__product=p)
-                    )
+
+                    qty = sum(s.quantity for s in StockLevel.objects.filter(variant__product=p))
                     line += f' — {"In stock" if qty > 0 else "Out of stock"}'
                 except Exception:  # noqa: BLE001
                     pass
@@ -201,6 +237,7 @@ def render_llms_txt(*, full: bool = False) -> str:
     except Exception:  # noqa: BLE001
         pass
     return '\n'.join(out) + '\n'
+
 
 # NOTE: the Web App Manifest moved to the dedicated `pwa` plugin
 # (plugins/installed/pwa) which also ships a service worker + offline

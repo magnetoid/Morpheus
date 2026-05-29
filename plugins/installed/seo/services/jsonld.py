@@ -5,7 +5,10 @@ Each function returns a dict ready to be ``json.dumps``-ed into a
 ``except`` blocks below are intentional — a malformed product or
 missing metafield should not block a page render.
 """
+
 from __future__ import annotations
+
+import contextlib
 
 from ._helpers import _seo_plugin, _seo_plugin_cfg, _site_base_url, site_settings
 
@@ -22,14 +25,21 @@ def organization_jsonld() -> dict | None:
     seo_plugin = _seo_plugin()
     if seo_plugin is not None:
         try:
-            org_type = (seo_plugin.get_config_value(
-                'organization_type', 'OnlineStore',
-            ) or 'OnlineStore').strip() or 'OnlineStore'
+            org_type = (
+                seo_plugin.get_config_value(
+                    'organization_type',
+                    'OnlineStore',
+                )
+                or 'OnlineStore'
+            ).strip() or 'OnlineStore'
         except Exception:  # noqa: BLE001
             pass
 
-    same_as = [u for u in (s.facebook_url, s.instagram_url, s.linkedin_url,
-                           s.youtube_url, s.tiktok_url) if u]
+    same_as = [
+        u
+        for u in (s.facebook_url, s.instagram_url, s.linkedin_url, s.youtube_url, s.tiktok_url)
+        if u
+    ]
     out = {
         '@context': 'https://schema.org',
         '@type': org_type,
@@ -68,8 +78,7 @@ def breadcrumb_jsonld(items: list[dict]) -> dict:
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         'itemListElement': [
-            {'@type': 'ListItem', 'position': i + 1,
-             'name': it['name'], 'item': it['url']}
+            {'@type': 'ListItem', 'position': i + 1, 'name': it['name'], 'item': it['url']}
             for i, it in enumerate(items)
         ],
     }
@@ -102,13 +111,65 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         'url': url,
         'description': description[:500],
     }
+
+    # Book subtype — if any namespace='book' metafields are attached to
+    # this product, upgrade @type to ['Product', 'Book'] and surface the
+    # Book-specific properties. Books-only storefront → AI engines + SERP
+    # rich results want Book over generic Product. Guarded so a missing
+    # metafields plugin doesn't break JSON-LD rendering.
+    book_mf: dict = {}
+    if not isinstance(product, dict):
+        try:
+            from django.contrib.contenttypes.models import ContentType
+            from plugins.installed.metafields.models import Metafield
+
+            ct = ContentType.objects.get_for_model(type(product))
+            book_mf = {
+                m.key: m.value
+                for m in Metafield.objects.filter(
+                    content_type=ct,
+                    object_id=product.pk,
+                    namespace='book',
+                )
+            }
+        except Exception:  # noqa: BLE001
+            book_mf = {}
+        if book_mf:
+            out['@type'] = ['Product', 'Book']
+            fmt_raw = str(book_mf.get('format') or '').strip().lower()
+            fmt_map = {
+                'hardcover': 'https://schema.org/Hardcover',
+                'paperback': 'https://schema.org/Paperback',
+                'ebook': 'https://schema.org/EBook',
+                'audio': 'https://schema.org/AudiobookFormat',
+                'audiobook': 'https://schema.org/AudiobookFormat',
+            }
+            if fmt_raw in fmt_map:
+                out['bookFormat'] = fmt_map[fmt_raw]
+            pages_raw = book_mf.get('pages')
+            if pages_raw is not None and str(pages_raw).strip():
+                with contextlib.suppress(TypeError, ValueError):
+                    out['numberOfPages'] = int(str(pages_raw).strip())
+            if book_mf.get('language'):
+                out['inLanguage'] = str(book_mf['language'])
+            if book_mf.get('published_year'):
+                out['datePublished'] = str(book_mf['published_year'])
+            if book_mf.get('isbn'):
+                out['isbn'] = str(book_mf['isbn']).strip()
+            if book_mf.get('author'):
+                out['author'] = {
+                    '@type': 'Person',
+                    'name': str(book_mf['author']),
+                }
     # dateModified — Perplexity decays citations after ~13 weeks and AI
     # Overviews favour ≤60-day content. updated_at is auto_now=True on
     # the Product model so it bumps on every save.
     updated = g('updated_at') or g('updatedAt')
     if updated:
         try:
-            out['dateModified'] = updated.isoformat() if hasattr(updated, 'isoformat') else str(updated)
+            out['dateModified'] = (
+                updated.isoformat() if hasattr(updated, 'isoformat') else str(updated)
+            )
         except Exception:  # noqa: BLE001
             pass
 
@@ -139,9 +200,13 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
             if not isinstance(product, dict):
                 from plugins.installed.inventory.models import StockLevel
                 from django.db.models import Sum, F
-                stock = StockLevel.objects.filter(variant__product=product).aggregate(
-                    qty=Sum(F('quantity') - F('reserved_quantity'))
-                )['qty'] or 0
+
+                stock = (
+                    StockLevel.objects.filter(variant__product=product).aggregate(
+                        qty=Sum(F('quantity') - F('reserved_quantity'))
+                    )['qty']
+                    or 0
+                )
                 if stock <= 0:
                     avail = 'https://schema.org/OutOfStock'
         except Exception:  # noqa: BLE001
@@ -167,6 +232,26 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         ship_fee = commerce_cfg.get('shipping_fee_amount') or '0'
         free_over = commerce_cfg.get('free_shipping_over') or '0'
         country = (commerce_cfg.get('shipping_country') or 'US').upper()
+        # Handling + transit windows are merchant-tunable via the SEO
+        # plugin config — defaults match the hard-coded values they
+        # replaced (0-1d handling, 2-5d transit). Coerced to int so a
+        # stray string in the config JSON doesn't break rendering.
+        try:
+            handling_min = int(commerce_cfg.get('handling_days_min', 0) or 0)
+        except (TypeError, ValueError):
+            handling_min = 0
+        try:
+            handling_max = int(commerce_cfg.get('handling_days_max', 1) or 0)
+        except (TypeError, ValueError):
+            handling_max = 1
+        try:
+            transit_min = int(commerce_cfg.get('transit_days_min', 2) or 0)
+        except (TypeError, ValueError):
+            transit_min = 2
+        try:
+            transit_max = int(commerce_cfg.get('transit_days_max', 5) or 0)
+        except (TypeError, ValueError):
+            transit_max = 5
         if return_days:
             out['offers']['hasMerchantReturnPolicy'] = {
                 '@type': 'MerchantReturnPolicy',
@@ -191,11 +276,15 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
                 '@type': 'ShippingDeliveryTime',
                 'handlingTime': {
                     '@type': 'QuantitativeValue',
-                    'minValue': 0, 'maxValue': 1, 'unitCode': 'DAY',
+                    'minValue': handling_min,
+                    'maxValue': handling_max,
+                    'unitCode': 'DAY',
                 },
                 'transitTime': {
                     '@type': 'QuantitativeValue',
-                    'minValue': 2, 'maxValue': 5, 'unitCode': 'DAY',
+                    'minValue': transit_min,
+                    'maxValue': transit_max,
+                    'unitCode': 'DAY',
                 },
             },
         }
@@ -210,6 +299,7 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
     if not isinstance(product, dict):
         try:
             from django.db.models import Avg, Count
+
             agg = product.reviews.aggregate(avg=Avg('rating'), n=Count('id'))
             if agg['n']:
                 out['aggregateRating'] = {
@@ -217,6 +307,39 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
                     'ratingValue': round(float(agg['avg'] or 0), 1),
                     'reviewCount': agg['n'],
                 }
+        except Exception:  # noqa: BLE001
+            pass
+
+        # Individual Review nodes — without these, SERP star-rating
+        # rich results get stripped (Google requires the rated item to
+        # have at least one Review with reviewBody alongside the
+        # aggregate). AI engines also have nothing concrete to cite.
+        # Cap at 5 to keep the JSON-LD payload bounded. Guarded so a
+        # missing reviews plugin / model doesn't break rendering.
+        try:
+            review_nodes: list[dict] = []
+            for r in product.reviews.filter(is_approved=True)[:5]:
+                body = (getattr(r, 'body', None) or getattr(r, 'content', None) or '').strip()
+                if not body:
+                    continue
+                author_name = getattr(r, 'author_name', None) or (
+                    r.customer.full_name if getattr(r, 'customer', None) else 'Customer'
+                )
+                node: dict = {
+                    '@type': 'Review',
+                    'reviewBody': body,
+                    'reviewRating': {
+                        '@type': 'Rating',
+                        'ratingValue': r.rating,
+                        'bestRating': 5,
+                    },
+                    'author': {'@type': 'Person', 'name': author_name},
+                }
+                if getattr(r, 'created_at', None):
+                    node['datePublished'] = r.created_at.date().isoformat()
+                review_nodes.append(node)
+            if review_nodes:
+                out['review'] = review_nodes
         except Exception:  # noqa: BLE001
             pass
 
@@ -232,10 +355,19 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
     # cards in Google AI Shopping. Only emit when variants exist.
     if not isinstance(product, dict):
         try:
-            variants = list(getattr(product, 'variants', None).filter(is_active=True)[:20]) \
-                if getattr(product, 'variants', None) else []
+            variants = (
+                list(getattr(product, 'variants', None).filter(is_active=True)[:20])
+                if getattr(product, 'variants', None)
+                else []
+            )
             if variants:
-                out['@type'] = 'ProductGroup'
+                # Preserve Book subtype if it was added above — emit
+                # ['ProductGroup', 'Book'] so we don't lose the Book
+                # signal AI engines + SERP rich results use.
+                if isinstance(out.get('@type'), list) and 'Book' in out['@type']:
+                    out['@type'] = ['ProductGroup', 'Book']
+                else:
+                    out['@type'] = 'ProductGroup'
                 out['productGroupID'] = str(getattr(product, 'id', '') or slug)
                 out['hasVariant'] = [
                     {
@@ -244,8 +376,16 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
                         'name': v.name or '',
                         'offers': {
                             '@type': 'Offer',
-                            'price': str(getattr(v, 'price', None).amount if getattr(v, 'price', None) else (offer_price if price is not None else '')),
-                            'priceCurrency': str(getattr(v, 'price', None).currency if getattr(v, 'price', None) else (offer_curr if price is not None else 'USD')),
+                            'price': str(
+                                getattr(v, 'price', None).amount
+                                if getattr(v, 'price', None)
+                                else (offer_price if price is not None else '')
+                            ),
+                            'priceCurrency': str(
+                                getattr(v, 'price', None).currency
+                                if getattr(v, 'price', None)
+                                else (offer_curr if price is not None else 'USD')
+                            ),
                             'availability': 'https://schema.org/InStock',
                         },
                     }
@@ -261,10 +401,13 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         try:
             from django.contrib.contenttypes.models import ContentType
             from plugins.installed.metafields.models import Metafield
+
             ct = ContentType.objects.get_for_model(type(product))
             m = Metafield.objects.filter(
-                content_type=ct, object_id=product.pk,
-                namespace='seo', key='same_as',
+                content_type=ct,
+                object_id=product.pk,
+                namespace='seo',
+                key='same_as',
             ).first()
             if m and m.value:
                 urls = [u.strip() for u in str(m.value).replace('\n', ',').split(',') if u.strip()]
@@ -281,11 +424,14 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         try:
             from django.contrib.contenttypes.models import ContentType
             from plugins.installed.metafields.models import Metafield
+
             ct = ContentType.objects.get_for_model(type(product))
             book_meta = {
-                row.key: row.value for row in
-                Metafield.objects.filter(
-                    content_type=ct, object_id=product.pk, namespace='book',
+                row.key: row.value
+                for row in Metafield.objects.filter(
+                    content_type=ct,
+                    object_id=product.pk,
+                    namespace='book',
                 )
             }
             if book_meta.get('isbn'):
@@ -313,9 +459,13 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
             seo_plugin = _seo_plugin()
             if seo_plugin is not None:
                 try:
-                    pref = (seo_plugin.get_config_value(
-                        'gtin_field_preference', 'auto',
-                    ) or 'auto').lower()
+                    pref = (
+                        seo_plugin.get_config_value(
+                            'gtin_field_preference',
+                            'auto',
+                        )
+                        or 'auto'
+                    ).lower()
                 except Exception:  # noqa: BLE001
                     pass
             digits = ''.join(c for c in candidate_barcode if c.isdigit())
@@ -329,16 +479,16 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
                 elif length == 13:
                     field_name = 'gtin13'
                 else:
-                    field_name = 'gtin'   # generic fallback
+                    field_name = 'gtin'  # generic fallback
             elif pref == 'isbn13':
-                field_name = 'gtin13'   # schema.org uses gtin13 for ISBN-13
+                field_name = 'gtin13'  # schema.org uses gtin13 for ISBN-13
                 # ALSO emit it as ISBN so Google Books picks it up.
                 out['isbn'] = (digits or candidate_barcode)[:13]
             elif pref in ('gtin8', 'gtin12', 'gtin13'):
                 field_name = pref
-            out[field_name] = (digits or candidate_barcode)[: int(
-                ''.join(c for c in field_name if c.isdigit()) or 14
-            )]
+            out[field_name] = (digits or candidate_barcode)[
+                : int(''.join(c for c in field_name if c.isdigit()) or 14)
+            ]
 
     return out
 
@@ -361,23 +511,38 @@ def speakable_jsonld(selectors: list[str] | None = None) -> dict:
     }
 
 
-def collection_page_jsonld(*, name: str, url: str, description: str,
-                            items: list[dict]) -> dict:
+def collection_page_jsonld(
+    *,
+    name: str,
+    url: str,
+    description: str,
+    items: list[dict],
+    kind: str = 'CollectionPage',
+    total: int | None = None,
+) -> dict:
     """CollectionPage + ItemList for PLP/category pages.
 
     Each `items[i]` is a dict with at least {name, url, image}. Tells AI
     engines that this URL is a list of products under a topic — Google
     AI Overviews use this to assemble "show me [topic] from X" answers.
+
+    `total` lets callers pass the FULL queryset count so numberOfItems
+    reflects the collection size, not just the sliced top-60. Falls back
+    to len(items) when unset (backward-compatible). `kind` is the outer
+    @type and defaults to 'CollectionPage'.
     """
+    base = _site_base_url().rstrip('/')
     return {
         '@context': 'https://schema.org',
-        '@type': 'CollectionPage',
+        '@type': kind,
         'name': name[:120],
         'url': url,
         'description': (description or '')[:400],
+        'isPartOf': {'@type': 'WebSite', '@id': base},
         'mainEntity': {
             '@type': 'ItemList',
-            'numberOfItems': len(items),
+            'numberOfItems': total if total is not None else len(items),
+            'itemListOrder': 'https://schema.org/ItemListOrderDescending',
             'itemListElement': [
                 {
                     '@type': 'ListItem',
@@ -417,21 +582,53 @@ def qa_page_jsonld(*, name: str, url: str, qa: list[dict]) -> dict:
     }
 
 
-def article_jsonld(*, headline: str, body: str, url: str,
-                   author: str = '', published_at=None, image: str = '') -> dict:
+def article_jsonld(
+    *,
+    headline: str,
+    body: str,
+    url: str,
+    author: str = '',
+    published_at=None,
+    updated_at=None,
+    image: str = '',
+    image_url: str = '',
+) -> dict:
+    """Article schema for journal posts.
+
+    Beyond the bare-bones headline/body/url, we emit ``publisher`` (reusing
+    ``organization_jsonld()`` minus the @context so it nests as a plain
+    inner dict), ``mainEntityOfPage`` (Google's required pointer back to
+    the canonical page), and ``dateModified`` — only when ``updated_at``
+    actually differs from ``published_at``, so unchanged posts don't get
+    spurious freshness signals.
+
+    Both ``image`` and ``image_url`` are accepted for caller convenience;
+    ``image_url`` wins when both are passed.
+    """
     out = {
         '@context': 'https://schema.org',
         '@type': 'Article',
         'headline': headline[:110],
         'url': url,
         'articleBody': body[:5000],
+        'mainEntityOfPage': {'@type': 'WebPage', '@id': url},
     }
     if author:
         out['author'] = {'@type': 'Person', 'name': author}
     if published_at:
         out['datePublished'] = published_at.isoformat()
-    if image:
-        out['image'] = image
+    if updated_at and updated_at != published_at:
+        try:
+            out['dateModified'] = updated_at.isoformat()
+        except AttributeError:
+            out['dateModified'] = str(updated_at)
+    hero = image_url or image
+    if hero:
+        out['image'] = hero
+    publisher = organization_jsonld()
+    if publisher:
+        publisher.pop('@context', None)
+        out['publisher'] = publisher
     return out
 
 
@@ -440,8 +637,11 @@ def faq_jsonld(qa: list[dict]) -> dict:
         '@context': 'https://schema.org',
         '@type': 'FAQPage',
         'mainEntity': [
-            {'@type': 'Question', 'name': item['q'],
-             'acceptedAnswer': {'@type': 'Answer', 'text': item['a']}}
+            {
+                '@type': 'Question',
+                'name': item['q'],
+                'acceptedAnswer': {'@type': 'Answer', 'text': item['a']},
+            }
             for item in qa
         ],
     }

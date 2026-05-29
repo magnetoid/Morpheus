@@ -1,6 +1,5 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}
-{% load seo %}{% block title %}{% seo_title product.name category=product.category.name %}{% endblock %}
 
 {% block extra_head %}
 {% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
@@ -12,6 +11,7 @@
   {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endif %}
 {% if pdp_faqs %}{% seo_faq_jsonld items=pdp_faqs %}{% endif %}
+{% if pdp_faqs %}{% seo_qa_jsonld qa=pdp_faqs name=product.name %}{% endif %}
 {% dl_view_item product %}
 {% endblock %}
 

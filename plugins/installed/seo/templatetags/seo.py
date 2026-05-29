@@ -12,6 +12,7 @@ Usage:
 The tag emits <title>, meta description, OG, Twitter Card, canonical link,
 robots, keywords, and a JSON-LD <script>.
 """
+
 from __future__ import annotations
 
 from django import template
@@ -40,6 +41,7 @@ def _canonical_from_request(request) -> tuple[str, bool]:
     dilute ranking signals.
     """
     from urllib.parse import urlencode, urlsplit, urlunsplit
+
     if request is None:
         return '', False
     try:
@@ -52,10 +54,11 @@ def _canonical_from_request(request) -> tuple[str, bool]:
         return absolute, False
 
     # Read both knobs defensively — never crash the page render.
-    strip_all = True   # default ON (matches the PluginConfig default)
+    strip_all = True  # default ON (matches the PluginConfig default)
     blocklist: set[str] = set()
     try:
         from plugins.registry import plugin_registry
+
         seo_plugin = None
         for attr in ('get', 'get_plugin'):
             fn = getattr(plugin_registry, attr, None)
@@ -67,13 +70,17 @@ def _canonical_from_request(request) -> tuple[str, bool]:
                 if seo_plugin is not None:
                     break
         if seo_plugin is not None:
-            strip_all = bool(seo_plugin.get_config_value(
-                'canonical_strip_query_params', True,
-            ))
+            strip_all = bool(
+                seo_plugin.get_config_value(
+                    'canonical_strip_query_params',
+                    True,
+                )
+            )
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.seo.services import site_settings
+
         blocklist = set(site_settings().noindex_query_params or [])
     except Exception:  # noqa: BLE001
         pass
@@ -83,6 +90,7 @@ def _canonical_from_request(request) -> tuple[str, bool]:
         # raises the noindex flag when one of the blocklisted params
         # was present so faceted views get noindex,follow.
         from urllib.parse import parse_qsl
+
         pairs = parse_qsl(parts.query, keep_blank_values=True)
         had_blocked = any(k in blocklist for k, _ in pairs) if blocklist else False
         rebuilt = urlunsplit(parts._replace(query=''))
@@ -92,6 +100,7 @@ def _canonical_from_request(request) -> tuple[str, bool]:
         return absolute, False
 
     from urllib.parse import parse_qsl
+
     pairs = parse_qsl(parts.query, keep_blank_values=True)
     had_blocked = any(k in blocklist for k, _ in pairs)
     kept = [(k, v) for k, v in pairs if k not in blocklist]
@@ -124,6 +133,7 @@ def seo_title(title: str, *, category: str = '', site_name: str = '') -> str:
     max_len = 60
     try:
         from plugins.installed.seo.services import site_settings
+
         s = site_settings()
         template_str = (s.title_template or template_str).strip()
         if s.title_max_length and int(s.title_max_length) > 0:
@@ -137,6 +147,7 @@ def seo_title(title: str, *, category: str = '', site_name: str = '') -> str:
         # Last-resort: core.StoreSettings.store_name.
         try:
             from core.models import StoreSettings
+
             store = StoreSettings.objects.first()
             site_name = getattr(store, 'store_name', '') or ''
         except Exception:  # noqa: BLE001
@@ -162,7 +173,7 @@ def seo_title(title: str, *, category: str = '', site_name: str = '') -> str:
         # possible.
         if ' — ' in rendered and site_name:
             head, _, _ = rendered.partition(' — ')
-            allowed = max_len - len(site_name) - 3   # space-dash-space
+            allowed = max_len - len(site_name) - 3  # space-dash-space
             if allowed > 10:
                 rendered = head[:allowed].rstrip() + ' — ' + site_name
             else:
@@ -214,6 +225,7 @@ def seo_meta(
             and getattr(object._meta, 'model_name', '') == 'product'
         ):
             from plugins.registry import plugin_registry
+
             seo_plugin = None
             for attr in ('get', 'get_plugin'):
                 fn = getattr(plugin_registry, attr, None)
@@ -227,9 +239,13 @@ def seo_meta(
             min_words = 0
             if seo_plugin is not None:
                 try:
-                    min_words = int(seo_plugin.get_config_value(
-                        'noindex_thin_pdp_below_words', 0,
-                    ) or 0)
+                    min_words = int(
+                        seo_plugin.get_config_value(
+                            'noindex_thin_pdp_below_words',
+                            0,
+                        )
+                        or 0
+                    )
                 except (TypeError, ValueError):
                     min_words = 0
             if min_words > 0:
@@ -255,6 +271,7 @@ def seo_preconnect():
     host = ''
     try:
         from plugins.registry import plugin_registry
+
         seo_plugin = None
         for attr in ('get', 'get_plugin'):
             fn = getattr(plugin_registry, attr, None)
@@ -276,8 +293,7 @@ def seo_preconnect():
         host = 'https://' + host
     safe = escape(host)
     return mark_safe(
-        f'<link rel="preconnect" href="{safe}" crossorigin>'
-        f'<link rel="dns-prefetch" href="{safe}">'
+        f'<link rel="preconnect" href="{safe}" crossorigin><link rel="dns-prefetch" href="{safe}">'
     )
 
 
@@ -285,6 +301,7 @@ def seo_preconnect():
 def seo_organization_jsonld():
     """Emit <script type="application/ld+json"> for the Organization."""
     from plugins.installed.seo.services import organization_jsonld, _jsonld_dump
+
     obj = organization_jsonld()
     if not obj:
         return ''
@@ -295,6 +312,7 @@ def seo_organization_jsonld():
 def seo_website_jsonld():
     """Emit <script type="application/ld+json"> for the WebSite (sitelinks search)."""
     from plugins.installed.seo.services import website_jsonld, _jsonld_dump
+
     obj = website_jsonld()
     if not obj:
         return ''
@@ -307,7 +325,10 @@ def seo_product_jsonld(product):
     if product is None:
         return ''
     from plugins.installed.seo.services import product_jsonld, _jsonld_dump
-    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(product_jsonld(product))}</script>')
+
+    return mark_safe(
+        f'<script type="application/ld+json">{_jsonld_dump(product_jsonld(product))}</script>'
+    )
 
 
 @register.simple_tag
@@ -318,7 +339,9 @@ def seo_product_md_link(slug):
     if not slug:
         return ''
     href = f'/md/products/{slug}'
-    return mark_safe(f'<link rel="alternate" type="text/markdown" href="{href}" title="Plain-text product description for LLM crawlers">')
+    return mark_safe(
+        f'<link rel="alternate" type="text/markdown" href="{href}" title="Plain-text product description for LLM crawlers">'
+    )
 
 
 @register.simple_tag
@@ -346,8 +369,30 @@ def seo_product_og(product):
         if isinstance(price, dict):
             amount, currency = str(price.get('amount', '')), str(price.get('currency', ''))
         else:
-            amount, currency = str(getattr(price, 'amount', price)), str(getattr(price, 'currency', ''))
+            amount, currency = (
+                str(getattr(price, 'amount', price)),
+                str(getattr(price, 'currency', '')),
+            )
+    # Mirror product_jsonld()'s StockLevel aggregate so OG availability
+    # tells the truth. ORM-only: skip silently for GraphQL dicts. Wrap
+    # in try/except so an uninstalled inventory plugin doesn't crash
+    # the <head>.
     avail = 'in stock'
+    try:
+        if not isinstance(product, dict):
+            from plugins.installed.inventory.models import StockLevel
+            from django.db.models import Sum, F
+
+            stock = (
+                StockLevel.objects.filter(variant__product=product).aggregate(
+                    qty=Sum(F('quantity') - F('reserved_quantity'))
+                )['qty']
+                or 0
+            )
+            if stock <= 0:
+                avail = 'out of stock'
+    except Exception:  # noqa: BLE001
+        pass
     out = [
         '<meta property="og:type" content="product">',
         f'<meta property="product:price:amount" content="{amount}">',
@@ -367,6 +412,7 @@ def seo_speakable_jsonld(selectors=None):
     """Speakable schema — declares which CSS selectors hold spoken
     content for Google Assistant / Siri / Alexa voice reading."""
     from plugins.installed.seo.services import speakable_jsonld, _jsonld_dump
+
     obj = speakable_jsonld(list(selectors) if selectors else None)
     return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
 
@@ -379,7 +425,10 @@ def seo_faq_jsonld(items):
     if not items:
         return ''
     from plugins.installed.seo.services import faq_jsonld, _jsonld_dump
-    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(faq_jsonld(items))}</script>')
+
+    return mark_safe(
+        f'<script type="application/ld+json">{_jsonld_dump(faq_jsonld(items))}</script>'
+    )
 
 
 @register.simple_tag(takes_context=True)
@@ -398,12 +447,17 @@ def seo_collection_jsonld(context, items, name='', description=''):
     for it in items:
         if not it:
             continue
-        normalised.append({
-            'name': it.get('name') or it.get('title') or '',
-            'url': it.get('url') or '',
-            'image': it.get('image') or it.get('primaryImage', {}).get('url') if isinstance(it.get('primaryImage'), dict) else (it.get('image') or ''),
-        })
+        normalised.append(
+            {
+                'name': it.get('name') or it.get('title') or '',
+                'url': it.get('url') or '',
+                'image': it.get('image') or it.get('primaryImage', {}).get('url')
+                if isinstance(it.get('primaryImage'), dict)
+                else (it.get('image') or ''),
+            }
+        )
     from plugins.installed.seo.services import collection_page_jsonld, _jsonld_dump
+
     obj = collection_page_jsonld(
         name=name or 'Collection',
         url=url,
@@ -424,14 +478,23 @@ def seo_qa_jsonld(context, qa, name=''):
     except Exception:  # noqa: BLE001
         url = ''
     from plugins.installed.seo.services import qa_page_jsonld, _jsonld_dump
+
     obj = qa_page_jsonld(name=name or 'Q&A', url=url, qa=qa)
     return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
 
 
 @register.simple_tag
-def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
-                         priority=False, css_class='', style='',
-                         view_transition_name='', img_id=''):
+def seo_responsive_image(
+    src,
+    alt='',
+    sizes='',
+    widths='400,800,1200',
+    priority=False,
+    css_class='',
+    style='',
+    view_transition_name='',
+    img_id='',
+):
     """Emit a <picture> element with AVIF + WebP sources + a JPEG/PNG
     fallback `<img>`, generated via /img/<fmt>/<w>/... on demand.
 
@@ -464,6 +527,7 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
     lazy_enabled = True
     try:
         from plugins.registry import plugin_registry
+
         seo_plugin = None
         for attr in ('get', 'get_plugin'):
             fn = getattr(plugin_registry, attr, None)
@@ -475,9 +539,12 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
                 if seo_plugin is not None:
                     break
         if seo_plugin is not None:
-            lazy_enabled = bool(seo_plugin.get_config_value(
-                'lazy_load_below_fold_images', True,
-            ))
+            lazy_enabled = bool(
+                seo_plugin.get_config_value(
+                    'lazy_load_below_fold_images',
+                    True,
+                )
+            )
     except Exception:  # noqa: BLE001
         pass
 
@@ -500,9 +567,10 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
     media_prefix = '/media/'
     if not url.startswith(media_prefix):
         return mark_safe(f'<img src="{escape(url)}" alt="{escape(alt)}">')
-    rel = url[len(media_prefix):]
+    rel = url[len(media_prefix) :]
 
     from plugins.installed.seo.services import ALLOWED_IMAGE_WIDTHS
+
     requested = []
     for w in str(widths).split(','):
         w = w.strip()
@@ -548,8 +616,9 @@ def seo_responsive_image(src, alt='', sizes='', widths='400,800,1200',
 
 
 @register.simple_tag(takes_context=True)
-def seo_article_jsonld(context, *, headline, body, author='', published=None,
-                       modified=None, image=''):
+def seo_article_jsonld(
+    context, *, headline, body, author='', published=None, modified=None, image=''
+):
     """Article schema for journal posts. AI engines weigh this heavily
     for citation (especially Person.author + datePublished + sameAs)."""
     request = context.get('request')
@@ -558,9 +627,14 @@ def seo_article_jsonld(context, *, headline, body, author='', published=None,
     except Exception:  # noqa: BLE001
         url = ''
     from plugins.installed.seo.services import article_jsonld, _jsonld_dump
+
     obj = article_jsonld(
-        headline=headline or '', body=body or '', url=url,
-        author=author or '', published_at=published, image=image,
+        headline=headline or '',
+        body=body or '',
+        url=url,
+        author=author or '',
+        published_at=published,
+        image=image,
     )
     if modified:
         try:
@@ -576,13 +650,17 @@ def seo_breadcrumb_jsonld(items):
     if not items:
         return ''
     from plugins.installed.seo.services import breadcrumb_jsonld, _jsonld_dump
-    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(breadcrumb_jsonld(items))}</script>')
+
+    return mark_safe(
+        f'<script type="application/ld+json">{_jsonld_dump(breadcrumb_jsonld(items))}</script>'
+    )
 
 
 @register.simple_tag
 def seo_verification_metas():
     """Emit any configured Google / Bing / Pinterest / FB verification metas."""
     from plugins.installed.seo.services import site_settings
+
     s = site_settings()
     out = []
     pairs = [
@@ -612,6 +690,7 @@ def seo_pagination_links(context, page_obj=None):
     if request is None:
         return ''
     from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
+
     try:
         parts = urlsplit(request.build_absolute_uri())
     except Exception:  # noqa: BLE001
@@ -644,6 +723,7 @@ def seo_search_results_jsonld(context, items, query=''):
     except Exception:  # noqa: BLE001
         url = ''
     from plugins.installed.seo.services import _jsonld_dump
+
     item_list = [
         {
             '@type': 'ListItem',
@@ -681,6 +761,7 @@ def seo_person_jsonld(context, name, slug='', sameas=None):
     except Exception:  # noqa: BLE001
         url = ''
     from plugins.installed.seo.services import _jsonld_dump
+
     obj = {
         '@context': 'https://schema.org',
         '@type': 'Person',
@@ -696,6 +777,7 @@ def seo_person_jsonld(context, name, slug='', sameas=None):
 def seo_aboutpage_jsonld(context, name='', description=''):
     """AboutPage JSON-LD with mainEntity → Organization. Used on /about/."""
     from plugins.installed.seo.services import organization_jsonld, _jsonld_dump
+
     request = context.get('request')
     try:
         url = request.build_absolute_uri() if request else ''
@@ -721,6 +803,7 @@ def seo_contactpage_jsonld(context, name='', description=''):
     """ContactPage JSON-LD with mainEntity → Organization + ContactPoint."""
     from core.models import StoreSettings
     from plugins.installed.seo.services import organization_jsonld, _jsonld_dump
+
     request = context.get('request')
     try:
         url = request.build_absolute_uri() if request else ''
@@ -754,7 +837,69 @@ def seo_contactpage_jsonld(context, name='', description=''):
 def seo_llms_link():
     """Emit a <link rel="alternate"> hint to /llms.txt for LLM crawlers."""
     from plugins.installed.seo.services import site_settings
+
     s = site_settings()
     if not s.llms_txt_enabled:
         return ''
-    return mark_safe('<link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-friendly site map">')
+    return mark_safe(
+        '<link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-friendly site map">'
+    )
+
+
+@register.simple_tag(takes_context=True)
+def seo_hreflang(context):
+    """Emit ``<link rel="alternate" hreflang=…>`` for every active market.
+
+    One link per (Market.default_locale, country) pair plus a final
+    x-default entry. No-op when the markets plugin is uninstalled or
+    no Market rows exist — keeps the <head> clean on single-market
+    stores.
+    """
+    request = context.get('request')
+    if request is None:
+        return ''
+    try:
+        from plugins.installed.markets.models import Market
+    except Exception:  # noqa: BLE001 — markets plugin optional
+        return ''
+
+    try:
+        absolute = request.build_absolute_uri()
+    except Exception:  # noqa: BLE001
+        return ''
+    from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
+
+    parts = urlsplit(absolute)
+    # Strip any incoming ?market=… so we re-emit it cleanly per row.
+    base_pairs = [
+        (k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != 'market'
+    ]
+    canonical = urlunsplit(parts._replace(query=urlencode(base_pairs)))
+
+    def _with_market(code: str) -> str:
+        pairs = list(base_pairs) + [('market', code)]
+        return urlunsplit(parts._replace(query=urlencode(pairs)))
+
+    try:
+        markets = list(Market.objects.filter(is_active=True))
+    except Exception:  # noqa: BLE001 — DB not migrated yet
+        return ''
+    if not markets:
+        return ''
+
+    out: list[str] = []
+    for m in markets:
+        locale = (getattr(m, 'default_locale', '') or '').strip()
+        if not locale:
+            continue
+        countries = [str(c).strip().upper() for c in (m.country_codes or []) if c]
+        href = escape(_with_market(m.code))
+        if countries:
+            for country in countries:
+                tag = f'{locale}-{country}'
+                out.append(f'<link rel="alternate" hreflang="{escape(tag)}" href="{href}">')
+        else:
+            # Locale-only market (no specific country binding).
+            out.append(f'<link rel="alternate" hreflang="{escape(locale)}" href="{href}">')
+    out.append(f'<link rel="alternate" hreflang="x-default" href="{escape(canonical)}">')
+    return mark_safe('\n'.join(out))

@@ -8,9 +8,16 @@ urlpatterns = [
     path('', views.seo_overview, name='overview'),
     path('settings/', views.seo_settings_page, name='settings'),
     path('not-found/', views.not_found_log, name='not_found'),
-    path('not-found/<uuid:log_id>/redirect/', views.not_found_create_redirect, name='not_found_redirect'),
+    path(
+        'not-found/<uuid:log_id>/redirect/',
+        views.not_found_create_redirect,
+        name='not_found_redirect',
+    ),
+    path('not-found/<uuid:pk>/dismiss/', views.not_found_dismiss, name='not_found_dismiss'),
+    path('redirects/', views.redirects_page, name='redirects'),
     path('audit/', views.audit_page, name='audit'),
     path('keywords/', views.keywords_page, name='keywords'),
     path('bulk-meta/', views.bulk_meta, name='bulk_meta'),
     path('sitemap/', views.sitemap_page, name='sitemap'),
+    path('inspect/', views.seo_inspector, name='inspector'),
 ]

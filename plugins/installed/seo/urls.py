@@ -6,6 +6,7 @@ from plugins.installed.seo import views
 app_name = 'seo'
 
 urlpatterns = [
+    path('.well-known/security.txt', views.security_txt, name='security_txt'),
     path('sitemap.xml', views.sitemap_xml, name='sitemap'),
     path('sitemap-index.xml', views.sitemap_index_xml, name='sitemap_index'),
     path('sitemap-images.xml', views.image_sitemap_xml, name='image_sitemap'),
@@ -19,6 +20,8 @@ urlpatterns = [
     # Body is validated (metric name allow-list) and writes to audit log only.
     path('web-vitals/', csrf_exempt(views.web_vitals_beacon), name='web_vitals'),
     path('opensearch.xml', views.opensearch_xml, name='opensearch'),
+    path('journal/feed.xml', views.journal_rss, name='journal_rss'),
+    path('journal/atom.xml', views.journal_atom, name='journal_atom'),
     path('img/<str:fmt>/<int:width>/<path:path>', views.image_variant, name='image_variant'),
     path('<str:key>.txt', views.indexnow_keyfile, name='indexnow_key'),
 ]

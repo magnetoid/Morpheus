@@ -304,6 +304,9 @@
 {% seo_website_jsonld %}
 {% seo_verification_metas %}
 {% seo_llms_link %}
+{% seo_hreflang %}
+<link rel="alternate" type="application/rss+xml" title="Journal feed" href="{% url 'seo:journal_rss' %}">
+<link rel="alternate" type="application/atom+xml" title="Journal Atom feed" href="{% url 'seo:journal_atom' %}">
 
 {# PWA manifest + apple-touch-icon are injected by the pwa plugin's storefront block (global_below_body), which also registers the service worker. #}
 <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="dot books">

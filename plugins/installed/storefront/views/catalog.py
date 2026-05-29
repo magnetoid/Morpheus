@@ -363,6 +363,20 @@ def product_detail(request, slug):
         except Exception:  # noqa: BLE001
             pass
 
+    # SEO meta — pass the Product instance as seo_object so SeoMeta
+    # overrides + native model SEO fields + Product JSON-LD all light up.
+    # Falls back to the GraphQL dict on the off-chance the row lookup
+    # failed (resolve_meta is dict-safe).
+    pdp_seo_obj = product_row if product_row is not None else product
+    pdp_seo_image = ''
+    if primary_image and primary_image.get('url'):
+        pdp_seo_image = primary_image['url']
+    elif hero_image and hero_image.get('url'):
+        pdp_seo_image = hero_image['url']
+    pdp_seo_description = (product.get('shortDescription') or product.get('description') or '')[
+        :160
+    ].strip()
+
     return render(
         request,
         'storefront/product_detail.html',
@@ -382,6 +396,11 @@ def product_detail(request, slug):
             'breadcrumb_items': breadcrumb_items,
             'last_reviewed': last_reviewed,
             'active_pdp_edit_url': active_pdp_edit_url,
+            'seo_object': pdp_seo_obj,
+            'seo_title': product.get('name') or '',
+            'seo_description': pdp_seo_description,
+            'seo_image': pdp_seo_image,
+            'seo_og_type': 'product',
         },
     )
 
@@ -592,7 +611,7 @@ def search(request):
             'semantic': use_semantic,
             'search_items': search_items,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': f'Search: {q} — dot books' if q else 'Search — dot books',
+            'seo_title': f'Search results for {q}' if q else 'Search — dot books',
             'seo_description': f'Results for "{q}" on the dot books shelf.'
             if q
             else 'Search the dot books shelf.',
@@ -676,6 +695,7 @@ def category_detail(request, slug):
             'intro_lede': category.description or intro.get('lede', ''),
             'breadcrumb_items': breadcrumb_items,
             'collection_items': collection_items,
+            'seo_object': category,
             'seo_title': f'{category.name} — dot books',
             'seo_description': category.description or intro.get('lede', '')[:160],
             'seo_og_type': 'website',
@@ -726,6 +746,7 @@ def collection_detail(request, slug):
             'intro_lede': collection.description or '',
             'breadcrumb_items': breadcrumb_items,
             'collection_items': collection_items,
+            'seo_object': collection,
             'seo_title': f'{collection.name} — dot books',
             'seo_description': (collection.description or '')[:160],
             'seo_og_type': 'website',
@@ -866,6 +887,7 @@ def staff_picks(request):
             'products': products,
             'pick_items': pick_items,
             'breadcrumb_items': breadcrumb_items,
+            'seo_object': collection,
             'seo_title': 'Staff picks — dot books',
             'seo_description': description[:160],
             'seo_og_type': 'website',

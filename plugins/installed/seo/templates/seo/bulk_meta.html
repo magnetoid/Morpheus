@@ -5,6 +5,24 @@
 <a href="{% url 'seo_dashboard:overview' %}" class="text-sm text-[color:var(--text-muted)]">← SEO</a>
 <h1 class="text-xl font-semibold mt-2 mb-4">Bulk-edit SEO meta</h1>
 
+<form method="get" class="card card-padded mb-4" style="display:flex; gap:.5rem; align-items:end; flex-wrap:wrap;">
+  <div style="flex:1; min-width:200px;">
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="q-input">Search by name or slug</label>
+    <input id="q-input" name="q" value="{{ q }}" placeholder="e.g. cookbook" class="input" style="width:100%;">
+  </div>
+  <div>
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="missing-select">Missing</label>
+    <select id="missing-select" name="missing" class="input">
+      <option value=""{% if not missing %} selected{% endif %}>any</option>
+      <option value="title"{% if missing == 'title' %} selected{% endif %}>title</option>
+      <option value="desc"{% if missing == 'desc' %} selected{% endif %}>description</option>
+      <option value="both"{% if missing == 'both' %} selected{% endif %}>both</option>
+    </select>
+  </div>
+  <button type="submit" class="btn">Filter</button>
+  {% if q or missing %}<a class="btn-link" href="{% url 'seo_dashboard:bulk_meta' %}">reset</a>{% endif %}
+</form>
+
 <form method="post" class="card">
   {% csrf_token %}
   <table class="morph-table">
@@ -13,14 +31,61 @@
     {% for r in rows %}
       <tr>
         <td><strong>{{ r.product.name }}</strong><br><code style="font-size:.75rem; color:var(--text-muted);">/products/{{ r.product.slug }}/</code></td>
-        <td><input type="text" name="meta_{{ r.product.id }}_title" value="{{ r.title }}" class="input" maxlength="200"></td>
-        <td><input type="text" name="meta_{{ r.product.id }}_description" value="{{ r.description }}" class="input" maxlength="320"></td>
+        <td>
+          <input type="text" name="meta_{{ r.product.id }}_title" value="{{ r.title }}"
+                 class="input seo-counter-input" maxlength="{{ s.title_max_length }}"
+                 aria-label="SEO title for {{ r.product.name }}"
+                 data-max="{{ s.title_max_length }}">
+          <span class="seo-counter text-xs text-[color:var(--text-muted)]" data-counter aria-live="polite"></span>
+        </td>
+        <td>
+          <input type="text" name="meta_{{ r.product.id }}_description" value="{{ r.description }}"
+                 class="input seo-counter-input" maxlength="{{ s.description_max_length }}"
+                 aria-label="SEO description for {{ r.product.name }}"
+                 data-max="{{ s.description_max_length }}">
+          <span class="seo-counter text-xs text-[color:var(--text-muted)]" data-counter aria-live="polite"></span>
+        </td>
       </tr>
+    {% empty %}
+      <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--text-muted);">No products match this filter.</td></tr>
     {% endfor %}
     </tbody>
   </table>
-  <div style="padding: 1rem; border-top: 1px solid var(--border);">
+  <div style="padding: 1rem; border-top: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
     <button type="submit" class="btn btn-primary">Save all</button>
+    {% if page_obj %}
+    <nav class="text-xs text-[color:var(--text-muted)]" style="display:flex; gap:.5rem; align-items:center;">
+      {% if page_obj.has_previous %}
+        <a class="btn-link" href="?{% if q %}q={{ q }}&{% endif %}{% if missing %}missing={{ missing }}&{% endif %}page={{ page_obj.previous_page_number }}">← prev</a>
+      {% endif %}
+      <span>Page {{ page_obj.number }} of {{ paginator.num_pages }} · {{ paginator.count }} products</span>
+      {% if page_obj.has_next %}
+        <a class="btn-link" href="?{% if q %}q={{ q }}&{% endif %}{% if missing %}missing={{ missing }}&{% endif %}page={{ page_obj.next_page_number }}">next →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
   </div>
 </form>
+
+<script>
+  // Live character counter for SEO title + description inputs.
+  // Listens once at the form level so it scales to a 50-row paginated page
+  // without 100 individual listeners.
+  (function () {
+    function paint(input) {
+      var max = parseInt(input.getAttribute('data-max') || '0', 10);
+      var counter = input.parentElement && input.parentElement.querySelector('[data-counter]');
+      if (!counter) return;
+      var n = input.value.length;
+      counter.textContent = n + ' / ' + max;
+      counter.style.color = n > max ? 'var(--danger)' : (n > max * 0.95 ? 'var(--warn)' : '');
+    }
+    document.querySelectorAll('.seo-counter-input').forEach(paint);
+    document.addEventListener('input', function (e) {
+      if (e.target && e.target.classList && e.target.classList.contains('seo-counter-input')) {
+        paint(e.target);
+      }
+    });
+  })();
+</script>
 {% endblock %}

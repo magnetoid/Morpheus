@@ -1,0 +1,147 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}SEO inspector · Morpheus{% endblock %}
+
+{% block content %}
+<a href="{% url 'seo_dashboard:overview' %}" class="text-sm text-[color:var(--text-muted)]">← SEO</a>
+<h1 class="text-xl font-semibold mt-2 mb-1">SEO inspector</h1>
+<p class="text-sm text-[color:var(--text-muted)] mb-4">
+  Paste a slug, see exactly what crawlers and AI engines see for that URL — title, description, canonical, robots, JSON-LD, OG tags, sitemap presence, latest audit, and tracked keywords. Pure read; nothing is saved.
+</p>
+
+<form method="get" class="card card-padded mb-4" style="display:flex; gap:.5rem; align-items:end; flex-wrap:wrap;">
+  <div>
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="type-select">Type</label>
+    <select id="type-select" name="type" class="input">
+      {% for value, label in type_choices %}
+        <option value="{{ value }}"{% if value == entity_type %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="flex:1; min-width:240px;">
+    <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="slug-input">Slug or path</label>
+    <input id="slug-input" name="slug" value="{{ raw_slug }}" placeholder="e.g. atomic-habits or /products/atomic-habits/" class="input" style="width:100%;">
+  </div>
+  <button type="submit" class="btn btn-primary">Inspect</button>
+</form>
+
+{% if not_found %}
+  <div class="card card-padded" style="border-color: var(--danger);">
+    <h3 class="font-semibold mb-1">No match</h3>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Couldn't find a <strong>{{ entity_type|default:"entity" }}</strong> with slug <code>{{ slug }}</code>. Double-check the type and slug, or try pasting the full path (e.g. <code>/products/foo/</code>).
+    </p>
+  </div>
+{% elif entity %}
+  <div class="card card-padded mb-4">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap;">
+      <div>
+        <h2 class="font-semibold" style="margin:0;">{{ resolved_title|default:"(no title)" }}</h2>
+        <p class="text-xs text-[color:var(--text-muted)]" style="margin:.25rem 0 0;">
+          {{ entity_label }} · <code>{{ path }}</code>
+        </p>
+      </div>
+      <a href="{{ canonical_url }}" target="_blank" rel="noopener" class="btn">Open live page</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+    <div class="card card-padded">
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">Title (rendered)</p>
+      <p class="text-sm" style="margin:.25rem 0 0; word-break:break-word;">{{ resolved_title|default:"—" }}</p>
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin:.25rem 0 0;">{{ resolved_title|length }} chars</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">Description (rendered)</p>
+      <p class="text-sm" style="margin:.25rem 0 0; word-break:break-word;">{{ resolved_description|default:"—" }}</p>
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin:.25rem 0 0;">{{ resolved_description|length }} chars</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">Canonical URL</p>
+      <p class="text-sm" style="margin:.25rem 0 0; word-break:break-all;">
+        <a href="{{ canonical_url }}" target="_blank" rel="noopener" class="btn-link">{{ canonical_url }}</a>
+      </p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">Robots meta</p>
+      <p class="text-sm" style="margin:.25rem 0 0;">
+        <span class="pill {% if 'noindex' in resolved_robots %}pill-warn{% else %}pill-success{% endif %}">{{ resolved_robots }}</span>
+      </p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">In sitemap?</p>
+      <p class="text-sm" style="margin:.25rem 0 0;">
+        {% if in_sitemap %}
+          <span class="pill pill-success">Yes</span>
+        {% else %}
+          <span class="pill pill-warn">No</span>
+        {% endif %}
+      </p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase text-[color:var(--text-muted)]">Latest audit score</p>
+      <p class="text-sm" style="margin:.25rem 0 0;">
+        {% if audit %}
+          <span class="pill {% if audit.score >= 80 %}pill-success{% elif audit.score >= 50 %}pill-warn{% else %}pill-danger{% endif %}">{{ audit.score }}/100</span>
+          <a href="{% url 'seo_dashboard:audit' %}" class="btn-link" style="margin-left:.4rem;">View all audits</a>
+        {% else %}
+          <span class="text-[color:var(--text-muted)]">— not audited yet</span>
+          <a href="{% url 'seo_dashboard:audit' %}" class="btn-link" style="margin-left:.4rem;">Open audits</a>
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card card-padded mb-4">
+    <h3 class="font-semibold mb-2">Tracked keywords targeting this URL ({{ matching_keywords|length }})</h3>
+    {% if matching_keywords %}
+      <table class="morph-table">
+        <thead><tr><th>Keyword</th><th>Locale</th><th>Last position</th><th>Last checked</th></tr></thead>
+        <tbody>
+        {% for kw in matching_keywords %}
+          <tr>
+            <td>{{ kw.keyword }}</td>
+            <td>{{ kw.locale }}</td>
+            <td>{% if kw.last_position %}{{ kw.last_position }}{% else %}—{% endif %}</td>
+            <td>{% if kw.last_checked_at %}{{ kw.last_checked_at|date:"M j H:i" }}{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-sm text-[color:var(--text-muted)]">
+        No tracked keywords point at this URL. <a class="btn-link" href="{% url 'seo_dashboard:keywords' %}">Add one →</a>
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="card card-padded mb-4">
+    <h3 class="font-semibold mb-2">JSON-LD</h3>
+    {% if jsonld_text %}
+      <pre style="margin:0; padding:.75rem; background:var(--surface-2); border-radius:.5rem; overflow-x:auto; font-size:.8rem;"><code>{{ jsonld_text }}</code></pre>
+    {% else %}
+      <p class="text-sm text-[color:var(--text-muted)]">No JSON-LD generator matched this entity type.</p>
+    {% endif %}
+  </div>
+
+  <div class="card card-padded">
+    <h3 class="font-semibold mb-2">OG / social tags</h3>
+    <table class="morph-table">
+      <thead><tr><th style="width:30%;">Property</th><th>Value</th></tr></thead>
+      <tbody>
+        {% for name, value in og_tags %}
+          <tr>
+            <td><code style="font-size:.8rem;">{{ name }}</code></td>
+            <td style="word-break:break-word;">{{ value|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card card-padded">
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Pick a type and paste a slug above to inspect that URL's SEO surface area.
+    </p>
+  </div>
+{% endif %}
+{% endblock %}

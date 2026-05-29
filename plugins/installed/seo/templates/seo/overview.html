@@ -5,11 +5,33 @@
 <h1 class="text-xl font-semibold mb-4">SEO</h1>
 
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-  <div class="card card-padded kpi"><span class="kpi__label">Meta overrides</span><span class="kpi__value">{{ meta_count }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Active redirects</span><span class="kpi__value">{{ redirect_count }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Open 404s</span><span class="kpi__value" {% if not_found_count %}style="color:var(--warn);"{% endif %}>{{ not_found_count }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Audited products</span><span class="kpi__value">{{ audit_count }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Tracked keywords</span><span class="kpi__value">{{ tracked_keywords }}</span></div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Meta complete</span>
+    <span class="kpi__value" {% if meta_complete_pct < 80 %}style="color:var(--warn);"{% endif %}>{{ meta_complete_pct }}%</span>
+    <span class="text-xs text-[color:var(--text-muted)]">{{ meta_complete }} / {{ active_product_total }} active products</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Active redirects</span>
+    <span class="kpi__value">{{ redirect_count }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">New 404s (7d)</span>
+    <span class="kpi__value" {% if not_found_7d %}style="color:var(--warn);"{% endif %}>{{ not_found_7d }}</span>
+    <span class="text-xs text-[color:var(--text-muted)]">
+      {% if not_found_7d_delta > 0 %}+{{ not_found_7d_delta }} vs prev 7d
+      {% elif not_found_7d_delta < 0 %}{{ not_found_7d_delta }} vs prev 7d
+      {% else %}no change vs prev 7d{% endif %}
+    </span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Keywords in top 10</span>
+    <span class="kpi__value">{{ keywords_in_top10 }}</span>
+    <span class="text-xs text-[color:var(--text-muted)]">of {{ tracked_keywords }} tracked</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label">Audited products</span>
+    <span class="kpi__value">{{ audit_count }}</span>
+  </div>
 </div>
 
 <div class="card card-padded mb-6">
@@ -47,11 +69,22 @@
   <div class="card card-padded">
     <h3 class="font-semibold mb-3">Quick actions</h3>
     <div style="display:grid; gap:.5rem;">
+      <a href="{% url 'seo_dashboard:inspector' %}" class="btn">SEO Inspector (paste-a-slug)</a>
       <a href="{% url 'seo_dashboard:settings' %}" class="btn">Site SEO settings</a>
       <a href="{% url 'seo_dashboard:bulk_meta' %}" class="btn">Bulk-edit titles &amp; descriptions</a>
       <a href="{% url 'seo_dashboard:audit' %}" class="btn">Run product audits</a>
       <a href="{% url 'seo_dashboard:not_found' %}" class="btn">Review 404s</a>
       <a href="{% url 'seo_dashboard:keywords' %}" class="btn">Tracked keywords</a>
+      <a href="{% url 'seo_dashboard:sitemap' %}" class="btn">Sitemap &amp; IndexNow</a>
+      <a href="{% url 'seo_dashboard:redirects' %}" class="btn">301 redirects</a>
+      <form method="post" action="{% url 'seo_dashboard:sitemap' %}" style="margin:0;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="ping_sitemap">
+        <button type="submit" class="btn" style="width:100%;">Ping IndexNow now</button>
+      </form>
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin:.25rem 0 0;">
+        <code>/llms.txt</code> is rendered live on every request — no rebuild needed.
+      </p>
       <a href="/sitemap.xml" target="_blank" class="btn-link">sitemap.xml</a>
       <a href="/sitemap-images.xml" target="_blank" class="btn-link">sitemap-images.xml</a>
       <a href="/robots.txt" target="_blank" class="btn-link">robots.txt (with AI crawler matrix)</a>

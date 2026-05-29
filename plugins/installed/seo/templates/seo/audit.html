@@ -10,7 +10,7 @@
 
 <div class="card">
   <table class="morph-table">
-    <thead><tr><th>Score</th><th>Target</th><th>Issues</th><th>Top suggestion</th></tr></thead>
+    <thead><tr><th>Score</th><th>Target</th><th>Issues</th><th>Top suggestion</th><th>Actions</th></tr></thead>
     <tbody>
     {% for r in rows %}
       <tr>
@@ -18,11 +18,46 @@
           <span class="pill {% if r.score >= 80 %}pill-success{% elif r.score >= 50 %}pill-warn{% else %}pill-danger{% endif %}">{{ r.score }}/100</span>
         </td>
         <td>{{ r.target|default:"(deleted)"|truncatechars:60 }}</td>
-        <td>{{ r.issues|length }}</td>
-        <td style="font-size:.85rem;">{% if r.suggestions %}{{ r.suggestions.0 }}{% else %}—{% endif %}</td>
+        <td>
+          {% if r.issues %}
+            <details>
+              <summary style="cursor:pointer;">{{ r.issues|length }} issue{{ r.issues|length|pluralize }}</summary>
+              <ul style="margin:.4rem 0 0 1rem; padding:0; font-size:.8rem;">
+                {% for issue in r.issues %}
+                  <li>{% if issue.severity %}<strong>{{ issue.severity }}</strong> · {% endif %}{{ issue.message|default:issue }}</li>
+                {% endfor %}
+              </ul>
+            </details>
+          {% else %}0{% endif %}
+        </td>
+        <td style="font-size:.85rem;">
+          {% if r.suggestions %}
+            <details>
+              <summary style="cursor:pointer;">{{ r.suggestions.0 }}</summary>
+              {% if r.suggestions|length > 1 %}
+              <ul style="margin:.4rem 0 0 1rem; padding:0; font-size:.8rem;">
+                {% for s in r.suggestions %}<li>{{ s }}</li>{% endfor %}
+              </ul>
+              {% endif %}
+            </details>
+          {% else %}—{% endif %}
+        </td>
+        <td style="font-size:.8rem; white-space:nowrap;">
+          {% if r.target and r.content_type.model == 'product' and r.target.slug %}
+            <a href="/products/{{ r.target.slug }}/" target="_blank" rel="noopener" class="btn-link">View PDP</a>
+            ·
+            <a href="{% url 'admin_dashboard:product_edit' r.target.id %}" class="btn-link">Edit</a>
+            ·
+            <a href="{% url 'seo_dashboard:bulk_meta' %}?q={{ r.target.slug }}" class="btn-link">Bulk-meta</a>
+            ·
+            <a href="{% url 'seo_dashboard:inspector' %}?type=product&amp;slug={{ r.target.slug }}" class="btn-link">Inspect</a>
+          {% else %}
+            <span class="text-[color:var(--text-muted)]">—</span>
+          {% endif %}
+        </td>
       </tr>
     {% empty %}
-      <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No audits yet — click "Run audits now".</td></tr>
+      <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No audits yet — click "Run audits now".</td></tr>
     {% endfor %}
     </tbody>
   </table>
