@@ -24,7 +24,7 @@
       <a href="/products/" style="color: var(--muted);">All books</a>
       {% if product.category %}
       <span style="margin: 0 0.5rem;">/</span>
-      <a href="/products/?category={{ product.category.slug }}" style="color: var(--muted);">{{ product.category.name }}</a>
+      <a href="/category/{{ product.category.slug }}/" style="color: var(--muted);">{{ product.category.name }}</a>
       {% endif %}
     </p>
 
@@ -181,7 +181,7 @@
           <p class="eyebrow" style="margin-bottom: 0.6rem;">Featured in</p>
           <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
             {% for col in product.collections %}
-            <a href="/products/?collection={{ col.slug }}" class="pdp-collection-chip">{{ col.name }}</a>
+            <a href="/collection/{{ col.slug }}/" class="pdp-collection-chip">{{ col.name }}</a>
             {% endfor %}
           </div>
         </div>

@@ -683,6 +683,56 @@ def category_detail(request, slug):
     )
 
 
+def collection_detail(request, slug):
+    """Collection landing page — clean SEO URL /collection/<slug>/ for a
+    curated merchandising set (vs the hierarchical /category/<slug>/).
+    Reuses category_detail.html (it only reads .name + .description,
+    which Collection has)."""
+    from morpheus.views import Http404
+    from plugins.installed.catalog.models import Collection, Product
+
+    collection = Collection.objects.filter(slug=slug, is_active=True).first()
+    if collection is None:
+        raise Http404
+    products = list(
+        Product.objects.filter(status='active', collections=collection)
+        .select_related('category')
+        .order_by('-is_featured', '-created_at')[:60]
+    )
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+        {'name': collection.name, 'url': request.build_absolute_uri(request.path)},
+    ]
+    collection_items = [
+        {
+            'name': p.name,
+            'url': request.build_absolute_uri(f'/products/{p.slug}/'),
+            'image': (
+                p.primary_image.image.url
+                if p.primary_image and getattr(p.primary_image, 'image', None)
+                else ''
+            ),
+        }
+        for p in products[:30]
+    ]
+    return render(
+        request,
+        'storefront/category_detail.html',
+        {
+            'category': collection,
+            'products': products,
+            'intro_eyebrow': 'Collection',
+            'intro_lede': collection.description or '',
+            'breadcrumb_items': breadcrumb_items,
+            'collection_items': collection_items,
+            'seo_title': f'{collection.name} — dot books',
+            'seo_description': (collection.description or '')[:160],
+            'seo_og_type': 'website',
+        },
+    )
+
+
 def author_detail(request, slug):
     """Author landing page — bibliography + optional bio."""
     from morpheus.views import Http404

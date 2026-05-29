@@ -4,6 +4,7 @@ The five XML sitemaps + the iteration helper that drives the main one
 all live here. Crawler-facing files that aren't sitemaps (robots.txt,
 llms.txt, PWA manifest) live in ``crawler_files`` instead.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -18,11 +19,11 @@ from ._helpers import _seo_plugin, _site_base_url, logger, site_settings
 def iter_sitemap_entries() -> Iterable[dict]:
     """Yield entries that should appear in the sitemap. Pulls from:
 
-      1. Active products (catalog)
-      2. Active categories (catalog)
-      3. Active collections (catalog)
-      4. Journal entries (cms)
-      5. Manually-curated SitemapEntry rows
+    1. Active products (catalog)
+    2. Active categories (catalog)
+    3. Active collections (catalog)
+    4. Journal entries (cms)
+    5. Manually-curated SitemapEntry rows
     """
     base = _site_base_url()
 
@@ -30,6 +31,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
 
     try:
         from plugins.installed.catalog.models import Category, Collection, Product
+
         for p in Product.objects.filter(status='active').only('slug', 'updated_at'):
             yield {
                 'loc': urljoin(base, f'/products/{p.slug}/'),
@@ -46,7 +48,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
             }
         for col in Collection.objects.filter(is_active=True).only('slug', 'updated_at'):
             yield {
-                'loc': urljoin(base, f'/c/{col.slug}/'),
+                'loc': urljoin(base, f'/collection/{col.slug}/'),
                 'lastmod': col.updated_at.isoformat() if col.updated_at else '',
                 'changefreq': 'weekly',
                 'priority': '0.6',
@@ -62,9 +64,10 @@ def iter_sitemap_entries() -> Iterable[dict]:
     # Journal entries — pulled from cms.Page rows tagged metadata.category=='journal'.
     try:
         from plugins.installed.cms.models import Page
-        for j in (Page.objects
-                  .filter(state='published', metadata__category='journal')
-                  .only('slug', 'updated_at')):
+
+        for j in Page.objects.filter(state='published', metadata__category='journal').only(
+            'slug', 'updated_at'
+        ):
             yield {
                 'loc': urljoin(base, f'/journal/{j.slug}/'),
                 'lastmod': j.updated_at.isoformat() if j.updated_at else '',
@@ -76,6 +79,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
 
     try:
         from plugins.installed.seo.models import SitemapEntry
+
         for row in SitemapEntry.objects.filter(is_active=True):
             yield {
                 'loc': row.location,
@@ -102,8 +106,12 @@ def sitemap_counts() -> dict:
     """
     counts = {
         'total': 0,
-        'product_count': 0, 'category_count': 0, 'collection_count': 0,
-        'journal_count': 0, 'static_count': 0, 'manual_count': 0,
+        'product_count': 0,
+        'category_count': 0,
+        'collection_count': 0,
+        'journal_count': 0,
+        'static_count': 0,
+        'manual_count': 0,
         'last_modified': '',
     }
     base = _site_base_url().rstrip('/')
@@ -111,17 +119,16 @@ def sitemap_counts() -> dict:
     for e in iter_sitemap_entries():
         counts['total'] += 1
         loc = e.get('loc', '')
-        path = loc[len(base):] if loc.startswith(base) else loc
+        path = loc[len(base) :] if loc.startswith(base) else loc
         if path.startswith('/products/') and path.count('/') >= 3:
             counts['product_count'] += 1
         elif path.startswith('/category/'):
             counts['category_count'] += 1
-        elif path.startswith('/c/'):
+        elif path.startswith('/collection/'):
             counts['collection_count'] += 1
         elif path.startswith('/journal/') and path != '/journal/':
             counts['journal_count'] += 1
-        elif path in ('/', '/products/', '/staff-picks/', '/about/',
-                      '/contact/', '/journal/'):
+        elif path in ('/', '/products/', '/staff-picks/', '/about/', '/contact/', '/journal/'):
             counts['static_count'] += 1
         else:
             counts['manual_count'] += 1
@@ -151,8 +158,10 @@ def render_sitemap_xml() -> str:
     that Google rejects. Overflow is silently truncated — a split
     sitemap index is a follow-up (Phase 2 of the SEO knob wiring)."""
     cap = _sitemap_max_urls()
-    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
-             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
     count = 0
     for e in iter_sitemap_entries():
         if count >= cap:
@@ -177,6 +186,7 @@ def render_sitemap_index_xml() -> str:
     against the 50k-URL limit.
     """
     from django.utils import timezone
+
     base = _site_base_url().rstrip('/')
     now = timezone.now().replace(microsecond=0).isoformat()
     children = [
@@ -216,7 +226,9 @@ def render_news_sitemap_xml() -> str:
     seo_plugin = _seo_plugin()
     if seo_plugin is not None:
         try:
-            max_age_hours = int(seo_plugin.get_config_value('news_sitemap_max_age_hours', 168) or 168)
+            max_age_hours = int(
+                seo_plugin.get_config_value('news_sitemap_max_age_hours', 168) or 168
+            )
         except (TypeError, ValueError):
             pass
     cutoff = timezone.now() - timedelta(hours=max_age_hours)
@@ -235,11 +247,12 @@ def render_news_sitemap_xml() -> str:
 
     s = site_settings()
     pub_name = s.organization_name or 'Morpheus'
-    qs = (Page.objects
-          .filter(state='published', metadata__category='journal')
-          .exclude(publish_at__gt=timezone.now())
-          .filter(publish_at__gte=cutoff)
-          .order_by('-publish_at')[:1000])
+    qs = (
+        Page.objects.filter(state='published', metadata__category='journal')
+        .exclude(publish_at__gt=timezone.now())
+        .filter(publish_at__gte=cutoff)
+        .order_by('-publish_at')[:1000]
+    )
     for post in qs:
         pub_at = post.publish_at or post.updated_at or post.created_at
         if pub_at is None:
@@ -276,6 +289,7 @@ def render_image_sitemap_xml() -> str:
     ]
     try:
         from plugins.installed.catalog.models import Product
+
         for p in Product.objects.filter(status='active').prefetch_related('images')[:5000]:
             page_url = f'{base}/products/{p.slug}/'
             imgs = list(p.images.all())
