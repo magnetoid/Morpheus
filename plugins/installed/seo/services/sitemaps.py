@@ -50,6 +50,32 @@ def _iter_author_entries(base: str) -> Iterable[dict]:
         logger.debug('seo: sitemap authors skipped: %s', e)
 
 
+def _iter_webstory_entries(base: str) -> Iterable[dict]:
+    """One ``/story/<slug>/`` URL per published WebStory. The webstories
+    plugin owns its own canonical link from PDP via ``rel='amphtml'``,
+    but listing the URLs in the main sitemap is what gets them into
+    Google's Web Stories surface."""
+    try:
+        from plugins.installed.webstories.models import WebStory
+
+        rows = (
+            WebStory.objects.filter(is_published=True)
+            .select_related('product')
+            .only('updated_at', 'product__slug', 'product__status')
+        )
+        for s in rows:
+            if getattr(s.product, 'status', '') != 'active':
+                continue
+            yield {
+                'loc': urljoin(base, f'/story/{s.product.slug}/'),
+                'lastmod': s.updated_at.isoformat() if s.updated_at else '',
+                'changefreq': 'weekly',
+                'priority': '0.5',
+            }
+    except Exception as e:  # noqa: BLE001 — webstories plugin optional
+        logger.debug('seo: sitemap webstories skipped: %s', e)
+
+
 def iter_sitemap_entries() -> Iterable[dict]:
     """Yield entries that should appear in the sitemap. Pulls from:
 
@@ -101,6 +127,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
         logger.debug('seo: sitemap catalog skipped: %s', e)
 
     yield from _iter_author_entries(base)
+    yield from _iter_webstory_entries(base)
 
     # Static editorial routes shipped by the storefront plugin. These don't
     # have model rows so they're hard-coded here; cheap and stable.

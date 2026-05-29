@@ -1,0 +1,57 @@
+{% comment %}
+Story-player thumbnail rendered into PDP slot `pdp_above_long_description`.
+
+Gates itself on the OneToOne related row — when there's no WebStory or
+the story isn't published, the block emits nothing.
+
+The amp-story-player runtime loads from the AMP CDN (one script + one
+stylesheet) and renders a tappable card that opens the full
+`/story/<slug>/` document in a fullscreen overlay.
+{% endcomment %}
+{% with web_story=product.web_story|default_if_none:None %}
+{% if web_story and web_story.is_published and web_story.panels %}
+<section class="pdp-webstory" aria-labelledby="pdp-webstory-heading">
+  <h2 id="pdp-webstory-heading" class="pdp-webstory__heading">Story preview</h2>
+  <p class="pdp-webstory__lede">Tap to flip through the cover, snippets, and details.</p>
+  <script async src="https://cdn.ampproject.org/amp-story-player-v0.js"></script>
+  <link href="https://cdn.ampproject.org/amp-story-player-v0.css" rel="stylesheet">
+  <amp-story-player class="pdp-webstory__player">
+    <a href="/story/{{ product.slug }}/">
+      {% if web_story.poster_portrait_url %}
+        <img src="{{ web_story.poster_portrait_url }}"
+             loading="lazy"
+             data-amp-story-player-poster-img
+             alt="{{ product.name }} story poster">
+      {% endif %}
+      <span>{{ product.name }}</span>
+    </a>
+  </amp-story-player>
+</section>
+<style>
+  .pdp-webstory {
+    margin: 3rem 0;
+    padding: 0;
+  }
+  .pdp-webstory__heading {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+  }
+  .pdp-webstory__lede {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-muted, #6b6258);
+    margin: 0 0 1.25rem 0;
+  }
+  .pdp-webstory__player {
+    width: min(280px, 100%);
+    aspect-ratio: 3 / 5;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+  }
+</style>
+{% endif %}
+{% endwith %}

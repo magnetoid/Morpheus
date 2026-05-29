@@ -1,0 +1,95 @@
+{% load static %}<!doctype html>
+<html amp lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ story.title|default:product.name }}</title>
+<link rel="canonical" href="{{ canonical_url }}">
+<meta name="viewport" content="width=device-width">
+<meta name="description" content="{{ story.summary|default:product.short_description }}">
+<script async src="https://cdn.ampproject.org/v0.js"></script>
+<script async custom-element="amp-story" src="https://cdn.ampproject.org/v0/amp-story-1.0.js"></script>
+<style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
+<style amp-custom>
+  amp-story-page { background-color: #1a1a1a; }
+  .ws-overlay {
+    background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.65) 100%);
+    width: 100%;
+    height: 100%;
+  }
+  .ws-text-frame {
+    padding: 32px 28px 56px 28px;
+    justify-content: flex-end;
+  }
+  .ws-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 42px;
+    font-weight: 600;
+    line-height: 1.1;
+    color: #fff;
+    margin: 0 0 14px 0;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.55);
+  }
+  .ws-caption {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.45;
+    color: rgba(255,255,255,0.95);
+    margin: 0;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.55);
+  }
+  .ws-cta-row {
+    margin-top: 24px;
+  }
+  .ws-cta {
+    display: inline-block;
+    background: #fff;
+    color: #1a1a1a;
+    padding: 14px 28px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+  .ws-poster-fallback {
+    background: #efe7d8;
+  }
+</style>
+</head>
+<body>
+<amp-story standalone
+  title="{{ story.title|default:product.name }}"
+  publisher="{{ publisher_name }}"
+  publisher-logo-src="{{ publisher_logo_url }}"
+  poster-portrait-src="{{ poster_url }}">
+{% for panel in panels %}
+  <amp-story-page id="panel-{{ forloop.counter }}" auto-advance-after="6s">
+    {% if panel.image_url %}
+      <amp-story-grid-layer template="fill">
+        <amp-img src="{{ panel.image_url }}"
+                 layout="fill"
+                 alt="{{ panel.caption|default:product.name }}"></amp-img>
+      </amp-story-grid-layer>
+      <amp-story-grid-layer template="fill">
+        <div class="ws-overlay"></div>
+      </amp-story-grid-layer>
+    {% else %}
+      <amp-story-grid-layer template="fill">
+        <div class="ws-poster-fallback" style="width:100%;height:100%"></div>
+      </amp-story-grid-layer>
+    {% endif %}
+    <amp-story-grid-layer template="vertical" class="ws-text-frame">
+      {% if panel.title %}<h1 class="ws-title">{{ panel.title }}</h1>{% endif %}
+      {% if panel.caption %}<p class="ws-caption">{{ panel.caption }}</p>{% endif %}
+      {% if panel.cta_url %}
+        <div class="ws-cta-row">
+          <a class="ws-cta" href="{{ panel.cta_url }}">{{ panel.cta_label|default:"View product" }}</a>
+        </div>
+      {% endif %}
+    </amp-story-grid-layer>
+  </amp-story-page>
+{% endfor %}
+</amp-story>
+</body>
+</html>

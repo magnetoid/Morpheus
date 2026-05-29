@@ -1,6 +1,7 @@
 """
 Morpheus CMS — Django Settings (Revised: Plugin-Native Architecture)
 """
+
 import os
 import sys
 from pathlib import Path
@@ -21,11 +22,13 @@ SECRET_KEY = config(
 )
 if not SECRET_KEY:
     from django.core.exceptions import ImproperlyConfigured
-    raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG=False")
+
+    raise ImproperlyConfigured('SECRET_KEY must be set when DEBUG=False')
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 if not DEBUG and ALLOWED_HOSTS == ['localhost', '127.0.0.1']:
     from django.core.exceptions import ImproperlyConfigured
-    raise ImproperlyConfigured("ALLOWED_HOSTS must be set explicitly when DEBUG=False")
+
+    raise ImproperlyConfigured('ALLOWED_HOSTS must be set explicitly when DEBUG=False')
 
 # ── Plugin & Theme directories ─────────────────────────────────────────────────
 MORPHEUS_PLUGINS_DIR = BASE_DIR / 'plugins' / 'installed'
@@ -93,6 +96,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.localization',
     'plugins.installed.bookvault',
     'plugins.installed.pwa',
+    'plugins.installed.webstories',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────
@@ -132,10 +136,10 @@ THIRD_PARTY_APPS = [
 MORPHEUS_ENGINE_APPS = [
     'core',
     'core.assistant',  # Hard-coded Linda AI Assistant
-    'core.auth',       # Passwordless email-OTP login (parallel to allauth)
-    'core.i18n',       # Translation kernel — generic-FK Translation rows
-    'core.audit',      # Security-grade audit log
-    'core.errors',     # Deep error log — 5xx + client JS errors → ErrorEvent
+    'core.auth',  # Passwordless email-OTP login (parallel to allauth)
+    'core.i18n',  # Translation kernel — generic-FK Translation rows
+    'core.audit',  # Security-grade audit log
+    'core.errors',  # Deep error log — 5xx + client JS errors → ErrorEvent
     'plugins',
     'themes',
     'api',
@@ -145,11 +149,12 @@ INSTALLED_APPS = (
     DJANGO_APPS
     + THIRD_PARTY_APPS
     + MORPHEUS_ENGINE_APPS
-    + ALL_MORPHEUS_PLUGINS   # ← All plugins as Django apps
+    + ALL_MORPHEUS_PLUGINS  # ← All plugins as Django apps
 )
 
 # Discover plugins so they are available in the registry
 from plugins.registry import plugin_registry
+
 plugin_registry.discover(ALL_MORPHEUS_PLUGINS)
 
 # ── Middleware ─────────────────────────────────────────────────────────────────
@@ -179,7 +184,7 @@ MIDDLEWARE = [
     'plugins.installed.agent_mcp.middleware.TrustedAgentMiddleware',
     'plugins.installed.ai_assistant.middleware.AIContextMiddleware',
     'api.permissions.AgentAuthMiddleware',
-    'api.middleware.GraphQLCacheMiddleware',   # Enterprise: GraphQL Query Caching
+    'api.middleware.GraphQLCacheMiddleware',  # Enterprise: GraphQL Query Caching
     'api.rate_limit.RateLimitMiddleware',
     'core.ratelimit.RateLimitMiddleware',
     'plugins.installed.environments.middleware.EnvironmentMiddleware',
@@ -239,9 +244,10 @@ _default_db_url = config(
 )
 if not _default_db_url:
     from django.core.exceptions import ImproperlyConfigured
+
     raise ImproperlyConfigured(
-        "DATABASE_URL must be set. Use a Postgres URL (Supabase recommended). "
-        "See .env.example for the exact format."
+        'DATABASE_URL must be set. Use a Postgres URL (Supabase recommended). '
+        'See .env.example for the exact format.'
     )
 
 DATABASES = {
@@ -327,8 +333,8 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
-CELERY_TASK_TIME_LIMIT = 300          # hard kill after 5 min
-CELERY_TASK_SOFT_TIME_LIMIT = 240     # raise SoftTimeLimitExceeded after 4 min
+CELERY_TASK_TIME_LIMIT = 300  # hard kill after 5 min
+CELERY_TASK_SOFT_TIME_LIMIT = 240  # raise SoftTimeLimitExceeded after 4 min
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 4
 CELERY_BEAT_SCHEDULE = {}  # populated by plugins via plugin.ready()
@@ -336,10 +342,14 @@ CELERY_BEAT_SCHEDULE = {}  # populated by plugins via plugin.ready()
 # ── Static & Media ─────────────────────────────────────────────────────────────
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [d for d in [
-    BASE_DIR / 'static',
-    BASE_DIR / 'themes' / 'library' / MORPHEUS_ACTIVE_THEME / 'static',
-] if d.exists()]
+STATICFILES_DIRS = [
+    d
+    for d in [
+        BASE_DIR / 'static',
+        BASE_DIR / 'themes' / 'library' / MORPHEUS_ACTIVE_THEME / 'static',
+    ]
+    if d.exists()
+]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
@@ -398,7 +408,8 @@ _default_cors = 'http://localhost:3000,http://127.0.0.1:3000' if DEBUG else ''
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default=_default_cors, cast=Csv())
 if not DEBUG and not CORS_ALLOWED_ORIGINS:
     from django.core.exceptions import ImproperlyConfigured
-    raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set when DEBUG=False")
+
+    raise ImproperlyConfigured('CORS_ALLOWED_ORIGINS must be set when DEBUG=False')
 CORS_ALLOW_CREDENTIALS = True
 
 # ── GraphQL hardening ─────────────────────────────────────────────────────────
@@ -407,7 +418,9 @@ GRAPHQL_MAX_ALIASES = config('GRAPHQL_MAX_ALIASES', default=15, cast=int)
 # Block `__schema` / `__type` discovery in prod. Override only if you need
 # to ship a public IDE.
 GRAPHQL_DISABLE_INTROSPECTION_IN_PROD = config(
-    'GRAPHQL_DISABLE_INTROSPECTION_IN_PROD', default=True, cast=bool,
+    'GRAPHQL_DISABLE_INTROSPECTION_IN_PROD',
+    default=True,
+    cast=bool,
 )
 
 # ── Crispy Forms ───────────────────────────────────────────────────────────────
@@ -495,8 +508,18 @@ LOGGING = {
     },
     'root': {'handlers': ['console'], 'level': 'INFO'},
     'loggers': {
-        'morph':    {'handlers': ['console'], 'level': 'DEBUG' if DEBUG else 'INFO', 'propagate': False, 'filters': ['request_id']},
-        'morpheus': {'handlers': ['console'], 'level': 'DEBUG' if DEBUG else 'INFO', 'propagate': False, 'filters': ['request_id']},
+        'morph': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+            'filters': ['request_id'],
+        },
+        'morpheus': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+            'filters': ['request_id'],
+        },
     },
 }
 
@@ -506,6 +529,7 @@ LOGGING = {
 # every event before sending.
 try:
     from core.sentry import init_sentry
+
     init_sentry()
 except Exception:  # noqa: BLE001 — observability must never block app boot
     pass
