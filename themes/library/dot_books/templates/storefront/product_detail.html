@@ -80,8 +80,7 @@
                     data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
                     data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
                     data-variant-image="{{ v.imageUrl|default:'' }}"
-                    data-variant-desc="{{ v.shortDescription|default:''|escape }}"
-                    data-variant-long="{{ v.description|default:''|escape }}">
+                    data-variant-desc="{{ v.shortDescription|default:''|escape }}">
               {% if v.imageUrl %}<span class="pdp-variant__thumb"><img src="{{ v.imageUrl }}" alt="" loading="lazy"></span>{% endif %}
               <span class="pdp-variant__badge pdp-variant__badge--{{ v.variantType|default:'physical' }}">
                 {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'virtual' %}Access{% else %}Physical{% endif %}
@@ -100,12 +99,6 @@
             </button>
             {% endif %}{% endfor %}
           </div>
-          {# Long description from the currently-selected variant; JS swaps content on click. #}
-          {% with product.variants|first as first_v %}
-          <div data-pdp-variant-long
-               class="pdp-variant-long"
-               {% if not first_v.description %}hidden{% endif %}>{{ first_v.description|default:''|safe }}</div>
-          {% endwith %}
         </div>
         {% endif %}
 
@@ -333,15 +326,6 @@
 }
 .pdp-variant { position: relative; }
 .pdp-variant__desc { font-size: .85rem; color: var(--ink-2); line-height: 1.45; }
-.pdp-variant-long {
-  margin-top: 1rem; padding: .9rem 1rem;
-  background: var(--surface-2, rgba(0,0,0,.02));
-  border-left: 2px solid var(--ink);
-  border-radius: 4px;
-  font-size: .95rem; line-height: 1.6; color: var(--ink-2);
-}
-.pdp-variant-long > *:first-child { margin-top: 0; }
-.pdp-variant-long > *:last-child  { margin-bottom: 0; }
 @media (prefers-reduced-motion: reduce) {
   .pdp-variant { transition: none; }
 }
@@ -445,7 +429,6 @@
   var priceMain   = document.querySelector('[data-pdp-price]');
   var priceCompare = document.querySelector('[data-pdp-compare]');
   var ctaButton   = document.querySelector('[data-pdp-cta]');
-  var longWrap    = picker.querySelector('[data-pdp-variant-long]');
   var ctaLabel = {
     digital: 'Buy & download',
     virtual: 'Get access',
@@ -484,14 +467,6 @@
     }
     if (ctaButton && card.dataset.variantType) {
       ctaButton.textContent = ctaLabel[card.dataset.variantType] || 'Add to cart';
-    }
-    if (longWrap) {
-      // Per-variant long description; data-variant-long is HTML-escaped by
-      // Django then un-escaped by the browser on attribute read, so innerHTML
-      // is safe here (the source is admin-authored / TipTap-sanitized).
-      var longHtml = card.dataset.variantLong || '';
-      longWrap.innerHTML = longHtml;
-      longWrap.hidden = !longHtml.trim();
     }
     // Persist the selection in the URL hash so reloads + back/forward
     // restore the same variant, and a URL like

@@ -113,7 +113,9 @@ Usage from a parent template:
   clicking any empty area inside .muploader. Drag-and-drop is wired
   to the .muploader wrapper itself, so dropping anywhere works.
   {% endcomment %}
-  <input type="file" multiple accept="image/*" data-file-input hidden>
+  {% comment %}Not `hidden`/display:none — Safari refuses to open the file dialog when .click() is called on a display:none input. Visually-hidden-but-rendered works in every browser.{% endcomment %}
+  <input type="file" multiple accept="image/*" data-file-input
+         style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;">
   <p class="text-xs text-[color:var(--text-muted)] mt-2">
     Drag images anywhere here or click the "Add images" tile.
     JPEG · PNG · WebP · AVIF · GIF · up to 10 MB each.
