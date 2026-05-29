@@ -76,8 +76,16 @@ class SecurityHeadersMiddleware:
         if not response.has_header('Content-Security-Policy-Report-Only'):
             # Report-only — no enforcement, just collects violation
             # reports. Skip on /admin/ (Django Admin uses inline event
-            # handlers we don't control) and /static/.
+            # handlers we don't control), /static/, and /dashboard/
+            # (the Morpheus admin ships heavy inline styles/scripts that
+            # flood /api/csp-report/ into 429s on every page load — the
+            # report telemetry is for hardening the public storefront,
+            # not the authenticated staff area).
             path = getattr(request, 'path', '') or ''
-            if not (path.startswith('/admin/') or path.startswith('/static/')):
+            if not (
+                path.startswith('/admin/')
+                or path.startswith('/static/')
+                or path.startswith('/dashboard/')
+            ):
                 response['Content-Security-Policy-Report-Only'] = _CSP_REPORT_ONLY
         return response
