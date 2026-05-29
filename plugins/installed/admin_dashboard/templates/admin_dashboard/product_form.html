@@ -36,8 +36,15 @@
   </div>
   {% endif %}
 
-  {# Single-column layout per request; right-rail cards stack inline. #}
-  <div class="max-w-3xl mx-auto space-y-4">
+  {% comment %}
+    Two-column layout: wider form on the left, narrow sidebar (Status /
+    Organization / Sales channels / Metafields / SEO at a glance / Custom
+    fields) on the right. Sidebar inputs use form="product-form" so they
+    submit with the main form even though they sit outside it.
+  {% endcomment %}
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+  <div class="lg:col-span-8 space-y-4">
 
   <form method="post" id="product-form" class="space-y-4" enctype="multipart/form-data" data-morph-dirty hx-boost="false" data-ajax>
     {% csrf_token %}
@@ -1019,8 +1026,10 @@
 
   </form>
 
+  </div> {# /lg:col-span-8 — close LEFT column #}
+
   {# ── Right sidebar — Status / Organization / Channels / SEO snapshot ── #}
-  <aside class="space-y-4">
+  <aside class="lg:col-span-4 space-y-4">
 
     <div class="card card-padded space-y-3">
       <h2 class="font-semibold text-sm">Status</h2>
@@ -1123,7 +1132,7 @@
 
   </aside>
 
-  </div>{% comment %}/lg:grid-cols-3{% endcomment %}
+  </div>{% comment %}/lg:grid-cols-12 two-column wrapper opened at line ~40{% endcomment %}
 
   {% if product %}
   {% comment %}
