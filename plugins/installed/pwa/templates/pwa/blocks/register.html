@@ -1,0 +1,18 @@
+{% load static %}
+{% comment %}Injected at global_below_body on every storefront page. Adds the manifest link + apple-touch-icon (moving them out of <head> is fine — browsers honour rel=manifest anywhere in the document) and registers the service worker.{% endcomment %}
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+<link rel="icon" type="image/svg+xml" href="{% static 'pwa/icon.svg' %}">
+<script>
+  (function () {
+    if (!('serviceWorker' in navigator)) return;
+    // Register after load so the SW install never competes with the
+    // first paint / critical requests.
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function (e) {
+        // Non-fatal — the site works fine without the SW.
+        if (window.console) console.debug('pwa: SW registration skipped', e);
+      });
+    });
+  })();
+</script>

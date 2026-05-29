@@ -92,6 +92,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.store_bootstrap',
     'plugins.installed.localization',
     'plugins.installed.bookvault',
+    'plugins.installed.pwa',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

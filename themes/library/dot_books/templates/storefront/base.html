@@ -305,7 +305,7 @@
 {% seo_verification_metas %}
 {% seo_llms_link %}
 
-<link rel="manifest" href="/manifest.json">
+{# PWA manifest + apple-touch-icon are injected by the pwa plugin's storefront block (global_below_body), which also registers the service worker. #}
 <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="dot books">
 
 {# Speculation Rules API — hover-prerenders PDP/category/vendor links. Skips side-effect-y paths. #}
@@ -329,7 +329,7 @@
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="dot books">
-<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+{# apple-touch-icon now provided by the pwa plugin block (real icon, was a 404). #}
 
 {# Catch unhandled JS errors + unhandledrejection → /api/errors/client/. #}
 {% load static %}

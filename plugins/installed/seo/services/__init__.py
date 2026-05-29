@@ -20,8 +20,7 @@ Layout:
                       render_sitemap_xml (main + index + news +
                       image) + render_opensearch_xml.
   * crawler_files.py — AI_CRAWLERS catalogue, get_ai_crawler_policy,
-                      render_robots_txt, render_llms_txt,
-                      render_pwa_manifest.
+                      render_robots_txt, render_llms_txt.
   * indexnow.py     — get_or_create_indexnow_key, ping_indexnow.
   * redirects.py    — resolve_redirect, record_404, suggest_redirect,
                       refresh_404_suggestions.
@@ -80,7 +79,6 @@ from .crawler_files import (
     AI_CRAWLERS,
     get_ai_crawler_policy,
     render_llms_txt,
-    render_pwa_manifest,
     render_robots_txt,
 )
 
@@ -143,7 +141,7 @@ __all__ = [
     'render_sitemap_xml', 'sitemap_counts',
     # crawler files
     'AI_CRAWLERS', 'get_ai_crawler_policy',
-    'render_llms_txt', 'render_pwa_manifest', 'render_robots_txt',
+    'render_llms_txt', 'render_robots_txt',
     # indexnow
     'get_or_create_indexnow_key', 'ping_indexnow',
     # redirects

@@ -163,13 +163,6 @@ def opensearch_xml(request: HttpRequest) -> HttpResponse:
     )
 
 
-def web_manifest(request: HttpRequest) -> JsonResponse:
-    """PWA web app manifest. Browsers use this to install the store
-    as a home-screen app + show themed window chrome."""
-    from plugins.installed.seo.services import render_pwa_manifest
-    return JsonResponse(render_pwa_manifest())
-
-
 def image_variant(request: HttpRequest, fmt: str, width: int, path: str) -> HttpResponse:
     """Serve a resized WebP/AVIF variant of an image under MEDIA_ROOT.
 
@@ -642,8 +635,8 @@ def sitemap_page(request):
          'desc': 'schema.org Product feed for AI shopping crawlers.'},
         {'label': 'OpenSearch', 'path': '/opensearch.xml',
          'desc': 'Browser tab → search engine descriptor.'},
-        {'label': 'Web app manifest', 'path': '/manifest.json',
-         'desc': 'PWA manifest (install-on-mobile).'},
+        {'label': 'Web app manifest', 'path': '/manifest.webmanifest',
+         'desc': 'PWA manifest — now owned by the pwa plugin (install + offline).'},
         {'label': 'IndexNow key', 'path': f'/{key}.txt' if key else '',
          'desc': 'Bing/Yandex verification key.'},
     ]

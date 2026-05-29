@@ -202,27 +202,7 @@ def render_llms_txt(*, full: bool = False) -> str:
         pass
     return '\n'.join(out) + '\n'
 
-
-def render_pwa_manifest() -> dict:
-    """Web App Manifest — lets browsers install the storefront as a
-    PWA. Required by Lighthouse "Installable" + opens us up for the
-    Android home-screen add prompt.
-    """
-    s = site_settings()
-    name = s.organization_name or 'dot books'
-    return {
-        'name': name,
-        'short_name': name[:12],
-        'description': s.llms_txt_intro or name,
-        'start_url': '/',
-        'scope': '/',
-        'display': 'standalone',
-        'theme_color': '#f6f1e7',
-        'background_color': '#f6f1e7',
-        'icons': [
-            {'src': '/static/icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
-            {'src': '/static/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png'},
-            {'src': '/static/icons/icon-maskable-512.png', 'sizes': '512x512',
-             'type': 'image/png', 'purpose': 'maskable'},
-        ],
-    }
+# NOTE: the Web App Manifest moved to the dedicated `pwa` plugin
+# (plugins/installed/pwa) which also ships a service worker + offline
+# page + real icons. The old render_pwa_manifest() here pointed at
+# icon files that 404'd and had no SW, so it was never installable.
