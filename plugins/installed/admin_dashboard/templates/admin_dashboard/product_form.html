@@ -211,6 +211,48 @@
       .rte-content hr { border: 0; border-top: 1px solid var(--border); margin: 1.5em 0; }
       .rte-content s, .rte-content del { color: var(--text-muted); }
       .rte-source { width: 100%; min-height: 280px; padding: 12px 14px; font-family: ui-monospace, monospace; font-size: 12px; border: 0; resize: vertical; background: var(--surface); color: var(--text); }
+
+      /* ── Variant modal — image rail + grouped fields ──────────────── */
+      .morph-modal--wide { max-width: 880px; }
+      .variant-modal {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 1.25rem;
+        align-items: start;
+      }
+      .variant-modal__media {
+        display: flex; flex-direction: column; gap: .55rem;
+        position: sticky; top: 0;
+      }
+      .variant-modal__thumb {
+        position: relative;
+        aspect-ratio: 2 / 3;
+        border-radius: var(--radius-sm, 6px);
+        overflow: hidden;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .variant-modal__thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .variant-modal__thumb-note {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        font-size: .65rem; text-align: center;
+        padding: .2rem; color: #fff;
+        background: rgba(14,14,14,.55);
+      }
+      .variant-modal__thumb-empty {
+        display: flex; flex-direction: column; align-items: center; gap: .35rem;
+        color: var(--text-muted); font-size: .75rem;
+      }
+      .variant-modal__fields { display: flex; flex-direction: column; gap: .85rem; min-width: 0; }
+      .variant-modal__row { display: flex; flex-wrap: wrap; gap: .75rem; }
+      .variant-modal__row > div { min-width: 0; }
+      .variant-modal__foot { grid-column: 1 / -1; }
+      @media (max-width: 640px) {
+        .variant-modal { grid-template-columns: 1fr; }
+        .variant-modal__media { flex-direction: row; align-items: center; position: static; }
+        .variant-modal__thumb { width: 90px; flex: 0 0 90px; }
+      }
     </style>
 
     <script type="module">
@@ -522,7 +564,7 @@
 
       {# Per-variant edit modals — one <dialog> per row, server-rendered with values; Cancel discards. #}
       {% for v in variants %}
-      <dialog id="variant-edit-{{ v.id }}" class="morph-modal" data-variant-id="{{ v.id }}">
+      <dialog id="variant-edit-{{ v.id }}" class="morph-modal morph-modal--wide" data-variant-id="{{ v.id }}">
         <div class="morph-modal__head">
           <h3 class="font-semibold text-sm">Edit variant — {{ v.name }}</h3>
           <button type="button" class="btn btn-ghost p-1" aria-label="Close"
@@ -532,87 +574,125 @@
         </div>
         <form method="post" enctype="multipart/form-data"
               action="{% url 'admin_dashboard:variant_edit' product_id=product.id variant_id=v.id %}"
-              class="morph-modal__body grid grid-cols-1 md:grid-cols-12 gap-3">
+              class="morph-modal__body variant-modal">
           {% csrf_token %}
-          <div class="md:col-span-6">
-            <label class="block text-xs font-medium mb-1">Name *</label>
-            <input type="text" name="name" value="{{ v.name }}" required class="input">
-          </div>
-          <div class="md:col-span-4">
-            <label class="block text-xs font-medium mb-1">SKU *</label>
-            <input type="text" name="sku" value="{{ v.sku }}" required class="input">
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium mb-1">Size</label>
-            <input type="text" name="size" value="{{ v.size|default:'' }}" class="input" placeholder="e.g. XL, 300 ml">
-          </div>
 
-          <div class="md:col-span-4">
-            <label class="block text-xs font-medium mb-1">Type</label>
-            <select name="variant_type" class="input"
-                    onchange="
-                      var f = this.closest('form');
-                      f.querySelector('[data-digital-only]').hidden  = this.value !== 'digital';
-                      f.querySelector('[data-physical-only]').hidden = this.value !== 'physical';
-                    ">
-              <option value="physical" {% if v.variant_type == 'physical' %}selected{% endif %}>Physical — ships</option>
-              <option value="digital"  {% if v.variant_type == 'digital'  %}selected{% endif %}>Digital — download</option>
-              <option value="virtual"  {% if v.variant_type == 'virtual'  %}selected{% endif %}>Virtual — no shipment</option>
-            </select>
-          </div>
-          <div class="md:col-span-4">
-            <label class="block text-xs font-medium mb-1">Price</label>
-            <input type="number" step="0.01" min="0" name="price" value="{% if v.price %}{{ v.price.amount }}{% endif %}" class="input">
-          </div>
-          <div class="md:col-span-4">
-            <label class="block text-xs font-medium mb-1">Compare-at</label>
-            <input type="number" step="0.01" min="0" name="compare_at_price" value="{% if v.compare_at_price %}{{ v.compare_at_price.amount }}{% endif %}" class="input">
-          </div>
-
-          <div class="md:col-span-4">
-            <label class="block text-xs font-medium mb-1">Cost</label>
-            <input type="number" step="0.01" min="0" name="cost_price" value="{% if v.cost_price %}{{ v.cost_price.amount }}{% endif %}" class="input">
-          </div>
-          <div class="md:col-span-4" data-physical-only {% if v.variant_type != 'physical' %}hidden{% endif %}>
-            <label class="block text-xs font-medium mb-1">Weight</label>
-            <input type="number" step="0.001" min="0" name="weight" value="{{ v.weight|default:'' }}" class="input">
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium mb-1">Sort order</label>
-            <input type="number" min="0" name="sort_order" value="{{ v.sort_order|default:'0' }}" class="input">
-          </div>
-          <div class="md:col-span-2 flex items-end pb-2">
-            <label class="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" name="is_active" {% if v.is_active %}checked{% endif %}> Active
-            </label>
-          </div>
-
-          {# Per-variant copy — both fall back to Product's text on the storefront when blank. #}
-          <div class="md:col-span-12">
-            <label class="block text-xs font-medium mb-1">Short description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
-            <textarea name="short_description" rows="2" class="input"
-                      placeholder="One-line variant pitch — falls back to the product's short description when blank.">{{ v.short_description|default:'' }}</textarea>
-          </div>
-          <div class="md:col-span-12">
-            <label class="block text-xs font-medium mb-1">Long description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
-            <textarea name="description" rows="5" class="input"
-                      placeholder="Full variant description — falls back to the product's description when blank.">{{ v.description|default:'' }}</textarea>
-          </div>
-
-          <div class="md:col-span-12" data-digital-only {% if v.variant_type != 'digital' %}hidden{% endif %}>
-            <label class="block text-xs font-medium mb-1">Digital file (PDF / EPUB / MP3)</label>
-            {% if v.digital_file %}
-            <div class="text-xs text-[color:var(--text-muted)] mb-1">
-              Current: <a href="{{ v.digital_file.url }}" target="_blank" rel="noopener" class="underline">{{ v.digital_file.name }}</a>
-              <label class="inline-flex items-center gap-1 ml-2">
-                <input type="checkbox" name="digital_file_clear"> Remove
-              </label>
+          {# Left rail: variant image with live preview. #}
+          <div class="variant-modal__media">
+            <div class="variant-modal__thumb" id="variant-thumb-{{ v.id }}">
+              {% if v.image and v.image.image %}
+                <img src="{{ v.image.image.url }}" alt="{{ v.name }}">
+              {% elif v.product.primary_image and v.product.primary_image.image %}
+                <img src="{{ v.product.primary_image.image.url }}" alt="" style="opacity:.55;">
+                <span class="variant-modal__thumb-note">Using product image</span>
+              {% else %}
+                <div class="variant-modal__thumb-empty">
+                  <i data-lucide="image" class="h-6 w-6"></i>
+                  <span>No image</span>
+                </div>
+              {% endif %}
             </div>
+            <label class="btn btn-secondary w-full" style="cursor:pointer;">
+              <i data-lucide="upload" class="h-3.5 w-3.5"></i> Upload image
+              <input type="file" name="image" accept="image/*" hidden
+                     onchange="(function(i){var t=document.getElementById('variant-thumb-{{ v.id }}');if(i.files&&i.files[0]&&t){var u=URL.createObjectURL(i.files[0]);t.innerHTML='<img src=\''+u+'\' alt=\'\'>';}})(this)">
+            </label>
+            {% if v.image %}
+            <label class="inline-flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+              <input type="checkbox" name="image_clear"> Remove image (revert to product image)
+            </label>
             {% endif %}
-            <input type="file" name="digital_file" class="input" style="padding:.4rem .55rem;">
+            <p class="text-xs text-[color:var(--text-muted)]">Blank uses the product's primary image.</p>
           </div>
 
-          <div class="md:col-span-12 morph-modal__foot">
+          {# Right rail: all the fields, grouped. #}
+          <div class="variant-modal__fields">
+            <div class="variant-modal__row">
+              <div style="flex:2;">
+                <label class="block text-xs font-medium mb-1">Name *</label>
+                <input type="text" name="name" value="{{ v.name }}" required class="input">
+              </div>
+              <div style="flex:2;">
+                <label class="block text-xs font-medium mb-1">SKU *</label>
+                <input type="text" name="sku" value="{{ v.sku }}" required class="input">
+              </div>
+              <div style="flex:1;">
+                <label class="block text-xs font-medium mb-1">Size</label>
+                <input type="text" name="size" value="{{ v.size|default:'' }}" class="input" placeholder="XL">
+              </div>
+            </div>
+
+            <div class="variant-modal__row">
+              <div style="flex:1;">
+                <label class="block text-xs font-medium mb-1">Type</label>
+                <select name="variant_type" class="input"
+                        onchange="
+                          var f = this.closest('form');
+                          f.querySelector('[data-digital-only]').hidden  = this.value !== 'digital';
+                          f.querySelector('[data-physical-only]').hidden = this.value !== 'physical';
+                        ">
+                  <option value="physical" {% if v.variant_type == 'physical' %}selected{% endif %}>Physical — ships</option>
+                  <option value="digital"  {% if v.variant_type == 'digital'  %}selected{% endif %}>Digital — download</option>
+                  <option value="virtual"  {% if v.variant_type == 'virtual'  %}selected{% endif %}>Virtual — no shipment</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label class="block text-xs font-medium mb-1">Price</label>
+                <input type="number" step="0.01" min="0" name="price" value="{% if v.price %}{{ v.price.amount }}{% endif %}" class="input">
+              </div>
+              <div style="flex:1;">
+                <label class="block text-xs font-medium mb-1">Compare-at</label>
+                <input type="number" step="0.01" min="0" name="compare_at_price" value="{% if v.compare_at_price %}{{ v.compare_at_price.amount }}{% endif %}" class="input">
+              </div>
+            </div>
+
+            <div class="variant-modal__row">
+              <div style="flex:1;">
+                <label class="block text-xs font-medium mb-1">Cost</label>
+                <input type="number" step="0.01" min="0" name="cost_price" value="{% if v.cost_price %}{{ v.cost_price.amount }}{% endif %}" class="input">
+              </div>
+              <div style="flex:1;" data-physical-only {% if v.variant_type != 'physical' %}hidden{% endif %}>
+                <label class="block text-xs font-medium mb-1">Weight</label>
+                <input type="number" step="0.001" min="0" name="weight" value="{{ v.weight|default:'' }}" class="input">
+              </div>
+              <div style="flex:1;">
+                <label class="block text-xs font-medium mb-1">Sort order</label>
+                <input type="number" min="0" name="sort_order" value="{{ v.sort_order|default:'0' }}" class="input">
+              </div>
+              <div style="flex:1;" class="flex items-end pb-2">
+                <label class="inline-flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="is_active" {% if v.is_active %}checked{% endif %}> Active
+                </label>
+              </div>
+            </div>
+
+            {# Per-variant copy — both fall back to Product's text on the storefront when blank. #}
+            <div>
+              <label class="block text-xs font-medium mb-1">Short description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+              <textarea name="short_description" rows="2" class="input"
+                        placeholder="One-line variant pitch — falls back to the product's short description when blank.">{{ v.short_description|default:'' }}</textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1">Long description <span class="text-[color:var(--text-muted)]">(optional)</span></label>
+              <textarea name="description" rows="4" class="input"
+                        placeholder="Full variant description — falls back to the product's description when blank.">{{ v.description|default:'' }}</textarea>
+            </div>
+
+            <div data-digital-only {% if v.variant_type != 'digital' %}hidden{% endif %}>
+              <label class="block text-xs font-medium mb-1">Digital file (PDF / EPUB / MP3)</label>
+              {% if v.digital_file %}
+              <div class="text-xs text-[color:var(--text-muted)] mb-1">
+                Current: <a href="{{ v.digital_file.url }}" target="_blank" rel="noopener" class="underline">{{ v.digital_file.name }}</a>
+                <label class="inline-flex items-center gap-1 ml-2">
+                  <input type="checkbox" name="digital_file_clear"> Remove
+                </label>
+              </div>
+              {% endif %}
+              <input type="file" name="digital_file" class="input" style="padding:.4rem .55rem;">
+            </div>
+          </div>
+
+          <div class="variant-modal__foot morph-modal__foot">
             <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
             <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4" aria-hidden="true"></i> Save variant</button>
           </div>

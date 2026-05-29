@@ -79,8 +79,10 @@
                     data-variant-price="{% if v.price %}{{ v.price|money }}{% endif %}"
                     data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
                     data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
+                    data-variant-image="{{ v.imageUrl|default:'' }}"
                     data-variant-desc="{{ v.shortDescription|default:''|escape }}"
                     data-variant-long="{{ v.description|default:''|escape }}">
+              {% if v.imageUrl %}<span class="pdp-variant__thumb"><img src="{{ v.imageUrl }}" alt="" loading="lazy"></span>{% endif %}
               <span class="pdp-variant__badge pdp-variant__badge--{{ v.variantType|default:'physical' }}">
                 {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'virtual' %}Access{% else %}Physical{% endif %}
               </span>
@@ -268,6 +270,22 @@
   font: inherit;
   color: inherit;
 }
+/* Variant thumbnail — the variant's own cover (or the product image
+   fallback resolved server-side via imageUrl). Sits top-left so the
+   name + price flow beside it. */
+.pdp-variant:has(.pdp-variant__thumb) {
+  grid-template-columns: 48px 1fr;
+  column-gap: .75rem;
+  align-items: center;
+}
+.pdp-variant__thumb {
+  grid-row: 1 / span 3;
+  width: 48px; height: 64px;
+  border-radius: 6px; overflow: hidden;
+  background: var(--surface-2, rgba(0,0,0,.04));
+  border: 1px solid var(--rule);
+}
+.pdp-variant__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pdp-variant:hover { border-color: var(--ink-2); }
 .pdp-variant:focus-visible {
   outline: 2px solid var(--ink); outline-offset: 2px;

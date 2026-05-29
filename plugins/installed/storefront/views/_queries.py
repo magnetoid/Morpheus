@@ -32,6 +32,7 @@ query ProductDetail($slug: String!) {
       price { amount currency }
       compareAtPrice { amount currency }
       isOnSale discountPercentage
+      imageUrl
     }
     tags category { name slug }
     averageRating

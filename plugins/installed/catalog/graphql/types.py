@@ -172,6 +172,34 @@ class ProductVariantType:
                 return None
         return None
 
+    @strawberry.field(description="Per-variant image URL. Falls back to the parent product's primary image when the variant has no image of its own, so the storefront picker always has a thumbnail.")
+    def image_url(self) -> Optional[str]:
+        # variant.image is an FK → ProductImage. Prefer its WebP variant
+        # when present (smaller), else the original.
+        own = getattr(self, 'image', None)
+        if own is not None:
+            webp = getattr(own, 'webp_image', None)
+            if webp and getattr(webp, 'name', ''):
+                try:
+                    return webp.url
+                except Exception:  # noqa: BLE001
+                    pass
+            base = getattr(own, 'image', None)
+            if base and getattr(base, 'name', ''):
+                try:
+                    return base.url
+                except Exception:  # noqa: BLE001
+                    pass
+        # Fallback: parent product's primary image.
+        parent = getattr(self, 'product', None)
+        primary = getattr(parent, 'primary_image', None) if parent else None
+        if primary is not None and getattr(primary, 'image', None):
+            try:
+                return primary.image.url
+            except Exception:  # noqa: BLE001
+                return None
+        return None
+
 @strawberry_django.type(models.Product)
 class ProductType:
     id: strawberry.ID = strawberry.field(description="Unique product identifier (UUID)")

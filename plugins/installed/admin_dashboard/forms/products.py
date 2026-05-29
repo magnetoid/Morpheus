@@ -315,6 +315,12 @@ class VariantForm(forms.Form):
     barcode = forms.CharField(max_length=50, required=False)
     digital_file = forms.FileField(required=False)
     digital_file_clear = forms.BooleanField(required=False)
+    # Per-variant image. Uploading creates a ProductImage row on the
+    # parent product and points variant.image (FK → ProductImage) at
+    # it, so the storefront variant picker can show each edition's own
+    # cover. Blank leaves the existing image; image_clear detaches it.
+    image = forms.ImageField(required=False)
+    image_clear = forms.BooleanField(required=False)
 
     is_active = forms.BooleanField(required=False, initial=True)
     sort_order = forms.IntegerField(required=False, min_value=0, initial=0)
@@ -399,5 +405,24 @@ class VariantForm(forms.Form):
         upload = cd.get('digital_file')
         if upload:
             variant.digital_file.save(upload.name, upload, save=False)
+
+        # Per-variant image. clear first, then a fresh upload wins. The
+        # uploaded file becomes a ProductImage on the parent product
+        # (is_primary=False, high sort_order so it doesn't disturb the
+        # product's own gallery ordering) and variant.image points at it.
+        if cd.get('image_clear'):
+            variant.image = None
+        img_upload = cd.get('image')
+        if img_upload:
+            from plugins.installed.catalog.models import ProductImage
+            pi = ProductImage(
+                product=self.product,
+                alt_text=(variant.name or self.product.name or '')[:255],
+                is_primary=False,
+                sort_order=900,
+            )
+            pi.image.save(img_upload.name, img_upload, save=True)
+            variant.image = pi
+
         variant.save()
         return variant
