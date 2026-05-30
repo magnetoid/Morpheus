@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q, Sum
+from django.core.cache import cache
+from django.db.models import Count, Prefetch, Q, Sum
 
 from morpheus.views import Http404, render
 from plugins.installed.catalog.models import Product, Vendor
@@ -23,6 +24,39 @@ except Exception:  # noqa: BLE001
     _Metafield = None  # type: ignore[assignment]
 
 
+def _marketplace_counts() -> dict:
+    """Cache the three top-of-page counts for 5 minutes.
+
+    These are full-table aggregates that all show the same value across
+    every landing render within the cache window — pulling them on each
+    request was 3-4 redundant COUNT queries per visitor.
+    """
+
+    def _compute() -> dict:
+        vendor_count = (
+            Vendor.objects.filter(is_active=True, products__status='active').distinct().count()
+        )
+        active_product_count = Product.objects.filter(status='active').count()
+        try:
+            titles_in_stock_now = (
+                Product.objects.filter(status='active')
+                .filter(Q(track_inventory=False) | Q(variants__stock_levels__quantity__gt=0))
+                .distinct()
+                .count()
+            )
+        except Exception:  # noqa: BLE001 — schema mismatch / inventory plugin missing
+            titles_in_stock_now = Product.objects.filter(
+                status='active', track_inventory=False
+            ).count()
+        return {
+            'vendor_count': vendor_count,
+            'active_product_count': active_product_count,
+            'titles_in_stock_now': titles_in_stock_now,
+        }
+
+    return cache.get_or_set('marketplace:counts', _compute, 300)
+
+
 def vendors_directory(request):
     """Public vendor directory — every active vendor with at least one
     active product. Editorial intro mirrors the dot books voice.
@@ -34,22 +68,28 @@ def vendors_directory(request):
     qs = Vendor.objects.filter(is_active=True)
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(description__icontains=q))
-    qs = qs.order_by('name')[:100]
+    qs = (
+        qs.annotate(active_product_count=Count('products', filter=Q(products__status='active')))
+        .filter(active_product_count__gt=0)
+        .prefetch_related(
+            Prefetch(
+                'products',
+                queryset=Product.objects.filter(status='active').order_by(
+                    '-is_featured', '-created_at'
+                ),
+                to_attr='_preview_products_all',
+            )
+        )
+        .order_by('name')[:100]
+    )
 
     vendors = []
     for v in qs:
-        product_count = Product.objects.filter(vendor=v, status='active').count()
-        if product_count == 0:
-            continue
         vendors.append(
             {
                 'obj': v,
-                'product_count': product_count,
-                'preview_products': list(
-                    Product.objects.filter(vendor=v, status='active').order_by(
-                        '-is_featured', '-created_at'
-                    )[:3]
-                ),
+                'product_count': v.active_product_count,
+                'preview_products': getattr(v, '_preview_products_all', [])[:3],
             }
         )
 
@@ -84,13 +124,10 @@ def vendor_detail(request, slug):
         .order_by('-is_featured', '-created_at')[:60]
     )
 
-    product_count = Product.objects.filter(vendor=vendor, status='active').count()
-    category_count = (
-        Product.objects.filter(vendor=vendor, status='active', category__isnull=False)
-        .values('category')
-        .distinct()
-        .count()
-    )
+    # Derive count + represented-category count from the materialised list
+    # so we avoid two extra COUNT queries against the same filter.
+    product_count = len(products)
+    category_count = len({p.category_id for p in products if p.category_id})
 
     # Books sold lifetime — sum of confirmed/shipped/delivered VendorOrder.gross.
     # Cheap aggregate; safe to skip if the marketplace plugin isn't installed.
@@ -165,42 +202,26 @@ def marketplace_landing(request):
     ``Metafield(namespace='marketplace', key='faq_*')`` if any are set;
     otherwise the template renders the editorial defaults.
     """
-    # Real ORM counts — kept cheap (one query each).
-    vendor_count = (
-        Vendor.objects.filter(is_active=True, products__status='active').distinct().count()
-    )
-    active_product_count = Product.objects.filter(status='active').count()
-    # "In stock now" — stock lives at the variant level via the inventory
-    # plugin's StockLevel rows; Product has no direct quantity column.
-    # We treat track_inventory=False rows as always in-stock, then union
-    # with any product whose variants have positive stock.
-    try:
-        titles_in_stock_now = (
-            Product.objects.filter(status='active')
-            .filter(Q(track_inventory=False) | Q(variants__stock_levels__quantity__gt=0))
-            .distinct()
-            .count()
-        )
-    except Exception:  # noqa: BLE001 — schema mismatch / inventory plugin missing
-        titles_in_stock_now = Product.objects.filter(status='active', track_inventory=False).count()
+    # Real ORM counts — the three top-of-page numbers are full-table
+    # aggregates so we cache them for 5 minutes to spare the DB on bursty
+    # landing traffic.
+    counts = _marketplace_counts()
+    vendor_count = counts['vendor_count']
+    active_product_count = counts['active_product_count']
+    titles_in_stock_now = counts['titles_in_stock_now']
 
     # 6 featured vendors — active, with at least one active product, with
     # a description (so the cards aren't blank). Ordered by most-recent so
-    # the grid feels alive between visits.
+    # the grid feels alive between visits. Annotate the count so we don't
+    # issue a per-card COUNT query inside the loop.
     featured_qs = (
         Vendor.objects.filter(is_active=True, products__status='active')
         .exclude(description='')
+        .annotate(product_count=Count('products', filter=Q(products__status='active')))
         .distinct()
         .order_by('-created_at')[:6]
     )
-    featured_vendors = []
-    for v in featured_qs:
-        featured_vendors.append(
-            {
-                'obj': v,
-                'product_count': Product.objects.filter(vendor=v, status='active').count(),
-            }
-        )
+    featured_vendors = [{'obj': v, 'product_count': v.product_count} for v in featured_qs]
 
     # FAQ — editorial overrides stored as metafields on the Vendor content
     # type (namespace='marketplace', keys 'faq_<n>_q' / 'faq_<n>_a'). Falls

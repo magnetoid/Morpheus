@@ -19,6 +19,7 @@ This is intentionally conservative. 60 seconds at the edge means a
 product update propagates within ~60s without any explicit purge, and
 during a flash sale the origin is shielded.
 """
+
 from __future__ import annotations
 
 import re
@@ -32,16 +33,23 @@ _CACHEABLE_PATTERNS = (
     re.compile(r'^/products/[^/]+/?$'),
     re.compile(r'^/category/[^/]+/?$'),
     re.compile(r'^/c/[^/]+/?$'),
+    re.compile(r'^/collection/[^/]+/?$'),
+    re.compile(r'^/vendors/?$'),
+    re.compile(r'^/vendor/[^/]+/?$'),
+    re.compile(r'^/marketplace/?$'),
     re.compile(r'^/journal/?$'),
     re.compile(r'^/journal/[^/]+/?$'),
     re.compile(r'^/staff-picks/?$'),
     re.compile(r'^/about/?$'),
-    re.compile(r'^/p/[^/]+/?$'),         # CMS pages
+    re.compile(r'^/p/[^/]+/?$'),  # CMS pages
     re.compile(r'^/authors?/[^/]*/?$'),
 )
 
 # Cookies whose presence signals a per-user request → don't edge-cache.
-_PRIVATE_COOKIES = ('sessionid', 'csrftoken', 'cart_token', 'morpheus_session')
+# Intentionally NOT `csrftoken` — Django sets it on the first GET so every
+# returning anon visitor would fall out of the cacheable set. CSRF is
+# per-form, not per-user, and anon PLP/PDP have no per-user state.
+_PRIVATE_COOKIES = ('sessionid', 'cart_token', 'morpheus_session')
 
 _CACHE_VALUE = 'public, s-maxage=60, stale-while-revalidate=300'
 

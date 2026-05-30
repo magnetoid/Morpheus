@@ -262,7 +262,33 @@ class ProductType:
 
     is_on_sale: bool = strawberry.field(description='Whether the product is currently on sale')
     discount_percentage: int = strawberry.field(description='Discount percentage if on sale')
-    average_rating: Optional[float] = strawberry.field(description='Average rating from reviews')
+
+    @strawberry.field(description='Average rating from reviews')
+    def average_rating(self) -> Optional[float]:
+        # Prefer the queryset-level annotation (set in queries._REVIEW_ANNOTATIONS)
+        # to avoid a per-card aggregate query. Falls back to the model property
+        # when the annotation isn't present (e.g. single-Product lookups).
+        cached = getattr(self, '_avg_rating', None)
+        if cached is not None:
+            return float(cached)
+        prop = type(self).average_rating  # the underlying model property
+        try:
+            value = prop.fget(self) if hasattr(prop, 'fget') else self.average_rating
+        except Exception:  # noqa: BLE001
+            return None
+        return float(value) if value is not None else None
+
+    @strawberry.field(description='Number of approved reviews')
+    def review_count(self) -> int:
+        cached = getattr(self, '_review_count', None)
+        if cached is not None:
+            return int(cached)
+        prop = type(self).review_count
+        try:
+            value = prop.fget(self) if hasattr(prop, 'fget') else self.review_count
+        except Exception:  # noqa: BLE001
+            return 0
+        return int(value or 0)
 
     # Enterprise Localization
     localized_prices: strawberry.scalars.JSON = strawberry.field(
@@ -274,7 +300,16 @@ class ProductType:
 
     @strawberry.field(description='Primary product image')
     def primary_image(self) -> Optional[ImageType]:
-        img = self.primary_image
+        # Iterate the prefetched cache (ordered by sort_order via Prefetch in
+        # queries._PRODUCT_PREFETCH). Falling back to .filter()/.first() would
+        # re-query and defeat the prefetch.
+        img = None
+        for candidate in self.images.all():
+            if candidate.is_primary:
+                img = candidate
+                break
+        if img is None:
+            img = next(iter(self.images.all()), None)
         if not img or not img.image:
             return None
         return ImageType(
@@ -288,10 +323,11 @@ class ProductType:
     @strawberry.field(description='All product images, ordered by sort_order ASC')
     def images(self) -> List[ImageType]:
         images = []
-        # Explicit order_by to override Meta.ordering's secondary
-        # `-is_primary` key — the storefront's two-image cover relies on
-        # sort_order==0 being the front and sort_order==1 the back.
-        for img in self.images.order_by('sort_order'):
+        # Consume the prefetched cache — ordering is established by the
+        # Prefetch(queryset=ProductImage.objects.order_by('sort_order')) in
+        # queries._PRODUCT_PREFETCH. Calling .order_by() here would re-query
+        # and defeat the prefetch.
+        for img in self.images.all():
             if not img.image:
                 continue
             images.append(

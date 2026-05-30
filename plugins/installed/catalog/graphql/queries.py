@@ -1,7 +1,7 @@
-import strawberry
 from typing import List, Optional
 
-from django.db.models import Q
+import strawberry
+from django.db.models import Avg, Count, Prefetch, Q
 
 from api.graphql_permissions import current_channel_id
 from plugins.installed.catalog.graphql.types import (
@@ -9,10 +9,20 @@ from plugins.installed.catalog.graphql.types import (
     CollectionType,
     ProductType,
 )
-from plugins.installed.catalog.models import Category, Collection, Product
+from plugins.installed.catalog.models import Category, Collection, Product, ProductImage
 
 _PRODUCT_RELATED = ('category', 'vendor')
-_PRODUCT_PREFETCH = ('variants', 'images', 'tags', 'collections')
+_PRODUCT_PREFETCH = (
+    'variants',
+    Prefetch('images', queryset=ProductImage.objects.order_by('sort_order')),
+    'tags',
+    'collections',
+)
+
+_REVIEW_ANNOTATIONS = {
+    '_avg_rating': Avg('reviews__rating', filter=Q(reviews__is_approved=True)),
+    '_review_count': Count('reviews', filter=Q(reviews__is_approved=True), distinct=True),
+}
 
 _MAX_FIRST = 100
 _MAX_SEARCH_LEN = 100
@@ -25,11 +35,15 @@ def _clamp_first(first: int) -> int:
 def _apply_fts(qs, term: str):
     """Postgres full-text search with relevance, LIKE fallback elsewhere."""
     from django.db import connection
+
     if connection.vendor == 'postgresql':
         try:
             from django.contrib.postgres.search import (
-                SearchQuery, SearchRank, SearchVector,
+                SearchQuery,
+                SearchRank,
+                SearchVector,
             )
+
             vector = (
                 SearchVector('name', weight='A')
                 + SearchVector('short_description', weight='B')
@@ -61,8 +75,7 @@ def _scope_to_channel(qs, info):
 
 @strawberry.type
 class CatalogQueryExtension:
-
-    @strawberry.field(description="Get a single product by its slug")
+    @strawberry.field(description='Get a single product by its slug')
     def product(self, info: strawberry.Info, slug: str) -> Optional[ProductType]:
         qs = (
             Product.objects.filter(status='active', slug=slug)
@@ -72,7 +85,7 @@ class CatalogQueryExtension:
         qs = _scope_to_channel(qs, info)
         return qs.first()
 
-    @strawberry.field(description="Get a list of active products")
+    @strawberry.field(description='Get a list of active products')
     def products(
         self,
         info: strawberry.Info,
@@ -87,6 +100,7 @@ class CatalogQueryExtension:
             Product.objects.filter(status='active')
             .select_related(*_PRODUCT_RELATED)
             .prefetch_related(*_PRODUCT_PREFETCH)
+            .annotate(**_REVIEW_ANNOTATIONS)
         )
         qs = _scope_to_channel(qs, info)
 
@@ -101,7 +115,7 @@ class CatalogQueryExtension:
 
         return list(qs[:first])
 
-    @strawberry.field(description="Get a list of active collections")
+    @strawberry.field(description='Get a list of active collections')
     def collections(
         self,
         info: strawberry.Info,
@@ -114,7 +128,7 @@ class CatalogQueryExtension:
             qs = qs.filter(is_featured=featured)
         return list(qs.order_by('sort_order', 'name')[:first])
 
-    @strawberry.field(description="Get a list of all active categories")
+    @strawberry.field(description='Get a list of all active categories')
     def categories(
         self,
         info: strawberry.Info,
