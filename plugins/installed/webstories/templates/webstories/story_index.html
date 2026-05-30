@@ -1,0 +1,131 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+
+{% block seo %}
+{% seo_meta object=None fallback_title="Web Stories — dot books" fallback_description="Tappable book stories from the shelf. Three taps, one cover, one paragraph that landed." %}
+{% endblock %}
+
+{% block extra_head %}
+{% if breadcrumb_items %}{% seo_breadcrumb_jsonld items=breadcrumb_items %}{% endif %}
+<style>
+  .stories-hero { padding: 4rem 0 1.5rem; }
+  .stories-hero .wrap { max-width: 720px; }
+  .stories-crumb { color: var(--muted); font-size: .8rem; margin-bottom: 1.25rem; }
+  .stories-crumb a { color: var(--muted); }
+  .stories-crumb a:hover { color: var(--accent-ink); }
+
+  .stories-grid-section { padding: 1rem 0 5rem; }
+  .stories-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) { .stories-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 960px) { .stories-grid { grid-template-columns: repeat(3, 1fr); gap: 2rem; } }
+
+  .story-card {
+    position: relative;
+    display: block;
+    aspect-ratio: 9 / 16;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    box-shadow: 0 10px 30px -18px rgba(14,14,14,.35);
+    transition: transform var(--motion-med, 240ms) var(--ease-out, ease),
+                box-shadow var(--motion-med, 240ms) var(--ease-out, ease);
+    color: inherit;
+  }
+  @media (hover: hover) {
+    .story-card:hover { transform: translateY(-3px); box-shadow: 0 22px 42px -18px rgba(14,14,14,.45); }
+  }
+  .story-card__img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .story-card__fallback {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); color: var(--muted);
+    padding: 1rem; text-align: center;
+  }
+  .story-card__shade {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.7) 100%);
+  }
+  .story-card__meta {
+    position: absolute; left: 1rem; right: 1rem; bottom: 1rem;
+    color: #fff;
+  }
+  .story-card__eyebrow {
+    font-size: .65rem; letter-spacing: .14em; text-transform: uppercase;
+    color: rgba(255,255,255,.85); margin: 0 0 .35rem;
+  }
+  .story-card__title {
+    font-family: var(--serif); font-size: 1.2rem; line-height: 1.2;
+    font-weight: 500; margin: 0;
+    text-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .story-card__tap {
+    position: absolute; top: .85rem; right: .85rem;
+    background: rgba(255,255,255,.92); color: var(--ink);
+    font-size: .65rem; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: .25rem .55rem; border-radius: 999px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="stories-hero">
+  <div class="wrap">
+    <p class="stories-crumb">
+      <a href="/">Home</a>
+      <span style="margin: 0 .35rem;">/</span>
+      <span>Stories</span>
+    </p>
+    <p class="eyebrow">Web stories</p>
+    <h1 class="display display-xl" style="margin: 1.25rem 0 1rem;">
+      Tap. Flip. Read<span class="text-accent">.</span>
+    </h1>
+    <p class="lede">
+      Three taps for the cover, the pitch, and the paragraph that landed.
+      Tappable book stories from the shelf — short, visual, made for the phone.
+    </p>
+  </div>
+</section>
+
+<section class="stories-grid-section">
+  <div class="wrap">
+    {% if stories %}
+    <div class="stories-grid">
+      {% for s in stories %}
+      <a href="/story/{{ s.product.slug }}/" class="story-card" aria-label="Read the story: {{ s.title|default:s.product.name }}">
+        {% if s.poster_portrait_url %}
+          <img class="story-card__img" src="{{ s.poster_portrait_url }}" alt="{{ s.title|default:s.product.name }}" loading="lazy" decoding="async">
+        {% else %}
+          <div class="story-card__fallback">{{ s.title|default:s.product.name }}</div>
+        {% endif %}
+        <div class="story-card__shade" aria-hidden="true"></div>
+        <span class="story-card__tap">Tap to read</span>
+        <div class="story-card__meta">
+          <p class="story-card__eyebrow">Web story</p>
+          <p class="story-card__title">{{ s.title|default:s.product.name }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-shelf">
+      <div class="glyph">.</div>
+      <h2>No stories yet<span class="text-accent">.</span></h2>
+      <p>We're still building this shelf. Check back soon, or browse the full catalogue while you wait.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/products/">Browse all books</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

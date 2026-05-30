@@ -1,12 +1,36 @@
 """Morph Functions plugin manifest."""
+
 from __future__ import annotations
 
 import logging
 
-from morpheus import events
-from morpheus import Plugin
+from morpheus import Plugin, events
 
 logger = logging.getLogger('morpheus.functions')
+
+# 5-minute cache for the "any Function rows exist?" gate. Avoids a DB hit
+# on every PRODUCT_CALCULATE_PRICE / CART_CALCULATE_BREAKDOWN fan-out
+# while the Functions table is empty (the common case until merchants
+# author their first function).
+_HAS_FUNCTIONS_CACHE_KEY = 'morpheus:functions:has_any'
+_HAS_FUNCTIONS_CACHE_TTL = 300  # seconds (5 min)
+
+
+def _has_any_functions() -> bool:
+    """Cached `Function.objects.exists()` — 5-minute Redis TTL."""
+    from django.core.cache import cache  # noqa: PLC0415
+
+    cached = cache.get(_HAS_FUNCTIONS_CACHE_KEY)
+    if cached is not None:
+        return bool(cached)
+    try:
+        from plugins.installed.functions.models import Function  # noqa: PLC0415
+
+        exists = Function.objects.exists()
+    except Exception:  # noqa: BLE001 — table may not be migrated yet
+        exists = False
+    cache.set(_HAS_FUNCTIONS_CACHE_KEY, exists, _HAS_FUNCTIONS_CACHE_TTL)
+    return exists
 
 
 class FunctionsPlugin(Plugin):
@@ -22,6 +46,11 @@ class FunctionsPlugin(Plugin):
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.functions.graphql.queries')
         self.register_graphql_extension('plugins.installed.functions.graphql.mutations')
+
+        if not _has_any_functions():
+            logger.info(
+                'functions: no Function rows; fan-out is no-op until a Function is created.'
+            )
 
         self.register_hook(
             events.PRODUCT_CALCULATE_PRICE,
@@ -39,7 +68,9 @@ class FunctionsPlugin(Plugin):
 
     def on_calculate_price(self, value, product=None, customer=None, **kwargs):
         """Run all enabled `product.calculate_price` functions in priority order."""
-        from plugins.installed.functions.services import dispatch_filter
+        if not _has_any_functions():
+            return value
+        from plugins.installed.functions.services import dispatch_filter  # noqa: PLC0415
 
         return dispatch_filter(
             target='product.calculate_price',
@@ -58,12 +89,12 @@ class FunctionsPlugin(Plugin):
         event or the legacy total event. Legacy functions only see the
         subtotal in their input — they were written before BREAKDOWN
         existed."""
-        from plugins.installed.functions.services import dispatch_filter
+        if not _has_any_functions():
+            return value
+        from plugins.installed.functions.services import dispatch_filter  # noqa: PLC0415
 
         # Common payload — all keys present on the canonical breakdown.
-        currency = (
-            (value or {}).get('currency') if isinstance(value, dict) else None
-        ) or 'USD'
+        currency = ((value or {}).get('currency') if isinstance(value, dict) else None) or 'USD'
         subtotal = None
         if isinstance(value, dict):
             sub = value.get('subtotal')

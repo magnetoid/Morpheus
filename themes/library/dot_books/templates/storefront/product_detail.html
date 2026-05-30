@@ -115,6 +115,25 @@
           <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta>Add to cart</button>
         </form>
 
+        {% if out_of_stock %}
+        <form method="post" action="/back-in-stock/subscribe/{{ product.id }}/"
+              class="bis-form"
+              style="margin: 1rem 0 1.25rem; padding: 1rem 1.1rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px;">
+          {% csrf_token %}
+          <p class="eyebrow" style="margin-bottom: .35rem;">Out of stock</p>
+          <p class="lede" style="font-size: .95rem; margin: 0 0 .75rem;">Drop your email — we'll write the moment this title is back on the shelf.</p>
+          <div style="display:flex; gap:.5rem; align-items:center; flex-wrap: wrap;">
+            <label for="bis-email" class="sr-only">Email address</label>
+            <input id="bis-email" type="email" name="email" required
+                   placeholder="your@email.com"
+                   value="{% if request.user.is_authenticated %}{{ request.user.email|default:'' }}{% endif %}"
+                   autocomplete="email"
+                   style="flex:1; min-width: 180px; height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: .92rem;">
+            <button type="submit" class="btn btn-ghost" style="height: 44px;">Notify me</button>
+          </div>
+        </form>
+        {% endif %}
+
         {% storefront_blocks "pdp_below_form" %}
 
         {# Trust strip: 3 icon+copy cells near the CTA. Sourced from Baymard 2026 PDP research. #}

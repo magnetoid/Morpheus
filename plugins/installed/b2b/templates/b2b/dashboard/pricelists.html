@@ -1,0 +1,71 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Price lists · B2B · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Price lists</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">B2B price overrides per account. Each list holds per-product price rows.</p>
+    </div>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="text-sm font-semibold mb-3">Create a price list</h2>
+    <form method="post" class="grid gap-3 sm:grid-cols-2">
+      {% csrf_token %}
+      <label class="text-sm">
+        <span class="block text-xs text-[color:var(--text-muted)] mb-1">Name</span>
+        <input name="name" required maxlength="120" class="w-full text-sm rounded border border-[color:var(--border)] px-2 py-1.5 bg-[color:var(--surface)]">
+      </label>
+      <label class="text-sm">
+        <span class="block text-xs text-[color:var(--text-muted)] mb-1">Description</span>
+        <input name="description" maxlength="240" class="w-full text-sm rounded border border-[color:var(--border)] px-2 py-1.5 bg-[color:var(--surface)]">
+      </label>
+      <label class="text-sm flex items-center gap-2 sm:col-span-2">
+        <input type="checkbox" name="is_default">
+        <span>Default price list (applied when no other list matches)</span>
+      </label>
+      <div class="sm:col-span-2">
+        <button class="btn btn-primary text-sm" type="submit">+ New price list</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if pricelists %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Items</th>
+          <th>Default</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pl in pricelists %}
+        <tr>
+          <td class="font-medium">
+            <a href="{% url 'b2b_dashboard:pricelist_detail' pl.id %}" class="hover:underline">{{ pl.name }}</a>
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ pl.description|default:"—" }}</td>
+          <td class="text-right font-mono">{{ pl.items.count }}</td>
+          <td>
+            {% if pl.is_default %}<span class="pill pill-success">Default</span>
+            {% else %}<span class="pill pill-neutral">—</span>{% endif %}
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ pl.updated_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No price lists yet. Create one above.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

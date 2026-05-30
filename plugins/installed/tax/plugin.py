@@ -1,10 +1,10 @@
 """Tax plugin manifest."""
+
 from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin
-from morpheus import DashboardPage, SettingsPanel
+from morpheus import DashboardPage, Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.tax')
 
@@ -21,16 +21,23 @@ class TaxPlugin(Plugin):
     requires = ['catalog', 'orders']
 
     def ready(self) -> None:
-        from morpheus import events
+        from morpheus import events  # noqa: PLC0415
+
         # CART_CALCULATE_TOTAL is deprecated — the canonical event is
         # CART_CALCULATE_BREAKDOWN, fired from OrderService since 2026-04.
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=20)
+        self.register_urls(
+            'plugins.installed.tax.urls_dashboard',
+            prefix='dashboard/tax/',
+            namespace='tax_dashboard',
+        )
 
     def on_cart_breakdown(self, value, cart=None, address=None, **kwargs):
         if cart is None or not isinstance(value, dict):
             return value
         try:
-            from plugins.installed.tax.services import compute_tax_for_cart
+            from plugins.installed.tax.services import compute_tax_for_cart  # noqa: PLC0415
+
             result = compute_tax_for_cart(
                 cart,
                 country=(address or {}).get('country', ''),
@@ -43,8 +50,9 @@ class TaxPlugin(Plugin):
             shipping = value.get('shipping')
             discount = value.get('discount')
             currency = str(value.get('currency') or getattr(subtotal, 'currency', 'USD'))
-            from decimal import Decimal
-            from djmoney.money import Money
+            from decimal import Decimal  # noqa: I001,PLC0415
+            from djmoney.money import Money  # noqa: PLC0415
+
             subtotal_a = Decimal(str(getattr(subtotal, 'amount', 0) or 0))
             shipping_a = Decimal(str(getattr(shipping, 'amount', 0) or 0))
             tax_a = Decimal(str(getattr(tax_total, 'amount', 0) or 0))
@@ -68,7 +76,8 @@ class TaxPlugin(Plugin):
         if cart is None:
             return value
         try:
-            from plugins.installed.tax.services import compute_tax_for_cart
+            from plugins.installed.tax.services import compute_tax_for_cart  # noqa: PLC0415
+
             country = (address or {}).get('country', '') if address else ''
             region = (address or {}).get('region', '') if address else ''
             result = compute_tax_for_cart(cart, country=country, region=region)
@@ -78,11 +87,36 @@ class TaxPlugin(Plugin):
             return value
 
     def contribute_agent_tools(self) -> list:
-        from plugins.installed.tax.agent_tools import list_rates_tool, set_rate_tool
+        from plugins.installed.tax.agent_tools import (  # noqa: PLC0415
+            list_rates_tool,
+            set_rate_tool,
+        )
+
         return [list_rates_tool, set_rate_tool]
 
     def contribute_dashboard_pages(self) -> list:
-        return []  # admin via Django admin for now
+        return [
+            DashboardPage(
+                label='Tax regions',
+                slug='regions',
+                view='plugins.installed.tax.dashboard.regions',
+                icon='globe',
+                section='taxes',
+                order=10,
+                nav='settings',
+                url='/dashboard/tax/regions/',
+            ),
+            DashboardPage(
+                label='Tax rates',
+                slug='rates',
+                view='plugins.installed.tax.dashboard.rates',
+                icon='percent',
+                section='taxes',
+                order=20,
+                nav='settings',
+                url='/dashboard/tax/rates/',
+            ),
+        ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
@@ -96,7 +130,11 @@ class TaxPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'provider': {'type': 'string', 'enum': ['local', 'stripe', 'none'], 'default': 'local'},
+                'provider': {
+                    'type': 'string',
+                    'enum': ['local', 'stripe', 'none'],
+                    'default': 'local',
+                },
                 'prices_include_tax': {'type': 'boolean', 'default': False},
             },
         }

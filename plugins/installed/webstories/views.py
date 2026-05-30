@@ -92,3 +92,37 @@ def story_page(request: HttpRequest, slug: str) -> HttpResponse:
     response = render(request, 'webstories/story.html', context)
     response['Content-Type'] = 'text/html; charset=utf-8'
     return _cache_headers(response, last_modified=story.updated_at)
+
+
+@xframe_options_sameorigin
+def story_index(request: HttpRequest) -> HttpResponse:
+    """List every published Web Story whose product is still active.
+
+    Storefront-style HTML (extends the dot_books base), not AMP — this
+    is a normal browse page, not an embedded story player. Cache + frame
+    headers mirror ``story_page`` so the listing is share-safe.
+    """
+    from plugins.installed.webstories.models import WebStory  # noqa: PLC0415
+
+    stories = list(
+        WebStory.objects.filter(
+            is_published=True,
+            product__status='active',
+        )
+        .select_related('product')
+        .order_by('-updated_at')[:60]
+    )
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Stories', 'url': request.build_absolute_uri(request.path)},
+    ]
+    last_modified = stories[0].updated_at if stories else None
+    response = render(
+        request,
+        'webstories/story_index.html',
+        {
+            'stories': stories,
+            'breadcrumb_items': breadcrumb_items,
+        },
+    )
+    return _cache_headers(response, last_modified=last_modified)

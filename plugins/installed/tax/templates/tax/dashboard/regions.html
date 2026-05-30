@@ -1,0 +1,101 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Tax regions · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Tax regions</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Countries and sub-national regions taxed by this store.</p>
+    </div>
+    <a href="{% url 'tax_dashboard:rates' %}" class="btn btn-ghost">Rates &rarr;</a>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="text-sm font-semibold mb-2">
+      {% if edit_obj %}Edit region{% else %}+ New region{% endif %}
+    </h2>
+    <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{% if edit_obj %}edit{% else %}create{% endif %}">
+      {% if edit_obj %}<input type="hidden" name="region_id" value="{{ edit_obj.id }}">{% endif %}
+
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">Name</span>
+        <input type="text" name="name" required value="{{ edit_obj.name|default:'' }}"
+               class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+               placeholder="e.g. United States – California">
+      </label>
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">Country (ISO alpha-2)</span>
+        <input type="text" name="country" required maxlength="2" value="{{ edit_obj.country|default:'' }}"
+               class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm uppercase font-mono"
+               placeholder="US">
+      </label>
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">Region (optional)</span>
+        <input type="text" name="region" maxlength="10" value="{{ edit_obj.region|default:'' }}"
+               class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm uppercase font-mono"
+               placeholder="CA">
+      </label>
+      <label class="flex items-center gap-2 text-xs">
+        <input type="checkbox" name="is_default" {% if edit_obj.is_default %}checked{% endif %}>
+        <span>Default region (used when no shipping address available)</span>
+      </label>
+      <div class="md:col-span-2 flex gap-2 justify-end">
+        {% if edit_obj %}
+          <a href="{% url 'tax_dashboard:regions' %}" class="btn btn-ghost">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">
+          {% if edit_obj %}Save{% else %}Create{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if rows %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Country</th>
+          <th>Region</th>
+          <th>Default</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="font-medium">{{ r.name }}</td>
+          <td><code class="font-mono text-xs">{{ r.country }}</code></td>
+          <td><code class="font-mono text-xs">{{ r.region|default:"—" }}</code></td>
+          <td>
+            {% if r.is_default %}<span class="pill pill-success">Default</span>
+            {% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <a href="?edit={{ r.id }}" class="btn btn-ghost text-xs">Edit</a>
+            <form method="post" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="region_id" value="{{ r.id }}">
+              <button type="submit" class="btn btn-ghost text-xs text-red-600"
+                      data-confirm="Delete region {{ r.name }}? Associated rates will be deleted too.">
+                Delete
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No regions yet — add one above.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

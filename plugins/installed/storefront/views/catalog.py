@@ -410,6 +410,26 @@ def product_detail(request, slug):
         except Exception:  # noqa: BLE001 — RelatedObjectDoesNotExist or plugin missing
             web_story = None
 
+    # Stock gate for the "Notify me when back in stock" form on the PDP.
+    # True iff inventory tracking is on AND no variant has any available
+    # stock anywhere. Falls quietly to False if the inventory plugin
+    # isn't installed (no stock_levels relation).
+    out_of_stock = False
+    if product_row is not None and getattr(product_row, 'track_inventory', False):
+        try:
+            from plugins.installed.catalog.models import (  # noqa: PLC0415
+                ProductVariant,
+            )
+
+            has_stock = (
+                ProductVariant.objects.filter(product=product_row, stock_levels__quantity__gt=0)
+                .only('id')
+                .exists()
+            )
+            out_of_stock = not has_stock
+        except Exception:  # noqa: BLE001
+            out_of_stock = False
+
     return render(
         request,
         'storefront/product_detail.html',
@@ -430,6 +450,7 @@ def product_detail(request, slug):
             'last_reviewed': last_reviewed,
             'active_pdp_edit_url': active_pdp_edit_url,
             'web_story': web_story,
+            'out_of_stock': out_of_stock,
             'seo_object': pdp_seo_obj,
             'seo_title': product.get('name') or '',
             'seo_description': pdp_seo_description,

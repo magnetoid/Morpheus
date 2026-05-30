@@ -5,13 +5,16 @@ email confirmation), we re-emit ``events.CUSTOMER_REGISTERED`` so any
 plugin or core handler subscribed to that event picks it up — including
 the transactional-email layer in ``core/emails``.
 """
+
 from __future__ import annotations
 
 import logging
 
 from allauth.account.signals import user_signed_up
+from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 
+from core.hooks import MorpheusEvents, hook_registry
 from morpheus import events, hooks
 
 logger = logging.getLogger('morpheus.customers')
@@ -23,3 +26,11 @@ def _on_user_signed_up(request, user, **kwargs):
         hooks.fire(events.CUSTOMER_REGISTERED, customer=user)
     except Exception as e:  # noqa: BLE001 — never block signup
         logger.warning('CUSTOMER_REGISTERED fire failed: %s', e, exc_info=True)
+
+
+@receiver(user_logged_in)
+def _on_user_logged_in(sender, request, user, **kwargs):
+    try:
+        hook_registry.fire(MorpheusEvents.CUSTOMER_LOGIN, customer=user, request=request)
+    except Exception as e:  # noqa: BLE001 — never block login
+        logger.warning('CUSTOMER_LOGIN fire failed: %s', e, exc_info=True)

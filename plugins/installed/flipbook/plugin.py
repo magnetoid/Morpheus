@@ -26,7 +26,7 @@ class FlipbookPlugin(Plugin):
             namespace='flipbook',
         )
 
-    def settings_panel(self) -> SettingsPanel:
+    def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             slug='flipbook',
             label='Flipbook preview',
