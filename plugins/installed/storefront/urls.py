@@ -2,6 +2,7 @@ from django.urls import path
 from django.views.generic import TemplateView
 
 from plugins.installed.storefront import sw, views
+from plugins.installed.storefront.views import content as content_views
 from plugins.installed.storefront.views import vendor as vendor_views
 
 app_name = 'storefront'
@@ -37,6 +38,7 @@ urlpatterns = [
     path('contact/', views.contact, name='contact'),
     path('journal/', views.journal_index, name='journal_index'),
     path('journal/<slug:slug>/', views.journal_detail, name='journal_detail'),
+    path('journal/<slug:slug>/amp/', content_views.journal_amp, name='journal_amp'),
     path('categories/', views.categories, name='categories'),
     path('category/<slug:slug>/', views.category_detail, name='category_detail'),
     path('collection/<slug:slug>/', views.collection_detail, name='collection_detail'),

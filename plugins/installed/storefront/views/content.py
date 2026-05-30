@@ -1,10 +1,12 @@
 """Content / static pages — About, Contact, Journal, Shipping, Returns,
 newsletter capture, and the generic coming-soon placeholder.
 """
+
 from __future__ import annotations
 
-from morpheus.views import render
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
+from morpheus.views import render
 
 # Hardcoded journal entries — TODO: extract to a CMS plugin with editable posts.
 _JOURNAL_ENTRIES = [
@@ -15,34 +17,34 @@ _JOURNAL_ENTRIES = [
         'excerpt': 'On Cusk, on Sebald, on the way a long paragraph teaches you how to wait.',
         'body': (
             "There's a particular pleasure in a sentence that takes a breath you didn't know "
-            "you had to give it. Cusk does this. Sebald does this. The reader is asked to slow "
-            "down — to hold a thought in suspension — and in that suspension something settles. "
-            "We carry a few of these books on the shelf this season because we believe in the "
-            "case for the long take."
+            'you had to give it. Cusk does this. Sebald does this. The reader is asked to slow '
+            'down — to hold a thought in suspension — and in that suspension something settles. '
+            'We carry a few of these books on the shelf this season because we believe in the '
+            'case for the long take.'
         ),
     },
     {
         'slug': 'why-we-dont-carry-books-we-havent-read',
         'title': "Why we don't carry books we haven't read",
         'date_label': 'April · 3 min read',
-        'excerpt': 'A diary of how the shelf gets curated, and why it\'s a small one on purpose.',
+        'excerpt': "A diary of how the shelf gets curated, and why it's a small one on purpose.",
         'body': (
-            "Every title in the shop has been read by at least one of us before it makes it to "
+            'Every title in the shop has been read by at least one of us before it makes it to '
             "the shelf. That's both a constraint and a promise. The constraint: the shop will "
-            "always be small. The promise: if a book is here, it earned the spot. We trade "
-            "breadth for trust."
+            'always be small. The promise: if a book is here, it earned the spot. We trade '
+            'breadth for trust.'
         ),
     },
     {
         'slug': 'the-case-for-the-small-press',
         'title': 'The case for the small press, made in numbers',
         'date_label': 'April · 6 min read',
-        'excerpt': 'Three years of receipts, and what they say about who\'s actually publishing the work that lasts.',
+        'excerpt': "Three years of receipts, and what they say about who's actually publishing the work that lasts.",
         'body': (
-            "Pull three years of receipts and the picture is unambiguous: the books that customers "
-            "come back to, the books they recommend to a friend, the books they buy a second copy "
+            'Pull three years of receipts and the picture is unambiguous: the books that customers '
+            'come back to, the books they recommend to a friend, the books they buy a second copy '
             "of — they're disproportionately from independent presses. Not because indie is "
-            "automatically better, but because the editors there have time to be wrong on purpose."
+            'automatically better, but because the editors there have time to be wrong on purpose.'
         ),
     },
 ]
@@ -53,12 +55,16 @@ def about(request):
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'About', 'url': request.build_absolute_uri(request.path)},
     ]
-    return render(request, 'storefront/about.html', {
-        'breadcrumb_items': breadcrumb_items,
-        'seo_title':       'About — dot books',
-        'seo_description': 'dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.',
-        'seo_og_type':     'website',
-    })
+    return render(
+        request,
+        'storefront/about.html',
+        {
+            'breadcrumb_items': breadcrumb_items,
+            'seo_title': 'About — dot books',
+            'seo_description': 'dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.',
+            'seo_og_type': 'website',
+        },
+    )
 
 
 def newsletter_subscribe(request):
@@ -70,20 +76,25 @@ def newsletter_subscribe(request):
         return HttpResponseNotAllowed(['POST'])
 
     email = (request.POST.get('email') or '').strip().lower()
-    is_xhr = (
-        request.headers.get('X-Requested-With', '').lower() == 'fetch'
-        or 'application/json' in request.headers.get('Accept', '')
-    )
+    is_xhr = request.headers.get(
+        'X-Requested-With', ''
+    ).lower() == 'fetch' or 'application/json' in request.headers.get('Accept', '')
 
     if not email or '@' not in email:
         if is_xhr:
             return JsonResponse({'ok': False, 'error': 'Please enter a valid email.'}, status=400)
-        return render(request, 'storefront/newsletter_thanks.html', {
-            'email': '', 'error': 'Please enter a valid email.',
-        })
+        return render(
+            request,
+            'storefront/newsletter_thanks.html',
+            {
+                'email': '',
+                'error': 'Please enter a valid email.',
+            },
+        )
 
     try:
         from plugins.installed.crm.services import upsert_lead
+
         upsert_lead(email=email, source='newsletter')
     except Exception:  # noqa: BLE001 — CRM is optional
         pass
@@ -98,6 +109,7 @@ def contact(request):
     if request.method == 'POST':
         from plugins.installed.crm.services import upsert_lead, log_interaction
         from django.db import DatabaseError
+
         email = (request.POST.get('email') or '').strip().lower()
         name = (request.POST.get('name') or '').strip()
         body = (request.POST.get('message') or '').strip()
@@ -110,8 +122,11 @@ def contact(request):
                     source='storefront',
                 )
                 log_interaction(
-                    subject=lead, kind='note', direction='inbound',
-                    summary='Contact form submission', body=body,
+                    subject=lead,
+                    kind='note',
+                    direction='inbound',
+                    summary='Contact form submission',
+                    body=body,
                     actor_name='storefront',
                 )
             except (ImportError, DatabaseError):
@@ -121,19 +136,24 @@ def contact(request):
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'Contact', 'url': request.build_absolute_uri(request.path)},
     ]
-    return render(request, 'storefront/contact.html', {
-        'sent': sent,
-        'breadcrumb_items': breadcrumb_items,
-        'seo_title':       'Contact — dot books',
-        'seo_description': 'Get in touch with dot books. Recommendations, suggestions, and help with orders — we read every message.',
-        'seo_og_type':     'website',
-    })
+    return render(
+        request,
+        'storefront/contact.html',
+        {
+            'sent': sent,
+            'breadcrumb_items': breadcrumb_items,
+            'seo_title': 'Contact — dot books',
+            'seo_description': 'Get in touch with dot books. Recommendations, suggestions, and help with orders — we read every message.',
+            'seo_og_type': 'website',
+        },
+    )
 
 
 def journal_index(request):
     """Prefer CMS pages (metadata.category=='journal'); fall back to seeded entries."""
     try:
         from plugins.installed.cms.services import list_journal_entries
+
         cms_entries = list_journal_entries()
     except Exception:  # noqa: BLE001
         cms_entries = []
@@ -142,7 +162,7 @@ def journal_index(request):
         {
             'name': e.get('title', '') if isinstance(e, dict) else getattr(e, 'title', ''),
             'url': request.build_absolute_uri(
-                f"/journal/{(e.get('slug', '') if isinstance(e, dict) else getattr(e, 'slug', ''))}/"
+                f'/journal/{(e.get("slug", "") if isinstance(e, dict) else getattr(e, "slug", ""))}/'
             ),
         }
         for e in entries
@@ -151,21 +171,27 @@ def journal_index(request):
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'Journal', 'url': request.build_absolute_uri(request.path)},
     ]
-    return render(request, 'storefront/journal_index.html', {
-        'entries': entries,
-        'post_items': post_items,
-        'breadcrumb_items': breadcrumb_items,
-        'seo_title':       'Journal — dot books',
-        'seo_description': 'Notes, essays, short pieces from the booksellers. Updated when there\'s something to say.',
-        'seo_og_type':     'website',
-    })
+    return render(
+        request,
+        'storefront/journal_index.html',
+        {
+            'entries': entries,
+            'post_items': post_items,
+            'breadcrumb_items': breadcrumb_items,
+            'seo_title': 'Journal — dot books',
+            'seo_description': "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
+            'seo_og_type': 'website',
+        },
+    )
 
 
 def journal_detail(request, slug):
     from morpheus.views import Http404
+
     entry = None
     try:
         from plugins.installed.cms.services import get_journal_entry
+
         entry = get_journal_entry(slug)
     except Exception:  # noqa: BLE001
         pass
@@ -178,13 +204,70 @@ def journal_detail(request, slug):
         {'name': 'Journal', 'url': request.build_absolute_uri('/journal/')},
         {'name': entry.get('title', ''), 'url': request.build_absolute_uri(request.path)},
     ]
-    return render(request, 'storefront/journal_detail.html', {
-        'entry': entry,
-        'breadcrumb_items': breadcrumb_items,
-        'seo_title':       f'{entry["title"]} — Journal — dot books',
-        'seo_description': entry.get('excerpt', '')[:160],
-        'seo_og_type':     'article',
-    })
+    return render(
+        request,
+        'storefront/journal_detail.html',
+        {
+            'entry': entry,
+            'breadcrumb_items': breadcrumb_items,
+            'seo_title': f'{entry["title"]} — Journal — dot books',
+            'seo_description': entry.get('excerpt', '')[:160],
+            'seo_og_type': 'article',
+        },
+    )
+
+
+@xframe_options_sameorigin
+def journal_amp(request, slug):
+    """AMP variant of `journal_detail`. Mirrors the regular view's context
+    build, but renders a standalone AMP HTML document with its own
+    boilerplate. Canonical points at the regular HTML page.
+
+    Decorated with `@xframe_options_sameorigin` so AMP caches / players
+    can embed the document in an iframe.
+    """
+    from morpheus.views import Http404  # noqa: PLC0415
+
+    entry = None
+    try:
+        from plugins.installed.cms.services import get_journal_entry  # noqa: PLC0415
+
+        entry = get_journal_entry(slug)
+    except Exception:  # noqa: BLE001, S110
+        pass
+    if entry is None:
+        entry = next((e for e in _JOURNAL_ENTRIES if e['slug'] == slug), None)
+    if entry is None:
+        raise Http404
+
+    # Rewrite raw <img> tags so the body is closer to AMP-valid.
+    # Rough — width/height are guesses — but functional for the
+    # validator's "no raw <img>" rule.
+    body = entry.get('body', '') or ''
+    if '<img ' in body:
+        body = body.replace(
+            '<img ',
+            '<amp-img layout="responsive" width="800" height="600" ',
+        )
+        entry = {**entry, 'body': body}
+
+    canonical_url = request.build_absolute_uri(f'/journal/{slug}/')
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Journal', 'url': request.build_absolute_uri('/journal/')},
+        {'name': entry.get('title', ''), 'url': canonical_url},
+    ]
+    response = render(
+        request,
+        'storefront/journal_amp.html',
+        {
+            'entry': entry,
+            'breadcrumb_items': breadcrumb_items,
+            'canonical_url': canonical_url,
+        },
+    )
+    response['Cache-Control'] = 'public, max-age=900, s-maxage=3600'
+    return response
 
 
 def shipping(request):
@@ -193,11 +276,15 @@ def shipping(request):
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'Shipping', 'url': request.build_absolute_uri(request.path)},
     ]
-    return render(request, 'storefront/shipping.html', {
-        'breadcrumb_items': breadcrumb_items,
-        'seo_title':       'Shipping — dot books',
-        'seo_description': 'How dot books ships your order — tracked, signed-for, free over $40. Domestic + international rates.',
-    })
+    return render(
+        request,
+        'storefront/shipping.html',
+        {
+            'breadcrumb_items': breadcrumb_items,
+            'seo_title': 'Shipping — dot books',
+            'seo_description': 'How dot books ships your order — tracked, signed-for, free over $40. Domestic + international rates.',
+        },
+    )
 
 
 def returns(request):
@@ -206,11 +293,15 @@ def returns(request):
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'Returns', 'url': request.build_absolute_uri(request.path)},
     ]
-    return render(request, 'storefront/returns.html', {
-        'breadcrumb_items': breadcrumb_items,
-        'seo_title':       'Returns — dot books',
-        'seo_description': "Send a book back inside 30 days. Here's how — and what we cover.",
-    })
+    return render(
+        request,
+        'storefront/returns.html',
+        {
+            'breadcrumb_items': breadcrumb_items,
+            'seo_title': 'Returns — dot books',
+            'seo_description': "Send a book back inside 30 days. Here's how — and what we cover.",
+        },
+    )
 
 
 def coming_soon(request, slug=None):
@@ -222,6 +313,10 @@ def coming_soon(request, slug=None):
         'returns': 'Returns',
     }
     page_slug = slug or request.path.strip('/').split('/')[-1] or 'coming-soon'
-    return render(request, 'storefront/coming_soon.html', {
-        'page_title': title_map.get(page_slug, page_slug.replace('-', ' ').title()),
-    })
+    return render(
+        request,
+        'storefront/coming_soon.html',
+        {
+            'page_title': title_map.get(page_slug, page_slug.replace('-', ' ').title()),
+        },
+    )

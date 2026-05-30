@@ -3,6 +3,7 @@
 {% block title %}{{ entry.title }} — Journal — dot books{% endblock %}
 
 {% block extra_head %}
+<link rel="amphtml" href="/journal/{{ entry.slug }}/amp/">
 {% seo_article_jsonld headline=entry.title body=entry.body|striptags|truncatechars:5000 author="dot books staff" published=entry.published_at modified=entry.published_at %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endblock %}
