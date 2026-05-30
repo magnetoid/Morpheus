@@ -40,8 +40,8 @@
       <tbody>
         {% for o in orders %}
         <tr>
-          <td>{% if o.vendor_id %}{{ o.vendor.name }}{% else %}—{% endif %}</td>
-          <td>{% if o.parent_order_id %}<code class="text-xs">{{ o.parent_order.order_number }}</code>{% else %}—{% endif %}</td>
+          <td>{% if o.vendor_id %}<a href="/dashboard/marketplace/vendors/{{ o.vendor_id }}/" class="hover:underline">{{ o.vendor.name }}</a>{% else %}—{% endif %}</td>
+          <td>{% if o.parent_order_id %}<code class="text-xs">{{ o.parent_order.order_number|default:o.parent_order.id }}</code>{% else %}—{% endif %}</td>
           <td>{{ o.get_status_display }}</td>
           <td class="text-right font-mono">{{ o.gross }}</td>
           <td class="text-right font-mono">{{ o.commission }}</td>

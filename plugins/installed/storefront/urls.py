@@ -1,6 +1,7 @@
 from django.urls import path
 
 from plugins.installed.storefront import sw, views
+from plugins.installed.storefront.views import vendor as vendor_views
 
 app_name = 'storefront'
 urlpatterns = [
@@ -34,6 +35,7 @@ urlpatterns = [
     path('category/<slug:slug>/', views.category_detail, name='category_detail'),
     path('collection/<slug:slug>/', views.collection_detail, name='collection_detail'),
     path('author/<slug:slug>/', views.author_detail, name='author_detail'),
+    path('marketplace/', vendor_views.marketplace_landing, name='marketplace_landing'),
     path('vendors/', views.vendors_directory, name='vendors'),
     path('vendor/<slug:slug>/', views.vendor_detail, name='vendor_detail'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),

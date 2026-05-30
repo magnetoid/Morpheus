@@ -27,7 +27,7 @@
       <tbody>
         {% for a in accounts %}
         <tr>
-          <td>{{ a.vendor.name }}</td>
+          <td><a href="/dashboard/marketplace/vendors/{{ a.vendor_id }}/" class="hover:underline">{{ a.vendor.name }}</a></td>
           <td>{{ a.method|default:'—' }}</td>
           <td><code class="text-xs">{{ a.external_account|default:'—' }}</code></td>
           <td class="text-right font-mono">{{ a.accrued_balance }}</td>

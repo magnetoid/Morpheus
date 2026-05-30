@@ -1,18 +1,24 @@
 {% extends "storefront/base.html" %}
 {% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 960px;">
+  <div class="wrap" style="max-width: 1080px;">
 
     <p class="eyebrow">Your account</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">Vendor dashboard<span class="text-accent">.</span></h1>
+    <h1 class="display display-l" style="margin: 1rem 0 .75rem;">Vendor dashboard<span class="text-accent">.</span></h1>
+    {% if vendor %}
+      <p class="lede" style="margin-bottom: 2.5rem;">Welcome back{% if vendor.name %}, {{ vendor.name }}{% endif %}. Here's the state of the shop.</p>
+    {% else %}
+      <p class="lede" style="margin-bottom: 2.5rem;">Your application status, vendor orders, and payout balance — all in one place.</p>
+    {% endif %}
 
     {% if not application %}
-      <div class="card card-padded" style="background: var(--paper-2); padding: 2rem; border-radius: 6px;">
+      <article class="card card-padded" style="background: var(--paper-2); padding: 2rem; border-radius: 6px;">
         <p style="margin: 0 0 1rem;">You haven't applied to be a vendor yet.</p>
-        <a href="/vendor/apply/" class="btn btn-primary">Apply →</a>
-      </div>
+        <a href="/vendor/apply/" class="btn btn-primary">Apply to sell</a>
+      </article>
     {% else %}
 
       <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
@@ -21,7 +27,7 @@
             <h2 style="font-family: var(--serif); font-size: 1.4rem; margin: 0;">{{ application.business_name }}</h2>
             <p style="font-size: .85rem; color: var(--muted); margin: .35rem 0 0;">{{ application.contact_email }}</p>
           </div>
-          <div style="text-align: right;">
+          <div>
             {% if application.status == 'approved' %}
               <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#d6f3e3; color:#1f7a4d; font-size:.75rem; font-weight:600;">Approved</span>
             {% elif application.status == 'submitted' %}
@@ -31,75 +37,100 @@
             {% else %}
               <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#fde7e9; color:#b3261e; font-size:.75rem; font-weight:600;">{{ application.get_status_display }}</span>
             {% endif %}
-            {% if application.status == 'approved' %}
-              <p style="margin: .5rem 0 0; font-size: .85rem; color: var(--muted);">Accrued balance: <strong style="color: var(--ink);">{{ accrued }}</strong></p>
-            {% endif %}
           </div>
         </header>
 
         {% if application.status != 'approved' %}
-        <p style="margin-top: 1rem; color: var(--muted); font-size: .9rem;">
-          {% if application.status == 'submitted' %}We've received your application — we'll review it within ~10 business days.
-          {% elif application.status == 'reviewing' %}We're reviewing your application — expect to hear from us soon.
-          {% elif application.status == 'rejected' %}Your application wasn't approved this time. You're welcome to <a href="/vendor/apply/" style="text-decoration: underline;">apply again</a>.
-          {% endif %}
-        </p>
+          <p style="margin-top: 1rem; color: var(--muted); font-size: .9rem;">
+            {% if application.status == 'submitted' %}We've received your application — we review them within 2 business days.
+            {% elif application.status == 'reviewing' %}We're reviewing your application — expect to hear from us shortly.
+            {% elif application.status == 'rejected' %}Your application wasn't approved this time. You're welcome to <a href="/vendor/apply/" style="text-decoration: underline;">apply again</a>.
+            {% endif %}
+          </p>
         {% endif %}
       </article>
 
       {% if vendor and application.status == 'approved' %}
-      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-        <div>
-          <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0;">Manage your catalogue</h3>
-          <p style="margin: .35rem 0 0; color: var(--muted); font-size: .9rem;">Edit title, description, pricing, and status across every book attributed to you.</p>
+
+        <div class="vd-kpis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">Accrued</span>
+            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ accrued }}</span>
+          </div>
+          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">This month sales</span>
+            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ month_sales }}</span>
+          </div>
+          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">Open orders</span>
+            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ open_orders_count }}</span>
+          </div>
+          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">Active products</span>
+            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ active_products_count }}</span>
+          </div>
         </div>
-        <a href="/vendor/me/products/" class="btn btn-primary">Your products →</a>
-      </article>
-      {% endif %}
 
-      {% if vendor_orders %}
-      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
-        <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Recent vendor orders</h3>
-        <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
-          <thead>
-            <tr style="text-align: left; border-bottom: 1px solid var(--rule);">
-              <th style="padding: .5rem 0; font-weight: 600;">Order</th>
-              <th style="padding: .5rem 0; font-weight: 600;">Status</th>
-              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Gross</th>
-              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Net</th>
-              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">When</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for vo in vendor_orders %}
-            <tr style="border-bottom: 1px solid var(--rule);">
-              <td style="padding: .6rem 0; font-family: ui-monospace, monospace; font-size: .85rem;">#{{ vo.parent_order.number|default:vo.parent_order_id|truncatechars:10 }}</td>
-              <td style="padding: .6rem 0;">{{ vo.get_status_display }}</td>
-              <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.gross }}</td>
-              <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.net }}</td>
-              <td style="padding: .6rem 0; text-align: right; color: var(--muted); font-size: .8rem;">{{ vo.created_at|date:"M j" }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </article>
-      {% endif %}
+        <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
+          <h3 style="font-family: var(--serif); font-size: 1.15rem; margin: 0 0 1rem;">Quick actions</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem;">
+            <a href="/vendor/me/products/" class="btn btn-ghost">Your products</a>
+            <a href="/vendor/me/payouts/" class="btn btn-ghost">Payouts</a>
+            <a href="/vendor/me/settings/" class="btn btn-ghost">Settings</a>
+            <a href="#orders" class="btn btn-ghost">Recent orders</a>
+          </div>
+        </article>
 
-      {% if payouts %}
-      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-        <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Payout history</h3>
-        <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
-          <tbody>
-            {% for p in payouts %}
-            <tr style="border-bottom: 1px solid var(--rule);">
-              <td style="padding: .6rem 0;">{{ p.created_at|date:"M j, Y" }}</td>
-              <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ p.amount }}</td>
-              <td style="padding: .6rem 0; text-align: right; color: var(--muted);">{{ p.get_status_display }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </article>
+        {% if vendor_orders %}
+        <article id="orders" class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
+          <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Recent orders</h3>
+          <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
+            <thead>
+              <tr style="text-align: left; border-bottom: 1px solid var(--rule);">
+                <th style="padding: .5rem 0; font-weight: 600;">Order</th>
+                <th style="padding: .5rem 0; font-weight: 600;">Status</th>
+                <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Gross</th>
+                <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Net</th>
+                <th style="padding: .5rem 0; font-weight: 600; text-align: right;">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for vo in vendor_orders %}
+              <tr style="border-bottom: 1px solid var(--rule);">
+                <td style="padding: .6rem 0; font-family: ui-monospace, monospace; font-size: .85rem;">
+                  <a href="/vendor/me/orders/{{ vo.id }}/" style="border-bottom: 1px dotted var(--rule);">#{{ vo.parent_order.order_number|default:vo.parent_order_id|truncatechars:10 }}</a>
+                </td>
+                <td style="padding: .6rem 0;">{{ vo.get_status_display }}</td>
+                <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.gross }}</td>
+                <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.net }}</td>
+                <td style="padding: .6rem 0; text-align: right; color: var(--muted); font-size: .8rem;">{{ vo.created_at|date:"M j" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+        {% endif %}
+
+        {% if payouts %}
+        <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+          <header style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem;">
+            <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0;">Recent payouts</h3>
+            <a href="/vendor/me/payouts/" style="font-size: .85rem; color: var(--muted); border-bottom: 1px dotted var(--rule);">See all</a>
+          </header>
+          <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
+            <tbody>
+              {% for p in payouts %}
+              <tr style="border-bottom: 1px solid var(--rule);">
+                <td style="padding: .6rem 0;">{{ p.requested_at|date:"M j, Y" }}</td>
+                <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ p.amount }}</td>
+                <td style="padding: .6rem 0; text-align: right; color: var(--muted);">{{ p.get_status_display }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+        {% endif %}
+
       {% endif %}
 
     {% endif %}

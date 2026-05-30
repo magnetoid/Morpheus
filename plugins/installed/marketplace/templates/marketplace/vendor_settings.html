@@ -1,0 +1,78 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 760px;">
+
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      Settings
+    </p>
+
+    <p class="eyebrow">Account</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">Settings<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2.5rem;">Manage how your shop appears to customers and how we pay you out.</p>
+
+    {% if error %}
+      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:.9rem 1.1rem; border-radius:6px; margin-bottom: 1rem;">{{ error }}</div>
+    {% endif %}
+    {% if messages %}
+      {% for m in messages %}
+        <div class="card card-padded" style="background:#d6f3e3; color:#1f7a4d; padding:.9rem 1.1rem; border-radius:6px; margin-bottom: 1rem;">{{ m }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" style="display: grid; gap: 2rem;">
+      {% csrf_token %}
+
+      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <h2 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Shop profile</h2>
+        <div style="display: grid; gap: 1.25rem;">
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Vendor name *</label>
+            <input type="text" name="name" required maxlength="200" value="{{ vendor.name }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          </div>
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Description</label>
+            <textarea name="description" rows="5" class="input" style="width:100%; padding: .75rem 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-family: var(--sans);">{{ vendor.description }}</textarea>
+            <p style="font-size: .78rem; color: var(--muted); margin: .35rem 0 0;">Shown on your public vendor profile.</p>
+          </div>
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Contact email</label>
+            <input type="email" name="contact_email" maxlength="254" value="{{ contact_email }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            <p style="font-size: .78rem; color: var(--muted); margin: .35rem 0 0;">Where we send vendor announcements and payout notifications.</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <h2 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Payout method</h2>
+        <div style="display: grid; gap: 1.25rem;">
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Method</label>
+            <select name="payout_method" class="input" style="width: 100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+              <option value="">— select —</option>
+              {% for value, label in payout_methods %}
+                <option value="{{ value }}" {% if account.method == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">External account reference</label>
+            <input type="text" name="external_account" maxlength="200" value="{{ account.external_account }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);" placeholder="Stripe account ID / IBAN / PayPal email">
+            <p style="font-size: .78rem; color: var(--muted); margin: .35rem 0 0;">Stored encrypted. We use this to send payouts.</p>
+          </div>
+        </div>
+      </article>
+
+      <div>
+        <button type="submit" class="btn btn-primary" style="padding: .85rem 2rem;">Save settings</button>
+      </div>
+    </form>
+
+  </div>
+</section>
+{% endblock %}

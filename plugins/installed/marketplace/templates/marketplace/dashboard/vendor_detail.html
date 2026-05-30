@@ -1,0 +1,217 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ vendor.name }} · Vendor · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ vendor.name }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        <code class="font-mono text-xs">{{ vendor.slug }}</code>
+        {% if vendor.is_active %}
+          <span class="pill pill-success ml-2">Active</span>
+        {% else %}
+          <span class="pill pill-neutral ml-2">Inactive</span>
+        {% endif %}
+      </p>
+    </div>
+    <div class="flex items-center gap-1.5 text-xs">
+      <a href="/dashboard/apps/marketplace/vendors/" class="btn btn-ghost text-xs">All vendors</a>
+    </div>
+  </div>
+
+  {# KPI tiles #}
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Revenue (30d)</span>
+      <span class="kpi__value">{{ gross_30 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Revenue (7d)</span>
+      <span class="kpi__value">{{ gross_7 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Vendor orders</span>
+      <span class="kpi__value">{{ total_orders }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Active products</span>
+      <span class="kpi__value">{{ active_products }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Pending payout</span>
+      <span class="kpi__value">{{ pending_balance }}</span>
+      <span class="text-xs text-[color:var(--text-muted)]">{{ payout_method|default:'no method set' }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Effective commission</span>
+      <span class="kpi__value">{{ effective_commission }}%</span>
+      {% if override_value %}
+        <span class="text-xs text-[color:var(--text-muted)]">override (default {{ default_commission }}%)</span>
+      {% else %}
+        <span class="text-xs text-[color:var(--text-muted)]">platform default</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Commission override editor #}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Commission override</h2>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Overrides the platform default ({{ default_commission }}%) for this vendor only. Clear to revert.
+      </p>
+    </div>
+    <div class="card-padded">
+      <form method="post" class="flex flex-wrap items-end gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_commission">
+        <label class="text-xs text-[color:var(--text-muted)] flex flex-col gap-1">
+          Commission %
+          <input
+            type="number"
+            name="commission_percent"
+            step="0.01"
+            min="0"
+            max="100"
+            value="{{ override_value|default:effective_commission }}"
+            class="border border-[color:var(--border)] rounded px-2 py-1 text-sm font-mono"
+            style="width:8rem;"
+          >
+        </label>
+        <button class="btn btn-primary text-xs" type="submit">Save override</button>
+        {% if override_value %}
+          <form method="post" style="display:inline-block;margin:0;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="clear_commission">
+            <button class="btn btn-ghost text-xs" type="submit"
+                    data-confirm="Clear the override and revert to the platform default?"
+                    data-confirm-cta="Clear override"
+                    data-confirm-danger>Clear override</button>
+          </form>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  {# Orders by status + top SKUs side by side #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Orders by status</h2>
+      </div>
+      {% if status_counts %}
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th class="text-right">Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for status, count in status_counts.items %}
+          <tr>
+            <td>{{ status|capfirst }}</td>
+            <td class="text-right font-mono">{{ count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No orders yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Top SKUs (lifetime)</h2>
+      </div>
+      {% if top_skus %}
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th>SKU / name</th>
+            <th class="text-right">Units</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for key, qty in top_skus %}
+          <tr>
+            <td><code class="font-mono text-xs">{{ key }}</code></td>
+            <td class="text-right font-mono">{{ qty }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No items recorded yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Recent orders + recent payouts #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Recent vendor orders</h2>
+      </div>
+      {% if recent_orders %}
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Status</th>
+            <th class="text-right">Gross</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in recent_orders %}
+          <tr>
+            <td><code class="text-xs">{{ o.parent_order.order_number|default:o.parent_order_id }}</code></td>
+            <td>{{ o.get_status_display }}</td>
+            <td class="text-right font-mono">{{ o.gross }}</td>
+            <td class="text-xs text-[color:var(--text-muted)]">{{ o.created_at|date:"Y-m-d H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No orders yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Recent payouts</h2>
+      </div>
+      {% if recent_payouts %}
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th class="text-right">Amount</th>
+            <th>Status</th>
+            <th>Requested</th>
+            <th>Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in recent_payouts %}
+          <tr>
+            <td class="text-right font-mono">{{ p.amount }}</td>
+            <td>{{ p.get_status_display }}</td>
+            <td class="text-xs text-[color:var(--text-muted)]">{{ p.requested_at|date:"Y-m-d" }}</td>
+            <td class="text-xs text-[color:var(--text-muted)]">{{ p.paid_at|date:"Y-m-d"|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No payouts yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

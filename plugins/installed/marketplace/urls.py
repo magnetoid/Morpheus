@@ -11,5 +11,16 @@ urlpatterns = [
     path('vendor/apply/', views.apply, name='apply'),
     path('vendor/me/', views.dashboard, name='dashboard'),
     path('vendor/me/products/', views.vendor_products, name='vendor_products'),
-    path('vendor/me/products/<uuid:product_id>/', views.vendor_product_edit, name='vendor_product_edit'),
+    path(
+        'vendor/me/products/<uuid:product_id>/',
+        views.vendor_product_edit,
+        name='vendor_product_edit',
+    ),
+    path(
+        'vendor/me/orders/<uuid:vendor_order_id>/',
+        views.vendor_order_detail,
+        name='vendor_order_detail',
+    ),
+    path('vendor/me/payouts/', views.vendor_payouts, name='vendor_payouts'),
+    path('vendor/me/settings/', views.vendor_settings, name='vendor_settings'),
 ]

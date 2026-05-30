@@ -1,0 +1,92 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 880px;">
+
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      Payouts
+    </p>
+
+    <p class="eyebrow">Money</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">Payouts<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2.5rem;">Your accrued balance sits here until you request a payout. We pay out via your configured method within ~3 business days.</p>
+
+    {% if messages %}
+      {% for m in messages %}
+        <div class="card card-padded" style="background: {% if m.tags == 'error' %}#fde7e9{% else %}#d6f3e3{% endif %}; color: {% if m.tags == 'error' %}#b3261e{% else %}#1f7a4d{% endif %}; padding: .9rem 1.1rem; border-radius: 6px; margin-bottom: 1rem;">
+          {{ m }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <article class="card card-padded" style="padding: 2rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;">
+        <div>
+          <p style="font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 .35rem;">Accrued balance</p>
+          <p style="font-family: var(--serif); font-size: clamp(2rem, 5vw, 3rem); margin: 0; font-variant-numeric: tabular-nums; line-height: 1.05;">{{ accrued }}</p>
+          <p style="margin: .5rem 0 0; font-size: .85rem; color: var(--muted);">Minimum payout threshold: <strong>{{ threshold }}</strong></p>
+        </div>
+        <form method="post" style="margin: 0;">
+          {% csrf_token %}
+          {% if can_request %}
+            <button type="submit" class="btn btn-primary" style="padding: .9rem 1.8rem;">Request payout</button>
+          {% else %}
+            <button type="submit" class="btn btn-primary" style="padding: .9rem 1.8rem; opacity: .45; cursor: not-allowed;" disabled>Request payout</button>
+          {% endif %}
+        </form>
+      </div>
+      {% if not can_request %}
+        <p style="margin: 1rem 0 0; font-size: .85rem; color: var(--muted);">
+          {% if account.method == 'unset' or not account.method %}
+            Configure a payout method in <a href="/vendor/me/settings/" style="text-decoration: underline;">settings</a> first.
+          {% else %}
+            You need to accrue at least {{ threshold }} before requesting a payout.
+          {% endif %}
+        </p>
+      {% endif %}
+    </article>
+
+    <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+      <h2 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">History</h2>
+      {% if history %}
+      <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
+        <thead>
+          <tr style="text-align: left; border-bottom: 1px solid var(--rule);">
+            <th style="padding: .5rem 0; font-weight: 600;">Requested</th>
+            <th style="padding: .5rem 0; font-weight: 600;">Status</th>
+            <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Amount</th>
+            <th style="padding: .5rem 0; font-weight: 600;">Paid</th>
+            <th style="padding: .5rem 0; font-weight: 600;">Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in history %}
+          <tr style="border-bottom: 1px solid var(--rule);">
+            <td style="padding: .65rem 0; font-variant-numeric: tabular-nums;">{{ p.requested_at|date:"M j, Y" }}</td>
+            <td style="padding: .65rem 0;">
+              {% if p.status == 'paid' %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#d6f3e3; color:#1f7a4d; font-size:.7rem; font-weight:600;">Paid</span>
+              {% elif p.status == 'failed' %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#fde7e9; color:#b3261e; font-size:.7rem; font-weight:600;">Failed</span>
+              {% elif p.status == 'processing' %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#ffeacc; color:#b86e00; font-size:.7rem; font-weight:600;">Processing</span>
+              {% else %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:.7rem; font-weight:600;">Pending</span>
+              {% endif %}
+            </td>
+            <td style="padding: .65rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ p.amount }}</td>
+            <td style="padding: .65rem 0; color: var(--muted);">{% if p.paid_at %}{{ p.paid_at|date:"M j, Y" }}{% else %}—{% endif %}</td>
+            <td style="padding: .65rem 0; font-family: ui-monospace, monospace; font-size: .82rem; color: var(--muted);">{{ p.external_reference|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p style="color: var(--muted); margin: 0;">No payouts yet.</p>
+      {% endif %}
+    </article>
+
+  </div>
+</section>
+{% endblock %}

@@ -12,15 +12,29 @@
     <p class="meta" style="margin-bottom: 1.25rem;">
       <a href="/" style="color: var(--muted);">Home</a>
       <span style="margin: 0 0.5rem;">/</span>
+      <a href="/marketplace/" style="color: var(--muted);">Marketplace</a>
+      <span style="margin: 0 0.5rem;">/</span>
       Publishers
     </p>
     <p class="eyebrow">The makers</p>
     <h1 class="display display-l" style="margin: 1rem 0 1rem;">Publishers we work with<span class="text-accent">.</span></h1>
-    <p class="lede" style="max-width: 60ch; margin-bottom: 0;">
-      Every book on the shelf came from one of these presses. Most are independent —
-      small enough that the editor took the call, big enough to ship a hardcover.
-      Click into a publisher to see their full list with us.
+    <p class="lede" style="max-width: 60ch; margin-bottom: 1.75rem;">
+      Every book on the shelf came from one of these presses — independent publishers,
+      university imprints, antiquarians, and small bookshops. Click into one to see
+      their full list with us.
     </p>
+    <form method="get" action="" class="vendor-search" role="search" aria-label="Search publishers">
+      <input type="search" name="q" value="{{ query|default:'' }}"
+             placeholder="Search publishers" aria-label="Search publishers">
+      <button type="submit">Search</button>
+      {% if query %}<a href="/vendors/" class="vendor-search__clear" aria-label="Clear search">Clear</a>{% endif %}
+    </form>
+    {% if query %}
+    <p class="meta" style="margin-top: 1rem;">
+      Showing matches for <strong>&ldquo;{{ query }}&rdquo;</strong> &middot;
+      {{ vendors|length }} result{{ vendors|length|pluralize }}
+    </p>
+    {% endif %}
   </div>
 </section>
 
@@ -42,12 +56,16 @@
           {% endif %}
           <div class="vendor-card__meta">
             <h2 class="vendor-card__name">{{ v.obj.name }}</h2>
-            <p class="vendor-card__count">{{ v.product_count }} title{{ v.product_count|pluralize }} on the shelf</p>
+            <p class="vendor-card__count">
+              {{ v.product_count }} title{{ v.product_count|pluralize }} on the shelf
+              {% if v.obj.created_at %} &middot; Since {{ v.obj.created_at|date:"F Y" }}{% endif %}
+            </p>
           </div>
         </div>
         {% if v.obj.description %}
-        <p class="vendor-card__desc">{{ v.obj.description|truncatewords:24 }}</p>
+        <p class="vendor-card__desc">{{ v.obj.description|truncatechars:240 }}</p>
         {% endif %}
+        <p class="vendor-card__cta">Visit shop <span aria-hidden="true">&rarr;</span></p>
         {% if v.preview_products %}
         <div class="vendor-card__strip" aria-hidden="true">
           {% for p in v.preview_products %}
@@ -78,11 +96,42 @@
 <style>
 .vendor-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
 }
-@media (min-width: 640px)  { .vendor-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1000px) { .vendor-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.vendor-search {
+  display: flex; gap: 0.5rem; max-width: 480px;
+  flex-wrap: wrap;
+}
+.vendor-search input[type="search"] {
+  flex: 1; min-width: 0;
+  height: 44px; padding: 0 1rem;
+  border-radius: 999px; border: 1px solid var(--rule);
+  background: var(--paper); color: var(--ink);
+  font-family: var(--sans); font-size: 0.92rem;
+}
+.vendor-search input[type="search"]:focus { outline: none; border-color: var(--ink); }
+.vendor-search button {
+  height: 44px; padding: 0 1.25rem;
+  border-radius: 999px;
+  background: var(--ink); color: var(--paper);
+  border: 1px solid var(--ink);
+  font-family: var(--sans); font-weight: 600; font-size: 0.85rem;
+  cursor: pointer; transition: background 150ms ease;
+}
+.vendor-search button:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+.vendor-search__clear {
+  display: inline-flex; align-items: center;
+  padding: 0 1rem; height: 44px;
+  font-size: 0.85rem; color: var(--muted);
+}
+.vendor-search__clear:hover { color: var(--ink); }
+.vendor-card__cta {
+  margin: auto 0 0; font-size: 0.85rem; font-weight: 600;
+  color: var(--ink); padding-top: 0.25rem;
+}
+.vendor-card:hover .vendor-card__cta { color: var(--accent-ink); }
 
 .vendor-card {
   display: flex; flex-direction: column;

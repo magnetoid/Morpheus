@@ -13,8 +13,15 @@
       Your products
     </p>
 
-    <p class="eyebrow">Your catalogue</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">Your products<span class="text-accent">.</span></h1>
+    <header style="display: flex; align-items: end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+      <div>
+        <p class="eyebrow">Your catalogue</p>
+        <h1 class="display display-l" style="margin: 1rem 0 0;">Your products<span class="text-accent">.</span></h1>
+      </div>
+      {% if vendor %}
+        <a href="/contact/" class="btn btn-ghost" title="New listings are added by our acquisitions team">Add a title</a>
+      {% endif %}
+    </header>
 
     {% if not vendor %}
       <div class="vp-empty">

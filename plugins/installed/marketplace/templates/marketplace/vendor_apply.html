@@ -3,68 +3,108 @@
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 640px;">
+  <div class="wrap" style="max-width: 960px;">
 
     <p class="eyebrow">Multivendor marketplace</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Sell with us<span class="text-accent">.</span></h1>
-    <p class="lede" style="margin-bottom: 2.5rem;">If you publish or distribute books we'd shelve, apply to become a vendor. We split each customer order automatically, pay you on a monthly cycle, and give you a vendor dashboard to track everything.</p>
+    <p class="lede" style="margin-bottom: 3rem;">Tell us about your shop and we'll get back to you within 2 business days. If publishing or distributing books we'd shelve sounds like you, this is the door.</p>
 
     {% if error %}
-      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem; border-radius:6px; margin-bottom: 1.5rem;">
+      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem 1.25rem; border-radius:6px; margin-bottom: 1.5rem;">
         {{ error }}
       </div>
     {% endif %}
 
-    {% if existing and existing.status != 'rejected' %}
-      <div class="card card-padded" style="background: var(--paper-2); padding: 1.5rem; border-radius: 6px;">
-        <p style="font-weight: 600; margin: 0 0 .5rem;">Your application is on file.</p>
-        <p style="margin: 0 0 1rem; color: var(--ink-2);">
-          Status: <strong>{{ existing.get_status_display }}</strong> · Business: <strong>{{ existing.business_name }}</strong>
-        </p>
-        <a href="/vendor/me/" class="btn btn-primary">Open vendor dashboard →</a>
+    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2.5rem; align-items: start;">
+
+      <div>
+        {% if existing and existing.status != 'rejected' %}
+          <article class="card card-padded" style="background: var(--paper-2); padding: 1.75rem; border-radius: 6px;">
+            <p class="eyebrow" style="margin-bottom: .5rem;">Application status</p>
+            <h2 style="font-family: var(--serif); font-size: 1.4rem; margin: 0 0 .75rem;">{{ existing.business_name }}</h2>
+            <p style="margin: 0 0 1.25rem; color: var(--ink-2);">
+              {% if existing.status == 'submitted' %}
+                We've received your application. A buyer will review it within 2 business days.
+              {% elif existing.status == 'reviewing' %}
+                One of our buyers is reading through your application now.
+              {% elif existing.status == 'approved' %}
+                You're approved. Head to your vendor dashboard to start listing.
+              {% endif %}
+            </p>
+            <div style="display: flex; gap: .75rem; flex-wrap: wrap;">
+              <span style="display:inline-block; padding:.3rem .8rem; border-radius:999px; background:{% if existing.status == 'approved' %}#d6f3e3;color:#1f7a4d{% elif existing.status == 'reviewing' %}#ffeacc;color:#b86e00{% else %}#dbeafe;color:#1d4ed8{% endif %}; font-size:.8rem; font-weight:600;">{{ existing.get_status_display }}</span>
+              <a href="/vendor/me/" class="btn btn-primary">Open vendor dashboard</a>
+            </div>
+          </article>
+        {% else %}
+          {% if existing and existing.status == 'rejected' %}
+            <div style="background:#fde7e9; color:#b3261e; padding:1rem 1.25rem; border-radius:6px; margin-bottom: 1.5rem;">
+              A previous application wasn't approved. You're welcome to submit a fresh one below.
+            </div>
+          {% endif %}
+          <form method="post" action="/vendor/apply/" style="display:grid; gap: 1.5rem;">
+            {% csrf_token %}
+            <div>
+              <h2 style="font-family: var(--serif); font-size: 1.3rem; margin: 0 0 .25rem;">About your shop</h2>
+              <p style="margin: 0 0 1rem; color: var(--muted); font-size: .9rem;">The basics — required so we can write back.</p>
+            </div>
+            <div>
+              <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Business / publisher name <span style="color:#b3261e;">*</span></label>
+              <input type="text" name="business_name" required maxlength="200" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            </div>
+            <div>
+              <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Contact email <span style="color:#b3261e;">*</span></label>
+              <input type="email" name="contact_email" class="input" value="{{ request.user.email }}" required style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            </div>
+            <div>
+              <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tell us about your catalogue and audience</label>
+              <textarea name="description" rows="6" class="input" placeholder="Imprints, lists, where you currently distribute, typical reader profile." style="width:100%; padding: .75rem 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-family: var(--sans);"></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div>
+                <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tax ID (optional)</label>
+                <input type="text" name="tax_id" maxlength="50" class="input" placeholder="VAT / EIN / etc." style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+              </div>
+              <div>
+                <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Preferred payout method</label>
+                <select name="payout_method" class="input" style="width: 100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+                  <option value="">— select —</option>
+                  <option value="stripe">Stripe Connect</option>
+                  <option value="bank_transfer">Bank transfer (SEPA / wire)</option>
+                  <option value="paypal">PayPal</option>
+                  <option value="other">Other (we'll discuss)</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top: .5rem;">
+              <button type="submit" class="btn btn-primary" style="padding: .9rem 2rem;">Submit application</button>
+              <p style="font-size: .8rem; color: var(--muted); margin-top: .75rem;">We respond within 2 business days. <span style="color:#b3261e;">*</span> required.</p>
+            </div>
+          </form>
+        {% endif %}
       </div>
-    {% else %}
-      {% if existing and existing.status == 'rejected' %}
-      <div style="background:#fde7e9; color:#b3261e; padding:1rem; border-radius:6px; margin-bottom: 1.5rem;">
-        A previous application was not approved. You're welcome to submit a fresh one below.
-      </div>
-      {% endif %}
-      <form method="post" action="/vendor/apply/" style="display:grid; gap: 1.25rem;">
-        {% csrf_token %}
-        <div>
-          <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Business / publisher name *</label>
-          <input type="text" name="business_name" required maxlength="200" class="input">
-        </div>
-        <div>
-          <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Contact email *</label>
-          <input type="email" name="contact_email" class="input" value="{{ request.user.email }}" required>
-        </div>
-        <div>
-          <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tell us about your catalogue and audience</label>
-          <textarea name="description" rows="6" class="input" placeholder="Imprints, lists, where you currently distribute, typical reader profile."></textarea>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-          <div>
-            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tax ID (optional)</label>
-            <input type="text" name="tax_id" maxlength="50" class="input" placeholder="VAT / EIN / etc.">
-          </div>
-          <div>
-            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Preferred payout method</label>
-            <select name="payout_method" class="input">
-              <option value="">— select —</option>
-              <option value="stripe">Stripe Connect</option>
-              <option value="bank_transfer">Bank transfer (SEPA / wire)</option>
-              <option value="paypal">PayPal</option>
-              <option value="other">Other (we'll discuss)</option>
-            </select>
-          </div>
-        </div>
-        <div style="margin-top: 1rem;">
-          <button type="submit" class="btn btn-primary" style="padding: .8rem 2rem;">Submit application</button>
-          <p style="font-size: .8rem; color: var(--muted); margin-top: .75rem;">We review applications weekly. You'll hear from us within ~10 business days.</p>
-        </div>
-      </form>
-    {% endif %}
+
+      <aside style="position: sticky; top: 5rem;">
+        <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper-2);">
+          <h2 style="font-family: var(--serif); font-size: 1.15rem; margin: 0 0 1rem;">What happens next</h2>
+          <ol style="margin: 0; padding-left: 1.25rem; display: grid; gap: 1rem; color: var(--ink-2);">
+            <li>
+              <strong style="display: block; font-family: var(--serif); font-size: 1rem;">1. Review</strong>
+              <span style="font-size: .85rem; color: var(--muted);">A buyer reads your application and checks fit. Usually 1–2 business days.</span>
+            </li>
+            <li>
+              <strong style="display: block; font-family: var(--serif); font-size: 1rem;">2. Approve</strong>
+              <span style="font-size: .85rem; color: var(--muted);">We approve, link your account to a vendor profile, and confirm commission terms.</span>
+            </li>
+            <li>
+              <strong style="display: block; font-family: var(--serif); font-size: 1rem;">3. Start listing</strong>
+              <span style="font-size: .85rem; color: var(--muted);">You can edit listings, manage orders, and request payouts directly from your dashboard.</span>
+            </li>
+          </ol>
+        </article>
+      </aside>
+
+    </div>
 
   </div>
 </section>

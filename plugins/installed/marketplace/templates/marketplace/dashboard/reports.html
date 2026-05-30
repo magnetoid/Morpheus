@@ -19,60 +19,127 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+  {# Top KPI tiles — Active vendors / GMV this month / Payouts pending / Top vendor. #}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <div class="card card-padded kpi">
-      <span class="kpi__label">Vendors</span>
+      <span class="kpi__label">Active vendors</span>
       <span class="kpi__value">{{ summary.active_vendors }}</span>
       <span class="text-xs text-[color:var(--text-muted)]">{{ summary.total_vendors }} total</span>
     </div>
     <div class="card card-padded kpi">
-      <span class="kpi__label">Vendor orders</span>
+      <span class="kpi__label">GMV this month</span>
+      <span class="kpi__value">{{ summary.gmv_month }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Payouts pending</span>
+      <span class="kpi__value">{{ summary.payouts_pending }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Top vendor (30d)</span>
+      <span class="kpi__value text-base">
+        {% if summary.top_vendor_id %}
+          <a href="/dashboard/marketplace/vendors/{{ summary.top_vendor_id }}/" class="hover:underline">{{ summary.top_vendor_name }}</a>
+        {% else %}{{ summary.top_vendor_name }}{% endif %}
+      </span>
+      <span class="text-xs text-[color:var(--text-muted)]">{{ summary.top_vendor_gross }}</span>
+    </div>
+  </div>
+
+  {# Sparkline — last 6 months of GMV. #}
+  {% if spark_points %}
+  <div class="card card-padded">
+    <div class="flex items-center justify-between">
+      <h2 class="font-semibold text-sm">GMV trend (last 6 months)</h2>
+      <span class="text-xs text-[color:var(--text-muted)]">
+        {% for p in spark_points %}{{ p.month }}{% if not forloop.last %} · {% endif %}{% endfor %}
+      </span>
+    </div>
+    <svg viewBox="0 0 {{ spark_w }} {{ spark_h }}" width="{{ spark_w }}" height="{{ spark_h }}"
+         class="mt-2" role="img" aria-label="GMV trend sparkline">
+      <polyline
+        fill="none"
+        stroke="var(--accent, #4f46e5)"
+        stroke-width="1.5"
+        points="{{ spark_path }}"
+      />
+    </svg>
+  </div>
+  {% endif %}
+
+  {# Secondary window KPIs. #}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Vendor orders ({{ days }}d)</span>
       <span class="kpi__value">{{ summary.orders_period }}</span>
     </div>
-    <div class="card card-padded col-span-2 kpi">
-      <span class="kpi__label">Gross merchandise</span>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Gross ({{ days }}d)</span>
       <span class="kpi__value">{{ summary.gross_period }}</span>
     </div>
     <div class="card card-padded kpi">
-      <span class="kpi__label">Commission</span>
+      <span class="kpi__label">Commission ({{ days }}d)</span>
       <span class="kpi__value">{{ summary.commission_period }}</span>
     </div>
     <div class="card card-padded kpi">
-      <span class="kpi__label">Paid out</span>
+      <span class="kpi__label">Paid out ({{ days }}d)</span>
       <span class="kpi__value">{{ summary.paid_period }}</span>
     </div>
   </div>
 
-  <div class="card overflow-hidden">
-    <div class="card-padded border-b border-[color:var(--border)]">
-      <h2 class="font-semibold">Top vendors by gross</h2>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <div class="card overflow-hidden lg:col-span-2">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Top vendors by gross</h2>
+      </div>
+      {% if top %}
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th>Vendor</th>
+            <th class="text-right">Orders</th>
+            <th class="text-right">Gross</th>
+            <th class="text-right">Commission</th>
+            <th class="text-right">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in top %}
+          <tr>
+            <td>
+              {% if v.vendor_id %}
+                <a href="/dashboard/marketplace/vendors/{{ v.vendor_id }}/" class="hover:underline">{{ v.name }}</a>
+              {% else %}{{ v.name }}{% endif %}
+            </td>
+            <td class="text-right">{{ v.orders }}</td>
+            <td class="text-right font-mono">{{ v.gross }}</td>
+            <td class="text-right font-mono">{{ v.commission }}</td>
+            <td class="text-right font-mono">{{ v.net }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No vendor orders in this window.</div>
+      {% endif %}
     </div>
-    {% if top %}
-    <table class="morph-table morph-table-zebra">
-      <thead>
-        <tr>
-          <th>Vendor</th>
-          <th class="text-right">Orders</th>
-          <th class="text-right">Gross</th>
-          <th class="text-right">Commission</th>
-          <th class="text-right">Net</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for v in top %}
-        <tr>
-          <td>{{ v.name }}</td>
-          <td class="text-right">{{ v.orders }}</td>
-          <td class="text-right font-mono">{{ v.gross }}</td>
-          <td class="text-right font-mono">{{ v.commission }}</td>
-          <td class="text-right font-mono">{{ v.net }}</td>
-        </tr>
+
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Recent activity</h2>
+      </div>
+      {% if activity %}
+      <ul class="divide-y divide-[color:var(--border)]">
+        {% for e in activity %}
+        <li class="card-padded text-xs">
+          <a href="{{ e.url }}" class="block hover:underline">{{ e.label }}</a>
+          <span class="text-[color:var(--text-muted)]">{{ e.when|date:"Y-m-d H:i" }}</span>
+        </li>
         {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="card-padded text-sm text-[color:var(--text-muted)]">No vendor orders in this window.</div>
-    {% endif %}
+      </ul>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No recent activity.</div>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

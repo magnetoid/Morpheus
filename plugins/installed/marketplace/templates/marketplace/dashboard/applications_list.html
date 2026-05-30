@@ -58,7 +58,7 @@
               {% csrf_token %}
               <input type="hidden" name="application_id" value="{{ a.id }}">
               <input type="hidden" name="action" value="approve">
-              <button class="btn btn-ghost text-xs" type="submit" data-confirm="Approve {{ a.business_name|escapejs }} as a vendor?" data-confirm-cta="Approve">Approve</button>
+              <button class="btn btn-primary text-xs" type="submit" data-confirm="Approve {{ a.business_name|escapejs }} as a vendor? This creates a catalog.Vendor and opens its dashboard." data-confirm-cta="Approve" data-confirm-title="Approve vendor">Approve</button>
             </form>
             <form method="post" style="display:inline-block;margin:0;">
               {% csrf_token %}

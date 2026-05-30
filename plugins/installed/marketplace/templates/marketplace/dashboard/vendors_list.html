@@ -33,7 +33,9 @@
       <tbody>
         {% for v in vendors %}
         <tr>
-          <td class="font-medium">{{ v.obj.name }}</td>
+          <td class="font-medium">
+            <a href="/dashboard/marketplace/vendors/{{ v.obj.id }}/" class="hover:underline">{{ v.obj.name }}</a>
+          </td>
           <td><code class="font-mono text-xs">{{ v.obj.slug }}</code></td>
           <td class="text-right font-mono">{{ v.gross }}</td>
           <td>

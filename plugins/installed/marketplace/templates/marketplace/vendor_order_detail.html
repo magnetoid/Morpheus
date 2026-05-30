@@ -1,0 +1,129 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 960px;">
+
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      Order {{ parent_order_number }}
+    </p>
+
+    <p class="eyebrow">Vendor order</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">{{ parent_order_number }}<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2.5rem;">Update fulfilment status and tracking — the customer is notified automatically.</p>
+
+    {% if messages %}
+      {% for m in messages %}
+        <div class="card card-padded" style="background: {% if m.tags == 'error' %}#fde7e9{% else %}#d6f3e3{% endif %}; color: {% if m.tags == 'error' %}#b3261e{% else %}#1f7a4d{% endif %}; padding: .9rem 1.1rem; border-radius: 6px; margin-bottom: 1rem;">
+          {{ m }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+
+      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <header style="display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem;">
+          <h2 style="font-family: var(--serif); font-size: 1.3rem; margin: 0;">Items</h2>
+          <span style="font-size: .85rem; color: var(--muted);">{{ items|length }} line{{ items|length|pluralize }}</span>
+        </header>
+
+        <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left; border-bottom: 1px solid var(--rule);">
+              <th style="padding: .5rem 0; font-weight: 600;">Title</th>
+              <th style="padding: .5rem 0; font-weight: 600;">SKU</th>
+              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Qty</th>
+              <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Unit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+            <tr style="border-bottom: 1px solid var(--rule);">
+              <td style="padding: .65rem 0;">{{ it.name|default:"—" }}</td>
+              <td style="padding: .65rem 0; font-family: ui-monospace, monospace; font-size: .82rem; color: var(--muted);">{{ it.sku|default:"—" }}</td>
+              <td style="padding: .65rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ it.quantity }}</td>
+              <td style="padding: .65rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ it.unit_price }} {{ it.currency }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="padding: 1rem 0; color: var(--muted);">No items snapshot recorded.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; font-size: .95rem;">
+          <span style="color: var(--muted);">Gross / Commission / Net</span>
+          <span style="font-variant-numeric: tabular-nums;">
+            <strong>{{ vendor_order.gross }}</strong>
+            <span style="color: var(--muted);"> · {{ vendor_order.commission }}</span>
+            <span style="color: var(--muted);"> · </span><strong>{{ vendor_order.net }}</strong>
+          </span>
+        </div>
+      </article>
+
+      <aside style="display: grid; gap: 1.25rem;">
+        <article class="card card-padded" style="padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+          <h3 style="font-family: var(--serif); font-size: 1.1rem; margin: 0 0 .75rem;">Ship to</h3>
+          {% if shipping_address %}
+            <p style="margin: 0; font-size: .9rem; line-height: 1.55;">
+              {% if shipping_address.first_name or shipping_address.last_name %}
+                <strong>{{ shipping_address.first_name }} {{ shipping_address.last_name }}</strong><br>
+              {% endif %}
+              {% if shipping_address.company %}{{ shipping_address.company }}<br>{% endif %}
+              {% if shipping_address.address_line1 %}{{ shipping_address.address_line1 }}<br>{% endif %}
+              {% if shipping_address.address_line2 %}{{ shipping_address.address_line2 }}<br>{% endif %}
+              {{ shipping_address.city }}{% if shipping_address.state %}, {{ shipping_address.state }}{% endif %} {{ shipping_address.postal_code }}<br>
+              {{ shipping_address.country }}
+              {% if shipping_address.phone %}<br><span style="color: var(--muted);">{{ shipping_address.phone }}</span>{% endif %}
+            </p>
+          {% else %}
+            <p style="margin: 0; color: var(--muted); font-size: .9rem;">No shipping address on file.</p>
+          {% endif %}
+        </article>
+
+        <article class="card card-padded" style="padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+          <h3 style="font-family: var(--serif); font-size: 1.1rem; margin: 0 0 .5rem;">Current status</h3>
+          <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:.75rem; font-weight:600;">{{ vendor_order.get_status_display }}</span>
+          {% if vendor_order.fulfilled_at %}
+            <p style="margin: .75rem 0 0; color: var(--muted); font-size: .82rem;">Fulfilled {{ vendor_order.fulfilled_at|date:"M j, Y" }}</p>
+          {% endif %}
+        </article>
+      </aside>
+
+    </div>
+
+    <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-top: 1.5rem;">
+      <h2 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Update fulfilment</h2>
+      <form method="post" style="display: grid; gap: 1.25rem;">
+        {% csrf_token %}
+        <div>
+          <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Status</label>
+          <select name="status" class="input" style="width: 100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            {% for value, label in workflow_statuses %}
+              <option value="{{ value }}" {% if vendor_order.status == value or value == 'shipped' and vendor_order.status == 'shipped' or value == 'delivered' and vendor_order.status == 'delivered' or value == 'cancelled' and vendor_order.status == 'cancelled' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tracking number</label>
+            <input type="text" name="tracking_number" maxlength="200" value="{{ vendor_order.tracking_number }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          </div>
+          <div>
+            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tracking URL</label>
+            <input type="url" name="tracking_url" maxlength="500" value="{{ vendor_order.tracking_url }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          </div>
+        </div>
+        <div>
+          <button type="submit" class="btn btn-primary" style="padding: .8rem 2rem;">Save changes</button>
+        </div>
+      </form>
+    </article>
+
+  </div>
+</section>
+{% endblock %}

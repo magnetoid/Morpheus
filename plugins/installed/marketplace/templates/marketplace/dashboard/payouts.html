@@ -12,24 +12,69 @@
         Track money owed to vendors and their payout status. Mark paid after the transfer leaves the bank.
       </p>
     </div>
+    <div class="flex items-center gap-1.5 text-xs">
+      <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}export=csv" class="btn btn-ghost text-xs">Export CSV</a>
+    </div>
   </div>
+
+  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">All</a>
+    <a href="?status=pending" class="btn btn-ghost text-xs {% if status_filter == 'pending' %}is-active{% endif %}">Pending ({{ counts.pending|default:0 }})</a>
+    <a href="?status=processing" class="btn btn-ghost text-xs {% if status_filter == 'processing' %}is-active{% endif %}">Processing ({{ counts.processing|default:0 }})</a>
+    <a href="?status=paid" class="btn btn-ghost text-xs {% if status_filter == 'paid' %}is-active{% endif %}">Paid ({{ counts.paid|default:0 }})</a>
+    <a href="?status=failed" class="btn btn-ghost text-xs {% if status_filter == 'failed' %}is-active{% endif %}">Failed ({{ counts.failed|default:0 }})</a>
+  </div>
+
+  {% comment %}
+  Bulk form lives as a standalone form tied to the table via HTML5 `form="payouts-bulk-form"`.
+  This lets per-row action <form>s nest in the same table without being children of the bulk form.
+  {% endcomment %}
+  <form method="post" id="payouts-bulk-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="bulk_mark_paid">
+  </form>
 
   <div class="card overflow-hidden">
     {% if payouts %}
+    <div class="card-padded flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--border)]">
+      <label class="text-xs text-[color:var(--text-muted)] flex items-center gap-1.5">
+        <input type="checkbox" id="payouts-toggle-all"> Select all on this page
+      </label>
+      <button class="btn btn-primary text-xs"
+              form="payouts-bulk-form"
+              type="submit"
+              data-confirm="Mark all selected payouts as paid? This deducts each amount from the vendor's accrued balance."
+              data-confirm-cta="Mark selected paid"
+              data-confirm-title="Bulk mark paid">
+        Mark selected paid
+      </button>
+    </div>
     <table class="morph-table morph-table-zebra">
       <thead>
         <tr>
+          <th style="width:2.5rem;"></th>
           <th>Vendor</th>
           <th class="text-right">Amount</th>
           <th>Status</th>
-          <th>Created</th>
+          <th>Method</th>
+          <th>Requested</th>
+          <th>Paid</th>
           <th class="text-right">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for p in payouts %}
         <tr>
-          <td>{% if p.vendor_id %}{{ p.vendor.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if p.status != 'paid' %}
+            <input type="checkbox"
+                   name="payout_ids"
+                   value="{{ p.id }}"
+                   class="payout-row-check"
+                   form="payouts-bulk-form">
+            {% endif %}
+          </td>
+          <td>{% if p.vendor_id %}<a href="/dashboard/marketplace/vendors/{{ p.vendor_id }}/" class="hover:underline">{{ p.vendor.name }}</a>{% else %}—{% endif %}</td>
           <td class="text-right font-mono">{{ p.amount }}</td>
           <td>
             {% if p.status == 'pending' %}<span class="pill pill-warn">Pending</span>
@@ -38,7 +83,9 @@
             {% elif p.status == 'failed' %}<span class="pill pill-neutral">Failed</span>
             {% else %}{{ p.get_status_display }}{% endif %}
           </td>
-          <td class="text-xs text-[color:var(--text-muted)]">{{ p.created_at|date:"Y-m-d" }}</td>
+          <td class="text-xs">{{ p.method|default:'—' }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ p.requested_at|date:"Y-m-d" }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ p.paid_at|date:"Y-m-d"|default:"—" }}</td>
           <td class="text-right">
             {% if p.status == 'pending' %}
             <form method="post" style="display:inline-block;margin:0;">
@@ -70,8 +117,19 @@
       </tbody>
     </table>
     {% else %}
-    <div class="card-padded text-sm text-[color:var(--text-muted)]">No payouts yet.</div>
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No payouts {% if status_filter %}with status "{{ status_filter }}"{% else %}yet{% endif %}.</div>
     {% endif %}
   </div>
 </div>
+
+<script>
+(function() {
+  var toggle = document.getElementById('payouts-toggle-all');
+  if (!toggle) return;
+  toggle.addEventListener('change', function() {
+    var checks = document.querySelectorAll('.payout-row-check');
+    for (var i = 0; i < checks.length; i++) checks[i].checked = toggle.checked;
+  });
+})();
+</script>
 {% endblock %}

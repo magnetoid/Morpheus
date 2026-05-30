@@ -1,10 +1,10 @@
 """Multivendor marketplace plugin manifest."""
+
 from __future__ import annotations
 
 import logging
 
-from morpheus import events
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, events
 
 logger = logging.getLogger('morpheus.marketplace')
 
@@ -20,11 +20,17 @@ class MarketplacePlugin(Plugin):
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.marketplace.graphql.queries')
         self.register_urls('plugins.installed.marketplace.urls', prefix='', namespace='marketplace')
+        self.register_urls(
+            'plugins.installed.marketplace.urls_dashboard',
+            prefix='dashboard/marketplace/',
+            namespace='marketplace_dashboard',
+        )
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
 
     def on_order_placed(self, order, **kwargs):
         try:
-            from plugins.installed.marketplace.services import split_order
+            from plugins.installed.marketplace.services import split_order  # noqa: PLC0415
+
             split_order(order)
         except Exception as e:  # noqa: BLE001 — never block order placement
             logger.warning('marketplace: split_order failed for %s: %s', order.id, e, exc_info=True)
@@ -68,36 +74,55 @@ class MarketplacePlugin(Plugin):
         }
 
     def contribute_dashboard_pages(self) -> list:
-        from morpheus import DashboardPage
+        from morpheus import DashboardPage  # noqa: PLC0415
+
         return [
             DashboardPage(
-                label='Vendors', slug='vendors',
+                label='Vendors',
+                slug='vendors',
                 view='plugins.installed.marketplace.dashboard.vendors_list',
-                icon='store', section='marketplace', order=10,
+                icon='store',
+                section='marketplace',
+                order=10,
             ),
             DashboardPage(
-                label='Applications', slug='applications',
+                label='Applications',
+                slug='applications',
                 view='plugins.installed.marketplace.dashboard.applications_list',
-                icon='inbox', section='marketplace', order=15,
+                icon='inbox',
+                section='marketplace',
+                order=15,
             ),
             DashboardPage(
-                label='Vendor orders', slug='orders',
+                label='Vendor orders',
+                slug='orders',
                 view='plugins.installed.marketplace.dashboard.vendor_orders',
-                icon='shopping-bag', section='marketplace', order=20,
+                icon='shopping-bag',
+                section='marketplace',
+                order=20,
             ),
             DashboardPage(
-                label='Payouts', slug='payouts',
+                label='Payouts',
+                slug='payouts',
                 view='plugins.installed.marketplace.dashboard.payouts',
-                icon='wallet', section='marketplace', order=30,
+                icon='wallet',
+                section='marketplace',
+                order=30,
             ),
             DashboardPage(
-                label='Payout accounts', slug='payout-accounts',
+                label='Payout accounts',
+                slug='payout-accounts',
                 view='plugins.installed.marketplace.dashboard.payout_accounts',
-                icon='credit-card', section='marketplace', order=35,
+                icon='credit-card',
+                section='marketplace',
+                order=35,
             ),
             DashboardPage(
-                label='Reports', slug='reports',
+                label='Reports',
+                slug='reports',
                 view='plugins.installed.marketplace.dashboard.reports',
-                icon='bar-chart-3', section='marketplace', order=40,
+                icon='bar-chart-3',
+                section='marketplace',
+                order=40,
             ),
         ]
