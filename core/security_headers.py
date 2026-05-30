@@ -75,14 +75,21 @@ _CSP_REPORT_ONLY = '; '.join(
 )
 
 # Enforcing CSP for /dashboard/. Narrower than the storefront report-only
-# policy: no third-party CDNs, no unsafe-eval, frame-ancestors 'none'.
-# Staff-rendered untrusted content (metafields, vendor copy) is the XSS
-# surface this is designed to neutralize.
+# policy: limited CDN allow-list (only what base.html actually loads),
+# no unsafe-eval, frame-ancestors 'none'. Staff-rendered untrusted content
+# (metafields, vendor copy) is the XSS surface this is designed to
+# neutralize.
+#
+# CDN allow-list rationale (TODO: self-host these to remove the allow-list):
+#   - cdn.tailwindcss.com — Tailwind JIT runtime (admin styling)
+#   - unpkg.com — htmx + lucide-icons (admin behaviour + iconography)
+# Self-hosting all three would let us drop the allow-list entirely and
+# restore the tighter policy.
 _CSP_DASHBOARD_ENFORCE = '; '.join(
     [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
-        "style-src 'self' 'unsafe-inline'",
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
         "connect-src 'self'",
