@@ -1,7 +1,7 @@
 {% extends "storefront/base.html" %}
 {% block title %}Return {{ rma.rma_number }} — dot books{% endblock %}
 
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
   <div class="wrap" style="max-width: 720px;">

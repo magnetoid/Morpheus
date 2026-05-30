@@ -185,7 +185,7 @@ def seo_title(title: str, *, category: str = '', site_name: str = '') -> str:
 
 
 @register.simple_tag(takes_context=True)
-def seo_meta(
+def seo_meta(  # noqa: PLR0912 — branch count tolerated; centralises every head-meta decision
     context,
     object=None,
     fallback_title: str = '',
@@ -193,6 +193,7 @@ def seo_meta(
     fallback_image: str = '',
     canonical_url: str = '',
     og_type: str = 'website',
+    robots: str = '',
 ):
     request = context.get('request')
     had_noindex_qp = False
@@ -207,6 +208,13 @@ def seo_meta(
         canonical_url=canonical_url,
         og_type=og_type,
     )
+    # Caller-supplied robots wins over everything (private pages pass
+    # robots="noindex, nofollow", search passes "noindex, follow").
+    # Centralising this here means private templates no longer need to
+    # emit their own <meta name="robots"> in extra_head — which produced
+    # a duplicate meta with this tag's default emission.
+    if robots:
+        meta.robots = robots
     if had_noindex_qp and 'noindex' not in meta.robots:
         # Faceted/paginated SERPs: keep crawl signal (follow) but stop
         # indexing the duplicate URL.
