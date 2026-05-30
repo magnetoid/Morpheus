@@ -20,6 +20,6 @@ Shipping to:
 {{ order.shipping_address.city }}, {{ order.shipping_address.state }} {{ order.shipping_address.postal_code }}
 {{ order.shipping_address.country }}
 
-You can track your order any time at {{ store_url }}/orders/{{ order.order_number }}/
+You can track your order any time at {{ store_url }}/order/confirmation/{{ order.order_number }}/?token={{ order.public_token }}
 
 — {{ store_name }}

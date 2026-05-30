@@ -11,11 +11,14 @@ storefront/views/ split uses the same convention. External callers
 import from the package root (``catalog.services``), never from
 ``catalog.services._helpers``.
 """
+
 from __future__ import annotations
 
 import io
+import ipaddress
 import logging
 import re
+import socket
 from decimal import Decimal, InvalidOperation
 from pathlib import PurePosixPath
 from typing import Any
@@ -28,22 +31,42 @@ logger = logging.getLogger('morpheus.catalog.services')
 
 
 # ── Download / validation limits ──────────────────────────────────────
-_MAX_PDF_BYTES = 50 * 1024 * 1024     # 50 MB hard cap for PDF
-_MAX_IMAGE_BYTES = 8 * 1024 * 1024    # 8 MB hard cap for cover image
-_DOWNLOAD_TIMEOUT = 30                # seconds
+_MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB hard cap for PDF
+_MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB hard cap for cover image
+_MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024  # absolute response ceiling
+_DOWNLOAD_TIMEOUT = 10  # seconds — was 30, tightened
 _ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+
+# AWS IMDS — exact-literal block, in case the link-local check misses
+# something. 169.254.169.254 is both IPv4 link-local and the canonical
+# IMDS address.
+_BLOCKED_LITERAL_IPS = {'169.254.169.254'}
 
 
 # ── Field allow-lists ─────────────────────────────────────────────────
 _PRODUCT_SCALAR_FIELDS = {
     # str-like
-    'name', 'sku', 'short_description', 'description',
-    'meta_title', 'meta_description', 'focus_keyword', 'canonical_url',
-    'og_title', 'og_description', 'twitter_title', 'twitter_description',
-    'twitter_card', 'weight_unit',
+    'name',
+    'sku',
+    'short_description',
+    'description',
+    'meta_title',
+    'meta_description',
+    'focus_keyword',
+    'canonical_url',
+    'og_title',
+    'og_description',
+    'twitter_title',
+    'twitter_description',
+    'twitter_card',
+    'weight_unit',
     # bool
-    'is_featured', 'is_taxable', 'track_inventory', 'requires_shipping',
-    'noindex', 'nofollow',
+    'is_featured',
+    'is_taxable',
+    'track_inventory',
+    'requires_shipping',
+    'noindex',
+    'nofollow',
     # numeric (handled in coercion)
     'weight',
 }
@@ -59,6 +82,66 @@ class PublishError(Exception):
     Message is safe to surface to the caller (no internal paths)."""
 
 
+def _is_safe_remote_host(host: str) -> bool:
+    """Return True iff `host` resolves only to public, routable addresses.
+
+    Defends against SSRF. Resolves the host with `getaddrinfo` and checks
+    EVERY returned A/AAAA record — a single forward lookup can return
+    multiple addresses, and an attacker controlling DNS can also rebind
+    between resolution and connection (TOCTOU). We can't fully prevent
+    rebinding without pinning the resolved IP into `requests`, but we
+    can refuse the request when any returned address is unsafe.
+
+    Rejected ranges:
+      - loopback (127.0.0.0/8, ::1)
+      - private (10/8, 172.16/12, 192.168/16, etc.)
+      - link-local (169.254/16) — covers AWS IMDS
+      - reserved
+      - multicast
+      - the literal AWS IMDS address as a belt-and-suspenders check
+    """
+    if not host:
+        return False
+    # Literal IP supplied? Parse it directly and reject if non-public.
+    try:
+        ip = ipaddress.ip_address(host)
+        return _is_public_ip(ip)
+    except ValueError:
+        pass  # not a literal — fall through to DNS resolution.
+
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except (socket.gaierror, OSError, UnicodeError):
+        # Resolution failure → refuse rather than silently allow.
+        return False
+
+    seen_any = False
+    for info in infos:
+        sockaddr = info[4]
+        addr = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            return False
+        if not _is_public_ip(ip):
+            return False
+        seen_any = True
+    return seen_any
+
+
+def _is_public_ip(ip: ipaddress._BaseAddress) -> bool:
+    if str(ip) in _BLOCKED_LITERAL_IPS:
+        return False
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
 def _validate_https_url(url: str, *, field: str) -> None:
     parsed = urlparse(url or '')
     if parsed.scheme != 'https':
@@ -69,20 +152,32 @@ def _validate_https_url(url: str, *, field: str) -> None:
 
 def _download(url: str, *, max_bytes: int, field: str) -> tuple[bytes, str, str]:
     """Stream `url` → (body, content_type, filename). Hard size + timeout caps."""
+    # SSRF gate: reject loopback / private / IMDS hosts before any
+    # outbound socket. urlparse strips brackets from IPv6 hosts via
+    # .hostname (parsed.netloc would include them).
+    parsed = urlparse(url or '')
+    host = (parsed.hostname or '').lower()
+    if not _is_safe_remote_host(host):
+        raise PublishError(f'{field} host {host!r} is not a public address (SSRF guard)')
+
+    # Cap response size at 50 MB regardless of what the caller asked for.
+    cap = min(max_bytes, _MAX_DOWNLOAD_BYTES)
     try:
         with requests.get(url, stream=True, timeout=_DOWNLOAD_TIMEOUT) as r:
             r.raise_for_status()
             content_type = (r.headers.get('Content-Type') or '').split(';')[0].strip().lower()
             cl = r.headers.get('Content-Length')
-            if cl and int(cl) > max_bytes:
-                raise PublishError(f'{field} exceeds {max_bytes // (1024 * 1024)} MB limit')
+            if cl and int(cl) > cap:
+                raise PublishError(f'{field} exceeds {cap // (1024 * 1024)} MB limit')
             buf = io.BytesIO()
             for chunk in r.iter_content(chunk_size=64 * 1024):
                 if not chunk:
                     continue
                 buf.write(chunk)
-                if buf.tell() > max_bytes:
-                    raise PublishError(f'{field} exceeds {max_bytes // (1024 * 1024)} MB limit')
+                if buf.tell() > cap:
+                    # Force the connection closed; iter_content + ctx
+                    # manager handle the socket release.
+                    raise PublishError(f'{field} exceeds {cap // (1024 * 1024)} MB limit')
             url_name = PurePosixPath(urlparse(url).path).name or field
             return buf.getvalue(), content_type, url_name
     except requests.RequestException as e:
@@ -219,16 +314,20 @@ def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: b
         if v in (None, '', 'null'):
             variant.price = None
         else:
-            currency = (fields.get('price_currency')
-                        or str(getattr(variant.price, 'currency', None) or 'USD')).upper()
+            currency = (
+                fields.get('price_currency')
+                or str(getattr(variant.price, 'currency', None) or 'USD')
+            ).upper()
             variant.price = Money(_coerce_price(v), currency)
     if 'compare_at_amount' in fields:
         v = fields['compare_at_amount']
         if v in (None, '', 'null'):
             variant.compare_at_price = None
         else:
-            currency = (fields.get('price_currency')
-                        or str(getattr(variant.price, 'currency', None) or 'USD')).upper()
+            currency = (
+                fields.get('price_currency')
+                or str(getattr(variant.price, 'currency', None) or 'USD')
+            ).upper()
             variant.compare_at_price = Money(_coerce_price(v), currency)
     if 'variant_type' in fields:
         vt = fields['variant_type']
@@ -238,7 +337,7 @@ def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: b
         # Helpful auto: if requires_shipping wasn't explicitly set,
         # default it from variant_type.
         if 'requires_shipping' not in fields:
-            variant.requires_shipping = (vt == 'physical')
+            variant.requires_shipping = vt == 'physical'
     if 'requires_shipping' in fields:
         variant.requires_shipping = bool(fields['requires_shipping'])
     if 'is_taxable' in fields:
@@ -246,7 +345,9 @@ def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: b
     if 'inventory_policy' in fields:
         ip = fields['inventory_policy']
         if ip not in _VALID_INVENTORY_POLICIES:
-            raise PublishError(f'inventory_policy must be one of {sorted(_VALID_INVENTORY_POLICIES)}')
+            raise PublishError(
+                f'inventory_policy must be one of {sorted(_VALID_INVENTORY_POLICIES)}'
+            )
         variant.inventory_policy = ip
     if 'barcode' in fields:
         variant.barcode = (fields['barcode'] or '').strip()[:50]

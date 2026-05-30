@@ -59,7 +59,7 @@
             {{ order.shipping_address.city }}, {{ order.shipping_address.state }} {{ order.shipping_address.postal_code }}<br>
             {{ order.shipping_address.country }}
             <p style="margin-top:24px;">
-              <a href="{{ store_url }}/orders/{{ order.order_number }}/" style="display:inline-block;background:#0e0e0e;color:#f6f1e7;text-decoration:none;padding:12px 22px;border-radius:9999px;font-size:14px;font-weight:600;">
+              <a href="{{ store_url }}/order/confirmation/{{ order.order_number }}/?token={{ order.public_token }}" style="display:inline-block;background:#0e0e0e;color:#f6f1e7;text-decoration:none;padding:12px 22px;border-radius:9999px;font-size:14px;font-weight:600;">
                 Track your order
               </a>
             </p>

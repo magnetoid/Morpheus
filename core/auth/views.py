@@ -10,11 +10,13 @@ form doesn't have to ask for it again — better UX, and prevents code-
 substitution attacks where a user pastes a code into a different
 email's form.
 """
+
 from __future__ import annotations
 
 import logging
 
 from django.contrib.auth import login
+from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -22,6 +24,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from core.auth.services import consume_otp, issue_otp, send_otp_email
+from core.utils.rate_limit import RateLimitExceeded, check_and_consume
 
 logger = logging.getLogger('morpheus.core.auth.views')
 
@@ -61,11 +64,33 @@ def otp_request(request: HttpRequest) -> HttpResponse:
             request.session['morph_otp_next'] = nxt
             return redirect(reverse('core_auth:otp_verify'))
 
-    return render(request, 'account/otp_request.html', {
-        'error': error,
-        'next': nxt,
-        'prefill_email': request.session.get('morph_otp_email', ''),
-    })
+    return render(
+        request,
+        'account/otp_request.html',
+        {
+            'error': error,
+            'next': nxt,
+            'prefill_email': request.session.get('morph_otp_email', ''),
+        },
+    )
+
+
+_OTP_VERIFY_MAX_ATTEMPTS = 5
+_OTP_VERIFY_WINDOW_SECONDS = 15 * 60
+_OTP_EMAIL_LOCK_TTL_SECONDS = 15 * 60
+_OTP_EMAIL_FAIL_KEY = 'otp_verify_fails:{email}'
+_OTP_EMAIL_LOCK_KEY = 'otp_verify_lock:{email}'
+
+
+def _otp_locked_response(request: HttpRequest, email: str, nxt: str) -> HttpResponse:
+    error = 'Too many attempts. Try again in 15 minutes.'
+    resp = render(
+        request,
+        'account/otp_verify.html',
+        {'email': email, 'error': error, 'next': nxt},
+    )
+    resp.status_code = 429
+    return resp
 
 
 @csrf_protect
@@ -81,13 +106,59 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
         return redirect(reverse('core_auth:otp_request'))
 
     if request.method == 'POST':
+        email_lower = email.strip().lower()
+        ip = _client_ip(request) or 'unknown'
+
+        # Per-email hard lock after 5 cumulative failures in 15 min —
+        # blocks the whole email regardless of source IP so the attacker
+        # can't IP-rotate around the per-(email,ip) limiter below.
+        if cache.get(_OTP_EMAIL_LOCK_KEY.format(email=email_lower)):
+            logger.warning('otp_verify: email locked %s', email_lower)
+            return _otp_locked_response(request, email, nxt)
+
+        # Per-(email, ip) sliding-window rate limit.
+        try:
+            check_and_consume(
+                key=f'otp_verify:{email_lower}:{ip}',
+                max_per_window=_OTP_VERIFY_MAX_ATTEMPTS,
+                window_seconds=_OTP_VERIFY_WINDOW_SECONDS,
+            )
+        except RateLimitExceeded:
+            logger.warning(
+                'otp_verify: rate limit hit for %s ip=%s',
+                email_lower,
+                ip,
+            )
+            return _otp_locked_response(request, email, nxt)
+
         code = (request.POST.get('code') or '').strip()
         # Allow a 6-digit code with stray spaces / dashes.
         code = ''.join(ch for ch in code if ch.isdigit())
         user = consume_otp(email, code) if code else None
         if user is None:
-            error = 'That code didn\'t work. Try again, or request a new one.'
+            error = "That code didn't work. Try again, or request a new one."
+            # Track cumulative failures per-email. When it hits 5, set a
+            # 15-min lock — blocks all sources, not just this IP.
+            fail_key = _OTP_EMAIL_FAIL_KEY.format(email=email_lower)
+            try:
+                fails = cache.incr(fail_key)
+            except ValueError:
+                cache.set(fail_key, 1, timeout=_OTP_EMAIL_LOCK_TTL_SECONDS)
+                fails = 1
+            if fails >= _OTP_VERIFY_MAX_ATTEMPTS:
+                cache.set(
+                    _OTP_EMAIL_LOCK_KEY.format(email=email_lower),
+                    1,
+                    timeout=_OTP_EMAIL_LOCK_TTL_SECONDS,
+                )
+                logger.warning(
+                    'otp_verify: locking %s after %d cumulative failures',
+                    email_lower,
+                    fails,
+                )
         else:
+            # Successful verify clears any pending fail counter.
+            cache.delete(_OTP_EMAIL_FAIL_KEY.format(email=email_lower))
             # Required when the project has multiple auth backends —
             # allauth registers more than one. Pin to the model backend.
             user.backend = 'django.contrib.auth.backends.ModelBackend'
@@ -96,8 +167,12 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
             request.session.pop('morph_otp_next', None)
             return redirect(nxt)
 
-    return render(request, 'account/otp_verify.html', {
-        'email': email,
-        'error': error,
-        'next': nxt,
-    })
+    return render(
+        request,
+        'account/otp_verify.html',
+        {
+            'email': email,
+            'error': error,
+            'next': nxt,
+        },
+    )

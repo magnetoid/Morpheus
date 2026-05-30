@@ -1,6 +1,7 @@
 """Server-rendered 4-step checkout: contact/address → shipping rate →
 review → Stripe payment. Plus gift card apply/remove side-trips.
 """
+
 from __future__ import annotations
 
 from api.client import internal_graphql
@@ -14,6 +15,7 @@ def _cart_requires_shipping(request) -> bool:
     virtual carts skip the shipping-address step + rate picker."""
     try:
         from plugins.registry import plugin_registry
+
         plugin = None
         for attr in ('get', 'get_plugin'):
             fn = getattr(plugin_registry, attr, None)
@@ -33,6 +35,7 @@ def _cart_requires_shipping(request) -> bool:
 
     try:
         from plugins.installed.orders.models import Cart
+
         cart_id = request.session.get('cart_id')
         if not cart_id:
             return True
@@ -68,23 +71,24 @@ def _checkout_base_context(request):
         }
         try:
             addr = (
-                user.addresses
-                .filter(address_type__in=('shipping', 'both'))
+                user.addresses.filter(address_type__in=('shipping', 'both'))
                 .order_by('-is_default', '-updated_at', '-created_at')
                 .first()
             )
             if addr is not None:
-                saved.update({
-                    'first_name': saved.get('first_name') or addr.first_name or '',
-                    'last_name': saved.get('last_name') or addr.last_name or '',
-                    'address_line1': addr.address_line1 or '',
-                    'address_line2': addr.address_line2 or '',
-                    'city': addr.city or '',
-                    'state': addr.state or '',
-                    'postal_code': addr.postal_code or '',
-                    'country': addr.country or 'US',
-                    'phone': addr.phone or '',
-                })
+                saved.update(
+                    {
+                        'first_name': saved.get('first_name') or addr.first_name or '',
+                        'last_name': saved.get('last_name') or addr.last_name or '',
+                        'address_line1': addr.address_line1 or '',
+                        'address_line2': addr.address_line2 or '',
+                        'city': addr.city or '',
+                        'state': addr.state or '',
+                        'postal_code': addr.postal_code or '',
+                        'country': addr.country or 'US',
+                        'phone': addr.phone or '',
+                    }
+                )
         except Exception:  # noqa: BLE001
             pass
     return {
@@ -98,6 +102,7 @@ def _available_shipping_rates(request, addr):
     try:
         from plugins.installed.shipping.services import compute_rates
         from plugins.installed.orders.models import Cart
+
         cart_id = request.session.get('cart_id')
         cart = Cart.objects.filter(id=cart_id).first() if cart_id else None
         if cart is None:
@@ -126,17 +131,29 @@ def checkout(request):
         try:
             if not request.session.get('checkout_started'):
                 from core.hooks import hook_registry, MorpheusEvents
+
                 cart = ctx.get('cart')
                 if cart is not None:
-                    hook_registry.fire(MorpheusEvents.BEGIN_CHECKOUT, cart=cart,
-                                       customer=request.user if request.user.is_authenticated else None)
+                    hook_registry.fire(
+                        MorpheusEvents.BEGIN_CHECKOUT,
+                        cart=cart,
+                        customer=request.user if request.user.is_authenticated else None,
+                    )
                 request.session['checkout_started'] = True
         except Exception:  # noqa: BLE001
             pass
         return render(request, 'storefront/checkout.html', ctx)
     fields = (
-        'email', 'first_name', 'last_name', 'address_line1', 'address_line2',
-        'city', 'state', 'postal_code', 'country', 'phone',
+        'email',
+        'first_name',
+        'last_name',
+        'address_line1',
+        'address_line2',
+        'city',
+        'state',
+        'postal_code',
+        'country',
+        'phone',
     )
     addr = {f: (request.POST.get(f) or '').strip() for f in fields}
     if no_shipping:
@@ -220,16 +237,21 @@ def checkout_shipping(request):
             rate_id = str(rates[0]['id'])
         request.session['checkout_shipping_rate_id'] = rate_id
         request.session['checkout_shipping_rate_label'] = next(
-            (r['label'] for r in rates if str(r['id']) == rate_id), '',
+            (r['label'] for r in rates if str(r['id']) == rate_id),
+            '',
         )
         return redirect('/checkout/review/')
 
-    return render(request, 'storefront/checkout_shipping.html', {
-        'cart': cart,
-        'address': addr,
-        'rates': rates,
-        'selected_rate_id': request.session.get('checkout_shipping_rate_id', ''),
-    })
+    return render(
+        request,
+        'storefront/checkout_shipping.html',
+        {
+            'cart': cart,
+            'address': addr,
+            'rates': rates,
+            'selected_rate_id': request.session.get('checkout_shipping_rate_id', ''),
+        },
+    )
 
 
 def checkout_review(request):
@@ -265,14 +287,21 @@ def checkout_review(request):
                 'country': addr.get('country', ''),
                 'phone': addr.get('phone', ''),
             }
-            data = internal_graphql(mutation, variables={
-                'input': {
-                    'cartId': cart_id,
-                    'email': addr.get('email', ''),
-                    'shippingAddress': shipping_input,
-                    'shippingRateId': rate_id or None,
-                },
-            }, request=request) or {}
+            data = (
+                internal_graphql(
+                    mutation,
+                    variables={
+                        'input': {
+                            'cartId': cart_id,
+                            'email': addr.get('email', ''),
+                            'shippingAddress': shipping_input,
+                            'shippingRateId': rate_id or None,
+                        },
+                    },
+                    request=request,
+                )
+                or {}
+            )
             payload = data.get('completeOrder') or {}
             errs = payload.get('errors') or []
             if errs:
@@ -282,18 +311,47 @@ def checkout_review(request):
                 client_secret = payload.get('paymentClientSecret') or ''
                 request.session['checkout_order_number'] = order_no
                 request.session['checkout_client_secret'] = client_secret
-                for k in ('checkout_address', 'checkout_shipping_rate_id', 'checkout_shipping_rate_label'):
+                for k in (
+                    'checkout_address',
+                    'checkout_shipping_rate_id',
+                    'checkout_shipping_rate_label',
+                ):
                     request.session.pop(k, None)
                 if not client_secret:
-                    return redirect(f'/order/confirmation/{order_no}/' if order_no else '/account/orders/')
+                    # Append the public token so a guest checkout (no
+                    # account session) can still load the confirmation
+                    # page. Owner-auth check in the view falls back to
+                    # this token.
+                    if order_no:
+                        token = ''
+                        try:
+                            from plugins.installed.orders.models import Order as _Order
+
+                            token = (
+                                _Order.objects.filter(order_number=order_no)
+                                .values_list('public_token', flat=True)
+                                .first()
+                                or ''
+                            )
+                        except Exception:  # noqa: BLE001
+                            token = ''
+                        url = f'/order/confirmation/{order_no}/'
+                        if token:
+                            url = f'{url}?token={token}'
+                        return redirect(url)
+                    return redirect('/account/orders/')
                 return redirect('/checkout/payment/')
 
-    return render(request, 'storefront/checkout_review.html', {
-        'cart': cart,
-        'address': addr,
-        'rate_label': rate_label,
-        'error': error,
-    })
+    return render(
+        request,
+        'storefront/checkout_review.html',
+        {
+            'cart': cart,
+            'address': addr,
+            'rate_label': rate_label,
+            'error': error,
+        },
+    )
 
 
 def checkout_payment(request):
@@ -305,11 +363,31 @@ def checkout_payment(request):
     if not (order_no and client_secret):
         return redirect('/checkout/')
     publishable = getattr(dj_settings, 'STRIPE_PUBLIC_KEY', '') or ''
-    return render(request, 'storefront/checkout_payment.html', {
-        'order_number': order_no,
-        'client_secret': client_secret,
-        'stripe_publishable_key': publishable,
-        'return_url': request.build_absolute_uri(
-            f'/order/confirmation/{order_no}/'
-        ),
-    })
+    # Append public_token to the Stripe return URL so guest checkout
+    # users keep access to the confirmation page (the view requires
+    # either auth-owner or matching token).
+    token = ''
+    try:
+        from plugins.installed.orders.models import Order as _Order
+
+        token = (
+            _Order.objects.filter(order_number=order_no)
+            .values_list('public_token', flat=True)
+            .first()
+            or ''
+        )
+    except Exception:  # noqa: BLE001
+        token = ''
+    return_path = f'/order/confirmation/{order_no}/'
+    if token:
+        return_path = f'{return_path}?token={token}'
+    return render(
+        request,
+        'storefront/checkout_payment.html',
+        {
+            'order_number': order_no,
+            'client_secret': client_secret,
+            'stripe_publishable_key': publishable,
+            'return_url': request.build_absolute_uri(return_path),
+        },
+    )

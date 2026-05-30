@@ -1,6 +1,7 @@
 """Customer account pages: profile, orders, addresses, returns,
 credits, downloads, order confirmation. All guarded by _login_required.
 """
+
 from __future__ import annotations
 
 from morpheus.views import render
@@ -9,6 +10,7 @@ from morpheus.views import render
 def _login_required(request, target):
     if not request.user.is_authenticated:
         from django.shortcuts import redirect as _redirect
+
         return _redirect(f'/auth/login/?next={target}')
     return None
 
@@ -27,31 +29,38 @@ def _account_summary(user) -> dict:
     }
     try:
         from plugins.installed.loyalty_points.services import get_balance as _lb
+
         s['loyalty_points'] = _lb(user)
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.orders.models import Order
+
         s['orders_count'] = Order.objects.filter(customer=user).count()
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.orders.refunds import ReturnRequest
+
         s['pending_returns'] = ReturnRequest.objects.filter(
-            order__customer=user, state__in=('requested', 'approved', 'received'),
+            order__customer=user,
+            state__in=('requested', 'approved', 'received'),
         ).count()
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.orders import store_credit as _sc
+
         s['store_credit_balance'] = _sc.balance(user)
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.gift_cards.models import GiftCard
         from decimal import Decimal
+
         cards = GiftCard.objects.filter(
-            issued_to_customer=user, state='active',
+            issued_to_customer=user,
+            state='active',
         )
         s['gift_card_count'] = cards.count()
         if cards.exists():
@@ -61,12 +70,14 @@ def _account_summary(user) -> dict:
             )
             currency = str(cards.first().balance.currency)
             from djmoney.money import Money
+
             s['gift_card_total'] = Money(total, currency)
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.digital_products.models import DownloadToken
         from django.utils import timezone
+
         s['download_count'] = DownloadToken.objects.filter(
             order__customer=user,
             expires_at__gt=timezone.now(),
@@ -80,12 +91,17 @@ def _account_summary(user) -> dict:
 def account_home(request):
     if not request.user.is_authenticated:
         from morpheus.views import redirect
+
         return redirect('/auth/login/?next=/account/')
     summary = _account_summary(request.user)
-    return render(request, 'storefront/account_home.html', {
-        'user': request.user,
-        'summary': summary,
-    })
+    return render(
+        request,
+        'storefront/account_home.html',
+        {
+            'user': request.user,
+            'summary': summary,
+        },
+    )
 
 
 def account_profile(request):
@@ -103,6 +119,7 @@ def account_profile(request):
             user.email = new_email[:254]
         user.save(update_fields=['first_name', 'last_name', 'email'])
         from django.shortcuts import redirect as _redirect
+
         return _redirect('storefront:account_profile')
     return render(request, 'storefront/account_profile.html', {'user': user})
 
@@ -110,13 +127,12 @@ def account_profile(request):
 def account_orders(request):
     if not request.user.is_authenticated:
         from morpheus.views import redirect
+
         return redirect('/auth/login/?next=/account/orders/')
     try:
         from plugins.installed.orders.models import Order
-        orders = list(
-            Order.objects.filter(customer=request.user)
-            .order_by('-created_at')[:50]
-        )
+
+        orders = list(Order.objects.filter(customer=request.user).order_by('-created_at')[:50])
     except Exception:  # noqa: BLE001
         orders = []
     return render(request, 'storefront/account_orders.html', {'orders': orders})
@@ -125,12 +141,15 @@ def account_orders(request):
 def account_order_detail(request, order_number):
     if not request.user.is_authenticated:
         from morpheus.views import redirect
+
         return redirect(f'/auth/login/?next=/account/orders/{order_number}/')
     from morpheus.views import get_object_or_404
     from plugins.installed.orders.models import Order
+
     order = get_object_or_404(
         Order.objects.prefetch_related('items'),
-        order_number=order_number, customer=request.user,
+        order_number=order_number,
+        customer=request.user,
     )
     return render(request, 'storefront/account_order_detail.html', {'order': order})
 
@@ -148,12 +167,15 @@ def account_address_form(request, address_id=None):
     if redirect_resp is not None:
         return redirect_resp
     from plugins.installed.customers.models import Address
+
     address = None
     if address_id:
         from morpheus.views import get_object_or_404
+
         address = get_object_or_404(Address, id=address_id, customer=request.user)
     if request.method == 'POST':
         from django.shortcuts import redirect as _redirect
+
         data = {
             'first_name': (request.POST.get('first_name') or '')[:100],
             'last_name': (request.POST.get('last_name') or '')[:100],
@@ -184,6 +206,7 @@ def account_address_delete(request, address_id):
         return redirect_resp
     from django.shortcuts import get_object_or_404, redirect as _redirect
     from plugins.installed.customers.models import Address
+
     address = get_object_or_404(Address, id=address_id, customer=request.user)
     if request.method == 'POST':
         address.delete()
@@ -196,9 +219,12 @@ def account_returns(request):
         return redirect_resp
     try:
         from plugins.installed.orders.refunds import ReturnRequest
-        rrs = list(ReturnRequest.objects.filter(
-            order__customer=request.user,
-        ).order_by('-created_at'))
+
+        rrs = list(
+            ReturnRequest.objects.filter(
+                order__customer=request.user,
+            ).order_by('-created_at')
+        )
     except Exception:  # noqa: BLE001
         rrs = []
     return render(request, 'storefront/account_returns.html', {'returns': rrs})
@@ -212,42 +238,54 @@ def account_return_status(request, rma_id):
         return redirect_resp
     from django.shortcuts import get_object_or_404
     from plugins.installed.orders.refunds import ReturnRequest
+
     rr = get_object_or_404(
         ReturnRequest.objects.select_related('order'),
-        pk=rma_id, order__customer=request.user,
+        pk=rma_id,
+        order__customer=request.user,
     )
 
     happy_path = ['requested', 'approved', 'received', 'refunded']
     labels = {
-        'requested': 'Requested', 'approved': 'Approved',
-        'received': 'Received', 'refunded': 'Refunded',
+        'requested': 'Requested',
+        'approved': 'Approved',
+        'received': 'Received',
+        'refunded': 'Refunded',
     }
     cur_idx = happy_path.index(rr.state) if rr.state in happy_path else -1
     status_steps = [
-        {'key': k, 'label': labels[k],
-         'done': cur_idx > i, 'current': cur_idx == i}
+        {'key': k, 'label': labels[k], 'done': cur_idx > i, 'current': cur_idx == i}
         for i, k in enumerate(happy_path)
     ]
 
     from plugins.installed.orders.models import OrderItem
+
     items_by_id = {str(o.pk): o for o in OrderItem.objects.filter(order=rr.order)}
     line_items = []
-    for entry in (rr.items or []):
+    for entry in rr.items or []:
         oi = items_by_id.get(str(entry.get('order_item_id', '')))
         if oi is None:
             continue
-        line_items.append({
-            'name': oi.product_name, 'sku': oi.sku,
-            'quantity': entry.get('quantity', 0),
-            'unit_price': oi.unit_price,
-        })
+        line_items.append(
+            {
+                'name': oi.product_name,
+                'sku': oi.sku,
+                'quantity': entry.get('quantity', 0),
+                'unit_price': oi.unit_price,
+            }
+        )
 
-    return render(request, 'storefront/account_return_status.html', {
-        'rma': rr, 'order': rr.order,
-        'status_steps': status_steps,
-        'line_items': line_items,
-        'is_terminal': rr.state in ('refunded', 'cancelled', 'rejected'),
-    })
+    return render(
+        request,
+        'storefront/account_return_status.html',
+        {
+            'rma': rr,
+            'order': rr.order,
+            'status_steps': status_steps,
+            'line_items': line_items,
+            'is_terminal': rr.state in ('refunded', 'cancelled', 'rejected'),
+        },
+    )
 
 
 def account_order_return(request, order_number):
@@ -256,12 +294,15 @@ def account_order_return(request, order_number):
         return redirect_resp
     from django.shortcuts import get_object_or_404, redirect as _redirect
     from plugins.installed.orders.models import Order
+
     order = get_object_or_404(
         Order.objects.prefetch_related('items'),
-        order_number=order_number, customer=request.user,
+        order_number=order_number,
+        customer=request.user,
     )
     if request.method == 'POST':
         from plugins.installed.orders.refunds import ReturnService
+
         items = []
         for item in order.items.all():
             qty = int(request.POST.get(f'qty_{item.id}', 0) or 0)
@@ -269,7 +310,8 @@ def account_order_return(request, order_number):
                 items.append({'order_item_id': str(item.id), 'quantity': min(qty, item.quantity)})
         if items:
             rr = ReturnService.create_request(
-                order=order, items=items,
+                order=order,
+                items=items,
                 reason=request.POST.get('reason', 'other'),
                 customer_note=(request.POST.get('note', '') or '')[:2000],
                 requested_by=request.user,
@@ -283,6 +325,7 @@ def account_credits(request):
     """Combined view: store-credit balance + ledger + active gift cards."""
     if not request.user.is_authenticated:
         from morpheus.views import redirect
+
         return redirect('/auth/login/?next=/account/credits/')
     store_credit = None
     txns: list = []
@@ -290,41 +333,47 @@ def account_credits(request):
     try:
         from plugins.installed.orders import store_credit as _sc
         from plugins.installed.orders.models import StoreCreditTxn
+
         store_credit = _sc.balance(request.user)
         txns = list(
-            StoreCreditTxn.objects.filter(customer=request.user)
-            .order_by('-created_at')[:30]
+            StoreCreditTxn.objects.filter(customer=request.user).order_by('-created_at')[:30]
         )
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.gift_cards.models import GiftCard
+
         cards = list(
-            GiftCard.objects
-            .filter(issued_to_customer=request.user, state='active')
-            .order_by('-created_at')
+            GiftCard.objects.filter(issued_to_customer=request.user, state='active').order_by(
+                '-created_at'
+            )
         )
     except Exception:  # noqa: BLE001
         pass
-    return render(request, 'storefront/account_credits.html', {
-        'store_credit': store_credit,
-        'txns': txns,
-        'cards': cards,
-    })
+    return render(
+        request,
+        'storefront/account_credits.html',
+        {
+            'store_credit': store_credit,
+            'txns': txns,
+            'cards': cards,
+        },
+    )
 
 
 def account_downloads(request):
     """Active digital download links — token-protected, time-bound."""
     if not request.user.is_authenticated:
         from morpheus.views import redirect
+
         return redirect('/auth/login/?next=/account/downloads/')
     tokens: list = []
     try:
         from plugins.installed.digital_products.models import DownloadToken
         from django.utils import timezone
+
         tokens = list(
-            DownloadToken.objects
-            .filter(order__customer=request.user, revoked_at__isnull=True)
+            DownloadToken.objects.filter(order__customer=request.user, revoked_at__isnull=True)
             .select_related('product', 'order')
             .order_by('-created_at')[:50]
         )
@@ -334,23 +383,62 @@ def account_downloads(request):
             t.is_exhausted = t.downloads_used >= t.max_downloads
     except Exception:  # noqa: BLE001
         pass
-    return render(request, 'storefront/account_downloads.html', {
-        'tokens': tokens,
-    })
+    return render(
+        request,
+        'storefront/account_downloads.html',
+        {
+            'tokens': tokens,
+        },
+    )
 
 
 def order_confirmation(request, order_number):
-    """Public order confirmation — accessible by order_number alone.
-    Stripe redirects here after a successful confirmPayment."""
+    """Order confirmation — auth'd customer OR ?token=<public_token>.
+
+    Stripe redirects here after a successful confirmPayment. To avoid
+    leaking order existence we 404 (not 403) on any auth failure.
+    """
+    from django.http import Http404
     from morpheus.views import get_object_or_404
+
     from plugins.installed.orders.models import Order
+
     order = get_object_or_404(
-        Order.objects.prefetch_related('items'), order_number=order_number,
+        Order.objects.prefetch_related('items'),
+        order_number=order_number,
     )
+    # Access check: either the logged-in customer owns the order, or a
+    # matching public_token is supplied. constant-time-compare the token
+    # to avoid timing attacks.
+    import hmac
+
+    supplied = (request.GET.get('token') or '').strip()
+    is_owner = (
+        request.user.is_authenticated
+        and order.customer_id is not None
+        and order.customer_id == request.user.pk
+    )
+    token_ok = (
+        bool(supplied)
+        and bool(order.public_token)
+        and hmac.compare_digest(
+            supplied,
+            order.public_token,
+        )
+    )
+    if not (is_owner or token_ok):
+        # Don't leak that the order exists — same response as a wrong
+        # order_number.
+        raise Http404('Order not found')
+
     for k in ('checkout_order_number', 'checkout_client_secret'):
         request.session.pop(k, None)
     redirect_status = (request.GET.get('redirect_status') or '').lower()
-    return render(request, 'storefront/order_confirmation.html', {
-        'order': order,
-        'payment_status': redirect_status,
-    })
+    return render(
+        request,
+        'storefront/order_confirmation.html',
+        {
+            'order': order,
+            'payment_status': redirect_status,
+        },
+    )

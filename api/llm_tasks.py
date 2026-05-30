@@ -21,6 +21,7 @@ gunicorn pool.
 Storage is the default Django cache (Redis-backed in prod). TTL is 1
 hour so abandoned tasks don't leak indefinitely.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,9 +52,25 @@ def _is_authed(request: HttpRequest) -> bool:
     # Try Bearer auth resolver.
     try:
         from plugins.installed.agent_mcp.auth import apply_bearer_user
+
         return apply_bearer_user(request)
     except Exception:  # noqa: BLE001
         return False
+
+
+def _owner_id_for(request: HttpRequest) -> str | int:
+    """Stable owner identifier stored on the cache record.
+
+    Authenticated requests use the user's pk; anonymous Bearer tokens
+    that pass `_is_authed` still need an owner — use the bearer token
+    sha (resolved by apply_bearer_user) when available, else 'public'.
+    """
+    user = getattr(request, 'user', None)
+    if user is not None and getattr(user, 'is_authenticated', False):
+        return user.pk
+    # Bearer-only path: bucket all bearer-authed anonymous requests
+    # under a single 'public' owner — we can't link them back to a user.
+    return 'public'
 
 
 @csrf_exempt
@@ -72,7 +89,8 @@ def llm_task_create(request: HttpRequest) -> HttpResponse:
         return JsonResponse({'error': 'Missing prompt'}, status=400)
     if len(prompt.encode('utf-8')) > _MAX_PROMPT_BYTES:
         return JsonResponse(
-            {'error': f'Prompt exceeds {_MAX_PROMPT_BYTES} bytes'}, status=400,
+            {'error': f'Prompt exceeds {_MAX_PROMPT_BYTES} bytes'},
+            status=400,
         )
 
     try:
@@ -87,9 +105,16 @@ def llm_task_create(request: HttpRequest) -> HttpResponse:
     temperature = max(0.0, min(temperature, 2.0))
 
     task_id = str(uuid.uuid4())
-    cache.set(_cache_key(task_id), {'status': 'pending'}, timeout=_TTL_SECONDS)
+    # Tag the record with the creator so `llm_task_status` can verify
+    # the reader is the owner (or staff) — closes a UUID-guess IDOR.
+    cache.set(
+        _cache_key(task_id),
+        {'status': 'pending', 'owner_id': _owner_id_for(request)},
+        timeout=_TTL_SECONDS,
+    )
 
     from plugins.installed.ai_assistant import tasks as ai_tasks
+
     ai_tasks.run_completion_task.delay(
         task_id=task_id,
         prompt=prompt,
@@ -112,4 +137,23 @@ def llm_task_status(request: HttpRequest, task_id: str) -> HttpResponse:
             {'status': 'unknown', 'error': 'Task not found or expired'},
             status=404,
         )
-    return JsonResponse(record)
+    # Owner check: staff can read anything; otherwise the reader's
+    # owner_id must match the creator's. 404 on mismatch so we don't
+    # confirm task existence to a guesser.
+    user = getattr(request, 'user', None)
+    is_staff = bool(user and getattr(user, 'is_staff', False))
+    if not is_staff:
+        record_owner = record.get('owner_id')
+        if record_owner != _owner_id_for(request):
+            logger.warning(
+                'llm_task_status: owner mismatch for task=%s requester=%s',
+                task_id,
+                _owner_id_for(request),
+            )
+            return JsonResponse(
+                {'status': 'unknown', 'error': 'Task not found or expired'},
+                status=404,
+            )
+    # Strip owner_id from the returned payload — it's an internal field.
+    public = {k: v for k, v in record.items() if k != 'owner_id'}
+    return JsonResponse(public)

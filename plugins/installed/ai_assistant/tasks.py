@@ -4,37 +4,50 @@ from plugins.installed.ai_assistant.services.operator import AgentOperator
 
 logger = logging.getLogger('morpheus.ai.tasks')
 
+
 @shared_task
 def update_recommendations_after_order(order_id):
-    logger.info(f"AI Task: Updating recommendations for order {order_id}")
+    logger.info(f'AI Task: Updating recommendations for order {order_id}')
     operator = AgentOperator()
-    operator.run_workflow(f"Order {order_id} placed. Analyze the purchased products and update the semantic recommendation clusters.")
+    operator.run_workflow(
+        f'Order {order_id} placed. Analyze the purchased products and update the semantic recommendation clusters.'
+    )
+
 
 @shared_task
 def initialize_customer_memory(customer_id):
-    logger.info(f"AI Task: Initializing memory vector space for customer {customer_id}")
+    logger.info(f'AI Task: Initializing memory vector space for customer {customer_id}')
     operator = AgentOperator()
-    operator.run_workflow(f"Customer {customer_id} just registered. Create an initial preference graph based on their registration domain and first session data.")
+    operator.run_workflow(
+        f'Customer {customer_id} just registered. Create an initial preference graph based on their registration domain and first session data.'
+    )
 
 
 @shared_task
 def generate_cart_recovery(cart_id):
-    logger.info(f"AI Task: Generating personalized cart recovery for cart {cart_id}")
+    logger.info(f'AI Task: Generating personalized cart recovery for cart {cart_id}')
     operator = AgentOperator()
     # Autonomous agent generates a highly specific, high-conversion email snippet
-    operator.run_workflow(f"Cart {cart_id} abandoned. Review the items and generate a hyper-personalized 2-sentence recovery message focusing on the main product's primary benefit. Do not use generic discount language.")
+    operator.run_workflow(
+        f"Cart {cart_id} abandoned. Review the items and generate a hyper-personalized 2-sentence recovery message focusing on the main product's primary benefit. Do not use generic discount language."
+    )
+
 
 @shared_task
 def generate_product_description(product_id):
-    logger.info(f"AI Task: Autonomously generating product description for {product_id}")
+    logger.info(f'AI Task: Autonomously generating product description for {product_id}')
     operator = AgentOperator()
-    operator.run_workflow(f"Product {product_id} was just created but lacks a description. Retrieve its name, category, and metadata, and autonomously write a compelling, SEO-optimized 3-paragraph product description.")
+    operator.run_workflow(
+        f'Product {product_id} was just created but lacks a description. Retrieve its name, category, and metadata, and autonomously write a compelling, SEO-optimized 3-paragraph product description.'
+    )
+
 
 @shared_task(bind=True, time_limit=60, soft_time_limit=45)
 def refresh_product_embedding(self, product_id):
     """Compute and persist the embedding for a product (idempotent on text hash)."""
     from plugins.installed.catalog.models import Product
     from plugins.installed.ai_assistant.services.search import upsert_product_embedding
+
     try:
         product = Product.objects.select_related('category').get(pk=product_id)
     except Product.DoesNotExist:
@@ -76,11 +89,16 @@ def refresh_product_embeddings_bulk(self, product_ids):
         except Exception as e:  # noqa: BLE001 — one bad product mustn't stop the batch
             errored += 1
             logger.warning(
-                'bulk embed: product=%s failed: %s', product.pk, e, exc_info=True,
+                'bulk embed: product=%s failed: %s',
+                product.pk,
+                e,
+                exc_info=True,
             )
     logger.info(
         'bulk embed: processed=%d errored=%d (batch_size=%d)',
-        processed, errored, len(ids),
+        processed,
+        errored,
+        len(ids),
     )
     return {'processed': processed, 'skipped': len(ids) - processed - errored, 'errored': errored}
 
@@ -94,18 +112,34 @@ def run_completion_task(self, task_id, prompt, system='', max_tokens=1000, tempe
     poller doesn't hang on an abandoned task. TTL is 1 hour.
     """
     from django.core.cache import cache
+
     key = f'llm-task:{task_id}'
+    # Preserve the owner_id stamped by the creator endpoint — the
+    # status poller checks it for ownership.
+    prior = cache.get(key) or {}
+    owner_id = prior.get('owner_id')
     try:
         from plugins.installed.ai_assistant.services.llm import get_llm
+
         gateway = get_llm()
         text = gateway.complete(
-            prompt=prompt, system=system,
-            temperature=temperature, max_tokens=max_tokens,
+            prompt=prompt,
+            system=system,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
-        cache.set(key, {'status': 'done', 'result': text or ''}, timeout=3600)
+        cache.set(
+            key,
+            {'status': 'done', 'result': text or '', 'owner_id': owner_id},
+            timeout=3600,
+        )
     except Exception as e:  # noqa: BLE001 — any failure becomes a terminal error
         logger.warning('run_completion_task %s failed: %s', task_id, e, exc_info=True)
-        cache.set(key, {'status': 'failed', 'error': str(e)[:500]}, timeout=3600)
+        cache.set(
+            key,
+            {'status': 'failed', 'error': str(e)[:500], 'owner_id': owner_id},
+            timeout=3600,
+        )
 
 
 @shared_task
@@ -124,12 +158,13 @@ def reembed_all_products(batch_size: int = 50):
     ids = list(Product.objects.filter(status='active').values_list('id', flat=True))
     if not ids:
         return {'dispatched_chunks': 0, 'total_products': 0}
-    chunks = [ids[i:i + batch_size] for i in range(0, len(ids), batch_size)]
+    chunks = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
     for chunk in chunks:
         refresh_product_embeddings_bulk.delay([str(i) for i in chunk])
     logger.info(
         'reembed_all_products: dispatched %d chunk(s) covering %d product(s)',
-        len(chunks), len(ids),
+        len(chunks),
+        len(ids),
     )
     return {'dispatched_chunks': len(chunks), 'total_products': len(ids)}
 
@@ -143,9 +178,10 @@ def pulse_daily_refresh():
     six signals and upserts the resulting MerchantInsight rows; the
     dashboard panel renders the top-5 unread cards.
     """
-    logger.info('AI Task: refreshing Linda\'s Pulse insights')
+    logger.info("AI Task: refreshing Linda's Pulse insights")
     try:
         from plugins.installed.ai_assistant.services.pulse import generate_pulse_insights
+
         out = generate_pulse_insights()
         logger.info('Pulse: %d insight(s) emitted', len(out))
     except Exception as e:  # noqa: BLE001
@@ -161,16 +197,16 @@ def evaluate_all_product_prices():
     """
     try:
         from plugins.registry import plugin_registry
+
         plugin = plugin_registry.get('ai_assistant')
         if plugin is None or not plugin.get_config_value('enable_dynamic_pricing', False):
             return
     except Exception:  # noqa: BLE001
         return
-    logger.info("AI Task: Starting global dynamic price evaluation...")
+    logger.info('AI Task: Starting global dynamic price evaluation...')
     from plugins.installed.catalog.models import Product
     from plugins.installed.ai_assistant.services.pricing import DynamicPricingService
 
     products = Product.objects.filter(status='active')
     for product in products:
         DynamicPricingService.evaluate_product_price(product)
-
