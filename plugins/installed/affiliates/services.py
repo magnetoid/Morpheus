@@ -6,12 +6,14 @@ an affiliate link is hit (`/r/<code>`); on order placement we look up the
 cookie and create an AffiliateConversion if the cookie is still within the
 program's `cookie_window_days`.
 """
+# ruff: noqa: PLC0415  — inline imports avoid plugin-load-order cycles (CLAUDE.md).
+# ruff: noqa: S110     — best-effort audit log; silent on missing core.audit.
+
 from __future__ import annotations
 
 import hashlib
 import logging
 from decimal import Decimal
-from typing import Any, Optional
 
 from django.db import transaction
 from django.utils import timezone
@@ -47,6 +49,7 @@ def generate_unique_handle(customer, *, suggested: str = '', max_tries: int = 50
     400 response with a friendly message.
     """
     from django.utils.text import slugify
+
     from plugins.installed.affiliates.models import Affiliate
 
     # Pick a seed slug from (in priority): explicit suggested value,
@@ -74,12 +77,13 @@ def record_click(
     referer: str = '',
     user_agent: str = '',
     ip: str = '',
-) -> Optional['AffiliateLink']:  # noqa: F821
+) -> AffiliateLink | None:  # noqa: F821
     from plugins.installed.affiliates.models import AffiliateClick, AffiliateLink
 
     try:
         link = AffiliateLink.objects.select_related('affiliate', 'affiliate__program').get(
-            code=code, is_active=True,
+            code=code,
+            is_active=True,
         )
     except AffiliateLink.DoesNotExist:
         return None
@@ -94,7 +98,9 @@ def record_click(
     return link
 
 
-def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -> Optional['AffiliateConversion']:  # noqa: F821
+def attribute_order(
+    *, order, affiliate_code: str = '', coupon_code: str = ''
+) -> AffiliateConversion | None:  # noqa: F821
     """Create an AffiliateConversion for ``order``.
 
     Two attribution paths:
@@ -112,6 +118,7 @@ def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -
     was stored on the conversion row but never re-checked.
     """
     from datetime import timedelta as _td
+
     from plugins.installed.affiliates.models import (
         AffiliateClick,
         AffiliateConversion,
@@ -125,7 +132,8 @@ def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -
     if affiliate_code:
         try:
             link = AffiliateLink.objects.select_related('affiliate', 'affiliate__program').get(
-                code=affiliate_code, is_active=True,
+                code=affiliate_code,
+                is_active=True,
             )
             via = 'click'
         except AffiliateLink.DoesNotExist:
@@ -134,9 +142,14 @@ def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -
     # Path 2 — coupon-code attribution.
     if link is None and coupon_code:
         try:
-            link = AffiliateLink.objects.select_related('affiliate', 'affiliate__program').filter(
-                coupon_code__iexact=coupon_code.strip(), is_active=True,
-            ).first()
+            link = (
+                AffiliateLink.objects.select_related('affiliate', 'affiliate__program')
+                .filter(
+                    coupon_code__iexact=coupon_code.strip(),
+                    is_active=True,
+                )
+                .first()
+            )
             if link is not None:
                 via = 'coupon'
         except Exception:  # noqa: BLE001 — coupon_code column may not exist on fresh installs
@@ -155,15 +168,16 @@ def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -
     if via == 'click':
         cutoff = timezone.now() - _td(days=program.cookie_window_days)
         recent_click = (
-            AffiliateClick.objects
-            .filter(link=link, occurred_at__gte=cutoff)
-            .order_by('-occurred_at').first()
+            AffiliateClick.objects.filter(link=link, occurred_at__gte=cutoff)
+            .order_by('-occurred_at')
+            .first()
         )
         if recent_click is None:
             logger.info(
                 'affiliates: refused click attribution for order %s — '
                 'no click within %d-day window',
-                getattr(order, 'order_number', order.pk), program.cookie_window_days,
+                getattr(order, 'order_number', order.pk),
+                program.cookie_window_days,
             )
             return None
 
@@ -179,7 +193,8 @@ def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -
                 'link': link,
                 'commission': commission,
                 'status': 'pending',
-                'locked_until': timezone.now() + timezone.timedelta(days=program.cookie_window_days),
+                'locked_until': timezone.now()
+                + timezone.timedelta(days=program.cookie_window_days),
             },
         )
         if created:
@@ -189,7 +204,7 @@ def attribute_order(*, order, affiliate_code: str = '', coupon_code: str = '') -
     return conv
 
 
-def clawback_on_refund(*, order) -> Optional['AffiliateConversion']:  # noqa: F821
+def clawback_on_refund(*, order) -> AffiliateConversion | None:  # noqa: F821
     """Reverse an affiliate conversion when its order is refunded.
 
     Three outcomes, in order of severity:
@@ -228,10 +243,13 @@ def clawback_on_refund(*, order) -> Optional['AffiliateConversion']:  # noqa: F8
         conv.save(update_fields=['status'])
     logger.info(
         'affiliates: clawback on order %s — conversion %s was %s, now rejected',
-        getattr(order, 'order_number', order.pk), conv.pk, was,
+        getattr(order, 'order_number', order.pk),
+        conv.pk,
+        was,
     )
     try:
         from core.audit.services import record as audit_record
+
         audit_record(
             event_type='affiliates.clawback',
             target=str(order.pk),
@@ -269,7 +287,7 @@ def approve_conversion(conversion) -> None:
         )
 
 
-def request_payout(*, affiliate, amount: Money, method: str = '') -> 'AffiliatePayout':  # noqa: F821
+def request_payout(*, affiliate, amount: Money, method: str = '') -> AffiliatePayout:  # noqa: F821
     from plugins.installed.affiliates.models import AffiliatePayout
 
     if amount.amount <= 0:
@@ -277,8 +295,93 @@ def request_payout(*, affiliate, amount: Money, method: str = '') -> 'AffiliateP
     if amount.amount > affiliate.accrued_balance.amount:
         raise ValueError('Payout exceeds accrued balance')
     return AffiliatePayout.objects.create(
-        affiliate=affiliate, amount=amount, method=method, status='pending',
+        affiliate=affiliate,
+        amount=amount,
+        method=method,
+        status='pending',
     )
+
+
+def pending_payout_amount(affiliate) -> Money:
+    """Sum of approved-but-unpaid conversion commissions for ``affiliate``.
+
+    "Unpaid" = status='approved' AND payout IS NULL. Conversions already
+    bundled into a pending payout don't count again.
+    """
+    from plugins.installed.affiliates.models import AffiliateConversion
+
+    currency = str(affiliate.accrued_balance.currency)
+    total = Decimal('0')
+    qs = AffiliateConversion.objects.filter(
+        affiliate=affiliate,
+        status='approved',
+        payout__isnull=True,
+    )
+    for row in qs.only('commission'):
+        total += row.commission.amount
+    return Money(total, currency)
+
+
+def has_pending_payout(affiliate) -> bool:
+    from plugins.installed.affiliates.models import AffiliatePayout
+
+    return AffiliatePayout.objects.filter(
+        affiliate=affiliate,
+        status__in=('pending', 'processing'),
+    ).exists()
+
+
+def request_affiliate_payout(
+    affiliate,
+    amount: Money | None = None,
+    method: str = '',
+) -> AffiliatePayout:  # noqa: F821
+    """Self-service payout: bundle unpaid approved conversions into one row.
+
+    Differs from ``request_payout`` (admin-side, free-form amount):
+      * Validates against ``pending_payout_amount``, not accrued_balance.
+      * Refuses if a pending/processing payout already exists for this
+        affiliate — affiliates don't get to stack requests.
+      * Sets ``AffiliateConversion.payout`` on every conversion that
+        contributed, so the audit trail survives.
+    """
+    from plugins.installed.affiliates.models import (
+        AffiliateConversion,
+        AffiliatePayout,
+    )
+
+    if has_pending_payout(affiliate):
+        raise ValueError('A payout request is already pending.')
+
+    pending = pending_payout_amount(affiliate)
+    if pending.amount <= 0:
+        raise ValueError('No approved earnings available to pay out.')
+    amount = amount or pending
+    if amount.amount > pending.amount:
+        raise ValueError('Payout exceeds available approved earnings.')
+
+    method = (method or affiliate.preferred_payout_method or 'paypal')[:40]
+
+    with transaction.atomic():
+        payout = AffiliatePayout.objects.create(
+            affiliate=affiliate,
+            amount=amount,
+            method=method,
+            status='pending',
+        )
+        AffiliateConversion.objects.filter(
+            affiliate=affiliate,
+            status='approved',
+            payout__isnull=True,
+        ).update(payout=payout)
+    logger.info(
+        'affiliates: payout %s requested by %s — %s via %s',
+        payout.pk,
+        affiliate.handle,
+        amount,
+        method,
+    )
+    return payout
 
 
 def mark_payout_paid(payout, *, external_reference: str = '') -> None:

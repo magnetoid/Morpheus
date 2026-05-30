@@ -4,13 +4,13 @@
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 980px;">
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 1100px;">
 
     <p class="eyebrow">Your account</p>
     <h1 class="display display-l" style="margin: 1rem 0 .5rem;">Affiliate dashboard<span class="text-accent">.</span></h1>
     <p class="lede" style="max-width: 60ch; margin: 0 0 2.5rem;">
-      Track your tracked links, your clicks, your conversions, and your commission accrued — all in one place. Numbers update in real time as readers buy.
+      Clicks, conversions, earnings — what's happening with the readers you've sent our way, all in one place.
     </p>
 
     {% if not accounts %}
@@ -21,7 +21,7 @@
         </p>
         <a href="/affiliates/apply/" class="btn btn-primary">Apply to join →</a>
       </div>
-    {% else %}
+    {% endif %}
 
     {% for a in accounts %}
     <article class="aff-card">
@@ -39,103 +39,125 @@
       </header>
 
       {% if a.status == 'approved' and a.stats %}
-      {# KPI strip — Tremor-style metrics aligned to Rewardful's 2026 dashboard baseline. #}
+      {% comment %}── KPI row · lifetime totals ─────────────────────{% endcomment %}
       <div class="aff-kpis">
-        <div class="aff-kpi">
-          <p class="aff-kpi__label">Clicks · 30d</p>
-          <p class="aff-kpi__value">{{ a.stats.clicks_30d }}</p>
+        <div class="card card-padded aff-kpi">
+          <p class="aff-kpi__label">Clicks · lifetime</p>
+          <p class="aff-kpi__value">{{ a.stats.clicks_total }}</p>
         </div>
-        <div class="aff-kpi">
-          <p class="aff-kpi__label">Conversions · 30d</p>
-          <p class="aff-kpi__value">{{ a.stats.conversions_30d }}</p>
-          {% if a.stats.approved_conv_30d %}<p class="aff-kpi__sub">{{ a.stats.approved_conv_30d }} approved</p>{% endif %}
+        <div class="card card-padded aff-kpi">
+          <p class="aff-kpi__label">Conversions · lifetime</p>
+          <p class="aff-kpi__value">{{ a.stats.convs_total }}</p>
+          {% if a.stats.approved_conv_total %}<p class="aff-kpi__sub">{{ a.stats.approved_conv_total }} approved</p>{% endif %}
         </div>
-        <div class="aff-kpi">
-          <p class="aff-kpi__label">Commission accrued</p>
-          <p class="aff-kpi__value">{{ a.accrued_balance }}</p>
-          <p class="aff-kpi__sub">paid out at threshold</p>
+        <div class="card card-padded aff-kpi">
+          <p class="aff-kpi__label">Earned · lifetime</p>
+          <p class="aff-kpi__value">{% if a.lifetime_earned_amount %}{{ a.lifetime_earned_amount }}{% else %}{{ a.accrued_balance }}{% endif %}</p>
         </div>
-        <div class="aff-kpi" title="Earnings per Click — accrued commission ÷ clicks in the last 30 days. The headline number for an affiliate program; aim for $0.20+.">
-          <p class="aff-kpi__label">EPC</p>
-          <p class="aff-kpi__value">${{ a.stats.epc }}</p>
-          <p class="aff-kpi__sub">earnings / click</p>
+        <div class="card card-padded aff-kpi">
+          <p class="aff-kpi__label">Pending payout</p>
+          <p class="aff-kpi__value">{% if a.pending_earnings %}{{ a.pending_earnings }}{% else %}—{% endif %}</p>
+          <p class="aff-kpi__sub">approved, not yet paid</p>
         </div>
-        <div class="aff-kpi" title="Conversion Rate — what % of clicks turn into orders. Industry average is 2-4% for ecommerce; literary niches tend to be higher.">
-          <p class="aff-kpi__label">CR</p>
+        <div class="card card-padded aff-kpi" title="Conversion rate — conversions divided by clicks.">
+          <p class="aff-kpi__label">Conversion rate</p>
           <p class="aff-kpi__value">{{ a.stats.cr }}%</p>
-          <p class="aff-kpi__sub">clicks → orders</p>
         </div>
       </div>
-      {% endif %}
 
-      {% if a.status == 'approved' %}
-        <div class="aff-section">
-          <p class="eyebrow">Your tracked links</p>
-          {% for link in a.tracked_links %}
-          {% with link_url=site_base|add:"/r/"|add:link.code %}
-          <div class="aff-link">
-            <button type="button" class="aff-link__copy"
-                    data-aff-copy="{{ link_url }}"
-                    aria-label="Copy {{ link.code }} to clipboard">
-              <code>{{ link_url }}</code>
-              <span class="aff-link__copy-icon" aria-hidden="true">⧉</span>
-            </button>
-            <div class="aff-link__meta">
-              <span>→ {{ link.landing_url }}</span>
-              {% if link.label %}<span class="aff-link__label">{{ link.label }}</span>{% endif %}
-            </div>
-            <div class="aff-link__stats">
-              <span>{{ link.click_count }} click{{ link.click_count|pluralize }}</span>
-              <span>{{ link.conversion_count }} conv.</span>
-            </div>
+      {% comment %}── 7-day strip ───────────────────────────────────{% endcomment %}
+      <div class="aff-section">
+        <p class="eyebrow">Last 7 days</p>
+        <div class="aff-week">
+          <div class="aff-week__summary">
+            <span><strong>{{ a.stats.clicks_7d }}</strong> click{{ a.stats.clicks_7d|pluralize }}</span>
+            <span class="aff-sep">·</span>
+            <span><strong>{{ a.stats.convs_7d }}</strong> conversion{{ a.stats.convs_7d|pluralize }}</span>
           </div>
-          {% endwith %}
-          {% empty %}
-          <p class="aff-empty-inline">No links yet — create your first below.</p>
-          {% endfor %}
-
-          <form method="post" action="/affiliates/me/links/new/" class="aff-newlink">
-            {% csrf_token %}
-            <input type="hidden" name="affiliate_id" value="{{ a.id }}">
-            <div>
-              <label class="aff-newlink__lbl">Landing path</label>
-              <input type="text" name="landing_url" value="/" required class="aff-newlink__in"
-                     placeholder="/products/example-book/">
+          <div class="aff-week__bars" role="presentation" aria-hidden="true">
+            {% for d in a.spark %}
+            <div class="aff-week__bar" title="{{ d.date|date:'D M j' }} · {{ d.clicks }} clicks · {{ d.conversions }} conv.">
+              <span class="aff-week__seg aff-week__seg--clicks" style="height: {% if d.clicks %}{{ d.clicks|stringformat:'s' }}{% else %}0{% endif %}px;"></span>
+              <span class="aff-week__day">{{ d.date|date:"D"|slice:":1" }}</span>
             </div>
-            <div>
-              <label class="aff-newlink__lbl">Label (optional)</label>
-              <input type="text" name="label" maxlength="100" placeholder="e.g. Newsletter Jan"
-                     class="aff-newlink__in">
-            </div>
-            <button type="submit" class="btn btn-primary aff-newlink__btn">Create link</button>
-          </form>
-        </div>
-
-        {% if a.recent_conversions %}
-        <div class="aff-section">
-          <p class="eyebrow">Recent conversions · last 30d</p>
-          <ul class="aff-conversions">
-            {% for c in a.recent_conversions %}
-            <li>
-              <span class="aff-conversions__when">{{ c.created_at|date:"M j, H:i" }}</span>
-              <span class="aff-conversions__commission">+{{ c.commission_amount }}</span>
-              <span class="aff-conversions__status aff-conversions__status--{{ c.status }}">{{ c.get_status_display }}</span>
-            </li>
             {% endfor %}
-          </ul>
-        </div>
-        {% endif %}
-
-        <details class="aff-howto">
-          <summary>How affiliate works · payouts · the math</summary>
-          <div class="aff-howto__body">
-            <p><strong>How a click becomes commission.</strong> A reader clicks your tracked link, lands on dot books, and a 30-day cookie is set. If they buy any book in that window — even a different one than they clicked through to — the order is attributed to you and the program's commission rate is applied to the subtotal.</p>
-            <p><strong>EPC</strong> (Earnings per Click) is the headline number — your accrued commission divided by your clicks over the last 30 days. A good EPC for a literary affiliate sits around $0.20–$0.60. Below $0.05 means either your audience isn't a fit or your landing pages need work.</p>
-            <p><strong>CR</strong> (Conversion Rate) is what percentage of clicks turn into orders. Industry ecommerce average is 2–4%; literary niches with engaged audiences often hit 5–8%.</p>
-            <p><strong>Payouts</strong> are issued monthly once your accrued balance crosses the program's payout threshold (usually $25). We pay via the method on file in your <a href="/account/profile/">profile</a>.</p>
-            <p><strong>Approved vs pending</strong> conversions: an order is pending until the return window closes (14 days for physical books, immediate for digital). Pending conversions count toward your visible metrics but only approved ones are paid.</p>
           </div>
-        </details>
+        </div>
+      </div>
+
+      {% comment %}── Quick actions ─────────────────────────────────{% endcomment %}
+      <div class="aff-section aff-actions">
+        <a href="/affiliates/me/links/" class="btn">All links</a>
+        <a href="/affiliates/me/conversions/" class="btn">Conversions</a>
+        <a href="/affiliates/me/payouts/" class="btn">Request payout</a>
+        <a href="/affiliates/me/settings/" class="btn">Settings</a>
+        <form method="post" action="/affiliates/me/links/new/" class="aff-actions__new">
+          {% csrf_token %}
+          <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+          <input type="hidden" name="return_to" value="/affiliates/me/">
+          <input type="text" name="landing_url" value="/" required class="input"
+                 placeholder="/products/your-book/" aria-label="Landing path">
+          <input type="text" name="label" maxlength="100" placeholder="Label (optional)"
+                 class="input" aria-label="Label">
+          <button type="submit" class="btn btn-primary">+ New link</button>
+        </form>
+      </div>
+
+      {% comment %}── Recent conversions ────────────────────────────{% endcomment %}
+      <div class="aff-section">
+        <p class="eyebrow">Recent conversions</p>
+        {% if a.recent_conversions %}
+          <table class="aff-table">
+            <thead>
+              <tr>
+                <th>When</th><th>Order</th><th>Gross</th><th>Commission</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in a.recent_conversions %}
+              <tr>
+                <td>{{ c.created_at|date:"M j, H:i" }}</td>
+                <td><code>#{{ c.order.order_number|default:c.order_id }}</code></td>
+                <td>{{ c.order.total }}</td>
+                <td>+{{ c.commission }}</td>
+                <td><span class="aff-conversions__status aff-conversions__status--{{ c.status }}">{{ c.get_status_display }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="aff-section__more"><a href="/affiliates/me/conversions/">See all conversions →</a></p>
+        {% else %}
+          <p class="aff-empty-inline">No conversions yet — share your links and check back.</p>
+        {% endif %}
+      </div>
+
+      {% comment %}── Top performing links ──────────────────────────{% endcomment %}
+      <div class="aff-section">
+        <p class="eyebrow">Top performing links</p>
+        {% if a.top_links %}
+          <table class="aff-table">
+            <thead>
+              <tr><th>Link</th><th>Clicks</th><th>Conversions</th><th>CR</th></tr>
+            </thead>
+            <tbody>
+              {% for link in a.top_links %}
+              <tr>
+                <td><code>/r/{{ link.code }}</code>{% if link.label %} · <span style="color:var(--muted);">{{ link.label }}</span>{% endif %}</td>
+                <td>{{ link.click_count }}</td>
+                <td>{{ link.conversion_count }}</td>
+                <td>{{ link.cr }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="aff-empty-inline">No clicks recorded yet.</p>
+        {% endif %}
+      </div>
+
+      <p class="aff-footnote">
+        Cookie window: <strong>30 days</strong>. A reader who clicks your link and buys anything inside that window is attributed to you, even if they leave and come back later.
+      </p>
 
       {% elif a.status == 'pending' %}
         <p class="aff-section-text">We're reviewing your application. You'll be able to create tracked links here once approved — typically within 2 business days.</p>
@@ -145,14 +167,13 @@
     </article>
     {% endfor %}
 
-    {% endif %}
   </div>
 </section>
 
 <style>
 .aff-empty {
   text-align: center; padding: 3.5rem 2rem;
-  background: var(--surface-2, rgba(0,0,0,.02));
+  background: var(--paper-2);
   border-radius: 12px;
 }
 .aff-card {
@@ -184,18 +205,13 @@
   margin-bottom: 1.5rem;
 }
 @media (min-width: 700px) { .aff-kpis { grid-template-columns: repeat(5, 1fr); } }
-.aff-kpi {
-  padding: .85rem 1rem;
-  background: var(--surface-2, rgba(0,0,0,.025));
-  border-radius: 8px;
-  cursor: help;
-}
+.aff-kpi { padding: 1rem 1.1rem; }
 .aff-kpi__label {
   font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
   color: var(--muted); margin: 0;
 }
 .aff-kpi__value {
-  font-family: var(--serif); font-size: 1.6rem; font-weight: 500;
+  font-family: var(--serif); font-size: 1.55rem; font-weight: 500;
   font-variant-numeric: tabular-nums;
   line-height: 1.1; margin: .35rem 0 0;
 }
@@ -203,64 +219,30 @@
 
 .aff-section { margin-top: 1.75rem; }
 .aff-section-text { color: var(--muted); font-size: .9rem; margin: 1.5rem 0 0; }
+.aff-section__more { font-size: .85rem; margin: .85rem 0 0; }
+.aff-section__more a { color: var(--accent-ink); }
 
-.aff-link {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .85rem;
-  padding: .85rem 0; border-bottom: 1px solid var(--rule);
-}
-.aff-link:last-child { border-bottom: 0; }
-.aff-link__copy {
-  display: inline-flex; align-items: center; gap: .4rem;
-  background: var(--surface-2, rgba(0,0,0,.04));
-  padding: .35rem .65rem; border-radius: 6px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  font-family: inherit; color: inherit;
-  transition: border-color .15s ease, background .15s ease;
-}
-.aff-link__copy:hover { border-color: var(--rule); background: var(--paper); }
-.aff-link__copy:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.aff-link__copy code { font-size: .82rem; }
-.aff-link__copy-icon { font-size: .85rem; color: var(--muted); }
-.aff-link__copy.is-copied { background: rgba(16,185,129,.12); color: #047857; }
-.aff-link__copy.is-copied::after { content: ' copied'; font-size: .75rem; }
-.aff-link__meta {
-  display: flex; gap: .65rem; align-items: center;
-  font-size: .8rem; color: var(--muted); flex-wrap: wrap;
-}
-.aff-link__label { font-style: italic; }
-.aff-link__stats {
-  margin-left: auto; display: flex; gap: .85rem;
-  font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums;
-}
+.aff-week { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.aff-week__summary { font-size: .95rem; color: var(--ink-2); }
+.aff-week__summary strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.aff-sep { color: var(--muted); margin: 0 .35rem; }
+.aff-week__bars { display: flex; gap: .35rem; align-items: end; height: 40px; }
+.aff-week__bar { display: flex; flex-direction: column; align-items: center; width: 18px; }
+.aff-week__seg { display: block; width: 100%; background: var(--accent-ink); border-radius: 2px 2px 0 0; min-height: 2px; max-height: 28px; }
+.aff-week__day { font-size: .65rem; color: var(--muted); margin-top: 2px; }
 
-.aff-empty-inline { color: var(--muted); font-size: .9rem; padding: 1rem 0; }
+.aff-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+.aff-actions__new { display: flex; gap: .5rem; flex-wrap: wrap; margin-left: auto; }
+.aff-actions__new .input { padding: .4rem .65rem; font-size: .85rem; }
 
-.aff-newlink {
-  display: grid; grid-template-columns: 1fr; gap: .65rem;
-  margin-top: 1.25rem; align-items: end;
-}
-@media (min-width: 640px) { .aff-newlink { grid-template-columns: 1fr 1fr auto; } }
-.aff-newlink__lbl { font-size: .72rem; color: var(--muted); display: block; margin-bottom: .25rem; }
-.aff-newlink__in {
-  width: 100%; padding: .55rem .65rem;
-  border: 1px solid var(--rule); border-radius: 6px;
-  background: var(--paper); font-family: inherit;
-}
-.aff-newlink__in:focus { outline: 2px solid var(--ink); outline-offset: -2px; border-color: var(--ink); }
-.aff-newlink__btn { height: 40px; }
+.aff-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.aff-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: .4rem .6rem .4rem 0; border-bottom: 1px solid var(--rule); }
+.aff-table td { padding: .55rem .6rem .55rem 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+.aff-table tr:last-child td { border-bottom: 0; }
 
-.aff-conversions { list-style: none; margin: 0; padding: 0; }
-.aff-conversions li {
-  display: flex; gap: 1rem; align-items: center;
-  padding: .5rem 0; border-bottom: 1px solid var(--rule);
-  font-size: .88rem;
-}
-.aff-conversions li:last-child { border-bottom: 0; }
-.aff-conversions__when { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 8rem; }
-.aff-conversions__commission { font-family: var(--serif); font-size: 1rem; color: var(--ink); flex: 1; }
 .aff-conversions__status {
   font-size: .7rem; padding: .15rem .55rem; border-radius: 999px; font-weight: 500;
+  display: inline-block;
 }
 .aff-conversions__status--approved  { background: rgba(16,185,129,.12); color: #047857; }
 .aff-conversions__status--pending   { background: rgba(245,158,11,.12); color: #b45309; }
@@ -268,51 +250,11 @@
 .aff-conversions__status--refunded  { background: rgba(239,68,68,.12);  color: #b91c1c; }
 .aff-conversions__status--paid      { background: rgba(99,102,241,.12); color: #4338ca; }
 
-.aff-howto {
-  margin-top: 2rem; padding: 1rem 1.25rem;
-  background: var(--surface-2, rgba(0,0,0,.02));
-  border-radius: 8px; border-left: 3px solid var(--ink);
-}
-.aff-howto summary {
-  cursor: pointer; font-family: var(--serif); font-size: 1rem; color: var(--ink);
-}
-.aff-howto__body { font-size: .9rem; line-height: 1.65; color: var(--ink-2); margin-top: 1rem; }
-.aff-howto__body p { margin: 0 0 .85rem; }
-</style>
+.aff-empty-inline { color: var(--muted); font-size: .9rem; padding: 1rem 0; margin: 0; }
 
-<script>
-/* Copy-to-clipboard for tracked links. Uses navigator.clipboard with a
-   document.execCommand fallback so it works on file://-style previews
-   and older browsers. Visual confirmation via .is-copied class. */
-(function () {
-  function copy(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      return navigator.clipboard.writeText(text);
-    }
-    return new Promise(function (resolve, reject) {
-      var ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed'; ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand('copy');
-        ta.remove();
-        resolve();
-      } catch (e) {
-        ta.remove();
-        reject(e);
-      }
-    });
-  }
-  document.querySelectorAll('[data-aff-copy]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      copy(btn.dataset.affCopy).then(function () {
-        btn.classList.add('is-copied');
-        setTimeout(function () { btn.classList.remove('is-copied'); }, 1500);
-      }).catch(function () { /* silent — keep UX clean */ });
-    });
-  });
-})();
-</script>
+.aff-footnote {
+  margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+  font-size: .8rem; color: var(--muted);
+}
+</style>
 {% endblock %}

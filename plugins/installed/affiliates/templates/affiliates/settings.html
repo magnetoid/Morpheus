@@ -1,0 +1,92 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
+      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Settings</span>
+    </nav>
+
+    <header style="margin: 0 0 2rem;">
+      <p class="eyebrow">@{{ affiliate.handle }}</p>
+      <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Settings<span class="text-accent">.</span></h1>
+      <p class="lede" style="margin: 0; max-width: 56ch;">Profile, payout method, and the bio your collaborators see.</p>
+    </header>
+
+    {% if saved %}
+      <div class="card card-padded" style="background: rgba(16,185,129,.10); color:#047857; padding:1rem 1.25rem; border-radius:6px; margin-bottom: 1.5rem;">
+        Saved.
+      </div>
+    {% endif %}
+    {% if error %}
+      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem 1.25rem; border-radius:6px; margin-bottom: 1.5rem;">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form method="post" class="aff-settings card card-padded">
+      {% csrf_token %}
+
+      <div class="aff-field">
+        <label for="handle">Handle</label>
+        <input type="text" id="handle" value="{{ affiliate.handle }}" readonly class="input">
+        <p class="aff-field__help">Your handle is locked once your application is approved — it shows up in every link and we want it stable for your readers.</p>
+      </div>
+
+      <div class="aff-field">
+        <label for="display_name">Display name</label>
+        <input type="text" id="display_name" name="display_name" value="{{ affiliate.display_name }}" maxlength="200" class="input">
+        <p class="aff-field__help">How you'd like to be credited in reports + emails. Optional.</p>
+      </div>
+
+      <div class="aff-field">
+        <label for="company">Company / publication</label>
+        <input type="text" id="company" name="company" value="{{ affiliate.company }}" maxlength="200" class="input">
+      </div>
+
+      <div class="aff-field">
+        <label for="payout_email">Payout email</label>
+        <input type="email" id="payout_email" name="payout_email" value="{{ affiliate.payout_email }}" maxlength="254" class="input">
+        <p class="aff-field__help">PayPal account or the address your accountant prefers.</p>
+      </div>
+
+      <div class="aff-field">
+        <label for="preferred_payout_method">Preferred payout method</label>
+        <select id="preferred_payout_method" name="preferred_payout_method" class="input">
+          {% for value, label in method_choices %}
+          <option value="{{ value }}" {% if affiliate.preferred_payout_method == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <p class="aff-field__help">Pick <strong>Store credit</strong> and we add 10% on top — useful if you mostly buy from us anyway.</p>
+      </div>
+
+      <div class="aff-field">
+        <label for="notes">Bio / notes</label>
+        <textarea id="notes" name="notes" rows="4" maxlength="2000" class="input">{{ affiliate.notes }}</textarea>
+        <p class="aff-field__help">A few sentences about your readership. Helps us when we're picking who to send ARCs to.</p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">Save changes</button>
+      </div>
+    </form>
+
+  </div>
+</section>
+
+<style>
+.aff-settings { padding: 1.75rem; }
+.aff-field { margin-bottom: 1.25rem; }
+.aff-field label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: .35rem; }
+.aff-field .input { width: 100%; padding: .55rem .7rem; font-family: inherit; font-size: .95rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); }
+.aff-field .input:focus { outline: 2px solid var(--ink); outline-offset: -2px; border-color: var(--ink); }
+.aff-field .input[readonly] { background: var(--paper-2); color: var(--muted); cursor: not-allowed; }
+.aff-field textarea.input { resize: vertical; min-height: 90px; line-height: 1.5; }
+.aff-field__help { font-size: .8rem; color: var(--muted); margin: .35rem 0 0; }
+</style>
+{% endblock %}

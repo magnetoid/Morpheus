@@ -9,13 +9,16 @@
 {% block content %}
 <section style="padding: 3rem 0 1.5rem;">
   <div class="wrap">
-    <p class="meta" style="margin-bottom: 1.25rem;">
-      <a href="/" style="color: var(--muted);">Home</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/marketplace/" style="color: var(--muted);">Marketplace</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      Publishers
-    </p>
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
     <p class="eyebrow">The makers</p>
     <h1 class="display display-l" style="margin: 1rem 0 1rem;">Publishers we work with<span class="text-accent">.</span></h1>
     <p class="lede" style="max-width: 60ch; margin-bottom: 1.75rem;">
@@ -92,6 +95,18 @@
   </div>
 </section>
 {% endif %}
+
+<section style="padding: 1rem 0 4rem;">
+  <div class="wrap">
+    <div style="border-top: 1px solid var(--rule); padding-top: 2rem; max-width: 60ch;">
+      <p class="eyebrow">Recommend the shelf</p>
+      <p class="lede" style="margin: .5rem 0 1rem;">
+        Write about books? Earn a commission on every order you send our way.
+      </p>
+      <a href="/affiliates/apply/" class="btn-link">Join our affiliate program</a>
+    </div>
+  </div>
+</section>
 
 <style>
 .vendor-grid {

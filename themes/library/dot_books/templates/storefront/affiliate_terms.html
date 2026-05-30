@@ -1,0 +1,118 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}Affiliate program terms — dot books{% endblock %}
+
+{% block seo %}{% seo_meta fallback_title="Affiliate program terms" fallback_description="The plain-language ground rules for the dot books affiliate program — who we work with, when we pay, and what gets a partnership pulled." %}{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 760px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <a href="/affiliates/apply/" style="color: var(--muted);">Become an affiliate</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Terms</span>
+    </nav>
+
+    <p class="eyebrow">The fine print, plainly</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Affiliate program terms<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 0;">
+      The ground rules for the dot books affiliate program. Short, readable, and the same for everybody. By applying, you're agreeing to all of this — so it's worth a look.
+    </p>
+
+  </div>
+</section>
+
+<section style="padding: 0 0 5rem;">
+  <div class="wrap" style="max-width: 760px;">
+
+    {% comment %}── Who can apply ─────────────────────────────────────{% endcomment %}
+    <div style="margin: 2rem 0 3rem;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Who can apply</h2>
+      <p style="color: var(--ink-2); margin: 0 0 1rem;">
+        Independent recommenders — newsletters, podcasts, blogs, Substacks, reading clubs, librarians, indie bookstagrammers. People with a voice and a list that lives somewhere readers actually read.
+      </p>
+      <p style="color: var(--ink-2); margin: 0;">
+        We don't take deals-and-coupons aggregators, cashback portals, or sites whose whole pitch is being a pile of affiliate links. That's not what this is.
+      </p>
+    </div>
+
+    {% comment %}── Cookie window ─────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Cookie window</h2>
+      <p style="color: var(--ink-2); margin: 0;">
+        30 days. A reader who clicks your link and orders anything within 30 days is attributed to you — even if they leave the site and come back through a different route. Last touch wins inside the window.
+      </p>
+    </div>
+
+    {% comment %}── Payouts ───────────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">When we pay</h2>
+      <p style="color: var(--ink-2); margin: 0 0 1rem;">
+        Monthly, on the 1st, for the previous month's earned commissions. The threshold is $25 — anything under that carries to the next cycle until it clears. Payment goes to the method on your profile (PayPal, wire, or store credit; store credit gets a 10% bonus because it saves us fees).
+      </p>
+      <p style="color: var(--ink-2); margin: 0;">
+        Commissions are calculated on the net order total — after discounts, before shipping and tax.
+      </p>
+    </div>
+
+    {% comment %}── Refunds & clawback ────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Refunds &amp; clawback</h2>
+      <p style="color: var(--ink-2); margin: 0;">
+        If an order is refunded inside 30 days of purchase, the commission for that order is reversed and pulled from your next payout (or your running balance, if you haven't been paid out yet). After 30 days the commission is final. Your dashboard shows the keeping rate so you can see what's actually sticking.
+      </p>
+    </div>
+
+    {% comment %}── Prohibited practices ──────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">What gets you pulled</h2>
+      <p style="color: var(--ink-2); margin: 0 0 1rem;">A few things will end the partnership, usually without warning:</p>
+      <ul style="color: var(--ink-2); margin: 0; padding-left: 1.25rem; line-height: 1.7;">
+        <li>Buying clicks or impressions through paid traffic networks pointed at your link.</li>
+        <li>Incentivising clicks — "click here, get a discount", reward-wall placements, click-farms.</li>
+        <li>Bidding on "dot books" or our brand variants on Google, Bing, or any other search engine.</li>
+        <li>Pretending to be us — fake review pages, lookalike domains, impersonating dot books email or social.</li>
+        <li>Cloaking, link injection, malware-laden ad networks, anything we'd be embarrassed to be associated with.</li>
+        <li>Self-purchases through your own link to harvest commission.</li>
+      </ul>
+    </div>
+
+    {% comment %}── Termination ───────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Termination</h2>
+      <p style="color: var(--ink-2); margin: 0 0 1rem;">
+        Either side can end the partnership any time, for any reason. You can close your account from your dashboard. We can close one of ours — we'll tell you why, and any commission earned and cleared up to that point still gets paid out on the next cycle.
+      </p>
+      <p style="color: var(--ink-2); margin: 0;">
+        If we end it because of one of the prohibited practices above, unpaid commissions can be voided.
+      </p>
+    </div>
+
+    {% comment %}── Tax ───────────────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Tax is on you</h2>
+      <p style="color: var(--ink-2); margin: 0;">
+        Affiliate earnings are income. We don't withhold tax. US partners crossing the IRS reporting threshold for a calendar year get a 1099-NEC in January; partners elsewhere are responsible for their local equivalent. Keep your records — your dashboard exports the data you'll need.
+      </p>
+    </div>
+
+    {% comment %}── Changes ───────────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Changes to these terms</h2>
+      <p style="color: var(--ink-2); margin: 0;">
+        We'll update this page when something material changes — commission rates, cookie window, payout method, prohibited practices. Active affiliates get an email when we do. Continuing to send links after the change means you're on the new terms.
+      </p>
+    </div>
+
+    <div style="margin: 4rem 0 0; padding: 1.75rem; background: var(--paper-2); border-radius: 6px; border-left: 3px solid var(--accent);">
+      <p style="margin: 0 0 .5rem; font-weight: 600;">Ready when you are.</p>
+      <p style="margin: 0 0 1rem; color: var(--ink-2);">If this all reads sensibly to you, the application is two minutes.</p>
+      <a href="/affiliates/apply/" class="btn btn-primary">Apply to join →</a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

@@ -13,17 +13,14 @@
         Approval triggers the commission credit; rejection (e.g. on refund or fraud) reverses it.
       </p>
     </div>
+    <a href="?export=csv{% if status_filter %}&status={{ status_filter }}{% endif %}" class="btn btn-ghost text-xs">Export CSV</a>
   </div>
 
   <div class="flex flex-wrap items-center gap-1.5 text-xs">
-    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">
-      All <span class="ml-1 opacity-60">({{ counts|length }})</span>
-    </a>
-    {% for status in 'pending,approved,rejected,paid'|cut:' '|safe %}{% endfor %}
-    {% for code, label in 'pending,Pending|approved,Approved|rejected,Rejected|paid,Paid'|cut:' '|safe %}{% endfor %}
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">All</a>
     <a href="?status=pending" class="btn btn-ghost text-xs {% if status_filter == 'pending' %}is-active{% endif %}">Pending ({{ counts.pending|default:0 }})</a>
     <a href="?status=approved" class="btn btn-ghost text-xs {% if status_filter == 'approved' %}is-active{% endif %}">Approved ({{ counts.approved|default:0 }})</a>
-    <a href="?status=rejected" class="btn btn-ghost text-xs {% if status_filter == 'rejected' %}is-active{% endif %}">Rejected ({{ counts.rejected|default:0 }})</a>
+    <a href="?status=rejected" class="btn btn-ghost text-xs {% if status_filter == 'rejected' %}is-active{% endif %}">Refunded / Rejected ({{ counts.rejected|default:0 }})</a>
     <a href="?status=paid" class="btn btn-ghost text-xs {% if status_filter == 'paid' %}is-active{% endif %}">Paid ({{ counts.paid|default:0 }})</a>
   </div>
 
@@ -46,7 +43,7 @@
         <tr>
           <td><code class="font-mono">{{ c.order.order_number }}</code></td>
           <td>
-            <div class="font-medium">{{ c.affiliate.handle }}</div>
+            <a href="/dashboard/affiliates/affiliates/{{ c.affiliate.id }}/" class="font-medium">{{ c.affiliate.handle }}</a>
             <div class="text-xs text-[color:var(--text-muted)]">{{ c.affiliate.user.email }}</div>
           </td>
           <td>{% if c.link %}<code class="text-xs">/r/{{ c.link.code }}</code>{% else %}<span class="text-[color:var(--text-muted)] text-xs">—</span>{% endif %}</td>
@@ -83,7 +80,7 @@
     </table>
     {% else %}
     <div class="card-padded text-sm text-[color:var(--text-muted)]">
-      No conversions {% if status_filter %}with status “{{ status_filter }}”{% else %}yet{% endif %}.
+      No conversions {% if status_filter %}with status "{{ status_filter }}"{% else %}yet{% endif %}.
     </div>
     {% endif %}
   </div>

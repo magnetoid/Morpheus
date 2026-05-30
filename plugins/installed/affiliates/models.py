@@ -10,14 +10,16 @@ Domain:
     AffiliateConversion       — order tied to an affiliate via attribution window
     AffiliatePayout           — periodic payout of accrued commissions
 """
+
 from __future__ import annotations
 
 import secrets
 import uuid
 
 from django.conf import settings
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class AffiliateProgram(models.Model):
@@ -32,9 +34,13 @@ class AffiliateProgram(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True)
-    commission_type = models.CharField(max_length=10, choices=COMMISSION_TYPE_CHOICES, default='percent')
+    commission_type = models.CharField(
+        max_length=10, choices=COMMISSION_TYPE_CHOICES, default='percent'
+    )
     commission_value = models.DecimalField(
-        max_digits=10, decimal_places=4, default=0,
+        max_digits=10,
+        decimal_places=4,
+        default=0,
         help_text='Percent (0-100) for percent type, or amount for fixed type.',
     )
     cookie_window_days = models.PositiveSmallIntegerField(default=30)
@@ -55,14 +61,32 @@ class Affiliate(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    program = models.ForeignKey(AffiliateProgram, on_delete=models.CASCADE, related_name='affiliates')
+    program = models.ForeignKey(
+        AffiliateProgram, on_delete=models.CASCADE, related_name='affiliates'
+    )
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='affiliate_accounts',
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='affiliate_accounts',
     )
     handle = models.SlugField(max_length=80, unique=True)
-    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='pending', db_index=True)
+    status = models.CharField(
+        max_length=12, choices=STATUS_CHOICES, default='pending', db_index=True
+    )
+    display_name = models.CharField(max_length=200, blank=True)
     company = models.CharField(max_length=200, blank=True)
     payout_email = models.EmailField(blank=True)
+    PAYOUT_METHOD_CHOICES = [
+        ('paypal', 'PayPal'),
+        ('wire', 'Bank wire'),
+        ('credit', 'Store credit (+10%)'),
+    ]
+    preferred_payout_method = models.CharField(
+        max_length=12,
+        choices=PAYOUT_METHOD_CHOICES,
+        default='paypal',
+        blank=True,
+    )
     notes = models.TextField(blank=True)
     accrued_balance = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', default=0)
     lifetime_paid = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', default=0)
@@ -89,7 +113,9 @@ class AffiliateLink(models.Model):
     # promo code is redeemed at checkout, no click required. Used for
     # influencer / podcast / out-of-band collaborations.
     coupon_code = models.CharField(
-        max_length=40, blank=True, db_index=True,
+        max_length=40,
+        blank=True,
+        db_index=True,
         help_text=(
             'Optional: if set, redeeming this coupon code at checkout '
             'attributes the order to this affiliate without needing a '
@@ -112,6 +138,7 @@ class AffiliateLink(models.Model):
 
 class AffiliateClick(models.Model):
     """Anonymous click record. PII is intentionally minimal."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     link = models.ForeignKey(AffiliateLink, on_delete=models.CASCADE, related_name='clicks')
     referer = models.CharField(max_length=500, blank=True)
@@ -135,11 +162,22 @@ class AffiliateConversion(models.Model):
     affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, related_name='conversions')
     link = models.ForeignKey(AffiliateLink, on_delete=models.SET_NULL, null=True, blank=True)
     order = models.OneToOneField(
-        'orders.Order', on_delete=models.CASCADE, related_name='affiliate_conversion',
+        'orders.Order',
+        on_delete=models.CASCADE,
+        related_name='affiliate_conversion',
     )
     commission = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', db_index=True)
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='pending', db_index=True
+    )
     locked_until = models.DateTimeField(null=True, blank=True)
+    payout = models.ForeignKey(
+        'AffiliatePayout',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bundled_conversions',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -159,7 +197,9 @@ class AffiliatePayout(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, related_name='payouts')
     amount = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', db_index=True)
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='pending', db_index=True
+    )
     method = models.CharField(max_length=40, blank=True)
     external_reference = models.CharField(max_length=200, blank=True)
     notes = models.TextField(blank=True)

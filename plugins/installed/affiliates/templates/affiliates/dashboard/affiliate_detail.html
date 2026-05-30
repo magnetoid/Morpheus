@@ -1,0 +1,156 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ affiliate.handle }} · Affiliate · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ affiliate.handle }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        {{ affiliate.user.email|default:"—" }}
+        {% if affiliate.status == 'approved' %}<span class="pill pill-success ml-2">approved</span>
+        {% elif affiliate.status == 'pending' %}<span class="pill pill-warn ml-2">pending</span>
+        {% elif affiliate.status == 'suspended' %}<span class="pill pill-danger ml-2">suspended</span>
+        {% else %}<span class="pill pill-neutral ml-2">{{ affiliate.status }}</span>{% endif %}
+        <span class="text-xs text-[color:var(--text-muted)] ml-2">Program: {{ affiliate.program.name|default:"—" }}</span>
+      </p>
+    </div>
+    <a href="/dashboard/apps/affiliates/list/" class="btn btn-ghost text-xs">All affiliates</a>
+  </div>
+
+  {% comment %}KPI tiles{% endcomment %}
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Clicks (30d)</span>
+      <span class="kpi__value">{{ clicks_30 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Conversions (30d)</span>
+      <span class="kpi__value">{{ conversions_30 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Earnings (30d)</span>
+      <span class="kpi__value">{{ earnings_30 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Lifetime paid</span>
+      <span class="kpi__value">{{ lifetime_earnings }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Conversion rate</span>
+      <span class="kpi__value">{{ conversion_rate|floatformat:1 }}%</span>
+      <span class="text-xs text-[color:var(--text-muted)]">30-day</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Refund rate</span>
+      <span class="kpi__value">{{ refund_rate|floatformat:1 }}%</span>
+      <span class="text-xs text-[color:var(--text-muted)]">30-day</span>
+    </div>
+  </div>
+
+  {% comment %}Edit form — notes + commission override{% endcomment %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Edit affiliate</h2>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Commission override is per-affiliate; leave blank to use the program's commission. Notes are admin-only.
+      </p>
+    </div>
+    <form method="post" class="card-padded">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+        <div class="md:col-span-3">
+          <label class="block text-xs font-medium mb-1">Commission % override</label>
+          <input
+            type="number"
+            name="commission_percent_override"
+            step="0.01"
+            min="0"
+            max="100"
+            value="{{ commission_override }}"
+            placeholder="(use program default)"
+            class="input font-mono"
+          >
+        </div>
+        <div class="md:col-span-7">
+          <label class="block text-xs font-medium mb-1">Admin notes</label>
+          <textarea name="notes" rows="3" class="input" placeholder="Internal-only.">{{ affiliate.notes }}</textarea>
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium mb-1">&nbsp;</label>
+          <button class="btn btn-primary w-full" type="submit">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Top 5 links by clicks</h2>
+      </div>
+      {% if top_links %}
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th class="text-right">Clicks</th>
+            <th class="text-right">Conv.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in top_links %}
+          <tr>
+            <td><code class="font-mono">/r/{{ l.code }}</code>{% if l.label %}<div class="text-xs text-[color:var(--text-muted)]">{{ l.label }}</div>{% endif %}</td>
+            <td class="text-right">{{ l.click_count }}</td>
+            <td class="text-right">{{ l.conversion_count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No links yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="card-padded border-b border-[color:var(--border)]">
+        <h2 class="font-semibold">Recent conversions</h2>
+      </div>
+      {% if recent_conversions %}
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Status</th>
+            <th class="text-right">Commission</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in recent_conversions %}
+          <tr>
+            <td><code class="text-xs">{{ c.order.order_number|default:c.order_id }}</code></td>
+            <td>
+              {% if c.status == 'pending' %}<span class="pill pill-warn">Pending</span>
+              {% elif c.status == 'approved' %}<span class="pill pill-success">Approved</span>
+              {% elif c.status == 'rejected' %}<span class="pill pill-neutral">Rejected</span>
+              {% elif c.status == 'paid' %}<span class="pill pill-success">Paid</span>
+              {% endif %}
+            </td>
+            <td class="text-right font-mono">{{ c.commission }}</td>
+            <td class="text-xs text-[color:var(--text-muted)]">{{ c.created_at|date:"Y-m-d H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="card-padded text-sm text-[color:var(--text-muted)]">No conversions yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

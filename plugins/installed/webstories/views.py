@@ -16,6 +16,7 @@ import logging
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.http import http_date
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 logger = logging.getLogger('morpheus.webstories')
 
@@ -48,8 +49,16 @@ def _site_base_url(request: HttpRequest) -> str:
     return f'{request.scheme}://{request.get_host()}'.rstrip('/')
 
 
+@xframe_options_sameorigin
 def story_page(request: HttpRequest, slug: str) -> HttpResponse:
-    """Render the AMP Web Story document for a product."""
+    """Render the AMP Web Story document for a product.
+
+    Decorated with ``@xframe_options_sameorigin`` because the PDP embeds
+    this page inside an ``<amp-story-player>`` iframe — Django's default
+    ``X-Frame-Options: DENY`` middleware would otherwise produce the
+    'dotbooks.store refused to connect' error customers see when they
+    tap the story preview card.
+    """
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
     from plugins.installed.webstories.models import WebStory  # noqa: PLC0415
 

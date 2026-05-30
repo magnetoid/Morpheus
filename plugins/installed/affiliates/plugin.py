@@ -1,4 +1,5 @@
 """Affiliates plugin manifest."""
+
 from __future__ import annotations
 
 from morpheus import events
@@ -16,6 +17,11 @@ class AffiliatesPlugin(Plugin):
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.affiliates.graphql.queries')
         self.register_urls('plugins.installed.affiliates.urls', prefix='', namespace='affiliates')
+        self.register_urls(
+            'plugins.installed.affiliates.urls_dashboard',
+            prefix='dashboard/affiliates/',
+            namespace='affiliates_dashboard',
+        )
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=70)
         # Refund clawback. ORDER_CANCELLED fires today; PAYMENT_REFUNDED
         # is defined but not yet emitted by the orders plugin — wire it
@@ -39,7 +45,11 @@ class AffiliatesPlugin(Plugin):
         """
         code = ''
         if getattr(order, 'shipping_address', None):
-            code = order.shipping_address.get('affiliate_code', '') if isinstance(order.shipping_address, dict) else ''
+            code = (
+                order.shipping_address.get('affiliate_code', '')
+                if isinstance(order.shipping_address, dict)
+                else ''
+            )
         if not code and getattr(order, 'source', '').startswith('affiliate:'):
             code = order.source.split(':', 1)[1]
 
@@ -52,28 +62,38 @@ class AffiliatesPlugin(Plugin):
         if not code and not coupon:
             return
         from plugins.installed.affiliates.services import attribute_order
+
         attribute_order(order=order, affiliate_code=code, coupon_code=coupon)
 
     def on_order_refunded(self, order, **kwargs):
         """Reverse any affiliate conversion attached to a refunded
         order. See ``services.clawback_on_refund`` for the policy."""
         from plugins.installed.affiliates.services import clawback_on_refund
+
         try:
             clawback_on_refund(order=order)
         except Exception as exc:  # noqa: BLE001 — never block refund processing
             import logging
+
             logging.getLogger('morpheus.affiliates').warning(
-                'clawback failed for order %s: %s', getattr(order, 'pk', '?'), exc,
+                'clawback failed for order %s: %s',
+                getattr(order, 'pk', '?'),
+                exc,
             )
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.affiliates.agent_tools import (
-            create_affiliate_tool, list_affiliates_tool,
-            mark_payout_paid_tool, pending_payouts_tool,
+            create_affiliate_tool,
+            list_affiliates_tool,
+            mark_payout_paid_tool,
+            pending_payouts_tool,
         )
+
         return [
-            list_affiliates_tool, pending_payouts_tool,
-            mark_payout_paid_tool, create_affiliate_tool,
+            list_affiliates_tool,
+            pending_payouts_tool,
+            mark_payout_paid_tool,
+            create_affiliate_tool,
         ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
@@ -129,35 +149,60 @@ class AffiliatesPlugin(Plugin):
         # the URLs at /dashboard/apps/affiliates/list/ and
         # /dashboard/apps/affiliates/payouts/.
         from morpheus import DashboardPage
+
         return [
             DashboardPage(
-                label='Affiliates', slug='list',
+                label='Affiliates',
+                slug='list',
                 view='plugins.installed.affiliates.dashboard.affiliates_list',
-                icon='link', section='growth', order=10, nav='hidden',
+                icon='link',
+                section='growth',
+                order=10,
+                nav='hidden',
             ),
             DashboardPage(
-                label='Programs', slug='programs',
+                label='Programs',
+                slug='programs',
                 view='plugins.installed.affiliates.dashboard.programs_list',
-                icon='layers', section='growth', order=15, nav='hidden',
+                icon='layers',
+                section='growth',
+                order=15,
+                nav='hidden',
             ),
             DashboardPage(
-                label='Links', slug='links',
+                label='Links',
+                slug='links',
                 view='plugins.installed.affiliates.dashboard.links_list',
-                icon='link-2', section='growth', order=17, nav='hidden',
+                icon='link-2',
+                section='growth',
+                order=17,
+                nav='hidden',
             ),
             DashboardPage(
-                label='Conversions', slug='conversions',
+                label='Conversions',
+                slug='conversions',
                 view='plugins.installed.affiliates.dashboard.conversions_list',
-                icon='trending-up', section='growth', order=18, nav='hidden',
+                icon='trending-up',
+                section='growth',
+                order=18,
+                nav='hidden',
             ),
             DashboardPage(
-                label='Payouts', slug='payouts',
+                label='Payouts',
+                slug='payouts',
                 view='plugins.installed.affiliates.dashboard.payouts_list',
-                icon='wallet', section='growth', order=20, nav='hidden',
+                icon='wallet',
+                section='growth',
+                order=20,
+                nav='hidden',
             ),
             DashboardPage(
-                label='Analytics', slug='analytics',
+                label='Analytics',
+                slug='analytics',
                 view='plugins.installed.affiliates.dashboard.analytics',
-                icon='bar-chart-3', section='growth', order=25, nav='hidden',
+                icon='bar-chart-3',
+                section='growth',
+                order=25,
+                nav='hidden',
             ),
         ]

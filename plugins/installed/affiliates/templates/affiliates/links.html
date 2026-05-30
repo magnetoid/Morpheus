@@ -1,0 +1,182 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 1100px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
+      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Links</span>
+    </nav>
+
+    <header style="display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:1rem; margin: 0 0 1.5rem;">
+      <div>
+        <p class="eyebrow">@{{ affiliate.handle }}</p>
+        <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Tracked links<span class="text-accent">.</span></h1>
+        <p class="lede" style="margin: 0; max-width: 56ch;">Every link you've spun up, with its click and conversion history. Toggle a link off when a campaign ends; the URL still resolves but stops accruing.</p>
+      </div>
+    </header>
+
+    {% comment %}── Filters + new-link form ───────────────────────────{% endcomment %}
+    <div class="aff-toolbar">
+      <form method="get" class="aff-toolbar__filters">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search by code or label" class="input">
+        <select name="status" class="input">
+          <option value="">All statuses</option>
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+        <button type="submit" class="btn">Filter</button>
+      </form>
+
+      <form method="post" action="/affiliates/me/links/new/" class="aff-toolbar__new">
+        {% csrf_token %}
+        <input type="hidden" name="affiliate_id" value="{{ affiliate.id }}">
+        <input type="hidden" name="return_to" value="/affiliates/me/links/">
+        <input type="text" name="landing_url" value="/" required placeholder="/products/example-book/" class="input">
+        <input type="text" name="label" maxlength="100" placeholder="Label (optional)" class="input">
+        <button type="submit" class="btn btn-primary">+ New link</button>
+      </form>
+    </div>
+
+    {% if not links %}
+      <div class="aff-empty">
+        <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 .5rem;">No links yet.</p>
+        <p style="color: var(--muted); margin: 0 0 1rem;">Create your first one above — pick a landing path, add an optional label, share the link.</p>
+      </div>
+    {% else %}
+      <div class="aff-links-table-wrap">
+        <table class="aff-table aff-table--wide">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Label</th>
+              <th>Target</th>
+              <th>Clicks</th>
+              <th>Conv.</th>
+              <th>Active</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for link in links %}
+            {% with full_url=site_base|add:"/r/"|add:link.code %}
+            <tr>
+              <td>
+                <button type="button" class="aff-link__copy" data-aff-copy="{{ full_url }}" aria-label="Copy {{ link.code }} to clipboard">
+                  <code>/r/{{ link.code }}</code>
+                  <span class="aff-link__copy-icon" aria-hidden="true">⧉</span>
+                </button>
+              </td>
+              <td>
+                <details class="aff-inline-edit">
+                  <summary>{{ link.label|default:"—" }}</summary>
+                  <form method="post" action="/affiliates/me/links/{{ link.id }}/edit/" class="aff-inline-edit__form">
+                    {% csrf_token %}
+                    <input type="text" name="label" value="{{ link.label }}" maxlength="100" placeholder="Label" class="input">
+                    <input type="hidden" name="is_active" value="{% if link.is_active %}1{% else %}0{% endif %}">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </details>
+              </td>
+              <td><span style="color: var(--muted); font-size: .85rem;">{{ link.landing_url }}</span></td>
+              <td>{{ link.click_count }}</td>
+              <td>{{ link.conversion_count }}</td>
+              <td>
+                <form method="post" action="/affiliates/me/links/{{ link.id }}/edit/" style="margin:0;">
+                  {% csrf_token %}
+                  <input type="hidden" name="is_active" value="{% if link.is_active %}0{% else %}1{% endif %}">
+                  <button type="submit" class="aff-toggle aff-toggle--{% if link.is_active %}on{% else %}off{% endif %}">
+                    {% if link.is_active %}On{% else %}Off{% endif %}
+                  </button>
+                </form>
+              </td>
+              <td><a href="/affiliates/me/" style="font-size: .85rem;">Dashboard →</a></td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+
+<style>
+.aff-toolbar {
+  display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
+  margin-bottom: 1.5rem; padding: 1rem; background: var(--paper-2); border-radius: 8px;
+}
+.aff-toolbar__filters, .aff-toolbar__new { display: flex; gap: .5rem; flex-wrap: wrap; }
+.aff-toolbar__filters .input, .aff-toolbar__new .input { padding: .45rem .65rem; font-size: .9rem; }
+
+.aff-empty {
+  text-align: center; padding: 3rem 2rem;
+  background: var(--paper-2);
+  border-radius: 12px;
+}
+
+.aff-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.aff-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: .5rem .6rem; border-bottom: 1px solid var(--rule); }
+.aff-table td { padding: .6rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; vertical-align: middle; }
+.aff-table tr:last-child td { border-bottom: 0; }
+.aff-links-table-wrap { overflow-x: auto; }
+
+.aff-link__copy {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: var(--paper-2);
+  padding: .3rem .55rem; border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer; font-family: inherit; color: inherit;
+  transition: border-color .15s ease;
+}
+.aff-link__copy:hover { border-color: var(--rule); }
+.aff-link__copy.is-copied { background: rgba(16,185,129,.12); color: #047857; }
+.aff-link__copy.is-copied::after { content: ' copied'; font-size: .7rem; }
+.aff-link__copy code { font-size: .82rem; }
+.aff-link__copy-icon { font-size: .85rem; color: var(--muted); }
+
+.aff-inline-edit { display: inline; }
+.aff-inline-edit summary { cursor: pointer; list-style: none; }
+.aff-inline-edit summary::-webkit-details-marker { display: none; }
+.aff-inline-edit summary:hover { color: var(--accent-ink); }
+.aff-inline-edit__form { display: flex; gap: .35rem; margin-top: .35rem; }
+.aff-inline-edit__form .input { padding: .35rem .5rem; font-size: .85rem; }
+
+.aff-toggle {
+  padding: .25rem .65rem; border-radius: 999px; font-size: .75rem; font-weight: 600;
+  border: none; cursor: pointer;
+}
+.aff-toggle--on  { background: rgba(16,185,129,.15); color: #047857; }
+.aff-toggle--off { background: rgba(0,0,0,.06); color: var(--muted); }
+</style>
+
+<script>
+(function () {
+  function copy(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); ta.remove(); resolve(); }
+      catch (e) { ta.remove(); reject(e); }
+    });
+  }
+  document.querySelectorAll('[data-aff-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      copy(btn.dataset.affCopy).then(function () {
+        btn.classList.add('is-copied');
+        setTimeout(function () { btn.classList.remove('is-copied'); }, 1500);
+      }).catch(function () {});
+    });
+  });
+})();
+</script>
+{% endblock %}

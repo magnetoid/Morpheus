@@ -2,45 +2,115 @@
 {% block title %}Affiliates · Morpheus admin{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <div>
-    <h1 class="text-xl font-semibold">Affiliates</h1>
-    <p class="text-xs text-[color:var(--text-muted)]">Partners promoting the store. Approve pending applications and watch lifetime payout.</p>
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Affiliates</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Partners promoting the store. Approve pending applications and track lifetime payouts.
+      </p>
+    </div>
+    <a href="/affiliates/portal/" class="btn btn-ghost text-xs">Partner portal preview →</a>
   </div>
-  <a href="/affiliates/portal/" class="btn btn-ghost text-xs">Partner portal preview →</a>
+
+  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">All</a>
+    <a href="?status=pending" class="btn btn-ghost text-xs {% if status_filter == 'pending' %}is-active{% endif %}">Pending ({{ counts.pending|default:0 }})</a>
+    <a href="?status=approved" class="btn btn-ghost text-xs {% if status_filter == 'approved' %}is-active{% endif %}">Approved ({{ counts.approved|default:0 }})</a>
+    <a href="?status=suspended" class="btn btn-ghost text-xs {% if status_filter == 'suspended' %}is-active{% endif %}">Suspended ({{ counts.suspended|default:0 }})</a>
+    <a href="?status=rejected" class="btn btn-ghost text-xs {% if status_filter == 'rejected' %}is-active{% endif %}">Rejected ({{ counts.rejected|default:0 }})</a>
+  </div>
+
+  <form method="post" class="card overflow-hidden">
+    {% csrf_token %}
+    <div class="card-padded border-b border-[color:var(--border)] flex flex-wrap items-center gap-2">
+      <span class="text-xs text-[color:var(--text-muted)]">Bulk:</span>
+      <button class="btn btn-ghost text-xs" type="submit" name="action" value="bulk_approve">Approve</button>
+      <button class="btn btn-ghost text-xs" type="submit" name="action" value="bulk_reject" data-confirm="Reject selected affiliates?" data-confirm-cta="Reject" data-confirm-danger>Reject</button>
+      <button class="btn btn-ghost text-xs" type="submit" name="action" value="bulk_suspend" data-confirm="Suspend selected affiliates?" data-confirm-cta="Suspend" data-confirm-danger>Suspend</button>
+      <span class="text-xs text-[color:var(--text-muted)] ml-auto">{{ affiliates|length }} shown</span>
+    </div>
+
+    {% if affiliates %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th style="width: 2rem;"><input type="checkbox" data-bulk-toggle></th>
+          <th>Handle</th>
+          <th>Customer</th>
+          <th>Program</th>
+          <th>Status</th>
+          <th class="text-right">Conversions</th>
+          <th class="text-right">Accrued</th>
+          <th class="text-right">Paid lifetime</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in affiliates %}
+        <tr>
+          <td><input type="checkbox" name="affiliate_ids" value="{{ a.id }}"></td>
+          <td>
+            <a href="/dashboard/affiliates/affiliates/{{ a.id }}/" class="font-medium">{{ a.handle }}</a>
+          </td>
+          <td>{{ a.user.email|default:"—" }}</td>
+          <td>{{ a.program.name|default:"—" }}</td>
+          <td>
+            {% if a.status == 'approved' %}<span class="pill pill-success">approved</span>
+            {% elif a.status == 'pending' %}<span class="pill pill-warn">pending</span>
+            {% elif a.status == 'suspended' %}<span class="pill pill-danger">suspended</span>
+            {% else %}<span class="pill pill-neutral">{{ a.status }}</span>{% endif %}
+          </td>
+          <td class="text-right tabular-nums">{{ a.conversions.count|default:0 }}</td>
+          <td class="text-right tabular-nums">{{ a.accrued_balance|default:"—" }}</td>
+          <td class="text-right tabular-nums">{{ a.lifetime_paid|default:"—" }}</td>
+          <td class="text-right">
+            {% if a.status == 'pending' %}
+              <button class="btn btn-ghost text-xs" type="submit" name="action" value="approve" form="row-{{ a.id }}">Approve</button>
+              <button class="btn btn-ghost text-xs" type="submit" name="action" value="reject" form="row-{{ a.id }}" data-confirm="Reject {{ a.handle|escapejs }}?" data-confirm-cta="Reject" data-confirm-danger>Reject</button>
+            {% elif a.status == 'approved' %}
+              <button class="btn btn-ghost text-xs" type="submit" name="action" value="suspend" form="row-{{ a.id }}" data-confirm="Suspend {{ a.handle|escapejs }}?" data-confirm-cta="Suspend" data-confirm-danger>Suspend</button>
+            {% elif a.status == 'suspended' %}
+              <button class="btn btn-ghost text-xs" type="submit" name="action" value="reactivate" form="row-{{ a.id }}">Reactivate</button>
+            {% elif a.status == 'rejected' %}
+              <button class="btn btn-ghost text-xs" type="submit" name="action" value="approve" form="row-{{ a.id }}">Approve</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">
+      No affiliates {% if status_filter %}with status "{{ status_filter }}"{% else %}yet. Share <code>/affiliates/apply/</code> to start collecting applications{% endif %}.
+    </div>
+    {% endif %}
+  </form>
+
+  {% comment %}
+    Hidden per-row forms — keeps single-row Approve/Reject/Suspend buttons
+    out of the bulk-action form so they don't accidentally submit checked
+    rows along with the per-row action.
+  {% endcomment %}
+  {% for a in affiliates %}
+  <form id="row-{{ a.id }}" method="post" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+  </form>
+  {% endfor %}
 </div>
-<div class="card">
-  <table class="morph-table">
-    <thead>
-      <tr><th>Handle</th><th>Customer</th><th>Program</th><th>Status</th><th class="text-right">Clicks</th><th class="text-right">Conversions</th><th class="text-right">Accrued</th><th class="text-right">Paid lifetime</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% for a in affiliates %}
-      <tr>
-        <td><code>{{ a.handle }}</code></td>
-        <td>{{ a.user.email|default:"—" }}</td>
-        <td>{{ a.program.name|default:"—" }}</td>
-        <td>
-          {% if a.status == 'approved' %}<span class="pill pill-success">approved</span>
-          {% elif a.status == 'pending' %}<span class="pill pill-warn">pending</span>
-          {% elif a.status == 'suspended' %}<span class="pill pill-danger">suspended</span>
-          {% else %}<span class="pill pill-neutral">{{ a.status }}</span>{% endif %}
-        </td>
-        <td class="text-right tabular-nums">{% if a.total_clicks is None %}{{ a.links.all|length }}{% else %}{{ a.total_clicks }}{% endif %}</td>
-        <td class="text-right tabular-nums">{{ a.total_conversions|default:0 }}</td>
-        <td class="text-right tabular-nums">{{ a.accrued_balance|default:"—" }}</td>
-        <td class="text-right tabular-nums">{{ a.lifetime_paid|default:"—" }}</td>
-        <td class="text-right">
-          {# Approve action lives behind a future URL — Phase 1.4
-             (signup + approve flow) wires it in. For now pending
-             affiliates require a staff/agent tool call to approve. #}
-          {% if a.status == 'pending' %}<span class="text-xs text-[color:var(--text-muted)]">await approval</span>{% endif %}
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="9" style="text-align:center; padding: 2rem; color: var(--text-muted);">No affiliates yet. Share <code>/affiliates/apply/</code> to start collecting applications.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+
+<script>
+  (function(){
+    var toggle = document.querySelector('input[data-bulk-toggle]');
+    if (!toggle) return;
+    toggle.addEventListener('change', function(){
+      document.querySelectorAll('input[name="affiliate_ids"]').forEach(function(cb){
+        cb.checked = toggle.checked;
+      });
+    });
+  })();
+</script>
 {% endblock %}

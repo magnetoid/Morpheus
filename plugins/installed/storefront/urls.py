@@ -1,10 +1,16 @@
 from django.urls import path
+from django.views.generic import TemplateView
 
 from plugins.installed.storefront import sw, views
 from plugins.installed.storefront.views import vendor as vendor_views
 
 app_name = 'storefront'
 urlpatterns = [
+    path(
+        'affiliates/terms/',
+        TemplateView.as_view(template_name='storefront/affiliate_terms.html'),
+        name='affiliate_terms',
+    ),
     path('sw.js', sw.service_worker_js, name='service_worker'),
     path('offline/', sw.offline_page, name='offline'),
     path('', views.home, name='home'),

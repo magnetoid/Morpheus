@@ -1,22 +1,27 @@
 """Storefront-side affiliate flows.
 
-Three views:
-  - `affiliate_redirect`  /r/<code>           — anonymous click → cookie + 302
-  - `apply`               /affiliates/apply/  — signed-in customer submits an
-                                                application; a pending row is
-                                                created for admin review.
-  - `dashboard`           /affiliates/me/     — signed-in approved affiliate sees
-                                                their links + accrued balance,
-                                                and can create new tracked links.
+Affiliate self-service surface (``/affiliates/me/...``):
+
+  - ``affiliate_redirect``  /r/<code>             — anonymous click → cookie + 302
+  - ``apply``               /affiliates/apply/    — signed-in customer applies
+  - ``dashboard``           /affiliates/me/       — KPI overview + recent activity
+  - ``links``               /affiliates/me/links/ — full link inventory + edit
+  - ``edit_link``           /affiliates/me/links/<id>/edit/
+  - ``create_link``         /affiliates/me/links/new/
+  - ``conversions``         /affiliates/me/conversions/   — log + CSV export
+  - ``payouts``             /affiliates/me/payouts/       — request + history
+  - ``settings``            /affiliates/me/settings/      — profile + payout prefs
 """
+# ruff: noqa: PLC0415  — inline imports are the established style here.
+# ruff: noqa: S110     — best-effort fallback when reading djmoney attributes.
+
 from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from morpheus.views import HttpRequest, HttpResponse, HttpResponseRedirect
-
 
 _AFFILIATE_COOKIE = 'morph_aff'
 _COOKIE_TTL = 60 * 60 * 24 * 30  # 30 days; programs may override via cookie_window_days
@@ -27,15 +32,22 @@ def affiliate_redirect(request: HttpRequest, code: str) -> HttpResponseRedirect:
 
     referer = request.headers.get('Referer', '')
     user_agent = request.headers.get('User-Agent', '')
-    ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
+    ip = (
+        request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+        .split(',')[0]
+        .strip()
+    )
 
     link = record_click(code=code, referer=referer, user_agent=user_agent, ip=ip)
     landing = link.landing_url if link else '/'
 
     response = HttpResponseRedirect(landing)
     response.set_cookie(
-        _AFFILIATE_COOKIE, code,
-        max_age=_COOKIE_TTL, httponly=True, samesite='Lax',
+        _AFFILIATE_COOKIE,
+        code,
+        max_age=_COOKIE_TTL,
+        httponly=True,
+        samesite='Lax',
     )
     return response
 
@@ -63,103 +75,202 @@ def apply(request: HttpRequest) -> HttpResponse:
             program = AffiliateProgram.objects.filter(is_active=True).order_by('created_at').first()
 
         if program is None:
-            return render(request, 'affiliates/apply.html', {
-                'error': 'No active affiliate program is currently accepting applications.',
-                'existing': None, 'programs': [], 'seo_title': 'Become an affiliate',
-            })
+            return render(
+                request,
+                'affiliates/apply.html',
+                {
+                    'error': 'No active affiliate program is currently accepting applications.',
+                    'existing': None,
+                    'programs': [],
+                    'seo_title': 'Become an affiliate',
+                },
+            )
 
         # Generate a unique handle. Helper safely handles SSO users with
         # empty email + raises HandleUnavailable on collision exhaustion,
         # which we surface as a 200-with-form-error (not 403).
         from plugins.installed.affiliates.services import (
-            HandleUnavailable, generate_unique_handle,
+            HandleUnavailable,
+            generate_unique_handle,
         )
+
         try:
             handle = generate_unique_handle(request.user, suggested=handle_raw)
         except HandleUnavailable:
-            return render(request, 'affiliates/apply.html', {
-                'error': "Couldn't pick a unique handle — try a different one.",
-                'existing': None,
-                'programs': list(AffiliateProgram.objects.filter(is_active=True)),
-                'seo_title': 'Become an affiliate',
-            })
+            return render(
+                request,
+                'affiliates/apply.html',
+                {
+                    'error': "Couldn't pick a unique handle — try a different one.",
+                    'existing': None,
+                    'programs': list(AffiliateProgram.objects.filter(is_active=True)),
+                    'seo_title': 'Become an affiliate',
+                },
+            )
 
         Affiliate.objects.create(
-            program=program, user=request.user, handle=handle, status='pending',
-            company=company, payout_email=payout_email, notes=notes,
+            program=program,
+            user=request.user,
+            handle=handle,
+            status='pending',
+            company=company,
+            payout_email=payout_email,
+            notes=notes,
         )
         return redirect('/affiliates/me/')
 
-    return render(request, 'affiliates/apply.html', {
-        'existing': existing,
-        'programs': list(AffiliateProgram.objects.filter(is_active=True).order_by('name')),
-        'seo_title': 'Become an affiliate',
-        'seo_description': 'Earn a commission for every reader you send our way.',
-    })
+    return render(
+        request,
+        'affiliates/apply.html',
+        {
+            'existing': existing,
+            'programs': list(AffiliateProgram.objects.filter(is_active=True).order_by('name')),
+            'seo_title': 'Become an affiliate',
+            'seo_description': 'Earn a commission for every reader you send our way.',
+        },
+    )
+
+
+def _affiliate_or_redirect(request):
+    """Return ``(affiliate, redirect_response)``. Exactly one is non-None.
+
+    Self-service pages all need a single approved Affiliate row. If the
+    user has none, we redirect to /affiliates/apply/. If they have only
+    a pending/suspended row, we redirect them back to the dashboard
+    where the appropriate status banner renders.
+    """
+    from plugins.installed.affiliates.models import Affiliate
+
+    aff = (
+        Affiliate.objects.filter(user=request.user, status='approved')
+        .select_related('program')
+        .first()
+    )
+    if aff is not None:
+        return aff, None
+    # No approved row → bounce to apply or dashboard (which surfaces
+    # the pending/suspended banner).
+    if Affiliate.objects.filter(user=request.user).exists():
+        return None, redirect('/affiliates/me/')
+    return None, redirect('/affiliates/apply/')
 
 
 @login_required(login_url='/auth/login/')
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """Affiliate dashboard for the signed-in customer.
+    """Affiliate dashboard overview.
 
-    Surfaces (matching the 2026 Rewardful / Tapfiliate UX baseline):
-      * KPI strip: clicks 30d, conversions 30d, commission accrued, EPC.
-      * Tracked links list with copy-to-clipboard + per-link CR.
-      * Recent conversions (last 10) so the affiliate sees the funnel
-        working in close to real-time.
-      * Metric definitions surfaced inline — research is unambiguous
-        that affiliates trust dashboards that explain their math.
+    Refreshed layout — Rewardful/Tapfiliate-style:
+      * KPI row (lifetime): clicks · conversions · earned · pending · CR
+      * 7-day activity strip
+      * Quick actions
+      * Recent conversions (last 10)
+      * Top performing links (top 5 by clicks)
     """
     from datetime import timedelta
+
+    from django.db.models import Sum
     from django.utils import timezone
+
     from plugins.installed.affiliates.models import (
-        Affiliate, AffiliateClick, AffiliateConversion, AffiliateLink,
+        Affiliate,
+        AffiliateClick,
+        AffiliateConversion,
+        AffiliateLink,
     )
+    from plugins.installed.affiliates.services import pending_payout_amount
 
     accounts = list(Affiliate.objects.filter(user=request.user).select_related('program'))
-    since = timezone.now() - timedelta(days=30)
+    now = timezone.now()
 
-    # Per-account stats (cheap: 4 small COUNT/SUM queries each).
     for a in accounts:
-        if a.status == 'approved':
-            link_qs = AffiliateLink.objects.filter(affiliate=a)
-            a.tracked_links = list(link_qs.order_by('-created_at')[:50])
-
-            clicks_30d = AffiliateClick.objects.filter(
-                link__affiliate=a, created_at__gte=since,
-            ).count()
-            conv_30d_qs = AffiliateConversion.objects.filter(
-                affiliate=a, created_at__gte=since,
-            )
-            conversions_30d = conv_30d_qs.count()
-            approved_conv_30d = conv_30d_qs.filter(status='approved').count()
-
-            # Earnings per click (EPC) and conversion rate (CR).
-            epc = (
-                (float(a.accrued_balance.amount) / clicks_30d) if clicks_30d else 0
-            )
-            cr = ((conversions_30d / clicks_30d * 100) if clicks_30d else 0)
-
-            a.stats = {
-                'clicks_30d': clicks_30d,
-                'conversions_30d': conversions_30d,
-                'approved_conv_30d': approved_conv_30d,
-                'epc': round(epc, 2),
-                'cr': round(cr, 1),
-            }
-            a.recent_conversions = list(
-                conv_30d_qs.order_by('-created_at')[:8]
-            )
-        else:
+        if a.status != 'approved':
             a.tracked_links = []
             a.stats = None
             a.recent_conversions = []
+            a.top_links = []
+            a.spark = []
+            a.pending_earnings = None
+            continue
 
-    return render(request, 'affiliates/dashboard.html', {
-        'accounts': accounts,
-        'site_base': request.build_absolute_uri('/').rstrip('/'),
-        'seo_title': 'Your affiliate dashboard',
-    })
+        link_qs = AffiliateLink.objects.filter(affiliate=a)
+        click_qs = AffiliateClick.objects.filter(link__affiliate=a)
+        conv_qs = AffiliateConversion.objects.filter(affiliate=a)
+
+        clicks_total = click_qs.count()
+        convs_total = conv_qs.count()
+        approved_conv_total = conv_qs.filter(status='approved').count()
+        cr = round((convs_total / clicks_total * 100), 1) if clicks_total else 0.0
+
+        # Pending earnings = approved-but-unpaid commission.
+        try:
+            pending = pending_payout_amount(a)
+        except Exception:  # noqa: BLE001
+            pending = None
+
+        # 7-day activity bins (per-day counts for clicks/conversions).
+        spark = []
+        for i in range(6, -1, -1):
+            day_start = (now - timedelta(days=i)).replace(
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+            day_end = day_start + timedelta(days=1)
+            spark.append(
+                {
+                    'date': day_start,
+                    'clicks': click_qs.filter(
+                        occurred_at__gte=day_start,
+                        occurred_at__lt=day_end,
+                    ).count(),
+                    'conversions': conv_qs.filter(
+                        created_at__gte=day_start,
+                        created_at__lt=day_end,
+                    ).count(),
+                }
+            )
+
+        clicks_7d = sum(b['clicks'] for b in spark)
+        convs_7d = sum(b['conversions'] for b in spark)
+
+        a.stats = {
+            'clicks_total': clicks_total,
+            'convs_total': convs_total,
+            'approved_conv_total': approved_conv_total,
+            'cr': cr,
+            'clicks_7d': clicks_7d,
+            'convs_7d': convs_7d,
+        }
+        a.pending_earnings = pending
+        a.recent_conversions = list(
+            conv_qs.select_related('order').order_by('-created_at')[:10],
+        )
+        # Top performing links by click_count.
+        top = list(link_qs.order_by('-click_count', '-conversion_count')[:5])
+        for tl in top:
+            tl.cr = (
+                round((tl.conversion_count / tl.click_count * 100), 1) if tl.click_count else 0.0
+            )
+        a.top_links = top
+        a.spark = spark
+        # Keep a small tracked_links slice for the dashboard sidebar (if any
+        # template needs it). The full inventory lives on /links/.
+        a.tracked_links = list(link_qs.order_by('-created_at')[:8])
+        # Aggregate lifetime commission across all conversions (approved
+        # contributes to accrued_balance; this is a display total).
+        agg = conv_qs.exclude(status='rejected').aggregate(total=Sum('commission'))
+        a.lifetime_earned_amount = agg['total']
+
+    return render(
+        request,
+        'affiliates/dashboard.html',
+        {
+            'accounts': accounts,
+            'site_base': request.build_absolute_uri('/').rstrip('/'),
+            'seo_title': 'Your affiliate dashboard',
+        },
+    )
 
 
 @login_required(login_url='/auth/login/')
@@ -171,6 +282,9 @@ def create_link(request: HttpRequest) -> HttpResponseRedirect:
     affiliate_id = request.POST.get('affiliate_id') or ''
     landing_url = (request.POST.get('landing_url') or '/')[:500]
     label = (request.POST.get('label') or '').strip()[:100]
+    return_to = request.POST.get('return_to') or '/affiliates/me/'
+    if not return_to.startswith('/affiliates/'):
+        return_to = '/affiliates/me/'
 
     try:
         affiliate = Affiliate.objects.get(pk=affiliate_id, user=request.user)
@@ -179,6 +293,261 @@ def create_link(request: HttpRequest) -> HttpResponseRedirect:
 
     if affiliate.status == 'approved':
         AffiliateLink.objects.create(
-            affiliate=affiliate, landing_url=landing_url or '/', label=label,
+            affiliate=affiliate,
+            landing_url=landing_url or '/',
+            label=label,
         )
-    return HttpResponseRedirect('/affiliates/me/')
+    return HttpResponseRedirect(return_to)
+
+
+# ─── Links inventory ──────────────────────────────────────────────────
+
+
+@login_required(login_url='/auth/login/')
+def links(request: HttpRequest) -> HttpResponse:
+    """Full inventory of an affiliate's tracked links + search/filter."""
+    from plugins.installed.affiliates.models import AffiliateLink
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    q = (request.GET.get('q') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+
+    qs = AffiliateLink.objects.filter(affiliate=affiliate)
+    if q:
+        from django.db.models import Q
+
+        qs = qs.filter(Q(code__icontains=q) | Q(label__icontains=q))
+    if status == 'active':
+        qs = qs.filter(is_active=True)
+    elif status == 'inactive':
+        qs = qs.filter(is_active=False)
+    qs = qs.order_by('-created_at')
+
+    return render(
+        request,
+        'affiliates/links.html',
+        {
+            'affiliate': affiliate,
+            'links': list(qs[:200]),
+            'q': q,
+            'status': status,
+            'site_base': request.build_absolute_uri('/').rstrip('/'),
+            'seo_title': 'Your tracked links',
+        },
+    )
+
+
+@login_required(login_url='/auth/login/')
+@require_http_methods(['POST'])
+def edit_link(request: HttpRequest, link_id) -> HttpResponseRedirect:
+    """Inline edit: label + active toggle."""
+    from plugins.installed.affiliates.models import AffiliateLink
+
+    try:
+        link = AffiliateLink.objects.select_related('affiliate').get(
+            pk=link_id,
+            affiliate__user=request.user,
+        )
+    except AffiliateLink.DoesNotExist:
+        return HttpResponseRedirect('/affiliates/me/links/')
+
+    fields = []
+    if 'label' in request.POST:
+        link.label = (request.POST.get('label') or '').strip()[:100]
+        fields.append('label')
+    if 'is_active' in request.POST:
+        link.is_active = request.POST.get('is_active') in ('1', 'true', 'on', 'yes')
+        fields.append('is_active')
+    if fields:
+        link.save(update_fields=fields)
+    return HttpResponseRedirect('/affiliates/me/links/')
+
+
+# ─── Conversions log ──────────────────────────────────────────────────
+
+
+@login_required(login_url='/auth/login/')
+def conversions(request: HttpRequest) -> HttpResponse:
+    """Conversion log + optional CSV export."""
+    from plugins.installed.affiliates.models import AffiliateConversion
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    status = (request.GET.get('status') or '').strip()
+    qs = (
+        AffiliateConversion.objects.filter(affiliate=affiliate)
+        .select_related('order')
+        .order_by('-created_at')
+    )
+    if status in ('approved', 'pending', 'rejected', 'refunded', 'paid'):
+        qs = qs.filter(status=status)
+
+    if request.GET.get('export') == 'csv':
+        import csv
+        from io import StringIO
+
+        buf = StringIO()
+        w = csv.writer(buf)
+        w.writerow(['date', 'order_number', 'gross', 'commission', 'status'])
+        for c in qs[:1000]:
+            order_number = getattr(c.order, 'order_number', str(c.order_id))
+            gross = getattr(c.order, 'total', '')
+            w.writerow(
+                [
+                    c.created_at.isoformat(),
+                    order_number,
+                    str(gross),
+                    str(c.commission),
+                    c.status,
+                ]
+            )
+        response = HttpResponse(buf.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = (
+            f'attachment; filename="conversions-{affiliate.handle}.csv"'
+        )
+        return response
+
+    return render(
+        request,
+        'affiliates/conversions.html',
+        {
+            'affiliate': affiliate,
+            'conversions': list(qs[:100]),
+            'status': status,
+            'seo_title': 'Conversions',
+        },
+    )
+
+
+# ─── Payouts ──────────────────────────────────────────────────────────
+
+
+def _min_payout_threshold(affiliate):
+    """Read the program's minimum_payout, falling back to $25."""
+    from djmoney.money import Money
+
+    try:
+        program_min = affiliate.program.minimum_payout
+        if program_min and program_min.amount > 0:
+            return program_min
+    except Exception:  # noqa: BLE001
+        pass
+    return Money(25, str(affiliate.accrued_balance.currency))
+
+
+@login_required(login_url='/auth/login/')
+@require_http_methods(['GET', 'POST'])
+def payouts(request: HttpRequest) -> HttpResponse:
+    """Pending earnings card + request-payout form + past payouts table."""
+    from plugins.installed.affiliates.models import AffiliatePayout
+    from plugins.installed.affiliates.services import (
+        has_pending_payout,
+        pending_payout_amount,
+        request_affiliate_payout,
+    )
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    error = ''
+    success = ''
+
+    if request.method == 'POST':
+        method = (request.POST.get('method') or '').strip()[:40]
+        try:
+            payout = request_affiliate_payout(affiliate, method=method)
+            success = (
+                f'Payout request for {payout.amount} submitted. '
+                'We process requests on the 1st of the following month.'
+            )
+        except ValueError as exc:
+            error = str(exc)
+
+    pending = pending_payout_amount(affiliate)
+    threshold = _min_payout_threshold(affiliate)
+    pending_exists = has_pending_payout(affiliate)
+
+    can_request = not pending_exists and pending.amount >= threshold.amount and pending.amount > 0
+
+    history = list(
+        AffiliatePayout.objects.filter(affiliate=affiliate).order_by('-requested_at')[:50]
+    )
+
+    return render(
+        request,
+        'affiliates/payouts.html',
+        {
+            'affiliate': affiliate,
+            'pending_earnings': pending,
+            'threshold': threshold,
+            'pending_exists': pending_exists,
+            'can_request': can_request,
+            'history': history,
+            'error': error,
+            'success': success,
+            'seo_title': 'Payouts',
+        },
+    )
+
+
+# ─── Settings ─────────────────────────────────────────────────────────
+
+
+@login_required(login_url='/auth/login/')
+@require_http_methods(['GET', 'POST'])
+def settings(request: HttpRequest) -> HttpResponse:
+    """Editable affiliate profile: display name, payout email, method, bio."""
+    from plugins.installed.affiliates.models import Affiliate
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    saved = False
+    error = ''
+    method_choices = list(Affiliate.PAYOUT_METHOD_CHOICES)
+
+    if request.method == 'POST':
+        display_name = (request.POST.get('display_name') or '').strip()[:200]
+        company = (request.POST.get('company') or '').strip()[:200]
+        payout_email = (request.POST.get('payout_email') or '').strip()[:254]
+        method = (request.POST.get('preferred_payout_method') or 'paypal').strip()
+        notes = (request.POST.get('notes') or '').strip()[:2000]
+
+        valid_methods = {k for k, _ in method_choices}
+        if method not in valid_methods:
+            error = 'Pick a valid payout method.'
+        else:
+            affiliate.display_name = display_name
+            affiliate.company = company
+            affiliate.payout_email = payout_email
+            affiliate.preferred_payout_method = method
+            affiliate.notes = notes
+            affiliate.save(
+                update_fields=[
+                    'display_name',
+                    'company',
+                    'payout_email',
+                    'preferred_payout_method',
+                    'notes',
+                ]
+            )
+            saved = True
+
+    return render(
+        request,
+        'affiliates/settings.html',
+        {
+            'affiliate': affiliate,
+            'method_choices': method_choices,
+            'saved': saved,
+            'error': error,
+            'seo_title': 'Affiliate settings',
+        },
+    )

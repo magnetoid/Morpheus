@@ -1,0 +1,123 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if is_new %}New program{% else %}{{ program.name }}{% endif %} · Affiliates · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-5">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">
+        {% if is_new %}New program{% else %}{{ program.name }}{% endif %}
+      </h1>
+      {% if not is_new %}
+      <p class="text-sm text-[color:var(--text-muted)]">
+        <code class="font-mono text-xs">{{ program.slug }}</code>
+        {% if program.is_active %}<span class="pill pill-success ml-2">Active</span>{% else %}<span class="pill pill-neutral ml-2">Paused</span>{% endif %}
+      </p>
+      {% endif %}
+    </div>
+    <a href="/dashboard/apps/affiliates/programs/" class="btn btn-ghost text-xs">All programs</a>
+  </div>
+
+  {% if not is_new %}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Affiliates</span>
+      <span class="kpi__value">{{ stats.affiliates }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Clicks (30d)</span>
+      <span class="kpi__value">{{ stats.clicks_30 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Conversions (30d)</span>
+      <span class="kpi__value">{{ stats.conversions_30 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Commission paid (lifetime)</span>
+      <span class="kpi__value">{{ stats.commission_paid_lifetime }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">{% if is_new %}Create program{% else %}Edit program{% endif %}</h2>
+    </div>
+    <form method="post" class="card-padded">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{% if is_new %}create{% else %}save{% endif %}">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+        <div class="md:col-span-6">
+          <label class="block text-xs font-medium mb-1">Name</label>
+          <input type="text" name="name" required class="input" value="{% if program %}{{ program.name }}{% endif %}">
+        </div>
+        <div class="md:col-span-6">
+          <label class="block text-xs font-medium mb-1">Slug</label>
+          <input type="text" name="slug" class="input font-mono" value="{% if program %}{{ program.slug }}{% endif %}" placeholder="auto from name">
+        </div>
+        <div class="md:col-span-4">
+          <label class="block text-xs font-medium mb-1">Commission type</label>
+          <select name="commission_type" class="input">
+            <option value="percent" {% if program.commission_type == 'percent' or is_new %}selected{% endif %}>Percent of order</option>
+            <option value="fixed" {% if program.commission_type == 'fixed' %}selected{% endif %}>Fixed amount</option>
+          </select>
+        </div>
+        <div class="md:col-span-4">
+          <label class="block text-xs font-medium mb-1">Commission value</label>
+          <input type="number" name="commission_value" step="0.01" min="0" class="input font-mono" value="{% if program %}{{ program.commission_value }}{% else %}10{% endif %}">
+        </div>
+        <div class="md:col-span-4">
+          <label class="block text-xs font-medium mb-1">Cookie window (days)</label>
+          <input type="number" name="cookie_window_days" min="1" max="365" class="input" value="{% if program %}{{ program.cookie_window_days }}{% else %}30{% endif %}">
+        </div>
+        <div class="md:col-span-12">
+          <label class="block text-xs font-medium mb-1">Description</label>
+          <textarea name="description" rows="3" class="input">{% if program %}{{ program.description }}{% endif %}</textarea>
+        </div>
+        <div class="md:col-span-6 flex items-center gap-2">
+          <input type="checkbox" name="is_active" id="is_active" {% if program.is_active or is_new %}checked{% endif %}>
+          <label for="is_active" class="text-xs">Active (accept new affiliates)</label>
+        </div>
+        <div class="md:col-span-6 text-right">
+          <button class="btn btn-primary" type="submit">{% if is_new %}Create program{% else %}Save changes{% endif %}</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {% if not is_new %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Top 10 affiliates by gross commission</h2>
+    </div>
+    {% if top_affiliates %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Affiliate</th>
+          <th class="text-right">Conversions</th>
+          <th class="text-right">Gross</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in top_affiliates %}
+        <tr>
+          <td>
+            <a href="/dashboard/affiliates/affiliates/{{ row.affiliate.id }}/" class="font-medium">{{ row.affiliate.handle }}</a>
+            <div class="text-xs text-[color:var(--text-muted)]">{{ row.affiliate.user.email }}</div>
+          </td>
+          <td class="text-right">{{ row.conversions }}</td>
+          <td class="text-right font-mono">{{ row.gross }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No conversions yet.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

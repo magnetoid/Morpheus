@@ -1,0 +1,122 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 900px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
+      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Payouts</span>
+    </nav>
+
+    <header style="margin: 0 0 1.5rem;">
+      <p class="eyebrow">@{{ affiliate.handle }}</p>
+      <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Payouts<span class="text-accent">.</span></h1>
+      <p class="lede" style="margin: 0; max-width: 56ch;">Once approved earnings cross the minimum threshold, request a payout. We process requests on the 1st of the following month.</p>
+    </header>
+
+    {% if error %}
+      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem 1.25rem; border-radius:6px; margin-bottom: 1.5rem;">
+        {{ error }}
+      </div>
+    {% endif %}
+    {% if success %}
+      <div class="card card-padded" style="background: rgba(16,185,129,.10); color:#047857; padding:1rem 1.25rem; border-radius:6px; margin-bottom: 1.5rem;">
+        {{ success }}
+      </div>
+    {% endif %}
+
+    {% comment %}── Pending earnings + request form ───────────────────{% endcomment %}
+    <div class="card card-padded aff-payout-head">
+      <div>
+        <p class="eyebrow">Pending earnings</p>
+        <p class="aff-payout-head__amount">{{ pending_earnings }}</p>
+        <p style="color: var(--muted); font-size: .85rem; margin: .25rem 0 0;">
+          Minimum payout: {{ threshold }}.
+          {% if pending_exists %}
+            You already have a payout in flight — wait for it to clear before requesting another.
+          {% elif not can_request %}
+            You'll be able to request once approved earnings reach the threshold.
+          {% endif %}
+        </p>
+      </div>
+      <form method="post" class="aff-payout-form">
+        {% csrf_token %}
+        <label for="method" style="display:block; font-size:.75rem; color:var(--muted); margin-bottom:.25rem;">Method</label>
+        <select name="method" id="method" class="input" style="margin-bottom:.65rem;">
+          <option value="paypal" {% if affiliate.preferred_payout_method == 'paypal' %}selected{% endif %}>PayPal</option>
+          <option value="wire" {% if affiliate.preferred_payout_method == 'wire' %}selected{% endif %}>Bank wire</option>
+          <option value="credit" {% if affiliate.preferred_payout_method == 'credit' %}selected{% endif %}>Store credit (+10%)</option>
+        </select>
+        <button type="submit" class="btn btn-primary" {% if not can_request %}disabled{% endif %}>
+          Request payout
+        </button>
+      </form>
+    </div>
+
+    {% comment %}── History ──────────────────────────────────────────{% endcomment %}
+    <div style="margin-top: 2.5rem;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Past payouts</h2>
+      {% if history %}
+        <div class="aff-table-wrap">
+          <table class="aff-table">
+            <thead>
+              <tr><th>Requested</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th></tr>
+            </thead>
+            <tbody>
+              {% for p in history %}
+              <tr>
+                <td>{{ p.requested_at|date:"M j, Y" }}</td>
+                <td>{{ p.amount }}</td>
+                <td>{{ p.method|default:"—" }}</td>
+                <td><span class="aff-conv-status aff-conv-status--{{ p.status }}">{{ p.get_status_display }}</span></td>
+                <td><code style="font-size:.8rem;">{{ p.external_reference|default:"—" }}</code></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color: var(--muted);">No payouts yet. Once you request one, it'll show up here with its status.</p>
+      {% endif %}
+    </div>
+
+    <p style="font-size: .8rem; color: var(--muted); margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--rule);">
+      Picking <strong>Store credit</strong> instead of cash adds 10% on top — a way to lean into the store if your readers already buy here.
+    </p>
+
+  </div>
+</section>
+
+<style>
+.aff-payout-head {
+  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+  gap: 2rem;
+}
+.aff-payout-head__amount {
+  font-family: var(--serif); font-size: 2.2rem; font-weight: 500;
+  font-variant-numeric: tabular-nums; margin: .35rem 0 0; color: var(--ink);
+}
+.aff-payout-form { min-width: 200px; }
+.aff-payout-form .input { padding: .5rem .65rem; width: 100%; font-family: inherit; }
+.aff-payout-form .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+.aff-table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; }
+.aff-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.aff-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: .6rem .85rem; border-bottom: 1px solid var(--rule); background: var(--paper-2); }
+.aff-table td { padding: .65rem .85rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+.aff-table tr:last-child td { border-bottom: 0; }
+
+.aff-conv-status {
+  font-size: .7rem; padding: .15rem .55rem; border-radius: 999px; font-weight: 500;
+  display: inline-block;
+}
+.aff-conv-status--pending    { background: rgba(245,158,11,.12); color: #b45309; }
+.aff-conv-status--processing { background: rgba(59,130,246,.12); color: #1d4ed8; }
+.aff-conv-status--paid       { background: rgba(16,185,129,.12); color: #047857; }
+.aff-conv-status--failed     { background: rgba(239,68,68,.12);  color: #b91c1c; }
+</style>
+{% endblock %}

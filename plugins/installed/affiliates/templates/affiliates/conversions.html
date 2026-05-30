@@ -1,0 +1,91 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 1000px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
+      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Conversions</span>
+    </nav>
+
+    <header style="display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:1rem; margin: 0 0 1.5rem;">
+      <div>
+        <p class="eyebrow">@{{ affiliate.handle }}</p>
+        <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Conversions<span class="text-accent">.</span></h1>
+        <p class="lede" style="margin: 0; max-width: 56ch;">Every order that landed through one of your links. Approved rows count toward your next payout; pending rows are still inside the refund window.</p>
+      </div>
+      <a href="?{% if status %}status={{ status }}&{% endif %}export=csv" class="btn">Export CSV</a>
+    </header>
+
+    {% comment %}── Filter pills ──────────────────────────────────────{% endcomment %}
+    <div class="aff-pills">
+      <a href="?" class="aff-pill {% if not status %}aff-pill--on{% endif %}">All</a>
+      <a href="?status=approved" class="aff-pill {% if status == 'approved' %}aff-pill--on{% endif %}">Approved</a>
+      <a href="?status=pending"  class="aff-pill {% if status == 'pending' %}aff-pill--on{% endif %}">Pending</a>
+      <a href="?status=rejected" class="aff-pill {% if status == 'rejected' %}aff-pill--on{% endif %}">Refunded</a>
+      <a href="?status=paid"     class="aff-pill {% if status == 'paid' %}aff-pill--on{% endif %}">Paid</a>
+    </div>
+
+    {% if conversions %}
+      <div class="aff-table-wrap">
+        <table class="aff-table">
+          <thead>
+            <tr><th>Date</th><th>Order #</th><th>Gross</th><th>Commission</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for c in conversions %}
+            <tr>
+              <td>{{ c.created_at|date:"M j, Y · H:i" }}</td>
+              <td><code>#{{ c.order.order_number|default:c.order_id }}</code></td>
+              <td>{{ c.order.total }}</td>
+              <td>+{{ c.commission }}</td>
+              <td><span class="aff-conv-status aff-conv-status--{{ c.status }}">{{ c.get_status_display }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p style="color:var(--muted); font-size:.8rem; margin-top:.85rem;">Showing latest {{ conversions|length }} conversion{{ conversions|length|pluralize }}{% if conversions|length == 100 %} (page cap){% endif %}.</p>
+    {% else %}
+      <div class="aff-empty">
+        <p style="font-family: var(--serif); font-size: 1.15rem; margin: 0 0 .5rem;">No conversions yet.</p>
+        <p style="color: var(--muted); margin: 0;">When a reader buys through one of your links, it'll show up here within minutes.</p>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+
+<style>
+.aff-pills { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.aff-pills .aff-pill {
+  display: inline-block; padding: .35rem .85rem; border-radius: 999px;
+  background: var(--paper-2); color: var(--ink-2); font-size: .85rem;
+  text-decoration: none; border: 1px solid transparent;
+}
+.aff-pills .aff-pill:hover { border-color: var(--rule); }
+.aff-pills .aff-pill--on { background: var(--ink); color: var(--paper); font-weight: 600; }
+
+.aff-table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; }
+.aff-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.aff-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: .6rem .85rem; border-bottom: 1px solid var(--rule); background: var(--paper-2); }
+.aff-table td { padding: .65rem .85rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+.aff-table tr:last-child td { border-bottom: 0; }
+
+.aff-conv-status {
+  font-size: .7rem; padding: .15rem .55rem; border-radius: 999px; font-weight: 500;
+  display: inline-block;
+}
+.aff-conv-status--approved { background: rgba(16,185,129,.12); color: #047857; }
+.aff-conv-status--pending  { background: rgba(245,158,11,.12); color: #b45309; }
+.aff-conv-status--rejected,
+.aff-conv-status--refunded { background: rgba(239,68,68,.12);  color: #b91c1c; }
+.aff-conv-status--paid     { background: rgba(99,102,241,.12); color: #4338ca; }
+
+.aff-empty { text-align: center; padding: 3rem 2rem; background: var(--paper-2); border-radius: 12px; }
+</style>
+{% endblock %}

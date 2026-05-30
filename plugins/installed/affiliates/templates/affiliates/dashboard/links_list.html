@@ -12,13 +12,42 @@
         Every tracking link in circulation. Click counts roll up via the storefront redirect; conversion counts roll up on order placement.
       </p>
     </div>
-    <div class="flex items-center gap-1.5 text-xs">
-      <span class="text-[color:var(--text-muted)]">Sort by:</span>
-      <a href="?sort=clicks" class="btn btn-ghost text-xs {% if sort == 'clicks' %}is-active{% endif %}">Clicks</a>
-      <a href="?sort=conversions" class="btn btn-ghost text-xs {% if sort == 'conversions' %}is-active{% endif %}">Conversions</a>
-      <a href="?sort=recent" class="btn btn-ghost text-xs {% if sort == 'recent' %}is-active{% endif %}">Recent</a>
-    </div>
+    <a href="?export=csv{% if affiliate_filter %}&affiliate={{ affiliate_filter }}{% endif %}{% if program_filter %}&program={{ program_filter }}{% endif %}" class="btn btn-ghost text-xs">Export CSV</a>
   </div>
+
+  <form method="get" class="card card-padded">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1">Affiliate</label>
+        <select name="affiliate" class="input">
+          <option value="">— Any —</option>
+          {% for a in affiliates %}
+          <option value="{{ a.id }}" {% if affiliate_filter == a.id|stringformat:'s' %}selected{% endif %}>{{ a.handle }} ({{ a.user.email|default:"—" }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium mb-1">Program</label>
+        <select name="program" class="input">
+          <option value="">— Any —</option>
+          {% for p in programs %}
+          <option value="{{ p.id }}" {% if program_filter == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium mb-1">Sort</label>
+        <select name="sort" class="input">
+          <option value="clicks" {% if sort == 'clicks' %}selected{% endif %}>Clicks</option>
+          <option value="conversions" {% if sort == 'conversions' %}selected{% endif %}>Conversions</option>
+          <option value="recent" {% if sort == 'recent' %}selected{% endif %}>Recent</option>
+        </select>
+      </div>
+      <div class="md:col-span-2">
+        <button type="submit" class="btn btn-primary text-xs w-full">Apply</button>
+      </div>
+    </div>
+  </form>
 
   <div class="card overflow-hidden">
     {% if links %}
@@ -42,7 +71,7 @@
             {% if l.label %}<div class="text-xs text-[color:var(--text-muted)]">{{ l.label }}</div>{% endif %}
           </td>
           <td>
-            {% if l.affiliate.handle %}<span class="font-medium">{{ l.affiliate.handle }}</span>{% endif %}
+            <a href="/dashboard/affiliates/affiliates/{{ l.affiliate.id }}/" class="font-medium">{{ l.affiliate.handle }}</a>
             <div class="text-xs text-[color:var(--text-muted)]">{{ l.affiliate.user.email }}</div>
           </td>
           <td class="text-xs text-[color:var(--text-muted)]" style="max-width:240px;">
@@ -61,7 +90,7 @@
     </table>
     {% else %}
     <div class="card-padded text-sm text-[color:var(--text-muted)]">
-      No links yet. Approved affiliates can mint their own tracking links from the storefront self-service page.
+      No links match the current filter.
     </div>
     {% endif %}
   </div>

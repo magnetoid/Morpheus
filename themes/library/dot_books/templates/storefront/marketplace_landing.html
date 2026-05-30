@@ -9,11 +9,16 @@
 {% block content %}
 <section style="padding: 4rem 0 2.5rem;">
   <div class="wrap">
-    <p class="meta" style="margin-bottom: 1.5rem;">
-      <a href="/" style="color: var(--muted);">Home</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      Marketplace
-    </p>
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
     <p class="eyebrow">The marketplace</p>
     <h1 class="display display-xl" style="margin: 1rem 0 1.25rem; max-width: 18ch;">
       A marketplace of independent presses<span class="text-accent">.</span>
@@ -147,6 +152,18 @@
           <p>No. We're the shelf. The presses are the publishers. Each title here was made by one of them.</p>
         </details>
       {% endif %}
+    </div>
+  </div>
+</section>
+
+<section style="padding: 0 0 5rem;">
+  <div class="wrap">
+    <div style="border-top: 1px solid var(--rule); padding-top: 2rem; max-width: 60ch;">
+      <p class="eyebrow">Recommend our shop</p>
+      <p class="lede" style="margin: .5rem 0 1rem;">
+        If you write about books — earn a commission on every order tracked through your link.
+      </p>
+      <a href="/affiliates/apply/" class="btn-link">Join our affiliate program</a>
     </div>
   </div>
 </section>

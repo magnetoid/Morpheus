@@ -2,28 +2,95 @@
 {% block title %}Payouts · Morpheus admin{% endblock %}
 
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Affiliate payouts</h1>
-<div class="card">
-  <table class="morph-table">
-    <thead>
-      <tr><th>Created</th><th>Affiliate</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th></tr>
-    </thead>
-    <tbody>
-      {% for p in payouts %}
-      <tr>
-        <td>{{ p.requested_at|date:"M j, H:i" }}</td>
-        <td><code>{{ p.affiliate.handle }}</code> <span class="text-xs text-[color:var(--text-muted)]">{{ p.affiliate.user.email|default:"" }}</span></td>
-        <td class="tabular-nums">{{ p.amount }}</td>
-        <td>{{ p.method|default:"—" }}</td>
-        <td>
-          <span class="pill {% if p.status == 'paid' %}pill-success{% elif p.status == 'pending' %}pill-warn{% else %}pill-neutral{% endif %}">{{ p.status }}</span>
-        </td>
-        <td><code>{{ p.external_reference|default:"—" }}</code></td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-muted);">No payouts yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Affiliate payouts</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Pending {{ totals.pending|default:0 }} · Processing {{ totals.processing|default:0 }} · Paid {{ totals.paid|default:0 }}
+      </p>
+    </div>
+    <a href="?export=csv{% if status_filter %}&status={{ status_filter }}{% endif %}" class="btn btn-ghost text-xs">Export CSV</a>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+    <a href="?" class="btn btn-ghost text-xs {% if not status_filter %}is-active{% endif %}">All</a>
+    <a href="?status=pending" class="btn btn-ghost text-xs {% if status_filter == 'pending' %}is-active{% endif %}">Pending</a>
+    <a href="?status=processing" class="btn btn-ghost text-xs {% if status_filter == 'processing' %}is-active{% endif %}">Processing</a>
+    <a href="?status=paid" class="btn btn-ghost text-xs {% if status_filter == 'paid' %}is-active{% endif %}">Paid</a>
+    <a href="?status=failed" class="btn btn-ghost text-xs {% if status_filter == 'failed' %}is-active{% endif %}">Failed</a>
+  </div>
+
+  <form method="post" class="card overflow-hidden">
+    {% csrf_token %}
+    <div class="card-padded border-b border-[color:var(--border)] flex flex-wrap items-center gap-2">
+      <span class="text-xs text-[color:var(--text-muted)]">Bulk:</span>
+      <button class="btn btn-ghost text-xs" type="submit" name="action" value="bulk_mark_paid" data-confirm="Mark selected payouts as paid?" data-confirm-cta="Mark paid">Mark paid</button>
+      <span class="text-xs text-[color:var(--text-muted)] ml-auto">{{ payouts|length }} shown</span>
+    </div>
+
+    {% if payouts %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th style="width:2rem;"><input type="checkbox" data-bulk-toggle></th>
+          <th>Created</th>
+          <th>Affiliate</th>
+          <th>Amount</th>
+          <th>Method</th>
+          <th>Status</th>
+          <th>Reference</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payouts %}
+        <tr>
+          <td><input type="checkbox" name="payout_ids" value="{{ p.id }}"></td>
+          <td class="text-xs">{{ p.requested_at|date:"M j, H:i" }}</td>
+          <td>
+            <a href="/dashboard/affiliates/affiliates/{{ p.affiliate.id }}/" class="font-medium">{{ p.affiliate.handle }}</a>
+            <div class="text-xs text-[color:var(--text-muted)]">{{ p.affiliate.user.email|default:"" }}</div>
+          </td>
+          <td class="tabular-nums font-mono">{{ p.amount }}</td>
+          <td>{{ p.method|default:"—" }}</td>
+          <td>
+            <span class="pill {% if p.status == 'paid' %}pill-success{% elif p.status == 'pending' %}pill-warn{% elif p.status == 'failed' %}pill-danger{% else %}pill-neutral{% endif %}">{{ p.status }}</span>
+          </td>
+          <td><code class="text-xs">{{ p.external_reference|default:"—" }}</code></td>
+          <td class="text-right">
+            {% if p.status == 'pending' or p.status == 'processing' %}
+            <button class="btn btn-ghost text-xs" type="submit" name="action" value="mark_paid" form="po-{{ p.id }}">Mark paid</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No payouts yet.</div>
+    {% endif %}
+  </form>
+
+  {% for p in payouts %}
+  <form id="po-{{ p.id }}" method="post" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="payout_id" value="{{ p.id }}">
+  </form>
+  {% endfor %}
 </div>
+
+<script>
+  (function(){
+    var t = document.querySelector('input[data-bulk-toggle]');
+    if (!t) return;
+    t.addEventListener('change', function(){
+      document.querySelectorAll('input[name="payout_ids"]').forEach(function(cb){
+        cb.checked = t.checked;
+      });
+    });
+  })();
+</script>
 {% endblock %}
