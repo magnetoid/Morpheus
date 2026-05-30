@@ -18,7 +18,7 @@
           {{ address.address_line1 }}{% if address.address_line2 %}, {{ address.address_line2 }}{% endif %}<br>
           {{ address.city }}{% if address.state %}, {{ address.state }}{% endif %} {{ address.postal_code }}<br>
           {{ address.country }}</p>
-          <p style="margin-top:.5rem;"><a href="/checkout/" style="text-decoration:underline;">Edit address</a></p>
+          <p style="margin-top:.5rem;"><a href="{% url 'storefront:checkout' %}" style="text-decoration:underline;">Edit address</a></p>
         </div>
 
         <fieldset style="border: 0; padding: 0; margin: 0;">

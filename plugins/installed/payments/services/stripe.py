@@ -1,14 +1,140 @@
+import logging
+
 import stripe
 from django.conf import settings
 from plugins.installed.payments.models import PaymentTransaction
 from plugins.registry import plugin_registry
+
+logger = logging.getLogger('morpheus.payments.stripe')
+
+
+# ── Saved-card vault helpers ──────────────────────────────────────────────────
+#
+# Stripe stores cards against a Customer object. We mint one lazily the
+# first time a logged-in shopper needs a vault (saved cards on
+# checkout, the /account/payment-methods/ page, an off-session retry, …)
+# and stash its id on Customer.stripe_customer_id so every future call
+# is idempotent. We never delete this even if the customer detaches
+# every card — re-using the same `cus_…` keeps Stripe-side analytics
+# stable.
+
+
+def _ensure_api_key():
+    stripe.api_key = PaymentService.get_stripe_api_key()
+
+
+def get_or_create_stripe_customer(customer) -> str:
+    """Return the Stripe Customer id for this user, creating one if needed.
+
+    Idempotent: a non-empty `customer.stripe_customer_id` is returned
+    untouched. The metadata link back to the Morpheus customer pk lets
+    Stripe-side support pivot between the two systems.
+    """
+    if not customer or not getattr(customer, 'is_authenticated', True):
+        raise ValueError('Anonymous customers cannot save payment methods.')
+    existing = (getattr(customer, 'stripe_customer_id', '') or '').strip()
+    if existing:
+        return existing
+    _ensure_api_key()
+    sc = stripe.Customer.create(
+        email=getattr(customer, 'email', '') or '',
+        name=getattr(customer, 'full_name', '') or getattr(customer, 'email', '') or '',
+        metadata={'morpheus_customer_id': str(customer.pk)},
+    )
+    customer.stripe_customer_id = sc.id
+    customer.save(update_fields=['stripe_customer_id'])
+    return sc.id
+
+
+def create_setup_intent(customer) -> str:
+    """Mint a SetupIntent for collecting a card without an immediate charge.
+
+    Returns the `client_secret` the front end mounts in a Stripe Element.
+    """
+    cus_id = get_or_create_stripe_customer(customer)
+    _ensure_api_key()
+    si = stripe.SetupIntent.create(
+        customer=cus_id,
+        payment_method_types=['card'],
+        usage='off_session',
+        metadata={'morpheus_customer_id': str(customer.pk)},
+    )
+    return si.client_secret
+
+
+def list_payment_methods(customer) -> list:
+    """Return the customer's saved cards from Stripe (empty list if none).
+
+    Fail-soft: returns [] if the customer has no `stripe_customer_id`
+    yet — there's nothing to list, no need to round-trip to Stripe."""
+    sc_id = (getattr(customer, 'stripe_customer_id', '') or '').strip()
+    if not sc_id:
+        return []
+    _ensure_api_key()
+    resp = stripe.PaymentMethod.list(customer=sc_id, type='card')
+    return list(getattr(resp, 'data', []) or [])
+
+
+def detach_payment_method(payment_method_id: str, customer) -> bool:
+    """Detach a card from this customer's vault after verifying ownership.
+
+    The ownership check defeats a CSRF or guessed-id attack: even if an
+    attacker submits a valid `pm_…` they don't own, Stripe-side it'd
+    belong to a different Customer and we refuse to detach.
+    """
+    sc_id = (getattr(customer, 'stripe_customer_id', '') or '').strip()
+    if not (sc_id and payment_method_id):
+        return False
+    _ensure_api_key()
+    pm = stripe.PaymentMethod.retrieve(payment_method_id)
+    if (getattr(pm, 'customer', '') or '') != sc_id:
+        return False
+    stripe.PaymentMethod.detach(payment_method_id)
+    return True
+
+
+def _maybe_attach_to_saved_cards(order, payment_intent_id: str) -> None:
+    """After a PaymentIntent confirms, attach the card to the customer's
+    Stripe vault IF the shopper opted in (`order.metadata.save_card`).
+
+    Lives here (and not in the customers plugin) so the side effect
+    rides on the existing webhook idempotency guarantees. Failures are
+    logged and swallowed: a vault attach failure must not poison the
+    success path of a paid order.
+    """
+    try:
+        customer = getattr(order, 'customer', None)
+        if customer is None or not payment_intent_id:
+            return
+        md = getattr(order, 'metadata', None) or {}
+        flag = md.get('save_card') if isinstance(md, dict) else None
+        if not flag:
+            return
+        cus_id = get_or_create_stripe_customer(customer)
+        _ensure_api_key()
+        pi = stripe.PaymentIntent.retrieve(payment_intent_id)
+        pm_id = getattr(pi, 'payment_method', '') or ''
+        if not pm_id:
+            return
+        pm = stripe.PaymentMethod.retrieve(pm_id)
+        # Already attached to this customer? Nothing to do.
+        if (getattr(pm, 'customer', '') or '') == cus_id:
+            return
+        stripe.PaymentMethod.attach(pm_id, customer=cus_id)
+    except Exception:  # noqa: BLE001 — never break ORDER_PAID over a vault hiccup
+        logger.warning(
+            'save-card attach failed for order %s',
+            getattr(order, 'pk', '?'),
+            exc_info=True,
+        )
+
 
 class PaymentService:
     """
     Law 5: Business Logic Lives in Services
     Handles interactions with Stripe and internal transaction records.
     """
-    
+
     @classmethod
     def get_stripe_api_key(cls):
         plugin = plugin_registry.get('payments')
@@ -22,10 +148,10 @@ class PaymentService:
         Creates a Stripe PaymentIntent for a given Order.
         """
         stripe.api_key = cls.get_stripe_api_key()
-        
+
         # Calculate amount in cents
         amount_cents = int(order.total.amount * 100)
-        
+
         try:
             # idempotency_key prevents duplicate intents on retry — if Stripe
             # has already seen the same key + amount, it returns the original
@@ -34,29 +160,27 @@ class PaymentService:
                 amount=amount_cents,
                 currency=order.total.currency.code.lower(),
                 metadata={'order_id': str(order.id), 'order_number': order.order_number},
+                # Let Stripe enable every payment method the merchant has
+                # turned on in the dashboard (cards, Apple Pay, Google Pay,
+                # Link, Klarna, …). Required for the Express Checkout +
+                # Payment Element combo to render wallets.
+                automatic_payment_methods={'enabled': True},
                 idempotency_key=f'pi-{order.id}-{amount_cents}',
             )
-            
+
             # Record the pending transaction
             tx = PaymentTransaction.objects.create(
                 order=order,
                 amount=order.total,
                 status=PaymentTransaction.Status.PENDING,
                 provider='stripe',
-                provider_transaction_id=intent.id
+                provider_transaction_id=intent.id,
             )
-            
-            return {
-                "success": True,
-                "client_secret": intent.client_secret,
-                "transaction_id": tx.id
-            }
+
+            return {'success': True, 'client_secret': intent.client_secret, 'transaction_id': tx.id}
         except stripe.error.StripeError as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-            
+            return {'success': False, 'error': str(e)}
+
     @classmethod
     def process_webhook(cls, payload, sig_header):
         """
@@ -75,17 +199,17 @@ class PaymentService:
         from plugins.installed.payments.models import StripeWebhookEvent
 
         plugin = plugin_registry.get('payments')
-        webhook_secret = plugin.get_config_value('stripe_webhook_secret', settings.STRIPE_WEBHOOK_SECRET)
+        webhook_secret = plugin.get_config_value(
+            'stripe_webhook_secret', settings.STRIPE_WEBHOOK_SECRET
+        )
         stripe.api_key = cls.get_stripe_api_key()
 
         try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, webhook_secret
-            )
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
         except ValueError as e:
-            raise Exception("Invalid payload") from e
+            raise Exception('Invalid payload') from e
         except stripe.error.SignatureVerificationError as e:
-            raise Exception("Invalid signature") from e
+            raise Exception('Invalid signature') from e
 
         try:
             event_row = StripeWebhookEvent.objects.create(
@@ -105,7 +229,9 @@ class PaymentService:
                 cls._mark_transaction_success(payment_intent.id)
             elif event.type == 'payment_intent.payment_failed':
                 payment_intent = event.data.object
-                cls._mark_transaction_failed(payment_intent.id, payment_intent.last_payment_error.message)
+                cls._mark_transaction_failed(
+                    payment_intent.id, payment_intent.last_payment_error.message
+                )
         except Exception as exc:  # noqa: BLE001 — record + re-raise so Stripe retries
             event_row.error = str(exc)[:5000]
             event_row.save(update_fields=['error'])
@@ -125,8 +251,7 @@ class PaymentService:
 
         with db_tx.atomic():
             tx = (
-                PaymentTransaction.objects
-                .select_for_update()
+                PaymentTransaction.objects.select_for_update()
                 .filter(provider_transaction_id=intent_id)
                 .first()
             )
@@ -148,6 +273,13 @@ class PaymentService:
             else:
                 order.save(update_fields=['payment_status'])
 
+        # Saved-card vault: if the shopper opted in at checkout (stored
+        # on order.metadata.save_card), attach the card they just used
+        # to their Stripe Customer so it's available for off-session
+        # reuse. Runs OUTSIDE the DB transaction — a Stripe RTT inside a
+        # locked row would hold the lock far longer than necessary.
+        _maybe_attach_to_saved_cards(order, intent_id)
+
         # Fire AFTER the transaction commits so subscribers see the new
         # row state and don't have to worry about partial writes.
         hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
@@ -163,10 +295,10 @@ class PaymentService:
         success-then-refund history.
         """
         from django.db import transaction as db_tx
+
         with db_tx.atomic():
             tx = (
-                PaymentTransaction.objects
-                .select_for_update()
+                PaymentTransaction.objects.select_for_update()
                 .filter(provider_transaction_id=intent_id)
                 .first()
             )

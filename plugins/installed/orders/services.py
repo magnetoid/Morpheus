@@ -1,4 +1,5 @@
 """Order + cart services."""
+
 from __future__ import annotations
 
 import logging
@@ -16,7 +17,6 @@ logger = logging.getLogger('morpheus.orders')
 
 
 class CartService:
-
     @classmethod
     def get_or_create_cart(cls, session_key: str = '', customer=None) -> Cart:
         if customer:
@@ -27,8 +27,12 @@ class CartService:
 
     @classmethod
     def add_item(
-        cls, cart: Cart, product_id: str, quantity: int = 1,
-        variant_id: Optional[str] = None, currency: Optional[str] = None,
+        cls,
+        cart: Cart,
+        product_id: str,
+        quantity: int = 1,
+        variant_id: Optional[str] = None,
+        currency: Optional[str] = None,
     ) -> CartItem:
         """Add a line item, picking the buyer-currency override if available.
 
@@ -53,13 +57,45 @@ class CartService:
         unit_price = _resolve_unit_price(target, currency, fallback=product)
 
         item, created = CartItem.objects.get_or_create(
-            cart=cart, product=product, variant=variant,
+            cart=cart,
+            product=product,
+            variant=variant,
             defaults={'quantity': quantity, 'unit_price': unit_price},
         )
         if not created:
             item.quantity += quantity
             item.save(update_fields=['quantity'])
         return item
+
+
+@transaction.atomic
+def merge_carts(*, source_cart: Cart, target_cart: Cart) -> Cart:
+    """Move items from ``source_cart`` into ``target_cart`` and delete the source.
+
+    When the target already has a line with the same product+variant,
+    quantities are summed (the unique_together on CartItem otherwise
+    blocks a naive reparent). The source cart is deleted at the end.
+
+    Returns the (possibly mutated) target cart.
+    """
+    if source_cart.pk == target_cart.pk:
+        return target_cart
+
+    for item in source_cart.items.all():
+        existing = target_cart.items.filter(
+            product=item.product,
+            variant=item.variant,
+        ).first()
+        if existing is None:
+            item.cart = target_cart
+            item.save(update_fields=['cart'])
+        else:
+            existing.quantity = existing.quantity + item.quantity
+            existing.save(update_fields=['quantity'])
+            item.delete()
+
+    source_cart.delete()
+    return target_cart
 
 
 def _resolve_unit_price(target, currency: Optional[str], *, fallback) -> Money:
@@ -88,7 +124,6 @@ def _resolve_unit_price(target, currency: Optional[str], *, fallback) -> Money:
 
 
 class OrderService:
-
     @classmethod
     def calculate_cart_breakdown(
         cls,
@@ -174,8 +209,11 @@ class OrderService:
     @classmethod
     @transaction.atomic
     def create_from_cart(
-        cls, cart: Cart, email: str,
-        shipping_address: Dict, billing_address: Dict,
+        cls,
+        cart: Cart,
+        email: str,
+        shipping_address: Dict,
+        billing_address: Dict,
     ) -> Order:
         if not cart.items.exists():
             raise ValueError('Cannot place an order from an empty cart.')
@@ -242,7 +280,11 @@ class OrderService:
 
             applied_promos = meta.get('applied_promotions') or []
             if applied_promos:
-                from plugins.installed.promotions.services import AppliedPromotion, record_application
+                from plugins.installed.promotions.services import (
+                    AppliedPromotion,
+                    record_application,
+                )
+
                 for p in applied_promos:
                     try:
                         ap = AppliedPromotion(
@@ -266,18 +308,14 @@ class OrderService:
             if cart.coupon_id:
                 from django.db.models import F
                 from plugins.installed.marketing.models import CouponUsage, Coupon
+
                 coupon_meta = meta.get('coupon') or {}
                 coupon_discount = Decimal(str(coupon_meta.get('discount_amount') or '0'))
                 if coupon_discount > 0:
                     # Lock the Coupon row so two concurrent checkouts can't
                     # both bypass `usage_limit` (each would otherwise read
                     # times_used=N, both apply, both increment).
-                    locked = (
-                        Coupon.objects
-                        .select_for_update()
-                        .filter(id=cart.coupon_id)
-                        .first()
-                    )
+                    locked = Coupon.objects.select_for_update().filter(id=cart.coupon_id).first()
                     if locked is not None and (
                         not locked.usage_limit or locked.times_used < locked.usage_limit
                     ):
@@ -313,6 +351,7 @@ class OrderService:
         if gift_card_meta and getattr(cart, 'gift_card_id', None):
             try:
                 from plugins.installed.gift_cards.services import redeem as gc_redeem
+
                 applied_amount = Money(
                     Decimal(str(gift_card_meta.get('amount') or '0')),
                     currency,
@@ -327,7 +366,9 @@ class OrderService:
             except (ValueError, LookupError, ImportError) as e:
                 logger.warning(
                     'orders: gift-card redeem failed for order %s: %s',
-                    order.order_number, e, exc_info=True,
+                    order.order_number,
+                    e,
+                    exc_info=True,
                 )
                 try:
                     order.metadata = order.metadata or {}
@@ -338,6 +379,7 @@ class OrderService:
                     pass
                 try:
                     from core.audit.services import record as audit_record
+
                     audit_record(
                         event_type='order.gift_card_redeem_failed',
                         actor_user=getattr(cart, 'customer', None),
@@ -359,7 +401,9 @@ class OrderService:
         ):
             cart.coupon = None
             cart.gift_card = None
-            cart.metadata = {k: v for k, v in (cart.metadata or {}).items() if k != 'shipping_rate_id'}
+            cart.metadata = {
+                k: v for k, v in (cart.metadata or {}).items() if k != 'shipping_rate_id'
+            }
             cart.save(update_fields=['coupon', 'gift_card', 'metadata', 'updated_at'])
 
         hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)

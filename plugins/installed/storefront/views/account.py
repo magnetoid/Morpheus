@@ -4,7 +4,11 @@ credits, downloads, order confirmation. All guarded by _login_required.
 
 from __future__ import annotations
 
+import logging
+
 from morpheus.views import render
+
+logger = logging.getLogger(__name__)
 
 
 def _login_required(request, target):
@@ -31,14 +35,14 @@ def _account_summary(user) -> dict:
         from plugins.installed.loyalty_points.services import get_balance as _lb
 
         s['loyalty_points'] = _lb(user)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_summary.loyalty failed: %s', e, exc_info=True)
     try:
         from plugins.installed.orders.models import Order
 
         s['orders_count'] = Order.objects.filter(customer=user).count()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_summary.orders_count failed: %s', e, exc_info=True)
     try:
         from plugins.installed.orders.refunds import ReturnRequest
 
@@ -46,14 +50,14 @@ def _account_summary(user) -> dict:
             order__customer=user,
             state__in=('requested', 'approved', 'received'),
         ).count()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_summary.pending_returns failed: %s', e, exc_info=True)
     try:
         from plugins.installed.orders import store_credit as _sc
 
         s['store_credit_balance'] = _sc.balance(user)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_summary.store_credit failed: %s', e, exc_info=True)
     try:
         from plugins.installed.gift_cards.models import GiftCard
         from decimal import Decimal
@@ -72,8 +76,8 @@ def _account_summary(user) -> dict:
             from djmoney.money import Money
 
             s['gift_card_total'] = Money(total, currency)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_summary.gift_cards failed: %s', e, exc_info=True)
     try:
         from plugins.installed.digital_products.models import DownloadToken
         from django.utils import timezone
@@ -83,8 +87,8 @@ def _account_summary(user) -> dict:
             expires_at__gt=timezone.now(),
             revoked_at__isnull=True,
         ).count()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_summary.download_count failed: %s', e, exc_info=True)
     return s
 
 
@@ -338,8 +342,8 @@ def account_credits(request):
         txns = list(
             StoreCreditTxn.objects.filter(customer=request.user).order_by('-created_at')[:30]
         )
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_credits.store_credit failed: %s', e, exc_info=True)
     try:
         from plugins.installed.gift_cards.models import GiftCard
 
@@ -348,8 +352,8 @@ def account_credits(request):
                 '-created_at'
             )
         )
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_credits.gift_cards failed: %s', e, exc_info=True)
     return render(
         request,
         'storefront/account_credits.html',
@@ -381,8 +385,8 @@ def account_downloads(request):
         for t in tokens:
             t.is_expired = bool(t.expires_at and t.expires_at <= now)
             t.is_exhausted = t.downloads_used >= t.max_downloads
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_downloads.tokens failed: %s', e, exc_info=True)
     return render(
         request,
         'storefront/account_downloads.html',
@@ -463,6 +467,63 @@ def account_delete(request):
         request,
         'storefront/account_delete.html',
         {'user': request.user, 'error': error},
+    )
+
+
+def account_payment_methods(request):
+    """Saved card vault — list + add (SetupIntent) + delete.
+
+    GET renders the cards from Stripe plus a SetupIntent client_secret
+    the page mounts in a Stripe Payment Element for the add-card flow.
+    POST with `delete_id` detaches a single card. We never store the
+    pm_… on our side; Stripe is the source of truth.
+    """
+    redirect_resp = _login_required(request, '/account/payment-methods/')
+    if redirect_resp is not None:
+        return redirect_resp
+
+    from django.conf import settings as dj_settings
+    from django.shortcuts import redirect as _redirect
+
+    from plugins.installed.payments.services import stripe as stripe_svc
+
+    error = ''
+    notice = ''
+
+    if request.method == 'POST':
+        pm_id = (request.POST.get('delete_id') or '').strip()
+        if pm_id:
+            try:
+                ok = stripe_svc.detach_payment_method(pm_id, request.user)
+                notice = 'Card removed.' if ok else "We couldn't find that card on your account."
+            except Exception:  # noqa: BLE001
+                error = "We couldn't remove that card. Try again in a moment."
+        return _redirect('storefront:account_payment_methods')
+
+    cards: list = []
+    client_secret = ''
+    try:
+        cards = stripe_svc.list_payment_methods(request.user)
+    except Exception:  # noqa: BLE001
+        error = "We couldn't load your saved cards just now. Please refresh."
+    try:
+        client_secret = stripe_svc.create_setup_intent(request.user)
+    except Exception:  # noqa: BLE001
+        # Setup intent is only needed for the add-card mount; if it
+        # fails the list still renders, the add form just won't.
+        client_secret = ''
+
+    return render(
+        request,
+        'storefront/account_payment_methods.html',
+        {
+            'cards': cards,
+            'setup_client_secret': client_secret,
+            'stripe_publishable_key': getattr(dj_settings, 'STRIPE_PUBLIC_KEY', '') or '',
+            'return_url': request.build_absolute_uri('/account/payment-methods/'),
+            'error': error,
+            'notice': notice,
+        },
     )
 
 

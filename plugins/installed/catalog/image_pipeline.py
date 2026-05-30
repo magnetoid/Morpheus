@@ -13,12 +13,14 @@ configured yet.
 
 Phase 4 of docs/plans/product-slider.md.
 """
+
 from __future__ import annotations
 
 import logging
 from io import BytesIO
 
 from django.core.files.base import ContentFile
+from PIL import features as _pil_features
 
 logger = logging.getLogger('morpheus.catalog.image_pipeline')
 
@@ -28,8 +30,22 @@ _DEFAULTS = {
     'default_image_format': 'webp',
     'pdp_image_width': 800,
     'pdp_image_height': 1200,
-    'enable_avif_variant': False,
+    'enable_avif_variant': True,
 }
+
+
+def _pillow_supports_avif() -> bool:
+    """True iff this Pillow build can encode AVIF.
+
+    AVIF support requires Pillow >= 11 plus a build linked against
+    libavif. Older / minimal builds raise at save() time, which would
+    poison the variant-gen for the entire image. Cheap one-shot check
+    so callers can downgrade to WebP transparently.
+    """
+    try:
+        return bool(_pil_features.check('avif'))
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _settings() -> dict:
@@ -40,7 +56,8 @@ def _settings() -> dict:
     """
     out = dict(_DEFAULTS)
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import plugin_registry  # noqa: PLC0415
+
         # Both `.get` and `.get_plugin` show up in different builds —
         # try both. (Same pattern as ai_assistant/services/config.py.)
         plugin = None
@@ -49,7 +66,7 @@ def _settings() -> dict:
             if callable(fn):
                 try:
                     plugin = fn('catalog')
-                except Exception:  # noqa: BLE001
+                except Exception:  # noqa: BLE001, S112
                     continue
                 if plugin is not None:
                     break
@@ -61,13 +78,15 @@ def _settings() -> dict:
             return out
         # Pull recognised keys, skip empty values so defaults survive.
         for key in (
-            'default_image_format', 'pdp_image_width',
-            'pdp_image_height', 'enable_avif_variant',
+            'default_image_format',
+            'pdp_image_width',
+            'pdp_image_height',
+            'enable_avif_variant',
         ):
             v = cfg.get(key)
             if v not in (None, ''):
                 out[key] = v
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     # Coerce numeric fields and clamp to sane ranges.
     try:
@@ -82,7 +101,20 @@ def _settings() -> dict:
     if fmt == 'jpeg':
         fmt = 'jpg'
     out['default_image_format'] = fmt
+    _downgrade_avif_if_unsupported(out)
     return out
+
+
+def _downgrade_avif_if_unsupported(out: dict) -> None:
+    """AVIF needs a Pillow build linked against libavif. Fall back to WebP
+    silently so an under-built image doesn't 500 the upload pipeline.
+    Mutates `out` in place.
+    """
+    if _pillow_supports_avif():
+        return
+    if out.get('default_image_format') == 'avif':
+        out['default_image_format'] = 'webp'
+    out['enable_avif_variant'] = False
 
 
 def _ext_for(fmt: str) -> str:
@@ -101,7 +133,7 @@ def generate_pdp_variant(product_image) -> None:
     Raises on PIL / IO failure — callers wrap in try/except so a bad
     upload doesn't block the user-facing save.
     """
-    from PIL import Image as PILImage
+    from PIL import Image as PILImage  # noqa: PLC0415
 
     settings_ = _settings()
     fmt = settings_['default_image_format']
@@ -140,7 +172,7 @@ def generate_pdp_variant(product_image) -> None:
         save_kwargs['quality'] = 82
         save_kwargs['method'] = 4
     elif fmt == 'avif':
-        save_kwargs['quality'] = 60   # AVIF compresses better at lower quality
+        save_kwargs['quality'] = 60  # AVIF compresses better at lower quality
     elif fmt == 'jpg':
         save_kwargs['quality'] = 85
         save_kwargs['optimize'] = True
@@ -159,5 +191,10 @@ def generate_pdp_variant(product_image) -> None:
     )
     logger.info(
         'pdp variant: pk=%s fmt=%s %dx%d → %dx%d',
-        product_image.pk, fmt, pil.width, pil.height, target_w, target_h,
+        product_image.pk,
+        fmt,
+        pil.width,
+        pil.height,
+        target_w,
+        target_h,
     )

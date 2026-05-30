@@ -4,6 +4,7 @@ URL roots all live under /dashboard/cloudflare/ via register_urls in
 plugin.py. Sidebar surfaces via DashboardPage entries with url= set so
 they go through the canonical /dashboard/cloudflare/* path.
 """
+
 from __future__ import annotations
 
 import logging
@@ -78,7 +79,9 @@ def _trail(*items):
 def overview(request):
     """Account list + last-purge feed. Entry point for the CF surface."""
     from plugins.installed.cloudflare.models import (
-        CacheInvalidation, CloudflareAccount, CloudflareZone,
+        CacheInvalidation,
+        CloudflareAccount,
+        CloudflareZone,
     )
 
     if request.method == 'POST' and request.POST.get('action') == 'add_account':
@@ -88,15 +91,18 @@ def overview(request):
             messages.error(request, 'API token is required.')
         else:
             from plugins.installed.cloudflare.services import (
-                CloudflareClient, CloudflareError,
+                CloudflareClient,
+                CloudflareError,
             )
+
             try:
                 CloudflareClient(api_token=token).verify_token()
             except CloudflareError as e:
                 messages.error(request, f'Token verify failed: {e}')
                 return HttpResponseRedirect(request.path)
             CloudflareAccount.objects.create(
-                label=label, api_token=token,
+                label=label,
+                api_token=token,
                 account_id=(request.POST.get('account_id') or '').strip(),
             )
             messages.success(request, f'Account "{label}" added — token verified.')
@@ -104,16 +110,19 @@ def overview(request):
 
     accounts = list(CloudflareAccount.objects.prefetch_related('zones').order_by('label'))
     recent_purges = list(
-        CacheInvalidation.objects.select_related('zone')
-        .order_by('-created_at')[:20]
+        CacheInvalidation.objects.select_related('zone').order_by('-created_at')[:20]
     )
-    return render(request, 'cloudflare/overview.html', {
-        'accounts': accounts,
-        'recent_purges': recent_purges,
-        'zone_count': CloudflareZone.objects.filter(is_active=True).count(),
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail(),
-    })
+    return render(
+        request,
+        'cloudflare/overview.html',
+        {
+            'accounts': accounts,
+            'recent_purges': recent_purges,
+            'zone_count': CloudflareZone.objects.filter(is_active=True).count(),
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail(),
+        },
+    )
 
 
 @staff_member_required
@@ -121,7 +130,8 @@ def account_sync(request, account_id):
     """Pull zones for one account from the CF API and upsert into our DB."""
     from plugins.installed.cloudflare.models import CloudflareAccount
     from plugins.installed.cloudflare.services import (
-        CloudflareError, sync_zones,
+        CloudflareError,
+        sync_zones,
     )
 
     acct = get_object_or_404(CloudflareAccount, pk=account_id)
@@ -145,14 +155,17 @@ def zones_list(request):
     from plugins.installed.cloudflare.models import CloudflareZone
 
     zones = list(
-        CloudflareZone.objects.select_related('account', 'channel')
-        .order_by('domain')[:200]
+        CloudflareZone.objects.select_related('account', 'channel').order_by('domain')[:200]
     )
-    return render(request, 'cloudflare/zones_list.html', {
-        'zones': zones,
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail({'label': 'Zones'}),
-    })
+    return render(
+        request,
+        'cloudflare/zones_list.html',
+        {
+            'zones': zones,
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail({'label': 'Zones'}),
+        },
+    )
 
 
 @staff_member_required
@@ -160,7 +173,9 @@ def zone_detail(request, zone_id):
     """Per-zone dashboard: settings + recent purges + analytics summary."""
     from plugins.installed.cloudflare.models import CloudflareZone
     from plugins.installed.cloudflare.services import (
-        CloudflareError, analytics_summary, patch_zone_setting,
+        CloudflareError,
+        analytics_summary,
+        patch_zone_setting,
         zone_settings_map,
     )
 
@@ -176,18 +191,24 @@ def zone_detail(request, zone_id):
                 messages.success(request, f'Set {setting_id} = {raw_value}.')
             elif action == 'toggle_tiered_cache':
                 from plugins.installed.cloudflare.services import _client_for
+
                 _client_for(zone).patch_tiered_cache(zone.zone_id, request.POST.get('value', 'on'))
                 messages.success(request, f'Tiered Cache → {request.POST.get("value")}.')
             elif action == 'toggle_cache_reserve':
                 from plugins.installed.cloudflare.services import _client_for
+
                 _client_for(zone).patch_cache_reserve(zone.zone_id, request.POST.get('value', 'on'))
                 messages.success(request, f'Cache Reserve → {request.POST.get("value")}.')
             elif action == 'toggle_argo':
                 from plugins.installed.cloudflare.services import _client_for
-                _client_for(zone).patch_argo_smart_routing(zone.zone_id, request.POST.get('value', 'on'))
+
+                _client_for(zone).patch_argo_smart_routing(
+                    zone.zone_id, request.POST.get('value', 'on')
+                )
                 messages.success(request, f'Argo Smart Routing → {request.POST.get("value")}.')
             elif action == 'toggle_bot_fight':
                 from plugins.installed.cloudflare.services import _client_for
+
                 enabled = request.POST.get('value') == 'on'
                 _client_for(zone).patch_bot_fight_mode(zone.zone_id, enabled)
                 messages.success(request, f'Bot Fight Mode → {"on" if enabled else "off"}.')
@@ -195,8 +216,7 @@ def zone_detail(request, zone_id):
                 _install_graphql_cache_rule(zone)
                 messages.success(
                     request,
-                    'Cache Rule installed — anonymous POST /graphql/ is now '
-                    'cached at the edge.',
+                    'Cache Rule installed — anonymous POST /graphql/ is now cached at the edge.',
                 )
         except CloudflareError as e:
             messages.error(request, f'CF API error: {e}')
@@ -219,6 +239,7 @@ def zone_detail(request, zone_id):
     # their own endpoints, not /zones/{id}/settings, so they need separate
     # reads.
     from plugins.installed.cloudflare.services import _client_for
+
     tiered_cache_state = ''
     cache_reserve_state = ''
     argo_state = ''
@@ -228,31 +249,31 @@ def zone_detail(request, zone_id):
         try:
             cf = _client_for(zone)
             r = cf.get_tiered_cache(zone.zone_id)
-            tiered_cache_state = ((r.get('result') or {}).get('value') or '')
-        except Exception:  # noqa: BLE001
-            pass
+            tiered_cache_state = (r.get('result') or {}).get('value') or ''
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cloudflare: tiered cache state read failed: %s', e, exc_info=True)
         try:
             r = cf.get_cache_reserve(zone.zone_id)
-            cache_reserve_state = ((r.get('result') or {}).get('value') or '')
-        except Exception:  # noqa: BLE001
-            pass
+            cache_reserve_state = (r.get('result') or {}).get('value') or ''
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cloudflare: cache reserve state read failed: %s', e, exc_info=True)
         try:
             r = cf.get_argo_smart_routing(zone.zone_id)
-            argo_state = ((r.get('result') or {}).get('value') or '')
-        except Exception:  # noqa: BLE001
-            pass
+            argo_state = (r.get('result') or {}).get('value') or ''
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cloudflare: argo smart routing state read failed: %s', e, exc_info=True)
         try:
             r = cf.get_bot_fight_mode(zone.zone_id)
             bot_fight_state = 'on' if (r.get('result') or {}).get('fight_mode') else 'off'
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cloudflare: bot fight mode state read failed: %s', e, exc_info=True)
         try:
             existing = (cf.get_cache_ruleset(zone.zone_id).get('result') or {}).get('rules') or []
             graphql_rule_installed = any(
                 'GraphQL' in (r.get('description') or '') for r in existing
             )
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001
+            logger.warning('cloudflare: cache ruleset read failed: %s', e, exc_info=True)
 
     # Curated subset of settings the merchant actually wants to see.
     # Full list is 50+ — we just expose the load-bearing ones.
@@ -266,7 +287,11 @@ def zone_detail(request, zone_id):
         ('ipv6', 'IPv6 Compatibility', 'on/off'),
         ('opportunistic_encryption', 'Opportunistic Encryption', 'on/off'),
         ('min_tls_version', 'Minimum TLS version', '1.0 / 1.1 / 1.2 / 1.3'),
-        ('security_level', 'Security level', 'off / essentially_off / low / medium / high / under_attack'),
+        (
+            'security_level',
+            'Security level',
+            'off / essentially_off / low / medium / high / under_attack',
+        ),
         ('cache_level', 'Cache level', 'aggressive / basic / simplified'),
         ('browser_cache_ttl', 'Browser cache TTL (s)', 'seconds, 0 = respect origin'),
         ('challenge_ttl', 'Challenge TTL (s)', 'how long a CAPTCHA pass lasts'),
@@ -278,29 +303,30 @@ def zone_detail(request, zone_id):
         ('server_side_exclude', 'Server-side excludes', 'on/off'),
     ]
     settings_rows = [
-        {'id': sid, 'label': label, 'help': help_text,
-         'value': settings_map.get(sid, '—')}
+        {'id': sid, 'label': label, 'help': help_text, 'value': settings_map.get(sid, '—')}
         for sid, label, help_text in notable_settings
     ]
 
-    recent_purges = list(
-        zone.invalidations.order_by('-created_at')[:15]
-    )
+    recent_purges = list(zone.invalidations.order_by('-created_at')[:15])
 
-    return render(request, 'cloudflare/zone_detail.html', {
-        'zone': zone,
-        'settings_rows': settings_rows,
-        'settings_error': settings_error,
-        'summary': summary,
-        'recent_purges': recent_purges,
-        'tiered_cache_state': tiered_cache_state,
-        'cache_reserve_state': cache_reserve_state,
-        'argo_state': argo_state,
-        'bot_fight_state': bot_fight_state,
-        'graphql_rule_installed': graphql_rule_installed,
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail({'label': zone.domain}),
-    })
+    return render(
+        request,
+        'cloudflare/zone_detail.html',
+        {
+            'zone': zone,
+            'settings_rows': settings_rows,
+            'settings_error': settings_error,
+            'summary': summary,
+            'recent_purges': recent_purges,
+            'tiered_cache_state': tiered_cache_state,
+            'cache_reserve_state': cache_reserve_state,
+            'argo_state': argo_state,
+            'bot_fight_state': bot_fight_state,
+            'graphql_rule_installed': graphql_rule_installed,
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail({'label': zone.domain}),
+        },
+    )
 
 
 @staff_member_required
@@ -308,7 +334,10 @@ def purge_form(request, zone_id):
     """Manual cache-purge UI: URL list, host list, or purge everything."""
     from plugins.installed.cloudflare.models import CloudflareZone
     from plugins.installed.cloudflare.services import (
-        CloudflareError, purge_everything, purge_tags, purge_urls,
+        CloudflareError,
+        purge_everything,
+        purge_tags,
+        purge_urls,
     )
 
     zone = get_object_or_404(CloudflareZone, pk=zone_id)
@@ -318,7 +347,8 @@ def purge_form(request, zone_id):
         try:
             if mode == 'everything':
                 purge_everything(
-                    zone=zone, triggered_by=f'dashboard:{request.user.username}',
+                    zone=zone,
+                    triggered_by=f'dashboard:{request.user.username}',
                 )
                 messages.success(request, f'Purged ALL cache for {zone.domain}.')
             elif mode == 'urls':
@@ -328,7 +358,8 @@ def purge_form(request, zone_id):
                     messages.warning(request, 'No URLs supplied.')
                 else:
                     purge_urls(
-                        zone=zone, urls=urls,
+                        zone=zone,
+                        urls=urls,
                         triggered_by=f'dashboard:{request.user.username}',
                     )
                     messages.success(request, f'Purged {len(urls)} URL(s).')
@@ -343,37 +374,45 @@ def purge_form(request, zone_id):
                     messages.warning(request, 'No tags supplied.')
                 else:
                     purge_tags(
-                        zone=zone, tags=tags,
+                        zone=zone,
+                        tags=tags,
                         triggered_by=f'dashboard:{request.user.username}',
                     )
                     messages.success(request, f'Purged tag(s): {", ".join(tags)}.')
             elif mode == 'hosts':
                 # Wire host-level purge by reusing the underlying client.
                 from plugins.installed.cloudflare.services import _record_purge
-                hosts = [h.strip() for h in (request.POST.get('hosts') or '').split(',') if h.strip()][:5]
+
+                hosts = [
+                    h.strip() for h in (request.POST.get('hosts') or '').split(',') if h.strip()
+                ][:5]
                 if not hosts:
                     messages.warning(request, 'No hosts supplied.')
                 else:
                     _record_purge(
-                        zone=zone, scope='hosts', targets=hosts,
+                        zone=zone,
+                        scope='hosts',
+                        targets=hosts,
                         triggered_by=f'dashboard:{request.user.username}',
                         client=None,
                     )
                     messages.success(request, f'Purged host(s): {", ".join(hosts)}.')
         except CloudflareError as e:
             messages.error(request, f'CF API error: {e}')
-        return HttpResponseRedirect(
-            f'/dashboard/cloudflare/zones/{zone.id}/'
-        )
+        return HttpResponseRedirect(f'/dashboard/cloudflare/zones/{zone.id}/')
 
-    return render(request, 'cloudflare/purge_form.html', {
-        'zone': zone,
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail(
-            {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
-            {'label': 'Purge cache'},
-        ),
-    })
+    return render(
+        request,
+        'cloudflare/purge_form.html',
+        {
+            'zone': zone,
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail(
+                {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
+                {'label': 'Purge cache'},
+            ),
+        },
+    )
 
 
 @staff_member_required
@@ -381,7 +420,8 @@ def analytics(request, zone_id):
     """Full analytics page for a zone (configurable window)."""
     from plugins.installed.cloudflare.models import CloudflareZone
     from plugins.installed.cloudflare.services import (
-        CloudflareError, analytics_summary,
+        CloudflareError,
+        analytics_summary,
     )
 
     zone = get_object_or_404(CloudflareZone, pk=zone_id)
@@ -406,23 +446,28 @@ def analytics(request, zone_id):
     cache_hit_ratio = 0
     if summary.get('requests_total'):
         cache_hit_ratio = round(
-            100 * (summary.get('requests_cached') or 0) / summary['requests_total'], 1,
+            100 * (summary.get('requests_cached') or 0) / summary['requests_total'],
+            1,
         )
-    bw_gb = (summary.get('bandwidth_bytes') or 0) / (1024 ** 3)
+    bw_gb = (summary.get('bandwidth_bytes') or 0) / (1024**3)
 
-    return render(request, 'cloudflare/analytics.html', {
-        'zone': zone,
-        'days': days,
-        'summary': summary,
-        'cache_hit_ratio': cache_hit_ratio,
-        'bandwidth_gb': round(bw_gb, 2),
-        'error': error,
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail(
-            {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
-            {'label': 'Analytics'},
-        ),
-    })
+    return render(
+        request,
+        'cloudflare/analytics.html',
+        {
+            'zone': zone,
+            'days': days,
+            'summary': summary,
+            'cache_hit_ratio': cache_hit_ratio,
+            'bandwidth_gb': round(bw_gb, 2),
+            'error': error,
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail(
+                {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
+                {'label': 'Analytics'},
+            ),
+        },
+    )
 
 
 @staff_member_required
@@ -430,15 +475,16 @@ def invalidations_log(request):
     """Cross-zone purge audit log."""
     from plugins.installed.cloudflare.models import CacheInvalidation
 
-    rows = list(
-        CacheInvalidation.objects.select_related('zone')
-        .order_by('-created_at')[:200]
+    rows = list(CacheInvalidation.objects.select_related('zone').order_by('-created_at')[:200])
+    return render(
+        request,
+        'cloudflare/invalidations.html',
+        {
+            'rows': rows,
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail({'label': 'Purge log'}),
+        },
     )
-    return render(request, 'cloudflare/invalidations.html', {
-        'rows': rows,
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail({'label': 'Purge log'}),
-    })
 
 
 @staff_member_required
@@ -450,7 +496,8 @@ def dns_records(request, zone_id):
     """
     from plugins.installed.cloudflare.models import CloudflareZone
     from plugins.installed.cloudflare.services import (
-        CloudflareClient, CloudflareError,
+        CloudflareClient,
+        CloudflareError,
     )
 
     zone = get_object_or_404(CloudflareZone, pk=zone_id)
@@ -486,16 +533,20 @@ def dns_records(request, zone_id):
     except CloudflareError as e:
         error = str(e)
 
-    return render(request, 'cloudflare/dns_records.html', {
-        'zone': zone,
-        'records': records,
-        'error': error,
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail(
-            {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
-            {'label': 'DNS'},
-        ),
-    })
+    return render(
+        request,
+        'cloudflare/dns_records.html',
+        {
+            'zone': zone,
+            'records': records,
+            'error': error,
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail(
+                {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
+                {'label': 'DNS'},
+            ),
+        },
+    )
 
 
 @staff_member_required
@@ -508,7 +559,8 @@ def firewall_events(request, zone_id):
     """
     from plugins.installed.cloudflare.models import CloudflareZone
     from plugins.installed.cloudflare.services import (
-        CloudflareClient, CloudflareError,
+        CloudflareClient,
+        CloudflareError,
     )
 
     zone = get_object_or_404(CloudflareZone, pk=zone_id)
@@ -522,13 +574,17 @@ def firewall_events(request, zone_id):
     except CloudflareError as e:
         error = str(e)
 
-    return render(request, 'cloudflare/firewall_events.html', {
-        'zone': zone,
-        'events': events,
-        'error': error,
-        'active_nav': 'cloudflare',
-        'breadcrumb_trail': _trail(
-            {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
-            {'label': 'Firewall events'},
-        ),
-    })
+    return render(
+        request,
+        'cloudflare/firewall_events.html',
+        {
+            'zone': zone,
+            'events': events,
+            'error': error,
+            'active_nav': 'cloudflare',
+            'breadcrumb_trail': _trail(
+                {'label': zone.domain, 'url': f'/dashboard/cloudflare/zones/{zone.id}/'},
+                {'label': 'Firewall events'},
+            ),
+        },
+    )

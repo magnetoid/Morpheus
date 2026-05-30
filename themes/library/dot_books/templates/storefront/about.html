@@ -45,8 +45,8 @@
 
     <h2 class="display display-m" style="margin-bottom: 1rem;">Find us<span class="text-accent">.</span></h2>
     <p class="lede">
-      Drop a line at <a href="/contact/" class="btn-link" style="display:inline-flex;">contact</a>
-      or browse the <a href="/products/" class="btn-link" style="display:inline-flex;">shelf</a>.
+      Drop a line at <a href="{% url 'storefront:contact' %}" class="btn-link" style="display:inline-flex;">contact</a>
+      or browse the <a href="{% url 'storefront:product_list' %}" class="btn-link" style="display:inline-flex;">shelf</a>.
     </p>
   </div>
 </section>

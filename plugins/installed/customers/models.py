@@ -1,6 +1,7 @@
 """
 Morpheus CMS - Customer (Auth User) Model
 """
+
 import uuid
 from django.contrib.auth.models import AbstractUser
 from morpheus import models
@@ -37,14 +38,24 @@ class Customer(AbstractUser):
     accepts_marketing = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     is_verified = models.BooleanField(default=False)
+    # Stripe Customer id (cus_…) — lazily created the first time we need a
+    # saved-card vault for this person. Empty string means "not yet
+    # provisioned"; we never delete this once set, even if the customer
+    # detaches every card.
+    stripe_customer_id = models.CharField(max_length=64, blank=True)
     source = models.CharField(
-        max_length=20, choices=SOURCE_CHOICES, default='other', db_index=True,
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default='other',
+        db_index=True,
     )
     metadata = models.JSONField(default=dict, blank=True)
 
     # ── Customer Data Platform (denormalized — updated on ORDER_PAID) ─────
     lifetime_value = models.DecimalField(
-        max_digits=14, decimal_places=2, default=0,
+        max_digits=14,
+        decimal_places=2,
+        default=0,
         help_text='Sum of paid order totals in store currency.',
     )
     purchase_count = models.PositiveIntegerField(
@@ -52,7 +63,9 @@ class Customer(AbstractUser):
         help_text='Number of paid orders. Drives loyalty tiers, segments, RFM.',
     )
     last_order_at = models.DateTimeField(
-        null=True, blank=True, db_index=True,
+        null=True,
+        blank=True,
+        db_index=True,
         help_text='When this contact last completed a paid order.',
     )
 
@@ -75,7 +88,7 @@ class Customer(AbstractUser):
 
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}".strip() or self.email
+        return f'{self.first_name} {self.last_name}'.strip() or self.email
 
     @property
     def default_address(self):
@@ -109,7 +122,7 @@ class Address(models.Model):
         ordering = ['-is_default', '-created_at']
 
     def __str__(self):
-        return f"{self.address_line1}, {self.city}, {self.country}"
+        return f'{self.address_line1}, {self.city}, {self.country}'
 
     def save(self, *args, **kwargs):
         if self.is_default:
@@ -118,10 +131,10 @@ class Address(models.Model):
             # seeing each other — without the lock, the later writer's
             # default flag is silently dropped.
             from django.db import transaction as _tx
+
             with _tx.atomic():
                 (
-                    Address.objects
-                    .select_for_update()
+                    Address.objects.select_for_update()
                     .filter(
                         customer=self.customer,
                         address_type=self.address_type,
@@ -142,7 +155,7 @@ class WishList(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Wishlist of {self.customer.email}"
+        return f'Wishlist of {self.customer.email}'
 
 
 class WishListItem(models.Model):
@@ -155,4 +168,4 @@ class WishListItem(models.Model):
         unique_together = ('wishlist', 'product')
 
     def __str__(self):
-        return f"{self.product.name} in {self.wishlist}"
+        return f'{self.product.name} in {self.wishlist}'

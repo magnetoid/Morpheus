@@ -19,6 +19,7 @@ urlpatterns = [
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),
     path('cart/', views.cart, name='cart'),
     path('cart/add/<uuid:product_id>/', views.cart_add, name='cart_add'),
+    path('cart/remove/<uuid:item_id>/', views.cart_remove, name='cart_remove'),
     path('checkout/', views.checkout, name='checkout'),
     path('checkout/shipping/', views.checkout_shipping, name='checkout_shipping'),
     path('checkout/review/', views.checkout_review, name='checkout_review'),
@@ -79,6 +80,11 @@ urlpatterns = [
     ),
     path('account/credits/', views.account_credits, name='account_credits'),
     path('account/downloads/', views.account_downloads, name='account_downloads'),
+    path(
+        'account/payment-methods/',
+        views.account_payment_methods,
+        name='account_payment_methods',
+    ),
     # Order confirmation (post-checkout)
     path(
         'order/confirmation/<str:order_number>/',

@@ -336,7 +336,7 @@
 
 {# Catch unhandled JS errors + unhandledrejection → /api/errors/client/. #}
 {% load static %}
-<script src="{% static 'core/error-capture.js' %}"></script>
+<script src="{% static 'core/error-capture.js' %}" defer></script>
 
 {# Motion One — ~3kb vanilla animator with spring built-in. Exposed as window.__motion #}
 <script type="module">

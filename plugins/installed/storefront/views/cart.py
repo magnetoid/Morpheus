@@ -1,15 +1,69 @@
 """Cart views — list page + add-to-cart endpoint."""
+
 from __future__ import annotations
 
+import logging
+
+from django.contrib import messages
+from django.http import HttpResponseNotAllowed, JsonResponse
+from django.shortcuts import get_object_or_404
+
 from api.client import internal_graphql
+from core.hooks import MorpheusEvents, hook_registry
 from morpheus.views import redirect, render
+from plugins.installed.catalog.models import Product, ProductVariant
+from plugins.installed.orders.models import CartItem
 
 from ._queries import CART_QUERY
+
+logger = logging.getLogger(__name__)
 
 
 def cart(request):
     data = internal_graphql(CART_QUERY, request=request)
     return render(request, 'storefront/cart.html', {'cart': (data or {}).get('cart', {})})
+
+
+def cart_remove(request, item_id):
+    """Remove a single line from the current cart.
+
+    POST-only. Verifies the item belongs to the requesting visitor's cart
+    (by ``customer`` if authenticated, otherwise by ``session_key``) so
+    nobody can delete another shopper's line by guessing a UUID. Fires
+    ``REMOVE_FROM_CART`` after the row is gone — any subscriber error is
+    swallowed so analytics never breaks the user-facing flow.
+    """
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    qs = CartItem.objects.select_related('cart', 'product')
+    if request.user.is_authenticated:
+        qs = qs.filter(cart__customer=request.user)
+    else:
+        qs = qs.filter(
+            cart__customer__isnull=True,
+            cart__session_key=request.session.session_key or '',
+        )
+
+    item = get_object_or_404(qs, pk=item_id)
+    cart_obj = item.cart
+    product = item.product
+    quantity = item.quantity
+    item.delete()
+
+    try:
+        hook_registry.fire(
+            MorpheusEvents.REMOVE_FROM_CART,
+            cart=cart_obj,
+            product=product,
+            quantity=quantity,
+            customer=request.user if request.user.is_authenticated else None,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception('REMOVE_FROM_CART hook failed')
+
+    messages.success(request, 'Removed from cart.')
+    return redirect('/cart/')
 
 
 def cart_add(request, product_id):
@@ -19,18 +73,15 @@ def cart_add(request, product_id):
     drawer drains the response into the slide-out). Falls back to a
     plain POST + redirect for users without JS.
     """
-    from django.http import HttpResponseNotAllowed, JsonResponse
-
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
 
     quantity = max(1, int((request.POST.get('quantity') or '1').strip() or 1))
     variant_id = (request.POST.get('variant_id') or '').strip() or None
 
-    is_xhr = (
-        request.headers.get('X-Requested-With', '').lower() == 'fetch'
-        or 'application/json' in request.headers.get('Accept', '')
-    )
+    is_xhr = request.headers.get(
+        'X-Requested-With', ''
+    ).lower() == 'fetch' or 'application/json' in request.headers.get('Accept', '')
 
     mutation = """
     mutation Add($input: AddToCartInput!) {
@@ -63,18 +114,19 @@ def cart_add(request, product_id):
 
     if not errors:
         try:
-            from core.hooks import hook_registry, MorpheusEvents
-            from plugins.installed.catalog.models import Product, ProductVariant
             prod = Product.objects.filter(pk=product_id).first()
             variant = ProductVariant.objects.filter(pk=variant_id).first() if variant_id else None
             if prod is not None:
                 hook_registry.fire(
                     MorpheusEvents.ADD_TO_CART,
-                    cart=None, item=None,
-                    product=prod, variant=variant, quantity=quantity,
+                    cart=None,
+                    item=None,
+                    product=prod,
+                    variant=variant,
+                    quantity=quantity,
                 )
         except Exception:  # noqa: BLE001
-            pass
+            logger.exception('ADD_TO_CART hook failed')
 
     if is_xhr:
         if errors:

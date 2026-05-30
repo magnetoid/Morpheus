@@ -7,7 +7,7 @@
 <section style="padding: 4rem 0 5rem;">
   <div class="wrap" style="max-width: 880px;">
     <p class="meta" style="margin-bottom: 1rem;">
-      <a href="/account/" style="color: var(--muted);">Account</a>
+      <a href="{% url 'storefront:account_home' %}" style="color: var(--muted);">Account</a>
       <span style="margin: 0 0.5rem;">/</span>
       Orders
     </p>
@@ -16,7 +16,7 @@
     {% if orders %}
     <div style="display: grid; gap: 1rem;">
       {% for o in orders %}
-      <a href="/account/orders/{{ o.order_number }}/" style="display: block; border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem; text-decoration: none;">
+      <a href="{% url 'storefront:account_order_detail' o.order_number %}" style="display: block; border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem; text-decoration: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
           <div>
             <p style="font-family: var(--serif); font-size: 1.1rem;">#{{ o.order_number }}</p>
@@ -32,7 +32,7 @@
     {% else %}
     <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
       <p class="lede" style="margin: 0 auto 1rem;">No orders yet.</p>
-      <a href="/products/" class="btn btn-primary">Browse the shelf</a>
+      <a href="{% url 'storefront:product_list' %}" class="btn btn-primary">Browse the shelf</a>
     </div>
     {% endif %}
   </div>

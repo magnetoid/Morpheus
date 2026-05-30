@@ -38,6 +38,11 @@ MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 # Display version next to the logo in the admin sidebar.
 MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.1.0')
 
+# Optional Google Places API key — when set, checkout/address forms
+# surface address autocomplete. Empty string disables the feature
+# (no script tag rendered, no UI changes).
+GOOGLE_PLACES_API_KEY = config('GOOGLE_PLACES_API_KEY', default='')
+
 # ── Default plugins (always in INSTALLED_APPS — they have models) ──────────────
 MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.catalog',

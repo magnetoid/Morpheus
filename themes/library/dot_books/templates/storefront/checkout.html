@@ -240,4 +240,70 @@
     }
   })();
 </script>
+
+{% if GOOGLE_PLACES_API_KEY %}
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_PLACES_API_KEY }}&libraries=places"></script>
+<script>
+  // Google Places autocomplete — fills city/state/postal/country from a
+  // selected place, but only when those fields are still empty (never
+  // clobbers manual input). No-ops cleanly if the script fails to load.
+  (function () {
+    function init() {
+      if (!window.google || !google.maps || !google.maps.places) return;
+      var addr1 = document.getElementById('ck-addr1');
+      if (!addr1) return;
+      var ac = new google.maps.places.Autocomplete(addr1, {
+        types: ['address'],
+        fields: ['address_components']
+      });
+      ac.addListener('place_changed', function () {
+        var place = ac.getPlace();
+        if (!place || !place.address_components) return;
+        var get = function (type, short) {
+          for (var i = 0; i < place.address_components.length; i++) {
+            var c = place.address_components[i];
+            if (c.types.indexOf(type) !== -1) return short ? c.short_name : c.long_name;
+          }
+          return '';
+        };
+        var streetNumber = get('street_number', false);
+        var route = get('route', false);
+        var street = (streetNumber + ' ' + route).trim();
+        var city = get('locality', false) || get('postal_town', false) || get('sublocality', false);
+        var state = get('administrative_area_level_1', true);
+        var postal = get('postal_code', false);
+        var country = get('country', true);
+        var setIfEmpty = function (id, val) {
+          var el = document.getElementById(id);
+          if (el && !el.value && val) el.value = val;
+        };
+        // Street address: only overwrite if the user just picked a suggestion
+        // (the picker replaces what's there by design — but we already have
+        // the parsed parts, so re-populate cleanly).
+        if (street) addr1.value = street;
+        setIfEmpty('ck-city', city);
+        setIfEmpty('ck-state', state);
+        setIfEmpty('ck-zip', postal);
+        setIfEmpty('ck-country', country);
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () {
+        // Script may still be loading — poll briefly.
+        var tries = 0;
+        var t = setInterval(function () {
+          if (window.google && google.maps && google.maps.places) { clearInterval(t); init(); }
+          else if (++tries > 40) clearInterval(t);
+        }, 100);
+      });
+    } else {
+      var tries = 0;
+      var t = setInterval(function () {
+        if (window.google && google.maps && google.maps.places) { clearInterval(t); init(); }
+        else if (++tries > 40) clearInterval(t);
+      }, 100);
+    }
+  })();
+</script>
+{% endif %}
 {% endblock %}

@@ -1,4 +1,5 @@
 """Core context processors — store settings and cart into every template."""
+
 from django.conf import settings as django_settings
 
 
@@ -9,6 +10,7 @@ def store_settings(request):
         'STORE_COUNTRY': django_settings.STORE_COUNTRY,
         'DEBUG': django_settings.DEBUG,
         'MORPHEUS_VERSION': getattr(django_settings, 'MORPHEUS_VERSION', 'v0.1.0'),
+        'GOOGLE_PLACES_API_KEY': getattr(django_settings, 'GOOGLE_PLACES_API_KEY', ''),
     }
 
 
@@ -18,6 +20,7 @@ def cart_context(request):
     try:
         if request.user.is_authenticated:
             from plugins.installed.orders.models import Cart
+
             cart = Cart.objects.filter(customer=request.user).order_by('-updated_at').first()
             if cart:
                 count = cart.item_count
@@ -25,11 +28,14 @@ def cart_context(request):
             session_key = request.session.session_key
             if session_key:
                 from plugins.installed.orders.models import Cart
+
                 cart = Cart.objects.filter(session_key=session_key).order_by('-updated_at').first()
                 if cart:
                     count = cart.item_count
     except Exception:
-        import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+        import logging
+
+        logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
     return {'cart_item_count': count}
 
 
@@ -49,6 +55,7 @@ def display_currency(request):
     if not cur:
         try:
             from core.channels import current_channel
+
             ch = current_channel(request)
             cur = getattr(ch, 'currency', '') or django_settings.STORE_CURRENCY
         except Exception:
@@ -60,11 +67,14 @@ def channel_context(request):
     """Expose the resolved StoreChannel + its currency/country to every template."""
     try:
         from core.channels import current_channel
+
         channel = current_channel(request)
         return {
             'CURRENT_CHANNEL': channel,
-            'CHANNEL_CURRENCY': getattr(channel, 'currency', None) or django_settings.STORE_CURRENCY,
-            'CHANNEL_COUNTRY': getattr(channel, 'default_country', None) or django_settings.STORE_COUNTRY,
+            'CHANNEL_CURRENCY': getattr(channel, 'currency', None)
+            or django_settings.STORE_CURRENCY,
+            'CHANNEL_COUNTRY': getattr(channel, 'default_country', None)
+            or django_settings.STORE_COUNTRY,
         }
     except Exception:
         return {
