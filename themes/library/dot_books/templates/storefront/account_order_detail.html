@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load seo %}
 {% block title %}Order #{{ order.order_number }} — dot books{% endblock %}
 
 {% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
