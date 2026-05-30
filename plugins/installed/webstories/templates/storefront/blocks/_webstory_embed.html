@@ -8,8 +8,7 @@ The amp-story-player runtime loads from the AMP CDN (one script + one
 stylesheet) and renders a tappable card that opens the full
 `/story/<slug>/` document in a fullscreen overlay.
 {% endcomment %}
-{% with web_story=product.web_story|default_if_none:None %}
-{% if web_story and web_story.is_published and web_story.panels %}
+{% if web_story and web_story.panels %}
 <section class="pdp-webstory" aria-labelledby="pdp-webstory-heading">
   <h2 id="pdp-webstory-heading" class="pdp-webstory__heading">Story preview</h2>
   <p class="pdp-webstory__lede">Tap to flip through the cover, snippets, and details.</p>
@@ -54,4 +53,3 @@ stylesheet) and renders a tappable card that opens the full
   }
 </style>
 {% endif %}
-{% endwith %}

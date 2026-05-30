@@ -377,6 +377,20 @@ def product_detail(request, slug):
         :160
     ].strip()
 
+    # Published Web Story for this product, if the webstories plugin is
+    # installed and has a row. Resolved here (not in the template) because
+    # `product` is a GraphQL dict, so dotted access can't traverse the
+    # OneToOne reverse relation. Template uses `web_story` as the gate for
+    # the <link rel="amphtml"> tag and the <amp-story-player> block.
+    web_story = None
+    if product_row is not None:
+        try:
+            ws = product_row.web_story
+            if ws.is_published and ws.panels:
+                web_story = ws
+        except Exception:  # noqa: BLE001 — RelatedObjectDoesNotExist or plugin missing
+            web_story = None
+
     return render(
         request,
         'storefront/product_detail.html',
@@ -396,6 +410,7 @@ def product_detail(request, slug):
             'breadcrumb_items': breadcrumb_items,
             'last_reviewed': last_reviewed,
             'active_pdp_edit_url': active_pdp_edit_url,
+            'web_story': web_story,
             'seo_object': pdp_seo_obj,
             'seo_title': product.get('name') or '',
             'seo_description': pdp_seo_description,

@@ -12,7 +12,7 @@
 {% endif %}
 {% if pdp_faqs %}{% seo_faq_jsonld items=pdp_faqs %}{% endif %}
 {% if pdp_faqs %}{% seo_qa_jsonld qa=pdp_faqs name=product.name %}{% endif %}
-{% if product.web_story.is_published %}<link rel="amphtml" href="/story/{{ product.slug }}/">{% endif %}
+{% if web_story %}<link rel="amphtml" href="/story/{{ product.slug }}/">{% endif %}
 {% dl_view_item product %}
 {% endblock %}
 
