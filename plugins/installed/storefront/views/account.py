@@ -392,6 +392,80 @@ def account_downloads(request):
     )
 
 
+def account_data_export(request):
+    """GDPR Art. 15 — right to access.
+
+    GET renders a confirmation page describing what's in the export.
+    POST builds a ZIP of JSON files (one per data category) and streams
+    it back as an attachment. Plugin-specific categories are imported
+    lazily inside ``gather_customer_data`` so disabled plugins drop out
+    of the export silently.
+    """
+    redirect_resp = _login_required(request, '/account/data-export/')
+    if redirect_resp is not None:
+        return redirect_resp
+    if request.method == 'POST':
+        import io  # noqa: PLC0415
+        import json  # noqa: PLC0415
+        import zipfile  # noqa: PLC0415
+        from datetime import date  # noqa: PLC0415
+
+        from django.http import HttpResponse  # noqa: PLC0415
+
+        from plugins.installed.customers.services import gather_customer_data  # noqa: PLC0415
+
+        data_by_filename = gather_customer_data(request.user)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for filename, payload in data_by_filename.items():
+                zf.writestr(filename, json.dumps(payload, indent=2, default=str))
+        resp = HttpResponse(buf.getvalue(), content_type='application/zip')
+        fname = f'dotbooks-data-{request.user.pk}-{date.today().isoformat()}.zip'
+        resp['Content-Disposition'] = f'attachment; filename="{fname}"'
+        return resp
+    return render(request, 'storefront/account_data_export.html', {'user': request.user})
+
+
+def account_delete(request):
+    """GDPR Art. 17 — right to be forgotten.
+
+    GET renders a destructive-action confirmation page. POST requires the
+    user to type their own email back, then anonymises the account, logs
+    them out, and redirects to /.
+    """
+    redirect_resp = _login_required(request, '/account/delete/')
+    if redirect_resp is not None:
+        return redirect_resp
+    error = None
+    if request.method == 'POST':
+        from django.contrib import messages  # noqa: PLC0415
+        from django.contrib.auth import logout  # noqa: PLC0415
+        from django.db import transaction  # noqa: PLC0415
+        from django.shortcuts import redirect as _redirect  # noqa: PLC0415
+
+        from plugins.installed.customers.services import anonymise_customer  # noqa: PLC0415
+
+        typed = (request.POST.get('confirm_email') or '').strip().lower()
+        if typed != (request.user.email or '').lower():
+            error = "That email doesn't match the one on your account."
+        else:
+            customer = request.user
+            with transaction.atomic():
+                anonymise_customer(customer)
+            logout(request)
+            messages.success(
+                request,
+                'Your account is gone. Your reviews and orders have been '
+                "anonymised. We're sorry to see you go.",
+            )
+            return _redirect('/')
+    return render(
+        request,
+        'storefront/account_delete.html',
+        {'user': request.user, 'error': error},
+    )
+
+
 def order_confirmation(request, order_number):
     """Order confirmation — auth'd customer OR ?token=<public_token>.
 

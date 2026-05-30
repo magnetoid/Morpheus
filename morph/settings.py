@@ -97,6 +97,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.bookvault',
     'plugins.installed.pwa',
     'plugins.installed.webstories',
+    'plugins.installed.consent',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

@@ -1,0 +1,62 @@
+{% load consent %}
+{% comment %}
+Cookie consent banner.
+
+Rendered on every storefront page via the consent plugin's
+``global_below_body`` StorefrontBlock. Hidden once the visitor has a
+``morpheus_consent`` cookie — the preferences page passes
+``force_show=True`` to override that.
+
+Design tokens: dot_books palette (--paper, --paper-2, --rule, --ink,
+--muted), .btn / .btn-primary buttons, .card / .card-padded layout.
+No framework JS — vanilla handlers wired inline so the banner works
+even when GTM/analytics never load (which is the default state).
+{% endcomment %}
+{% consent_show as _show %}
+{% if _show or force_show %}
+{% consent_current as _decision %}
+<div id="morpheus-consent-banner"
+     role="dialog"
+     aria-live="polite"
+     aria-label="Cookie consent"
+     style="position: fixed; left: 1rem; right: 1rem; bottom: 1rem; z-index: 9999; max-width: 720px; margin: 0 auto;">
+  <form method="post" action="{% url 'consent:save' %}"
+        class="card card-padded"
+        style="background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: .85rem;">
+    {% csrf_token %}
+    <p style="margin: 0; font-family: var(--serif); font-size: .98rem; line-height: 1.4; color: var(--ink);">
+      We use cookies for the cart, login, and to understand how the shop is used. Necessary cookies are always on.
+    </p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: .55rem .9rem; padding: .65rem .8rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; font-size: .85rem; color: var(--muted);">
+      <label style="display: inline-flex; align-items: center; gap: .35rem;">
+        <input type="checkbox" checked disabled> Necessary
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: .35rem;">
+        <input type="checkbox" name="analytics"{% if _decision.analytics %} checked{% endif %}> Analytics
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: .35rem;">
+        <input type="checkbox" name="marketing"{% if _decision.marketing %} checked{% endif %}> Marketing
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: .35rem;">
+        <input type="checkbox" name="functional"{% if _decision.functional %} checked{% endif %}> Functional
+      </label>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end;">
+      <button type="submit" name="reject_all" value="1" class="btn"
+              style="padding: .55rem 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: .88rem; cursor: pointer;">
+        Reject all
+      </button>
+      <button type="submit" class="btn"
+              style="padding: .55rem 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper-2); color: var(--ink); font-family: var(--sans); font-size: .88rem; cursor: pointer;">
+        Save preferences
+      </button>
+      <button type="submit" name="accept_all" value="1" class="btn btn-primary"
+              style="padding: .55rem 1rem; border: 1px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-family: var(--sans); font-size: .88rem; cursor: pointer;">
+        Accept all
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}

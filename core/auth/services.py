@@ -1,4 +1,5 @@
 """Pure helpers for the passwordless OTP flow."""
+
 from __future__ import annotations
 
 import hashlib
@@ -8,9 +9,11 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
 from core.auth.models import EmailOTP
+from core.log_formatters import redact_email
 
 logger = logging.getLogger('morpheus.core.auth')
 
@@ -26,7 +29,9 @@ def _hash_code(*, code: str, email: str) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def issue_otp(email: str, *, request_ip: str | None = None) -> tuple[str, EmailOTP] | tuple[None, None]:
+def issue_otp(
+    email: str, *, request_ip: str | None = None
+) -> tuple[str, EmailOTP] | tuple[None, None]:
     """Issue a fresh OTP. Invalidates any prior unconsumed code for this email.
 
     Returns ``(code, model)`` on success. Returns ``(None, None)`` and
@@ -41,7 +46,7 @@ def issue_otp(email: str, *, request_ip: str | None = None) -> tuple[str, EmailO
     cutoff = timezone.now() - timedelta(hours=1)
     recent = EmailOTP.objects.filter(email=email, created_at__gte=cutoff).count()
     if recent >= _MAX_RECENT_PER_EMAIL:
-        logger.warning('otp: rate cap hit for %s (%d in last hour)', email, recent)
+        logger.warning('otp: rate cap hit for %s (%d in last hour)', redact_email(email), recent)
         return (None, None)
 
     # Invalidate any live, unconsumed code so only the latest works.
@@ -78,9 +83,9 @@ def consume_otp(email: str, code: str):
     code_hash = _hash_code(code=code, email=email)
     now = timezone.now()
     obj = (
-        EmailOTP.objects
-        .filter(email=email, code_hash=code_hash, consumed_at__isnull=True,
-                expires_at__gt=now)
+        EmailOTP.objects.filter(
+            email=email, code_hash=code_hash, consumed_at__isnull=True, expires_at__gt=now
+        )
         .order_by('-created_at')
         .first()
     )
@@ -93,7 +98,9 @@ def consume_otp(email: str, code: str):
     User = get_user_model()
     user, created = User.objects.get_or_create(
         email=email,
-        defaults={'username': email[:150]} if 'username' in {f.name for f in User._meta.fields} else {},
+        defaults={'username': email[:150]}
+        if 'username' in {f.name for f in User._meta.fields}
+        else {},
     )
     if created and hasattr(user, 'source') and not user.source:
         user.source = 'signup'
@@ -110,12 +117,11 @@ def send_otp_email(*, to: str, code: str) -> None:
     response is the right shape for the calling view.
     """
     try:
-        from django.core.mail import EmailMultiAlternatives
         subject = 'Your sign-in code'
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@example.com')
         text = (
             f'Your sign-in code is {code}.\n\n'
-            f'It expires in {_VALIDITY_MINUTES} minutes. If you didn\'t '
+            f"It expires in {_VALIDITY_MINUTES} minutes. If you didn't "
             f'request it, you can safely ignore this message.'
         )
         html = (
@@ -124,10 +130,10 @@ def send_otp_email(*, to: str, code: str) -> None:
             f'<p style="font-family:Menlo,monospace;font-size:32px;letter-spacing:.3em;'
             f'font-weight:600;color:#1a1a1a;">{code}</p>'
             f'<p style="font-size:12px;color:#666;">Expires in {_VALIDITY_MINUTES} '
-            f'minutes. If you didn\'t request this, ignore the message.</p>'
+            f"minutes. If you didn't request this, ignore the message.</p>"
         )
         msg = EmailMultiAlternatives(subject, text, from_email, [to])
         msg.attach_alternative(html, 'text/html')
         msg.send(fail_silently=True)
     except Exception as e:  # noqa: BLE001 — never bubble; caller will handle
-        logger.warning('otp send failed for %s: %s', to, e, exc_info=True)
+        logger.warning('otp send failed for %s: %s', redact_email(to), e, exc_info=True)

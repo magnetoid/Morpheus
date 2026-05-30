@@ -10,12 +10,73 @@ the resolver:
 Pages support draft / scheduled / published states + per-page SEO via
 the existing seo plugin's SeoMeta generic FK.
 """
+
 from __future__ import annotations
 
 import uuid
 
+import bleach
 from django.conf import settings
+from django.utils import timezone
+
 from morpheus import models
+
+# Allowlist for staff-authored HTML in Page.body / PageSection.body. Both fields
+# are rendered with `|safe` in storefront templates, so we sanitise on save in
+# case a staff session is compromised (persistent XSS otherwise).
+_ALLOWED_TAGS = [
+    'p',
+    'br',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'strong',
+    'em',
+    'u',
+    's',
+    'a',
+    'ul',
+    'ol',
+    'li',
+    'blockquote',
+    'code',
+    'pre',
+    'img',
+    'figure',
+    'figcaption',
+    'hr',
+    'table',
+    'thead',
+    'tbody',
+    'tr',
+    'th',
+    'td',
+    'iframe',
+    'span',
+]
+_ALLOWED_ATTRS = {
+    '*': ['class', 'id'],
+    'a': ['href', 'target', 'rel', 'title'],
+    'img': ['src', 'alt', 'title', 'width', 'height', 'loading'],
+    'iframe': ['src', 'width', 'height', 'allow', 'allowfullscreen', 'title'],
+}
+_ALLOWED_PROTOCOLS = ['http', 'https', 'mailto']
+
+
+def _sanitize_html(html: str) -> str:
+    """Strip non-allowlisted tags/attrs/protocols from staff-authored HTML."""
+    if not html:
+        return html
+    return bleach.clean(
+        html,
+        tags=_ALLOWED_TAGS,
+        attributes=_ALLOWED_ATTRS,
+        protocols=_ALLOWED_PROTOCOLS,
+        strip=True,
+    )
 
 
 class Page(models.Model):
@@ -45,7 +106,10 @@ class Page(models.Model):
 
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True, related_name='cms_pages',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cms_pages',
     )
     metadata = models.JSONField(default=dict, blank=True)
 
@@ -58,14 +122,16 @@ class Page(models.Model):
     def __str__(self) -> str:
         return f'{self.title} ({self.state})'
 
+    def save(self, *args, **kwargs):
+        if self.body:
+            self.body = _sanitize_html(self.body)
+        super().save(*args, **kwargs)
+
     @property
     def is_live(self) -> bool:
-        from django.utils import timezone
         if self.state != 'published':
             return False
-        if self.publish_at and self.publish_at > timezone.now():
-            return False
-        return True
+        return not (self.publish_at and self.publish_at > timezone.now())
 
 
 class PageSection(models.Model):
@@ -81,15 +147,18 @@ class PageSection(models.Model):
     `settings` is a free-form JSON dict per the section's declared
     schema; merged on render with the section's `defaults`.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name='sections')
     section_id = models.CharField(
-        max_length=80, db_index=True,
+        max_length=80,
+        db_index=True,
         help_text='Identifier registered in themes.sections.section_registry.',
     )
     sort_order = models.PositiveIntegerField(default=0, db_index=True)
     settings = models.JSONField(
-        default=dict, blank=True,
+        default=dict,
+        blank=True,
         help_text='Per-instance settings; merged with the section defaults at render time.',
     )
     is_visible = models.BooleanField(default=True)
@@ -118,8 +187,9 @@ class Block(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    key = models.SlugField(max_length=120, unique=True, db_index=True,
-                           help_text='Stable key — themes reference this.')
+    key = models.SlugField(
+        max_length=120, unique=True, db_index=True, help_text='Stable key — themes reference this.'
+    )
     label = models.CharField(max_length=200, help_text='Human-readable name.')
     kind = models.CharField(max_length=10, choices=KIND_CHOICES, default='html')
     body = models.TextField(blank=True)
@@ -163,7 +233,11 @@ class MenuItem(models.Model):
     url = models.CharField(max_length=500)
     target = models.CharField(max_length=10, default='_self', blank=True)
     parent = models.ForeignKey(
-        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='children',
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
     )
     order = models.PositiveSmallIntegerField(default=100)
     icon = models.CharField(max_length=60, blank=True)
@@ -188,7 +262,9 @@ class Form(models.Model):
     fields = models.JSONField(default=list)
     submit_label = models.CharField(max_length=80, default='Send')
     success_message = models.CharField(max_length=300, default='Thanks — we got your note.')
-    notify_email = models.EmailField(blank=True, help_text='Optional address that receives a copy of every submission.')
+    notify_email = models.EmailField(
+        blank=True, help_text='Optional address that receives a copy of every submission.'
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -244,11 +320,15 @@ class EmailTemplate(models.Model):
     label = models.CharField(max_length=120)
     subject = models.CharField(max_length=300)
     body_text = models.TextField(help_text='Plain-text body. Django template syntax allowed.')
-    body_html = models.TextField(blank=True, help_text='Optional HTML body. Falls back to text when blank.')
+    body_html = models.TextField(
+        blank=True, help_text='Optional HTML body. Falls back to text when blank.'
+    )
     is_active = models.BooleanField(default=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='+',
     )
     updated_at = models.DateTimeField(auto_now=True)

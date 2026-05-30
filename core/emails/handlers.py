@@ -4,6 +4,7 @@ Each handler is wrapped with a try/except so a missing template, a typo
 in a model field, or a flaky SMTP host can't bring down order placement.
 SMTP failures still get logged so they're discoverable in observability.
 """
+
 from __future__ import annotations
 
 import logging
@@ -14,6 +15,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
 from core.hooks import hook_registry
+from core.log_formatters import redact_email
 from morpheus import events
 
 logger = logging.getLogger('morpheus.emails')
@@ -86,6 +88,7 @@ def on_digital_tokens_issued(order: Any = None, tokens: Any = None, **kwargs: An
     base = ''
     try:
         from plugins.installed.seo.services import _site_base_url
+
         base = _site_base_url() or ''
     except Exception:  # noqa: BLE001
         pass
@@ -95,9 +98,9 @@ def on_digital_tokens_issued(order: Any = None, tokens: Any = None, **kwargs: An
         variant = getattr(t.order_item, 'variant', None) if t.order_item_id else None
         # Pick the file we'll actually serve, so the format hint reflects
         # the real download (variant-level file wins when present).
-        digital = (
-            getattr(variant, 'digital_file', None) if variant else None
-        ) or getattr(t.product, 'digital_file', None)
+        digital = (getattr(variant, 'digital_file', None) if variant else None) or getattr(
+            t.product, 'digital_file', None
+        )
         ext = ''
         if digital and getattr(digital, 'name', ''):
             ext = os.path.splitext(digital.name)[1].lstrip('.').upper()
@@ -163,10 +166,7 @@ def on_payment_refunded(refund: Any = None, order: Any = None, **kwargs: Any) ->
 
 
 def _order_recipient(order: Any) -> str | None:
-    return (
-        getattr(order, 'email', None)
-        or getattr(getattr(order, 'customer', None), 'email', None)
-    )
+    return getattr(order, 'email', None) or getattr(getattr(order, 'customer', None), 'email', None)
 
 
 def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> None:
@@ -205,7 +205,7 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
             msg.attach_alternative(html_body, 'text/html')
         msg.send(fail_silently=True)
     except Exception as e:  # noqa: BLE001
-        logger.warning('emails: send for %s to %s failed: %s', template_base, to, e)
+        logger.warning('emails: send for %s to %s failed: %s', template_base, redact_email(to), e)
 
 
 def _db_override(template_base: str, ctx: dict) -> tuple[str | None, str | None, str | None]:
@@ -220,6 +220,7 @@ def _db_override(template_base: str, ctx: dict) -> tuple[str | None, str | None,
     try:
         from django.template import Context, Template
         from plugins.installed.cms.models import EmailTemplate
+
         tpl = EmailTemplate.objects.filter(key=key, is_active=True).first()
     except Exception:  # noqa: BLE001 — model not migrated, app not loaded, etc.
         return (None, None, None)
@@ -229,7 +230,9 @@ def _db_override(template_base: str, ctx: dict) -> tuple[str | None, str | None,
         d_ctx = Context(ctx, autoescape=False)
         rendered_subject = Template(tpl.subject or '').render(d_ctx) if tpl.subject else None
         rendered_text = Template(tpl.body_text or '').render(d_ctx) if tpl.body_text else None
-        rendered_html = Template(tpl.body_html).render(Context(ctx, autoescape=True)) if tpl.body_html else None
+        rendered_html = (
+            Template(tpl.body_html).render(Context(ctx, autoescape=True)) if tpl.body_html else None
+        )
     except Exception as e:  # noqa: BLE001 — bad merchant template shouldn't kill the send
         logger.warning('emails: DB override %s render failed: %s', key, e)
         return (None, None, None)

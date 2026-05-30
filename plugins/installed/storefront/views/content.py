@@ -304,6 +304,65 @@ def returns(request):
     )
 
 
+def do_not_sell(request):
+    """CCPA "Do not sell my info" opt-out page.
+
+    GET renders the policy + an opt-out form. POST records the opt-out:
+    if the consent plugin is installed, we write a ConsentLog row with
+    everything off (analytics, marketing, functional); otherwise we
+    just flash a success message and let the visitor know we received it.
+    DotBooks does not sell personal data — this page exists for the
+    CCPA "do not sell" right and for the parallel state laws that
+    require it (Colorado, Virginia, Connecticut, etc.).
+    """
+    import contextlib  # noqa: PLC0415
+
+    from django.contrib import messages  # noqa: PLC0415
+
+    submitted = False
+    if request.method == 'POST':
+        from django.http import HttpResponse  # noqa: PLC0415
+
+        with contextlib.suppress(Exception):
+            from plugins.installed.consent.services import write_consent  # noqa: PLC0415
+
+            response = HttpResponse()
+            write_consent(
+                request,
+                response,
+                analytics=False,
+                marketing=False,
+                functional=False,
+                customer=getattr(request, 'user', None)
+                if getattr(request, 'user', None) and request.user.is_authenticated
+                else None,
+            )
+        submitted = True
+        with contextlib.suppress(Exception):
+            messages.success(
+                request,
+                "Got it — you're opted out. We don't sell personal data anyway.",
+            )
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Do not sell my info', 'url': request.build_absolute_uri(request.path)},
+    ]
+    return render(
+        request,
+        'storefront/do_not_sell.html',
+        {
+            'submitted': submitted,
+            'breadcrumb_items': breadcrumb_items,
+            'seo_title': 'Do not sell my info — dot books',
+            'seo_description': (
+                "DotBooks doesn't sell personal data. If you'd like to opt out anyway "
+                'under CCPA, this is the page.'
+            ),
+            'seo_og_type': 'website',
+        },
+    )
+
+
 def coming_soon(request, slug=None):
     """Generic placeholder for footer links that don't have first-class pages yet."""
     title_map = {

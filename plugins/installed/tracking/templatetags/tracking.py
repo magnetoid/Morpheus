@@ -17,6 +17,7 @@ etc. — these include a small template that prepends `dataLayer.push({ecommerce
 to prevent items leaking between events (the #1 production bug per the
 2026 research).
 """
+
 from __future__ import annotations
 
 import json
@@ -26,15 +27,29 @@ from django import template
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 
+from plugins.installed.consent.services import read_consent_from_cookie
+from plugins.installed.tracking.models import TrackingSettings
+
 register = template.Library()
 
 
 def _settings():
-    from plugins.installed.tracking.models import TrackingSettings
     try:
         return TrackingSettings.get_solo()
     except Exception:  # noqa: BLE001 — table missing pre-migration
         return None
+
+
+def _has_consent(request, category: str) -> bool:
+    """True if the visitor has opted in to ``category`` (analytics /
+    marketing / functional). Missing request or missing cookie → False:
+    we silently no-op until the banner is answered."""
+    if request is None:
+        return False
+    try:
+        return bool(read_consent_from_cookie(request).get(category))
+    except Exception:  # noqa: BLE001
+        return False
 
 
 @register.simple_tag
@@ -59,31 +74,37 @@ def gtm_consent_default():
     )
 
 
-@register.simple_tag
-def gtm_head():
+@register.simple_tag(takes_context=True)
+def gtm_head(context):
     """Emit the GTM head snippet. No-op when GTM container is not
-    configured OR client-side firing is off."""
+    configured OR client-side firing is off OR the visitor has not
+    granted analytics consent (GDPR / ePrivacy)."""
     s = _settings()
     if s is None or not s.client_side_enabled or not s.gtm_container_id:
         return ''
+    if not _has_consent(context.get('request'), 'analytics'):
+        return ''
     gtm = s.gtm_container_id
     return mark_safe(
-        "<script>"
+        '<script>'
         "(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':"
         "new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],"
         "j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;"
         "j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;"
-        "f.parentNode.insertBefore(j,f);"
+        'f.parentNode.insertBefore(j,f);'
         f"}})(window,document,'script','dataLayer','{gtm}');"
-        "</script>"
+        '</script>'
     )
 
 
-@register.simple_tag
-def gtm_noscript_body():
-    """Emit the immediate-after-`<body>` noscript fallback iframe."""
+@register.simple_tag(takes_context=True)
+def gtm_noscript_body(context):
+    """Emit the immediate-after-`<body>` noscript fallback iframe.
+    Gated on analytics consent — without opt-in the iframe never loads."""
     s = _settings()
     if s is None or not s.client_side_enabled or not s.gtm_container_id:
+        return ''
+    if not _has_consent(context.get('request'), 'analytics'):
         return ''
     gtm = s.gtm_container_id
     return mark_safe(
@@ -115,6 +136,7 @@ def dl_view_item(product):
     if not product:
         return ''
     from plugins.installed.tracking.services.event_mapping import view_item
+
     try:
         _, params = view_item(product)
     except Exception:  # noqa: BLE001
@@ -133,6 +155,7 @@ def dl_view_item_list(items, list_id: str = '', list_name: str = ''):
     if not items:
         return ''
     from plugins.installed.tracking.services.event_mapping import view_item_list
+
     try:
         _, params = view_item_list(items=list(items), list_id=list_id, list_name=list_name)
     except Exception:  # noqa: BLE001
@@ -152,6 +175,7 @@ def dl_purchase(order):
     if not order:
         return ''
     from plugins.installed.tracking.services.event_mapping import purchase
+
     try:
         _, params = purchase(order)
     except Exception:  # noqa: BLE001
@@ -174,6 +198,7 @@ def _ads_config():
     """
     try:
         from plugins.registry import plugin_registry
+
         p = plugin_registry.get('tracking')
         if p is None:
             return '', ''
@@ -216,6 +241,7 @@ def gads_purchase_conversion(order):
     # two networks.
     try:
         from plugins.installed.tracking.services.event_mapping import purchase
+
         _, params = purchase(order)
     except Exception:  # noqa: BLE001
         params = {}

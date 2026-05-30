@@ -27,8 +27,10 @@ class FlipbookPlugin(Plugin):
         )
 
     def contribute_settings_panel(self) -> SettingsPanel:
+        # SettingsPanel takes (label, schema, description, plugin, category) —
+        # no `slug` kwarg. The plugin name is set on the dataclass by the
+        # registry after collection.
         return SettingsPanel(
-            slug='flipbook',
             label='Flipbook preview',
             category='channels',
             description='Per-store flipbook preview controls.',
