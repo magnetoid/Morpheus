@@ -18,6 +18,7 @@ def product_list(request):
     """Product list with merchant-friendly facets: category, tag, price range,
     attribute facets (size/color/brand/...), and sort."""
     from decimal import Decimal, InvalidOperation
+    from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
     from django.db.models import Q
     from plugins.installed.catalog.models import (
         Attribute,
@@ -146,7 +147,22 @@ def product_list(request):
             }
         )
 
-    products = list(qs[:60])
+    # Pagination — 60 per page. ?page=N navigates; out-of-range / non-int
+    # quietly falls back to page 1 so a hand-typed URL never 404s the PLP.
+    paginator = Paginator(qs, 60)
+    try:
+        page_obj = paginator.page(request.GET.get('page') or 1)
+    except (EmptyPage, PageNotAnInteger):
+        page_obj = paginator.page(1)
+    products = list(page_obj.object_list)
+
+    # Query-string base for pagination links — drops `page` so the template
+    # can append it cleanly while preserving every active filter (search,
+    # category, collection, tag, author, sort, attribute facets, …).
+    _qs_no_page = request.GET.copy()
+    _qs_no_page.pop('page', None)
+    paginator_base_qs = _qs_no_page.urlencode()
+
     categories_list = list(Category.objects.filter(parent__isnull=True).order_by('name'))
 
     # Author facet — distinct values from book.author metafields.
@@ -210,6 +226,9 @@ def product_list(request):
             'price_max': pmax or '',
             'plp_items': plp_items,
             'plp_name': plp_name,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'paginator_base_qs': paginator_base_qs,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': f'{plp_name} — dot books',
             'seo_description': (

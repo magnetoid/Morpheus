@@ -122,6 +122,30 @@
       </a>
       {% endfor %}
     </div>
+
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    {% with qsep=paginator_base_qs|yesno:"&," %}
+    <nav class="plp-pagination" aria-label="Page navigation" style="display:flex; justify-content:center; align-items:center; gap:0.5rem; margin: 3rem 0 0; padding: 1.5rem 0 0; border-top: 1px solid var(--rule); flex-wrap: wrap;">
+      {% if page_obj.has_previous %}
+        <a class="btn" href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.previous_page_number }}" rel="prev">&larr; Previous</a>
+      {% else %}
+        <span class="btn" aria-disabled="true" style="opacity:.4; cursor:not-allowed;">&larr; Previous</span>
+      {% endif %}
+
+      <span class="text-meta" style="padding: 0 1rem;">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        &middot; {{ page_obj.paginator.count }} book{{ page_obj.paginator.count|pluralize }}
+      </span>
+
+      {% if page_obj.has_next %}
+        <a class="btn" href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.next_page_number }}" rel="next">Next &rarr;</a>
+      {% else %}
+        <span class="btn" aria-disabled="true" style="opacity:.4; cursor:not-allowed;">Next &rarr;</span>
+      {% endif %}
+    </nav>
+    {% endwith %}
+    {% endif %}
+
     {% else %}
     <div style="text-align: center; padding: 6rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
       <p class="display display-m" style="margin: 0 0 1rem;">Nothing here yet<span class="text-accent">.</span></p>
