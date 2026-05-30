@@ -170,11 +170,19 @@ def marketplace_landing(request):
         Vendor.objects.filter(is_active=True, products__status='active').distinct().count()
     )
     active_product_count = Product.objects.filter(status='active').count()
-    titles_in_stock_now = (
-        Product.objects.filter(status='active')
-        .filter(Q(track_inventory=False) | Q(inventory_quantity__gt=0))
-        .count()
-    )
+    # "In stock now" — stock lives at the variant level via the inventory
+    # plugin's StockLevel rows; Product has no direct quantity column.
+    # We treat track_inventory=False rows as always in-stock, then union
+    # with any product whose variants have positive stock.
+    try:
+        titles_in_stock_now = (
+            Product.objects.filter(status='active')
+            .filter(Q(track_inventory=False) | Q(variants__stock_levels__quantity__gt=0))
+            .distinct()
+            .count()
+        )
+    except Exception:  # noqa: BLE001 — schema mismatch / inventory plugin missing
+        titles_in_stock_now = Product.objects.filter(status='active', track_inventory=False).count()
 
     # 6 featured vendors — active, with at least one active product, with
     # a description (so the cards aren't blank). Ordered by most-recent so
