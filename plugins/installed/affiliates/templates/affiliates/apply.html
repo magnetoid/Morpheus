@@ -1,31 +1,164 @@
 {% extends "storefront/base.html" %}
+{% load seo %}
 {% block title %}{{ seo_title }} — dot books{% endblock %}
 
+{% block seo %}{% seo_meta fallback_title="Become an affiliate" fallback_description="Earn a commission on every book you help us send. Apply in two minutes; we review thoughtful recommenders within a few days." %}{% endblock %}
+
 {% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 640px;">
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 760px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Become an affiliate</span>
+    </nav>
 
     <p class="eyebrow">Partner with us</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Become an affiliate<span class="text-accent">.</span></h1>
-    <p class="lede" style="margin-bottom: 2.5rem;">Earn a commission on every order that arrives through your link. We approve thoughtful recommenders — bloggers, newsletters, podcasts, reading lists — within a few days.</p>
+    <p class="lede" style="margin-bottom: 0;">
+      If you write about books — for readers, on a newsletter, in a podcast, on a tiny corner of the internet — we'd love your help getting good titles into more hands. Earn a commission on every order that arrives through your link.
+    </p>
+
+  </div>
+</section>
+
+<section style="padding: 0 0 4rem;">
+  <div class="wrap" style="max-width: 760px;">
 
     {% if existing %}
-      <div class="card card-padded" style="background: var(--paper-2); padding: 1.5rem; border-radius: 6px;">
-        <p style="font-weight: 600; margin: 0 0 .5rem;">You've already applied.</p>
-        <p style="margin: 0 0 1rem; color: var(--ink-2);">
-          Status: <strong>{{ existing.get_status_display }}</strong> · Handle: <code>{{ existing.handle }}</code>
-        </p>
-        <a href="/affiliates/me/" class="btn btn-primary">Open your dashboard →</a>
+    <div class="card card-padded" style="background: var(--paper-2); padding: 1.75rem; border-radius: 6px; border-left: 3px solid var(--accent);">
+      <p style="font-weight: 600; margin: 0 0 .5rem; font-size: 1.05rem;">You've already applied.</p>
+      <p style="margin: 0 0 1rem; color: var(--ink-2);">
+        Status: <strong>{{ existing.get_status_display }}</strong> · Handle: <code>{{ existing.handle }}</code>
+      </p>
+      <a href="/affiliates/me/" class="btn btn-primary">Open your dashboard →</a>
+    </div>
+    {% else %}
+
+    {% comment %}── How it works ────────────────────────────────────────{% endcomment %}
+    <div style="margin: 1rem 0 3rem;">
+      <h2 class="display display-m" style="margin: 0 0 1.5rem;">How it works</h2>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+        <div>
+          <p class="eyebrow" style="font-size: .75rem;">Step 1</p>
+          <h3 style="font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: .5rem 0;">Apply</h3>
+          <p style="color: var(--ink-2); margin: 0;">Tell us a little about who reads you and what you want to recommend. Two minutes, no commitments.</p>
+        </div>
+        <div>
+          <p class="eyebrow" style="font-size: .75rem;">Step 2</p>
+          <h3 style="font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: .5rem 0;">Share</h3>
+          <p style="color: var(--ink-2); margin: 0;">We hand you tracked links and a dashboard. Drop them in your newsletter, show notes, posts — wherever your readers already are.</p>
+        </div>
+        <div>
+          <p class="eyebrow" style="font-size: .75rem;">Step 3</p>
+          <h3 style="font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; margin: .5rem 0;">Earn</h3>
+          <p style="color: var(--ink-2); margin: 0;">Every order tracked to one of your links earns a commission. We pay monthly, by your chosen method.</p>
+        </div>
       </div>
-    {% elif error %}
+    </div>
+
+    {% comment %}── What you earn ──────────────────────────────────────{% endcomment %}
+    {% if programs %}
+    <div style="margin: 3rem 0; padding: 2rem; background: var(--paper-2); border-radius: 8px;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">What you earn</h2>
+      <p style="margin: 0 0 1.5rem; color: var(--ink-2);">Live rates for the programs currently open:</p>
+      <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem;">
+        {% for p in programs %}
+        <li style="display: flex; justify-content: space-between; align-items: baseline; padding: .75rem 0; border-bottom: 1px solid var(--rule);">
+          <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 600;">{{ p.name }}</span>
+          <strong style="color: var(--accent-ink); font-size: 1.1rem;">
+            {% if p.commission_type == 'percent' %}{{ p.commission_value|floatformat:1 }}% per order{% else %}${{ p.commission_value|floatformat:2 }} per order{% endif %}
+          </strong>
+        </li>
+        {% endfor %}
+      </ul>
+      <p style="font-size: .85rem; color: var(--muted); margin: 1rem 0 0;">Commissions are paid on the net order total (after discounts, before shipping &amp; tax). Refunded orders are clawed back from the next payout.</p>
+    </div>
+    {% endif %}
+
+    {% comment %}── What you get ─────────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1.5rem;">What you get</h2>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+        <div>
+          <p style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1.1rem; margin: 0 0 .35rem;">Branded short links</p>
+          <p style="color: var(--ink-2); margin: 0; font-size: .95rem;">Custom under your handle (e.g. <code>/r/anna-reads-abc</code>). Per-book, per-list, or per-campaign.</p>
+        </div>
+        <div>
+          <p style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1.1rem; margin: 0 0 .35rem;">Real-time dashboard</p>
+          <p style="color: var(--ink-2); margin: 0; font-size: .95rem;">Clicks, conversions, earnings — all live. No waiting on monthly reports.</p>
+        </div>
+        <div>
+          <p style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1.1rem; margin: 0 0 .35rem;">Monthly payouts</p>
+          <p style="color: var(--ink-2); margin: 0; font-size: .95rem;">Auto-paid on the 1st of the following month, no minimum (under $25 carries over). PayPal, wire, or store credit.</p>
+        </div>
+        <div>
+          <p style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1.1rem; margin: 0 0 .35rem;">Editorial assets</p>
+          <p style="color: var(--ink-2); margin: 0; font-size: .95rem;">Clean cover images, blurbs, occasional ARCs, and a heads-up when something on your radar is back in stock.</p>
+        </div>
+      </div>
+    </div>
+
+    {% comment %}── Who should apply ────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">Who we usually approve</h2>
+      <p style="color: var(--ink-2); margin: 0;">Independent newsletters, podcasts, blogs, Substacks, reading clubs, librarians, indie bookstagrammers, and anyone running thoughtful reading lists. We're slower to greenlight high-volume coupon-and-deal sites — that's not what this is.</p>
+    </div>
+
+    {% comment %}── The form ──────────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0; padding: 2rem; border: 1px solid var(--rule); border-radius: 8px;">
+      <h2 class="display display-m" style="margin: 0 0 .5rem;">Apply</h2>
+      <p style="color: var(--ink-2); margin: 0 0 1.75rem;">Two minutes. We typically review within 3 business days.</p>
+
+      {% if error %}
       <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem; border-radius:6px; margin-bottom: 1.5rem;">
         {{ error }}
       </div>
-      {% if programs %}{% include "affiliates/_apply_form.html" %}{% endif %}
-    {% elif not programs %}
-      <p style="color: var(--muted);">No active programs are accepting applications right now. Please check back soon.</p>
-    {% else %}
-      {% include "affiliates/_apply_form.html" %}
+      {% endif %}
+
+      {% if programs %}
+        {% include "affiliates/_apply_form.html" %}
+      {% else %}
+        <p style="color: var(--muted);">No active programs are accepting applications right now. Please check back soon.</p>
+      {% endif %}
+    </div>
+
+    {% comment %}── FAQ ──────────────────────────────────────────────{% endcomment %}
+    <div style="margin: 4rem 0 0;">
+      <h2 class="display display-m" style="margin: 0 0 1.5rem;">Common questions</h2>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">How long does the cookie last?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">30 days. A reader who clicks your link and buys anything within that window is attributed to you, even if they leave and come back later.</p>
+      </details>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">Can I link to specific books or only the storefront?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">Either. You can generate per-book links from your dashboard, or use your handle on any URL — the dashboard tracks all of them.</p>
+      </details>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">Is there an exclusivity clause?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">No. Recommend whoever you want, however you want. We'd just rather not be one of seventy logos on a deals page.</p>
+      </details>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">When do you pay out?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">Monthly, on the 1st. Under $25 carries over to the next cycle. Payment goes to the email you set on your profile, via PayPal, wire, or store credit (we add 10% if you pick credit).</p>
+      </details>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">What about returns and refunds?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">A refund inside 30 days reverses the commission on that order. We try to keep refund rate transparent on your dashboard so you can see what's actually keeping.</p>
+      </details>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">Why might my application get rejected?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">Mostly: empty/spammy profiles, deals-and-coupons aggregators, and bot-driven traffic. If we say no, we'll usually tell you why and you can re-apply.</p>
+      </details>
+    </div>
+
     {% endif %}
 
   </div>
