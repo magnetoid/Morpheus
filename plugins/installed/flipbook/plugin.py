@@ -5,6 +5,7 @@ Both libraries load from a CDN, so no npm/pip install is required.
 The full PDF is fetched at view time and rendered page-by-page in
 the browser; no thumbnail generation step at upload.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -14,8 +15,7 @@ class FlipbookPlugin(Plugin):
     name = 'flipbook'
     label = 'Flipbook PDF preview'
     version = '1.0.0'
-    description = ('Adds a 3D page-flipping PDF preview to any product '
-                   'with a digital_file attached.')
+    description = 'Adds a 3D page-flipping PDF preview to any product with a digital_file attached.'
 
     def ready(self) -> None:
         # Mounts /p/<slug>/flipbook/ at the storefront root (no /dashboard/
@@ -56,13 +56,18 @@ class FlipbookPlugin(Plugin):
             },
         )
 
-    def storefront_blocks(self) -> list[StorefrontBlock]:
+    def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
         # Storefront block that appears under the PDP "Add to cart" form,
         # offering a "Flip through a preview" CTA for products with a
         # digital_file. The block template gates itself on the product
         # type / file presence.
-        return [StorefrontBlock(
-            slot='pdp_below_form',
-            template='storefront/blocks/_flipbook_cta.html',
-            priority=50,
-        )]
+        # NOTE: must be `contribute_storefront_blocks` (the base-class
+        # contract); `storefront_blocks` is silently ignored by the
+        # registry.
+        return [
+            StorefrontBlock(
+                slot='pdp_below_form',
+                template='storefront/blocks/_flipbook_cta.html',
+                priority=50,
+            )
+        ]
