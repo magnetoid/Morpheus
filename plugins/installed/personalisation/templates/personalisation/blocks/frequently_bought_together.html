@@ -1,0 +1,37 @@
+{% load personalisation %}{% load morph %}
+{% frequently_bought product 4 as rec_products %}
+{% if rec_products %}
+<section class="fbt" style="margin: 3rem 0; padding-top: 2rem; border-top: 1px solid var(--rule);">
+  <p class="eyebrow">Frequently bought with this</p>
+  <h2 class="display display-m" style="margin: 0.5rem 0 1.5rem;">
+    Pairs well<span class="text-accent">.</span>
+  </h2>
+  <div class="fbt__grid" style="
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem;
+  ">
+    {% for p in rec_products %}
+    <a href="{{ p.get_absolute_url }}" class="fbt__card" style="
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    ">
+      {% with img=p.primary_image %}
+        {% if img %}
+        <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:p.name }}"
+             loading="lazy" decoding="async"
+             style="width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 4px; background: var(--paper);">
+        {% else %}
+        <div style="aspect-ratio: 3/4; background: var(--paper); border-radius: 4px;"></div>
+        {% endif %}
+      {% endwith %}
+      <p style="font-family: var(--serif); font-size: 1rem; margin: 0;">{{ p.name }}</p>
+      <p class="meta" style="margin: 0;">{{ p.price|money }}</p>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
