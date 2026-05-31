@@ -2,11 +2,11 @@
 Morpheus CMS — Django Settings (Revised: Plugin-Native Architecture)
 """
 
-import os
 import sys
 from pathlib import Path
-from decouple import config, Csv
+
 import dj_database_url
+from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -146,6 +146,7 @@ MORPHEUS_ENGINE_APPS = [
     'core.i18n',  # Translation kernel — generic-FK Translation rows
     'core.audit',  # Security-grade audit log
     'core.errors',  # Deep error log — 5xx + client JS errors → ErrorEvent
+    'core.self_improvement',  # Autonomic loop + code review + drift tracking
     'plugins',
     'themes',
     'api',
@@ -159,7 +160,7 @@ INSTALLED_APPS = (
 )
 
 # Discover plugins so they are available in the registry
-from plugins.registry import plugin_registry
+from plugins.registry import plugin_registry  # noqa: E402 — must follow INSTALLED_APPS build
 
 plugin_registry.discover(ALL_MORPHEUS_PLUGINS)
 
@@ -275,10 +276,10 @@ DATABASE_ROUTERS = ['core.db_router.PrimaryReplicaRouter']
 # (or 'prefer') for internal Docker Postgres without SSL certs. Honours the
 # `?sslmode=…` query string in DATABASE_URL when present.
 _DEFAULT_SSL_MODE = config('DATABASE_SSL_MODE', default='require')
-for db_name in DATABASES:
-    if DATABASES[db_name].get('ENGINE') == 'django.db.backends.postgresql':
-        DATABASES[db_name].setdefault('OPTIONS', {})
-        DATABASES[db_name]['OPTIONS'].setdefault('sslmode', _DEFAULT_SSL_MODE)
+for db_config in DATABASES.values():
+    if db_config.get('ENGINE') == 'django.db.backends.postgresql':
+        db_config.setdefault('OPTIONS', {})
+        db_config['OPTIONS'].setdefault('sslmode', _DEFAULT_SSL_MODE)
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
 AUTH_USER_MODEL = 'customers.Customer'
@@ -537,5 +538,5 @@ try:
     from core.sentry import init_sentry
 
     init_sentry()
-except Exception:  # noqa: BLE001 — observability must never block app boot
+except Exception:  # noqa: BLE001, S110 — observability must never block app boot
     pass
