@@ -18,7 +18,12 @@ plugins, not core.** Anything that isn't *required* for catalog → cart →
 checkout → fulfillment lives in `plugins/installed/<name>/` with its own
 `apps.py`, `plugin.py` manifest, `models.py`, `migrations/`, and
 templates. Reach for `core/` only when the feature is genuinely
-foundational (auth, hooks, i18n kernel, request_id, observability).
+foundational: auth, hooks, i18n kernel, request_id, observability,
+**the self-improvement loop** (autonomic engine + code-quality scanner +
+upstream-drift tracking — the immune system of a vibecoded platform; cannot
+be a togglable plugin), and **the safety boundary** (`core/safety.py` —
+single source of truth for what AI can touch; read by self-improvement,
+agent_mcp, CI hooks, pre-commit).
 
 When in doubt: it's a plugin.
 
@@ -26,7 +31,8 @@ Examples (this is what's already shipped — mirror the pattern):
 
 - Reviews, loyalty, markets, notifications, workflows, metafields, media,
   CMS — all plugins.
-- The agent layer, hooks bus, settings, and request lifecycle — core.
+- The agent layer, hooks bus, settings, request lifecycle, self-improvement
+  engine, safety boundary — core.
 
 **Plugin contract:**
 
