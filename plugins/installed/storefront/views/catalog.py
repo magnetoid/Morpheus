@@ -6,6 +6,18 @@ _related_products) and the hybrid-search helpers (_apply_search,
 _metafield_search_ids). They're consumed by other modules in this package.
 """
 
+# ruff: noqa: PLC0415, PLR0912, PLR0915, S110, I001, B904
+# - PLC0415: inline imports across this file are intentional — every
+#   view-level function imports only what it needs, keeping import time
+#   low and avoiding circular deps with metafields / cms / ai_assistant.
+# - PLR0912 / PLR0915: product_list / product_detail / author_detail are
+#   the catalog's hot paths; splitting them prematurely would make the
+#   request flow harder to read.
+# - S110: defensive try/except/pass around optional integrations (videos,
+#   metafields, similar-to) is deliberate — they must never break a PDP.
+# - I001: per-function localised import groups intentionally.
+# - B904: Http404 in author_detail is a deliberate re-raise of an
+#   internal lookup failure; no chained context needed.
 from __future__ import annotations
 
 from api.client import internal_graphql
@@ -241,29 +253,48 @@ def product_list(request):
 
 
 def _apply_search(qs, q: str):
-    """Hybrid retrieval (BM25 + dense embeddings, RRF-fused) with a
-    metafield + SKU union for book-specific identifiers.
+    """Three-tier retrieval:
+
+    1. Typesense (sprint #3) — typo-tolerant + synonym-aware. Active
+       when settings.TYPESENSE['host'] is set; falls through otherwise.
+    2. Hybrid (BM25 + dense embeddings, RRF-fused) — the previous default,
+       still used when Typesense is off or empty.
+    3. SKU exact / metafield substring — backstop.
     """
-    from django.db.models import Case, IntegerField, Q, When
-    from plugins.installed.ai_assistant.services.search import hybrid_search
+    from django.db.models import Case, IntegerField, Q, When  # noqa: PLC0415
+    from plugins.installed.ai_assistant.services.search import hybrid_search  # noqa: PLC0415
+    from plugins.installed.catalog.search import (  # noqa: PLC0415
+        get_backend as _search_backend,
+        search as _catalog_search,
+    )
+
+    typesense_ids: list = []
+    if _search_backend() == 'typesense':
+        try:
+            result = _catalog_search(q, per_page=80)
+            typesense_ids = list(result.product_ids)
+        except Exception:  # noqa: BLE001 — fall through to hybrid on any error
+            typesense_ids = []
 
     metafield_ids = list(_metafield_search_ids(q))
-    hybrid_products = hybrid_search(q, top_k=80)
+    hybrid_products = hybrid_search(q, top_k=80) if not typesense_ids else []
     hybrid_ids = [p.pk for p in hybrid_products]
 
-    union_ids = list(dict.fromkeys(hybrid_ids + metafield_ids))
+    # Preserve Typesense ordering first, then hybrid, then metafield matches.
+    union_ids = list(dict.fromkeys(typesense_ids + hybrid_ids + metafield_ids))
     if not union_ids:
         return qs.filter(Q(sku__iexact=q))
 
     filtered = qs.filter(Q(id__in=union_ids) | Q(sku__iexact=q))
-    if not hybrid_ids:
+    ranked_ids = typesense_ids or hybrid_ids
+    if not ranked_ids:
         return filtered.order_by('-created_at')
 
-    rank_cases = [When(pk=pid, then=idx) for idx, pid in enumerate(hybrid_ids)]
+    rank_cases = [When(pk=pid, then=idx) for idx, pid in enumerate(ranked_ids)]
     return filtered.annotate(
         _hybrid_rank=Case(
             *rank_cases,
-            default=len(hybrid_ids) + 1,
+            default=len(ranked_ids) + 1,
             output_field=IntegerField(),
         )
     ).order_by('_hybrid_rank', '-created_at')
