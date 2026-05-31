@@ -5,6 +5,12 @@ Wires the Celery app to Django settings, hooks OpenTelemetry + Sentry, and
 captures every task failure into the observability ErrorEvent table so the
 merchant dashboard can see them.
 """
+
+# ruff: noqa: PLC0415, S110
+# Inline imports are intentional in this file — observability + plugins
+# may not be importable at Celery bootstrap time; the defensive
+# try/except/pass blocks keep boot resilient.
+
 from __future__ import annotations
 
 import logging
@@ -35,28 +41,40 @@ app.conf.beat_schedule = {
     },
 }
 
+# Self-improvement engine — registers ingest/analyze/digest tasks.
+try:
+    from core.self_improvement.tasks import register_beat_schedule as _si_register
+
+    _si_register(app.conf.beat_schedule)
+except Exception:  # noqa: BLE001 — beat boot must not fail on engine import error
+    pass
+
 # Observability bootstrap — fail-soft: missing OTel deps must not break workers.
 try:
     from core.observability import init_observability
+
     init_observability()
 except Exception as e:  # noqa: BLE001
     logger.debug('celery: observability init skipped: %s', e)
 
 try:
     from core.sentry import init_sentry
+
     init_sentry()
 except Exception as e:  # noqa: BLE001
     logger.debug('celery: sentry init skipped: %s', e)
 
 
 @task_failure.connect
-def _on_task_failure(sender=None, task_id=None, exception=None,
-                     traceback=None, einfo=None, **kwargs):
+def _on_task_failure(
+    sender=None, task_id=None, exception=None, traceback=None, einfo=None, **kwargs
+):
     """Persist task failures into the ErrorEvent table + Redis deadletter."""
     msg = str(exception)[:5000]
     stack = (str(einfo) if einfo else '')[:20000]
     try:
         from plugins.installed.observability.services import record_error
+
         record_error(
             source='celery',
             message=msg,
@@ -72,6 +90,7 @@ def _on_task_failure(sender=None, task_id=None, exception=None,
 
     try:
         from django.core.cache import cache
+
         cache.set(
             f'morpheus:deadletter:{task_id}',
             {'task': sender.name if sender else '', 'message': msg, 'stack': stack[:2000]},
