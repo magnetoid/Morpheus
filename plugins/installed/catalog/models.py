@@ -2,17 +2,29 @@
 Morpheus CMS - Catalog Models
 Products, Variants, Categories, Collections, Attributes, Reviews
 """
+
+# ruff: noqa: PLC0415, SIM105, E402, I001
+# - PLC0415: image_pipeline + logging imports are inline because they're
+#   lazy-imported in a Product save hook to avoid a circular dependency
+#   at app-load time.
+# - SIM105: leaving the try/except/pass on file deletion (over
+#   contextlib.suppress) for readability with two distinct exceptions.
+# - E402: pre_delete signal registration belongs after the model defs
+#   (it references the ProductImage class), not at module top.
+# - I001: legacy import order kept for git-blame stability.
 import uuid
-from morpheus import models
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.text import slugify
-from django.core.validators import MinValueValidator, MaxValueValidator
+from djmoney.models.fields import MoneyField
+from morpheus import models
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
-from djmoney.models.fields import MoneyField
 
 
 class Vendor(models.Model):
     """Vendor / supplier — lives in catalog to avoid circular migration deps."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
@@ -31,6 +43,7 @@ class Vendor(models.Model):
 
 class Category(MPTTModel):
     """Hierarchical category tree (MPTT for efficient tree queries)."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
@@ -63,6 +76,7 @@ class Category(MPTTModel):
 
 class Collection(models.Model):
     """Curated product collections (e.g. 'Summer Sale', 'New Arrivals')."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
@@ -93,6 +107,7 @@ class Collection(models.Model):
 
 class AttributeGroup(models.Model):
     """Groups attributes (e.g. 'Clothing Sizes', 'Colors')."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
@@ -103,6 +118,7 @@ class AttributeGroup(models.Model):
 
 class Attribute(models.Model):
     """Product attribute definition (e.g. 'Size', 'Color', 'Material')."""
+
     INPUT_TYPES = [
         ('select', 'Select'),
         ('multiselect', 'Multi-Select'),
@@ -129,6 +145,7 @@ class Attribute(models.Model):
 
 class AttributeValue(models.Model):
     """Possible values for an attribute (e.g. 'Red', 'XL')."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     attribute = models.ForeignKey(Attribute, on_delete=models.CASCADE, related_name='values')
     name = models.CharField(max_length=100)
@@ -141,11 +158,12 @@ class AttributeValue(models.Model):
         unique_together = ('attribute', 'slug')
 
     def __str__(self):
-        return f"{self.attribute.name}: {self.name}"
+        return f'{self.attribute.name}: {self.name}'
 
 
 class Product(models.Model):
     """Core product model."""
+
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('active', 'Active'),
@@ -168,17 +186,29 @@ class Product(models.Model):
     # Pricing
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
     compare_at_price = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True, help_text='Original price (shown as struck-through)'
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
+        help_text='Original price (shown as struck-through)',
     )
     cost_price = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True, help_text='Your cost (not shown to customers)'
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
+        help_text='Your cost (not shown to customers)',
     )
 
     # Enterprise Multi-Currency & Localization
-    localized_prices = models.JSONField(default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}')
-    localized_translations = models.JSONField(default=dict, blank=True, help_text='{"fr": {"name": "Produit", "description": "..."}}')
+    localized_prices = models.JSONField(
+        default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}'
+    )
+    localized_translations = models.JSONField(
+        default=dict, blank=True, help_text='{"fr": {"name": "Produit", "description": "..."}}'
+    )
 
     # Content
     short_description = models.TextField(blank=True)
@@ -186,10 +216,19 @@ class Product(models.Model):
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products'
     )
+    # Multi-category — products can ALSO surface under any of these
+    # category landings without losing their primary `category` FK
+    # (which stays canonical for breadcrumbs, JSON-LD, and SEO).
+    additional_categories = models.ManyToManyField(
+        Category,
+        blank=True,
+        related_name='also_listed_products',
+        help_text='Extra categories this product is listed under, in addition to its primary category.',
+    )
     collections = models.ManyToManyField(Collection, blank=True, related_name='products')
     tags = TaggableManager(blank=True)
     attributes = models.ManyToManyField(Attribute, blank=True, through='ProductAttribute')
-    
+
     # Multi-Tenancy
     channels = models.ManyToManyField('core.StoreChannel', blank=True, related_name='products')
 
@@ -202,7 +241,8 @@ class Product(models.Model):
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)
     focus_keyword = models.CharField(
-        max_length=120, blank=True,
+        max_length=120,
+        blank=True,
         help_text='Primary keyword this product targets — used by SEO audits.',
     )
     canonical_url = models.URLField(
@@ -224,7 +264,10 @@ class Product(models.Model):
     twitter_description = models.TextField(blank=True)
     twitter_image = models.ImageField(upload_to='products/twitter/', blank=True, null=True)
     twitter_card = models.CharField(
-        max_length=24, choices=TWITTER_CARD_CHOICES, default='summary_large_image', blank=True,
+        max_length=24,
+        choices=TWITTER_CARD_CHOICES,
+        default='summary_large_image',
+        blank=True,
     )
 
     # SEO — crawler controls.
@@ -239,7 +282,8 @@ class Product(models.Model):
 
     # SEO — extra JSON-LD overrides.
     structured_data = models.JSONField(
-        default=dict, blank=True,
+        default=dict,
+        blank=True,
         help_text='Extra fields merged into the auto-generated JSON-LD (e.g. brand, gtin, mpn).',
     )
 
@@ -349,6 +393,7 @@ class Product(models.Model):
 
 class ProductAttribute(models.Model):
     """Assigns attribute values to a product."""
+
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     attribute = models.ForeignKey(Attribute, on_delete=models.CASCADE)
     values = models.ManyToManyField(AttributeValue)
@@ -365,6 +410,7 @@ class ProductImage(models.Model):
     smaller than JPEG at equivalent quality and is supported by every modern
     browser, so this is a free LCP improvement on PDP/PLP.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='products/')
@@ -387,7 +433,7 @@ class ProductImage(models.Model):
         ]
 
     def __str__(self):
-        return f"Image for {self.product.name}"
+        return f'Image for {self.product.name}'
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -409,12 +455,16 @@ class ProductImage(models.Model):
         # encoded output. Falls back to WebP @ 800×1200 if the panel
         # isn't configured.
         from plugins.installed.catalog.image_pipeline import generate_pdp_variant
+
         try:
             generate_pdp_variant(self)
         except Exception:  # noqa: BLE001 — image upload must not fail on variant gen
             import logging
+
             logging.getLogger('morpheus.catalog').warning(
-                'Failed to generate image variant for ProductImage %s', self.pk, exc_info=True,
+                'Failed to generate image variant for ProductImage %s',
+                self.pk,
+                exc_info=True,
             )
 
     def delete(self, *args, **kwargs):
@@ -465,13 +515,14 @@ class ProductVariant(models.Model):
     policy, barcode, and optional digital file. Defaults preserve
     today's behaviour exactly so existing rows need no data migration.
     """
+
     VARIANT_TYPE_CHOICES = [
         ('physical', 'Physical — ships to a customer address'),
-        ('digital',  'Digital — downloadable file'),
-        ('virtual',  'Virtual — service, gift card, booking, no shipment'),
+        ('digital', 'Digital — downloadable file'),
+        ('virtual', 'Virtual — service, gift card, booking, no shipment'),
     ]
     INVENTORY_POLICY_CHOICES = [
-        ('deny',     'Deny — refuse orders when out of stock'),
+        ('deny', 'Deny — refuse orders when out of stock'),
         ('continue', 'Continue — accept backorders'),
     ]
 
@@ -479,8 +530,12 @@ class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
     name = models.CharField(max_length=200)
     sku = models.CharField(max_length=100, unique=True)
-    price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
-    compare_at_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
+    price = MoneyField(
+        max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True
+    )
+    compare_at_price = MoneyField(
+        max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True
+    )
 
     # Per-variant copy — used when a variant has its own marketing pitch
     # distinct from the parent product (e.g. "Signed hardcover" gets a
@@ -500,20 +555,27 @@ class ProductVariant(models.Model):
     # full attribute system. When you DO use attributes, leave this blank and
     # use the structured attribute_values M2M below instead.
     size = models.CharField(
-        max_length=50, blank=True,
+        max_length=50,
+        blank=True,
         help_text='Quick free-text size label, e.g. "XL" or "300 ml". For structured size pickers, use attribute_values.',
     )
 
-    localized_prices = models.JSONField(default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}')
+    localized_prices = models.JSONField(
+        default=dict, blank=True, help_text='{"EUR": "19.99", "JPY": "2500"}'
+    )
 
-    cost_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True)
+    cost_price = MoneyField(
+        max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True
+    )
     attribute_values = models.ManyToManyField(AttributeValue, blank=True)
     image = models.ForeignKey(ProductImage, on_delete=models.SET_NULL, null=True, blank=True)
     weight = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     # ── Shopify parity — per-variant fulfillment + tax + inventory ─────
     variant_type = models.CharField(
-        max_length=10, choices=VARIANT_TYPE_CHOICES, default='physical',
+        max_length=10,
+        choices=VARIANT_TYPE_CHOICES,
+        default='physical',
         help_text='Physical (ships), digital (downloadable), or virtual (no fulfillment).',
     )
     requires_shipping = models.BooleanField(
@@ -525,15 +587,20 @@ class ProductVariant(models.Model):
         help_text='Per-variant override of Product.is_taxable. Useful for EU VAT where digital + physical have different rules.',
     )
     inventory_policy = models.CharField(
-        max_length=10, choices=INVENTORY_POLICY_CHOICES, default='deny',
+        max_length=10,
+        choices=INVENTORY_POLICY_CHOICES,
+        default='deny',
         help_text='What happens when stock hits zero. Continue allows backorders.',
     )
     barcode = models.CharField(
-        max_length=50, blank=True,
+        max_length=50,
+        blank=True,
         help_text='UPC / EAN / ISBN. Used by POS, wholesale, and inventory sync.',
     )
     digital_file = models.FileField(
-        upload_to='digital/variants/', blank=True, null=True,
+        upload_to='digital/variants/',
+        blank=True,
+        null=True,
         help_text='Per-variant override of Product.digital_file. Use when a single product sells in multiple digital formats (PDF / EPUB / MOBI).',
     )
 
@@ -546,7 +613,7 @@ class ProductVariant(models.Model):
         ordering = ['sort_order']
 
     def __str__(self):
-        return f"{self.product.name} - {self.name}"
+        return f'{self.product.name} - {self.name}'
 
     @property
     def effective_price(self):
@@ -555,9 +622,12 @@ class ProductVariant(models.Model):
 
 class Review(models.Model):
     """Customer product review with rating."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
-    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='reviews')
+    customer = models.ForeignKey(
+        'customers.Customer', on_delete=models.CASCADE, related_name='reviews'
+    )
     rating = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
@@ -587,7 +657,7 @@ class Review(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.rating}★ review by {self.customer.email} on {self.product.name}"
+        return f'{self.rating}★ review by {self.customer.email} on {self.product.name}'
 
 
 class PriceSchedule(models.Model):
@@ -600,13 +670,19 @@ class PriceSchedule(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='price_schedules')
     variant = models.ForeignKey(
-        ProductVariant, on_delete=models.CASCADE,
-        null=True, blank=True, related_name='price_schedules',
+        ProductVariant,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='price_schedules',
     )
     new_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
     new_compare_at = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
     )
     effective_at = models.DateTimeField(db_index=True)
     applied_at = models.DateTimeField(null=True, blank=True, db_index=True)

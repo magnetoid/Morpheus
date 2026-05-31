@@ -46,10 +46,14 @@ def product_list(request):
     if q:
         qs = _apply_search(qs, q)
 
-    # Category filter
+    # Category filter — match either the primary `category` FK OR the
+    # `additional_categories` M2M, with .distinct() to avoid duplicate
+    # rows from the join. Symmetric with category_detail's listing.
     cat_slug = (request.GET.get('category') or '').strip()
     if cat_slug:
-        qs = qs.filter(category__slug=cat_slug)
+        qs = qs.filter(
+            Q(category__slug=cat_slug) | Q(additional_categories__slug=cat_slug)
+        ).distinct()
 
     # Collection filter — `?collection=<slug>` (curated merchandising sets;
     # the PDP "Featured in" chips link here so a shopper can browse the set).
@@ -746,9 +750,18 @@ def category_detail(request, slug):
     category = Category.objects.filter(slug=slug).first()
     if category is None:
         raise Http404
+    # Include products whose PRIMARY category is this one OR whose
+    # `additional_categories` M2M includes it (multi-category surface
+    # support — keeps the primary category canonical for breadcrumbs
+    # but lets a product cross-list under "Bestsellers" + "Children's"
+    # etc.).
+    from django.db.models import Q  # noqa: PLC0415
+
     products = list(
-        Product.objects.filter(status='active', category=category)
+        Product.objects.filter(status='active')
+        .filter(Q(category=category) | Q(additional_categories=category))
         .select_related('category')
+        .distinct()
         .order_by('-is_featured', '-created_at')[:60]
     )
     intro = _CATEGORY_INTROS.get(slug, {})

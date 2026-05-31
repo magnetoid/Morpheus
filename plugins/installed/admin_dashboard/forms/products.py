@@ -1,4 +1,11 @@
 """Product + variant create/edit forms."""
+
+# ruff: noqa: PLC0415, I001, B904, PLR5501, PLR0912, PLR0915
+# Inline imports are intentional throughout — every clean_* / save
+# method only imports the models it needs, keeping form import time
+# low and breaking would-be circular deps between admin_dashboard ↔
+# catalog. PLR0912 on save() reflects the size of the create+edit
+# atomic boundary, not unrelated branches.
 from __future__ import annotations
 
 from decimal import Decimal
@@ -20,38 +27,58 @@ class ProductForm(forms.Form):
     # row's slug in place.
     slug = forms.SlugField(max_length=300, required=False)
     sku = forms.CharField(max_length=100, required=False)
-    status = forms.ChoiceField(choices=[
-        ('draft', 'Draft'),
-        ('active', 'Active'),
-        ('archived', 'Archived'),
-    ])
-    product_type = forms.ChoiceField(choices=[
-        ('simple', 'Simple'),
-        ('variable', 'Variable'),
-        ('digital', 'Digital'),
-        ('bundle', 'Bundle'),
-    ], initial='simple')
+    status = forms.ChoiceField(
+        choices=[
+            ('draft', 'Draft'),
+            ('active', 'Active'),
+            ('archived', 'Archived'),
+        ]
+    )
+    product_type = forms.ChoiceField(
+        choices=[
+            ('simple', 'Simple'),
+            ('variable', 'Variable'),
+            ('digital', 'Digital'),
+            ('bundle', 'Bundle'),
+        ],
+        initial='simple',
+    )
     # Variable products have a per-variant price, so the parent's `price` is
     # cosmetic — the form-level clean() lets it default to 0 when the user
     # picks Variable. `required=False` here flips the field from "always
     # required" to "validated in clean() based on product_type".
-    price = forms.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False)
+    price = forms.DecimalField(
+        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False
+    )
     compare_at_price = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
     )
     cost_price = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
     )
     short_description = forms.CharField(widget=forms.Textarea, required=False)
     description = forms.CharField(widget=forms.Textarea, required=False)
     category = forms.UUIDField(required=False)
+    # Multi-category — Product.additional_categories M2M. The template
+    # POSTs `additional_categories` as a list of UUID strings (one per
+    # checked checkbox); we parse + validate in clean().
+    additional_categories = forms.CharField(required=False, widget=forms.HiddenInput)
     vendor = forms.UUIDField(required=False)
     is_featured = forms.BooleanField(required=False)
     is_taxable = forms.BooleanField(required=False, initial=True)
     track_inventory = forms.BooleanField(required=False, initial=True)
     requires_shipping = forms.BooleanField(required=False, initial=True)
     weight = forms.DecimalField(
-        max_digits=8, decimal_places=3, required=False, min_value=Decimal('0'),
+        max_digits=8,
+        decimal_places=3,
+        required=False,
+        min_value=Decimal('0'),
     )
     weight_unit = forms.CharField(max_length=5, required=False, initial='kg')
 
@@ -72,16 +99,21 @@ class ProductForm(forms.Form):
     # ── SEO — Twitter Card ──────────────────────────────────────────────
     twitter_title = forms.CharField(max_length=200, required=False)
     twitter_description = forms.CharField(widget=forms.Textarea, required=False)
-    twitter_card = forms.ChoiceField(choices=[
-        ('summary', 'Summary'),
-        ('summary_large_image', 'Summary with large image'),
-    ], required=False, initial='summary_large_image')
+    twitter_card = forms.ChoiceField(
+        choices=[
+            ('summary', 'Summary'),
+            ('summary_large_image', 'Summary with large image'),
+        ],
+        required=False,
+        initial='summary_large_image',
+    )
     # ── SEO — crawler controls ──────────────────────────────────────────
     noindex = forms.BooleanField(required=False)
     nofollow = forms.BooleanField(required=False)
     # ── SEO — extra structured data (JSON; loose-typed for flexibility) ─
     structured_data = forms.CharField(
-        widget=forms.Textarea, required=False,
+        widget=forms.Textarea,
+        required=False,
         help_text='Optional JSON object merged into auto-generated JSON-LD.',
     )
 
@@ -89,6 +121,7 @@ class ProductForm(forms.Form):
         self.instance = instance
         if instance is not None and 'initial' not in kwargs:
             import json
+
             kwargs['initial'] = {
                 'name': instance.name,
                 'slug': instance.slug,
@@ -99,14 +132,15 @@ class ProductForm(forms.Form):
                 'compare_at_price': (
                     instance.compare_at_price.amount if instance.compare_at_price else None
                 ),
-                'cost_price': (
-                    instance.cost_price.amount if instance.cost_price else None
-                ),
+                'cost_price': (instance.cost_price.amount if instance.cost_price else None),
                 # TipTap stores HTML; legacy rows from populate_descriptions
                 # are Markdown — convert on read so the editor renders them.
                 'short_description': _ensure_html(instance.short_description),
                 'description': _ensure_html(instance.description),
                 'category': instance.category_id,
+                'additional_categories': ','.join(
+                    str(c) for c in instance.additional_categories.values_list('pk', flat=True)
+                ),
                 'vendor': instance.vendor_id,
                 'is_featured': instance.is_featured,
                 'is_taxable': instance.is_taxable,
@@ -128,7 +162,8 @@ class ProductForm(forms.Form):
                 'nofollow': bool(getattr(instance, 'nofollow', False)),
                 'structured_data': (
                     json.dumps(instance.structured_data, indent=2)
-                    if getattr(instance, 'structured_data', None) else ''
+                    if getattr(instance, 'structured_data', None)
+                    else ''
                 ),
             }
         super().__init__(*args, **kwargs)
@@ -138,6 +173,7 @@ class ProductForm(forms.Form):
         if not raw:
             return {}
         import json
+
         try:
             value = json.loads(raw)
         except json.JSONDecodeError as e:
@@ -151,6 +187,7 @@ class ProductForm(forms.Form):
         if not sku:
             return ''
         from plugins.installed.catalog.models import Product
+
         qs = Product.objects.filter(sku=sku)
         if self.instance is not None:
             qs = qs.exclude(pk=self.instance.pk)
@@ -163,13 +200,12 @@ class ProductForm(forms.Form):
         if not slug:
             return ''
         from plugins.installed.catalog.models import Product
+
         qs = Product.objects.filter(slug=slug)
         if self.instance is not None:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise forms.ValidationError(
-                'That URL slug is already used by another product.'
-            )
+            raise forms.ValidationError('That URL slug is already used by another product.')
         return slug
 
     def clean(self):
@@ -213,9 +249,15 @@ class ProductForm(forms.Form):
         # SEO fields — only assign when the model actually has them so
         # this code keeps working against an older Product schema.
         for field in (
-            'meta_title', 'meta_description', 'focus_keyword',
-            'canonical_url', 'og_title', 'og_description',
-            'twitter_title', 'twitter_description', 'twitter_card',
+            'meta_title',
+            'meta_description',
+            'focus_keyword',
+            'canonical_url',
+            'og_title',
+            'og_description',
+            'twitter_title',
+            'twitter_description',
+            'twitter_card',
         ):
             if hasattr(product, field):
                 setattr(product, field, cd.get(field) or '')
@@ -265,6 +307,18 @@ class ProductForm(forms.Form):
         elif not product.slug:
             product.slug = slugify(product.name)[:300] or 'product'
         product.save()
+
+        # Multi-category — the template POSTs a comma-separated list of
+        # UUIDs (one per checked checkbox). Set the M2M after save() so
+        # we have a pk on create.
+        raw_additional = (cd.get('additional_categories') or '').strip()
+        if raw_additional:
+            ids = [s.strip() for s in raw_additional.split(',') if s.strip()]
+            valid = list(Category.objects.filter(pk__in=ids).values_list('pk', flat=True))
+            product.additional_categories.set(valid)
+        else:
+            product.additional_categories.clear()
+
         return product
 
 
@@ -276,13 +330,14 @@ class VariantForm(forms.Form):
     requires_shipping, is_taxable, inventory_policy, barcode,
     digital_file.
     """
+
     VARIANT_TYPE_CHOICES = [
         ('physical', 'Physical — ships to a customer address'),
-        ('digital',  'Digital — downloadable file'),
-        ('virtual',  'Virtual — service / gift card / booking, no shipment'),
+        ('digital', 'Digital — downloadable file'),
+        ('virtual', 'Virtual — service / gift card / booking, no shipment'),
     ]
     INVENTORY_POLICY_CHOICES = [
-        ('deny',     'Deny — refuse orders when out of stock'),
+        ('deny', 'Deny — refuse orders when out of stock'),
         ('continue', 'Continue — accept backorders'),
     ]
 
@@ -292,25 +347,41 @@ class VariantForm(forms.Form):
     short_description = forms.CharField(widget=forms.Textarea, required=False)
     description = forms.CharField(widget=forms.Textarea, required=False)
     price = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
     )
     compare_at_price = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
     )
     cost_price = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
     )
     weight = forms.DecimalField(
-        max_digits=8, decimal_places=3, required=False, min_value=Decimal('0'),
+        max_digits=8,
+        decimal_places=3,
+        required=False,
+        min_value=Decimal('0'),
     )
     # Shopify-parity fields.
     variant_type = forms.ChoiceField(
-        choices=VARIANT_TYPE_CHOICES, initial='physical', required=False,
+        choices=VARIANT_TYPE_CHOICES,
+        initial='physical',
+        required=False,
     )
     requires_shipping = forms.BooleanField(required=False, initial=True)
     is_taxable = forms.BooleanField(required=False, initial=True)
     inventory_policy = forms.ChoiceField(
-        choices=INVENTORY_POLICY_CHOICES, initial='deny', required=False,
+        choices=INVENTORY_POLICY_CHOICES,
+        initial='deny',
+        required=False,
     )
     barcode = forms.CharField(max_length=50, required=False)
     digital_file = forms.FileField(required=False)
@@ -339,9 +410,7 @@ class VariantForm(forms.Form):
                 'compare_at_price': (
                     instance.compare_at_price.amount if instance.compare_at_price else None
                 ),
-                'cost_price': (
-                    instance.cost_price.amount if instance.cost_price else None
-                ),
+                'cost_price': (instance.cost_price.amount if instance.cost_price else None),
                 'weight': instance.weight,
                 'variant_type': getattr(instance, 'variant_type', 'physical'),
                 'requires_shipping': getattr(instance, 'requires_shipping', True),
@@ -356,6 +425,7 @@ class VariantForm(forms.Form):
     def clean_sku(self):
         sku = self.cleaned_data['sku'].strip()
         from plugins.installed.catalog.models import ProductVariant
+
         qs = ProductVariant.objects.filter(sku=sku)
         if self.instance is not None:
             qs = qs.exclude(pk=self.instance.pk)
@@ -370,11 +440,12 @@ class VariantForm(forms.Form):
         # merchant didn't explicitly set the checkbox. Digital + virtual
         # default to no shipping; physical defaults to requires shipping.
         if 'requires_shipping' not in self.data:
-            cleaned['requires_shipping'] = (vt == 'physical')
+            cleaned['requires_shipping'] = vt == 'physical'
         return cleaned
 
     def save(self) -> Any:
         from plugins.installed.catalog.models import ProductVariant
+
         if self.product is None:
             raise ValueError('VariantForm.save() requires a product.')
 
@@ -415,6 +486,7 @@ class VariantForm(forms.Form):
         img_upload = cd.get('image')
         if img_upload:
             from plugins.installed.catalog.models import ProductImage
+
             pi = ProductImage(
                 product=self.product,
                 alt_text=(variant.name or self.product.name or '')[:255],
