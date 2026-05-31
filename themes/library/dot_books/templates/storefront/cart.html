@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load caching %}{% load seo %}
+{% load morph %}{% load caching %}{% load seo %}{% load experiments %}
 {% block title %}Your cart — dot books{% endblock %}
 
 {% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
@@ -62,7 +62,12 @@
           </div>
         </div>
         {% storefront_blocks "cart_summary_extra" %}
-        <a href="/checkout/" class="btn btn-primary" style="width:100%; justify-content: center; margin-top: 1.25rem;">Checkout</a>
+        {# A/B test: checkout_flow ('control' = 3-step at /checkout/, 'one_page' = /checkout/quick/). #}
+        {% variant 'checkout_flow' as _checkout_variant %}
+        <a href="{% if _checkout_variant == 'one_page' %}/checkout/quick/{% else %}/checkout/{% endif %}"
+           class="btn btn-primary"
+           data-experiment="checkout_flow" data-variant="{{ _checkout_variant }}"
+           style="width:100%; justify-content: center; margin-top: 1.25rem;">Checkout</a>
         <p class="meta" style="text-align:center; margin-top: 1rem;">Free shipping over $40<span class="text-accent">.</span></p>
       </aside>
     </div>
