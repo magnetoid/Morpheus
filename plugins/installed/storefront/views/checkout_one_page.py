@@ -1,0 +1,225 @@
+"""Single-page checkout — sprint priority #7.
+
+Consolidates the 3-step flow (email/address → shipping → review) into
+one scrollable page. The 3-step flow stays live at /checkout/ as a
+fallback; the new flow lives at /checkout/quick/. Merchants can
+A/B-test the two via the experiments plugin.
+
+Why one-page wins for most shops:
+  - Removes 2 navigation transitions; each one bleeds ~5% conversion.
+  - All required info is visible up-front (no surprises late in the
+    flow).
+  - Mobile users can fill the entire form in a single thumb-scroll.
+
+What we keep from the 3-step flow:
+  - completeOrder GraphQL mutation — same backend.
+  - Cart query, address fields, shipping-rate selection.
+  - Stripe Payment Element on the redirect target (/checkout/payment/).
+
+Guest-by-default: there is no "create account" gate before submission.
+Authenticated users see a single "Save my info" checkbox at the
+bottom of the form which links the order to their account.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from django.shortcuts import redirect, render
+
+from plugins.installed.storefront.views.checkout import (
+    _available_shipping_rates,
+    _cart_requires_shipping,
+    _checkout_base_context,
+)
+from plugins.installed.storefront.views.helpers import CART_QUERY, internal_graphql
+
+logger = logging.getLogger('morpheus.storefront.checkout_one_page')
+
+
+def checkout_one_page(request):
+    """Single-screen checkout — render or submit."""
+    if request.method == 'GET':
+        return _render_form(request, addr=None, rate_id='', error='')
+
+    addr = _collect_address(request)
+    rate_id = (request.POST.get('shipping_rate_id') or '').strip()
+    no_shipping = not _cart_requires_shipping(request)
+
+    error = _validate(addr, no_shipping=no_shipping)
+    if error:
+        return _render_form(request, addr=addr, rate_id=rate_id, error=error)
+
+    cart_data = internal_graphql(CART_QUERY, request=request) or {}
+    cart = cart_data.get('cart') or {}
+
+    # If shipping is required and no rate was selected, fall back to the
+    # cheapest available rate.
+    rates: list[dict[str, Any]] = []
+    if not no_shipping:
+        rates = _available_shipping_rates(request, addr)
+        if rate_id and not any(str(r['id']) == rate_id for r in rates):
+            rate_id = ''
+        if not rate_id and rates:
+            rate_id = str(rates[0]['id'])
+    else:
+        rate_id = 'no-shipping'
+
+    cart_id = (cart.get('id') or request.session.get('cart_id') or '').strip()
+    if not cart_id:
+        return _render_form(
+            request,
+            addr=addr,
+            rate_id=rate_id,
+            error='Your cart has expired — add items again to continue.',
+        )
+
+    payload = _submit_order(
+        request=request,
+        cart_id=cart_id,
+        addr=addr,
+        rate_id=rate_id,
+    )
+    errs = payload.get('errors') or []
+    if errs:
+        return _render_form(
+            request,
+            addr=addr,
+            rate_id=rate_id,
+            error='; '.join(e.get('message', 'Order failed.') for e in errs),
+        )
+
+    order_no = payload.get('orderNumber') or ''
+    client_secret = payload.get('paymentClientSecret') or ''
+    request.session['checkout_order_number'] = order_no
+    request.session['checkout_client_secret'] = client_secret
+    for k in (
+        'checkout_address',
+        'checkout_shipping_rate_id',
+        'checkout_shipping_rate_label',
+    ):
+        request.session.pop(k, None)
+
+    if not client_secret:
+        # No payment needed (free order / fully gift-carded). Send to
+        # confirmation with public_token for guest access.
+        return _redirect_to_confirmation(order_no)
+    return redirect('/checkout/payment/')
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+_ADDRESS_FIELDS = (
+    'email',
+    'first_name',
+    'last_name',
+    'address_line1',
+    'address_line2',
+    'city',
+    'state',
+    'postal_code',
+    'country',
+    'phone',
+)
+
+
+def _collect_address(request) -> dict[str, str]:
+    return {f: (request.POST.get(f) or '').strip() for f in _ADDRESS_FIELDS}
+
+
+def _validate(addr: dict, *, no_shipping: bool) -> str:
+    if not addr.get('email'):
+        return 'Please enter your email address.'
+    if no_shipping:
+        return ''
+    missing = [
+        label
+        for field, label in (
+            ('address_line1', 'street address'),
+            ('city', 'city'),
+            ('country', 'country'),
+        )
+        if not addr.get(field)
+    ]
+    if missing:
+        return f'Please fill in: {", ".join(missing)}.'
+    return ''
+
+
+def _submit_order(*, request, cart_id: str, addr: dict, rate_id: str) -> dict:
+    mutation = """
+    mutation Complete($input: CompleteOrderInput!) {
+      completeOrder(input: $input) {
+        orderNumber
+        paymentClientSecret
+        errors { code message }
+      }
+    }
+    """
+    shipping_input = {
+        'firstName': addr.get('first_name', ''),
+        'lastName': addr.get('last_name', ''),
+        'addressLine1': addr.get('address_line1', ''),
+        'addressLine2': addr.get('address_line2', ''),
+        'city': addr.get('city', ''),
+        'state': addr.get('state', ''),
+        'postalCode': addr.get('postal_code', ''),
+        'country': addr.get('country', ''),
+        'phone': addr.get('phone', ''),
+    }
+    data = (
+        internal_graphql(
+            mutation,
+            variables={
+                'input': {
+                    'cartId': cart_id,
+                    'email': addr.get('email', ''),
+                    'shippingAddress': shipping_input,
+                    'shippingRateId': rate_id if rate_id != 'no-shipping' else None,
+                },
+            },
+            request=request,
+        )
+        or {}
+    )
+    return data.get('completeOrder') or {}
+
+
+def _redirect_to_confirmation(order_no: str):
+    if not order_no:
+        return redirect('/account/orders/')
+    try:
+        from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+        token = (
+            Order.objects.filter(order_number=order_no)
+            .values_list('public_token', flat=True)
+            .first()
+            or ''
+        )
+    except Exception:  # noqa: BLE001
+        token = ''
+    url = f'/order/confirmation/{order_no}/'
+    if token:
+        url = f'{url}?token={token}'
+    return redirect(url)
+
+
+def _render_form(request, *, addr: dict | None, rate_id: str, error: str):
+    ctx = _checkout_base_context(request)
+    ctx['no_shipping_required'] = not _cart_requires_shipping(request)
+    ctx['form'] = addr or {}
+    ctx['selected_rate_id'] = rate_id
+    ctx['error'] = error
+    if not ctx['no_shipping_required'] and addr:
+        try:
+            ctx['rates'] = _available_shipping_rates(request, addr)
+        except Exception:  # noqa: BLE001
+            ctx['rates'] = []
+    else:
+        ctx['rates'] = []
+    return render(request, 'storefront/checkout_one_page.html', ctx)

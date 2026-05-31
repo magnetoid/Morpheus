@@ -69,6 +69,7 @@ from .checkout import (
     checkout_review,
     checkout_shipping,
 )
+from .checkout_one_page import checkout_one_page as checkout_one_page
 from .content import (
     about,
     coming_soon,

@@ -24,6 +24,13 @@ urlpatterns = [
     path('checkout/shipping/', views.checkout_shipping, name='checkout_shipping'),
     path('checkout/review/', views.checkout_review, name='checkout_review'),
     path('checkout/payment/', views.checkout_payment, name='checkout_payment'),
+    # One-page checkout (sprint priority #7) — keeps the 3-step flow as
+    # fallback. Merchants can swap default via SettingsPanel.
+    path(
+        'checkout/quick/',
+        views.checkout_one_page,
+        name='checkout_one_page',
+    ),
     path(
         'checkout/gift-card/apply/', views.checkout_apply_gift_card, name='checkout_apply_gift_card'
     ),
