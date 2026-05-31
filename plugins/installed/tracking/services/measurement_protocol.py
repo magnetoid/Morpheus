@@ -1,3 +1,11 @@
+# ruff: noqa: PLC0415, I001, UP037, F821, S310
+# - PLC0415: inline imports avoid pulling Django models at module-import
+#   time (this file is imported from celery + signal context where the
+#   app registry may not be ready yet).
+# - UP037 / F821: 'GA4EventLog' return annotation kept quoted so the
+#   docstring + IDE hint keep working without an eager import.
+# - S310: urlopen targets a hard-coded https://www.google-analytics.com
+#   endpoint (or region variant) — not user-controlled URLs.
 """GA4 Measurement Protocol v2 — server-side event firing.
 
 Every server-side hit goes through ``send_event()`` which:
@@ -17,6 +25,7 @@ Required-on-every-request per the 2026 MP v2 spec:
   these the hit lands in DebugView but never in standard reports.
 * ``consent`` object — Consent Mode v2 signals.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,8 +51,7 @@ def _new_client_id() -> str:
     return f'{uuid.uuid4().int & ((1 << 32) - 1)}.{int(timezone.now().timestamp())}'
 
 
-def _is_duplicate(settings_row, event_name: str, transaction_id: str,
-                  client_id: str) -> bool:
+def _is_duplicate(settings_row, event_name: str, transaction_id: str, client_id: str) -> bool:
     """Look back inside the dedup window for a matching SENT row."""
     from datetime import timedelta
     from plugins.installed.tracking.models import GA4EventLog
@@ -51,9 +59,13 @@ def _is_duplicate(settings_row, event_name: str, transaction_id: str,
     strategy = settings_row.dedup_strategy or 'transaction_id'
     if strategy == 'off':
         return False
-    cutoff = timezone.now() - timedelta(minutes=max(int(settings_row.dedup_window_minutes or 60), 1))
+    cutoff = timezone.now() - timedelta(
+        minutes=max(int(settings_row.dedup_window_minutes or 60), 1)
+    )
     qs = GA4EventLog.objects.filter(
-        event_name=event_name, fired_at__gte=cutoff, status=GA4EventLog.STATUS_SENT,
+        event_name=event_name,
+        fired_at__gte=cutoff,
+        status=GA4EventLog.STATUS_SENT,
     )
     if strategy == 'transaction_id' and transaction_id:
         return qs.filter(transaction_id=transaction_id).exists()
@@ -141,13 +153,22 @@ def send_event(
     }
     if user_id:
         body['user_id'] = user_id
-    body['consent'] = consent or {
-        # Default to denied — this is the GDPR-safe posture; Google's
-        # Consent Mode v2 server-side will still produce modeled
-        # aggregates for opted-out visitors.
-        'ad_user_data': 'DENIED',
-        'ad_personalization': 'DENIED',
-    }
+    if getattr(s, 'consent_override', False):
+        # Merchant has explicitly opted out of consent gating (debug /
+        # internal / non-EU only — see model help text). Send every
+        # signal as granted so events land in standard reports.
+        body['consent'] = {
+            'ad_user_data': 'GRANTED',
+            'ad_personalization': 'GRANTED',
+        }
+    else:
+        body['consent'] = consent or {
+            # Default to denied — GDPR-safe posture; Consent Mode v2
+            # server-side still produces modeled aggregates for
+            # opted-out visitors.
+            'ad_user_data': 'DENIED',
+            'ad_personalization': 'DENIED',
+        }
 
     url = _endpoint(s.region) + f'?measurement_id={s.measurement_id}&api_secret={s.api_secret}'
     if s.debug_mode:
@@ -160,8 +181,10 @@ def send_event(
         req = _urlrequest.Request(
             url,
             data=json.dumps(body).encode('utf-8'),
-            headers={'Content-Type': 'application/json; charset=utf-8',
-                     'User-Agent': 'Morpheus-Tracking/1.0'},
+            headers={
+                'Content-Type': 'application/json; charset=utf-8',
+                'User-Agent': 'Morpheus-Tracking/1.0',
+            },
             method='POST',
         )
         with _urlrequest.urlopen(req, timeout=6) as resp:
@@ -180,6 +203,10 @@ def send_event(
         payload=body,
         response_status=status_code,
         response_body=response_body,
-        status=(GA4EventLog.STATUS_SENT if status_code and 200 <= status_code < 300 else GA4EventLog.STATUS_ERROR),
+        status=(
+            GA4EventLog.STATUS_SENT
+            if status_code and 200 <= status_code < 300
+            else GA4EventLog.STATUS_ERROR
+        ),
         error_message=error_message,
     )

@@ -9,11 +9,23 @@
   ``?tab=…`` query param so each tab is bookmarkable.
 * `event_log` — paginated audit table.
 * `event_detail` — full payload + response body of one row.
-* `test_purchase` — fires a synthetic purchase event so the merchant
-  can verify the integration without placing a real order.
+* `test_purchase` / `test_event` — fire synthetic events so the
+  merchant can verify the integration without placing a real order.
+* `connection_check` — JSON probe that POSTs to the GA4 Debug endpoint
+  and reports validation errors back to the merchant.
 * `gtm_container_export` — downloads a pre-built GTM container JSON
   ready for import.
 """
+
+# ruff: noqa: PLC0415, B007, PLR0912, PLR0915
+# - PLC0415: inline imports inside views avoid loading subsystems
+#   (measurement_protocol, event_mapping, registry) at URLconf import.
+# - PLR0912 / PLR0915: settings_page is a tab-routed POST handler —
+#   each tab's branch is its own logical save. Splitting it would
+#   muddy the request flow without removing complexity.
+# - B007: `ts` is bound for tuple-unpack readability; renaming to `_ts`
+#   would make the values_list shape opaque.
+
 from __future__ import annotations
 
 import json
@@ -26,8 +38,11 @@ from django.utils import timezone
 
 from morpheus.views import staff_member_required
 from plugins.installed.tracking.models import (
-    DEFAULT_CONSENT_DEFAULT, DEFAULT_ENHANCED_OVERRIDES, DEFAULT_EVENT_FIRING,
-    GA4EventLog, TrackingSettings,
+    DEFAULT_CONSENT_DEFAULT,
+    DEFAULT_ENHANCED_OVERRIDES,
+    DEFAULT_EVENT_FIRING,
+    GA4EventLog,
+    TrackingSettings,
 )
 
 logger = logging.getLogger('morpheus.tracking.views')
@@ -36,6 +51,7 @@ logger = logging.getLogger('morpheus.tracking.views')
 def _stats() -> dict:
     """Cheap summary for the overview page."""
     from datetime import timedelta
+
     cutoff = timezone.now() - timedelta(hours=24)
     qs = GA4EventLog.objects.filter(fired_at__gte=cutoff)
     total = qs.count()
@@ -62,13 +78,21 @@ def overview(request):
     s = TrackingSettings.get_solo()
     stats = _stats()
     recent = list(GA4EventLog.objects.all().order_by('-fired_at')[:10])
-    last_sent = GA4EventLog.objects.filter(status=GA4EventLog.STATUS_SENT).order_by('-fired_at').first()
-    return render(request, 'tracking/overview.html', {
-        'active_nav': 'tracking', 's': s,
-        'stats': stats, 'recent': recent,
-        'last_sent_at': getattr(last_sent, 'fired_at', None),
-        'configured': bool(s.measurement_id and s.api_secret),
-    })
+    last_sent = (
+        GA4EventLog.objects.filter(status=GA4EventLog.STATUS_SENT).order_by('-fired_at').first()
+    )
+    return render(
+        request,
+        'tracking/overview.html',
+        {
+            'active_nav': 'tracking',
+            's': s,
+            'stats': stats,
+            'recent': recent,
+            'last_sent_at': getattr(last_sent, 'fired_at', None),
+            'configured': bool(s.measurement_id and s.api_secret),
+        },
+    )
 
 
 @staff_member_required
@@ -117,6 +141,7 @@ def settings_page(request):
                 val = (request.POST.get(f'consent_{signal}') or 'denied').strip()
                 new_consent[signal] = 'granted' if val == 'granted' else 'denied'
             s.consent_default = new_consent
+            s.consent_override = request.POST.get('consent_override') == 'on'
             s.show_consent_banner = request.POST.get('show_consent_banner') == 'on'
             s.banner_accept_label = (request.POST.get('banner_accept_label') or 'Accept all')[:40]
             s.banner_reject_label = (request.POST.get('banner_reject_label') or 'Reject')[:40]
@@ -135,8 +160,12 @@ def settings_page(request):
             tab = 'identity'
 
         elif action == 'filters':
-            paths = [p.strip() for p in (request.POST.get('block_paths') or '').split('\n') if p.strip()]
-            bots = [p.strip() for p in (request.POST.get('bot_patterns') or '').split('\n') if p.strip()]
+            paths = [
+                p.strip() for p in (request.POST.get('block_paths') or '').split('\n') if p.strip()
+            ]
+            bots = [
+                p.strip() for p in (request.POST.get('bot_patterns') or '').split('\n') if p.strip()
+            ]
             s.block_paths = paths[:50]
             s.bot_patterns = bots[:50]
             s.dedup_strategy = (request.POST.get('dedup_strategy') or 'transaction_id').strip()
@@ -168,10 +197,13 @@ def settings_page(request):
     for name, default in DEFAULT_EVENT_FIRING.items():
         last = GA4EventLog.objects.filter(event_name=name).order_by('-fired_at').first()
         enabled = (s.event_firing or {}).get(name, default)
-        event_rows.append({
-            'name': name, 'enabled': enabled,
-            'last_fired_at': last.fired_at if last else None,
-        })
+        event_rows.append(
+            {
+                'name': name,
+                'enabled': enabled,
+                'last_fired_at': last.fired_at if last else None,
+            }
+        )
     enhanced_rows = [
         {'name': name, 'enabled': (s.enhanced_overrides or {}).get(name, default)}
         for name, default in DEFAULT_ENHANCED_OVERRIDES.items()
@@ -180,13 +212,19 @@ def settings_page(request):
         {'signal': name, 'value': (s.consent_default or {}).get(name, default)}
         for name, default in DEFAULT_CONSENT_DEFAULT.items()
     ]
-    return render(request, 'tracking/settings.html', {
-        'active_nav': 'tracking', 's': s, 'tab': tab,
-        'flash': flash,
-        'event_rows': event_rows,
-        'enhanced_rows': enhanced_rows,
-        'consent_rows': consent_rows,
-    })
+    return render(
+        request,
+        'tracking/settings.html',
+        {
+            'active_nav': 'tracking',
+            's': s,
+            'tab': tab,
+            'flash': flash,
+            'event_rows': event_rows,
+            'enhanced_rows': enhanced_rows,
+            'consent_rows': consent_rows,
+        },
+    )
 
 
 @staff_member_required
@@ -199,44 +237,202 @@ def event_log(request):
     if status:
         qs = qs.filter(status=status)
     rows = list(qs[:200])
-    return render(request, 'tracking/event_log.html', {
-        'active_nav': 'tracking', 'rows': rows,
-        'filter_event': name, 'filter_status': status,
-    })
+    return render(
+        request,
+        'tracking/event_log.html',
+        {
+            'active_nav': 'tracking',
+            'rows': rows,
+            'filter_event': name,
+            'filter_status': status,
+        },
+    )
 
 
 @staff_member_required
 def event_detail(request, event_id):
     row = get_object_or_404(GA4EventLog, pk=event_id)
-    return render(request, 'tracking/event_detail.html', {
-        'active_nav': 'tracking', 'row': row,
-        'payload_json': json.dumps(row.payload or {}, indent=2),
-    })
+    return render(
+        request,
+        'tracking/event_detail.html',
+        {
+            'active_nav': 'tracking',
+            'row': row,
+            'payload_json': json.dumps(row.payload or {}, indent=2),
+        },
+    )
+
+
+_TEST_EVENT_TEMPLATES = {
+    'purchase': {
+        'transaction_id': '__TXN__',
+        'currency': 'USD',
+        'value': 9.99,
+        'items': [
+            {'item_id': 'TEST-SKU', 'item_name': 'Test product', 'price': 9.99, 'quantity': 1}
+        ],
+    },
+    'add_to_cart': {
+        'currency': 'USD',
+        'value': 9.99,
+        'items': [
+            {'item_id': 'TEST-SKU', 'item_name': 'Test product', 'price': 9.99, 'quantity': 1}
+        ],
+    },
+    'view_item': {
+        'currency': 'USD',
+        'value': 9.99,
+        'items': [
+            {'item_id': 'TEST-SKU', 'item_name': 'Test product', 'price': 9.99, 'quantity': 1}
+        ],
+    },
+    'begin_checkout': {
+        'currency': 'USD',
+        'value': 9.99,
+        'items': [
+            {'item_id': 'TEST-SKU', 'item_name': 'Test product', 'price': 9.99, 'quantity': 1}
+        ],
+    },
+    'search': {'search_term': 'test query'},
+    'sign_up': {'method': 'email'},
+    'login': {'method': 'email'},
+    'refund': {
+        'transaction_id': '__TXN__',
+        'currency': 'USD',
+        'value': 9.99,
+    },
+    'remove_from_cart': {
+        'currency': 'USD',
+        'value': 9.99,
+        'items': [
+            {'item_id': 'TEST-SKU', 'item_name': 'Test product', 'price': 9.99, 'quantity': 1}
+        ],
+    },
+}
 
 
 @staff_member_required
 def test_purchase(request):
-    """Fire a synthetic purchase via Measurement Protocol to verify
-    the integration end-to-end. Writes a GA4EventLog row that the
-    merchant can inspect for response code + body."""
+    """Back-compat shim around test_event for the legacy 'send test
+    purchase' button. Always fires the `purchase` template."""
+    return test_event(request, event_name='purchase')
+
+
+@staff_member_required
+def test_event(request, event_name: str = 'purchase'):
+    """Fire one synthetic GA4 event so the merchant can verify the
+    integration end-to-end without placing a real order. Per-event
+    payloads live in `_TEST_EVENT_TEMPLATES`."""
     from plugins.installed.tracking.services.measurement_protocol import send_event
+
+    event_name = (event_name or 'purchase').strip()
+    template = _TEST_EVENT_TEMPLATES.get(event_name)
+    if template is None:
+        return JsonResponse(
+            {'ok': False, 'error': f'unknown event {event_name!r}'},
+            status=400,
+        )
+
     txn = f'TEST-{int(timezone.now().timestamp())}'
+    # Shallow-copy + fill the transaction_id placeholder.
+    params = {k: (txn if v == '__TXN__' else v) for k, v in template.items()}
     row = send_event(
-        event_name='purchase',
-        params={
-            'transaction_id': txn,
-            'currency': 'USD',
-            'value': 9.99,
-            'items': [{
-                'item_id': 'TEST-SKU',
-                'item_name': 'Test product',
-                'price': 9.99,
-                'quantity': 1,
-            }],
-        },
-        transaction_id=txn,
+        event_name=event_name,
+        params=params,
+        transaction_id=txn if 'transaction_id' in params else '',
     )
+    if (request.GET.get('format') or '').lower() == 'json':
+        return JsonResponse(
+            {
+                'ok': row.status == GA4EventLog.STATUS_SENT,
+                'status': row.status,
+                'event_log_id': row.pk,
+                'event_log_url': f'/dashboard/tracking/events/{row.pk}/',
+                'response_status': row.response_status,
+                'error_message': row.error_message,
+            }
+        )
     return redirect(f'/dashboard/tracking/events/{row.pk}/')
+
+
+@staff_member_required
+def connection_check(request):  # noqa: ARG001 — staff-required GET
+    """Probe the GA4 Measurement Protocol *debug* endpoint with the
+    configured measurement_id + api_secret. Returns JSON describing
+    whether the credentials are valid + any validation messages.
+
+    Unlike `test_event`, this does NOT record an event in real reports —
+    the `/debug/mp/collect` endpoint only validates payload + creds.
+    """
+    import json as _json  # noqa: PLC0415
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    s = TrackingSettings.get_solo()
+    if not s.measurement_id or not s.api_secret:
+        return JsonResponse(
+            {
+                'ok': False,
+                'reason': 'unconfigured',
+                'message': 'Set measurement_id and api_secret first.',
+            },
+            status=400,
+        )
+
+    # Choose endpoint by region — same logic as send_event.
+    if s.region == 'eu':
+        base = 'https://www.google-analytics.com/debug/mp/collect'
+    else:
+        base = 'https://www.google-analytics.com/debug/mp/collect'
+    url = f'{base}?measurement_id={s.measurement_id}&api_secret={s.api_secret}'
+
+    body = _json.dumps(
+        {
+            'client_id': f'connection-check.{int(timezone.now().timestamp())}',
+            'events': [{'name': 'page_view', 'params': {'page_title': 'connection_check'}}],
+        }
+    ).encode('utf-8')
+
+    try:
+        req = urllib.request.Request(  # noqa: S310 — hard-coded Google endpoint
+            url,
+            data=body,
+            headers={
+                'Content-Type': 'application/json; charset=utf-8',
+                'User-Agent': 'Morpheus-Tracking/1.0',
+            },
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=6) as resp:  # noqa: S310
+            status_code = resp.status
+            raw = (resp.read() or b'').decode('utf-8', errors='ignore')
+    except urllib.error.HTTPError as exc:
+        status_code = exc.code
+        raw = (exc.read() or b'').decode('utf-8', errors='ignore') if hasattr(exc, 'read') else ''
+    except Exception as exc:  # noqa: BLE001
+        return JsonResponse(
+            {'ok': False, 'reason': 'transport', 'message': str(exc)[:300]},
+            status=502,
+        )
+
+    try:
+        parsed = _json.loads(raw)
+    except (ValueError, TypeError):
+        parsed = {'raw': raw[:500]}
+
+    validation = (parsed or {}).get('validationMessages') or []
+    return JsonResponse(
+        {
+            'ok': status_code == 200 and not validation,
+            'status_code': status_code,
+            'validation_messages': validation,
+            'endpoint': base,
+            'measurement_id': s.measurement_id,
+            'region': s.region,
+            'debug_mode': s.debug_mode,
+            'consent_override': getattr(s, 'consent_override', False),
+        }
+    )
 
 
 @staff_member_required

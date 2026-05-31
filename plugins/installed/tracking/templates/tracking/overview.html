@@ -72,14 +72,100 @@
 </div>
 
 <div class="card mb-4">
+  <div class="card-padded space-y-3">
+    <div class="flex items-center justify-between">
+      <h3 class="font-semibold">Diagnostics</h3>
+      <a href="/dashboard/tracking/container.json" class="btn text-sm"><i data-lucide="download" class="h-4 w-4"></i> Download GTM container</a>
+    </div>
+    <p class="text-xs" style="color: var(--text-muted);">
+      Fire a synthetic GA4 event of your choice + verify it lands in the audit log. The
+      Connection check probes the GA4 debug endpoint with your <code>measurement_id</code> +
+      <code>api_secret</code> — no real event is written to your GA4 reports.
+    </p>
+    <div class="flex flex-wrap items-center gap-2">
+      <select id="tracking-test-event-name" class="input text-sm" style="max-width: 220px;">
+        <option value="purchase">purchase</option>
+        <option value="add_to_cart">add_to_cart</option>
+        <option value="view_item">view_item</option>
+        <option value="begin_checkout">begin_checkout</option>
+        <option value="remove_from_cart">remove_from_cart</option>
+        <option value="search">search</option>
+        <option value="sign_up">sign_up</option>
+        <option value="login">login</option>
+        <option value="refund">refund</option>
+      </select>
+      <button type="button" id="tracking-fire-test" class="btn text-sm">
+        <i data-lucide="zap" class="h-4 w-4"></i> Fire test event
+      </button>
+      <button type="button" id="tracking-connection-check" class="btn text-sm">
+        <i data-lucide="plug" class="h-4 w-4"></i> Connection check
+      </button>
+      <span id="tracking-diag-result" class="text-sm" style="color: var(--text-muted);"></span>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrf = csrfMeta ? csrfMeta.content : '';
+    if (!csrf) {
+      var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      csrf = input ? input.value : '';
+    }
+    var resultEl = document.getElementById('tracking-diag-result');
+    function setResult(html, color) {
+      resultEl.innerHTML = html;
+      resultEl.style.color = color || 'var(--text-muted)';
+    }
+    function fire(url, opts) {
+      setResult('Sending…');
+      opts = opts || {};
+      return fetch(url, {
+        method: opts.method || 'POST',
+        headers: {
+          'X-CSRFToken': csrf,
+          'Accept': 'application/json',
+        },
+        credentials: 'same-origin',
+      }).then(function (r) { return r.json().then(function (j) { return {status: r.status, body: j}; }); });
+    }
+    var fireBtn = document.getElementById('tracking-fire-test');
+    if (fireBtn) {
+      fireBtn.addEventListener('click', function () {
+        var ev = document.getElementById('tracking-test-event-name').value;
+        fire('/dashboard/tracking/test/' + encodeURIComponent(ev) + '/?format=json').then(function (res) {
+          if (res.body.ok) {
+            setResult('✓ ' + ev + ' sent — <a href="' + res.body.event_log_url + '" class="underline">view in log</a>', '#2e7d32');
+          } else {
+            setResult('✗ ' + ev + ' ' + (res.body.status || 'failed') + ' — ' + (res.body.error_message || res.body.error || 'see audit log'), '#c0392b');
+          }
+        }).catch(function (e) { setResult('✗ ' + e, '#c0392b'); });
+      });
+    }
+    var checkBtn = document.getElementById('tracking-connection-check');
+    if (checkBtn) {
+      checkBtn.addEventListener('click', function () {
+        fire('/dashboard/tracking/connection-check/').then(function (res) {
+          if (res.body.ok) {
+            var msg = '✓ measurement_id valid';
+            if (res.body.consent_override) msg += ' · consent OVERRIDE on';
+            if (res.body.debug_mode) msg += ' · debug_mode on';
+            setResult(msg, '#2e7d32');
+          } else {
+            var problems = (res.body.validation_messages || []).map(function (m) { return m.description || m.fieldPath; }).join('; ');
+            setResult('✗ ' + (res.body.reason || 'failed') + (problems ? ' — ' + problems : ''), '#c0392b');
+          }
+        }).catch(function (e) { setResult('✗ ' + e, '#c0392b'); });
+      });
+    }
+  })();
+</script>
+
+<div class="card mb-4">
   <div class="card-padded flex items-center justify-between">
     <h3 class="font-semibold">Recent events</h3>
     <div class="flex gap-2">
-      <form method="post" action="/dashboard/tracking/test/" class="inline">
-        {% csrf_token %}
-        <button class="btn text-sm"><i data-lucide="zap" class="h-4 w-4"></i> Fire test purchase</button>
-      </form>
-      <a href="/dashboard/tracking/container.json" class="btn text-sm"><i data-lucide="download" class="h-4 w-4"></i> Download GTM container</a>
+      <a href="/dashboard/tracking/events/" class="btn text-sm"><i data-lucide="list" class="h-4 w-4"></i> Full event log</a>
     </div>
   </div>
   <table class="morph-table">

@@ -1,3 +1,11 @@
+# ruff: noqa: PLC0415, S110, S308
+# - PLC0415: inline imports avoid pulling the plugin registry + model
+#   modules at templatetag-load time (Django loads templatetags very
+#   early). Each tag pays only for what it actually uses.
+# - S110: defensive try/except/pass around settings lookup is deliberate
+#   — a missing TrackingSettings row must never break a storefront page.
+# - S308: mark_safe is applied only to JSON-encoded payloads we built
+#   ourselves from validated TrackingSettings — never to raw user input.
 """Template tags for the storefront integration.
 
 Three tags do the heavy lifting in `base.html`:
@@ -43,7 +51,18 @@ def _settings():
 def _has_consent(request, category: str) -> bool:
     """True if the visitor has opted in to ``category`` (analytics /
     marketing / functional). Missing request or missing cookie → False:
-    we silently no-op until the banner is answered."""
+    we silently no-op until the banner is answered.
+
+    Compliance escape hatch: when TrackingSettings.consent_override is
+    True, this returns True unconditionally. Intended for staging,
+    internal staff visits, and non-EU shops only.
+    """
+    try:
+        s = _settings()
+        if s is not None and getattr(s, 'consent_override', False):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
     if request is None:
         return False
     try:

@@ -99,6 +99,27 @@
     {% endfor %}
   </div>
   <hr class="my-3">
+
+  <div style="border: 1px solid #c0392b40; background: #fef0ed; border-radius: 8px; padding: 1rem;">
+    <label class="flex items-start gap-3 text-sm" style="cursor: pointer;">
+      <input type="checkbox" name="consent_override" {% if s.consent_override %}checked{% endif %}
+             style="margin-top: 0.2rem;">
+      <span>
+        <strong style="color: #c0392b;">⚠️ Ignore visitor consent (debug only)</strong>
+        <br>
+        <span class="text-xs" style="color: var(--text-muted);">
+          When on, every visitor is tracked client- and server-side regardless of their consent
+          decision. Use only on staging, internal-staff visits, or non-EU shops. EU consumer-facing
+          shops MUST leave this off — leaving it on is a GDPR violation.
+        </span>
+        {% if s.consent_override %}
+        <br><strong class="text-xs" style="color: #c0392b;">CURRENTLY ON — all visitors are being tracked.</strong>
+        {% endif %}
+      </span>
+    </label>
+  </div>
+
+  <hr class="my-3">
   <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="show_consent_banner" {% if s.show_consent_banner %}checked{% endif %}> Show consent banner on the storefront</label>
   <div class="grid grid-cols-2 gap-3">
     <label class="text-sm">Accept label

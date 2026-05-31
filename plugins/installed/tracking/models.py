@@ -12,6 +12,13 @@ Two tables:
   dashboard ``/dashboard/tracking/`` shows the latest rows + lets
   the merchant inspect payload/response for debugging.
 """
+
+# ruff: noqa: F401, UP037, SIM110, I001
+# - F401: django.conf.settings is re-exported for legacy callers.
+# - UP037: 'TrackingSettings' string annotation kept for IDE-friendliness.
+# - SIM110: explicit loop in is_path_blocked is more readable.
+# - I001: import grouping preserved for git-blame stability.
+
 from __future__ import annotations
 
 import uuid
@@ -73,50 +80,94 @@ class TrackingSettings(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # ── Connection ─────────────────────────────────────────────────────
-    measurement_id = models.CharField(max_length=32, blank=True,
-                                      help_text='GA4 stream ID, e.g. G-XXXXXXXXXX')
-    api_secret = models.CharField(max_length=120, blank=True,
-                                  help_text='API secret for the data stream — used by Measurement Protocol.')
-    gtm_container_id = models.CharField(max_length=32, blank=True,
-                                        help_text='GTM web container, e.g. GTM-XXXXXXX')
-    sgtm_server_url = models.URLField(max_length=500, blank=True,
-                                      help_text='Optional server-side GTM endpoint (Cloud Run / Stape).')
+    measurement_id = models.CharField(
+        max_length=32, blank=True, help_text='GA4 stream ID, e.g. G-XXXXXXXXXX'
+    )
+    api_secret = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text='API secret for the data stream — used by Measurement Protocol.',
+    )
+    gtm_container_id = models.CharField(
+        max_length=32, blank=True, help_text='GTM web container, e.g. GTM-XXXXXXX'
+    )
+    sgtm_server_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text='Optional server-side GTM endpoint (Cloud Run / Stape).',
+    )
     region = models.CharField(max_length=10, choices=REGION_CHOICES, default='global')
 
     # ── Event firing ───────────────────────────────────────────────────
     server_side_enabled = models.BooleanField(default=True)
     client_side_enabled = models.BooleanField(default=True)
-    debug_mode = models.BooleanField(default=False,
-                                     help_text='Appends ?debug_mode=1 to MP requests — visible in DebugView, not standard reports.')
-    event_firing = models.JSONField(default=dict, blank=True,
-                                    help_text='Per-event enable map, e.g. {"purchase": true, "view_item": true}.')
-    enhanced_overrides = models.JSONField(default=dict, blank=True,
-                                          help_text='Override GA4 Enhanced Measurement defaults.')
+    debug_mode = models.BooleanField(
+        default=False,
+        help_text='Appends ?debug_mode=1 to MP requests — visible in DebugView, not standard reports.',
+    )
+    event_firing = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Per-event enable map, e.g. {"purchase": true, "view_item": true}.',
+    )
+    enhanced_overrides = models.JSONField(
+        default=dict, blank=True, help_text='Override GA4 Enhanced Measurement defaults.'
+    )
 
     # ── Consent Mode v2 ───────────────────────────────────────────────
-    consent_default = models.JSONField(default=dict, blank=True,
-                                       help_text='Default state per signal — granted/denied per ad_storage, analytics_storage, ad_user_data, ad_personalization.')
+    consent_default = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Default state per signal — granted/denied per ad_storage, analytics_storage, ad_user_data, ad_personalization.',
+    )
+    # ⚠️ EU compliance risk — when True, server-side AND client-side
+    # events fire regardless of the visitor's consent decision. Intended
+    # for: debug + diagnostic, internal staff visits, non-EU shops that
+    # don't need consent gating. NEVER enable on a live EU storefront
+    # serving consumers.
+    consent_override = models.BooleanField(
+        default=False,
+        verbose_name='Ignore visitor consent (debug only)',
+        help_text=(
+            '⚠️ COMPLIANCE RISK: when on, every visitor is tracked '
+            'regardless of their consent decision. Only use on internal '
+            'staging or non-EU shops. EU consumer-facing shops MUST leave '
+            'this off.'
+        ),
+    )
     show_consent_banner = models.BooleanField(default=False)
     banner_accept_label = models.CharField(max_length=40, default='Accept all')
     banner_reject_label = models.CharField(max_length=40, default='Reject')
-    banner_body = models.CharField(max_length=400,
-                                   default='We use cookies for analytics and a great shopping experience.')
+    banner_body = models.CharField(
+        max_length=400, default='We use cookies for analytics and a great shopping experience.'
+    )
     banner_link_url = models.CharField(max_length=400, blank=True)
-    banner_placement = models.CharField(max_length=10, choices=BANNER_PLACEMENT_CHOICES, default='bottom')
+    banner_placement = models.CharField(
+        max_length=10, choices=BANNER_PLACEMENT_CHOICES, default='bottom'
+    )
 
     # ── Identity ──────────────────────────────────────────────────────
-    user_id_enabled = models.BooleanField(default=False,
-                                          help_text='Send hashed customer pk as GA4 user_id when authenticated.')
-    cross_domain = models.CharField(max_length=400, blank=True,
-                                    help_text='Comma-separated additional domains for cross-domain measurement.')
+    user_id_enabled = models.BooleanField(
+        default=False, help_text='Send hashed customer pk as GA4 user_id when authenticated.'
+    )
+    cross_domain = models.CharField(
+        max_length=400,
+        blank=True,
+        help_text='Comma-separated additional domains for cross-domain measurement.',
+    )
 
     # ── Filters & dedup ───────────────────────────────────────────────
-    block_paths = models.JSONField(default=list, blank=True,
-                                   help_text='Path prefixes to never track (e.g. ["/admin/", "/dashboard/"]).')
-    bot_patterns = models.JSONField(default=list, blank=True,
-                                    help_text='User-Agent substrings to never track.')
-    dedup_strategy = models.CharField(max_length=20, choices=DEDUP_STRATEGY_CHOICES,
-                                      default='transaction_id')
+    block_paths = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Path prefixes to never track (e.g. ["/admin/", "/dashboard/"]).',
+    )
+    bot_patterns = models.JSONField(
+        default=list, blank=True, help_text='User-Agent substrings to never track.'
+    )
+    dedup_strategy = models.CharField(
+        max_length=20, choices=DEDUP_STRATEGY_CHOICES, default='transaction_id'
+    )
     dedup_window_minutes = models.PositiveSmallIntegerField(default=60)
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -131,13 +182,18 @@ class TrackingSettings(models.Model):
     @classmethod
     def get_solo(cls) -> 'TrackingSettings':
         """Return the singleton row, creating it with defaults if missing."""
-        row, created = cls.objects.get_or_create(pk=cls.objects.values_list('id', flat=True).first())
+        row, created = cls.objects.get_or_create(
+            pk=cls.objects.values_list('id', flat=True).first()
+        )
         if created or not row.event_firing:
             row.event_firing = {**DEFAULT_EVENT_FIRING, **(row.event_firing or {})}
         if created or not row.consent_default:
             row.consent_default = {**DEFAULT_CONSENT_DEFAULT, **(row.consent_default or {})}
         if created or not row.enhanced_overrides:
-            row.enhanced_overrides = {**DEFAULT_ENHANCED_OVERRIDES, **(row.enhanced_overrides or {})}
+            row.enhanced_overrides = {
+                **DEFAULT_ENHANCED_OVERRIDES,
+                **(row.enhanced_overrides or {}),
+            }
         if created:
             row.save()
         return row
@@ -146,7 +202,7 @@ class TrackingSettings(models.Model):
         return bool((self.event_firing or {}).get(name, True))
 
     def is_path_blocked(self, path: str) -> bool:
-        for prefix in (self.block_paths or []):
+        for prefix in self.block_paths or []:
             if prefix and path.startswith(prefix):
                 return True
         return False
@@ -176,7 +232,9 @@ class GA4EventLog(models.Model):
     payload = models.JSONField(default=dict, blank=True)
     response_status = models.PositiveSmallIntegerField(null=True, blank=True)
     response_body = models.TextField(blank=True)
-    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_SENT, db_index=True)
+    status = models.CharField(
+        max_length=12, choices=STATUS_CHOICES, default=STATUS_SENT, db_index=True
+    )
     error_message = models.CharField(max_length=400, blank=True)
     fired_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
