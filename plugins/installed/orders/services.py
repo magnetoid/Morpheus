@@ -69,7 +69,15 @@ class CartService:
         # Failure of the reservation layer must not break cart-add —
         # the DB-side reserve_for_order at checkout is the actual
         # correctness boundary.
-        if variant is not None:
+        # Real-time stock reservation only fires for variants that are
+        # actually inventoried. Digital + virtual variants and any
+        # product where the merchant opted out of inventory tracking
+        # have no StockLevel rows; running reservation against them
+        # returns "0 left" and blocks the cart-add. The DB-side
+        # reserve_for_order() at checkout is still the correctness
+        # boundary — this is just the CRO-time hold.
+        should_reserve = variant is not None and _is_inventoried(product, variant)
+        if should_reserve:
             try:
                 from plugins.installed.inventory.cart_reservations import (  # noqa: PLC0415
                     reserve as _reserve_stock,
@@ -129,6 +137,31 @@ def merge_carts(*, source_cart: Cart, target_cart: Cart) -> Cart:
 
     source_cart.delete()
     return target_cart
+
+
+def _is_inventoried(product, variant) -> bool:
+    """True when this product/variant tracks physical stock and should
+    therefore go through cart-time Redis reservation.
+
+    Returns False (skip reservation) when:
+      - the product is digital, virtual, or bundle;
+      - the product or variant doesn't require shipping;
+      - the variant's variant_type is digital or virtual;
+      - the merchant turned track_inventory off on the product.
+
+    The DB-side reserve_for_order at checkout is still the correctness
+    boundary for everything that DOES track inventory.
+    """
+    if getattr(product, 'product_type', 'simple') in ('digital', 'bundle'):
+        return False
+    if getattr(product, 'track_inventory', True) is False:
+        return False
+    if getattr(product, 'requires_shipping', True) is False:
+        return False
+    variant_type = getattr(variant, 'variant_type', 'physical')
+    if variant_type in ('digital', 'virtual'):
+        return False
+    return getattr(variant, 'requires_shipping', True) is not False
 
 
 def _resolve_unit_price(target, currency: str | None, *, fallback) -> Money:
