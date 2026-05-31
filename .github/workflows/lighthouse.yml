@@ -1,0 +1,59 @@
+name: lighthouse
+
+# Runs Lighthouse-CI against the live storefront on every push to main
+# and on PRs that touch storefront-rendering code. Blocks the PR (and
+# emits a status check) if LCP, CLS, or TBT regress past the budgets
+# in `.lighthouserc.json`. Performance is now a guarded contract — same
+# as ruff, mypy, and bandit are for code.
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "themes/**"
+      - "plugins/installed/storefront/**"
+      - "plugins/installed/catalog/**"
+      - "plugins/installed/seo/**"
+      - "core/storefront_cache.py"
+      - "core/security_headers.py"
+      - ".github/workflows/lighthouse.yml"
+      - ".lighthouserc.json"
+  pull_request:
+    paths:
+      - "themes/**"
+      - "plugins/installed/storefront/**"
+      - "plugins/installed/catalog/**"
+      - "plugins/installed/seo/**"
+      - "core/storefront_cache.py"
+      - "core/security_headers.py"
+      - ".lighthouserc.json"
+  # Manual run for ad-hoc audits.
+  workflow_dispatch:
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lhci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Lighthouse-CI
+        run: npm install -g @lhci/cli@0.14.x
+
+      - name: Run Lighthouse-CI against production storefront
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        run: |
+          lhci autorun --config=.lighthouserc.json || EXIT=$?
+          if [ "${EXIT:-0}" -ne 0 ]; then
+            echo "::error::Lighthouse-CI exit $EXIT — perf budget exceeded. See assertions above."
+            exit "$EXIT"
+          fi
