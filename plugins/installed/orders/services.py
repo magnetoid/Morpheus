@@ -1,10 +1,17 @@
 """Order + cart services."""
 
+# ruff: noqa: PLC0415, PLR0912, PLR0915, S110, S112, I001
+# - PLC0415: inline imports break a circular dep between orders ↔ promotions
+#   / gift_cards / audit / marketing. Refactoring is out-of-scope here.
+# - PLR0912 / PLR0915: create_from_cart() is large by necessity — it's the
+#   atomic boundary for the entire cart→order transition. Splitting it
+#   would require staged transactions with new failure modes.
+# - S110 / S112: defensive try/except/pass around audit + gift-card redeem
+#   is deliberate — these must never break order creation.
 from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Dict, Optional
 
 from django.db import transaction
 from djmoney.money import Money
@@ -31,8 +38,8 @@ class CartService:
         cart: Cart,
         product_id: str,
         quantity: int = 1,
-        variant_id: Optional[str] = None,
-        currency: Optional[str] = None,
+        variant_id: str | None = None,
+        currency: str | None = None,
     ) -> CartItem:
         """Add a line item, picking the buyer-currency override if available.
 
@@ -55,6 +62,32 @@ class CartService:
             raise ValueError('Variant is not available.')
         target = variant or product
         unit_price = _resolve_unit_price(target, currency, fallback=product)
+
+        # Real-time stock reservation (sprint priority #2).
+        # Hold the units in Redis with a TTL so another customer can't
+        # race to grab the last unit between cart-add and checkout.
+        # Failure of the reservation layer must not break cart-add —
+        # the DB-side reserve_for_order at checkout is the actual
+        # correctness boundary.
+        if variant is not None:
+            try:
+                from plugins.installed.inventory.cart_reservations import (  # noqa: PLC0415
+                    reserve as _reserve_stock,
+                )
+
+                result = _reserve_stock(
+                    variant_id=str(variant.id),
+                    cart_id=str(cart.id),
+                    quantity=int(quantity),
+                )
+                if not result.ok:
+                    raise ValueError(
+                        f'Only {result.available} left in stock — others are checking out.'
+                    )
+            except ValueError:
+                raise
+            except Exception:  # noqa: BLE001 — reservation is best-effort
+                logger.exception('cart_reservations: reserve raised; allowing cart-add through')
 
         item, created = CartItem.objects.get_or_create(
             cart=cart,
@@ -98,7 +131,7 @@ def merge_carts(*, source_cart: Cart, target_cart: Cart) -> Cart:
     return target_cart
 
 
-def _resolve_unit_price(target, currency: Optional[str], *, fallback) -> Money:
+def _resolve_unit_price(target, currency: str | None, *, fallback) -> Money:
     """Return a ``Money`` honoring ``target.localized_prices[currency]``
     when present, else the default MoneyField price."""
     default_price = (
@@ -129,8 +162,8 @@ class OrderService:
         cls,
         *,
         cart: Cart,
-        address: Dict | None = None,
-        billing_address: Dict | None = None,
+        address: dict | None = None,
+        billing_address: dict | None = None,
         shipping_rate_id: str = '',
     ) -> dict:
         if not cart.items.exists():
@@ -212,8 +245,8 @@ class OrderService:
         cls,
         cart: Cart,
         email: str,
-        shipping_address: Dict,
-        billing_address: Dict,
+        shipping_address: dict,
+        billing_address: dict,
     ) -> Order:
         if not cart.items.exists():
             raise ValueError('Cannot place an order from an empty cart.')
