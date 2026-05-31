@@ -1,0 +1,102 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Cohort retention · Analytics{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <div class="flex items-baseline justify-between mb-4">
+    <h1 class="text-2xl font-semibold">Cohort retention</h1>
+    <a href="{% url 'analytics_dash:funnel' %}" class="text-sm underline">Back to funnel →</a>
+  </div>
+  <p class="text-sm text-gray-600 mb-6 max-w-3xl">
+    Each row is a weekly cohort (customers who signed up that week). Each
+    column W<sub>N</sub> shows the percentage of that cohort who
+    {% if metric == 'order' %}placed an order
+    {% elif metric == 'active' %}had any tracked activity (page view, search, cart)
+    {% else %}generated revenue
+    {% endif %}
+    in week N after signup. The diagonal moving right is your retention curve —
+    a flat or upward-sloping diagonal means your shop is sticky; a steeply
+    decaying one means you're losing customers fast.
+  </p>
+
+  <form method="get" class="flex flex-wrap gap-3 mb-6 text-sm items-center">
+    <label class="flex items-center gap-2">
+      Metric
+      <select name="metric" class="input" onchange="this.form.submit()">
+        <option value="order" {% if metric == 'order' %}selected{% endif %}>Order retention</option>
+        <option value="active" {% if metric == 'active' %}selected{% endif %}>Activity retention</option>
+        <option value="revenue" {% if metric == 'revenue' %}selected{% endif %}>Revenue per cohort</option>
+      </select>
+    </label>
+    <label class="flex items-center gap-2">
+      Cohorts
+      <input type="number" name="cohorts" value="{{ cohort_count }}" min="1" max="26" class="input w-20">
+    </label>
+    <label class="flex items-center gap-2">
+      Periods
+      <input type="number" name="periods" value="{{ period_count }}" min="1" max="26" class="input w-20">
+    </label>
+    <button type="submit" class="btn btn-primary">Update</button>
+  </form>
+
+  <div class="bg-white rounded-lg border overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 border-b">
+        <tr>
+          <th class="text-left px-3 py-2 sticky left-0 bg-gray-50">Cohort</th>
+          <th class="text-right px-2 py-2">Size</th>
+          {% for period in cohort_data.periods %}
+            <th class="text-right px-2 py-2 font-mono text-xs">{{ period }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in cohort_data.rows %}
+        <tr class="border-b last:border-b-0 hover:bg-gray-50">
+          <td class="px-3 py-2 font-medium sticky left-0 bg-white">{{ row.week_label }}</td>
+          <td class="px-2 py-2 text-right text-gray-600">{{ row.size }}</td>
+          {% for cell in row.cells %}
+            {% if row.size %}
+              {% if metric == 'revenue' %}
+                <td class="px-2 py-2 text-right font-mono text-xs"
+                    style="background: rgba(56, 189, 248, {% widthratio cell.revenue 5000 1 %})">
+                  {% if cell.revenue %}${{ cell.revenue|floatformat:0 }}{% else %}—{% endif %}
+                </td>
+              {% else %}
+                <td class="px-2 py-2 text-right font-mono text-xs"
+                    style="background: rgba(34, 197, 94, {% widthratio cell.retention_pct 100 1 %})">
+                  {% if cell.retention_pct %}{{ cell.retention_pct }}%{% else %}—{% endif %}
+                </td>
+              {% endif %}
+            {% else %}
+              <td class="px-2 py-2 text-right text-gray-300">—</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{{ cohort_data.periods|length|add:2 }}" class="px-3 py-8 text-center text-gray-500">
+            No cohort data yet — needs at least one week of signups.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="bg-gray-50 border-t">
+        <tr>
+          <td class="px-3 py-2 font-medium">Total</td>
+          <td class="px-2 py-2 text-right">{{ cohort_data.totals.customers }} customers · {{ cohort_data.totals.cohorts }} active cohorts</td>
+          <td colspan="{{ cohort_data.periods|length }}"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <p class="text-xs text-gray-500 mt-3 max-w-3xl">
+    Reading the table:
+    <strong>W0</strong> = signup week itself.
+    A healthy DTC shop has W1 retention of 8-15% on order metric;
+    SaaS-style subscription shops 30-50%.
+    Shade intensity scales with the value — darker = higher retention or revenue.
+  </p>
+</div>
+{% endblock %}

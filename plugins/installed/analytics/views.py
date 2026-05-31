@@ -141,8 +141,17 @@ def realtime(request):
 
 @staff_member_required
 def funnel_view(request):
-    """Default funnel: pageview → product.viewed → cart.add → order.placed."""
+    """Default funnel: pageview → product.viewed → cart.add → order.placed.
+
+    Augmented (sprint #4): per-step drop-off detail + period comparison
+    so engineers can see *which* transition is the worst and whether
+    the overall funnel is improving over time, not just the snapshot.
+    """
     from plugins.installed.analytics.services import funnel_for  # noqa: PLC0415
+    from plugins.installed.analytics.services_cohorts import (  # noqa: PLC0415
+        period_comparison,
+        step_dropoffs,
+    )
 
     raw = (request.GET.get('steps') or '').strip()
     if raw:
@@ -162,6 +171,41 @@ def funnel_view(request):
             'rows': rows,
             'steps': steps,
             'days': days,
+            'dropoffs': step_dropoffs(steps=steps, days=days),
+            'comparison': period_comparison(days=days),
+            'active_nav': 'analytics',
+        },
+    )
+
+
+@staff_member_required
+def cohort_view(request):
+    """Weekly cohort retention table — % of customers signing up in
+    week W who placed an order in week W+N, for N = 0..11.
+
+    The single most important metric besides revenue: tells you
+    whether each marketing dollar is buying recurring revenue or
+    just one-time transactions.
+    """
+    from plugins.installed.analytics.services_cohorts import compute_cohorts  # noqa: PLC0415
+
+    metric = (request.GET.get('metric') or 'order').strip()
+    if metric not in ('order', 'active', 'revenue'):
+        metric = 'order'
+    cohort_count = max(1, min(26, int(request.GET.get('cohorts', 8) or 8)))
+    period_count = max(1, min(26, int(request.GET.get('periods', 12) or 12)))
+    return render(
+        request,
+        'analytics/cohorts.html',
+        {
+            'cohort_data': compute_cohorts(
+                cohort_count=cohort_count,
+                period_count=period_count,
+                metric=metric,
+            ),
+            'metric': metric,
+            'cohort_count': cohort_count,
+            'period_count': period_count,
             'active_nav': 'analytics',
         },
     )
