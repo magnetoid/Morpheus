@@ -1,9 +1,13 @@
 """B2B services — quote lifecycle + price-list resolution."""
+
+# ruff: noqa: PLC0415, UP035, UP037
+# Inline imports avoid app-registry race; legacy typing.Iterable kept
+# for back-compat with callers that import it from here.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from decimal import Decimal
-from typing import Iterable
 
 from django.db import transaction
 from django.utils import timezone
@@ -19,25 +23,33 @@ def resolve_price_for_account(*, product, account=None, variant=None):
     if account is None:
         return product.price
     qs = PriceListItem.objects.filter(
-        price_list__accounts=account, product=product, variant=variant,
+        price_list__accounts=account,
+        product=product,
+        variant=variant,
     )
     item = qs.first()
     if item is None and variant is None:
         item = PriceListItem.objects.filter(
-            price_list__accounts=account, product=product, variant__isnull=True,
+            price_list__accounts=account,
+            product=product,
+            variant__isnull=True,
         ).first()
     return item.price if item is not None else product.price
 
 
-def create_quote(*, account, contact, owner, lines: Iterable[dict],
-                 valid_until=None, note: str = '') -> 'Quote':  # noqa: F821
+def create_quote(
+    *, account, contact, owner, lines: Iterable[dict], valid_until=None, note: str = ''
+) -> 'Quote':  # noqa: F821
     """Create a Quote with line items at fixed prices."""
     from plugins.installed.b2b.models import Quote, QuoteLine
 
     with transaction.atomic():
         quote = Quote.objects.create(
-            account=account, contact=contact, owner=owner,
-            state='draft', valid_until=valid_until,
+            account=account,
+            contact=contact,
+            owner=owner,
+            state='draft',
+            valid_until=valid_until,
             note_to_customer=note,
         )
         subtotal = Decimal('0')
@@ -47,13 +59,14 @@ def create_quote(*, account, contact, owner, lines: Iterable[dict],
             unit_price = line['unit_price']  # Money
             currency = str(unit_price.currency)
             from core.money import mul
+
             line_total = mul(unit_price, qty)
             QuoteLine.objects.create(
                 quote=quote,
                 product=line.get('product'),
                 variant=line.get('variant'),
                 description=line.get('description', '')[:240]
-                              or (line.get('product').name if line.get('product') else 'Item'),
+                or (line.get('product').name if line.get('product') else 'Item'),
                 quantity=qty,
                 unit_price=unit_price,
                 line_total=line_total,

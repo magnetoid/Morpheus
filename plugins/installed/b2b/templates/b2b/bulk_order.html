@@ -1,0 +1,81 @@
+{% extends "storefront/base.html" %}
+{% block title %}Quick reorder · Bulk upload{% endblock %}
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">B2B reorder</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">
+      Paste a list, build a cart<span class="text-accent">.</span>
+    </h1>
+    <p class="lede" style="margin-bottom: 2rem;">
+      Drop in your PO line items as <code>SKU,quantity</code> per line
+      (or upload a CSV). We resolve account pricing and add everything
+      to your cart in one go.
+    </p>
+
+    {% if error %}
+    <p style="color: var(--accent); margin-bottom: 1rem;"
+       role="alert">{{ error }}</p>
+    {% endif %}
+
+    {% if result %}
+      {% if result.lines_added %}
+      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem; margin-bottom: 2rem; background: var(--paper);">
+        <p style="font-weight:600; margin-bottom:.5rem;">
+          ✓ {{ result.lines_added }} item{{ result.lines_added|pluralize }} added to your cart.
+        </p>
+        <a href="/cart/" class="btn btn-primary">Review cart</a>
+      </div>
+      {% endif %}
+      {% if result.lines_failed %}
+      <div style="border: 1px solid var(--accent); border-radius: 6px; padding: 1.5rem; margin-bottom: 2rem;">
+        <p style="font-weight:600;">{{ result.lines_failed|length }} row{{ result.lines_failed|length|pluralize }} skipped:</p>
+        <ul class="meta" style="margin-top: .5rem;">
+          {% for f in result.lines_failed %}
+          <li>Row {{ f.row }}: <code>{{ f.sku }}</code> × {{ f.qty }} — {{ f.reason }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <label style="display:block; margin-bottom:.5rem; font-weight:600;">
+        Paste rows
+      </label>
+      <textarea name="rows" rows="10" placeholder="BOOK-001,5&#10;BOOK-002,2&#10;BOOK-003,10"
+                style="width:100%; padding:.75rem; border:1px solid var(--rule);
+                       border-radius:6px; font-family: ui-monospace, SF Mono, Menlo, monospace;
+                       font-size: .92rem;"></textarea>
+
+      <p class="meta" style="margin: 1rem 0;">
+        — or —
+      </p>
+
+      <label style="display:block; margin-bottom:.5rem; font-weight:600;">
+        Upload a CSV (max 64 KB)
+      </label>
+      <input type="file" name="file" accept=".csv,.tsv,.txt"
+             style="display:block; margin-bottom: 1.5rem;">
+
+      <button type="submit" class="btn btn-primary"
+              style="height: 52px; padding: 0 2rem;">
+        Add to cart
+      </button>
+    </form>
+
+    <details style="margin-top: 2rem;">
+      <summary style="cursor: pointer; font-weight: 600;">CSV format</summary>
+      <div style="margin-top: 1rem;" class="meta">
+        <ul>
+          <li>One <code>SKU,quantity</code> per line. Header row optional.</li>
+          <li>Tab-delimited works too (copy from a spreadsheet).</li>
+          <li>Up to 500 lines per upload. Duplicate SKUs are summed.</li>
+          <li>Unknown SKUs and zero/negative quantities are skipped with a per-row reason.</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+</section>
+{% endblock %}

@@ -23,6 +23,12 @@ class B2bPlugin(Plugin):
             prefix='dashboard/b2b/',
             namespace='b2b_dashboard',
         )
+        # Storefront-facing routes (bulk CSV reorder uploader).
+        self.register_urls(
+            'plugins.installed.b2b.urls',
+            prefix='b2b/',
+            namespace='b2b',
+        )
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.b2b.agent_tools import (  # noqa: PLC0415
