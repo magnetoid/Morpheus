@@ -2,9 +2,17 @@
 Morpheus CMS — Hook Registry
 The event bus that connects all plugins without tight coupling.
 """
+
+# ruff: noqa: PLC0415, I001
+# PLC0415: inline imports are intentional throughout this module — they
+# guard against Django app-registry not being ready during settings import.
+# I001: the import-order inside helper functions follows the lazy-load
+# pattern, not module-top ordering.
+
 import logging
 from collections import defaultdict
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger('morpheus.hooks')
 
@@ -55,15 +63,16 @@ class HookRegistry:
         self._handlers[event].append((priority, handler, mode))
         self._handlers[event].sort(key=lambda x: x[0])
         logger.debug(
-            "Hook registered: %s → %s (priority=%d, mode=%s)",
-            event, handler.__qualname__, priority, mode,
+            'Hook registered: %s → %s (priority=%d, mode=%s)',
+            event,
+            handler.__qualname__,
+            priority,
+            mode,
         )
 
     def unregister(self, event: str, handler: Callable) -> None:
         """Remove a handler from an event."""
-        self._handlers[event] = [
-            entry for entry in self._handlers[event] if entry[1] != handler
-        ]
+        self._handlers[event] = [entry for entry in self._handlers[event] if entry[1] != handler]
 
     def fire(self, event: str, **kwargs: Any) -> list[Any]:
         """
@@ -94,8 +103,10 @@ class HookRegistry:
                 result = handler(**kwargs)
             except Exception as e:  # noqa: BLE001 — handler isolation, logged with traceback
                 logger.error(
-                    "Hook handler error: event=%s handler=%s error=%s",
-                    event, handler.__qualname__, e,
+                    'Hook handler error: event=%s handler=%s error=%s',
+                    event,
+                    handler.__qualname__,
+                    e,
                     exc_info=True,
                 )
                 continue
@@ -112,6 +123,7 @@ class HookRegistry:
         """
         try:
             from core.tasks import run_hook_handler_async
+
             handler_path = f'{handler.__module__}.{handler.__qualname__}'
             # Best-effort serialisation check — bail to sync if anything's
             # non-trivial (Model instances, Decimal, datetime).
@@ -120,14 +132,19 @@ class HookRegistry:
         except Exception as exc:  # noqa: BLE001 — never break the fire path
             logger.warning(
                 'async hook dispatch failed for %s → %s; falling back to sync: %s',
-                event, handler.__qualname__, exc,
+                event,
+                handler.__qualname__,
+                exc,
             )
             try:
                 handler(**kwargs)
             except Exception as e:  # noqa: BLE001
                 logger.error(
                     'async-fallback-sync hook handler error: event=%s handler=%s error=%s',
-                    event, handler.__qualname__, e, exc_info=True,
+                    event,
+                    handler.__qualname__,
+                    e,
+                    exc_info=True,
                 )
 
     def filter(self, event: str, value: Any, **kwargs: Any) -> Any:
@@ -149,8 +166,10 @@ class HookRegistry:
                 result = handler(value=value, **kwargs)
             except Exception as e:  # noqa: BLE001 — filter isolation, logged with traceback
                 logger.error(
-                    "Hook filter error: event=%s handler=%s error=%s",
-                    event, handler.__qualname__, e,
+                    'Hook filter error: event=%s handler=%s error=%s',
+                    event,
+                    handler.__qualname__,
+                    e,
                     exc_info=True,
                 )
                 continue
@@ -175,10 +194,7 @@ class HookRegistry:
                 if isinstance(o, models.Model):
                     return {'id': str(o.pk), 'model': o.__class__.__name__}
                 if isinstance(o, QuerySet):
-                    return [
-                        {'id': str(obj.pk), 'model': obj.__class__.__name__}
-                        for obj in o
-                    ]
+                    return [{'id': str(obj.pk), 'model': obj.__class__.__name__} for obj in o]
                 if isinstance(o, decimal.Decimal):
                     return str(o)
                 if hasattr(o, 'amount') and hasattr(o, 'currency'):  # MoneyField
@@ -208,19 +224,23 @@ class HookRegistry:
         """
         try:
             from django.apps import apps
+
             if not apps.ready:
                 return
             from core.models import OutboxEvent, WebhookEndpoint
             from core.tasks import dispatch_webhook
         except ImportError as e:  # apps not loaded yet (e.g. during settings import)
-            logger.debug("Skipping remote dispatch for %s — apps not ready: %s", event, e)
+            logger.debug('Skipping remote dispatch for %s — apps not ready: %s', event, e)
             return
 
         try:
             payload = self._serialize_payload(kwargs)
         except (TypeError, ValueError) as e:
             logger.error(
-                "Failed to serialize payload for event=%s: %s", event, e, exc_info=True,
+                'Failed to serialize payload for event=%s: %s',
+                event,
+                e,
+                exc_info=True,
             )
             return
 
@@ -230,12 +250,12 @@ class HookRegistry:
                 if event in endpoint.events or '*' in endpoint.events:
                     dispatch_webhook.delay(endpoint.url, endpoint.secret, event, payload)
         except Exception as e:  # noqa: BLE001 — DB outage must not break local handlers
-            logger.warning("Webhook dispatch failed for %s: %s", event, e, exc_info=True)
+            logger.warning('Webhook dispatch failed for %s: %s', event, e, exc_info=True)
 
         try:
             OutboxEvent.objects.create(event_type=event, payload=payload)
         except Exception as e:  # noqa: BLE001 — outbox failure logged, do not abort
-            logger.warning("Outbox write failed for %s: %s", event, e, exc_info=True)
+            logger.warning('Outbox write failed for %s: %s', event, e, exc_info=True)
 
     def has_handlers(self, event: str) -> bool:
         return bool(self._handlers.get(event))
@@ -348,8 +368,8 @@ class MorpheusEvents:
     #                            longer fires it. Will be removed once the
     #                            in-tree subscribers are migrated (done).
     CART_CALCULATE_BREAKDOWN = 'cart.calculate_breakdown'  # filter
-    PRODUCT_CALCULATE_PRICE = 'product.calculate_price'    # filter
-    CART_CALCULATE_TOTAL = 'cart.calculate_total'          # DEPRECATED — use CART_CALCULATE_BREAKDOWN
+    PRODUCT_CALCULATE_PRICE = 'product.calculate_price'  # filter
+    CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,
@@ -402,6 +422,14 @@ class MorpheusEvents:
     AGENT_INTENT_REJECTED = 'agent.intent.rejected'
     AGENT_INTENT_COMPLETED = 'agent.intent.completed'
     AGENT_INTENT_FAILED = 'agent.intent.failed'
+
+    # ── Self-improvement engine (fire + subscribe) ────────────────────────
+    # CSP_VIOLATION_REPORTED — kwargs: directive=str, blocked_uri=str,
+    #                          document_uri=str, line=int|None, source_file=str.
+    #                          Fired by api/views.csp_report on every report
+    #                          the browser POSTs. Subscribed to by
+    #                          core/self_improvement/collectors/csp.py.
+    CSP_VIOLATION_REPORTED = 'csp.violation_reported'
 
     # ── CMS (fire) ────────────────────────────────────────────────────────
     CMS_FORM_SUBMITTED = 'cms.form_submitted'

@@ -1,3 +1,6 @@
+# ruff: noqa: PLC0415
+# Inline imports below are intentional — readyz/healthz are dependency
+# probes that must not fail import-time if a subsystem is missing.
 from __future__ import annotations
 
 import json
@@ -48,14 +51,20 @@ def csp_report(request: HttpRequest) -> HttpResponse:
         # Legacy CSP report-uri shape: { "csp-report": { ... } }
         r = report['csp-report'] or {}
         csp_logger.warning(
-            'csp_violation directive=%s blocked=%s document=%s '
-            'referrer=%s line=%s file=%s',
+            'csp_violation directive=%s blocked=%s document=%s referrer=%s line=%s file=%s',
             r.get('violated-directive', '?'),
             r.get('blocked-uri', '?')[:200],
             r.get('document-uri', '?')[:200],
             r.get('referrer', '?')[:200],
             r.get('line-number', '?'),
             r.get('source-file', '?')[:200],
+        )
+        _fire_csp_hook(
+            directive=r.get('violated-directive', ''),
+            blocked_uri=r.get('blocked-uri', ''),
+            document_uri=r.get('document-uri', ''),
+            line=r.get('line-number'),
+            source_file=r.get('source-file', ''),
         )
     elif isinstance(report, list):
         # Reporting API shape: [{ "type": "csp-violation", "body": {...}}, …]
@@ -64,15 +73,36 @@ def csp_report(request: HttpRequest) -> HttpResponse:
                 continue
             b = entry.get('body') or {}
             csp_logger.warning(
-                'csp_violation directive=%s blocked=%s document=%s '
-                'line=%s file=%s',
+                'csp_violation directive=%s blocked=%s document=%s line=%s file=%s',
                 b.get('effectiveDirective', '?'),
                 b.get('blockedURL', '?')[:200],
                 b.get('documentURL', '?')[:200],
                 b.get('lineNumber', '?'),
                 b.get('sourceFile', '?')[:200],
             )
+            _fire_csp_hook(
+                directive=b.get('effectiveDirective', ''),
+                blocked_uri=b.get('blockedURL', ''),
+                document_uri=b.get('documentURL', ''),
+                line=b.get('lineNumber'),
+                source_file=b.get('sourceFile', ''),
+            )
     return HttpResponse(status=204)
+
+
+def _fire_csp_hook(**kwargs) -> None:
+    """Fire MorpheusEvents.CSP_VIOLATION_REPORTED for subscribers
+    (currently: core/self_improvement/collectors/csp.py).
+
+    Wrapped in try/except so a subscriber bug never breaks the
+    report endpoint — CSP collection must be best-effort.
+    """
+    try:
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        hook_registry.fire(MorpheusEvents.CSP_VIOLATION_REPORTED, **kwargs)
+    except Exception:  # noqa: BLE001, S110 — never break the endpoint on a subscriber error
+        pass
 
 
 def readyz(request: HttpRequest) -> JsonResponse:
@@ -85,15 +115,15 @@ def readyz(request: HttpRequest) -> JsonResponse:
             cursor.fetchone()
         checks['db'] = True
     except DatabaseError as e:
-        logger.warning("readyz: db check failed: %s", e)
+        logger.warning('readyz: db check failed: %s', e)
 
     try:
         cache.get('morpheus:readyz')
         checks['cache'] = True
     except (ConnectionError, OSError, CacheKeyWarning) as e:
-        logger.warning("readyz: cache check failed: %s", e)
+        logger.warning('readyz: cache check failed: %s', e)
     except Exception as e:  # noqa: BLE001 — backend-specific errors logged, returns degraded
-        logger.warning("readyz: cache check failed: %s", e)
+        logger.warning('readyz: cache check failed: %s', e)
 
     ok = all(checks.values())
     return JsonResponse(
@@ -122,6 +152,7 @@ def healthz_deep(request: HttpRequest) -> JsonResponse:
 
     try:
         from plugins.registry import plugin_registry
+
         active = list(plugin_registry._active)
         checks['plugins'] = {'ok': True, 'active_count': len(active)}
     except Exception as e:  # noqa: BLE001
@@ -129,6 +160,7 @@ def healthz_deep(request: HttpRequest) -> JsonResponse:
 
     try:
         from core.agents import agent_registry
+
         checks['agents'] = {
             'ok': True,
             'agents': len(agent_registry.all_agents()),
@@ -139,6 +171,7 @@ def healthz_deep(request: HttpRequest) -> JsonResponse:
 
     try:
         from core.assistant.providers import get_default_provider
+
         provider = get_default_provider()
         checks['assistant'] = {'ok': True, 'provider': provider.name, 'model': provider.model}
     except Exception as e:  # noqa: BLE001
@@ -146,9 +179,10 @@ def healthz_deep(request: HttpRequest) -> JsonResponse:
 
     try:
         from core.models import OutboxEvent
+
         unsent = OutboxEvent.objects.filter(sent_at__isnull=True).count()
         checks['outbox'] = {'ok': unsent < 1000, 'unsent': unsent}
-    except Exception as e:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         checks['outbox'] = {'ok': True, 'note': 'unavailable'}
 
     ok = all(c.get('ok', False) for c in checks.values())
