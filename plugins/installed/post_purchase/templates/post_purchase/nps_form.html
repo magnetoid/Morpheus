@@ -1,0 +1,63 @@
+{% extends "storefront/base.html" %}
+{% block title %}30-second feedback{% endblock %}
+{% block content %}
+<section style="padding: 4rem 0;">
+  <div class="wrap" style="max-width: 600px;">
+    <p class="eyebrow">30-second feedback</p>
+    <h1 class="display display-l" style="margin: 1rem 0;">
+      How likely are you to recommend us<span class="text-accent">?</span>
+    </h1>
+    <p class="lede" style="margin-bottom: 2rem;">
+      Order #{{ order.order_number }}. One click, no login required.
+    </p>
+
+    {% if error %}<p style="color: var(--accent); margin-bottom: 1rem;">{{ error }}</p>{% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <fieldset style="border: 0; padding: 0; margin: 0 0 2rem;">
+        <legend style="position: absolute; left: -9999px;">Score 0 to 10</legend>
+        <div role="radiogroup" aria-label="Score from 0 to 10"
+             style="display: grid; grid-template-columns: repeat(11, 1fr); gap: 0.4rem;">
+          {% for n in "01234567890"|make_list %}{% endfor %}
+          {% for i in "01234567890" %}{% endfor %}
+          {% for i in "0,1,2,3,4,5,6,7,8,9,10"|cut:" "|stringformat:"s" %}{% endfor %}
+          {% for n in "0123456789" %}
+            <label style="display:flex; align-items:center; justify-content:center; aspect-ratio:1; border:1px solid var(--rule); border-radius:6px; cursor:pointer;">
+              <input type="radio" name="score" value="{{ forloop.counter0 }}" required style="position:absolute; opacity:0;">
+              <span aria-hidden="true">{{ forloop.counter0 }}</span>
+            </label>
+          {% endfor %}
+          <label style="display:flex; align-items:center; justify-content:center; aspect-ratio:1; border:1px solid var(--rule); border-radius:6px; cursor:pointer;">
+            <input type="radio" name="score" value="10" required style="position:absolute; opacity:0;">
+            <span aria-hidden="true">10</span>
+          </label>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:.8rem; color:var(--ink-dim); margin-top:.4rem;">
+          <span>Not at all likely</span>
+          <span>Extremely likely</span>
+        </div>
+      </fieldset>
+
+      <label style="display:block; margin-bottom:.5rem; font-weight:600;">
+        Anything you'd like us to know? (optional)
+      </label>
+      <textarea name="comment" rows="4" maxlength="1000"
+                style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">{{ existing.comment }}</textarea>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:1.5rem;">Submit feedback</button>
+    </form>
+
+    {% if existing %}
+    <p class="meta" style="margin-top:1.5rem;">
+      You scored us {{ existing.score }}/10 on {{ existing.submitted_at|date:"Y-m-d" }}. Submitting overrides your previous score.
+    </p>
+    {% endif %}
+  </div>
+</section>
+<style>
+  input[type="radio"]:checked + span { font-weight: 700; }
+  label:has(input[type="radio"]:checked) { background: var(--accent); color: white; border-color: var(--accent); }
+  label:has(input[type="radio"]:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+{% endblock %}

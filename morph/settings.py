@@ -68,6 +68,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.demo_data',
     'plugins.installed.advanced_ecommerce',
     'plugins.installed.trust_signals',
+    'plugins.installed.post_purchase',
     'plugins.installed.agent_core',
     'plugins.installed.crm',
     'plugins.installed.tax',
