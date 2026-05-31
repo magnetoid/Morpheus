@@ -70,6 +70,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.trust_signals',
     'plugins.installed.post_purchase',
     'plugins.installed.experiments',
+    'plugins.installed.fraud_rules',
     'plugins.installed.agent_core',
     'plugins.installed.crm',
     'plugins.installed.tax',
