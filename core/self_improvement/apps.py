@@ -52,4 +52,13 @@ class SelfImprovementConfig(AppConfig):
             MorpheusEvents.CSP_VIOLATION_REPORTED, on_csp_violation_reported, priority=80
         )
 
-        logger.info('self_improvement: 3 hook subscribers registered')
+        # Phase 2: register the four data-only healers via the
+        # @register_healer decorator's import-time side effect.
+        from core.self_improvement.healers import (  # noqa: F401, PLC0415
+            alt_text,
+            meta_description,
+            redirect,
+            synonym,
+        )
+
+        logger.info('self_improvement: 3 hook subscribers + 4 healers registered')

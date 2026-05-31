@@ -65,6 +65,15 @@ def analyze_nightly(window_hours: int = 24) -> dict:
     return run_analyzer(window_hours=window_hours)
 
 
+@shared_task(name='self_improvement.execute_queue')
+def execute_queue() -> dict:
+    """Phase 2: pick up approved + auto-applied recommendations and
+    dispatch to the registered Healer. Runs every 5 minutes."""
+    from core.self_improvement.heal import execute_queue as _run  # noqa: PLC0415
+
+    return _run()
+
+
 @shared_task(name='self_improvement.digest_weekly')
 def digest_weekly() -> dict:
     """Generate + email the weekly engineering digest."""
@@ -146,5 +155,12 @@ def register_beat_schedule(schedule: dict) -> None:
         {
             'task': 'self_improvement.digest_weekly',
             'schedule': crontab(hour=9, minute=0, day_of_week=1),
+        },
+    )
+    schedule.setdefault(
+        'self_improvement.execute_queue',
+        {
+            'task': 'self_improvement.execute_queue',
+            'schedule': crontab(minute='*/5'),
         },
     )
