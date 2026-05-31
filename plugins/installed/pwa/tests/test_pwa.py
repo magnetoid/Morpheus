@@ -1,6 +1,8 @@
 """PWA plugin smoke tests — the three public endpoints + their
 content-type contracts (browsers are strict about these for
 installability)."""
+
+# ruff: noqa: PLC0415
 from __future__ import annotations
 
 import json
@@ -52,6 +54,7 @@ class PwaEndpointTests(TestCase):
         """When offline_enabled is False, the SW body shouldn't precache
         an offline URL."""
         from plugins.models import PluginConfig
+
         PluginConfig.objects.update_or_create(
             plugin_name='pwa',
             defaults={'is_enabled': True, 'config': {'offline_enabled': False}},

@@ -14,6 +14,14 @@ Usage:
       ...
     </main>
 """
+
+# ruff: noqa: PLC0415, S308, PLR0911, I001
+# - PLC0415: inline imports avoid app-registry-not-ready issues during
+#   settings import + keep the templatetag module lightweight.
+# - S308: mark_safe is applied to trusted, internally-rendered storefront
+#   block HTML + curated markdown — never raw user input.
+# - PLR0911 / I001: convert_money's branches are deliberate fallbacks;
+#   import grouping inside helpers is per-function localised.
 from __future__ import annotations
 
 import logging
@@ -53,17 +61,35 @@ def storefront_blocks(context, slot: str) -> str:
         except Exception as e:  # noqa: BLE001 — never break the page on a bad block
             logger.warning(
                 'storefront_blocks: %s/%s render failed: %s',
-                block.plugin, block.slot, e, exc_info=True,
+                block.plugin,
+                block.slot,
+                e,
+                exc_info=True,
             )
     return mark_safe(''.join(rendered_parts))
 
 
 _CURRENCY_SYMBOLS = {
-    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-    'AUD': 'A$', 'CAD': 'C$', 'NZD': 'NZ$', 'CHF': 'CHF ',
-    'CNY': '¥', 'INR': '₹', 'BRL': 'R$', 'MXN': 'MX$',
-    'KRW': '₩', 'TRY': '₺', 'RUB': '₽', 'ZAR': 'R',
-    'SEK': 'kr ', 'NOK': 'kr ', 'DKK': 'kr ', 'PLN': 'zł ',
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'NZD': 'NZ$',
+    'CHF': 'CHF ',
+    'CNY': '¥',
+    'INR': '₹',
+    'BRL': 'R$',
+    'MXN': 'MX$',
+    'KRW': '₩',
+    'TRY': '₺',
+    'RUB': '₽',
+    'ZAR': 'R',
+    'SEK': 'kr ',
+    'NOK': 'kr ',
+    'DKK': 'kr ',
+    'PLN': 'zł ',
     'RSD': 'RSD ',
 }
 
@@ -72,30 +98,42 @@ _CURRENCY_SYMBOLS = {
 def money_filter(value, _arg=None):
     """Render a Money instance OR a GraphQL `{amount, currency}` dict.
 
+    Locale-aware formatting (sprint #20): uses the request locale's
+    thousands + decimal separators when available — `€19,95` in de-DE,
+    `€19.95` in en-US — falling back to the previous comma-thousands /
+    dot-decimal style if Babel isn't installed.
+
     Templates render storefront prices coming from the GraphQL layer as
     dicts; without this filter Django prints the dict literal
-    (`{'amount': '17.00', 'currency': 'USD'}`) which is what merchants
-    were seeing on the PDP. Handles None / empty cleanly.
+    (`{'amount': '17.00', 'currency': 'USD'}`).
     """
     if value in (None, ''):
         return ''
-    # Dict shape from GraphQL.
     if isinstance(value, dict):
         amount = value.get('amount') or '0'
         currency = (value.get('currency') or 'USD').upper()
     else:
-        # Money / Decimal / string.
         amount = getattr(value, 'amount', value)
         currency = str(getattr(value, 'currency', 'USD')).upper()
     try:
-        from decimal import Decimal
+        from decimal import Decimal  # noqa: PLC0415
+
         amount = Decimal(str(amount))
-        # Format with comma thousands separator + 2 decimals.
-        formatted = f'{amount:,.2f}'
     except Exception:  # noqa: BLE001
-        formatted = str(amount)
-    symbol = _CURRENCY_SYMBOLS.get(currency, f'{currency} ')
-    return f'{symbol}{formatted}'
+        return f'{_CURRENCY_SYMBOLS.get(currency, currency + " ")}{amount}'
+
+    # Locale-aware formatting via Babel when available; gracefully
+    # fall back to the previous en-US style otherwise.
+    try:
+        from babel.numbers import format_currency  # noqa: PLC0415
+        from django.utils.translation import get_language  # noqa: PLC0415
+
+        locale_code = (get_language() or 'en').replace('-', '_')
+        return format_currency(amount, currency, locale=locale_code)
+    except Exception:  # noqa: BLE001
+        formatted = f'{amount:,.2f}'
+        symbol = _CURRENCY_SYMBOLS.get(currency, f'{currency} ')
+        return f'{symbol}{formatted}'
 
 
 @register.filter(name='convert')
@@ -127,6 +165,7 @@ def convert_money(value, target_currency: str):
     if rate is None:
         return value
     from decimal import Decimal
+
     converted = (Decimal(value.amount) * Decimal(rate.rate)).quantize(Decimal('0.01'))
     return Money(converted, tgt)
 
@@ -140,7 +179,7 @@ def markdown_to_html(value: str) -> str:
     filter so management commands can reuse the same converter.
     """
     if not value:
-        return ""
+        return ''
     import re
     from django.utils.html import escape as _esc
 
@@ -161,25 +200,25 @@ def markdown_to_html(value: str) -> str:
     # always start their own block, even when the LLM omitted blank
     # lines between hook + heading + body (common — our prompt doesn't
     # enforce them). Then the simple block-split below works.
-    norm = re.sub(r"\n(#{2,3} )", r"\n\n\1", str(value))
-    norm = re.sub(r"(#{2,3} [^\n]+)\n(?!#|\n)", r"\1\n\n", norm)
+    norm = re.sub(r'\n(#{2,3} )', r'\n\n\1', str(value))
+    norm = re.sub(r'(#{2,3} [^\n]+)\n(?!#|\n)', r'\1\n\n', norm)
 
     out = []
-    for block in re.split(r"\n\s*\n", norm.strip()):
+    for block in re.split(r'\n\s*\n', norm.strip()):
         b = block.strip()
         if not b:
             continue
-        if b.startswith("### "):
-            out.append(f"<h3>{_inline(_esc(b[4:].strip()))}</h3>")
-        elif b.startswith("## "):
-            out.append(f"<h2>{_inline(_esc(b[3:].strip()))}</h2>")
+        if b.startswith('### '):
+            out.append(f'<h3>{_inline(_esc(b[4:].strip()))}</h3>')
+        elif b.startswith('## '):
+            out.append(f'<h2>{_inline(_esc(b[3:].strip()))}</h2>')
         else:
-            esc = _esc(b).replace("\n", "<br>")
-            out.append(f"<p>{_inline(esc)}</p>")
-    return "\n".join(out)
+            esc = _esc(b).replace('\n', '<br>')
+            out.append(f'<p>{_inline(esc)}</p>')
+    return '\n'.join(out)
 
 
-@register.filter(name="md", is_safe=True)
+@register.filter(name='md', is_safe=True)
 def markdown_safe(value):
     """Template-filter wrapper around ``markdown_to_html``."""
     return mark_safe(markdown_to_html(value))
