@@ -1,0 +1,213 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Self-improvement · System{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+
+  <header class="mb-6 flex items-baseline justify-between">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-gray-500">System</p>
+      <h1 class="text-2xl font-semibold">Self-improvement engine</h1>
+      <p class="text-sm text-gray-600 mt-1 max-w-3xl">
+        The autonomic loop. Read it daily; act on items that have rolled up enough
+        evidence. Items below auto-apply confidence stay as advise until you approve.
+      </p>
+    </div>
+  </header>
+
+  <!-- DORA strip -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+    {% with counts as c %}
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Open recommendations</p>
+      <p class="text-2xl font-semibold mt-1">{{ c.open }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Auto-applied (7d)</p>
+      <p class="text-2xl font-semibold mt-1">{{ c.auto_applied_7d }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Rejected (7d)</p>
+      <p class="text-2xl font-semibold mt-1">{{ c.rejected_7d }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Rollbacks (7d)</p>
+      <p class="text-2xl font-semibold mt-1">{{ c.rollbacks_7d }}</p>
+    </div>
+    {% endwith %}
+  </div>
+
+  <!-- Tabs -->
+  <nav class="border-b mb-6 flex gap-6 text-sm" role="tablist">
+    <a href="#backlog"  data-tab class="tab-link border-b-2 border-black pb-2">Backlog ({{ backlog|length }})</a>
+    <a href="#drift"    data-tab class="tab-link text-gray-500 hover:text-black pb-2">Drift</a>
+    <a href="#settings" data-tab class="tab-link text-gray-500 hover:text-black pb-2">Settings</a>
+    <a href="#cost"     data-tab class="tab-link text-gray-500 hover:text-black pb-2">Cost</a>
+  </nav>
+
+  <!-- BACKLOG -->
+  <section id="backlog" class="tab-pane">
+    {% if backlog %}
+      <ul class="space-y-3">
+        {% for rec in backlog %}
+        <li class="rounded-lg border bg-white p-4">
+          <div class="flex justify-between items-start gap-4">
+            <div class="flex-1 min-w-0">
+              <p class="text-xs uppercase tracking-wide text-gray-500">
+                {{ rec.class_name }} · confidence {{ rec.confidence }}
+              </p>
+              <p class="text-base font-medium mt-1">{{ rec.title }}</p>
+              {% if rec.rationale %}
+              <p class="text-sm text-gray-700 mt-1">{{ rec.rationale|truncatechars:300 }}</p>
+              {% endif %}
+              {% if rec.pr_url %}
+              <p class="text-xs mt-2"><a href="{{ rec.pr_url }}" class="underline">PR ↗</a></p>
+              {% endif %}
+            </div>
+            <div class="flex gap-2 flex-shrink-0">
+              <form method="post" action="{% url 'admin_dashboard:self_improvement_approve' rec.id %}">{% csrf_token %}<button class="btn btn-primary text-xs">Approve</button></form>
+              <form method="post" action="{% url 'admin_dashboard:self_improvement_snooze' rec.id %}">{% csrf_token %}<button class="btn text-xs">Snooze 30d</button></form>
+              <details>
+                <summary class="btn text-xs cursor-pointer">Reject</summary>
+                <form method="post" action="{% url 'admin_dashboard:self_improvement_reject' rec.id %}" class="mt-2 flex gap-2">
+                  {% csrf_token %}
+                  <input name="reason" type="text" required placeholder="why?" class="input text-xs">
+                  <button class="btn text-xs">Confirm</button>
+                </form>
+              </details>
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-gray-600">No open recommendations. Either the engine hasn't run yet or it has nothing new to suggest.</p>
+    {% endif %}
+  </section>
+
+  <!-- DRIFT -->
+  <section id="drift" class="tab-pane hidden">
+    <p class="text-sm text-gray-600 mb-3">Files diverged from canonical Morpheus in the last 30 days. Declare intentional changes in <code>core/customizations.yml</code>; orphans are cheap re-merge candidates.</p>
+    {% if drift_signals %}
+      <table class="min-w-full text-sm bg-white border rounded-lg overflow-hidden">
+        <thead class="bg-gray-50 border-b">
+          <tr>
+            <th class="text-left p-3">Path</th>
+            <th class="text-left p-3">Classification</th>
+            <th class="text-right p-3">Added</th>
+            <th class="text-right p-3">Removed</th>
+            <th class="text-right p-3">Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in drift_signals %}
+          <tr class="border-b last:border-b-0">
+            <td class="p-3 font-mono text-xs">{{ s.payload.path }}</td>
+            <td class="p-3">{{ s.payload.classification }}</td>
+            <td class="p-3 text-right">+{{ s.payload.added|default:0 }}</td>
+            <td class="p-3 text-right">−{{ s.payload.removed|default:0 }}</td>
+            <td class="p-3 text-right">{{ s.severity }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-sm text-gray-600">No drift signals in the last 30 days. Either you're in sync with upstream or the drift collector hasn't run.</p>
+    {% endif %}
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settings" class="tab-pane hidden">
+    <p class="text-sm text-gray-600 mb-3">
+      Per-class thresholds. Set auto-apply to 0 to keep a class as advise-only.
+      Edit by writing to <code>SELF_IMPROVEMENT["policy"][&lt;class&gt;]</code> in settings.
+    </p>
+    <table class="min-w-full text-sm bg-white border rounded-lg overflow-hidden">
+      <thead class="bg-gray-50 border-b">
+        <tr>
+          <th class="text-left p-3">Class</th>
+          <th class="text-center p-3">Enabled</th>
+          <th class="text-right p-3">Auto-apply ≥</th>
+          <th class="text-right p-3">Propose ≥</th>
+          <th class="text-center p-3">Reversible</th>
+          <th class="text-left p-3">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in policies %}
+        <tr class="border-b last:border-b-0">
+          <td class="p-3 font-medium">{{ p.name }}</td>
+          <td class="p-3 text-center">{% if p.enabled %}✓{% else %}—{% endif %}</td>
+          <td class="p-3 text-right font-mono">{{ p.auto_apply_threshold|floatformat:2 }}</td>
+          <td class="p-3 text-right font-mono">{{ p.propose_threshold|floatformat:2 }}</td>
+          <td class="p-3 text-center">{% if p.reversible %}✓{% else %}—{% endif %}</td>
+          <td class="p-3 text-gray-600 text-xs">{{ p.description }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- COST -->
+  <section id="cost" class="tab-pane hidden">
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="rounded-lg border bg-white p-4">
+        <p class="text-xs uppercase tracking-wide text-gray-500">LLM tokens (30d)</p>
+        <p class="text-2xl font-semibold mt-1">{{ cost_30d_tokens|stringformat:"d" }}</p>
+      </div>
+      <div class="rounded-lg border bg-white p-4">
+        <p class="text-xs uppercase tracking-wide text-gray-500">Est. spend (30d)</p>
+        <p class="text-2xl font-semibold mt-1">${{ cost_30d_usd }}</p>
+      </div>
+    </div>
+    <details class="text-sm">
+      <summary class="cursor-pointer text-gray-600">Last collector runs</summary>
+      <table class="min-w-full text-xs mt-3 bg-white border rounded-lg overflow-hidden">
+        <thead class="bg-gray-50 border-b">
+          <tr><th class="text-left p-2">Collector</th><th class="text-left p-2">Status</th><th class="text-left p-2">Emitted</th><th class="text-left p-2">Started</th></tr>
+        </thead>
+        <tbody>
+          {% for r in last_runs %}
+          <tr class="border-b last:border-b-0">
+            <td class="p-2 font-mono">{{ r.collector }}</td>
+            <td class="p-2">{{ r.status }}</td>
+            <td class="p-2">{{ r.signals_emitted }}</td>
+            <td class="p-2">{{ r.started_at|date:"Y-m-d H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="p-3 text-gray-500">No runs yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+</div>
+
+<script>
+  (function () {
+    var tabs = document.querySelectorAll('[data-tab]');
+    var panes = document.querySelectorAll('.tab-pane');
+    function activate(hash) {
+      tabs.forEach(function (t) {
+        var match = t.getAttribute('href') === hash;
+        t.classList.toggle('border-b-2', match);
+        t.classList.toggle('border-black', match);
+        t.classList.toggle('text-gray-500', !match);
+      });
+      panes.forEach(function (p) {
+        p.classList.toggle('hidden', '#' + p.id !== hash);
+      });
+    }
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function (e) {
+        e.preventDefault();
+        var h = t.getAttribute('href');
+        history.replaceState(null, '', h);
+        activate(h);
+      });
+    });
+    activate(location.hash || '#backlog');
+  })();
+</script>
+{% endblock %}

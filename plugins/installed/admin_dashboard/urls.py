@@ -6,6 +6,11 @@ import time and re-checks the registry per request, so plugins enabled
 later light up without a server restart (as long as the plugin's
 `ready()` was called once).
 """
+
+# ruff: noqa: PLC0415, PLR0912, I001
+# Inline imports inside view functions are intentional throughout —
+# plugin registry references avoid app-registry-not-ready issues at
+# URLconf import time.
 from __future__ import annotations
 
 import importlib
@@ -64,6 +69,7 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         # box doesn't submit a key at all — but only for AJAX posts where
         # we know the form sent every declared boolean intentionally.
         from django.http import JsonResponse
+
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         saved: list[str] = []
         for key, prop in (panel.schema.get('properties') or {}).items():
@@ -107,25 +113,31 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         value = config.get(key, prop.get('default', ''))
         if kind == 'boolean':
             value = bool(value)
-        fields.append({
-            'key': key,
-            'title': prop.get('title') or key.replace('_', ' ').title(),
-            'description': prop.get('description', ''),
-            'kind': kind,
-            'enum': prop.get('enum') or [],
-            'value': value,
-        })
-    return render(request, 'admin_dashboard/plugin_settings.html', {
-        'plugin': instance,
-        'panel': panel,
-        'fields': fields,
-        'active_nav': 'settings',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Settings',  'url': '/dashboard/settings/'},
-            {'label': f'{panel.label or instance.label or plugin} settings'},
-        ],
-    })
+        fields.append(
+            {
+                'key': key,
+                'title': prop.get('title') or key.replace('_', ' ').title(),
+                'description': prop.get('description', ''),
+                'kind': kind,
+                'enum': prop.get('enum') or [],
+                'value': value,
+            }
+        )
+    return render(
+        request,
+        'admin_dashboard/plugin_settings.html',
+        {
+            'plugin': instance,
+            'panel': panel,
+            'fields': fields,
+            'active_nav': 'settings',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Settings', 'url': '/dashboard/settings/'},
+                {'label': f'{panel.label or instance.label or plugin} settings'},
+            ],
+        },
+    )
 
 
 @staff_member_required
@@ -135,6 +147,7 @@ def plugin_settings_redirect(request: HttpRequest, plugin: str) -> HttpResponse:
     cards on the apps page working.
     """
     from django.http import HttpResponsePermanentRedirect
+
     return HttpResponsePermanentRedirect(f'/dashboard/settings/{plugin}/')
 
 
@@ -155,21 +168,51 @@ urlpatterns = [
     path('products/', views.products_list, name='products'),
     path('products/bulk/', views.products_bulk, name='products_bulk'),
     path('products/content-audit/', views.content_audit, name='content_audit'),
-    path('products/<uuid:product_id>/content-fill/', views.content_fill_one, name='content_fill_one'),
+    path(
+        'products/<uuid:product_id>/content-fill/', views.content_fill_one, name='content_fill_one'
+    ),
     path('products/new/', views.product_new, name='product_new'),
     path('products/<uuid:product_id>/', views.product_edit, name='product_edit'),
     path('products/<uuid:product_id>/delete/', views.product_delete, name='product_delete'),
     path('products/<uuid:product_id>/variants/new/', views.variant_new, name='variant_new'),
-    path('products/<uuid:product_id>/variants/<uuid:variant_id>/', views.variant_edit, name='variant_edit'),
-    path('products/<uuid:product_id>/variants/<uuid:variant_id>/delete/', views.variant_delete, name='variant_delete'),
+    path(
+        'products/<uuid:product_id>/variants/<uuid:variant_id>/',
+        views.variant_edit,
+        name='variant_edit',
+    ),
+    path(
+        'products/<uuid:product_id>/variants/<uuid:variant_id>/delete/',
+        views.variant_delete,
+        name='variant_delete',
+    ),
     path('products/<uuid:product_id>/images/upload/', views.image_upload, name='image_upload'),
     path('products/<uuid:product_id>/images/reorder/', views.image_reorder, name='image_reorder'),
     path('products/<uuid:product_id>/videos/new/', views.video_add, name='video_add'),
-    path('products/<uuid:product_id>/videos/<uuid:video_id>/delete/', views.video_delete, name='video_delete'),
-    path('products/<uuid:product_id>/videos/<uuid:video_id>/edit/', views.video_edit, name='video_edit'),
-    path('products/<uuid:product_id>/images/<uuid:image_id>/edit/', views.image_edit, name='image_edit'),
-    path('products/<uuid:product_id>/images/<uuid:image_id>/delete/', views.image_delete, name='image_delete'),
-    path('products/<uuid:product_id>/images/<uuid:image_id>/primary/', views.image_set_primary, name='image_set_primary'),
+    path(
+        'products/<uuid:product_id>/videos/<uuid:video_id>/delete/',
+        views.video_delete,
+        name='video_delete',
+    ),
+    path(
+        'products/<uuid:product_id>/videos/<uuid:video_id>/edit/',
+        views.video_edit,
+        name='video_edit',
+    ),
+    path(
+        'products/<uuid:product_id>/images/<uuid:image_id>/edit/',
+        views.image_edit,
+        name='image_edit',
+    ),
+    path(
+        'products/<uuid:product_id>/images/<uuid:image_id>/delete/',
+        views.image_delete,
+        name='image_delete',
+    ),
+    path(
+        'products/<uuid:product_id>/images/<uuid:image_id>/primary/',
+        views.image_set_primary,
+        name='image_set_primary',
+    ),
     path('categories/', views.categories_list, name='categories'),
     path('customers/', views.customers_list, name='customers'),
     path('customers/bulk/', views.customers_bulk, name='customers_bulk'),
@@ -177,8 +220,16 @@ urlpatterns = [
     path('customers/<uuid:customer_id>/', views.customer_edit, name='customer_edit'),
     path('customers/<uuid:customer_id>/delete/', views.customer_delete, name='customer_delete'),
     path('customers/<uuid:customer_id>/addresses/new/', views.address_new, name='address_new'),
-    path('customers/<uuid:customer_id>/addresses/<uuid:address_id>/', views.address_edit, name='address_edit'),
-    path('customers/<uuid:customer_id>/addresses/<uuid:address_id>/delete/', views.address_delete, name='address_delete'),
+    path(
+        'customers/<uuid:customer_id>/addresses/<uuid:address_id>/',
+        views.address_edit,
+        name='address_edit',
+    ),
+    path(
+        'customers/<uuid:customer_id>/addresses/<uuid:address_id>/delete/',
+        views.address_delete,
+        name='address_delete',
+    ),
     path('analytics/', views.analytics_view, name='analytics'),
     path('marketing/', views.marketing_view, name='marketing'),
     path('marketing/coupons/new/', views.coupon_new, name='coupon_new'),
@@ -197,13 +248,52 @@ urlpatterns = [
     path('settings/', views.settings_view, name='settings'),
     path('settings/ai/probe/', views.settings_ai_probe, name='settings_ai_probe'),
     path('settings/email-templates/', views.email_templates_list, name='email_templates_list'),
-    path('settings/email-templates/<str:key>/', views.email_template_edit, name='email_template_edit'),
+    path(
+        'settings/email-templates/<str:key>/', views.email_template_edit, name='email_template_edit'
+    ),
     path('settings/<slug:category>/', views.settings_category, name='settings_category'),
     path('ai-insights/', views.ai_insights, name='ai_insights'),
     # Theme builder — section composer + live preview for CMS pages.
     path('pages/<uuid:page_id>/builder/', views.theme_builder_views.builder, name='theme_builder'),
-    path('pages/<uuid:page_id>/builder/add/', views.theme_builder_views.api_add, name='theme_builder_add'),
-    path('pages/<uuid:page_id>/builder/reorder/', views.theme_builder_views.api_reorder, name='theme_builder_reorder'),
-    path('pages/<uuid:page_id>/builder/<uuid:row_id>/update/', views.theme_builder_views.api_update, name='theme_builder_update'),
-    path('pages/<uuid:page_id>/builder/<uuid:row_id>/delete/', views.theme_builder_views.api_delete, name='theme_builder_delete'),
+    path(
+        'pages/<uuid:page_id>/builder/add/',
+        views.theme_builder_views.api_add,
+        name='theme_builder_add',
+    ),
+    path(
+        'pages/<uuid:page_id>/builder/reorder/',
+        views.theme_builder_views.api_reorder,
+        name='theme_builder_reorder',
+    ),
+    path(
+        'pages/<uuid:page_id>/builder/<uuid:row_id>/update/',
+        views.theme_builder_views.api_update,
+        name='theme_builder_update',
+    ),
+    path(
+        'pages/<uuid:page_id>/builder/<uuid:row_id>/delete/',
+        views.theme_builder_views.api_delete,
+        name='theme_builder_delete',
+    ),
+    # Self-improvement engine (sprint Phase 1 Increment 5).
+    path(
+        'system/self-improvement/',
+        views.self_improvement_views.overview,
+        name='self_improvement',
+    ),
+    path(
+        'system/self-improvement/<int:recommendation_id>/approve/',
+        views.self_improvement_views.approve,
+        name='self_improvement_approve',
+    ),
+    path(
+        'system/self-improvement/<int:recommendation_id>/reject/',
+        views.self_improvement_views.reject,
+        name='self_improvement_reject',
+    ),
+    path(
+        'system/self-improvement/<int:recommendation_id>/snooze/',
+        views.self_improvement_views.snooze,
+        name='self_improvement_snooze',
+    ),
 ]

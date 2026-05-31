@@ -535,6 +535,26 @@ LOGGING = {
     },
 }
 
+# ── Self-improvement engine ────────────────────────────────────────────────────
+# Configure the autonomic loop. None of these settings are required —
+# defaults in core.self_improvement.policy ship sensible thresholds.
+SELF_IMPROVEMENT = {
+    # Maximum daily token budget across all engine LLM calls. Hard cap;
+    # exceeded → analyzer aborts the remainder of the run and logs to Sentry.
+    'daily_token_budget': config('SELF_IMPROVEMENT_TOKEN_BUDGET', default=500_000, cast=int),
+    # Override per-class policy here, e.g.:
+    #   'policy': {'seo_gap': {'auto': 0.95}},
+    'policy': {},
+    # Where canonical Morpheus lives. Read by the upstream_drift collector
+    # when core/customizations.yml doesn't declare an upstream ref.
+    'upstream_ref': config('SELF_IMPROVEMENT_UPSTREAM_REF', default=''),
+    # Paths the engine treats as protected in addition to core/safety.py's
+    # PROTECTED_PATHS. Always a superset, never a relax.
+    'extra_protected_paths': [],
+    # Weekly digest email recipients.
+    'digest_recipients': config('SELF_IMPROVEMENT_DIGEST_RECIPIENTS', default='', cast=Csv()),
+}
+
 # ── Sentry ─────────────────────────────────────────────────────────────────────
 # init_sentry() is a no-op when SENTRY_DSN is not set. It scrubs Authorization,
 # X-Agent-Token, Cookie, and any *password*/*secret*/*token*/*card* keys from

@@ -1,0 +1,22 @@
+# Morpheus customization registry.
+#
+# Declares which files in THIS fork are intentional drift from canonical
+# Morpheus. The upstream-drift collector reads this file to classify each
+# diverged file as `intentional`, `experimental`, `vendor_specific`, or
+# (when absent) `drift`/`orphan`.
+#
+# Files flagged `intentional` are OFF-LIMITS to every healer except the
+# `upstream_sync` class (and even there, only with explicit confirmation).
+#
+# Format:
+#   upstream: <git ref of canonical Morpheus this fork is forked from>
+#   files:
+#     - path: <repo-relative path>
+#       intent: intentional | experimental | vendor_specific
+#       why: <human-written rationale>
+#       owner: <username/role/team>
+#       locked_until: null | YYYY-MM-DD
+
+upstream: morpheus-2026.05
+
+files: []
