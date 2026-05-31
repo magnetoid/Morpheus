@@ -28,12 +28,13 @@ from typing import Any
 
 from django.shortcuts import redirect, render
 
+from api.client import internal_graphql
+from plugins.installed.storefront.views._queries import CART_QUERY
 from plugins.installed.storefront.views.checkout import (
     _available_shipping_rates,
     _cart_requires_shipping,
     _checkout_base_context,
 )
-from plugins.installed.storefront.views.helpers import CART_QUERY, internal_graphql
 
 logger = logging.getLogger('morpheus.storefront.checkout_one_page')
 
