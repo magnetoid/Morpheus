@@ -83,12 +83,15 @@ _CSP_REPORT_ONLY = '; '.join(
 # CDN allow-list rationale (TODO: self-host these to remove the allow-list):
 #   - cdn.tailwindcss.com — Tailwind JIT runtime (admin styling)
 #   - unpkg.com — htmx + lucide-icons (admin behaviour + iconography)
-# Self-hosting all three would let us drop the allow-list entirely and
+#   - esm.sh — TipTap rich-text editor ESM bundles (product description
+#     editors). Without this the editors silently fail to mount and the
+#     short/long description fields render blank.
+# Self-hosting all of these would let us drop the allow-list entirely and
 # restore the tighter policy.
 _CSP_DASHBOARD_ENFORCE = '; '.join(
     [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh",
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
