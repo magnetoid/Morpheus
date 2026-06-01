@@ -1,9 +1,13 @@
-# Theme Development Guide
+# Theme Development Guide — the Theme SDK
 
 > Full developer reference for building Morpheus themes.
 > For named, repeatable procedures see [`SKILLS.md`](../SKILLS.md).
 > For platform laws see [`RULES.md`](../RULES.md).
-> For plugin development see [`PLUGIN_DEVELOPMENT.md`](PLUGIN_DEVELOPMENT.md).
+> For the **App SDK** (the other half of the contract — apps fill the
+> slots a theme exposes) see [`PLUGIN_DEVELOPMENT.md`](PLUGIN_DEVELOPMENT.md).
+> For the house rule this codifies see [`CLAUDE.md` § Plugin contract](../CLAUDE.md).
+> For the live modular-OS refactor + known gaps see
+> [`plans/modular-os-2026-06.md`](plans/modular-os-2026-06.md).
 
 A Morpheus theme is a **drop-in template + asset bundle** that overrides the
 storefront (or any plugin's) HTML without touching plugin code. Themes do
@@ -11,6 +15,20 @@ not run business logic — they style what the platform already serves.
 
 If you've built a Shopify theme, the model will feel familiar. If you've
 built a Django app, even more so.
+
+**The WordPress mental model.** Morpheus draws a hard line, the same one
+WordPress draws between a *theme* and a *plugin*:
+
+- The **theme** owns presentation and exposes **placeholders** (slots) — the
+  Morpheus analogue of WordPress `do_action()` hooks / widget areas. It must
+  not hard-code any specific plugin's feature.
+- An **app** (plugin) owns its own code and **fills** those slots — the
+  analogue of a WordPress plugin hooking `add_action()`.
+- **Disabling an app removes every surface it added.** A theme that bakes a
+  plugin's feature directly into a template breaks that promise — the surface
+  survives the plugin being turned off. Don't.
+
+These two SDKs — Theme and App — are the base everything else builds on.
 
 ---
 
@@ -21,14 +39,15 @@ built a Django app, even more so.
 3. [The lifecycle](#3-the-lifecycle)
 4. [Metadata reference](#4-metadata-reference)
 5. [Template overrides](#5-template-overrides)
-6. [Static assets](#6-static-assets)
-7. [Design tokens](#7-design-tokens)
-8. [Configuration schema](#8-configuration-schema)
-9. [Inheriting from another theme](#9-inheriting-from-another-theme)
-10. [Working with the SEO plugin](#10-working-with-the-seo-plugin)
-11. [Testing a theme](#11-testing-a-theme)
-12. [Distribution as a community theme](#12-distribution-as-a-community-theme)
-13. [Cookbook](#13-cookbook)
+6. [Placeholders / slots — the theme's core job](#6-placeholders--slots--the-themes-core-job)
+7. [Static assets](#7-static-assets)
+8. [Design tokens](#8-design-tokens)
+9. [Configuration schema](#9-configuration-schema)
+10. [Inheriting from another theme](#10-inheriting-from-another-theme)
+11. [Working with the SEO plugin](#11-working-with-the-seo-plugin)
+12. [Testing a theme](#12-testing-a-theme)
+13. [Distribution as a community theme](#13-distribution-as-a-community-theme)
+14. [Cookbook](#14-cookbook)
 
 ---
 
@@ -198,7 +217,110 @@ The convention is: **everything reusable lives in the base; pages use
 
 ---
 
-## 6. Static assets
+## 6. Placeholders / slots — the theme's core job
+
+This is the heart of the Theme SDK. Template overrides (§5) decide *how the
+page looks*; **slots decide where apps are allowed to draw.** Exposing slots
+is the single most important thing a theme does, because it's what lets a
+merchant install an app and have it appear on the storefront **without anyone
+editing a theme file.**
+
+### What a slot is
+
+A slot is one template tag:
+
+```django
+{% load morph %}
+
+<h1>{{ product.name }}</h1>
+{# Every enabled app that contributed a StorefrontBlock(slot="pdp_below_price")
+   renders here, in priority order. Zero apps → renders nothing. #}
+{% storefront_blocks "pdp_below_price" %}
+```
+
+That's the entire contract. The **theme owns the slot name and its
+position**; the **app matches the name** from
+`contribute_storefront_blocks()` (see the App SDK,
+[PLUGIN_DEVELOPMENT.md § Modularity contract](PLUGIN_DEVELOPMENT.md#51-modularity-contract-sdk-base)).
+It is the direct analogue of WordPress's `do_action('slot')` /
+`dynamic_sidebar()` — a named place where *other* code contributes, that
+renders empty when nobody does.
+
+The tag is implemented in [`core/templatetags/morph.py`](../core/templatetags/morph.py)
+(`storefront_blocks`) and reads from `plugin_registry.storefront_blocks_for(slot)`.
+A block that raises is logged and skipped — **one bad block never breaks the
+page.**
+
+### What the block receives
+
+The block template is rendered with the **full surrounding page context**
+flattened in, plus `block` (the `StorefrontBlock` instance) and `request`.
+So a block in `pdp_below_price` sees `product`; a block in `cart_summary_extra`
+sees `cart`; a block in `home_above_grid` sees the home context. Apps read
+from that context — they must not query models inside the block template.
+
+### Canonical slot catalog
+
+These are the slots the reference theme (`dot_books`) exposes **today**.
+Slot names are case-sensitive and are the contract — never rename one a
+plugin might target. The "Renders" column is where the tag physically sits;
+the "Context" column is the most useful variable a block can rely on.
+
+| Slot | Page | Renders | Block context |
+|---|---|---|---|
+| `home_above_grid` | Home (`/`) | Top of `{% block content %}`, above the editor's-pick section | home page context |
+| `home_below_grid` | Home (`/`) | Bottom of the home content, below the product grid | home page context |
+| `pdp_below_price` | Product detail (`/products/<slug>/`) | Between the price and the variant picker / add-to-cart | `product` |
+| `pdp_below_form` | Product detail | Directly below the add-to-cart form | `product` |
+| `pdp_above_long_description` | Product detail | Above the long description / detail tabs | `product` |
+| `cart_summary_extra` | Cart (`/cart/`) | In the order-summary panel, below the total, above the checkout button | `cart` |
+| `global_below_body` | **Every page** | End of `<body>` in `base.html`, before the cart drawer | layout context |
+
+> Source of truth: `grep -rn '{% storefront_blocks' themes/library/dot_books/`.
+> If you add or move a slot in a theme, update this table in the same commit
+> (see [`CLAUDE.md` § Living document](../CLAUDE.md)).
+
+`priority` on a `StorefrontBlock` is the sort key within a slot — lower runs
+first (`10` ≈ "near the top", `50` = default, `90` ≈ "render last, e.g. a
+tracking pixel"). Two blocks with the same priority render in an unspecified
+order; an app must not depend on a sibling's position.
+
+### Custom slots
+
+The catalog is **not a fixed contract** the platform enforces — slot names
+are loose strings, and a theme may expose extra slots for its own patterns (a
+magazine theme might add `magazine_pullquote`). An app targeting a
+non-standard slot simply renders nothing when a theme that lacks it is active.
+If you add custom slots, document them in your theme's `README.md` so plugin
+authors can find them, and put a `{# slot: name #}` comment immediately above
+each tag.
+
+### The one rule: themes expose, apps fill
+
+A theme renders **presentation only**. It exposes slots and styles whatever
+lands in them. It must **never hard-code a specific plugin's feature** — no
+"if loyalty is installed, show the points balance," no reviews markup baked
+into `product_detail.html`, no affiliate banner stitched into `base.html`.
+Those belong in the plugin, contributed into a slot. The litmus test is the
+same one the App SDK uses: **disable the plugin and its surface must vanish.**
+A feature welded into a theme template survives the toggle — that's the
+anti-pattern.
+
+> **Planned slots (do not rely on yet).** The storefront customer-account
+> shell (`/account/`) has **no slot today**, so apps can't contribute account
+> tiles, links, or sub-pages the clean way — which is exactly why the loyalty
+> points tile is currently hard-coded into the theme (a known debt). The
+> [modular-OS plan](plans/modular-os-2026-06.md) adds an `account_nav` /
+> `account_page` slot pair plus an `ACCOUNT_SUMMARY_FIELDS` hook to fix this.
+> Until those ship, treat account surfaces as **planned**, not available.
+> Earlier drafts of [`THEME_EXTENSIONS.md`](THEME_EXTENSIONS.md) sketched a
+> much larger aspirational catalog (`every_page_above_header`,
+> `pdp_below_title`, `account_sidebar_extra`, …) — those are **proposals, not
+> implemented slots.** The table above is the real, current set.
+
+---
+
+## 7. Static assets
 
 Static files MUST be namespaced under `static/<name>/` so they don't
 collide with plugin assets.
@@ -217,7 +339,7 @@ directory automatically (see [`morph/settings.py`](../morph/settings.py)).
 
 ---
 
-## 7. Design tokens
+## 8. Design tokens
 
 A theme exposes a flat tree of **design tokens** via
 `get_design_tokens()`. The dashboard renders a live editor for each
@@ -257,7 +379,7 @@ be consistent.
 
 ---
 
-## 8. Configuration schema
+## 9. Configuration schema
 
 For *behavioral* settings (toggles, copy strings, feature flags),
 implement `get_config_schema()`:
@@ -289,7 +411,7 @@ dashboard renders this schema as a form.
 
 ---
 
-## 9. Inheriting from another theme
+## 10. Inheriting from another theme
 
 Two paths.
 
@@ -316,7 +438,7 @@ and rarely worth it. Path A is the recommended approach.
 
 ---
 
-## 10. Working with the SEO plugin
+## 11. Working with the SEO plugin
 
 If the [SEO plugin](../plugins/installed/seo/) is active, your `base.html`
 should use the `{% seo_meta %}` tag instead of hand-rolling meta tags:
@@ -342,7 +464,7 @@ The dot books theme is the canonical example.
 
 ---
 
-## 11. Testing a theme
+## 12. Testing a theme
 
 Drop a `tests.py` next to the theme that asserts each template parses:
 
@@ -364,7 +486,7 @@ For visual regression, use Playwright/Cypress to walk
 
 ---
 
-## 12. Distribution as a community theme
+## 13. Distribution as a community theme
 
 Two paths.
 
@@ -390,7 +512,7 @@ installed packages — for now, the in-tree convention is canonical.
 
 ---
 
-## 13. Cookbook
+## 14. Cookbook
 
 ### Override a single page
 
@@ -453,9 +575,19 @@ to taste.
 
 ## See also
 
+- [`PLUGIN_DEVELOPMENT.md`](PLUGIN_DEVELOPMENT.md) — **the App SDK**, the other
+  half of this contract: how an app *fills* the slots a theme exposes, and the
+  enable/disable lifecycle.
+- [`THEME_EXTENSIONS.md`](THEME_EXTENSIONS.md) — narrative background on the
+  slot pattern (note: its catalog includes proposed slots; §6 above is the
+  implemented set).
+- [`CLAUDE.md` § Plugin contract](../CLAUDE.md) — the house rule this SDK codifies.
+- [`plans/modular-os-2026-06.md`](plans/modular-os-2026-06.md) — the refactor
+  that finishes "disable an app → its surfaces vanish" (account slots, etc.).
 - [`SKILLS.md`](../SKILLS.md) — named, repeatable procedures.
 - [`RULES.md`](../RULES.md) — platform laws.
-- [`PLUGIN_DEVELOPMENT.md`](PLUGIN_DEVELOPMENT.md) — for adding behavior, not just style.
+- [`core/templatetags/morph.py`](../core/templatetags/morph.py) — the
+  `{% storefront_blocks %}` tag.
 - [`themes/base.py`](../themes/base.py) — source of truth for the base class.
 - [`themes/registry.py`](../themes/registry.py) — discovery + activation engine.
 - [`themes/loaders.py`](../themes/loaders.py) — Django template loader.
