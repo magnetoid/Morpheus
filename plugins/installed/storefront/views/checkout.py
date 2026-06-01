@@ -2,6 +2,11 @@
 review → Stripe payment. Plus gift card apply/remove side-trips.
 """
 
+# ruff: noqa: PLC0415, I001, S110, S112, PLR0911, PLR0912, PLR5501
+# Inline imports keep checkout import-light + avoid plugin load-order
+# coupling; the guarded try/except blocks degrade gracefully so a wedged
+# optional plugin (shipping, gift cards) never breaks the checkout flow.
+
 from __future__ import annotations
 
 from api.client import internal_graphql
@@ -279,8 +284,8 @@ def checkout_review(request):
             shipping_input = {
                 'firstName': addr.get('first_name', ''),
                 'lastName': addr.get('last_name', ''),
-                'addressLine1': addr.get('address_line1', ''),
-                'addressLine2': addr.get('address_line2', ''),
+                'line1': addr.get('address_line1', ''),
+                'line2': addr.get('address_line2', ''),
                 'city': addr.get('city', ''),
                 'state': addr.get('state', ''),
                 'postalCode': addr.get('postal_code', ''),
