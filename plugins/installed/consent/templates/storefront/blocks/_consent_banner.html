@@ -12,9 +12,9 @@ Design tokens: dot_books palette (--paper, --paper-2, --rule, --ink,
 No framework JS — vanilla handlers wired inline so the banner works
 even when GTM/analytics never load (which is the default state).
 {% endcomment %}
-{% consent_show as _show %}
-{% if _show or force_show %}
-{% consent_current as _decision %}
+{% consent_show as show_banner %}
+{% if show_banner or force_show %}
+{% consent_current as decision %}
 <div id="morpheus-consent-banner"
      role="dialog"
      aria-live="polite"
@@ -33,13 +33,13 @@ even when GTM/analytics never load (which is the default state).
         <input type="checkbox" checked disabled> Necessary
       </label>
       <label style="display: inline-flex; align-items: center; gap: .35rem;">
-        <input type="checkbox" name="analytics"{% if _decision.analytics %} checked{% endif %}> Analytics
+        <input type="checkbox" name="analytics"{% if decision.analytics %} checked{% endif %}> Analytics
       </label>
       <label style="display: inline-flex; align-items: center; gap: .35rem;">
-        <input type="checkbox" name="marketing"{% if _decision.marketing %} checked{% endif %}> Marketing
+        <input type="checkbox" name="marketing"{% if decision.marketing %} checked{% endif %}> Marketing
       </label>
       <label style="display: inline-flex; align-items: center; gap: .35rem;">
-        <input type="checkbox" name="functional"{% if _decision.functional %} checked{% endif %}> Functional
+        <input type="checkbox" name="functional"{% if decision.functional %} checked{% endif %}> Functional
       </label>
     </div>
 
