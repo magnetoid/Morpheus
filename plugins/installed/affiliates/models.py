@@ -4,11 +4,15 @@ Affiliate platform — links, attribution, conversions, payouts.
 Domain:
 
     Affiliate                 — a partner promoting the store (per merchant)
-    AffiliateProgram          — commission rules
+    AffiliateProgram          — commission rules (tiers, per-category override,
+                                auto-approve threshold)
     AffiliateLink             — per-affiliate trackable URL
     AffiliateClick            — recorded click (anonymous; cookie-set on storefront)
     AffiliateConversion       — order tied to an affiliate via attribution window
     AffiliatePayout           — periodic payout of accrued commissions
+    AffiliateWidget           — embeddable shop widget (iframe + JS snippet) owned
+                                by an affiliate; renders public product cards that
+                                link through the affiliate's ref code
 """
 
 from __future__ import annotations
@@ -46,6 +50,48 @@ class AffiliateProgram(models.Model):
     cookie_window_days = models.PositiveSmallIntegerField(default=30)
     minimum_payout = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', default=50)
     is_active = models.BooleanField(default=True, db_index=True)
+
+    # ── OPTIONS (A) ──────────────────────────────────────────────────────
+    # Commission tiers: a graduated percent schedule keyed off the
+    # affiliate's lifetime approved-conversion count. Stored as an ordered
+    # list of {"name", "min_conversions", "percent"} dicts, e.g.:
+    #   [{"name": "Bronze", "min_conversions": 0,  "percent": 10},
+    #    {"name": "Silver", "min_conversions": 10, "percent": 15},
+    #    {"name": "Gold",   "min_conversions": 50, "percent": 20}]
+    # The effective tier is the highest `min_conversions` the affiliate has
+    # reached. Empty list ⇒ flat `commission_value` (back-compat default).
+    # Only meaningful for commission_type='percent'.
+    tiers = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Optional graduated commission schedule (percent type only). '
+            'List of {name, min_conversions, percent} ordered by threshold.'
+        ),
+    )
+    # Per-category commission override: {category_slug: percent}. When an
+    # order line's product belongs to one of these categories, that line
+    # earns the override percent instead of the tier/base percent. Empty
+    # dict ⇒ no overrides. Percent type only.
+    category_commission_overrides = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Optional {category_slug: percent} map. Order lines whose product '
+            'is in a listed category earn that percent instead of the base/tier rate.'
+        ),
+    )
+    # Auto-approve a pending affiliate once they reach this many attributed
+    # conversions (counting pending too — the signal is "they can sell").
+    # 0 ⇒ disabled (manual approval only).
+    auto_approve_after = models.PositiveSmallIntegerField(
+        default=0,
+        help_text=(
+            'Auto-approve a pending affiliate after this many attributed '
+            'conversions. 0 disables auto-approval (manual only).'
+        ),
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
@@ -184,6 +230,83 @@ class AffiliateConversion(models.Model):
         indexes = [
             models.Index(fields=['affiliate', 'status']),
         ]
+
+
+class AffiliateWidget(models.Model):
+    """An embeddable shop widget owned by an affiliate.
+
+    Renders a small, themed grid of *public* product cards on an external
+    site (via iframe or JS snippet). Every card links to the storefront
+    product through the affiliate's ``/r/<code>`` redirect, so a click
+    attributes through the existing ``record_click`` + cookie path.
+
+    Security note: this object is addressed PUBLICLY and cross-origin by an
+    unguessable ``key``. It must never expose anything beyond public product
+    data + the affiliate's ref code. No customer/order/PII fields here.
+    """
+
+    SOURCE_CHOICES = [
+        ('featured', 'Featured products'),
+        ('category', 'A category'),
+        ('products', 'Specific products'),
+    ]
+    THEME_CHOICES = [
+        ('light', 'Light'),
+        ('dark', 'Dark'),
+        ('auto', 'Auto (match visitor)'),
+    ]
+    LAYOUT_CHOICES = [
+        ('grid', 'Grid'),
+        ('carousel', 'Carousel'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, related_name='widgets')
+    # The tracked link whose code is appended to every product URL. Optional:
+    # when unset we fall back to the affiliate's oldest active link at render
+    # time. SET_NULL so deleting a link doesn't delete the widget.
+    link = models.ForeignKey(
+        AffiliateLink,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='widgets',
+    )
+    title = models.CharField(max_length=120, blank=True)
+    source = models.CharField(max_length=12, choices=SOURCE_CHOICES, default='featured')
+    # When source='category': the category slug to pull from.
+    category_slug = models.SlugField(max_length=200, blank=True)
+    # When source='products': explicit product UUIDs (order preserved on render).
+    product_ids = models.JSONField(default=list, blank=True)
+    limit = models.PositiveSmallIntegerField(default=6)
+    theme = models.CharField(max_length=8, choices=THEME_CHOICES, default='auto')
+    layout = models.CharField(max_length=8, choices=LAYOUT_CHOICES, default='grid')
+    is_active = models.BooleanField(default=True, db_index=True)
+    # Unguessable public handle used in /affiliates/embed/<key>/ etc. NOT the pk
+    # (which is also a UUID, but the key keeps the public surface decoupled from
+    # the internal id and lets us rotate it without touching the row).
+    key = models.CharField(max_length=43, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['affiliate', 'is_active']),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = secrets.token_urlsafe(24)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f'{self.title or self.get_source_display()} ({self.key[:8]}…)'
+
+    @property
+    def effective_limit(self) -> int:
+        """Result count, hard-capped so a public endpoint can't be coerced
+        into rendering an unbounded grid."""
+        return max(1, min(int(self.limit or 6), 24))
 
 
 class AffiliatePayout(models.Model):

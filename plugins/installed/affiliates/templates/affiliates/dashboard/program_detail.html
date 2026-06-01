@@ -76,11 +76,33 @@
           <label class="block text-xs font-medium mb-1">Description</label>
           <textarea name="description" rows="3" class="input">{% if program %}{{ program.description }}{% endif %}</textarea>
         </div>
-        <div class="md:col-span-6 flex items-center gap-2">
+        <div class="md:col-span-12 flex items-center gap-2">
           <input type="checkbox" name="is_active" id="is_active" {% if program.is_active or is_new %}checked{% endif %}>
           <label for="is_active" class="text-xs">Active (accept new affiliates)</label>
         </div>
-        <div class="md:col-span-6 text-right">
+
+        {% comment %}── Advanced commission OPTIONS (percent type) ──────{% endcomment %}
+        <div class="md:col-span-12 mt-2 pt-3 border-t border-[color:var(--border)]">
+          <h3 class="text-sm font-semibold">Advanced commission options</h3>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Apply to percent-type programs. Leave blank to use the flat commission value above.</p>
+        </div>
+        <div class="md:col-span-4">
+          <label class="block text-xs font-medium mb-1">Auto-approve after N conversions</label>
+          <input type="number" name="auto_approve_after" min="0" max="1000" class="input" value="{% if program %}{{ program.auto_approve_after }}{% else %}0{% endif %}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">0 = manual approval only.</p>
+        </div>
+        <div class="md:col-span-8">
+          <label class="block text-xs font-medium mb-1">Commission tiers (JSON)</label>
+          <textarea name="tiers_json" rows="3" class="input font-mono text-xs" placeholder='[{"name":"Bronze","min_conversions":0,"percent":10},{"name":"Silver","min_conversions":10,"percent":15},{"name":"Gold","min_conversions":50,"percent":20}]'>{{ tiers_json }}</textarea>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Graduated rates by lifetime approved conversions. Highest reached tier wins.</p>
+        </div>
+        <div class="md:col-span-12">
+          <label class="block text-xs font-medium mb-1">Per-category overrides (JSON)</label>
+          <textarea name="category_overrides_json" rows="2" class="input font-mono text-xs" placeholder='{"signed-editions": 25, "clearance": 5}'>{{ category_overrides_json }}</textarea>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Map of <code>category_slug → percent</code>. Order lines in a listed category earn that rate.</p>
+        </div>
+
+        <div class="md:col-span-12 text-right mt-2">
           <button class="btn btn-primary" type="submit">{% if is_new %}Create program{% else %}Save changes{% endif %}</button>
         </div>
       </div>

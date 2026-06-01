@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from plugins.installed.affiliates import views
+from plugins.installed.affiliates import embed_views, views
 
 app_name = 'affiliates'
 
@@ -17,4 +17,14 @@ urlpatterns = [
     path('affiliates/me/conversions/', views.conversions, name='conversions'),
     path('affiliates/me/payouts/', views.payouts, name='payouts'),
     path('affiliates/me/settings/', views.settings, name='settings'),
+    # Embeddable widgets — affiliate-owned management.
+    path('affiliates/me/widgets/', views.widgets, name='widgets'),
+    path('affiliates/me/widgets/<uuid:widget_id>/edit/', views.edit_widget, name='edit_widget'),
+    # ── PUBLIC, cross-origin embed surfaces (anonymous, key-gated) ──
+    # iframe document — framable anywhere (per-response framing relaxation).
+    path('affiliates/embed/<str:key>/', embed_views.embed_iframe, name='embed_iframe'),
+    # JS snippet (CORS) — injects cards into a target div on an external site.
+    path('affiliates/embed/<str:key>.js', embed_views.embed_js, name='embed_js'),
+    # JSON data (CORS) — public product data + ref links, consumed by the JS.
+    path('api/affiliates/widget/<str:key>.json', embed_views.widget_json, name='widget_json'),
 ]

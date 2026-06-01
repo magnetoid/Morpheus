@@ -41,6 +41,20 @@ def affiliate_redirect(request: HttpRequest, code: str) -> HttpResponseRedirect:
     link = record_click(code=code, referer=referer, user_agent=user_agent, ip=ip)
     landing = link.landing_url if link else '/'
 
+    # Embeddable widgets link to /r/<code>?next=<pdp> so a click on an
+    # external site still flows through record_click + the cookie set below.
+    # `next` is honoured ONLY when it's a safe same-site path — never an
+    # absolute/cross-host URL — so this can't be turned into an open redirect.
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    nxt = request.GET.get('next') or ''
+    if (
+        nxt
+        and nxt.startswith('/')
+        and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()})
+    ):
+        landing = nxt
+
     response = HttpResponseRedirect(landing)
     response.set_cookie(
         _AFFILIATE_COOKIE,
@@ -494,6 +508,133 @@ def payouts(request: HttpRequest) -> HttpResponse:
             'seo_title': 'Payouts',
         },
     )
+
+
+# ─── Embeddable widgets (affiliate self-service) ──────────────────────
+
+
+def _widget_categories():
+    """Active categories for the widget create form's category picker."""
+    from plugins.installed.catalog.models import Category
+
+    return list(Category.objects.filter(is_active=True).order_by('name').values('slug', 'name'))
+
+
+def _resolve_product_ids(raw: str) -> list[str]:
+    """Map a comma/newline list of product slugs to active product UUIDs.
+
+    Bounded to 24 ids. Unknown / inactive slugs are silently dropped — the
+    widget renders whatever resolves.
+    """
+    from plugins.installed.catalog.models import Product
+
+    slugs = [s.strip() for s in raw.replace('\n', ',').split(',') if s.strip()][:24]
+    if not slugs:
+        return []
+    found = Product.objects.filter(status='active', slug__in=slugs).values_list('slug', 'id')
+    by_slug = {s: str(pid) for s, pid in found}
+    return [by_slug[s] for s in slugs if s in by_slug]
+
+
+def _apply_widget_form(widget, request) -> None:
+    """Mutate ``widget`` in place from POST data (shared by create + edit)."""
+    from plugins.installed.affiliates.models import AffiliateWidget
+
+    title = (request.POST.get('title') or '').strip()[:120]
+    source = request.POST.get('source') or 'featured'
+    if source not in dict(AffiliateWidget.SOURCE_CHOICES):
+        source = 'featured'
+    theme = request.POST.get('theme') or 'auto'
+    if theme not in dict(AffiliateWidget.THEME_CHOICES):
+        theme = 'auto'
+    layout = request.POST.get('layout') or 'grid'
+    if layout not in dict(AffiliateWidget.LAYOUT_CHOICES):
+        layout = 'grid'
+    try:
+        limit = int(request.POST.get('limit') or 6)
+    except (TypeError, ValueError):
+        limit = 6
+
+    widget.title = title
+    widget.source = source
+    widget.theme = theme
+    widget.layout = layout
+    widget.limit = max(1, min(limit, 24))
+    widget.category_slug = (request.POST.get('category_slug') or '').strip()[:200]
+    widget.product_ids = (
+        _resolve_product_ids(request.POST.get('product_slugs') or '')
+        if source == 'products'
+        else []
+    )
+
+
+@login_required(login_url='/auth/login/')
+@require_http_methods(['GET', 'POST'])
+def widgets(request: HttpRequest) -> HttpResponse:
+    """Affiliate-owned embeddable widgets: list + create + copy embed codes.
+
+    Owner-scoped — operates only on the requesting user's approved Affiliate
+    (via ``_affiliate_or_redirect``). Anonymous users hit ``@login_required``;
+    a signed-in user with no approved affiliate is bounced to apply/dashboard.
+    """
+    from plugins.installed.affiliates.models import AffiliateWidget
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    if request.method == 'POST' and request.POST.get('action') == 'create':
+        widget = AffiliateWidget(affiliate=affiliate)
+        _apply_widget_form(widget, request)
+        widget.save()
+        return HttpResponseRedirect('/affiliates/me/widgets/')
+
+    rows = list(AffiliateWidget.objects.filter(affiliate=affiliate).order_by('-created_at')[:100])
+    site_base = request.build_absolute_uri('/').rstrip('/')
+    for w in rows:
+        w.iframe_src = f'{site_base}/affiliates/embed/{w.key}/'
+        w.js_src = f'{site_base}/affiliates/embed/{w.key}.js'
+        w.json_src = f'{site_base}/api/affiliates/widget/{w.key}.json'
+
+    return render(
+        request,
+        'affiliates/widgets.html',
+        {
+            'affiliate': affiliate,
+            'widgets': rows,
+            'categories': _widget_categories(),
+            'site_base': site_base,
+            'seo_title': 'Embeddable widgets',
+        },
+    )
+
+
+@login_required(login_url='/auth/login/')
+@require_http_methods(['POST'])
+def edit_widget(request: HttpRequest, widget_id) -> HttpResponseRedirect:
+    """Update / toggle / delete an owned widget. Owner-scoped: the queryset is
+    filtered by ``affiliate__user=request.user`` so one affiliate can never
+    mutate another's widget (404 otherwise)."""
+    from plugins.installed.affiliates.models import AffiliateWidget
+
+    try:
+        widget = AffiliateWidget.objects.select_related('affiliate').get(
+            pk=widget_id,
+            affiliate__user=request.user,
+        )
+    except AffiliateWidget.DoesNotExist:
+        return HttpResponseRedirect('/affiliates/me/widgets/')
+
+    action = request.POST.get('action') or 'save'
+    if action == 'delete':
+        widget.delete()
+    elif action == 'toggle':
+        widget.is_active = not widget.is_active
+        widget.save(update_fields=['is_active'])
+    else:
+        _apply_widget_form(widget, request)
+        widget.save()
+    return HttpResponseRedirect('/affiliates/me/widgets/')
 
 
 # ─── Settings ─────────────────────────────────────────────────────────

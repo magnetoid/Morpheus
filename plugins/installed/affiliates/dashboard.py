@@ -731,128 +731,222 @@ def affiliate_detail(request, affiliate_id):
     )
 
 
-@staff_member_required
-def program_detail(request, program_id):
-    """Per-program drill-in + edit form. `program_id is None` ⇒ create mode."""
+def _parse_tiers(raw: str):
+    """Parse + sanitise the tiers JSON textarea. Returns a clean list of
+    {name, min_conversions, percent} dicts; drops malformed rows. Empty/invalid
+    JSON → []."""
+    import json  # noqa: PLC0415
+
+    try:
+        data = json.loads(raw) if raw.strip() else []
+    except (json.JSONDecodeError, ValueError):
+        return None  # signal a parse error to the caller
+    if not isinstance(data, list):
+        return None
+    out = []
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        try:
+            out.append(
+                {
+                    'name': str(row.get('name', ''))[:40],
+                    'min_conversions': max(0, int(row.get('min_conversions', 0))),
+                    'percent': float(Decimal(str(row.get('percent', 0)))),
+                }
+            )
+        except (TypeError, ValueError, InvalidOperation):
+            continue
+    return out
+
+
+def _parse_category_overrides(raw: str):
+    """Parse + sanitise the per-category overrides JSON textarea. Returns a
+    clean {slug: percent_float} dict; drops malformed entries. Invalid JSON →
+    None (parse error)."""
+    import json  # noqa: PLC0415
+
+    try:
+        data = json.loads(raw) if raw.strip() else {}
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    out = {}
+    for k, v in data.items():
+        try:
+            pct = float(Decimal(str(v)))
+        except (TypeError, ValueError, InvalidOperation):
+            continue
+        slug = slugify(str(k))[:200]
+        if slug and 0 <= pct <= 100:
+            out[slug] = pct
+    return out
+
+
+def _program_options_from_post(request):
+    """Extract the advanced OPTIONS (tiers, category overrides, auto-approve)
+    from POST. Returns ``(options_dict, error_or_None)``; ``options_dict`` is
+    suitable for assigning straight onto an AffiliateProgram."""
+    tiers = _parse_tiers(request.POST.get('tiers_json') or '')
+    if tiers is None:
+        return None, 'Commission tiers must be valid JSON (a list of objects).'
+    overrides = _parse_category_overrides(request.POST.get('category_overrides_json') or '')
+    if overrides is None:
+        return None, 'Per-category overrides must be valid JSON (an object).'
+    try:
+        auto_approve = max(0, min(int(request.POST.get('auto_approve_after') or 0), 1000))
+    except (TypeError, ValueError):
+        auto_approve = 0
+    return (
+        {
+            'tiers': tiers,
+            'category_commission_overrides': overrides,
+            'auto_approve_after': auto_approve,
+        },
+        None,
+    )
+
+
+def _program_stats(program):
+    """30-day KPIs + top-10 affiliates for a program. ``(stats, top)``."""
     from plugins.installed.affiliates.models import (  # noqa: PLC0415
         Affiliate,
         AffiliateClick,
         AffiliateConversion,
         AffiliatePayout,
-        AffiliateProgram,
     )
+
+    since_30 = timezone.now() - timedelta(days=30)
+    stats = {
+        'affiliates': Affiliate.objects.filter(program=program).count(),
+        'clicks_30': AffiliateClick.objects.filter(
+            link__affiliate__program=program, occurred_at__gte=since_30
+        ).count(),
+        'conversions_30': AffiliateConversion.objects.filter(
+            affiliate__program=program, created_at__gte=since_30
+        ).count(),
+        'commission_paid_lifetime': AffiliatePayout.objects.filter(
+            affiliate__program=program, status='paid'
+        ).aggregate(t=Sum('amount'))['t']
+        or Decimal('0'),
+    }
+    rows = list(
+        AffiliateConversion.objects.filter(affiliate__program=program)
+        .values('affiliate_id')
+        .annotate(gross=Sum('commission'), convs=Count('id'))
+        .order_by('-gross')[:10]
+    )
+    aff_lookup = {
+        a.id: a
+        for a in Affiliate.objects.filter(id__in=[r['affiliate_id'] for r in rows]).select_related(
+            'user'
+        )
+    }
+    top = [
+        {
+            'affiliate': aff_lookup.get(r['affiliate_id']),
+            'gross': r['gross'] or Decimal('0'),
+            'conversions': r['convs'],
+        }
+        for r in rows
+        if aff_lookup.get(r['affiliate_id']) is not None
+    ]
+    return stats, top
+
+
+def _save_program(request, program, *, is_new):
+    """Create or update an AffiliateProgram from POST. Returns an
+    HttpResponseRedirect on success, or a string error message."""
+    name = (request.POST.get('name') or '').strip()
+    if not name:
+        return 'Name is required.'
+
+    options, opt_err = _program_options_from_post(request)
+    if opt_err:
+        return opt_err
+
+    slug_raw = (request.POST.get('slug') or '').strip()
+    ctype = request.POST.get('commission_type') or 'percent'
+    try:
+        cvalue = Decimal(request.POST.get('commission_value') or '0')
+    except (InvalidOperation, TypeError, ValueError):
+        cvalue = Decimal('0')
+    try:
+        days = max(1, min(int(request.POST.get('cookie_window_days') or '30'), 365))
+    except (TypeError, ValueError):
+        days = 30
+    is_active = request.POST.get('is_active') == 'on'
+    description = (request.POST.get('description') or '').strip()
+
+    if is_new:
+        from plugins.installed.affiliates.models import AffiliateProgram  # noqa: PLC0415
+
+        slug = slugify(slug_raw or name)[:100] or f'program-{int(timezone.now().timestamp())}'
+        created = AffiliateProgram.objects.create(
+            name=name,
+            slug=slug,
+            description=description,
+            commission_type=ctype,
+            commission_value=cvalue,
+            cookie_window_days=days,
+            is_active=is_active,
+            **options,
+        )
+        messages.success(request, f'Created program "{name}".')
+        return HttpResponseRedirect(f'/dashboard/affiliates/programs/{created.id}/')
+
+    program.name = name
+    program.slug = slugify(slug_raw or program.slug or name)[:100] or program.slug
+    program.description = description
+    program.commission_type = ctype
+    program.commission_value = cvalue
+    program.cookie_window_days = days
+    program.is_active = is_active
+    program.tiers = options['tiers']
+    program.category_commission_overrides = options['category_commission_overrides']
+    program.auto_approve_after = options['auto_approve_after']
+    program.save(
+        update_fields=[
+            'name',
+            'slug',
+            'description',
+            'commission_type',
+            'commission_value',
+            'cookie_window_days',
+            'is_active',
+            'tiers',
+            'category_commission_overrides',
+            'auto_approve_after',
+        ]
+    )
+    messages.success(request, 'Program saved.')
+    return HttpResponseRedirect(request.path)
+
+
+@staff_member_required
+def program_detail(request, program_id):
+    """Per-program drill-in + edit form. `program_id is None` ⇒ create mode."""
+    import json  # noqa: PLC0415
+
+    from plugins.installed.affiliates.models import AffiliateProgram  # noqa: PLC0415
 
     program = None
     is_new = program_id is None
     if not is_new:
         program = get_object_or_404(AffiliateProgram, pk=program_id)
 
-    if request.method == 'POST':
-        action = request.POST.get('action', '')
-        if action in ('save', 'create'):
-            name = (request.POST.get('name') or '').strip()
-            if not name:
-                messages.error(request, 'Name is required.')
-                return HttpResponseRedirect(request.path)
+    if request.method == 'POST' and request.POST.get('action', '') in ('save', 'create'):
+        result = _save_program(request, program, is_new=is_new)
+        if isinstance(result, HttpResponseRedirect):
+            return result
+        messages.error(request, result)
+        return HttpResponseRedirect(request.path)
 
-            slug_raw = (request.POST.get('slug') or '').strip()
-            ctype = request.POST.get('commission_type') or 'percent'
-            try:
-                cvalue = Decimal(request.POST.get('commission_value') or '0')
-            except (InvalidOperation, TypeError, ValueError):
-                cvalue = Decimal('0')
-            try:
-                days = int(request.POST.get('cookie_window_days') or '30')
-            except (TypeError, ValueError):
-                days = 30
-            days = max(1, min(days, 365))
-            is_active = request.POST.get('is_active') == 'on'
-            description = (request.POST.get('description') or '').strip()
-
-            if is_new:
-                slug = slugify(slug_raw or name)[:100] or (
-                    f'program-{int(timezone.now().timestamp())}'
-                )
-                program = AffiliateProgram.objects.create(
-                    name=name,
-                    slug=slug,
-                    description=description,
-                    commission_type=ctype,
-                    commission_value=cvalue,
-                    cookie_window_days=days,
-                    is_active=is_active,
-                )
-                messages.success(request, f'Created program "{name}".')
-                return HttpResponseRedirect(
-                    f'/dashboard/affiliates/programs/{program.id}/',
-                )
-
-            program.name = name
-            program.slug = slugify(slug_raw or program.slug or name)[:100] or program.slug
-            program.description = description
-            program.commission_type = ctype
-            program.commission_value = cvalue
-            program.cookie_window_days = days
-            program.is_active = is_active
-            program.save(
-                update_fields=[
-                    'name',
-                    'slug',
-                    'description',
-                    'commission_type',
-                    'commission_value',
-                    'cookie_window_days',
-                    'is_active',
-                ]
-            )
-            messages.success(request, 'Program saved.')
-            return HttpResponseRedirect(request.path)
-
-    # Stats — only meaningful when editing an existing program
-    stats = {
-        'affiliates': 0,
-        'clicks_30': 0,
-        'conversions_30': 0,
-        'commission_paid_lifetime': Decimal('0'),
-    }
+    stats = {'affiliates': 0, 'clicks_30': 0, 'conversions_30': 0, 'commission_paid_lifetime': 0}
     top_affiliates = []
     if program is not None:
-        since_30 = timezone.now() - timedelta(days=30)
-        stats['affiliates'] = Affiliate.objects.filter(program=program).count()
-        stats['clicks_30'] = AffiliateClick.objects.filter(
-            link__affiliate__program=program,
-            occurred_at__gte=since_30,
-        ).count()
-        stats['conversions_30'] = AffiliateConversion.objects.filter(
-            affiliate__program=program,
-            created_at__gte=since_30,
-        ).count()
-        stats['commission_paid_lifetime'] = AffiliatePayout.objects.filter(
-            affiliate__program=program,
-            status='paid',
-        ).aggregate(t=Sum('amount'))['t'] or Decimal('0')
-
-        rows = list(
-            AffiliateConversion.objects.filter(affiliate__program=program)
-            .values('affiliate_id')
-            .annotate(gross=Sum('commission'), convs=Count('id'))
-            .order_by('-gross')[:10]
-        )
-        aff_lookup = {
-            a.id: a
-            for a in Affiliate.objects.filter(
-                id__in=[r['affiliate_id'] for r in rows],
-            ).select_related('user')
-        }
-        top_affiliates = [
-            {
-                'affiliate': aff_lookup.get(r['affiliate_id']),
-                'gross': r['gross'] or Decimal('0'),
-                'conversions': r['convs'],
-            }
-            for r in rows
-            if aff_lookup.get(r['affiliate_id']) is not None
-        ]
+        stats, top_affiliates = _program_stats(program)
 
     breadcrumb = _trail(
         {'label': 'Programs', 'url': '/dashboard/apps/affiliates/programs/'},
@@ -866,6 +960,12 @@ def program_detail(request, program_id):
             'is_new': is_new,
             'stats': stats,
             'top_affiliates': top_affiliates,
+            'tiers_json': json.dumps(program.tiers, indent=2) if program and program.tiers else '',
+            'category_overrides_json': (
+                json.dumps(program.category_commission_overrides, indent=2)
+                if program and program.category_commission_overrides
+                else ''
+            ),
             'active_nav': 'growth',
             'breadcrumb_trail': breadcrumb,
         },

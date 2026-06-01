@@ -98,6 +98,42 @@ def record_click(
     return link
 
 
+def _resolve_attribution_link(*, affiliate_code: str, coupon_code: str):
+    """Resolve the AffiliateLink for an order, returning ``(link, via)``.
+
+    Path 1 (``via='click'``): exact match on an active link ``code`` from the
+    ``morph_aff`` cookie / URL. Path 2 (``via='coupon'``): the coupon code
+    redeemed at checkout matches an active link's ``coupon_code``. Returns
+    ``(None, '')`` when neither resolves.
+    """
+    import contextlib
+
+    from plugins.installed.affiliates.models import AffiliateLink
+
+    if affiliate_code:
+        with contextlib.suppress(AffiliateLink.DoesNotExist):
+            return (
+                AffiliateLink.objects.select_related('affiliate', 'affiliate__program').get(
+                    code=affiliate_code,
+                    is_active=True,
+                ),
+                'click',
+            )
+
+    if coupon_code:
+        # coupon_code column may not exist on fresh installs mid-migration.
+        with contextlib.suppress(Exception):
+            link = (
+                AffiliateLink.objects.select_related('affiliate', 'affiliate__program')
+                .filter(coupon_code__iexact=coupon_code.strip(), is_active=True)
+                .first()
+            )
+            if link is not None:
+                return link, 'coupon'
+
+    return None, ''
+
+
 def attribute_order(
     *, order, affiliate_code: str = '', coupon_code: str = ''
 ) -> AffiliateConversion | None:  # noqa: F821
@@ -125,42 +161,26 @@ def attribute_order(
         AffiliateLink,
     )
 
-    link = None
-    via = ''
-
-    # Path 1 — referral code from cookie / URL.
-    if affiliate_code:
-        try:
-            link = AffiliateLink.objects.select_related('affiliate', 'affiliate__program').get(
-                code=affiliate_code,
-                is_active=True,
-            )
-            via = 'click'
-        except AffiliateLink.DoesNotExist:
-            link = None
-
-    # Path 2 — coupon-code attribution.
-    if link is None and coupon_code:
-        try:
-            link = (
-                AffiliateLink.objects.select_related('affiliate', 'affiliate__program')
-                .filter(
-                    coupon_code__iexact=coupon_code.strip(),
-                    is_active=True,
-                )
-                .first()
-            )
-            if link is not None:
-                via = 'coupon'
-        except Exception:  # noqa: BLE001 — coupon_code column may not exist on fresh installs
-            link = None
-
+    link, via = _resolve_attribution_link(affiliate_code=affiliate_code, coupon_code=coupon_code)
     if link is None:
         return None
-    if link.affiliate.status != 'approved':
-        return None
 
-    program = link.affiliate.program
+    affiliate = link.affiliate
+    program = affiliate.program
+
+    # Status gate. Approved affiliates always attribute. A *pending*
+    # affiliate attributes ONLY when the program has an auto-approve
+    # threshold (auto_approve_after > 0) — we record pending conversions so
+    # the threshold can be reached, then promote them below. Suspended /
+    # rejected affiliates never attribute. (When auto_approve_after == 0 —
+    # the default — pending affiliates earn nothing, preserving prior
+    # behaviour.)
+    auto_approve_on = int(getattr(program, 'auto_approve_after', 0) or 0) > 0
+    attributable = affiliate.status == 'approved' or (
+        affiliate.status == 'pending' and auto_approve_on
+    )
+    if not attributable:
+        return None
 
     # Enforce cookie window for click-referral path (coupon path is
     # not bound by click recency — the influencer's audience may
@@ -181,7 +201,7 @@ def attribute_order(
             )
             return None
 
-    commission = _calculate_commission(program=program, order=order)
+    commission = _calculate_commission(program=program, order=order, affiliate=affiliate)
     if commission.amount <= 0:
         return None
 
@@ -189,7 +209,7 @@ def attribute_order(
         conv, created = AffiliateConversion.objects.get_or_create(
             order=order,
             defaults={
-                'affiliate': link.affiliate,
+                'affiliate': affiliate,
                 'link': link,
                 'commission': commission,
                 'status': 'pending',
@@ -201,6 +221,14 @@ def attribute_order(
             AffiliateLink.objects.filter(pk=link.pk).update(
                 conversion_count=link.conversion_count + 1,
             )
+    # Auto-approve a pending affiliate once this conversion pushes them over
+    # the program threshold. Runs after commit of the conversion so the count
+    # includes it. Fail-soft: never let promotion failure unwind attribution.
+    if created and affiliate.status == 'pending':
+        try:
+            maybe_auto_approve(affiliate)
+        except Exception:  # noqa: BLE001
+            logger.warning('affiliates: auto-approve check failed', exc_info=True)
     return conv
 
 
@@ -265,13 +293,185 @@ def clawback_on_refund(*, order) -> AffiliateConversion | None:  # noqa: F821
     return conv
 
 
-def _calculate_commission(*, program, order) -> Money:
+def effective_tier(program, approved_conversions: int) -> dict | None:
+    """Highest commission tier the affiliate has reached, or None.
+
+    A tier qualifies when ``approved_conversions >= tier['min_conversions']``.
+    The winner is the qualifying tier with the largest ``min_conversions``.
+    Malformed rows (missing keys, non-numeric) are skipped, never crash —
+    ``tiers`` is operator-entered JSON.
+    """
+    tiers = getattr(program, 'tiers', None) or []
+    if not isinstance(tiers, list):
+        return None
+    best = None
+    for t in tiers:
+        if not isinstance(t, dict):
+            continue
+        try:
+            min_conv = int(t.get('min_conversions', 0))
+            pct = Decimal(str(t.get('percent')))
+        except (TypeError, ValueError, ArithmeticError):
+            continue
+        if approved_conversions >= min_conv and (best is None or min_conv > best[0]):
+            best = (min_conv, {'name': str(t.get('name', '')), 'percent': pct})
+    return best[1] if best else None
+
+
+def _affiliate_flat_override_percent(affiliate) -> Decimal | None:
+    """Per-affiliate flat % override stored as a Metafield by the dashboard
+    (``namespace='affiliates'``, ``key='commission_percent_override'``).
+
+    Returns None when unset or when the metafields plugin is disabled. This
+    is the *highest-priority* commission signal — a hand-set rate on a single
+    affiliate overrides program tiers and category overrides.
+    """
+    try:
+        from django.contrib.contenttypes.models import ContentType
+
+        from plugins.installed.affiliates.models import Affiliate
+        from plugins.installed.metafields.models import Metafield
+
+        ct = ContentType.objects.get_for_model(Affiliate)
+        m = Metafield.objects.filter(
+            content_type=ct,
+            object_id=str(affiliate.pk),
+            namespace='affiliates',
+            key='commission_percent_override',
+        ).first()
+        if m and (m.value or '').strip():
+            return Decimal(str(m.value).strip())
+    except Exception:  # noqa: BLE001 — metafields optional / bad value → no override
+        return None
+    return None
+
+
+def _base_percent(*, program, affiliate) -> Decimal:
+    """The applicable base percent for an affiliate before per-category
+    overrides: flat per-affiliate override > tier rate > program default."""
+    flat = _affiliate_flat_override_percent(affiliate)
+    if flat is not None:
+        return flat
+    approved = affiliate.conversions.filter(status='approved').count()
+    tier = effective_tier(program, approved)
+    if tier is not None:
+        return tier['percent']
+    return Decimal(str(program.commission_value or 0))
+
+
+def _product_category_slugs(product) -> list[str]:
+    """Lower-cased category slugs a product belongs to (primary first, then
+    additional_categories). Empty list for a deleted product. Never raises —
+    the m2m may be unavailable in odd migration states."""
+    import contextlib
+
+    if product is None:
+        return []
+    slugs: list[str] = []
+    if product.category_id and product.category:
+        slugs.append((product.category.slug or '').lower())
+    with contextlib.suppress(Exception):
+        slugs += [
+            (s or '').lower() for s in product.additional_categories.values_list('slug', flat=True)
+        ]
+    return slugs
+
+
+def _calculate_commission(*, program, order, affiliate=None) -> Money:
+    """Commission for ``order`` under ``program`` for ``affiliate``.
+
+    Percent type, in priority:
+      1. Per-category overrides — each order line whose product is in an
+         overridden category earns that category's percent on the line total;
+         the remaining lines earn the base percent. Falls back to whole-order
+         base percent when no overrides are configured (cheap path).
+      2. Base percent = flat affiliate override > tier rate > program default.
+    Fixed type: the flat program amount, regardless of tiers/overrides.
+    """
     from core.money import apply_pct, money
 
     currency = str(order.total.currency)
     if program.commission_type == 'fixed':
         return money(program.commission_value, currency)
-    return apply_pct(order.total, program.commission_value)
+
+    # A hand-set per-affiliate flat override wins outright — it skips both
+    # tiers AND category overrides (a negotiated rate isn't undercut by a
+    # category rule). Whole-order, like the legacy flat path.
+    flat = _affiliate_flat_override_percent(affiliate) if affiliate is not None else None
+    if flat is not None:
+        return apply_pct(order.total, flat)
+
+    base_pct = (
+        _base_percent(program=program, affiliate=affiliate)
+        if affiliate is not None
+        else Decimal(str(program.commission_value or 0))
+    )
+
+    overrides = getattr(program, 'category_commission_overrides', None) or {}
+    if not isinstance(overrides, dict) or not overrides:
+        return apply_pct(order.total, base_pct)
+
+    # Per-category path: sum per-line commission. A product can sit in a
+    # primary category + additional_categories; the FIRST matching override
+    # wins (deterministic, operator picks the slug). Lines with no product
+    # (deleted) or no matching override earn the base percent.
+    norm = {str(k).strip().lower(): _safe_decimal(v) for k, v in overrides.items()}
+    norm = {k: v for k, v in norm.items() if v is not None}
+    total_commission = Decimal('0')
+    matched_any = False
+    for item in order.items.select_related('product', 'product__category').all():
+        line_total = item.total_price.amount
+        pct = base_pct
+        for s in _product_category_slugs(item.product):
+            if s in norm:
+                pct = norm[s]
+                matched_any = True
+                break
+        total_commission += line_total * pct / Decimal('100')
+    if not matched_any:
+        # No line actually matched — equivalent to whole-order base percent,
+        # but order.total includes shipping/tax which per-line sums exclude.
+        # Prefer the whole-order base for parity with the no-override path.
+        return apply_pct(order.total, base_pct)
+    return money(total_commission, currency)
+
+
+def _safe_decimal(v) -> Decimal | None:
+    try:
+        return Decimal(str(v))
+    except (TypeError, ValueError, ArithmeticError):
+        return None
+
+
+def maybe_auto_approve(affiliate) -> bool:
+    """Auto-approve a *pending* affiliate once they hit the program's
+    ``auto_approve_after`` conversion count. Returns True if it flipped.
+
+    Counts ALL attributed conversions (pending + approved) — the signal is
+    "this person can drive sales", and a fresh conversion is pending until a
+    human/clawback-window approves it. No-op when threshold is 0 or the
+    affiliate isn't pending.
+    """
+    from plugins.installed.affiliates.models import Affiliate
+
+    program = affiliate.program
+    threshold = int(getattr(program, 'auto_approve_after', 0) or 0)
+    if threshold <= 0 or affiliate.status != 'pending':
+        return False
+    count = affiliate.conversions.count()
+    if count < threshold:
+        return False
+    Affiliate.objects.filter(pk=affiliate.pk, status='pending').update(
+        status='approved',
+        approved_at=timezone.now(),
+    )
+    logger.info(
+        'affiliates: auto-approved %s after %d conversions (threshold %d)',
+        affiliate.handle,
+        count,
+        threshold,
+    )
+    return True
 
 
 def approve_conversion(conversion) -> None:

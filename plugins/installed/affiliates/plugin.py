@@ -11,10 +11,14 @@ from morpheus import Plugin, SettingsPanel, events
 class AffiliatesPlugin(Plugin):
     name = 'affiliates'
     label = 'Affiliate Platform'
-    version = '0.1.0'
-    description = 'Affiliate links, attribution, conversions, payouts.'
+    version = '0.2.0'
+    description = (
+        'Affiliate links, attribution, conversions, payouts. Commission tiers, '
+        'per-category overrides, auto-approve. Embeddable shop widgets '
+        '(iframe + JS snippet).'
+    )
     has_models = True
-    requires = ['orders', 'customers']
+    requires = ['orders', 'customers', 'catalog']
 
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.affiliates.graphql.queries')
