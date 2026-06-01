@@ -46,6 +46,39 @@ Examples (this is what's already shipped — mirror the pattern):
 - Cross-plugin coupling through the `core.hooks` event bus — never import
   one plugin from another's models.
 
+**A plugin owns all of its own code.** Every file a feature needs — views,
+URLs, templates, dashboard pages, settings panels, GraphQL, beat tasks —
+lives under `plugins/installed/<name>/`. It appears *elsewhere* by
+**contributing**, never by editing another layer's files:
+
+- Storefront surface → a `StorefrontBlock(slot=...)` (or the plugin's own
+  URL + template), **not** an edit to `plugins/installed/storefront/` or
+  `themes/`.
+- Dashboard page / nav entry / settings form → the plugin's dashboard-page,
+  nav, or `contribute_settings_panel` contribution, **not** an edit to
+  `plugins/installed/admin_dashboard/`.
+- Behaviour inside another plugin's flow (cart total, order lifecycle) → a
+  `core.hooks` subscriber, **not** an import of its models or an edit to
+  its views.
+
+**Two litmus tests:**
+
+1. **Delete** `plugins/installed/<name>/` → the feature is gone with no
+   dangling view, URL, template, or import in core, the theme, or a
+   sibling plugin.
+2. **Disable** the plugin (toggle it off) → *every* surface it added —
+   sidebar nav entries, settings pages, storefront blocks, account tiles —
+   **disappears from Morpheus OS.** A surface that survives a disable was
+   hard-coded in the wrong layer. Contributed surfaces are rendered only
+   while the plugin is enabled; hard-coded ones are not, which is the bug.
+
+If adding feature X made you edit a file outside `plugins/installed/X/`,
+that edit belongs back inside X as a contribution. **Known debt to repay
+(both fail the disable test):** loyalty's `/account/points/` page lives in
+the `storefront` plugin + theme; the payments `settings_payments()` view +
+template live in `admin_dashboard` — both should move into their own
+plugin and be contributed.
+
 ---
 
 ## How to research
