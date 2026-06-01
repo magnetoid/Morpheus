@@ -17,6 +17,10 @@ Enforcement (hooks + CI, not advisory) lives in
 [`.claude/settings.json`](.claude/settings.json) and
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
+**Docs track code.** Any change that alters structure, a convention, a
+contract, or a count updates the relevant doc in the *same commit* — see
+the doc-routing table in [`CLAUDE.md`](CLAUDE.md) § "Living document".
+
 The vendored repo at `vendor/vibe-skills/` is a `git subtree` of
 <https://github.com/magnetoid/ultimate-vibe-coding-skills>. Pull
 upstream changes with:

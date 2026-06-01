@@ -177,6 +177,22 @@ repeatedly, promote it to a hook.
 
 ## Living document
 
+**Code and docs ship together.** Any change that alters architecture, a
+convention, a public contract, a count, or a landmine must update the
+relevant Markdown *in the same commit* — not "later." Which doc:
+
+| You changed… | Update… |
+|---|---|
+| `core/` structure, a subsystem's job, the request lifecycle | `docs/ARCHITECTURE.md` |
+| a plugin's purpose / deps / the plugin contract | `docs/PLUGIN_DEVELOPMENT.md` (+ that plugin's `plugin.py`) |
+| a house rule, landmine, or convention | this file (`CLAUDE.md`) |
+| the public API / MCP / GraphQL surface | `docs/MORPHEUS_API.md`, `docs/MCP_SERVER.md` |
+| a skill's behaviour | `docs/SKILLS.md` + the skill's `SKILL.md` |
+
+Prefer pointing at the source of truth over hard-coding volatile facts:
+a plugin *count* in prose rots (it drifted to 47/49/54 across three docs
+while the real number was 61) — write "see `MORPHEUS_DEFAULT_PLUGINS`."
+
 Every time AI-assisted work ships a wrong assumption, the fix-up commit
 should also patch this file. If a rule is here twice, consolidate. If a
 rule has stopped being violated for 6 months, consider deleting it.

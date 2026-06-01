@@ -9,13 +9,16 @@ disciplinary house rules; this file is the map.
 morpheus/
 ├── core/                          # The kernel — small, fixed.
 │   ├── hooks.py                   # Event bus. Every cross-plugin call.
+│   ├── safety.py                  # Safety boundary — what AI may touch.
+│   ├── self_improvement/          # The "immune system" (autonomic engine).
 │   ├── agents/                    # LLM tool-use loop, provider abstraction.
 │   ├── assistant/                 # Linda — the always-on operator.
 │   ├── audit/                     # Append-only audit log (AI decisions).
+│   ├── workflows.py               # Saga / compensation primitive.
 │   ├── observability.py           # OpenTelemetry init + PII scrubber.
 │   ├── i18n/                      # Translation kernel.
 │   └── …
-└── plugins/installed/             # 47 plugins, each isolated.
+└── plugins/installed/             # 60+ plugins (live list: settings).
     ├── catalog/                   # Products, variants, categories.
     ├── orders/                    # Orders + cart.
     ├── checkout/                  # Stripe + payment gateways.
@@ -27,12 +30,22 @@ morpheus/
 ```
 
 **Architectural compass:** *features ship as plugins, not core.* Core
-holds only the foundations (auth, hooks bus, i18n kernel, audit,
-request lifecycle, agent runtime). Everything else — reviews,
-loyalty, markets, notifications, workflows, metafields, media, CMS,
-the agent gateway — lives in `plugins/installed/<name>/`.
+holds only the foundations: auth, the hooks bus, the i18n kernel,
+audit, request lifecycle, the agent runtime, the **safety boundary**
+(`core/safety.py` — the single source of truth for what AI may touch,
+read by self-improvement / CI / pre-commit) and the **self-improvement
+loop** (`core/self_improvement/` — the autonomic "immune system" of a
+vibecoded platform; cannot be a togglable plugin). Everything else —
+reviews, loyalty, markets, notifications, metafields, media, CMS, the
+agent gateway, the merchant-facing `workflows` automation plugin —
+lives in `plugins/installed/<name>/`.
 
 When in doubt, it's a plugin.
+
+> **Two things named "workflows."** `core/workflows.py` is a
+> saga/compensation primitive for multi-step side-effecting flows
+> (checkout, returns) — core. The `workflows` *plugin* is merchant-facing
+> automation rules. Same word, different layers.
 
 ## The hook bus
 
@@ -64,12 +77,18 @@ plugins/installed/ai_assistant/       ← Pulse insights, embeddings, search
 ```
 
 - **Linda** ([core/assistant/](../core/assistant/)) is hard-coded; her
-  ~30 tools live in `core/assistant/tools/`. She delegates to
-  sub-agents registered via `agent_core` for diagnostics + ops.
-- **The kernel** ([core/agents/](../core/agents/)) is a peer of
-  `core/hooks` and `plugins/` — provider abstraction (OpenAI,
-  Anthropic, Gemini, OpenRouter, Ollama, Mock), versioned prompts,
-  trace.
+  ~30 tools live in `core/assistant/tools/`. For parallel work she
+  spawns copies of the generic **Worker** through the agents kernel
+  (`delegate.spawn_workers`) — not named specialist sub-agents.
+- **The kernel** ([core/agents/](../core/agents/)) ships exactly **one**
+  agent: `Worker`
+  ([core/agents/builtin/worker.py](../core/agents/builtin/worker.py)).
+  There are no specialist agent classes — specialization is a *Skill
+  bundle + caller scopes*, never a new `MorpheusAgent` subclass (a
+  pre-commit hook enforces this). Provider abstraction lives in
+  [core/agents/llm.py](../core/agents/llm.py): OpenAI / Anthropic /
+  Ollama / Mock concretes (OpenAI-compatible base-URLs cover
+  Gemini / OpenRouter).
 - **Every LLM tool call** that affects a customer should record one
   `agents.decision` row via
   [`core.audit.services.record_ai_decision`](../core/audit/services.py) —
@@ -98,6 +117,17 @@ scaffolds the whole thing.
 
 **Plugin crashes are isolated** — a broken `ready()` is logged and
 that plugin is excluded; siblings keep loading.
+
+**Plugin topology (non-obvious):**
+
+- Three hubs almost everything depends on: **`catalog`**, **`orders`**,
+  **`customers`**. Editing their models ripples across dozens of plugins.
+- Four plugins are **protected** and cannot be disabled (disabling them
+  soft-bricks the dashboard): `admin_dashboard`, `agent_core`, `rbac`,
+  `customers` — enforced by `PROTECTED_PLUGINS` in
+  [`core/safety.py`](../core/safety.py).
+- Dependencies are declared per plugin in `plugin.py` (`requires`); the
+  loader resolves order. No plugin declares `blocks` today.
 
 ## Request lifecycle
 
