@@ -33,22 +33,22 @@
     <div class="px-4 py-3 border-b border-[color:var(--border)] bg-[color:var(--surface-2)]">
       <span class="text-sm font-medium">Recent occurrences ({{ count }})</span>
     </div>
-    <table class="w-full text-sm">
-      <thead class="bg-[color:var(--surface-2)]">
-        <tr class="text-left">
-          <th class="px-4 py-2 font-medium">When</th>
-          <th class="px-4 py-2 font-medium">Path</th>
-          <th class="px-4 py-2 font-medium">User</th>
-          <th class="px-4 py-2 font-medium">Request ID</th>
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Path</th>
+          <th>User</th>
+          <th>Request ID</th>
         </tr>
       </thead>
       <tbody>
         {% for r in rows %}
-        <tr class="border-t border-[color:var(--border)]">
-          <td class="px-4 py-2 text-xs text-[color:var(--text-muted)]">{{ r.created_at|date:"Y-m-d H:i:s" }}</td>
-          <td class="px-4 py-2 font-mono text-xs">{{ r.path }}</td>
-          <td class="px-4 py-2 text-[color:var(--text-muted)]">{{ r.user|default:"—" }}</td>
-          <td class="px-4 py-2 font-mono text-xs text-[color:var(--text-subtle)]">{{ r.request_id|default:"—"|truncatechars:12 }}</td>
+        <tr>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ r.created_at|date:"Y-m-d H:i:s" }}</td>
+          <td class="font-mono text-xs">{{ r.path }}</td>
+          <td class="text-[color:var(--text-muted)]">{{ r.user|default:"—" }}</td>
+          <td class="font-mono text-xs text-[color:var(--text-subtle)]">{{ r.request_id|default:"—"|truncatechars:12 }}</td>
         </tr>
         {% endfor %}
       </tbody>
