@@ -1050,11 +1050,23 @@
       const key = 'nav.collapsed.' + sec;
       const group = document.querySelector(`.nav-group[data-group="${sec}"]`);
       const hasActiveChild = btn.classList.contains('has-active');
-      const persisted = localStorage.getItem(key) === '1';
-      if (persisted && !hasActiveChild) {
-        btn.classList.add('collapsed');
-        group?.classList.add('collapsed');
+      // Sync button + group to ONE collapsed state on load. Without this the
+      // server renders the group collapsed (when its section isn't active) but
+      // leaves the button un-collapsed — so the toggle below, which reads the
+      // button's state, spends the first click just re-syncing them and it
+      // takes TWO clicks to actually expand. Active section always opens;
+      // else honour the persisted choice, else the server-rendered state.
+      const persisted = localStorage.getItem(key);
+      let collapsed;
+      if (hasActiveChild) {
+        collapsed = false;
+      } else if (persisted !== null) {
+        collapsed = persisted === '1';
+      } else {
+        collapsed = group ? group.classList.contains('collapsed') : false;
       }
+      btn.classList.toggle('collapsed', collapsed);
+      group?.classList.toggle('collapsed', collapsed);
       btn.addEventListener('click', (e) => {
         if (e.shiftKey || e.detail >= 2) {
           const href = btn.dataset.firstHref;
@@ -1081,11 +1093,20 @@
     const navSettings = document.getElementById('nav-settings');
     const settingsBackRow = document.getElementById('settings-back-row');
     const path = location.pathname;
+    const norm = (p) => (p || '').replace(/\/+$/, '') || '/';
+    // Any page the settings sub-nav links to should KEEP settings mode —
+    // otherwise a settings page whose URL isn't in the allow-list below
+    // bounces the sidebar back to the main dashboard nav.
+    const settingsHrefs = navSettings
+        ? Array.from(navSettings.querySelectorAll('a[href]')).map(
+            a => norm(new URL(a.href, location.origin).pathname))
+        : [];
     const inSettings = path.startsWith('/dashboard/settings/')
         || path === '/dashboard/apps/' || path === '/dashboard/apps'
         || path.startsWith('/dashboard/tracking/')
         || path.startsWith('/dashboard/errors/')
-        || /^\/dashboard\/apps\/[^/]+\/settings\/?$/.test(path);
+        || /^\/dashboard\/apps\/[^/]+\/settings\/?$/.test(path)
+        || settingsHrefs.includes(norm(path));
     function showSettingsNav() {
       if (!navMain || !navSettings) return;
       navMain.style.display = 'none';
