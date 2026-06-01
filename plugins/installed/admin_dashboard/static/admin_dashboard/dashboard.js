@@ -568,6 +568,18 @@
         form.dispatchEvent(new CustomEvent('morph:saved', { detail: data, bubbles: true }));
       } else {
         _setBtnState(btn, 'fail');
+        // Surface the server's validation errors so the merchant sees WHY it
+        // failed (the view returns {ok:false, errors:{field:[{message}]}}).
+        let msg = 'Save failed — check the highlighted fields.';
+        if (data && data.errors) {
+          const first = Object.entries(data.errors)[0];
+          if (first) {
+            const v = first[1];
+            const detail = Array.isArray(v) ? (v[0] && (v[0].message || v[0])) : v;
+            msg = first[0] === '__all__' ? String(detail) : `${first[0]}: ${detail}`;
+          }
+        }
+        if (window.Morph && Morph.toast) { Morph.toast(msg, 'error'); }
         form.dispatchEvent(new CustomEvent('morph:save-failed', {
           detail: { status: res.status, data }, bubbles: true,
         }));

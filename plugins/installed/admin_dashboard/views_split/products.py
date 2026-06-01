@@ -252,6 +252,14 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             form.save()
             messages.success(request, 'Product saved.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
+        # Invalid form over AJAX: return the errors as JSON (400) so the client
+        # shows WHY it failed. Without this the data-ajax handler reads the
+        # re-rendered HTML page as a (false) success and the merchant sees
+        # "Saved" while nothing was saved.
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            from django.http import JsonResponse
+
+            return JsonResponse({'ok': False, 'errors': form.errors.get_json_data()}, status=400)
     else:
         form = ProductForm(instance=product)
     categories, vendors = _product_form_choices()
@@ -442,22 +450,36 @@ def variant_delete(request: HttpRequest, product_id: str, variant_id: str) -> Ht
 
 
 @staff_member_required
-def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
-    """POST-only: accept a multipart upload, attach to product."""
-    if request.method != 'POST':
+def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:  # noqa: PLR0911
+    """POST-only: accept a multipart upload, attach to product.
+
+    Answers JSON for AJAX callers (the media uploader sends
+    ``X-Requested-With``). A plain redirect is opaque to ``fetch()`` — it
+    follows the 302 and reads EVERY outcome (including "no file" / "too big" /
+    a storage error) as a 200, so failures looked like silent successes.
+    """
+    from django.http import JsonResponse
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def _fail(msg, status=400):
+        if is_ajax:
+            return JsonResponse({'ok': False, 'error': msg}, status=status)
+        messages.error(request, msg)
         return redirect('admin_dashboard:product_edit', product_id=product_id)
+
+    if request.method != 'POST':
+        return _fail('POST required.', status=405)
     from plugins.installed.catalog.models import ProductImage
 
     product = _get_product(product_id)
     upload = request.FILES.get('image')
     if not upload:
-        messages.error(request, 'Choose an image to upload.')
-        return redirect('admin_dashboard:product_edit', product_id=product.id)
+        return _fail('Choose an image to upload.')
     # Cheap MIME guard — ImageField does its own validation but we want a
     # clearer error if someone uploads a PDF or .txt by accident.
     if not (upload.content_type or '').startswith('image/'):
-        messages.error(request, 'That file is not an image.')
-        return redirect('admin_dashboard:product_edit', product_id=product.id)
+        return _fail('That file is not an image.')
     alt = (request.POST.get('alt_text') or '').strip()[:255]
 
     # 15-image cap (Phase 1 of docs/plans/product-slider.md).
@@ -465,11 +487,9 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
     # doesn't accumulate orphan rows the merchant can't see.
     image_count = ProductImage.objects.filter(product=product).count()
     if image_count >= 15:
-        messages.error(
-            request,
-            'You can have up to 15 images per product. Delete one before uploading another.',
+        return _fail(
+            'You can have up to 15 images per product. Delete one before uploading another.'
         )
-        return redirect('admin_dashboard:product_edit', product_id=product.id)
 
     # Unified 15-slot model (Phase 1 of docs/plans/product-slider.md):
     # new uploads append at the end of the slider. The merchant drags
@@ -492,14 +512,27 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
         sort_order = int(max_sort) + 1
         is_primary = False
 
-    ProductImage.objects.create(
-        product=product,
-        image=upload,
-        alt_text=alt,
-        is_primary=is_primary,
-        sort_order=sort_order,
-    )
+    try:
+        image = ProductImage.objects.create(
+            product=product,
+            image=upload,
+            alt_text=alt,
+            is_primary=is_primary,
+            sort_order=sort_order,
+        )
+    except Exception as exc:  # noqa: BLE001 — surface storage/processing errors instead of a silent redirect
+        import logging
+
+        logging.getLogger('morpheus.admin').exception('image_upload failed for %s', product_id)
+        return _fail(f'Could not save the image: {exc}', status=500)
+
     messages.success(request, 'Image uploaded.')
+    if is_ajax:
+        try:
+            url = image.image.url
+        except Exception:  # noqa: BLE001
+            url = ''
+        return JsonResponse({'ok': True, 'id': str(image.id), 'url': url})
     return redirect('admin_dashboard:product_edit', product_id=product.id)
 
 

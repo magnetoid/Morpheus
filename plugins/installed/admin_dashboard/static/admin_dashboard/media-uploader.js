@@ -152,7 +152,9 @@
         try {
           const res = await api(urls.imageUpload, { body: fd });
           if (!res.ok) {
-            flashMessage(`Upload failed: ${file.name} (${res.status})`);
+            let reason = `(${res.status})`;
+            try { const d = await res.json(); if (d && d.error) reason = d.error; } catch (e) { /* non-JSON */ }
+            flashMessage(`Upload failed: ${file.name} — ${reason}`);
             continue;
           }
           added += 1;
