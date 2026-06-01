@@ -1,6 +1,9 @@
 import uuid
-from morpheus import models
+
+from django.db import DatabaseError
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class PaymentGateway(models.Model):
@@ -24,7 +27,7 @@ class PaymentGateway(models.Model):
         ordering = ['sort_order']
 
     def __str__(self):
-        return f"{self.name} ({'Test' if self.is_test_mode else 'Live'})"
+        return f'{self.name} ({"Test" if self.is_test_mode else "Live"})'
 
 
 class Payment(models.Model):
@@ -63,7 +66,7 @@ class Payment(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Payment {self.amount} [{self.status}] for Order #{self.order.order_number}"
+        return f'Payment {self.amount} [{self.status}] for Order #{self.order.order_number}'
 
 
 class StripeWebhookEvent(models.Model):
@@ -80,24 +83,31 @@ class StripeWebhookEvent(models.Model):
         ordering = ['-received_at']
 
     def __str__(self):
-        return f"{self.event_type} ({self.stripe_event_id})"
+        return f'{self.event_type} ({self.stripe_event_id})'
 
 
 class PaymentMethod(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='payment_methods', null=True, blank=True)
+    customer = models.ForeignKey(
+        'customers.Customer',
+        on_delete=models.CASCADE,
+        related_name='payment_methods',
+        null=True,
+        blank=True,
+    )
     provider = models.CharField(max_length=50, default='stripe')
-    provider_id = models.CharField(max_length=128, help_text="e.g., pm_123456789")
+    provider_id = models.CharField(max_length=128, help_text='e.g., pm_123456789')
     is_default = models.BooleanField(default=False)
     last4 = models.CharField(max_length=4, blank=True)
     brand = models.CharField(max_length=50, blank=True)
 
     def __str__(self):
-        return f"{self.brand} ending in {self.last4}"
+        return f'{self.brand} ending in {self.last4}'
+
 
 class PaymentTransaction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-        
+
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         SUCCEEDED = 'succeeded', 'Succeeded'
@@ -112,4 +122,45 @@ class PaymentTransaction(models.Model):
     error_message = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Tx {self.id} for Order {self.order.order_number} - {self.status}"
+        return f'Tx {self.id} for Order {self.order.order_number} - {self.status}'
+
+
+# Gateways that ship enabled so a fresh install can take orders out of the
+# box (Stripe for real cards, manual for offline / test checkout).
+DEFAULT_ENABLED = {'stripe', 'manual'}
+
+
+class PaymentGatewayConfig(models.Model):
+    """Per-gateway enable flag + free-form config for the Settings → Payments
+    page. Keyed by the registry ``slug`` (the in-code ``PaymentGateway`` ABC
+    slug, e.g. 'stripe', 'manual'), NOT the older ``PaymentGateway`` Django
+    model above.
+
+    Config blobs:
+      * stripe — {secret_key, publishable_key, webhook_secret, capture_strategy}
+      * manual — {instructions}
+    """
+
+    slug = models.SlugField(max_length=50, unique=True)
+    enabled = models.BooleanField(default=False)
+    config = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['slug']
+
+    def __str__(self):
+        return f'{self.slug} ({"on" if self.enabled else "off"})'
+
+
+def is_enabled(slug: str) -> bool:
+    """Whether a gateway is enabled. Unconfigured gateways fall back to
+    ``DEFAULT_ENABLED`` so a fresh install never has zero payment methods.
+    """
+    try:
+        row = PaymentGatewayConfig.objects.filter(slug=slug).first()
+    except DatabaseError:
+        row = None
+    if row is None:
+        return slug in DEFAULT_ENABLED
+    return row.enabled

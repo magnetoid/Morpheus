@@ -1,15 +1,20 @@
-from morpheus import Plugin, SettingsPanel, events
+# ruff: noqa: PLC0415, I001
+# Inline imports in ready()/hooks are intentional — gateway + model
+# modules must not load before the app registry is ready.
 import logging
+
+from morpheus import Plugin, SettingsPanel, events
 
 logger = logging.getLogger('morpheus.plugins.payments')
 
+
 class PaymentsPlugin(Plugin):
-    name = "payments"
-    label = "Payments Engine"
-    version = "1.0.0"
-    description = "Handles payment processing, Stripe integration, and payment intent workflows."
+    name = 'payments'
+    label = 'Payments Engine'
+    version = '1.0.0'
+    description = 'Handles payment processing, Stripe integration, and payment intent workflows.'
     has_models = True
-    requires = ["orders"]
+    requires = ['orders']
 
     def ready(self):
         # Register hooks for order payment
@@ -28,6 +33,7 @@ class PaymentsPlugin(Plugin):
             from plugins.installed.payments.gateway import gateway_registry
             from plugins.installed.payments.gateways.manual_gateway import ManualGateway
             from plugins.installed.payments.gateways.stripe_gateway import StripeGateway
+
             gateway_registry.register(ManualGateway())
             gateway_registry.register(StripeGateway())
         except Exception as e:  # noqa: BLE001
@@ -39,7 +45,7 @@ class PaymentsPlugin(Plugin):
         We can attempt to capture payment if the strategy is synchronous,
         or we can just ensure a payment intent is created.
         """
-        logger.info(f"PaymentsPlugin: Order {order.id} placed. Verifying payment status.")
+        logger.info(f'PaymentsPlugin: Order {order.id} placed. Verifying payment status.')
 
     def on_refund_requested(self, refund, **kwargs):
         """Drive the Stripe-side refund when the dashboard records a Refund.
@@ -55,14 +61,18 @@ class PaymentsPlugin(Plugin):
 
         order = refund.order
         tx = (
-            PaymentTransaction.objects
-            .filter(order=order, provider='stripe', status=PaymentTransaction.Status.SUCCEEDED)
-            .order_by('-id').first()
+            PaymentTransaction.objects.filter(
+                order=order, provider='stripe', status=PaymentTransaction.Status.SUCCEEDED
+            )
+            .order_by('-id')
+            .first()
         )
         if tx is None:
             logger.info(
                 'refund: no successful Stripe transaction on order %s — leaving '
-                'refund #%s as manual/pending.', order.order_number, refund.id,
+                'refund #%s as manual/pending.',
+                order.order_number,
+                refund.id,
             )
             return
 
@@ -88,27 +98,31 @@ class PaymentsPlugin(Plugin):
                 'REFUND_GATEWAY_FAILED',
                 message=str(result.get('error', ''))[:240],
             )
-        
+
     def get_config_schema(self):
         return {
-            "type": "object",
-            "properties": {
-                "stripe_secret_key": {"type": "string", "title": "Stripe Secret Key"},
-                "stripe_public_key": {"type": "string", "title": "Stripe Public Key"},
-                "stripe_webhook_secret": {"type": "string", "title": "Stripe Webhook Secret"},
-                "capture_strategy": {
-                    "type": "string",
-                    "enum": ["automatic", "manual"],
-                    "default": "automatic",
-                    "title": "Capture strategy",
+            'type': 'object',
+            'properties': {
+                'stripe_secret_key': {'type': 'string', 'title': 'Stripe Secret Key'},
+                'stripe_public_key': {'type': 'string', 'title': 'Stripe Public Key'},
+                'stripe_webhook_secret': {'type': 'string', 'title': 'Stripe Webhook Secret'},
+                'capture_strategy': {
+                    'type': 'string',
+                    'enum': ['automatic', 'manual'],
+                    'default': 'automatic',
+                    'title': 'Capture strategy',
                 },
             },
         }
 
     def contribute_settings_panel(self):
+        # The 'payments' category dispatches to the custom settings_payments
+        # view (one card per registered gateway with enable toggle + config).
+        # This panel only keeps the Payments category populated on the
+        # settings hub index; its schema is not rendered directly.
         return SettingsPanel(
-            label='Stripe',
-            description='Card payments + webhooks. Set keys then register the webhook URL in Stripe.',
+            label='Payment gateways',
+            description='Enable gateways and set their keys — Stripe, Manual / offline, and any others.',
             schema=self.get_config_schema(),
             category='payments',
         )
