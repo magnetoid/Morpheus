@@ -31,40 +31,40 @@
 
   <div class="card overflow-hidden">
     {% if rows %}
-    <table class="w-full text-sm">
-      <thead class="bg-[color:var(--surface-2)]">
-        <tr class="text-left">
-          <th class="px-4 py-2 font-medium">Name</th>
-          <th class="px-4 py-2 font-medium">Slug</th>
-          <th class="px-4 py-2 font-medium">Parent</th>
-          <th class="px-4 py-2 font-medium text-right">Products</th>
-          <th class="px-4 py-2 font-medium">Status</th>
-          <th class="px-4 py-2 font-medium">Updated</th>
-          <th class="px-4 py-2"></th>
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Slug</th>
+          <th>Parent</th>
+          <th class="text-right">Products</th>
+          <th>Status</th>
+          <th>Updated</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for row in rows %}
-        <tr class="border-t border-[color:var(--border)] {% if not row.is_active %}opacity-60{% endif %}">
-          <td class="px-4 py-2">
+        <tr class="{% if not row.is_active %}opacity-60{% endif %}">
+          <td>
             <span style="display: inline-block; width: {{ row.level }}em;"></span>
             {% if row.level %}<span class="text-[color:var(--text-subtle)]">└─ </span>{% endif %}
             <a href="/admin/catalog/category/{{ row.id }}/change/" class="font-medium hover:underline">{{ row.name }}</a>
           </td>
-          <td class="px-4 py-2 text-[color:var(--text-muted)] font-mono text-xs">{{ row.slug }}</td>
-          <td class="px-4 py-2 text-[color:var(--text-muted)]">{{ row.parent_name|default:"—" }}</td>
-          <td class="px-4 py-2 text-right tabular-nums">
+          <td class="text-[color:var(--text-muted)] font-mono text-xs">{{ row.slug }}</td>
+          <td class="text-[color:var(--text-muted)]">{{ row.parent_name|default:"—" }}</td>
+          <td class="text-right tabular-nums">
             <a href="{% url 'admin_dashboard:products' %}?q={{ row.name }}" class="hover:underline">{{ row.product_count }}</a>
           </td>
-          <td class="px-4 py-2">
+          <td>
             {% if row.is_active %}
             <span class="pill pill-success">Active</span>
             {% else %}
             <span class="pill">Inactive</span>
             {% endif %}
           </td>
-          <td class="px-4 py-2 text-[color:var(--text-muted)] text-xs">{{ row.updated_at|date:"Y-m-d H:i" }}</td>
-          <td class="px-4 py-2 text-right">
+          <td class="text-[color:var(--text-muted)] text-xs">{{ row.updated_at|date:"Y-m-d H:i" }}</td>
+          <td class="text-right">
             <a href="/category/{{ row.slug }}/" target="_blank" rel="noopener" class="btn btn-ghost text-xs" title="View on storefront">
               <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
             </a>
