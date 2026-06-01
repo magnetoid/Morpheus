@@ -12,7 +12,7 @@ removes the route + the page.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, StorefrontBlock
 
 
 class LuminaPlugin(Plugin):
@@ -51,3 +51,14 @@ class LuminaPlugin(Plugin):
             schema=self.get_config_schema(),
             category='marketing',
         )
+
+    def contribute_storefront_blocks(self) -> list:
+        # A "Write a book" link into the theme's nav_primary_extra slot, so
+        # /create/ is reachable from the storefront nav. Lives here (not in
+        # the theme), so disabling the plugin removes the link too.
+        return [
+            StorefrontBlock(
+                slot='nav_primary_extra',
+                template='lumina/blocks/nav_link.html',
+            ),
+        ]
