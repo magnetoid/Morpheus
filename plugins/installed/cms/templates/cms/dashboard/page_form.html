@@ -122,7 +122,9 @@
     if (!hidden || !target || !toolbar) return null;
 
     const extensions = [
-      StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false }),
+      // StarterKit v3 bundles its own Link — disable it so our configured Link is
+      // the only one (avoids the "Duplicate extension names: link" console warning).
+      StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false, link: false }),
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener', target: '_blank' } }),
     ];
 

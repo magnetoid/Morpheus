@@ -95,7 +95,8 @@ _CSP_DASHBOARD_ENFORCE = '; '.join(
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
-        "connect-src 'self'",
+        # esm.sh is in script-src (TipTap); allow its module/sourcemap fetches too.
+        "connect-src 'self' https://esm.sh",
         "frame-ancestors 'none'",
         "object-src 'none'",
         "base-uri 'self'",

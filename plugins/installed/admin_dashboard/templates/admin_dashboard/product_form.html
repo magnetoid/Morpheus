@@ -64,7 +64,7 @@
         </div>
         <input id="product-slug-input" type="text" name="slug" class="input"
                value="{{ form.slug.value|default:'' }}" placeholder="auto-from-name"
-               pattern="[a-z0-9-]+"
+               pattern="[a-z0-9\-]+"
                oninput="(function(el){var p=document.getElementById('product-slug-preview');if(p)p.textContent=el.value.toLowerCase().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'') || '(auto-from-name)';})(this)">
         {% if form.slug.errors %}<p class="field-error">{{ form.slug.errors.0 }}</p>{% endif %}
         <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">
@@ -348,7 +348,9 @@
         if (!hidden || !target || !toolbar) return null;
 
         const extensions = [
-          StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false }),
+          // StarterKit v3 bundles its own Link — disable it so our configured
+          // Link is the only one (avoids the "Duplicate extension names: link" warning).
+          StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false, link: false }),
           Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener', target: '_blank' } }),
         ];
 
