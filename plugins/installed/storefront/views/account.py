@@ -2,6 +2,10 @@
 credits, downloads, order confirmation. All guarded by _login_required.
 """
 
+# ruff: noqa: PLC0415, I001
+# Inline imports are intentional throughout this module — plugin models
+# are imported lazily so a disabled plugin drops out without breaking the
+# account page (each block is wrapped in try/except).
 from __future__ import annotations
 
 import logging
@@ -361,6 +365,51 @@ def account_credits(request):
             'store_credit': store_credit,
             'txns': txns,
             'cards': cards,
+        },
+    )
+
+
+def account_points(request):
+    """Loyalty points: balance, what it's worth today, and recent ledger.
+
+    Read-only customer surface for the redemption v1. The actual
+    point→discount application happens at checkout via the loyalty
+    breakdown hook; this page shows the shopper what they have and what it
+    can buy. Login-gated like every other account page.
+    """
+    if not request.user.is_authenticated:
+        from morpheus.views import redirect
+
+        return redirect('/auth/login/?next=/account/points/')
+    balance = 0
+    redeem_value = None
+    txns: list = []
+    rate = None
+    try:
+        from plugins.installed.loyalty_points.services import get_balance
+        from plugins.installed.loyalty_points.services_redeem import (
+            points_to_amount,
+            redemption_rate,
+        )
+
+        balance = get_balance(request.user)
+        rate = redemption_rate()
+        redeem_value = points_to_amount(balance)
+        from plugins.installed.loyalty_points.models import PointsTransaction
+
+        txns = list(
+            PointsTransaction.objects.filter(customer=request.user).order_by('-created_at')[:30]
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_points failed: %s', e, exc_info=True)
+    return render(
+        request,
+        'storefront/account_points.html',
+        {
+            'balance': balance,
+            'redeem_value': redeem_value,
+            'rate': rate,
+            'txns': txns,
         },
     )
 

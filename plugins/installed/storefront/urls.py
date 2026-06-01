@@ -86,6 +86,7 @@ urlpatterns = [
         'account/returns/<uuid:rma_id>/', views.account_return_status, name='account_return_status'
     ),
     path('account/credits/', views.account_credits, name='account_credits'),
+    path('account/points/', views.account_points, name='account_points'),
     path('account/downloads/', views.account_downloads, name='account_downloads'),
     path(
         'account/payment-methods/',

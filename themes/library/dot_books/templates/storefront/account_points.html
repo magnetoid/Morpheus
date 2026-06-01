@@ -1,0 +1,56 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}
+{% block title %}Reader points — dot books{% endblock %}
+
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">Account</p>
+    <h1 class="display display-l" style="margin: 1.25rem 0 .5rem;">
+      Reader points<span class="text-accent">.</span>
+    </h1>
+    <p class="meta" style="margin-bottom: 2rem;">
+      <a href="/account/" style="text-decoration: underline;">&larr; Back to account</a>
+    </p>
+
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem; background: var(--paper);">
+      <p style="font-size: 2rem; font-weight: 700; margin: 0;">{{ balance }} points</p>
+      {% if redeem_value and redeem_value.amount %}
+      <p class="meta" style="margin-top: .35rem;">
+        Worth {{ redeem_value|money }} off your next order — redeem at checkout.
+      </p>
+      {% else %}
+      <p class="meta" style="margin-top: .35rem;">
+        Earn one point per dollar on every paid order. Points become
+        redeemable once you have enough for at least {{ rate }} = 1.00 off.
+      </p>
+      {% endif %}
+    </div>
+
+    {% if txns %}
+    <h2 class="display display-s" style="margin-top: 2.5rem; margin-bottom: 1rem;">History</h2>
+    <table style="width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: .9rem;">
+      <thead style="text-align: left; color: var(--muted);">
+        <tr>
+          <th style="padding: .5rem 0;">When</th>
+          <th>Reason</th>
+          <th style="text-align: right;">Points</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in txns %}
+        <tr style="border-top: 1px solid var(--rule);">
+          <td style="padding: .65rem 0; color: var(--muted);">{{ t.created_at|date:"M j, Y" }}</td>
+          <td>{{ t.get_reason_display }}</td>
+          <td style="text-align: right;">{% if t.points >= 0 %}<span style="color: var(--accent-ink);">+{{ t.points }}</span>{% else %}{{ t.points }}{% endif %}</td>
+          <td style="color: var(--muted);">{{ t.note|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
