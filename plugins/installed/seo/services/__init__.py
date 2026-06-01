@@ -30,6 +30,7 @@ Layout:
   * audit.py        — audit_product, store_audit, audit_all_products,
                       suggest_internal_links_for.
 """
+
 from __future__ import annotations
 
 # Helpers / settings / serialization.
@@ -114,6 +115,7 @@ from .ai_feeds import (
 from .audit import (
     audit_all_products,
     audit_product,
+    score_aeo,
     store_audit,
     suggest_internal_links_for,
 )
@@ -126,35 +128,67 @@ from plugins.installed.seo.models import SeoMeta  # noqa: F401
 
 __all__ = [
     # helpers
-    'ResolvedMeta', '_jsonld_dump', '_seo_plugin_cfg', '_site_base_url',
-    'logger', 'site_settings',
+    'ResolvedMeta',
+    '_jsonld_dump',
+    '_seo_plugin_cfg',
+    '_site_base_url',
+    'logger',
+    'site_settings',
     # meta
-    '_structured_data_for', 'autofill_meta_for', 'resolve_meta',
+    '_structured_data_for',
+    'autofill_meta_for',
+    'resolve_meta',
     # jsonld
-    'article_jsonld', 'breadcrumb_jsonld', 'collection_page_jsonld',
-    'faq_jsonld', 'organization_jsonld', 'product_jsonld',
-    'qa_page_jsonld', 'speakable_jsonld', 'website_jsonld',
+    'article_jsonld',
+    'breadcrumb_jsonld',
+    'collection_page_jsonld',
+    'faq_jsonld',
+    'organization_jsonld',
+    'product_jsonld',
+    'qa_page_jsonld',
+    'speakable_jsonld',
+    'website_jsonld',
     # sitemaps
-    '_sitemap_max_urls', 'iter_sitemap_entries',
-    'render_image_sitemap_xml', 'render_news_sitemap_xml',
-    'render_opensearch_xml', 'render_sitemap_index_xml',
-    'render_sitemap_xml', 'sitemap_counts',
+    '_sitemap_max_urls',
+    'iter_sitemap_entries',
+    'render_image_sitemap_xml',
+    'render_news_sitemap_xml',
+    'render_opensearch_xml',
+    'render_sitemap_index_xml',
+    'render_sitemap_xml',
+    'sitemap_counts',
     # crawler files
-    'AI_CRAWLERS', 'get_ai_crawler_policy',
-    'render_llms_txt', 'render_robots_txt',
+    'AI_CRAWLERS',
+    'get_ai_crawler_policy',
+    'render_llms_txt',
+    'render_robots_txt',
     # indexnow
-    'get_or_create_indexnow_key', 'ping_indexnow',
+    'get_or_create_indexnow_key',
+    'ping_indexnow',
     # redirects
-    'record_404', 'refresh_404_suggestions', 'resolve_redirect',
+    'record_404',
+    'refresh_404_suggestions',
+    'resolve_redirect',
     'suggest_redirect',
     # images
-    'ALLOWED_IMAGE_FORMATS', 'ALLOWED_IMAGE_WIDTHS',
-    'generate_image_variant', 'parse_image_variant_path',
+    'ALLOWED_IMAGE_FORMATS',
+    'ALLOWED_IMAGE_WIDTHS',
+    'generate_image_variant',
+    'parse_image_variant_path',
     # ai feeds
-    'render_ai_products_feed', 'render_product_markdown',
+    'render_ai_products_feed',
+    'render_product_markdown',
     # audit
-    'audit_all_products', 'audit_product', 'store_audit',
+    'audit_all_products',
+    'audit_product',
+    'score_aeo',
+    'store_audit',
     'suggest_internal_links_for',
     # legacy re-export
     'SeoMeta',
 ]
+
+# ruff: noqa: I001
+# Imports are intentionally grouped by service layer (helpers → meta →
+# jsonld → sitemaps → … → audit) with section comments, not alphabetised
+# by module — that ordering documents the package structure.

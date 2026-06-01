@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, events
+from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
 
 logger = logging.getLogger('morpheus.seo')
 
@@ -14,12 +14,14 @@ class SeoPlugin(Plugin):
     label = 'SEO'
     version = '2.0.0'
     description = (
-        'Deep SEO: per-object meta + full JSON-LD (Product / Organization / '
-        'BreadcrumbList / WebSite / Article / FAQ / Review), OpenGraph + '
-        'Twitter Cards, sitemap.xml + robots.txt, redirects + 404 monitor '
-        'with auto-redirect suggester, per-product audit + scoring, '
-        'bulk meta editor, keyword tracking, and LLM discovery surfaces '
-        '(/llms.txt + /llms-full.txt + /ai/products.json).'
+        'Deep SEO + AEO/GEO: per-object meta + full JSON-LD (Product / '
+        'Organization / BreadcrumbList / WebSite / Article / FAQ / Review), '
+        'OpenGraph + Twitter Cards, sitemap.xml + robots.txt with a 2026 '
+        'AI-crawler matrix, redirects + 404 monitor with auto-redirect '
+        'suggester, per-product SEO audit + an answer-engine readiness '
+        'scorer, a PDP AI-answer / key-facts block, bulk meta editor, '
+        'keyword tracking, and LLM discovery surfaces (/llms.txt + '
+        '/llms-full.txt + /ai/products.json + /md/products/<slug>).'
     )
     has_models = True
 
@@ -144,6 +146,25 @@ class SeoPlugin(Plugin):
             threading.Thread(target=ping_indexnow, args=([url],), daemon=True).start()
         except Exception as e:  # noqa: BLE001
             logger.debug('seo: IndexNow push failed for %s/%s: %s', model_label, slug, e)
+
+    def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
+        """PDP "key facts / AI answer" block.
+
+        Renders the merchant's quotable TL;DR + a labelled spec table on
+        the product page itself — the highest-leverage AEO surface, since
+        answer engines lift the on-page answer, not just the JSON-LD.
+        Opt-in via SiteSeoSettings.ai_answer_block_enabled (default off);
+        the block renders nothing until the merchant turns it on AND sets
+        an answer / has book metafields. Modular — no theme edit.
+        """
+        return [
+            StorefrontBlock(
+                slot='pdp_below_price',
+                template='seo/blocks/ai_answer.html',
+                priority=40,  # after trust_strip (30); above the fold but below price
+                context_keys=['product'],
+            ),
+        ]
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.seo.agent_tools import (  # noqa: PLC0415

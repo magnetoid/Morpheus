@@ -5,7 +5,7 @@ feature-area module (meta, jsonld, sitemaps, …) can import them
 without pulling in everything else.
 """
 
-# ruff: noqa: PLR0912, PLC0415, S112, S110
+# ruff: noqa: PLR0912, PLC0415, S112, S110, I001
 # Inline imports avoid circular deps with seo.models / plugins.registry;
 # the broad try/except guards keep meta resolution working during early
 # boot + tests. Same convention as views_split/products.py.
@@ -153,6 +153,32 @@ def _seo_plugin_cfg() -> dict:
 
 def _jsonld_dump(obj: dict) -> str:
     return json.dumps(obj, separators=(',', ':'), ensure_ascii=False)
+
+
+def ai_answer_for(obj) -> str:
+    """Return the merchant's quotable TL;DR / key-answer for ``obj``.
+
+    Stored as a metafield ``namespace='seo', key='ai_answer'`` — the
+    same convention as ``seo.same_as``. This is the concise, factual
+    summary AI engines can lift verbatim into an answer ("AEO answer").
+    Empty string when unset or the metafields plugin is uninstalled.
+    """
+    if obj is None:
+        return ''
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.metafields.models import Metafield
+
+        ct = ContentType.objects.get_for_model(type(obj))
+        m = Metafield.objects.filter(
+            content_type=ct,
+            object_id=str(obj.pk),
+            namespace='seo',
+            key='ai_answer',
+        ).first()
+        return strip_html(m.value) if (m and m.value) else ''
+    except Exception:  # noqa: BLE001 — never break a render/audit over a missing plugin
+        return ''
 
 
 def _seo_plugin():

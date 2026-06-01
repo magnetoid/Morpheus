@@ -52,6 +52,10 @@
   <h3 class="font-semibold mt-4">AI / LLM discovery</h3>
   <label class="text-sm"><input type="checkbox" name="llms_txt_enabled" {% if s.llms_txt_enabled %}checked{% endif %}> Serve <code>/llms.txt</code> + <code>/llms-full.txt</code></label>
   <label class="text-sm"><input type="checkbox" name="ai_shopping_feed_enabled" {% if s.ai_shopping_feed_enabled %}checked{% endif %}> Serve <code>/ai/products.json</code> (schema.org product feed)</label>
+  <label class="text-sm"><input type="checkbox" name="ai_answer_block_enabled" {% if s.ai_answer_block_enabled %}checked{% endif %}> Show the on-page <strong>AI answer / key-facts</strong> block on product pages (AEO)</label>
+  <p class="text-xs text-[color:var(--text-muted)] -mt-2">
+    Renders a quotable TL;DR + spec table on the PDP itself — answer engines lift the on-page answer, not just the JSON-LD. Set a product's answer via the <code>seo.ai_answer</code> metafield; book metafields (author, format, pages…) auto-populate the spec table.
+  </p>
   <label class="block">/llms.txt intro
     <textarea name="llms_txt_intro" rows="3" class="input">{{ s.llms_txt_intro }}</textarea>
   </label>

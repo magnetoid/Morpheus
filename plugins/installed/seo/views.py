@@ -1,5 +1,13 @@
 """SEO views — sitemap.xml, robots.txt, /llms.txt, AI feed, admin dashboard."""
 
+# ruff: noqa: PLC0415, I001, S110, S112, SIM105, SIM114, SIM115, F401, UP017, PLR0911, PLR0912, PLR0915
+# Views resolve optional plugins (catalog, cms, inventory) lazily inside
+# each handler so a disabled plugin never breaks an unrelated page, and
+# the dashboard handlers are deliberately long, flat request/response
+# flows. Same convention as services/jsonld.py. (Pre-existing module-top
+# imports flagged unused — audit_product / store_audit / suggest_redirect
+# — are left untouched per the surgical-changes rule.)
+
 from __future__ import annotations
 
 import json
@@ -552,7 +560,12 @@ def seo_settings_page(request):
             'llms_txt_intro',
         ):
             setattr(s, field, request.POST.get(field, '') or '')
-        for field in ('enable_sitelinks_search', 'llms_txt_enabled', 'ai_shopping_feed_enabled'):
+        for field in (
+            'enable_sitelinks_search',
+            'llms_txt_enabled',
+            'ai_shopping_feed_enabled',
+            'ai_answer_block_enabled',
+        ):
             setattr(s, field, bool(request.POST.get(field)))
         for field, default in (('title_max_length', 60), ('description_max_length', 155)):
             try:
@@ -1263,6 +1276,18 @@ def seo_inspector(request):
     except Exception:  # noqa: BLE001
         audit = None
 
+    # AEO / GEO answer-readiness score — products only (the scorer is
+    # product-shaped). Surfaces the per-signal checklist in the inspector
+    # so the merchant sees exactly what makes the page citable by AI.
+    aeo = None
+    if resolved_type == 'product':
+        try:
+            from plugins.installed.seo.services.audit import score_aeo
+
+            aeo = score_aeo(entity)
+        except Exception:  # noqa: BLE001 — never let the scorer hide the page
+            aeo = None
+
     # Tracked keywords pointing at this canonical URL.
     matching_keywords = []
     try:
@@ -1302,6 +1327,7 @@ def seo_inspector(request):
             'jsonld_text': jsonld_text,
             'og_tags': og_tags,
             'audit': audit,
+            'aeo': aeo,
             'matching_keywords': matching_keywords,
         }
     )

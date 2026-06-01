@@ -16,7 +16,14 @@ from __future__ import annotations
 
 import contextlib
 
-from ._helpers import _seo_plugin, _seo_plugin_cfg, _site_base_url, site_settings, strip_html
+from ._helpers import (
+    _seo_plugin,
+    _seo_plugin_cfg,
+    _site_base_url,
+    ai_answer_for,
+    site_settings,
+    strip_html,
+)
 
 
 def organization_jsonld() -> dict | None:
@@ -117,6 +124,15 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         'url': url,
         'description': description[:500],
     }
+
+    # AEO answer — the merchant's quotable TL;DR (seo.ai_answer metafield).
+    # Emitted as schema.org `disambiguatingDescription`: a short, factual
+    # restatement that AI answer engines (ChatGPT / Perplexity / AI
+    # Overviews) can lift verbatim and attribute. ORM-only.
+    if not isinstance(product, dict):
+        answer = ai_answer_for(product)
+        if answer:
+            out['disambiguatingDescription'] = answer[:600]
 
     # Book subtype — if any namespace='book' metafields are attached to
     # this product, upgrade @type to ['Product', 'Book'] and surface the
@@ -598,6 +614,8 @@ def article_jsonld(
     updated_at=None,
     image: str = '',
     image_url: str = '',
+    citations: list[str] | None = None,
+    author_same_as: list[str] | None = None,
 ) -> dict:
     """Article schema for journal posts.
 
@@ -620,7 +638,15 @@ def article_jsonld(
         'mainEntityOfPage': {'@type': 'WebPage', '@id': url},
     }
     if author:
-        out['author'] = {'@type': 'Person', 'name': author}
+        author_node = {'@type': 'Person', 'name': author}
+        # E-E-A-T: sameAs links prove the author entity (LinkedIn /
+        # ORCID / Wikidata). AI engines weight authored, attributable
+        # content far higher for citation.
+        if author_same_as:
+            links = [u for u in author_same_as if u]
+            if links:
+                author_node['sameAs'] = links[:6]
+        out['author'] = author_node
     if published_at:
         out['datePublished'] = published_at.isoformat()
     if updated_at and updated_at != published_at:
@@ -631,6 +657,15 @@ def article_jsonld(
     hero = image_url or image
     if hero:
         out['image'] = hero
+    # GEO trust signal — sources the article cites/derives from. Emitted
+    # as both `citation` (CreativeWork refs) and `isBasedOn` (the URLs
+    # this content is grounded in), which AI engines read to gauge
+    # factual provenance.
+    if citations:
+        urls = [u for u in citations if u]
+        if urls:
+            out['citation'] = [{'@type': 'CreativeWork', 'url': u} for u in urls[:10]]
+            out['isBasedOn'] = urls[:10]
     publisher = organization_jsonld()
     if publisher:
         publisher.pop('@context', None)

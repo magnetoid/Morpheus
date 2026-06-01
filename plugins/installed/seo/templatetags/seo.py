@@ -13,6 +13,13 @@ The tag emits <title>, meta description, OG, Twitter Card, canonical link,
 robots, keywords, and a JSON-LD <script>.
 """
 
+# ruff: noqa: PLC0415, I001, S308, S110, S112, SIM105, PLR0912, PLR0915, PLW2901
+# This is a head-meta / JSON-LD emitter: mark_safe is load-bearing
+# (every helper returns trusted HTML built from escape()-d values), and
+# the inline imports keep optional plugins (markets, inventory) soft so
+# a disabled plugin can't break the <head>. Same convention as
+# services/jsonld.py.
+
 from __future__ import annotations
 
 from django import template
@@ -413,6 +420,65 @@ def seo_product_og(product):
         f'<meta name="twitter:data2" content="{avail}">',
     ]
     return mark_safe('\n'.join(out))
+
+
+@register.simple_tag(takes_context=True)
+def seo_ai_answer_block(context, product) -> dict:
+    """Data for the PDP "Key facts" / AI-answer storefront block.
+
+    Returns ``{enabled, answer, facts}``:
+      * ``answer`` — the quotable TL;DR (seo.ai_answer metafield),
+      * ``facts``  — up to ~6 ``(label, value)`` pairs pulled from the
+        ``book`` metafield namespace (author, format, pages, ISBN, …),
+      * ``enabled`` — the merchant's ``ai_answer_block_enabled`` toggle.
+
+    Rendering a concise, machine-quotable summary on the PDP itself is
+    the highest-leverage AEO move: AI engines lift the on-page answer,
+    not just the JSON-LD. Empty/disabled → the template renders nothing.
+    """
+    out = {'enabled': False, 'answer': '', 'facts': []}
+    if product is None:
+        return out
+    try:
+        from plugins.installed.seo.services import site_settings  # noqa: PLC0415
+
+        out['enabled'] = bool(getattr(site_settings(), 'ai_answer_block_enabled', False))
+    except Exception:  # noqa: BLE001
+        out['enabled'] = False
+    if not out['enabled']:
+        return out
+
+    try:
+        from plugins.installed.seo.services._helpers import ai_answer_for  # noqa: PLC0415
+
+        out['answer'] = ai_answer_for(product)
+    except Exception:  # noqa: BLE001
+        out['answer'] = ''
+
+    # Key facts from the `book` metafield namespace — labelled + ordered
+    # so the block reads like a spec table an AI can parse cleanly.
+    try:
+        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+        meta = Metafield.objects.for_obj(product, ns='book')
+        label_order = [
+            ('book.author', 'Author'),
+            ('book.publisher', 'Publisher'),
+            ('book.format', 'Format'),
+            ('book.pages', 'Pages'),
+            ('book.published_year', 'Published'),
+            ('book.language', 'Language'),
+            ('book.isbn', 'ISBN'),
+        ]
+        facts = []
+        for key, label in label_order:
+            val = meta.get(key)
+            if val not in (None, '', []):
+                facts.append((label, str(val)))
+        out['facts'] = facts[:6]
+    except Exception:  # noqa: BLE001
+        out['facts'] = []
+    return out
 
 
 @register.simple_tag

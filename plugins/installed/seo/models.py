@@ -10,6 +10,11 @@ plugin makes no assumptions about the host model.
 path against this table and 301s if a row exists. `hit_count` and
 `last_hit_at` give merchants a sanity check for stale aliases.
 """
+
+# ruff: noqa: I001, UP037
+# Import grouping + the quoted self-referential return annotations
+# (``'SeoMeta | None'``) are pre-existing house style for this module.
+
 from __future__ import annotations
 
 import uuid
@@ -47,20 +52,25 @@ class SeoMeta(models.Model):
     og_image = models.URLField(max_length=600, blank=True)
     og_type = models.CharField(max_length=20, choices=OG_TYPE_CHOICES, default='website')
     twitter_card = models.CharField(
-        max_length=20, default='summary_large_image',
+        max_length=20,
+        default='summary_large_image',
         help_text='summary | summary_large_image | app | player',
     )
     canonical_url = models.URLField(max_length=600, blank=True)
     robots = models.CharField(max_length=40, choices=ROBOTS_CHOICES, default='index, follow')
     keywords = models.CharField(
-        max_length=320, blank=True,
+        max_length=320,
+        blank=True,
         help_text='Comma-separated. Most engines ignore this; included for completeness.',
     )
     structured_data = models.JSONField(
-        default=dict, blank=True,
+        default=dict,
+        blank=True,
         help_text='Extra JSON-LD properties merged into the auto-generated payload.',
     )
-    auto_filled = models.BooleanField(default=False, help_text='True if filled by AI; False if merchant-edited.')
+    auto_filled = models.BooleanField(
+        default=False, help_text='True if filled by AI; False if merchant-edited.'
+    )
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -111,14 +121,20 @@ class SitemapEntry(models.Model):
     this table is for *manual* additions (the homepage, journal posts,
     static pages a merchant wants in the sitemap).
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=500, unique=True)
     changefreq = models.CharField(
-        max_length=10, default='weekly',
+        max_length=10,
+        default='weekly',
         choices=[
-            ('always', 'always'), ('hourly', 'hourly'), ('daily', 'daily'),
-            ('weekly', 'weekly'), ('monthly', 'monthly'),
-            ('yearly', 'yearly'), ('never', 'never'),
+            ('always', 'always'),
+            ('hourly', 'hourly'),
+            ('daily', 'daily'),
+            ('weekly', 'weekly'),
+            ('monthly', 'monthly'),
+            ('yearly', 'yearly'),
+            ('never', 'never'),
         ],
     )
     priority = models.DecimalField(max_digits=3, decimal_places=2, default=0.5)
@@ -151,7 +167,9 @@ class SiteSeoSettings(models.Model):
     default_og_image = models.URLField(max_length=600, blank=True)
     twitter_handle = models.CharField(max_length=50, blank=True, help_text='Without @')
     twitter_card_default = models.CharField(
-        max_length=20, choices=TWITTER_CARD_CHOICES, default='summary_large_image',
+        max_length=20,
+        choices=TWITTER_CARD_CHOICES,
+        default='summary_large_image',
     )
 
     # Social profiles → JSON-LD `sameAs`
@@ -183,10 +201,20 @@ class SiteSeoSettings(models.Model):
         default=True,
         help_text='Serve /ai/products.json — schema.org Product feed for AI shopping crawlers.',
     )
+    ai_answer_block_enabled = models.BooleanField(
+        default=False,
+        help_text=(
+            'Render a "Key facts / In short" answer block on product pages — a '
+            'quotable TL;DR + spec table that AI answer engines (ChatGPT, '
+            'Perplexity, AI Overviews) lift on-page. Off by default; needs an AI '
+            'answer (seo.ai_answer metafield) or book metafields to show.'
+        ),
+    )
 
     # Title formatting
     title_template = models.CharField(
-        max_length=200, default='{title} — {site_name}',
+        max_length=200,
+        default='{title} — {site_name}',
         help_text='Variables: {title}, {site_name}, {category}',
     )
     title_max_length = models.PositiveSmallIntegerField(default=60)
@@ -194,7 +222,8 @@ class SiteSeoSettings(models.Model):
 
     # Robots directives
     noindex_query_params = models.JSONField(
-        default=list, blank=True,
+        default=list,
+        blank=True,
         help_text='Auto-add noindex on URLs that contain any of these query params (e.g. ["q","sort"])',
     )
 

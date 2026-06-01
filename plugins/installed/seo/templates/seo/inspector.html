@@ -91,6 +91,42 @@
     </div>
   </div>
 
+  {% if aeo %}
+  <div class="card card-padded mb-4">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap;">
+      <h3 class="font-semibold mb-1">AEO / GEO answer-readiness</h3>
+      <span class="pill {% if aeo.score >= 80 %}pill-success{% elif aeo.score >= 50 %}pill-warn{% else %}pill-danger{% endif %}">{{ aeo.score }}/100</span>
+    </div>
+    <p class="text-xs text-[color:var(--text-muted)] mb-3">
+      How quotable + citable this page is for AI answer engines (ChatGPT, Perplexity, Google AI Overviews, Claude). Each signal is a lever those engines weigh when deciding what to lift into an answer.
+    </p>
+    <table class="morph-table">
+      <thead><tr><th style="width:60%;">Signal</th><th>Weight</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for sig in aeo.signals %}
+          <tr>
+            <td>{{ sig.label }}{% if sig.detail %} <span class="text-xs text-[color:var(--text-muted)]">({{ sig.detail }})</span>{% endif %}</td>
+            <td class="text-xs text-[color:var(--text-muted)]">{{ sig.weight }}</td>
+            <td>
+              {% if sig.ok %}
+                <span class="pill pill-success">OK</span>
+              {% else %}
+                <span class="pill pill-warn">Missing</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if aeo.suggestions %}
+      <p class="text-xs font-medium mt-3 mb-1">To raise the score:</p>
+      <ul class="text-sm" style="margin:0; padding-left:1.1rem; display:grid; gap:.25rem;">
+        {% for s in aeo.suggestions %}<li>{{ s }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="card card-padded mb-4">
     <h3 class="font-semibold mb-2">Tracked keywords targeting this URL ({{ matching_keywords|length }})</h3>
     {% if matching_keywords %}

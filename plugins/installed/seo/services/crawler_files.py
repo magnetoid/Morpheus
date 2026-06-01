@@ -4,6 +4,12 @@ Also home to the AI-crawler catalogue + per-bot policy resolver, which
 robots.txt uses to emit per-UA blocks.
 """
 
+# ruff: noqa: PLC0415, I001, SIM105, S110
+# Inline imports keep the catalog/inventory plugins soft (robots.txt +
+# llms.txt must render even when they're disabled); the broad try/pass
+# guards deliberately swallow config/DB misses so a crawler file never
+# 500s. Same convention as services/jsonld.py.
+
 from __future__ import annotations
 
 from urllib.parse import urljoin
@@ -37,6 +43,8 @@ AI_CRAWLERS = [
     ('Bytespider', 'ByteDance · LLM training crawler', 'training'),
     # Amazon
     ('Amazonbot', 'Amazon · Alexa + AI fetcher', 'search'),
+    # Cohere
+    ('cohere-ai', 'Cohere · RAG / grounding fetcher', 'search'),
     # Common Crawl
     ('CCBot', 'Common Crawl · public web archive', 'training'),
 ]
