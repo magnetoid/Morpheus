@@ -26,6 +26,12 @@ class MarketplacePlugin(Plugin):
             namespace='marketplace_dashboard',
         )
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
+        # Contribute the Vendor on/off panel to the dashboard customer-detail
+        # page. Only registered while marketplace is enabled, so disabling the
+        # plugin removes the toggle (modular-os contract).
+        from plugins.installed.marketplace.customer_panel import vendor_panel  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_DETAIL_PANELS, vendor_panel, priority=30)
 
     def on_order_placed(self, order, **kwargs):
         try:

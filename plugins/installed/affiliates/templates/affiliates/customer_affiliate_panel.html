@@ -1,0 +1,41 @@
+{% comment %}
+  Affiliate on/off panel for the dashboard customer-detail page.
+  Contributed by the affiliates plugin via the CUSTOMER_DETAIL_PANELS
+  hook. Rendered inside admin_dashboard's customer_form.html slot.
+{% endcomment %}
+<div class="flex items-center justify-between gap-3">
+  <div class="text-sm">
+    {% if is_affiliate %}
+      <span class="pill pill-success">Approved affiliate</span>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Handle <span class="font-medium">{{ affiliate.handle }}</span> · {{ affiliate.program.name }}.
+      </p>
+    {% elif affiliate %}
+      <span class="pill pill-neutral">Affiliate {{ affiliate.status }}</span>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Handle <span class="font-medium">{{ affiliate.handle }}</span>.
+      </p>
+    {% elif no_program %}
+      <span class="pill pill-neutral">Not an affiliate</span>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Create an active affiliate program first to enroll users.
+      </p>
+    {% else %}
+      <span class="pill pill-neutral">Not an affiliate</span>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Turn on to approve this user as an affiliate.
+      </p>
+    {% endif %}
+  </div>
+  {% if not no_program or affiliate %}
+  <form method="post" action="{{ toggle_url }}">
+    {% csrf_token %}
+    <input type="hidden" name="enable" value="{% if is_affiliate %}0{% else %}1{% endif %}">
+    {% if is_affiliate %}
+    <button type="submit" class="btn">Turn off</button>
+    {% else %}
+    <button type="submit" class="btn btn-primary">Turn on</button>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>

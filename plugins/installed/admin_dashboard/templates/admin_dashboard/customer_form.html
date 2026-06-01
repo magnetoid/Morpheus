@@ -101,6 +101,19 @@
       {% if customer %}
       {% include "metafields/_inline_editor.html" with object_model="customers.customer" object_id=customer.id %}
       {% endif %}
+      {% comment %}
+        CUSTOMER_DETAIL_PANELS slot. Plugins (marketplace, affiliates, …)
+        contribute panels via the hook; admin_dashboard just renders the
+        label + each panel's already-rendered HTML. A disabled plugin
+        contributes nothing, so its panel disappears — no vendor/affiliate
+        logic lives here.
+      {% endcomment %}
+      {% for panel in customer_detail_panels %}
+      <div class="card card-padded space-y-3">
+        <h3 class="font-semibold text-sm">{{ panel.label }}</h3>
+        {{ panel.html|safe }}
+      </div>
+      {% endfor %}
       {% if customer and order_summary %}
       <div class="card card-padded">
         <h3 class="font-semibold text-sm">Lifetime</h3>

@@ -1,0 +1,34 @@
+{% comment %}
+  Vendor on/off panel for the dashboard customer-detail page.
+  Contributed by the marketplace plugin via the CUSTOMER_DETAIL_PANELS
+  hook. Rendered inside admin_dashboard's customer_form.html slot.
+{% endcomment %}
+<div class="flex items-center justify-between gap-3">
+  <div class="text-sm">
+    {% if is_vendor %}
+      <span class="pill pill-success">Active vendor</span>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Selling as <span class="font-medium">{{ vendor.name }}</span>.
+      </p>
+    {% elif vendor %}
+      <span class="pill pill-neutral">Vendor disabled</span>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Was selling as <span class="font-medium">{{ vendor.name }}</span>.
+      </p>
+    {% else %}
+      <span class="pill pill-neutral">Not a vendor</span>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Turn on to let this user sell on the marketplace.
+      </p>
+    {% endif %}
+  </div>
+  <form method="post" action="{{ toggle_url }}">
+    {% csrf_token %}
+    <input type="hidden" name="enable" value="{% if is_vendor %}0{% else %}1{% endif %}">
+    {% if is_vendor %}
+    <button type="submit" class="btn">Turn off</button>
+    {% else %}
+    <button type="submit" class="btn btn-primary">Turn on</button>
+    {% endif %}
+  </form>
+</div>

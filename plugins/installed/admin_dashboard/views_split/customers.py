@@ -1,28 +1,31 @@
 """Auto-split from the legacy admin_dashboard/views.py monolith."""
+
+# ruff: noqa: PLC0415, S110, SIM105
+# PLC0415: inline imports are used throughout these views to avoid
+# app-registry-not-ready issues + keep optional-plugin imports lazy.
+# S110/SIM105: the bare try/except/pass guards are deliberate fail-soft
+# enrichment — the page must render even when an optional model is absent.
 from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
 
-from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
-from morpheus.views import get_object_or_404, redirect, render
 from django.db.models import Sum
-from django.utils import timezone
 
-from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
-from plugins.installed.admin_dashboard.forms import (
-    AddressForm,
-    CouponForm,
-    CustomerForm,
-    DraftOrderForm,
-    FulfillmentForm,
-    ProductForm,
-    RefundForm,
-    VariantForm,
+from morpheus.views import (
+    HttpRequest,
+    HttpResponse,
+    get_object_or_404,
+    messages,
+    redirect,
+    render,
+    staff_member_required,
 )
+from plugins.installed.admin_dashboard.forms import AddressForm, CustomerForm
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points,
-    _trend, logger, paginate_and_sort,
+    _bulk_ids,
+    ajax_or_redirect,
+    paginate_and_sort,
 )
 
 CUSTOMER_SOURCE_CHOICES = (
@@ -52,7 +55,9 @@ def customers_list(request: HttpRequest) -> HttpResponse:
     try:
         from django.contrib.auth import get_user_model
         from django.db.models import Count, Q
+
         from plugins.installed.orders.models import Order
+
         User = get_user_model()
         unfiltered = User.objects.all()
         if search:
@@ -80,10 +85,16 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         # Paginate first, then enrich the page's rows. This keeps the
         # Python loop over a bounded slice no matter how many users exist.
         page_obj, paging_ctx = paginate_and_sort(
-            request, qs,
+            request,
+            qs,
             default_sort='-date_joined',
-            allowed_sorts=('email', 'date_joined', 'last_order_at',
-                           'lifetime_value', 'purchase_count'),
+            allowed_sorts=(
+                'email',
+                'date_joined',
+                'last_order_at',
+                'lifetime_value',
+                'purchase_count',
+            ),
         )
         rows = []
         for user in page_obj.object_list:
@@ -99,49 +110,60 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             else:
                 order_count = order_qs.count()
                 spent = order_qs.aggregate(total=Sum('total'))['total'] or Decimal('0')
-            rows.append({
-                'id': user.pk,
-                'email': getattr(user, 'email', ''),
-                'name': (
-                    (getattr(user, 'first_name', '') + ' ' +
-                     getattr(user, 'last_name', '')).strip() or '—'
-                ),
-                'source': source,
-                'source_display': (
-                    user.get_source_display() if hasattr(user, 'get_source_display') and source else ''
-                ),
-                'order_count': order_count,
-                'spent': spent,
-                'last_order_at': getattr(user, 'last_order_at', None),
-                'date_joined': getattr(user, 'date_joined', None),
-            })
+            rows.append(
+                {
+                    'id': user.pk,
+                    'email': getattr(user, 'email', ''),
+                    'name': (
+                        (
+                            getattr(user, 'first_name', '') + ' ' + getattr(user, 'last_name', '')
+                        ).strip()
+                        or '—'
+                    ),
+                    'source': source,
+                    'source_display': (
+                        user.get_source_display()
+                        if hasattr(user, 'get_source_display') and source
+                        else ''
+                    ),
+                    'order_count': order_count,
+                    'spent': spent,
+                    'last_order_at': getattr(user, 'last_order_at', None),
+                    'date_joined': getattr(user, 'date_joined', None),
+                }
+            )
         customers = rows
     except Exception:  # noqa: BLE001
         customers = []
     source_tabs = [
         {
-            'value': value, 'label': label,
+            'value': value,
+            'label': label,
             'count': (source_counts.get(value, 0) if value else sum(source_counts.values())),
             'active': not admin_filter and source_filter == value,
         }
         for value, label in CUSTOMER_SOURCE_CHOICES
     ]
-    return render(request, 'admin_dashboard/customers.html', {
-        'customers': customers,
-        'search': search,
-        'source_filter': source_filter,
-        'source_choices': CUSTOMER_SOURCE_CHOICES,
-        'source_counts': source_counts,
-        'source_tabs': source_tabs,
-        'admin_filter': admin_filter,
-        'admin_count': admin_count,
-        'active_nav': 'admins' if admin_filter else 'customers',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Users'},
-        ],
-        **paging_ctx,
-    })
+    return render(
+        request,
+        'admin_dashboard/customers.html',
+        {
+            'customers': customers,
+            'search': search,
+            'source_filter': source_filter,
+            'source_choices': CUSTOMER_SOURCE_CHOICES,
+            'source_counts': source_counts,
+            'source_tabs': source_tabs,
+            'admin_filter': admin_filter,
+            'admin_count': admin_count,
+            'active_nav': 'admins' if admin_filter else 'customers',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Users'},
+            ],
+            **paging_ctx,
+        },
+    )
 
 
 @staff_member_required
@@ -154,16 +176,21 @@ def customer_new(request: HttpRequest) -> HttpResponse:
             return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
     else:
         form = CustomerForm()
-    return render(request, 'admin_dashboard/customer_form.html', {
-        'form': form,
-        'customer': None,
-        'active_nav': 'customers',
-    })
+    return render(
+        request,
+        'admin_dashboard/customer_form.html',
+        {
+            'form': form,
+            'customer': None,
+            'active_nav': 'customers',
+        },
+    )
 
 
 @staff_member_required
 def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
     customer = get_object_or_404(User, pk=customer_id)
     if request.method == 'POST':
@@ -171,18 +198,19 @@ def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             messages.success(request, 'Customer saved.')
-            return ajax_or_redirect(request, 'admin_dashboard:customer_edit', customer_id=customer.id)
+            return ajax_or_redirect(
+                request, 'admin_dashboard:customer_edit', customer_id=customer.id
+            )
     else:
         form = CustomerForm(instance=customer)
     # Quick stats so the edit page also works as a customer profile.
     order_summary: dict[str, Any] = {'count': 0, 'spent': Decimal('0'), 'recent': []}
     try:
         from plugins.installed.orders.models import Order
+
         orders_qs = Order.objects.filter(customer=customer)
         order_summary['count'] = orders_qs.count()
-        order_summary['spent'] = (
-            orders_qs.aggregate(t=Sum('total'))['t'] or Decimal('0')
-        )
+        order_summary['spent'] = orders_qs.aggregate(t=Sum('total'))['t'] or Decimal('0')
         order_summary['recent'] = list(orders_qs.order_by('-placed_at')[:5])
     except Exception:  # noqa: BLE001
         pass
@@ -191,18 +219,43 @@ def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
         addresses = list(customer.addresses.all())
     except Exception:  # noqa: BLE001 — customer model may not have addresses
         pass
-    return render(request, 'admin_dashboard/customer_form.html', {
-        'form': form,
-        'customer': customer,
-        'order_summary': order_summary,
-        'addresses': addresses,
-        'active_nav': 'customers',
-    })
+    # Plugin-contributed panels (CUSTOMER_DETAIL_PANELS filter). Each
+    # subscriber appends a {'label', 'html', 'priority'} dict; a disabled
+    # plugin contributes nothing, so its panel vanishes. admin_dashboard
+    # exposes the slot only — it has zero vendor/affiliate-specific logic.
+    # The hook bus isolates a broken handler so one bad panel can't break
+    # this page.
+    detail_panels: list[dict[str, Any]] = []
+    try:
+        from core.hooks import MorpheusEvents, hook_registry
+
+        panels = hook_registry.filter(
+            MorpheusEvents.CUSTOMER_DETAIL_PANELS, [], customer=customer, request=request
+        )
+        detail_panels = sorted(
+            (p for p in panels if isinstance(p, dict)),
+            key=lambda p: p.get('priority', 50),
+        )
+    except Exception:  # noqa: BLE001 — never break the customer page over a panel
+        detail_panels = []
+    return render(
+        request,
+        'admin_dashboard/customer_form.html',
+        {
+            'form': form,
+            'customer': customer,
+            'order_summary': order_summary,
+            'addresses': addresses,
+            'customer_detail_panels': detail_panels,
+            'active_nav': 'customers',
+        },
+    )
 
 
 @staff_member_required
 def customer_delete(request: HttpRequest, customer_id: str) -> HttpResponse:
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
     customer = get_object_or_404(User, pk=customer_id)
     if request.method == 'POST':
@@ -222,6 +275,7 @@ def customer_delete(request: HttpRequest, customer_id: str) -> HttpResponse:
 
 def _get_customer(customer_id: str):
     from django.contrib.auth import get_user_model
+
     return get_object_or_404(get_user_model(), pk=customer_id)
 
 
@@ -233,20 +287,27 @@ def address_new(request: HttpRequest, customer_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             messages.success(request, 'Address added.')
-            return ajax_or_redirect(request, 'admin_dashboard:customer_edit', customer_id=customer.id)
+            return ajax_or_redirect(
+                request, 'admin_dashboard:customer_edit', customer_id=customer.id
+            )
     else:
         form = AddressForm(customer=customer)
-    return render(request, 'admin_dashboard/address_form.html', {
-        'form': form,
-        'customer': customer,
-        'address': None,
-        'active_nav': 'customers',
-    })
+    return render(
+        request,
+        'admin_dashboard/address_form.html',
+        {
+            'form': form,
+            'customer': customer,
+            'address': None,
+            'active_nav': 'customers',
+        },
+    )
 
 
 @staff_member_required
 def address_edit(request: HttpRequest, customer_id: str, address_id: str) -> HttpResponse:
     from plugins.installed.customers.models import Address
+
     customer = _get_customer(customer_id)
     address = get_object_or_404(Address, pk=address_id, customer=customer)
     if request.method == 'POST':
@@ -254,20 +315,27 @@ def address_edit(request: HttpRequest, customer_id: str, address_id: str) -> Htt
         if form.is_valid():
             form.save()
             messages.success(request, 'Address saved.')
-            return ajax_or_redirect(request, 'admin_dashboard:customer_edit', customer_id=customer.id)
+            return ajax_or_redirect(
+                request, 'admin_dashboard:customer_edit', customer_id=customer.id
+            )
     else:
         form = AddressForm(instance=address, customer=customer)
-    return render(request, 'admin_dashboard/address_form.html', {
-        'form': form,
-        'customer': customer,
-        'address': address,
-        'active_nav': 'customers',
-    })
+    return render(
+        request,
+        'admin_dashboard/address_form.html',
+        {
+            'form': form,
+            'customer': customer,
+            'address': address,
+            'active_nav': 'customers',
+        },
+    )
 
 
 @staff_member_required
 def address_delete(request: HttpRequest, customer_id: str, address_id: str) -> HttpResponse:
     from plugins.installed.customers.models import Address
+
     customer = _get_customer(customer_id)
     address = get_object_or_404(Address, pk=address_id, customer=customer)
     if request.method == 'POST':
@@ -318,5 +386,3 @@ def customers_bulk(request: HttpRequest) -> HttpResponse:
 
 
 # ─── Cmd+K command palette ────────────────────────────────────────────────────
-
-

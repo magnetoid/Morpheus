@@ -377,10 +377,25 @@ class MorpheusEvents:
     #                             hook bus isolates a broken handler. This is
     #                             how a plugin contributes an account-home
     #                             tile without storefront editing its summary.
+    # CUSTOMER_DETAIL_PANELS    — value=list[dict], kwargs: customer=Customer,
+    #                             request=HttpRequest. The dashboard
+    #                             customer-detail page (admin_dashboard
+    #                             customer_edit) exposes this slot. Each
+    #                             plugin subscriber appends ITS OWN panel dict
+    #                             — {'label': str, 'html': SafeString,
+    #                             'priority': int} — and returns the list, so
+    #                             a disabled plugin's panel simply never
+    #                             appears. marketplace contributes a Vendor
+    #                             on/off panel; affiliates an Affiliate one.
+    #                             admin_dashboard has ZERO vendor/affiliate
+    #                             code. Fail-soft: the hook bus isolates a
+    #                             broken handler so one bad panel can't break
+    #                             the customer page.
     CART_CALCULATE_BREAKDOWN = 'cart.calculate_breakdown'  # filter
     PRODUCT_CALCULATE_PRICE = 'product.calculate_price'  # filter
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
+    CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

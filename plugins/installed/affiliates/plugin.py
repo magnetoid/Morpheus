@@ -1,9 +1,11 @@
 """Affiliates plugin manifest."""
 
+# ruff: noqa: PLC0415
+# Inline imports throughout keep optional cross-plugin imports lazy and the
+# manifest importable before the app registry is ready.
 from __future__ import annotations
 
-from morpheus import events
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, events
 
 
 class AffiliatesPlugin(Plugin):
@@ -30,6 +32,12 @@ class AffiliatesPlugin(Plugin):
         self.register_hook(events.ORDER_CANCELLED, self.on_order_refunded, priority=70)
         if hasattr(events, 'PAYMENT_REFUNDED'):
             self.register_hook(events.PAYMENT_REFUNDED, self.on_order_refunded, priority=70)
+        # Contribute the Affiliate on/off panel to the dashboard customer-detail
+        # page. Only registered while affiliates is enabled, so disabling the
+        # plugin removes the toggle (modular-os contract).
+        from plugins.installed.affiliates.customer_panel import affiliate_panel
+
+        self.register_hook(events.CUSTOMER_DETAIL_PANELS, affiliate_panel, priority=40)
 
     def on_order_placed(self, order, **kwargs):
         """Attribute an affiliate to a freshly-placed order.
