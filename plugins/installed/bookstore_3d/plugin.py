@@ -107,10 +107,9 @@ class Bookstore3DPlugin(Plugin):
         )
 
     def contribute_storefront_blocks(self) -> list:
-        # A "3D store" link into the theme's nav + footer slots, so the
-        # walkthrough is reachable from both. Lives here (not in the theme),
-        # so disabling the plugin removes the links too.
+        # A "3D store" link into the theme's footer slot, so the walkthrough is
+        # reachable from the footer. Lives here (not in the theme), so disabling
+        # the plugin removes the link too.
         return [
-            StorefrontBlock(slot='nav_primary_extra', template='bookstore_3d/blocks/nav_link.html'),
             StorefrontBlock(slot='footer_extra', template='bookstore_3d/blocks/nav_link.html'),
         ]

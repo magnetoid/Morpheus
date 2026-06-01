@@ -53,10 +53,9 @@ class LuminaPlugin(Plugin):
         )
 
     def contribute_storefront_blocks(self) -> list:
-        # A "Write a book" link into the theme's nav + footer slots, so
-        # /create/ is reachable from both. Lives here (not in the theme),
-        # so disabling the plugin removes the links too.
+        # A "Write a book" link into the theme's footer slot, so /create/ is
+        # reachable from the footer. Lives here (not in the theme), so
+        # disabling the plugin removes the link too.
         return [
-            StorefrontBlock(slot='nav_primary_extra', template='lumina/blocks/nav_link.html'),
             StorefrontBlock(slot='footer_extra', template='lumina/blocks/nav_link.html'),
         ]
