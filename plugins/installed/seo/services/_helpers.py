@@ -4,21 +4,42 @@ The ``ResolvedMeta`` dataclass + site-wide accessors live here so each
 feature-area module (meta, jsonld, sitemaps, …) can import them
 without pulling in everything else.
 """
+
+# ruff: noqa: PLR0912, PLC0415, S112, S110
+# Inline imports avoid circular deps with seo.models / plugins.registry;
+# the broad try/except guards keep meta resolution working during early
+# boot + tests. Same convention as views_split/products.py.
+
 from __future__ import annotations
 
+import html as _html
 import json
 import logging
+import re as _re
 from dataclasses import dataclass
 
 from django.conf import settings
-from django.utils.html import escape
+from django.utils.html import escape, strip_tags
 
 logger = logging.getLogger('morpheus.seo')
+
+
+def strip_html(text) -> str:
+    """Flatten HTML to plain text for meta tags, JSON-LD, and data-attrs.
+
+    ``short_description`` is a rich-text (HTML) field, so plain-text
+    consumers must not leak literal ``<p>`` tags or ``&#x27;`` entities.
+    """
+    if not text:
+        return ''
+    plain = _html.unescape(strip_tags(str(text)))
+    return _re.sub(r'\s+', ' ', plain).strip()
 
 
 @dataclass(slots=True)
 class ResolvedMeta:
     """Concrete, fallback-resolved meta values ready for rendering."""
+
     title: str = ''
     description: str = ''
     og_title: str = ''
@@ -61,6 +82,7 @@ class ResolvedMeta:
         # middleware emits; falls back to en_US.
         try:
             from django.conf import settings as _s
+
             locale = (getattr(_s, 'LANGUAGE_CODE', 'en-US') or 'en-US').replace('-', '_')
         except Exception:  # noqa: BLE001
             locale = 'en_US'
@@ -102,11 +124,14 @@ def site_settings():
     """Return SiteSeoSettings singleton, fallback to fresh in-memory if DB empty."""
     try:
         from plugins.installed.seo.models import SiteSeoSettings
+
         return SiteSeoSettings.objects.first() or SiteSeoSettings(
-            organization_name='', twitter_card_default='summary_large_image',
+            organization_name='',
+            twitter_card_default='summary_large_image',
         )
     except Exception:  # noqa: BLE001
         from plugins.installed.seo.models import SiteSeoSettings
+
         return SiteSeoSettings(organization_name='')
 
 
@@ -117,6 +142,7 @@ def _seo_plugin_cfg() -> dict:
     not loaded yet (early boot / tests)."""
     try:
         from plugins.registry import plugin_registry
+
         p = plugin_registry.get('seo')
         if p is None:
             return {}
@@ -139,6 +165,7 @@ def _seo_plugin():
     defaults"."""
     try:
         from plugins.registry import plugin_registry
+
         for attr in ('get', 'get_plugin'):
             fn = getattr(plugin_registry, attr, None)
             if callable(fn):

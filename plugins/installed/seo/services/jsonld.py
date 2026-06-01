@@ -6,11 +6,17 @@ Each function returns a dict ready to be ``json.dumps``-ed into a
 missing metafield should not block a page render.
 """
 
+# ruff: noqa: PLC0415, I001, SIM105, S110, PLR0912, PLR0915
+# Inline imports avoid circular deps + keep optional plugins (inventory,
+# metafields, reviews) soft; the broad try/except blocks are deliberate
+# (a malformed product must never block a render). Same convention as
+# views_split/products.py.
+
 from __future__ import annotations
 
 import contextlib
 
-from ._helpers import _seo_plugin, _seo_plugin_cfg, _site_base_url, site_settings
+from ._helpers import _seo_plugin, _seo_plugin_cfg, _site_base_url, site_settings, strip_html
 
 
 def organization_jsonld() -> dict | None:
@@ -102,7 +108,7 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         return {}
 
     url = f'{base.rstrip("/")}/products/{slug}/'
-    description = g('short_description') or g('description') or ''
+    description = strip_html(g('short_description') or g('description') or '')
     out: dict = {
         '@context': 'https://schema.org',
         '@type': 'Product',

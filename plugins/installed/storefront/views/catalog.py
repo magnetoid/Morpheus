@@ -332,6 +332,22 @@ def product_detail(request, slug):
 
         raise Http404
 
+    # Variant blurbs render as plain text on the PDP (pdp-variant__desc +
+    # the data-variant-desc JS attr), but shortDescription is a rich-text
+    # HTML field — flatten it so literal <p> tags don't leak. The product
+    # lede keeps its HTML (rendered |safe).
+    import html as _html
+    import re as _re
+
+    from django.utils.html import strip_tags as _strip_tags
+
+    def _plain(s):
+        return _re.sub(r'\s+', ' ', _html.unescape(_strip_tags(str(s or '')))).strip()
+
+    for _v in product.get('variants') or []:
+        if _v.get('shortDescription'):
+            _v['shortDescription'] = _plain(_v['shortDescription'])
+
     from plugins.installed.catalog.models import Product as _Product
 
     try:
@@ -427,9 +443,9 @@ def product_detail(request, slug):
         pdp_seo_image = primary_image['url']
     elif hero_image and hero_image.get('url'):
         pdp_seo_image = hero_image['url']
-    pdp_seo_description = (product.get('shortDescription') or product.get('description') or '')[
-        :160
-    ].strip()
+    pdp_seo_description = _plain(
+        product.get('shortDescription') or product.get('description') or ''
+    )[:160]
 
     # Published Web Story for this product, if the webstories plugin is
     # installed and has a row. Resolved here (not in the template) because

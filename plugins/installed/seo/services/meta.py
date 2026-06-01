@@ -5,13 +5,18 @@
 fallbacks. ``autofill_meta_for`` writes sensible defaults onto a fresh
 ``SeoMeta`` row the first time an object gets one.
 """
+
+# ruff: noqa: PLC0415, UP037, SIM105, S110
+# Inline imports avoid circular deps with seo.models / contenttypes;
+# guarded try/except keeps meta resolution alive during boot + tests.
+
 from __future__ import annotations
 
 from typing import Any
 
 from django.conf import settings
 
-from ._helpers import ResolvedMeta, site_settings
+from ._helpers import ResolvedMeta, site_settings, strip_html
 
 
 def resolve_meta(
@@ -43,15 +48,13 @@ def resolve_meta(
         return str(getattr(obj, name, '') or default)
 
     title = (
-        (meta.title if meta and meta.title else '')
-        or native('meta_title')
-        or fallback_title
+        (meta.title if meta and meta.title else '') or native('meta_title') or fallback_title
     ).strip()
-    description = (
+    description = strip_html(
         (meta.description if meta and meta.description else '')
         or native('meta_description')
         or fallback_description
-    ).strip()
+    )
     og_image = (
         (meta.og_image if meta and meta.og_image else '')
         or fallback_image
@@ -68,26 +71,39 @@ def resolve_meta(
         robots = meta.robots
     else:
         flags = []
-        flags.append('noindex' if (obj is not None and (
-            obj.get('noindex') if isinstance(obj, dict) else getattr(obj, 'noindex', False)
-        )) else 'index')
-        flags.append('nofollow' if (obj is not None and (
-            obj.get('nofollow') if isinstance(obj, dict) else getattr(obj, 'nofollow', False)
-        )) else 'follow')
+        flags.append(
+            'noindex'
+            if (
+                obj is not None
+                and (
+                    obj.get('noindex') if isinstance(obj, dict) else getattr(obj, 'noindex', False)
+                )
+            )
+            else 'index'
+        )
+        flags.append(
+            'nofollow'
+            if (
+                obj is not None
+                and (
+                    obj.get('nofollow')
+                    if isinstance(obj, dict)
+                    else getattr(obj, 'nofollow', False)
+                )
+            )
+            else 'follow'
+        )
         robots = ', '.join(flags)
 
     keywords = (meta.keywords if meta and meta.keywords else '') or native('focus_keyword')
     twitter_card = (
-        (meta.twitter_card if meta else '')
-        or native('twitter_card')
-        or 'summary_large_image'
+        (meta.twitter_card if meta else '') or native('twitter_card') or 'summary_large_image'
     )
     og_title = (meta.og_title if meta and meta.og_title else '') or native('og_title')
-    og_description = (
-        (meta.og_description if meta and meta.og_description else '')
-        or native('og_description')
+    og_description = strip_html(
+        (meta.og_description if meta and meta.og_description else '') or native('og_description')
     )
-    type_ = (meta.og_type if meta and meta.og_type else og_type)
+    type_ = meta.og_type if meta and meta.og_type else og_type
 
     structured = _structured_data_for(obj, title=title, description=description, image=og_image)
     # Merge native model structured_data (Product.structured_data) → SeoMeta (most specific wins).
@@ -135,7 +151,7 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
             '@context': 'https://schema.org',
             '@type': 'Product',
             'name': title or getattr(obj, 'name', ''),
-            'description': description or getattr(obj, 'short_description', ''),
+            'description': description or strip_html(getattr(obj, 'short_description', '')),
             'image': [image] if image else [],
             'sku': getattr(obj, 'sku', ''),
             'offers': {
@@ -150,7 +166,7 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
             '@context': 'https://schema.org',
             '@type': 'CollectionPage',
             'name': title or getattr(obj, 'name', ''),
-            'description': description or getattr(obj, 'description', ''),
+            'description': description or strip_html(getattr(obj, 'description', '')),
         }
     return {}
 
