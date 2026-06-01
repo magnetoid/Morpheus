@@ -1,0 +1,530 @@
+{% extends "storefront/base.html" %}
+{% comment %}
+3D bookstore walkthrough — a storefront page that lives ON dot books.
+Extends the active theme's base so it inherits the header, nav, and footer.
+The content area is a full-bleed three.js canvas: a warm room whose shelves
+are textured with real catalog covers; click a book → its product page.
+
+three.js loads from a CDN ES-module importmap (unpkg). That's fine here: the
+storefront CSP is report-only and already whitelists unpkg.com (see
+core/security_headers.py). No build step, no bundler.
+
+Product data + scene config are injected as JSON via {{ ... |json_script }}
+(auto-escaped, XSS-safe) and read by the module script — no inline data
+interpolation into JS.
+{% endcomment %}
+{% load static %}
+{% block title %}3D bookstore — walk the shelves · dot books{% endblock %}
+
+{% block content %}
+{% if bookstore_enabled %}
+{% comment %}Data islands — parsed by the scene script, never interpolated into JS source. Inside the content block so they actually render in this extending template.{% endcomment %}
+{{ bookstore_books|json_script:"bookstore-books" }}
+{{ bookstore_scene|json_script:"bookstore-scene" }}
+{% endif %}
+<style>
+  /* Full-bleed stage: break out of the theme's centered column and fill the
+     viewport below the header. Height uses small-viewport units (svh) so
+     mobile browser chrome doesn't clip it. */
+  .bs3d-stage {
+    position: relative;
+    width: 100%;
+    height: calc(100svh - 70px);
+    min-height: 460px;
+    background: #14110c;
+    overflow: hidden;
+    touch-action: none; /* let OrbitControls own touch gestures */
+  }
+  .bs3d-stage canvas { display: block; width: 100%; height: 100%; }
+
+  .bs3d-back {
+    position: absolute; top: 14px; left: 14px; z-index: 6;
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .5rem .85rem; border-radius: 9999px;
+    background: rgba(20,17,12,.72); color: #f6f1e7;
+    font: 500 .9rem/1 'Inter', system-ui, sans-serif;
+    text-decoration: none; backdrop-filter: blur(4px);
+    border: 1px solid rgba(246,241,231,.18);
+  }
+  .bs3d-back:hover { background: rgba(20,17,12,.9); }
+
+  /* Hover label that tracks the cursor over a book. */
+  .bs3d-label {
+    position: absolute; z-index: 6; pointer-events: none;
+    transform: translate(-50%, -130%); max-width: 240px;
+    padding: .35rem .6rem; border-radius: 8px;
+    background: rgba(20,17,12,.92); color: #f6f1e7;
+    font: 500 .85rem/1.25 'Inter', system-ui, sans-serif;
+    opacity: 0; transition: opacity .12s ease; white-space: nowrap;
+  }
+  .bs3d-label .px { color: #e0b873; font-weight: 600; }
+
+  /* "Click to enter" overlay (desktop pointer-lock) / hint (touch). */
+  .bs3d-overlay {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .9rem; text-align: center; padding: 2rem;
+    background: radial-gradient(ellipse at center, rgba(20,17,12,.55), rgba(20,17,12,.86));
+    color: #f6f1e7; cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .bs3d-overlay h2 {
+    font-family: 'Fraunces', Georgia, serif; font-weight: 600;
+    font-size: clamp(1.6rem, 4vw, 2.6rem); margin: 0;
+  }
+  .bs3d-overlay p { margin: 0; color: #d8cdbb; max-width: 30rem; }
+  .bs3d-cta {
+    margin-top: .4rem; padding: .7rem 1.4rem; border-radius: 9999px;
+    background: #e63946; color: #fff; font-weight: 600; font-size: 1rem;
+    border: none; cursor: pointer;
+  }
+  .bs3d-note { font-size: .8rem; color: #b9ad9a; }
+  .bs3d-hidden { display: none !important; }
+
+  .bs3d-closed {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .6rem; height: 100%; color: #f6f1e7; text-align: center; padding: 2rem;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .bs3d-closed h2 { font-family: 'Fraunces', Georgia, serif; margin: 0; }
+</style>
+
+<div class="bs3d-stage" id="bs3d-stage">
+{% if bookstore_enabled %}
+  <a class="bs3d-back" href="/products/">
+    <span aria-hidden="true">&larr;</span> Back to store
+  </a>
+  <div class="bs3d-label" id="bs3d-label"></div>
+
+  <div class="bs3d-overlay" id="bs3d-overlay" role="button" tabindex="0" aria-label="Enter the 3D bookstore">
+    <h2>Step inside the bookstore</h2>
+    <p id="bs3d-overlay-help">Click to enter, then look around with your mouse and walk with <strong>W A S D</strong> or the arrow keys. Click any book to open it.</p>
+    <button type="button" class="bs3d-cta" id="bs3d-enter">Click to enter</button>
+    <p class="bs3d-note bs3d-hidden" id="bs3d-touch-note">Best experienced on desktop. Drag to look around; pinch to zoom; tap a book to open it.</p>
+    <p class="bs3d-note" id="bs3d-status"></p>
+  </div>
+{% else %}
+  <div class="bs3d-closed">
+    <h2>The 3D bookstore is currently closed.</h2>
+    <p>Browse the full catalog in the meantime.</p>
+    <a class="bs3d-back" style="position:static" href="/products/">&larr; Back to store</a>
+  </div>
+{% endif %}
+</div>
+
+{% if bookstore_enabled %}
+{% comment %}
+ES-module importmap so the scene script can `import ... from 'three'` and pull
+the example controls by bare specifier. Pinned to 0.160.0 for reproducibility.
+{% endcomment %}
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Inputs (parsed from the JSON data islands) ───────────────────────────────
+const stage   = document.getElementById('bs3d-stage');
+const overlay = document.getElementById('bs3d-overlay');
+const enterBtn = document.getElementById('bs3d-enter');
+const labelEl = document.getElementById('bs3d-label');
+const statusEl = document.getElementById('bs3d-status');
+const touchNote = document.getElementById('bs3d-touch-note');
+const overlayHelp = document.getElementById('bs3d-overlay-help');
+
+const BOOKS = JSON.parse(document.getElementById('bookstore-books').textContent || '[]');
+const SCENE = JSON.parse(document.getElementById('bookstore-scene').textContent || '{}');
+
+const wallColor   = SCENE.wallColor   || '#efe7d6';
+const floorColor  = SCENE.floorColor  || '#6b5436';
+const accentColor = SCENE.accentColor || '#b08442';
+const ambientIntensity = Number(SCENE.ambientIntensity);
+const AMBIENT = Number.isFinite(ambientIntensity) ? ambientIntensity : 0.6;
+
+// Capability + preference detection.
+const PREFERS_REDUCED = window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const POINTER_LOCK_OK = 'pointerLockElement' in document ||
+  'webkitPointerLockElement' in document;
+const IS_TOUCH = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+  ('ontouchstart' in window);
+// Desktop pointer-lock mode only when supported, not touch, and motion is OK.
+const USE_POINTER_LOCK = POINTER_LOCK_OK && !IS_TOUCH && !PREFERS_REDUCED;
+
+// ── Room dimensions (metres) ─────────────────────────────────────────────────
+const ROOM_W = 20;     // x
+const ROOM_D = 20;     // z
+const ROOM_H = 5;      // y
+const WALL_PAD = 0.9;  // how far the camera is kept off the walls
+
+// ── Renderer / scene / camera ────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#1a160f');
+scene.fog = new THREE.Fog('#1a160f', 14, 34);
+
+const camera = new THREE.PerspectiveCamera(
+  70, stage.clientWidth / stage.clientHeight, 0.1, 100
+);
+camera.position.set(0, 1.6, ROOM_D / 2 - 2);
+
+// ── Lights — warm bookstore feel ─────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xfff1dd, AMBIENT));
+const hemi = new THREE.HemisphereLight(0xfff1dd, 0x40331f, 0.35);
+scene.add(hemi);
+const pointPositions = [
+  [-ROOM_W / 4, ROOM_H - 0.6,  ROOM_D / 4],
+  [ ROOM_W / 4, ROOM_H - 0.6,  ROOM_D / 4],
+  [-ROOM_W / 4, ROOM_H - 0.6, -ROOM_D / 4],
+  [ ROOM_W / 4, ROOM_H - 0.6, -ROOM_D / 4],
+];
+for (const [x, y, z] of pointPositions) {
+  const lamp = new THREE.PointLight(0xffd9a0, 0.6, 26, 2);
+  lamp.position.set(x, y, z);
+  scene.add(lamp);
+}
+
+// ── Shared geometry + reusable materials (perf: never per-book) ──────────────
+const disposables = [];   // geometries/materials/textures to free on unload
+function track(obj) { disposables.push(obj); return obj; }
+
+const roomMat = track(new THREE.MeshStandardMaterial({
+  color: new THREE.Color(wallColor), side: THREE.BackSide, roughness: 0.95,
+}));
+const floorMat = track(new THREE.MeshStandardMaterial({
+  color: new THREE.Color(floorColor), roughness: 0.85,
+}));
+const shelfMat = track(new THREE.MeshStandardMaterial({
+  color: new THREE.Color(accentColor), roughness: 0.6, metalness: 0.05,
+}));
+
+// Room shell (single inverted box; BackSide so we see the inside).
+const roomGeo = track(new THREE.BoxGeometry(ROOM_W, ROOM_H, ROOM_D));
+const room = new THREE.Mesh(roomGeo, roomMat);
+room.position.y = ROOM_H / 2;
+scene.add(room);
+
+// Floor (separate so it can have its own colour/material).
+const floorGeo = track(new THREE.PlaneGeometry(ROOM_W, ROOM_D));
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = 0.001;
+scene.add(floor);
+
+// One book geometry, reused for every cover (thin slab).
+const BOOK_W = 0.9, BOOK_H = 1.35, BOOK_T = 0.12;
+const bookGeo = track(new THREE.BoxGeometry(BOOK_W, BOOK_H, BOOK_T));
+
+// Spine fallback colours (deterministic per index → stable look on reload).
+const SPINE_COLORS = ['#7c2d12','#1e3a5f','#3f3d2e','#5b2333','#264d3b','#4a3b66','#6b4f1d','#374151'];
+
+// ── Texture loaders + canvas-texture fallback ────────────────────────────────
+const texLoader = new THREE.TextureLoader();
+texLoader.setCrossOrigin('anonymous'); // covers served same-origin; safe regardless
+
+function spineTexture(title, idx) {
+  // A colored spine with the wrapped title drawn into a canvas — used when a
+  // product has no cover image (or its image fails to load).
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 384;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = SPINE_COLORS[idx % SPINE_COLORS.length];
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = 'rgba(255,255,255,.10)';
+  ctx.fillRect(10, 10, c.width - 20, c.height - 20);
+  ctx.fillStyle = '#f6f1e7';
+  ctx.font = '600 26px Georgia, serif';
+  ctx.textAlign = 'center';
+  const words = String(title || 'Untitled').split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > c.width - 48 && line) { lines.push(line); line = w; }
+    else { line = test; }
+  }
+  if (line) lines.push(line);
+  const shown = lines.slice(0, 7);
+  let y = c.height / 2 - (shown.length - 1) * 18;
+  for (const ln of shown) { ctx.fillText(ln, c.width / 2, y); y += 36; }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return track(tex);
+}
+
+function makeBookMaterials(book, idx) {
+  // Faces order for BoxGeometry: +x,-x,+y,-y,+z,-z. The cover faces +z
+  // (toward the room). Sides use the shelf colour; cover uses the texture.
+  const side = track(new THREE.MeshStandardMaterial({ color: new THREE.Color(accentColor).offsetHSL(0, 0, -0.1), roughness: 0.7 }));
+  const coverMat = track(new THREE.MeshStandardMaterial({ roughness: 0.55 }));
+  if (book.image_url) {
+    coverMat.map = track(texLoader.load(
+      book.image_url,
+      (t) => { t.colorSpace = THREE.SRGBColorSpace; coverMat.needsUpdate = true; },
+      undefined,
+      () => { coverMat.map = spineTexture(book.title, idx); coverMat.needsUpdate = true; }  // onError → canvas spine
+    ));
+  } else {
+    coverMat.map = spineTexture(book.title, idx);
+  }
+  return [side, side, side, side, coverMat, side];
+}
+
+// ── Lay books out across shelves on all four walls ───────────────────────────
+const clickable = [];  // meshes the raycaster tests
+const SHELF_LEVELS = [1.1, 2.1, 3.1];   // y of each shelf row
+const PER_ROW = 8;                       // books per shelf segment per wall
+
+function addShelfBoard(x, y, z, length, horizontal) {
+  const geo = track(new THREE.BoxGeometry(horizontal ? length : 0.25, 0.08, horizontal ? 0.25 : length));
+  const board = new THREE.Mesh(geo, shelfMat);
+  board.position.set(x, y - BOOK_H / 2 - 0.05, z);
+  scene.add(board);
+}
+
+// Wall definitions: each places a run of books facing into the room.
+// dir = unit vector the cover points; books march along `axis`.
+const walls = [
+  { fixed: 'z', at: -ROOM_D / 2 + 0.2, axis: 'x', faceRotY: 0,            sign: 1 },   // back wall, covers face +z
+  { fixed: 'z', at:  ROOM_D / 2 - 0.2, axis: 'x', faceRotY: Math.PI,      sign: -1 },  // front wall, covers face -z
+  { fixed: 'x', at: -ROOM_W / 2 + 0.2, axis: 'z', faceRotY: Math.PI / 2,  sign: 1 },   // left wall, covers face +x
+  { fixed: 'x', at:  ROOM_W / 2 - 0.2, axis: 'z', faceRotY: -Math.PI / 2, sign: -1 },  // right wall, covers face -x
+];
+
+let placed = 0;
+const span = (ROOM_W - 3);           // usable run length along a wall
+const gap = span / PER_ROW;
+outer:
+for (const lvl of SHELF_LEVELS) {
+  for (const wall of walls) {
+    // one shelf board per wall segment per level
+    if (wall.fixed === 'z') addShelfBoard(0, lvl, wall.at, span + 0.6, true);
+    else addShelfBoard(wall.at, lvl, 0, span + 0.6, false);
+
+    for (let i = 0; i < PER_ROW; i++) {
+      if (placed >= BOOKS.length) break;
+      const book = BOOKS[placed];
+      const along = -span / 2 + gap / 2 + i * gap;
+      const mesh = new THREE.Mesh(bookGeo, makeBookMaterials(book, placed));
+      if (wall.fixed === 'z') mesh.position.set(along, lvl, wall.at + 0.08 * wall.sign);
+      else mesh.position.set(wall.at + 0.08 * wall.sign, lvl, along);
+      mesh.rotation.y = wall.faceRotY;
+      mesh.userData = { slug: book.slug, title: book.title, price: book.price, currency: book.currency, baseY: lvl };
+      scene.add(mesh);
+      clickable.push(mesh);
+      placed++;
+    }
+    if (placed >= BOOKS.length) break outer;
+  }
+}
+
+if (!BOOKS.length && statusEl) {
+  statusEl.textContent = 'No books to show yet — add products to your catalog.';
+}
+
+// ── Controls: PointerLock (desktop) or Orbit (touch / reduced-motion) ────────
+let controls;
+let pointerLock = null;
+const move = { f: false, b: false, l: false, r: false };
+const velocity = new THREE.Vector3();
+const SPEED = 9;
+
+function clampToRoom(pos) {
+  const lim = (axis, half) => Math.max(-half + WALL_PAD, Math.min(half - WALL_PAD, pos[axis]));
+  pos.x = lim('x', ROOM_W / 2);
+  pos.z = lim('z', ROOM_D / 2);
+  pos.y = 1.6;
+}
+
+if (USE_POINTER_LOCK) {
+  pointerLock = new PointerLockControls(camera, renderer.domElement);
+  scene.add(pointerLock.getObject());
+  controls = pointerLock;
+
+  const enter = () => pointerLock.lock();
+  enterBtn && enterBtn.addEventListener('click', enter);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) enter(); });
+  overlay.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') enter(); });
+
+  pointerLock.addEventListener('lock', () => overlay.classList.add('bs3d-hidden'));
+  pointerLock.addEventListener('unlock', () => overlay.classList.remove('bs3d-hidden'));
+
+  const key = (down) => (e) => {
+    switch (e.code) {
+      case 'KeyW': case 'ArrowUp': move.f = down; break;
+      case 'KeyS': case 'ArrowDown': move.b = down; break;
+      case 'KeyA': case 'ArrowLeft': move.l = down; break;
+      case 'KeyD': case 'ArrowRight': move.r = down; break;
+    }
+  };
+  document.addEventListener('keydown', key(true));
+  document.addEventListener('keyup', key(false));
+} else {
+  // Touch / reduced-motion: orbit around the room centre, no walking.
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 1.6, 0);
+  controls.enablePan = false;
+  controls.minDistance = 2;
+  controls.maxDistance = ROOM_D / 2 - 1;
+  controls.maxPolarAngle = Math.PI / 1.9;
+  controls.enableDamping = true;
+  controls.autoRotate = !PREFERS_REDUCED;   // gentle drift unless reduced-motion
+  controls.autoRotateSpeed = 0.4;
+  camera.position.set(0, 1.7, ROOM_D / 2 - 3);
+
+  // No pointer lock → the overlay is just an intro; dismiss on tap.
+  if (touchNote) touchNote.classList.remove('bs3d-hidden');
+  if (overlayHelp) overlayHelp.textContent = 'Drag to look around, pinch to zoom, and tap a book to open it.';
+  if (enterBtn) enterBtn.textContent = PREFERS_REDUCED ? 'View the shelves' : 'Look around';
+  const dismiss = () => overlay.classList.add('bs3d-hidden');
+  enterBtn && enterBtn.addEventListener('click', dismiss);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) dismiss(); });
+}
+
+// ── Raycaster: hover highlight + click → product page ────────────────────────
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hovered = null;
+
+function setPointerFromEvent(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY);
+  pointer.x = ((cx - r.left) / r.width) * 2 - 1;
+  pointer.y = -((cy - r.top) / r.height) * 2 + 1;
+  return { cx, cy };
+}
+
+function pickUnderPointer() {
+  // In pointer-lock the cursor is centred; otherwise use the tracked pointer.
+  if (USE_POINTER_LOCK && pointerLock && pointerLock.isLocked) {
+    raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+  } else {
+    raycaster.setFromCamera(pointer, camera);
+  }
+  const hits = raycaster.intersectObjects(clickable, false);
+  return hits.length ? hits[0].object : null;
+}
+
+function setHover(obj, clientX, clientY) {
+  if (hovered === obj) return;
+  if (hovered) {
+    hovered.scale.set(1, 1, 1);
+    hovered.position.y = hovered.userData.baseY;   // undo any hover-bob
+  }
+  hovered = obj;
+  if (obj) {
+    obj.scale.set(1.08, 1.08, 1.4);
+    document.body.style.cursor = 'pointer';
+    if (labelEl && clientX != null) {
+      const r = stage.getBoundingClientRect();
+      labelEl.style.left = (clientX - r.left) + 'px';
+      labelEl.style.top = (clientY - r.top) + 'px';
+      // Build the hover label with textContent (never innerHTML) so a book
+      // title containing markup can't execute — DOM-XSS safe.
+      labelEl.textContent = obj.userData.title || '';
+      if (obj.userData.price) {
+        const px = document.createElement('span');
+        px.className = 'px';
+        px.textContent = ` · ${obj.userData.currency} ${obj.userData.price}`;
+        labelEl.appendChild(px);
+      }
+      labelEl.style.opacity = '1';
+    }
+  } else {
+    document.body.style.cursor = '';
+    if (labelEl) labelEl.style.opacity = '0';
+  }
+}
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (USE_POINTER_LOCK && pointerLock && pointerLock.isLocked) return; // handled in loop
+  const { cx, cy } = setPointerFromEvent(e);
+  setHover(pickUnderPointer(), cx, cy);
+});
+
+function go(obj) {
+  if (obj && obj.userData.slug) window.location.href = '/products/' + obj.userData.slug + '/';
+}
+
+// Click (mouse / pointer-lock) and tap (touch) → navigate.
+renderer.domElement.addEventListener('click', (e) => {
+  if (USE_POINTER_LOCK && pointerLock && pointerLock.isLocked) { go(pickUnderPointer()); return; }
+  setPointerFromEvent(e);
+  go(pickUnderPointer());
+});
+
+// ── Resize ───────────────────────────────────────────────────────────────────
+function onResize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+
+// ── Animation loop (with cleanup) ────────────────────────────────────────────
+const clock = new THREE.Clock();
+let rafId = null;
+let running = true;
+
+function animate() {
+  if (!running) return;
+  rafId = requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+
+  if (USE_POINTER_LOCK && pointerLock) {
+    if (pointerLock.isLocked) {
+      velocity.x -= velocity.x * 10 * dt;
+      velocity.z -= velocity.z * 10 * dt;
+      const dz = (move.f ? 1 : 0) - (move.b ? 1 : 0);
+      const dx = (move.r ? 1 : 0) - (move.l ? 1 : 0);
+      if (dz) velocity.z -= dz * SPEED * dt;
+      if (dx) velocity.x += dx * SPEED * dt;
+      pointerLock.moveRight(velocity.x * dt);
+      pointerLock.moveForward(-velocity.z * dt);
+      clampToRoom(pointerLock.getObject().position);
+      // Centre-screen hover while locked.
+      setHover(pickUnderPointer(), null, null);
+    }
+  } else if (controls) {
+    controls.update();
+  }
+
+  // Subtle bob on the hovered book for life (skipped under reduced-motion).
+  if (hovered && !PREFERS_REDUCED) {
+    hovered.position.y = hovered.userData.baseY + Math.sin(clock.elapsedTime * 4) * 0.02;
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── Teardown: free GPU resources + stop the loop on navigate-away ────────────
+function dispose() {
+  running = false;
+  if (rafId) cancelAnimationFrame(rafId);
+  window.removeEventListener('resize', onResize);
+  for (const d of disposables) { try { d.dispose && d.dispose(); } catch (e) {} }
+  try { renderer.dispose(); } catch (e) {}
+  if (renderer.domElement && renderer.domElement.parentNode) {
+    renderer.domElement.parentNode.removeChild(renderer.domElement);
+  }
+}
+window.addEventListener('pagehide', dispose, { once: true });
+window.addEventListener('beforeunload', dispose, { once: true });
+</script>
+{% endif %}
+{% endblock %}
