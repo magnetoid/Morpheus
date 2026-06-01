@@ -6,6 +6,12 @@ Two inclusion tags:
   filters" row of removable pills based on the current ``request.GET``.
   Each chip's × link drops just that one param while keeping the rest.
 """
+
+# ruff: noqa: PLC0415, S308
+# Inline `from django.urls import reverse` is per-function to avoid
+# module-import overhead in tags that never run. mark_safe() is applied
+# only to internally-built HTML strings (no user input).
+
 from __future__ import annotations
 
 from django import template
@@ -39,7 +45,7 @@ def sparkline(series, width: int = 120, height: int = 28, stroke: str = ''):
         y = round(height - 2 - (v / mx) * (height - 4), 2)
         pts.append(f'{x},{y}')
     stroke_color = {
-        'up':   'var(--success)',
+        'up': 'var(--success)',
         'down': 'var(--danger)',
         'flat': 'var(--text-muted)',
     }.get(stroke, stroke or 'var(--text-muted)')
@@ -139,13 +145,15 @@ def index_tabs(context, param, choices, counts=None):
             count = counts.get(value, 0)
         elif counts is not None and not value:
             count = sum(counts.values()) if counts else 0
-        tabs.append({
-            'label': label,
-            'value': value,
-            'count': count,
-            'active': current == value,
-            'href': href,
-        })
+        tabs.append(
+            {
+                'label': label,
+                'value': value,
+                'count': count,
+                'active': current == value,
+                'href': href,
+            }
+        )
     return {'tabs': tabs}
 
 
@@ -155,49 +163,74 @@ def order_row_actions(context, order):
     state transitions so we don't double-implement the FSM logic.
     """
     from django.urls import reverse
+
     detail_url = reverse('admin_dashboard:order_detail', args=[order.order_number])
     bulk_url = reverse('admin_dashboard:orders_bulk')
     actions = [
         {'label': 'View', 'url': detail_url, 'icon': 'eye'},
     ]
     if getattr(order, 'payment_status', '') != 'paid':
-        actions.append({
-            'label': 'Mark paid', 'url': bulk_url, 'method': 'post',
-            'icon': 'check', 'confirm': f'Mark order #{order.order_number} as paid?',
-            'hidden_inputs': {'action': 'mark_paid', 'ids': str(order.id)},
-        })
+        actions.append(
+            {
+                'label': 'Mark paid',
+                'url': bulk_url,
+                'method': 'post',
+                'icon': 'check',
+                'confirm': f'Mark order #{order.order_number} as paid?',
+                'hidden_inputs': {'action': 'mark_paid', 'ids': str(order.id)},
+            }
+        )
     if getattr(order, 'status', '') not in ('cancelled', 'refunded'):
-        actions.append({
-            'label': 'Cancel', 'url': bulk_url, 'method': 'post',
-            'icon': 'x', 'danger': True,
-            'confirm': f'Cancel order #{order.order_number}? This can\'t be undone.',
-            'hidden_inputs': {'action': 'cancel', 'ids': str(order.id)},
-        })
+        actions.append(
+            {
+                'label': 'Cancel',
+                'url': bulk_url,
+                'method': 'post',
+                'icon': 'x',
+                'danger': True,
+                'confirm': f"Cancel order #{order.order_number}? This can't be undone.",
+                'hidden_inputs': {'action': 'cancel', 'ids': str(order.id)},
+            }
+        )
     return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
 
 
 @register.inclusion_tag('admin_dashboard/_row_actions.html', takes_context=True)
 def product_row_actions(context, product):
-    """Per-row overflow menu for a Product."""
+    """Per-row actions for a Product — Edit / Archive(or Restore) / Delete
+    inline on the right side of the row, each with a confirm modal.
+    `inline: True` lifts the action out of the overflow dropdown
+    into a visible icon-button on the row."""
     from django.urls import reverse
+
     edit_url = reverse('admin_dashboard:product_edit', args=[product.id])
-    bulk_url = reverse('admin_dashboard:products_bulk')
+    archive_url = reverse('admin_dashboard:product_archive', args=[product.id])
+    delete_url = reverse('admin_dashboard:product_delete', args=[product.id])
+    is_archived = getattr(product, 'status', '') == 'archived'
     actions = [
-        {'label': 'Edit', 'url': edit_url, 'icon': 'pencil'},
+        {'label': 'Edit', 'url': edit_url, 'icon': 'pencil', 'inline': True},
+        {
+            'label': 'Restore' if is_archived else 'Archive',
+            'url': archive_url,
+            'method': 'post',
+            'icon': 'rotate-ccw' if is_archived else 'archive',
+            'inline': True,
+            'confirm': (
+                f'Restore "{product.name}" to active?'
+                if is_archived
+                else f'Archive "{product.name}"? It won\'t be visible on the storefront.'
+            ),
+        },
+        {
+            'label': 'Delete',
+            'url': delete_url,
+            'method': 'post',
+            'icon': 'trash-2',
+            'danger': True,
+            'inline': True,
+            'confirm': f'Delete "{product.name}"? This can\'t be undone.',
+        },
     ]
-    if getattr(product, 'status', '') != 'archived':
-        actions.append({
-            'label': 'Archive', 'url': bulk_url, 'method': 'post',
-            'icon': 'archive',
-            'confirm': f'Archive "{product.name}"? It won\'t be visible on the storefront.',
-            'hidden_inputs': {'action': 'archive', 'ids': str(product.id)},
-        })
-    actions.append({
-        'label': 'Delete', 'url': bulk_url, 'method': 'post',
-        'icon': 'trash-2', 'danger': True,
-        'confirm': f'Delete "{product.name}"? This can\'t be undone.',
-        'hidden_inputs': {'action': 'delete', 'ids': str(product.id)},
-    })
     return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
 
 
@@ -209,6 +242,7 @@ def customer_row_actions(context, customer):
     …) — not a Customer model instance — so we read fields via dict get.
     """
     from django.urls import reverse
+
     cid = customer.get('id') if isinstance(customer, dict) else customer.id
     email = customer.get('email') if isinstance(customer, dict) else customer.email
     edit_url = reverse('admin_dashboard:customer_edit', args=[cid])
@@ -218,12 +252,17 @@ def customer_row_actions(context, customer):
     ]
     if email:
         actions.append({'label': 'Email', 'url': f'mailto:{email}', 'icon': 'mail'})
-    actions.append({
-        'label': 'Delete', 'url': bulk_url, 'method': 'post',
-        'icon': 'trash-2', 'danger': True,
-        'confirm': f'Delete {email or "this contact"}? This can\'t be undone.',
-        'hidden_inputs': {'action': 'delete', 'ids': str(cid)},
-    })
+    actions.append(
+        {
+            'label': 'Delete',
+            'url': bulk_url,
+            'method': 'post',
+            'icon': 'trash-2',
+            'danger': True,
+            'confirm': f"Delete {email or 'this contact'}? This can't be undone.",
+            'hidden_inputs': {'action': 'delete', 'ids': str(cid)},
+        }
+    )
     return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
 
 
@@ -254,9 +293,11 @@ def filter_chips(context, **labels):
                 rest[k] = v
         qs = rest.urlencode()
         remove_url = request.path + (('?' + qs) if qs else '')
-        chips.append({
-            'label': label,
-            'value': raw,
-            'remove_url': remove_url,
-        })
+        chips.append(
+            {
+                'label': label,
+                'value': raw,
+                'remove_url': remove_url,
+            }
+        )
     return {'chips': chips}

@@ -1,4 +1,11 @@
 """Auto-split from the legacy admin_dashboard/views.py monolith."""
+
+# ruff: noqa: PLC0415, I001, F401, S110, PLR0912
+# Inline imports throughout: every view imports only what it needs to
+# stay fast at startup + avoid circular deps with catalog / product_videos
+# / bookvault / seo / core.agents. The `_shared` re-exports cover legacy
+# import paths that other modules still reach for. S110 on optional
+# integrations + PLR0912 on the hot-path catalog editing flows.
 from __future__ import annotations
 
 from decimal import Decimal
@@ -22,8 +29,15 @@ from plugins.installed.admin_dashboard.forms import (
     VariantForm,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points,
-    _trend, logger, paginate_and_sort,
+    Metric,
+    _bulk_ids,
+    _period,
+    _pct_delta,
+    _since,
+    _sparkline_points,
+    _trend,
+    logger,
+    paginate_and_sort,
 )
 
 PRODUCT_STATUS_CHOICES = (
@@ -44,24 +58,23 @@ def products_list(request: HttpRequest) -> HttpResponse:
     try:
         from django.db.models import Count
         from plugins.installed.catalog.models import Product
+
         unfiltered = Product.objects.all()
         if search:
-            unfiltered = unfiltered.filter(name__icontains=search) | unfiltered.filter(sku__icontains=search)
+            unfiltered = unfiltered.filter(name__icontains=search) | unfiltered.filter(
+                sku__icontains=search
+            )
         status_counts = {
-            row['status']: row['c']
-            for row in unfiltered.values('status').annotate(c=Count('id'))
+            row['status']: row['c'] for row in unfiltered.values('status').annotate(c=Count('id'))
         }
-        qs = (
-            Product.objects
-            .select_related('category', 'vendor')
-            .prefetch_related('images')
-        )
+        qs = Product.objects.select_related('category', 'vendor').prefetch_related('images')
         if status:
             qs = qs.filter(status=status)
         if search:
             qs = qs.filter(name__icontains=search) | qs.filter(sku__icontains=search)
         page_obj, paging_ctx = paginate_and_sort(
-            request, qs,
+            request,
+            qs,
             default_sort='-created_at',
             allowed_sorts=('name', 'created_at', 'status', 'price'),
         )
@@ -75,11 +88,10 @@ def products_list(request: HttpRequest) -> HttpResponse:
     bv_authed = False
     try:
         from plugins.installed.bookvault import services as bv_services
+
         bv_authed = bv_services.is_authenticated()
         if bv_authed and products:
-            bv_status = bv_services.bulk_link_status_for(
-                [p.id for p in products]
-            )
+            bv_status = bv_services.bulk_link_status_for([p.id for p in products])
             # Annotate each product so the template can read it without
             # needing a dict-lookup filter. (Django templates reject
             # attrs that start with an underscore, hence the public name.)
@@ -88,20 +100,24 @@ def products_list(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001 — never break the product list if BV is wedged
         bv_authed = False
 
-    return render(request, 'admin_dashboard/products.html', {
-        'products': products,
-        'status_filter': status,
-        'status_choices': PRODUCT_STATUS_CHOICES,
-        'status_counts': status_counts,
-        'search': search,
-        'bv_authed': bv_authed,
-        'active_nav': 'products',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Products'},
-        ],
-        **paging_ctx,
-    })
+    return render(
+        request,
+        'admin_dashboard/products.html',
+        {
+            'products': products,
+            'status_filter': status,
+            'status_choices': PRODUCT_STATUS_CHOICES,
+            'status_counts': status_counts,
+            'search': search,
+            'bv_authed': bv_authed,
+            'active_nav': 'products',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Products'},
+            ],
+            **paging_ctx,
+        },
+    )
 
 
 def _product_form_choices():
@@ -110,6 +126,7 @@ def _product_form_choices():
     vendors: list[Any] = []
     try:
         from plugins.installed.catalog.models import Category, Vendor
+
         categories = _ordered_categories()
         vendors = list(Vendor.objects.filter(is_active=True).order_by('name'))
     except Exception:  # noqa: BLE001
@@ -165,23 +182,21 @@ def _seo_field_defaults(product) -> dict:
     if product is None:
         return {}
     import re as _re
+
     try:
         from django.conf import settings as _settings
         from plugins.installed.seo.services import _site_base_url, site_settings
+
         s = site_settings()
         store_name = (
-            getattr(s, 'organization_name', '')
-            or getattr(_settings, 'STORE_NAME', '')
-            or ''
+            getattr(s, 'organization_name', '') or getattr(_settings, 'STORE_NAME', '') or ''
         )
         name = product.name or ''
         title_default = (f'{name} — {store_name}'.strip(' —')) if name else ''
         desc_src = product.short_description or product.description or ''
         desc_default = _re.sub(r'<[^>]+>', '', desc_src).strip()[:160]
         base = _site_base_url().rstrip('/')
-        canonical_default = (
-            f'{base}/products/{product.slug}/' if product.slug else ''
-        )
+        canonical_default = f'{base}/products/{product.slug}/' if product.slug else ''
         return {
             'meta_title': title_default,
             'meta_description': desc_default,
@@ -207,24 +222,29 @@ def product_new(request: HttpRequest) -> HttpResponse:
     else:
         form = ProductForm()
     categories, vendors = _product_form_choices()
-    return render(request, 'admin_dashboard/product_form.html', {
-        'form': form,
-        'product': None,
-        'categories': categories,
-        'vendors': vendors,
-        'seo_defaults': {},
-        'active_nav': 'products',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Products',  'url': '/dashboard/products/'},
-            {'label': 'New product'},
-        ],
-    })
+    return render(
+        request,
+        'admin_dashboard/product_form.html',
+        {
+            'form': form,
+            'product': None,
+            'categories': categories,
+            'vendors': vendors,
+            'seo_defaults': {},
+            'active_nav': 'products',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Products', 'url': '/dashboard/products/'},
+                {'label': 'New product'},
+            ],
+        },
+    )
 
 
 @staff_member_required
 def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
+
     product = get_object_or_404(Product, pk=product_id)
     if request.method == 'POST':
         form = ProductForm(request.POST, files=request.FILES, instance=product)
@@ -247,6 +267,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     videos: list = []
     try:
         from plugins.installed.product_videos.models import ProductVideo
+
         videos = list(
             ProductVideo.objects.filter(product=product).order_by('sort_order', 'created_at')
         )
@@ -265,16 +286,15 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     try:
         from plugins.installed.bookvault import services as bv_services
         from plugins.installed.bookvault.models import (
-            BookvaultProductLink, BV_LOCATION_CHOICES,
+            BookvaultProductLink,
+            BV_LOCATION_CHOICES,
         )
+
         bv_authed = bv_services.is_authenticated()
         if bv_authed:
-            bv_locations = [
-                {'id': lid, 'name': name} for lid, name in BV_LOCATION_CHOICES
-            ]
+            bv_locations = [{'id': lid, 'name': name} for lid, name in BV_LOCATION_CHOICES]
             bv_links = list(
-                BookvaultProductLink.objects
-                .filter(product=product)
+                BookvaultProductLink.objects.filter(product=product)
                 .select_related('variant')
                 .order_by('variant__sort_order', 'variant__name')
             )
@@ -282,33 +302,38 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     except Exception:  # noqa: BLE001 — never break the product page if BV is wedged
         bv_authed = False
 
-    return render(request, 'admin_dashboard/product_form.html', {
-        'form': form,
-        'product': product,
-        'categories': categories,
-        'vendors': vendors,
-        'variants': variants,
-        'images': images,
-        'videos': videos,
-        'front_image': front_image,
-        'back_image': back_image,
-        'bv_authed': bv_authed,
-        'bv_links': bv_links,
-        'bv_locations': bv_locations,
-        'bv_bulk_link_url': bv_bulk_link_url,
-        'seo_defaults': _seo_field_defaults(product),
-        'active_nav': 'products',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Products',  'url': '/dashboard/products/'},
-            {'label': product.name[:60]},
-        ],
-    })
+    return render(
+        request,
+        'admin_dashboard/product_form.html',
+        {
+            'form': form,
+            'product': product,
+            'categories': categories,
+            'vendors': vendors,
+            'variants': variants,
+            'images': images,
+            'videos': videos,
+            'front_image': front_image,
+            'back_image': back_image,
+            'bv_authed': bv_authed,
+            'bv_links': bv_links,
+            'bv_locations': bv_locations,
+            'bv_bulk_link_url': bv_bulk_link_url,
+            'seo_defaults': _seo_field_defaults(product),
+            'active_nav': 'products',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Products', 'url': '/dashboard/products/'},
+                {'label': product.name[:60]},
+            ],
+        },
+    )
 
 
 @staff_member_required
 def product_delete(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
+
     product = get_object_or_404(Product, pk=product_id)
     if request.method == 'POST':
         name = product.name
@@ -318,12 +343,33 @@ def product_delete(request: HttpRequest, product_id: str) -> HttpResponse:
     return redirect('admin_dashboard:product_edit', product_id=product.id)
 
 
-# ── Customers ─────────────────────────────────────────────────────────────────
+@staff_member_required
+def product_archive(request: HttpRequest, product_id: str) -> HttpResponse:
+    """Soft-archive (or restore) a product — flips status between
+    'active' and 'archived'. Confirmed via modal on the product list.
+    """
+    from plugins.installed.catalog.models import Product
 
+    product = get_object_or_404(Product, pk=product_id)
+    if request.method == 'POST':
+        if product.status == 'archived':
+            product.status = 'active'
+            product.save(update_fields=['status'])
+            messages.success(request, f'Restored "{product.name}".')
+        else:
+            product.status = 'archived'
+            product.save(update_fields=['status'])
+            messages.success(request, f'Archived "{product.name}".')
+        return redirect('admin_dashboard:products')
+    return redirect('admin_dashboard:product_edit', product_id=product.id)
+
+
+# ── Customers ─────────────────────────────────────────────────────────────────
 
 
 def _get_product(product_id: str):
     from plugins.installed.catalog.models import Product
+
     return get_object_or_404(Product, pk=product_id)
 
 
@@ -342,17 +388,22 @@ def variant_new(request: HttpRequest, product_id: str) -> HttpResponse:
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
     else:
         form = VariantForm(product=product)
-    return render(request, 'admin_dashboard/variant_form.html', {
-        'form': form,
-        'product': product,
-        'variant': None,
-        'active_nav': 'products',
-    })
+    return render(
+        request,
+        'admin_dashboard/variant_form.html',
+        {
+            'form': form,
+            'product': product,
+            'variant': None,
+            'active_nav': 'products',
+        },
+    )
 
 
 @staff_member_required
 def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductVariant
+
     product = _get_product(product_id)
     variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
     if request.method == 'POST':
@@ -363,17 +414,22 @@ def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> Http
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
     else:
         form = VariantForm(instance=variant, product=product)
-    return render(request, 'admin_dashboard/variant_form.html', {
-        'form': form,
-        'product': product,
-        'variant': variant,
-        'active_nav': 'products',
-    })
+    return render(
+        request,
+        'admin_dashboard/variant_form.html',
+        {
+            'form': form,
+            'product': product,
+            'variant': variant,
+            'active_nav': 'products',
+        },
+    )
 
 
 @staff_member_required
 def variant_delete(request: HttpRequest, product_id: str, variant_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductVariant
+
     product = _get_product(product_id)
     variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
     if request.method == 'POST':
@@ -391,6 +447,7 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
     if request.method != 'POST':
         return redirect('admin_dashboard:product_edit', product_id=product_id)
     from plugins.installed.catalog.models import ProductImage
+
     product = _get_product(product_id)
     upload = request.FILES.get('image')
     if not upload:
@@ -424,7 +481,9 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
     # drags slots around.
     max_sort = (
         ProductImage.objects.filter(product=product)
-        .order_by('-sort_order').values_list('sort_order', flat=True).first()
+        .order_by('-sort_order')
+        .values_list('sort_order', flat=True)
+        .first()
     )
     if max_sort is None:
         sort_order = 0
@@ -447,6 +506,7 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:
 @staff_member_required
 def image_delete(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductImage
+
     product = _get_product(product_id)
     image = get_object_or_404(ProductImage, pk=image_id, product=product)
     if request.method == 'POST':
@@ -468,6 +528,7 @@ def image_reorder(request: HttpRequest, product_id: str) -> HttpResponse:
     """
     from django.http import JsonResponse
     from plugins.installed.catalog.models import ProductImage
+
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
     product = _get_product(product_id)
@@ -485,7 +546,7 @@ def image_reorder(request: HttpRequest, product_id: str) -> HttpResponse:
         img = existing.get(image_id)
         if img is None:
             continue
-        should_primary = (idx == 0)
+        should_primary = idx == 0
         fields = []
         if img.sort_order != idx:
             img.sort_order = idx
@@ -524,7 +585,9 @@ def video_add(request: HttpRequest, product_id: str) -> HttpResponse:
     # Append at the end — the storefront renders videos AFTER images.
     max_sort = (
         ProductVideo.objects.filter(product=product)
-        .order_by('-sort_order').values_list('sort_order', flat=True).first()
+        .order_by('-sort_order')
+        .values_list('sort_order', flat=True)
+        .first()
     )
     sort_order = (int(max_sort) + 1) if max_sort is not None else 0
     ProductVideo.objects.create(
@@ -564,6 +627,7 @@ def image_edit(request: HttpRequest, product_id: str, image_id: str) -> HttpResp
     """
     from django.http import JsonResponse
     from plugins.installed.catalog.models import ProductImage
+
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
     product = _get_product(product_id)
@@ -583,6 +647,7 @@ def video_edit(request: HttpRequest, product_id: str, video_id: str) -> HttpResp
     Called by the Morph.MediaUploader modal. AJAX-only (returns JSON).
     """
     from django.http import JsonResponse
+
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
     product = _get_product(product_id)
@@ -604,6 +669,7 @@ def video_edit(request: HttpRequest, product_id: str, video_id: str) -> HttpResp
 @staff_member_required
 def image_set_primary(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductImage
+
     product = _get_product(product_id)
     image = get_object_or_404(ProductImage, pk=image_id, product=product)
     # Optional `slot` POST param ('front' | 'back') lets the admin form
@@ -617,7 +683,9 @@ def image_set_primary(request: HttpRequest, product_id: str, image_id: str) -> H
         # stays unique. The demoted image goes back to the slider with a
         # high sort_order (so it doesn't fight the back slot).
         ProductImage.objects.filter(
-            product=product, is_primary=True, sort_order=target_sort,
+            product=product,
+            is_primary=True,
+            sort_order=target_sort,
         ).exclude(pk=image.pk).update(is_primary=False, sort_order=99)
         image.is_primary = True
         image.sort_order = target_sort
@@ -677,8 +745,7 @@ def _content_audit_queryset():
     from django.db.models import Q
 
     return (
-        Product.objects
-        .filter(
+        Product.objects.filter(
             Q(short_description='') | Q(description='') | Q(category__isnull=True),
         )
         .select_related('category')
@@ -694,12 +761,14 @@ def content_audit(request: HttpRequest) -> HttpResponse:
     qs = _content_audit_queryset()
     rows = []
     for p in qs[:500]:
-        rows.append({
-            'product': p,
-            'missing_short': not (p.short_description or '').strip(),
-            'missing_long': not (p.description or '').strip(),
-            'missing_category': p.category_id is None,
-        })
+        rows.append(
+            {
+                'product': p,
+                'missing_short': not (p.short_description or '').strip(),
+                'missing_long': not (p.description or '').strip(),
+                'missing_category': p.category_id is None,
+            }
+        )
     summary = {
         'total': qs.count(),
         'missing_short': qs.filter(short_description='').count(),
@@ -708,17 +777,21 @@ def content_audit(request: HttpRequest) -> HttpResponse:
         'product_total': Product.objects.count(),
     }
     categories = list(Category.objects.values('id', 'name').order_by('name')[:200])
-    return render(request, 'admin_dashboard/content_audit.html', {
-        'rows': rows,
-        'summary': summary,
-        'categories': categories,
-        'active_nav': 'products',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Products',  'url': '/dashboard/products/'},
-            {'label': 'Content audit'},
-        ],
-    })
+    return render(
+        request,
+        'admin_dashboard/content_audit.html',
+        {
+            'rows': rows,
+            'summary': summary,
+            'categories': categories,
+            'active_nav': 'products',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Products', 'url': '/dashboard/products/'},
+                {'label': 'Content audit'},
+            ],
+        },
+    )
 
 
 @staff_member_required
@@ -741,6 +814,7 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
 
     try:
         from core.agents.llm import LLMMessage, get_llm_provider
+
         provider = get_llm_provider()
     except Exception as e:  # noqa: BLE001
         return JsonResponse({'ok': False, 'error': f'llm unavailable: {e}'}, status=502)
@@ -749,17 +823,25 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
         try:
             resp = provider.respond(
                 messages=[
-                    LLMMessage(role='system', content=(
-                        'You are a bookstore copywriter. Write a single '
-                        'sentence (12–25 words) summarising the book. No '
-                        'hype, no spoilers, no marketing adjectives.'
-                    )),
-                    LLMMessage(role='user', content=(
-                        f'Title: {p.name}\n'
-                        f'Existing long description: {(p.description or "")[:600]}'
-                    )),
+                    LLMMessage(
+                        role='system',
+                        content=(
+                            'You are a bookstore copywriter. Write a single '
+                            'sentence (12–25 words) summarising the book. No '
+                            'hype, no spoilers, no marketing adjectives.'
+                        ),
+                    ),
+                    LLMMessage(
+                        role='user',
+                        content=(
+                            f'Title: {p.name}\n'
+                            f'Existing long description: {(p.description or "")[:600]}'
+                        ),
+                    ),
                 ],
-                tools=None, temperature=0.5, max_tokens=120,
+                tools=None,
+                temperature=0.5,
+                max_tokens=120,
             )
             short = (resp.text or '').strip().strip('"').strip()
             if short:
@@ -772,18 +854,26 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
         try:
             resp = provider.respond(
                 messages=[
-                    LLMMessage(role='system', content=(
-                        'You are a literary but unfussy bookstore copywriter. '
-                        'Write an 80–140 word product description. Avoid spoilers, '
-                        'hype, and generic adjectives. Plain prose, short sentences.'
-                    )),
-                    LLMMessage(role='user', content=(
-                        f'Title: {p.name}\n'
-                        f'Category: {p.category.name if p.category_id else "—"}\n'
-                        f'Existing short: {p.short_description or ""}'
-                    )),
+                    LLMMessage(
+                        role='system',
+                        content=(
+                            'You are a literary but unfussy bookstore copywriter. '
+                            'Write an 80–140 word product description. Avoid spoilers, '
+                            'hype, and generic adjectives. Plain prose, short sentences.'
+                        ),
+                    ),
+                    LLMMessage(
+                        role='user',
+                        content=(
+                            f'Title: {p.name}\n'
+                            f'Category: {p.category.name if p.category_id else "—"}\n'
+                            f'Existing short: {p.short_description or ""}'
+                        ),
+                    ),
                 ],
-                tools=None, temperature=0.6, max_tokens=400,
+                tools=None,
+                temperature=0.6,
+                max_tokens=400,
             )
             long_desc = (resp.text or '').strip()
             if long_desc:
@@ -798,19 +888,27 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
             if cat_names:
                 resp = provider.respond(
                     messages=[
-                        LLMMessage(role='system', content=(
-                            'Pick the SINGLE best-fit category for this book '
-                            'from the list provided. Reply with EXACTLY the '
-                            'category name and nothing else. If none fit well, '
-                            'reply with the word NONE.'
-                        )),
-                        LLMMessage(role='user', content=(
-                            f'Title: {p.name}\n'
-                            f'Description: {(p.description or p.short_description or "")[:600]}\n\n'
-                            f'Categories:\n- ' + '\n- '.join(cat_names)
-                        )),
+                        LLMMessage(
+                            role='system',
+                            content=(
+                                'Pick the SINGLE best-fit category for this book '
+                                'from the list provided. Reply with EXACTLY the '
+                                'category name and nothing else. If none fit well, '
+                                'reply with the word NONE.'
+                            ),
+                        ),
+                        LLMMessage(
+                            role='user',
+                            content=(
+                                f'Title: {p.name}\n'
+                                f'Description: {(p.description or p.short_description or "")[:600]}\n\n'
+                                f'Categories:\n- ' + '\n- '.join(cat_names)
+                            ),
+                        ),
                     ],
-                    tools=None, temperature=0.1, max_tokens=40,
+                    tools=None,
+                    temperature=0.1,
+                    max_tokens=40,
                 )
                 guess = (resp.text or '').strip().strip('"').strip()
                 if guess and guess.upper() != 'NONE':
@@ -825,14 +923,13 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
         fields_updated.append('updated_at')
         p.save(update_fields=fields_updated)
 
-    return JsonResponse({
-        'ok': True,
-        'product_id': str(p.pk),
-        'updated': [f for f in fields_updated if f != 'updated_at'],
-        'short_description': p.short_description,
-        'description': p.description,
-        'category': p.category.name if p.category_id else '',
-    })
-
-
-
+    return JsonResponse(
+        {
+            'ok': True,
+            'product_id': str(p.pk),
+            'updated': [f for f in fields_updated if f != 'updated_at'],
+            'short_description': p.short_description,
+            'description': p.description,
+            'category': p.category.name if p.category_id else '',
+        }
+    )

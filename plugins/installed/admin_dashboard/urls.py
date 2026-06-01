@@ -174,6 +174,7 @@ urlpatterns = [
     path('products/new/', views.product_new, name='product_new'),
     path('products/<uuid:product_id>/', views.product_edit, name='product_edit'),
     path('products/<uuid:product_id>/delete/', views.product_delete, name='product_delete'),
+    path('products/<uuid:product_id>/archive/', views.product_archive, name='product_archive'),
     path('products/<uuid:product_id>/variants/new/', views.variant_new, name='variant_new'),
     path(
         'products/<uuid:product_id>/variants/<uuid:variant_id>/',

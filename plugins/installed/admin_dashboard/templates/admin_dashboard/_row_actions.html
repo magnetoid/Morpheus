@@ -1,27 +1,63 @@
-{# Per-row overflow action menu — Shopify-style. #}
-{# Drop into a `<td>` on a list-page table; reuses the [data-dropdown] #}
-{# JS in base.html for open/close + outside-click dismissal. Each #}
-{# action is either a navigation link (no `method`) or a CSRF-protected #}
-{# POST form. Destructive items get `data-confirm-danger` so the #}
-{# existing confirm-modal handler runs before submit. #}
+{# Per-row action menu — Shopify-style. #}
+{# Drop into a `<td>` on a list-page table. Each action renders one of #}
+{# two ways: #}
+{#   inline: True  → a visible icon-button on the row (Edit / Archive…). #}
+{#   (default)     → tucked into the “⋯” overflow dropdown, reusing the #}
+{#                   [data-dropdown] JS in base.html. #}
+{# Both honour `method` (get|post), `confirm` (routes through the modal #}
+{# via data-confirm), `danger`, `icon`, and `hidden_inputs`. #}
+{# #}
+{# We split with `regroup` so callers that never set `inline` (orders, #}
+{# customers) keep every action in the dropdown exactly as before. Each #}
+{# caller's actions are all-inline or all-menu, so the contiguity that #}
+{# regroup needs holds. #}
 {# #}
 {# Caller passes: #}
 {#   actions      — list of dicts: #}
 {#     { label, url, method? ('get'|'post', default 'get'), #}
-{#       icon? (lucide name), danger? (bool), #}
+{#       icon? (lucide name), danger? (bool), inline? (bool), #}
 {#       confirm? (string — message; presence enables `data-confirm`), #}
 {#       hidden_inputs? (dict {name: value} added as <input type="hidden">) } #}
 {#   csrf_token   — pass {{ csrf_token }} from the outer template. #}
+{% regroup actions by inline as action_groups %}
 <td class="text-right" data-dropdown style="position: relative; width: 1px; white-space: nowrap;">
-  <button type="button" data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
-          class="btn btn-ghost"
-          style="padding: .15rem .35rem;"
-          onclick="event.stopPropagation();">
-    <i data-lucide="more-horizontal" class="h-4 w-4"></i>
-  </button>
-  <div class="dropdown-menu" hidden role="menu">
-    {% for a in actions %}
+  <div style="display: inline-flex; align-items: center; gap: .1rem;">
+    {# ── 1. inline icon-buttons ───────────────────────────────────────── #}
+    {% for g in action_groups %}{% if g.grouper %}{% for a in g.list %}
       {% if a.method|default:'get' == 'post' %}
+      <form method="post" action="{{ a.url }}"
+            {% if a.confirm %}data-confirm="{{ a.confirm }}"
+                              data-confirm-cta="{{ a.label }}"
+                              {% if a.danger %}data-confirm-danger{% endif %}{% endif %}
+            style="margin: 0; display: inline;">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        {% for k, v in a.hidden_inputs.items %}
+        <input type="hidden" name="{{ k }}" value="{{ v }}">
+        {% endfor %}
+        <button type="submit" class="btn btn-ghost {% if a.danger %}text-danger{% endif %}"
+                style="padding: .25rem .35rem;" title="{{ a.label }}" aria-label="{{ a.label }}">
+          {% if a.icon %}<i data-lucide="{{ a.icon }}" class="h-4 w-4"></i>{% endif %}
+        </button>
+      </form>
+      {% else %}
+      <a href="{{ a.url }}" class="btn btn-ghost {% if a.danger %}text-danger{% endif %}"
+         style="padding: .25rem .35rem;" title="{{ a.label }}" aria-label="{{ a.label }}">
+        {% if a.icon %}<i data-lucide="{{ a.icon }}" class="h-4 w-4"></i>{% endif %}
+      </a>
+      {% endif %}
+    {% endfor %}{% endif %}{% endfor %}
+
+    {# ── 2. overflow dropdown — only when non-inline actions exist ─────── #}
+    {% for g in action_groups %}{% if not g.grouper %}
+    <button type="button" data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
+            class="btn btn-ghost"
+            style="padding: .15rem .35rem;"
+            onclick="event.stopPropagation();">
+      <i data-lucide="more-horizontal" class="h-4 w-4"></i>
+    </button>
+    <div class="dropdown-menu" hidden role="menu">
+      {% for a in g.list %}
+        {% if a.method|default:'get' == 'post' %}
         <form method="post" action="{{ a.url }}"
               {% if a.confirm %}data-confirm="{{ a.confirm }}"
                                 data-confirm-cta="{{ a.label }}"
@@ -36,12 +72,14 @@
             {{ a.label }}
           </button>
         </form>
-      {% else %}
+        {% else %}
         <a href="{{ a.url }}" class="dropdown-item {% if a.danger %}dropdown-item-danger{% endif %}" role="menuitem">
           {% if a.icon %}<i data-lucide="{{ a.icon }}" class="h-4 w-4"></i>{% endif %}
           {{ a.label }}
         </a>
-      {% endif %}
-    {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}{% endfor %}
   </div>
 </td>
