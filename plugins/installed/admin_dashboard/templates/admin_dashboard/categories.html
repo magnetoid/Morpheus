@@ -73,14 +73,10 @@
         {% endfor %}
       </tbody>
     </table>
+    {% elif search %}
+    {% include "admin_dashboard/_empty_state.html" with icon="search-x" title="No categories match" hint="Nothing matches your search." action_url="?" action_label="Clear search" %}
     {% else %}
-    <div class="px-4 py-12 text-center text-[color:var(--text-muted)]">
-      {% if search %}
-      No categories match <strong>{{ search }}</strong>. <a href="?" class="underline">Clear search</a>.
-      {% else %}
-      No categories yet. <a href="/admin/catalog/category/add/" class="underline">Create the first one</a>.
-      {% endif %}
-    </div>
+    {% include "admin_dashboard/_empty_state.html" with icon="folder-tree" title="No categories yet" hint="Categories power product browsing and SEO landing pages." action_url="/admin/catalog/category/add/" action_label="New category" action_icon="plus" %}
     {% endif %}
   </div>
 
