@@ -101,6 +101,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.agent_mcp',
     'plugins.installed.reviews',
     'plugins.installed.loyalty_points',
+    'plugins.installed.lumina',
     'plugins.installed.product_gallery',
     'plugins.installed.product_videos',
     'plugins.installed.tracking',

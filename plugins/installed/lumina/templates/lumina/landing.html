@@ -1,0 +1,130 @@
+{% extends "storefront/base.html" %}
+{% comment %}
+Lumina Book Creator — a storefront landing page that lives ON dot books.
+Extends the active theme's base so it inherits the dot books header, nav,
+footer, fonts (Fraunces + Inter) and tokens (--paper/--ink/--accent). Uses
+ONLY the theme's own classes (.wrap/.display-*/.lede/.eyebrow/.btn-*/
+.text-accent) so it reads as a native page, not a separate microsite.
+{% endcomment %}
+{% load seo %}
+{% block title %}Lumina — write your book with AI · dot books{% endblock %}
+
+{% block seo %}{% seo_meta fallback_title="Lumina — write your book with AI" fallback_description="Write your book fast with AI and voice, auto-translate it into 100 languages, and sell it on dot books. Share your knowledge and earn." %}{% endblock %}
+
+{% block content %}
+
+{# ── Hero ─────────────────────────────────────────────────────────── #}
+<section style="padding: 4.5rem 0 3.5rem;">
+  <div class="wrap" style="max-width: 820px; text-align: center;">
+    <p class="eyebrow">Lumina Book Creator</p>
+    <h1 class="display display-xl" style="margin: 1.25rem 0 1.25rem;">
+      Write your book with&nbsp;AI.<br>Tell your story to the world<span class="text-accent">.</span>
+    </h1>
+    <p class="lede" style="margin: 0 auto 2rem;">
+      Speak it or type it — Lumina turns your idea into a finished book, translates it into
+      <strong style="color: var(--ink); font-weight: 600;">100 languages</strong>, and puts it on the
+      shelf to sell. Share your knowledge, reach the world, and earn.
+    </p>
+    <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+      <a class="btn btn-primary" href="#start">Start your book</a>
+      <a class="btn btn-ghost" href="#how">See how it works</a>
+    </div>
+    <p class="eyebrow" style="margin-top: 1.75rem; opacity: .8;">
+      Voice&nbsp;to&nbsp;book &nbsp;·&nbsp; 100&nbsp;languages &nbsp;·&nbsp; Publish in minutes
+    </p>
+  </div>
+</section>
+
+{# ── Features ─────────────────────────────────────────────────────── #}
+<section style="padding: 3.5rem 0; border-top: 1px solid var(--rule);">
+  <div class="wrap">
+    <div style="max-width: 620px; margin-bottom: 2.5rem;">
+      <p class="eyebrow">Everything you need to author</p>
+      <h2 class="display display-l" style="margin-top: .75rem;">From a spark to a book that sells<span class="text-accent">.</span></h2>
+    </div>
+    <div style="display: grid; gap: 1.5rem 2.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+      <div>
+        <p class="display display-m">Write fast with AI<span class="text-accent">.</span></p>
+        <p style="color: var(--muted); margin-top: .5rem;">Outlines, chapters, edits — drafted in minutes. Lumina writes in your voice and you keep control of every word.</p>
+      </div>
+      <div>
+        <p class="display display-m">Speak it into being<span class="text-accent">.</span></p>
+        <p style="color: var(--muted); margin-top: .5rem;">Dictate on a walk, in the car, anywhere. Voice-to-book turns the way you talk into clean, structured prose.</p>
+      </div>
+      <div>
+        <p class="display display-m">100 languages<span class="text-accent">.</span></p>
+        <p style="color: var(--muted); margin-top: .5rem;">Publish once, reach everyone. Lumina translates your book automatically so readers worldwide find you in theirs.</p>
+      </div>
+      <div>
+        <p class="display display-m">Sell &amp; earn<span class="text-accent">.</span></p>
+        <p style="color: var(--muted); margin-top: .5rem;">One click publishes to dot books — a real storefront with checkout, payouts, and readers. Your knowledge, your revenue.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── How it works ─────────────────────────────────────────────────── #}
+<section id="how" style="padding: 4rem 0; background: var(--paper-2);">
+  <div class="wrap">
+    <div style="max-width: 620px; margin-bottom: 2.5rem;">
+      <p class="eyebrow">How it works</p>
+      <h2 class="display display-l" style="margin-top: .75rem;">Four steps from idea to income<span class="text-accent">.</span></h2>
+    </div>
+    <div style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+      <div>
+        <p class="display display-l text-accent" style="line-height: 1;">01</p>
+        <p class="display display-m" style="margin-top: .5rem;">Speak or type</p>
+        <p style="color: var(--muted); margin-top: .35rem;">Tell Lumina your idea, your notes, your voice memos. Anything goes.</p>
+      </div>
+      <div>
+        <p class="display display-l text-accent" style="line-height: 1;">02</p>
+        <p class="display display-m" style="margin-top: .5rem;">AI shapes it</p>
+        <p style="color: var(--muted); margin-top: .35rem;">Lumina structures chapters, drafts prose, and polishes — with you steering.</p>
+      </div>
+      <div>
+        <p class="display display-l text-accent" style="line-height: 1;">03</p>
+        <p class="display display-m" style="margin-top: .5rem;">Translate to 100</p>
+        <p style="color: var(--muted); margin-top: .35rem;">One tap localizes your book for a global audience, automatically.</p>
+      </div>
+      <div>
+        <p class="display display-l text-accent" style="line-height: 1;">04</p>
+        <p class="display display-m" style="margin-top: .5rem;">Publish &amp; earn</p>
+        <p style="color: var(--muted); margin-top: .35rem;">Ship to dot books, set your price, and start earning from real readers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── Earn ─────────────────────────────────────────────────────────── #}
+<section style="padding: 5rem 0; border-top: 1px solid var(--rule);">
+  <div class="wrap" style="max-width: 720px; text-align: center;">
+    <p class="eyebrow">Your story, your living</p>
+    <h2 class="display display-l" style="margin: 1rem 0;">Share your knowledge. Earn from it<span class="text-accent">.</span></h2>
+    <p class="lede" style="margin: 0 auto 2rem;">
+      Experts, teachers, founders, storytellers — turn what you know into a book the whole world can read and buy.
+      Lumina handles the craft and the languages; you keep the spotlight and the royalties.
+    </p>
+    <div style="display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; margin-bottom: 2.25rem;">
+      <div><p class="display display-l text-accent" style="line-height: 1;">100</p><p class="eyebrow" style="margin-top: .35rem;">languages, automatic</p></div>
+      <div><p class="display display-l text-accent" style="line-height: 1;">~20 min</p><p class="eyebrow" style="margin-top: .35rem;">idea → first draft</p></div>
+      <div><p class="display display-l text-accent" style="line-height: 1;">1 tap</p><p class="eyebrow" style="margin-top: .35rem;">publish &amp; sell</p></div>
+    </div>
+    <a class="btn btn-primary" href="#start">Become an author</a>
+  </div>
+</section>
+
+{# ── Final CTA ────────────────────────────────────────────────────── #}
+<section id="start" style="padding: 4.5rem 0 6rem; background: var(--paper-2);">
+  <div class="wrap" style="max-width: 720px; text-align: center;">
+    <h2 class="display display-xl">Your book is one idea away<span class="text-accent">.</span></h2>
+    <p class="lede" style="margin: 1.25rem auto 2rem;">
+      Start with a sentence or a voice note. Lumina takes it from there — and the world gets to read you.
+    </p>
+    <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+      <a class="btn btn-primary" href="{{ lumina_app_url|default:'#' }}">Start creating with Lumina</a>
+      <a class="btn btn-ghost" href="#features">Explore features</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
