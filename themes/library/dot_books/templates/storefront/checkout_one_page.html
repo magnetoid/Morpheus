@@ -104,6 +104,31 @@
         {% endif %}
         {% endif %} {# no_shipping_required #}
 
+        {% if payment_methods %}
+        {% comment %}
+        Payment method picker — one radio per enabled gateway. The server
+        re-validates the chosen slug against enabled_gateways(); an
+        empty/unknown/disabled slug falls back to the default (Stripe), so
+        this never lets a shopper pick a disabled gateway.
+        {% endcomment %}
+        <fieldset style="border: 0; padding: 0; margin: 0 0 2rem;">
+          <legend style="font-family: var(--serif); font-size: 1.3rem; margin-bottom: 1rem;">Payment method</legend>
+          {% for m in payment_methods %}
+          <label style="display:flex; align-items:flex-start; gap:.75rem; padding:.75rem; border:1px solid var(--rule); border-radius:6px; margin-bottom:.5rem; cursor:pointer;">
+            <input type="radio" name="payment_method" value="{{ m.slug }}" style="margin-top:.25rem;"
+                   {% if m.slug == selected_payment_method %}checked{% endif %}>
+            <span style="flex:1;">
+              <span style="display:block;">{{ m.label }}</span>
+              <span class="meta">{{ m.capability }}</span>
+              {% if m.instructions %}
+              <span class="meta" style="display:block; margin-top:.35rem;">{{ m.instructions }}</span>
+              {% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        {% endif %}
+
         {% if user.is_authenticated %}
         <label style="display:flex; align-items:center; gap:.5rem; margin-bottom:2rem;">
           <input type="checkbox" name="save_info" value="1" checked> Save this info for next time

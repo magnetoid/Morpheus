@@ -75,10 +75,11 @@ class GatewayRegistry:
     def enabled_gateways(self) -> list[PaymentGateway]:
         """Registered gateways whose Settings → Payments toggle is on.
 
-        Read-only convenience for surfaces that want to honour the enable
-        flag (e.g. a payment-method picker). The checkout/payment-intent
-        path still uses ``default()`` — wiring this into checkout is
-        deliberately deferred (see docs/plans/morph-backlog-2026-06.md).
+        Backs the checkout payment-method picker AND server-side
+        validation of the submitted slug (see
+        ``payments.services.routing``): checkout resolves the chosen
+        gateway against this list and falls back to ``default()`` for an
+        empty / unknown / disabled slug.
         """
         from plugins.installed.payments.models import is_enabled
 

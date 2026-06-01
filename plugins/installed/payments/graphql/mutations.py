@@ -1,5 +1,5 @@
 import strawberry
-from plugins.installed.payments.services.stripe import PaymentService
+from plugins.installed.payments.services.routing import create_payment_intent_for
 from plugins.installed.orders.models import Order
 
 @strawberry.type
@@ -12,10 +12,12 @@ class PaymentResult:
 @strawberry.type
 class PaymentsMutationExtension:
     @strawberry.mutation(description="Create a payment intent for an order")
-    def create_payment_intent(self, order_id: str) -> PaymentResult:
+    def create_payment_intent(self, order_id: str, gateway: str | None = None) -> PaymentResult:
         try:
             order = Order.objects.get(id=order_id)
-            result = PaymentService.create_payment_intent(order)
+            # Route via the registry. None/unknown/disabled slug -> default
+            # (stripe), so the existing Stripe behaviour is the fallback.
+            result = create_payment_intent_for(order, gateway)
             return PaymentResult(
                 success=result.get('success', False),
                 client_secret=result.get('client_secret'),

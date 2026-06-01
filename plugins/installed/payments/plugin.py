@@ -48,43 +48,52 @@ class PaymentsPlugin(Plugin):
         logger.info(f'PaymentsPlugin: Order {order.id} placed. Verifying payment status.')
 
     def on_refund_requested(self, refund, **kwargs):
-        """Drive the Stripe-side refund when the dashboard records a Refund.
+        """Drive the gateway-side refund when the dashboard records a Refund.
 
-        Looks up the most recent successful PaymentTransaction on the order
-        and asks the registered StripeGateway to issue the refund. On
-        success, marks ``Refund.is_processed=True``. Failures are logged
-        and a staff-visible note is appended.
+        Routes through the gateway that processed the order
+        (``order.payment_gateway``, defaulting to 'stripe' for legacy
+        orders + the common path). Looks up the most recent successful
+        PaymentTransaction for that provider and asks the registered
+        gateway to issue the refund. On success, marks
+        ``Refund.is_processed=True``. Failures are logged and a
+        staff-visible note is appended. COD/manual orders have no
+        transaction, so they no-op here (reconciled offline).
         """
         from django.utils import timezone
         from plugins.installed.payments.gateway import gateway_registry
         from plugins.installed.payments.models import PaymentTransaction
 
         order = refund.order
+        slug = (getattr(order, 'payment_gateway', '') or 'stripe').strip() or 'stripe'
         tx = (
             PaymentTransaction.objects.filter(
-                order=order, provider='stripe', status=PaymentTransaction.Status.SUCCEEDED
+                order=order, provider=slug, status=PaymentTransaction.Status.SUCCEEDED
             )
             .order_by('-id')
             .first()
         )
         if tx is None:
             logger.info(
-                'refund: no successful Stripe transaction on order %s — leaving '
+                'refund: no successful %s transaction on order %s — leaving '
                 'refund #%s as manual/pending.',
+                slug,
                 order.order_number,
                 refund.id,
             )
             return
 
-        gateway = gateway_registry.get('stripe') if hasattr(gateway_registry, 'get') else None
+        gateway = gateway_registry.get(slug) if hasattr(gateway_registry, 'get') else None
         if gateway is None:
             # Iterate registered gateways (older registry shape).
             for g in getattr(gateway_registry, 'all', lambda: [])():
-                if getattr(g, 'slug', None) == 'stripe':
+                if getattr(g, 'slug', None) == slug:
                     gateway = g
                     break
         if gateway is None:
-            logger.warning('refund: stripe gateway not registered.')
+            logger.warning('refund: gateway %r not registered.', slug)
+            return
+        if not getattr(gateway, 'supports_refunds', False):
+            logger.info('refund: gateway %r does not support refunds — manual.', slug)
             return
 
         result = gateway.refund(transaction=tx, amount=refund.amount)

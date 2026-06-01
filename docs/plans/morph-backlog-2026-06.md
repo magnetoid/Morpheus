@@ -143,10 +143,44 @@ report. Then build it out: many options, and **embeddable shop widgets**
 5. Replace hand-coded empty states with `_empty_state.html` (categories.html, errors_list.html).
 - Also: consistent `space-y-4`; `.form-help` class; don't use `.pill` for tabs (customers.html).
 
+## Payments unification (item #4) — v1 SHIPPED (working tree, not committed)
+Built the unified **Settings → Payments** page. One card per gateway in
+`gateway_registry.all()` with: label, capability badges (refunds/webhooks),
+enable toggle, and per-gateway config (Stripe: secret/publishable/webhook keys +
+capture strategy; Manual: customer-facing instructions textarea). Manual / offline
+IS the test gateway — enable it to run checkout end-to-end without a processor.
+
+Decisions taken:
+- **Storage = new model** `payments.PaymentGatewayConfig` (slug unique, enabled bool,
+  config JSON) + migration `0003_paymentgatewayconfig`. `is_enabled(slug)` helper with
+  `DEFAULT_ENABLED = {'stripe','manual'}` so a fresh install never has zero methods.
+- **Surface = custom view** `admin_dashboard.views_split.settings.settings_payments`,
+  dispatched from `settings_category('payments')` (same pattern as `ai`/`caching`).
+  Template `settings_payments.html`. No new URL (reuses the staff-gated
+  `settings/<category>/` route); boundary triplet still added for the new view.
+- **Registry helper** `gateway_registry.enabled_gateways()` filters by `is_enabled`
+  (read-only, low-risk).
+
+DONE — checkout gateway selection (was deferred; now wired):
+- `payments/services/routing.py` is the single routing entry point.
+  `complete_order` (and the standalone `createPaymentIntent`) call
+  `create_payment_intent_for(order, selected_slug)` instead of hardcoding
+  Stripe. The slug is validated against `enabled_gateways()`; empty / unknown /
+  disabled → `default()` (stripe), so the live Stripe path is unchanged when no
+  method is picked. The resolved slug is recorded on `Order.payment_gateway`
+  (migration `orders/0011`); refunds route back through it.
+- Storefront picker: `checkout_one_page.html` renders one radio per
+  `picker_gateways()` entry (default-selects stripe); the chosen slug rides the
+  `completeOrder` mutation as `paymentGateway`.
+- Contract tests: `payments/tests/test_routing.py` (real ABC + registry, only the
+  Stripe SDK boundary mocked) — stripe shape preserved, manual/cod/test offline
+  success, disabled/unknown → stripe fallback, fail-soft on gateway error.
+
 ## Remaining work + blockers (for final report)
 - UX standardization: do the 5 above (unambiguous, safe). IN PROGRESS.
-- Payments unification: sizable build, plan above. Decision: store config where (new model vs
-  PluginConfig) + whether to also wire checkout gateway selection now.
+- Payments checkout wiring: DONE per the section above (per-order gateway
+  selection + honoring `enabled_gateways()` in the payment-intent flow, routed
+  through `payments/services/routing.py` with contract tests).
 - Loyalty app: NOT yet assessed — find plugins/installed/loyalty*, report state, continue.
 - Extensive affiliate + embeddable widgets: LARGE, needs user design decision on widget approach.
 - Prod product dedup: BLOCKED — needs user to review dry-run + confirm before --delete.

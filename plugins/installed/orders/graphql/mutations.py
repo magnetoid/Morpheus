@@ -52,6 +52,10 @@ class CompleteOrderInput:
     shipping_address: AddressInput
     billing_address: Optional[AddressInput] = None
     shipping_rate_id: Optional[str] = None
+    # Registry slug of the chosen payment gateway (stripe / manual / cod /
+    # test). Optional + validated server-side: empty/unknown/disabled →
+    # the default gateway (stripe). The client never picks a disabled one.
+    payment_gateway: Optional[str] = None
 
 
 @strawberry.input
@@ -268,13 +272,18 @@ class OrdersMutationExtension:
         # blank checkout. Now: if Stripe can't issue an intent, the
         # order is rolled back and the customer gets a retryable error.
         try:
-            from plugins.installed.payments.services.stripe import PaymentService
+            from plugins.installed.payments.services.routing import (
+                create_payment_intent_for,
+            )
             with transaction.atomic():
                 order = OrderService.create_from_cart(
                     cart=cart, email=input.email,
                     shipping_address=ship, billing_address=bill,
                 )
-                pi = PaymentService.create_payment_intent(order)
+                # Route to the shopper-selected gateway. Empty / unknown /
+                # disabled slug → default (stripe), so the live Stripe path
+                # is unchanged when no method is picked.
+                pi = create_payment_intent_for(order, input.payment_gateway)
                 if not pi.get('success'):
                     # Force rollback by raising; the caller-level except
                     # converts this into a CHECKOUT_FAILED user message.

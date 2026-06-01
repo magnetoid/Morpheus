@@ -15,13 +15,13 @@ picker). Config lives in this plugin's PluginConfig via
 ``contribute_settings_panel`` (category ``payments``), not in
 admin_dashboard.
 
-DEFERRED (high-stakes money path — see docs/plans/modular-os-2026-06.md):
-the checkout payment-method *selection* still routes through
-``gateway_registry.default()``. Letting a shopper pick ``test``/``cod`` at
-checkout means a picker UI + threading the chosen slug into
-``create_payment_intent`` + honouring ``enabled_gateways()`` — its own
-change with contract tests against the live order flow. These gateways are
-registered + available; wiring the picker is the next step.
+Checkout selection is wired (payments/services/routing.py): the storefront
+picker lists ``enabled_gateways()`` and threads the chosen slug into
+``create_payment_intent_for``. Both ``cod`` and ``test`` are OFF until a
+merchant flips them on in Settings → Payments (``enabled_gateways()`` keys
+off ``PaymentGatewayConfig``; only stripe + manual are on by default). A
+disabled / unknown slug submitted at checkout falls back to stripe
+server-side, so the picker can never select a gateway that isn't enabled.
 """
 
 # ruff: noqa: PLC0415

@@ -46,11 +46,14 @@ def checkout_one_page(request):
 
     addr = _collect_address(request)
     rate_id = (request.POST.get('shipping_rate_id') or '').strip()
+    payment_method = (request.POST.get('payment_method') or '').strip()
     no_shipping = not _cart_requires_shipping(request)
 
     error = _validate(addr, no_shipping=no_shipping)
     if error:
-        return _render_form(request, addr=addr, rate_id=rate_id, error=error)
+        return _render_form(
+            request, addr=addr, rate_id=rate_id, error=error, payment_method=payment_method
+        )
 
     cart_data = internal_graphql(CART_QUERY, request=request) or {}
     cart = cart_data.get('cart') or {}
@@ -74,6 +77,7 @@ def checkout_one_page(request):
             addr=addr,
             rate_id=rate_id,
             error='Your cart has expired — add items again to continue.',
+            payment_method=payment_method,
         )
 
     payload = _submit_order(
@@ -81,6 +85,7 @@ def checkout_one_page(request):
         cart_id=cart_id,
         addr=addr,
         rate_id=rate_id,
+        payment_method=payment_method,
     )
     errs = payload.get('errors') or []
     if errs:
@@ -89,6 +94,7 @@ def checkout_one_page(request):
             addr=addr,
             rate_id=rate_id,
             error='; '.join(e.get('message', 'Order failed.') for e in errs),
+            payment_method=payment_method,
         )
 
     order_no = payload.get('orderNumber') or ''
@@ -151,7 +157,9 @@ def _validate(addr: dict, *, no_shipping: bool) -> str:
     return ''
 
 
-def _submit_order(*, request, cart_id: str, addr: dict, rate_id: str) -> dict:
+def _submit_order(
+    *, request, cart_id: str, addr: dict, rate_id: str, payment_method: str = ''
+) -> dict:
     mutation = """
     mutation Complete($input: CompleteOrderInput!) {
       completeOrder(input: $input) {
@@ -181,6 +189,9 @@ def _submit_order(*, request, cart_id: str, addr: dict, rate_id: str) -> dict:
                     'email': addr.get('email', ''),
                     'shippingAddress': shipping_input,
                     'shippingRateId': rate_id if rate_id != 'no-shipping' else None,
+                    # Server validates against enabled_gateways(); empty /
+                    # unknown / disabled → default (stripe).
+                    'paymentGateway': payment_method or None,
                 },
             },
             request=request,
@@ -210,12 +221,20 @@ def _redirect_to_confirmation(order_no: str):
     return redirect(url)
 
 
-def _render_form(request, *, addr: dict | None, rate_id: str, error: str):
+def _render_form(request, *, addr: dict | None, rate_id: str, error: str, payment_method: str = ''):
     ctx = _checkout_base_context(request)
     ctx['no_shipping_required'] = not _cart_requires_shipping(request)
     ctx['form'] = addr or {}
     ctx['selected_rate_id'] = rate_id
     ctx['error'] = error
+    ctx['payment_methods'] = _payment_methods()
+    # Keep the shopper's pick across re-renders; default to the gateway the
+    # picker flags as default (stripe) so the live path is pre-selected.
+    if not payment_method:
+        payment_method = next(
+            (m['slug'] for m in ctx['payment_methods'] if m.get('is_default')), ''
+        )
+    ctx['selected_payment_method'] = payment_method
     if not ctx['no_shipping_required'] and addr:
         try:
             ctx['rates'] = _available_shipping_rates(request, addr)
@@ -224,3 +243,14 @@ def _render_form(request, *, addr: dict | None, rate_id: str, error: str):
     else:
         ctx['rates'] = []
     return render(request, 'storefront/checkout_one_page.html', ctx)
+
+
+def _payment_methods() -> list[dict]:
+    """Enabled gateways for the checkout picker (fail-soft to [])."""
+    try:
+        from plugins.installed.payments.services.routing import picker_gateways  # noqa: PLC0415
+
+        return picker_gateways()
+    except Exception:  # noqa: BLE001 — never break checkout over the picker
+        logger.warning('checkout: could not load payment methods', exc_info=True)
+        return []

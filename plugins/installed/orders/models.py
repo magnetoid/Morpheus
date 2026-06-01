@@ -150,6 +150,10 @@ class Order(models.Model):
     email = models.EmailField()
     status = FSMField(max_length=25, choices=STATUS_CHOICES, default='pending', protected=True)
     payment_status = models.CharField(max_length=25, default='unpaid')
+    # Registry slug of the gateway that processed (or will process) this
+    # order — 'stripe', 'manual', 'cod', 'test', … Set at checkout by the
+    # payments routing layer; refunds route back through the same gateway.
+    payment_gateway = models.CharField(max_length=50, blank=True)
 
     # Multi-Tenancy
     channel = models.ForeignKey(
