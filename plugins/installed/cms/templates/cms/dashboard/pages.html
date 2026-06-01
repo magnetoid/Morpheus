@@ -1,18 +1,52 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}CMS pages{% endblock %}
+{% block title %}Pages · CMS · Morpheus{% endblock %}
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Pages</h1>
-<div class="card"><table class="morph-table">
-<thead><tr><th>Slug</th><th>Title</th><th>Category</th><th>State</th><th>Updated</th></tr></thead>
-<tbody>{% for r in rows %}
-<tr>
-  <td>{% if r.metadata.category == 'journal' %}<a href="/journal/{{ r.slug }}/" target="_blank"><code>/journal/{{ r.slug }}/</code></a>{% else %}<a href="/p/{{ r.slug }}/" target="_blank"><code>/p/{{ r.slug }}/</code></a>{% endif %}</td>
-  <td>{{ r.title }}</td>
-  <td>{% with cat=r.metadata.category|default:"page" %}<span class="pill {% if cat == 'journal' %}pill-info{% else %}pill-neutral{% endif %}">{{ cat }}</span>{% endwith %}</td>
-  <td><span class="pill {% if r.state == 'published' %}pill-success{% else %}pill-neutral{% endif %}">{{ r.state }}</span></td>
-  <td>{{ r.updated_at|date:"M j" }}</td>
-</tr>
-{% empty %}<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No pages yet — create via Django admin or the agent.</td></tr>
-{% endfor %}</tbody></table></div>
-<p class="meta mt-3">Set a page's category to <code>journal</code> in metadata to publish it under <code>/journal/</code>.</p>
+<div class="max-w-6xl mx-auto space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Pages</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Storefront content pages — edit text &amp; template inline. Functional pages are managed in code.</p>
+    </div>
+    <a href="/dashboard/cms/pages/new/" class="btn btn-primary">+ New page</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>URL</th><th>Title</th><th>Category</th><th>State</th><th>Updated</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>
+            {% if r.metadata.category == 'journal' %}
+              <a href="/journal/{{ r.slug }}/" target="_blank" rel="noopener"><code class="font-mono text-xs">/journal/{{ r.slug }}/</code></a>
+            {% else %}
+              <a href="/p/{{ r.slug }}/" target="_blank" rel="noopener"><code class="font-mono text-xs">/p/{{ r.slug }}/</code></a>
+            {% endif %}
+          </td>
+          <td class="font-medium">{{ r.title }}</td>
+          <td>{% with cat=r.metadata.category|default:"page" %}<span class="pill {% if cat == 'journal' %}pill-info{% else %}pill-neutral{% endif %}">{{ cat }}</span>{% endwith %}</td>
+          <td>
+            <span class="pill {% if r.state == 'published' %}pill-success{% elif r.state == 'scheduled' %}pill-warn{% elif r.state == 'archived' %}pill-danger{% else %}pill-neutral{% endif %}">{{ r.get_state_display }}</span>
+          </td>
+          <td class="text-[color:var(--text-muted)]">{{ r.updated_at|date:"M j, Y" }}</td>
+          <td class="text-right whitespace-nowrap">
+            <a href="/dashboard/cms/pages/{{ r.id }}/edit/" class="btn btn-ghost text-xs">Edit</a>
+            <form method="post" action="/dashboard/cms/pages/{{ r.id }}/duplicate/" class="inline">{% csrf_token %}<button type="submit" class="btn btn-ghost text-xs">Duplicate</button></form>
+            <form method="post" action="/dashboard/cms/pages/{{ r.id }}/delete/" class="inline" onsubmit="return confirm('Delete “{{ r.title|escapejs }}”? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-danger text-xs">Delete</button></form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-8 text-[color:var(--text-muted)]">No pages yet — click <strong>New page</strong> to create one.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-xs text-[color:var(--text-muted)]">Tip: set a page's <code>metadata.category</code> to <code>journal</code> to publish it under <code>/journal/</code> instead of <code>/p/</code>.</p>
+</div>
 {% endblock %}

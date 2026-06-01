@@ -1,10 +1,11 @@
 """CMS plugin manifest."""
+# ruff: noqa: PLC0415, I001 — inline imports are load-order-safe (CRM optional, agent tools lazy).
+
 from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, events
-from morpheus import DashboardPage
+from morpheus import DashboardPage, Plugin, events
 
 logger = logging.getLogger('morpheus.cms')
 
@@ -23,6 +24,14 @@ class CmsPlugin(Plugin):
 
     def ready(self) -> None:
         self.register_urls('plugins.installed.cms.urls', prefix='', namespace='cms')
+        # Parameterised page CRUD under /dashboard/cms/ (new/edit/duplicate/delete).
+        # The Pages LIST stays at /dashboard/apps/cms/pages/ via
+        # contribute_dashboard_pages; these are the actions it links to.
+        self.register_urls(
+            'plugins.installed.cms.urls_dashboard',
+            prefix='dashboard/cms/',
+            namespace='cms_dashboard',
+        )
         self.register_hook(events.CMS_FORM_SUBMITTED, self.on_form_submitted, priority=50)
         # Theme sections register on import. Pull the active theme's
         # section bundle so the section_registry is populated before
@@ -32,6 +41,7 @@ class CmsPlugin(Plugin):
         try:
             import importlib
             from django.conf import settings as dj_settings
+
             theme = getattr(dj_settings, 'MORPHEUS_ACTIVE_THEME', 'dot_books')
             importlib.import_module(f'themes.library.{theme}.sections')
         except Exception as exc:  # noqa: BLE001 — theme may not ship sections
@@ -41,12 +51,15 @@ class CmsPlugin(Plugin):
         """Bridge to CRM if installed: form submission → Lead + Interaction."""
         try:
             from plugins.installed.crm.services import log_interaction, upsert_lead
+
             email = submission.submitter_email
             if not email:
                 return
             lead = upsert_lead(email=email, source='storefront')
             log_interaction(
-                subject=lead, kind='note', direction='inbound',
+                subject=lead,
+                kind='note',
+                direction='inbound',
                 summary=f'Form submission: {form.label}',
                 body=str(submission.payload)[:2000],
                 actor_name='cms',
@@ -56,32 +69,46 @@ class CmsPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.cms.agent_tools import (
-            create_page_tool, list_pages_tool,
-            recent_submissions_tool, upsert_block_tool,
+            create_page_tool,
+            list_pages_tool,
+            recent_submissions_tool,
+            upsert_block_tool,
         )
-        return [create_page_tool, list_pages_tool,
-                upsert_block_tool, recent_submissions_tool]
+
+        return [create_page_tool, list_pages_tool, upsert_block_tool, recent_submissions_tool]
 
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Pages', slug='pages',
+                label='Pages',
+                slug='pages',
                 view='plugins.installed.cms.dashboard.pages_list',
-                icon='file-text', section='cms', order=10,
+                icon='file-text',
+                section='cms',
+                order=10,
             ),
             DashboardPage(
-                label='Blocks', slug='blocks',
+                label='Blocks',
+                slug='blocks',
                 view='plugins.installed.cms.dashboard.blocks_list',
-                icon='square', section='cms', order=20,
+                icon='square',
+                section='cms',
+                order=20,
             ),
             DashboardPage(
-                label='Menus', slug='menus',
+                label='Menus',
+                slug='menus',
                 view='plugins.installed.cms.dashboard.menus_list',
-                icon='list', section='cms', order=30,
+                icon='list',
+                section='cms',
+                order=30,
             ),
             DashboardPage(
-                label='Forms', slug='forms',
+                label='Forms',
+                slug='forms',
                 view='plugins.installed.cms.dashboard.forms_list',
-                icon='inbox', section='cms', order=40,
+                icon='inbox',
+                section='cms',
+                order=40,
             ),
         ]

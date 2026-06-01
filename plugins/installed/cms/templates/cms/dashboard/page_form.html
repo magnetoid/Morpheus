@@ -1,0 +1,230 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if creating %}New page{% else %}{{ page.title }}{% endif %} · CMS · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-5">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{% if creating %}New page{% else %}{{ page.title }}{% endif %}</h1>
+      {% if not creating %}
+      <p class="text-sm text-[color:var(--text-muted)]">
+        <code class="font-mono text-xs">/p/{{ page.slug }}/</code>
+        <a href="/p/{{ page.slug }}/" target="_blank" rel="noopener" class="ml-2 underline">View live →</a>
+      </p>
+      {% endif %}
+    </div>
+    <a href="/dashboard/apps/cms/pages/" class="btn btn-ghost text-xs">All pages</a>
+  </div>
+
+  <form method="post" action="{{ form_action }}" class="card card-padded space-y-4">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+      <div class="md:col-span-8">
+        <label class="block text-xs font-medium mb-1" for="page-title">Title</label>
+        <input type="text" id="page-title" name="title" required class="input" value="{{ page.title|default:'' }}">
+      </div>
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1" for="page-slug">Slug</label>
+        <input type="text" id="page-slug" name="slug" class="input font-mono" value="{{ page.slug|default:'' }}" placeholder="auto from title">
+      </div>
+
+      <div class="md:col-span-12">
+        <label class="block text-xs font-medium mb-1" for="page-excerpt">Excerpt <span class="text-[color:var(--text-muted)]">(optional summary, ≤300 chars)</span></label>
+        <input type="text" id="page-excerpt" name="excerpt" maxlength="300" class="input" value="{{ page.excerpt|default:'' }}">
+      </div>
+
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1" for="page-layout">Template</label>
+        <select id="page-layout" name="layout" class="input">
+          {% for value, label in layout_choices %}
+          <option value="{{ value }}" {% if page.layout == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1" for="page-state">State</label>
+        <select id="page-state" name="state" class="input">
+          {% for value, label in state_choices %}
+          <option value="{{ value }}" {% if page.state == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="md:col-span-4" id="publish-at-row">
+        <label class="block text-xs font-medium mb-1" for="page-publish-at">Publish at</label>
+        <input type="datetime-local" id="page-publish-at" name="publish_at" class="input" value="{{ page.publish_at|date:'Y-m-d\TH:i' }}">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Only used when state is <strong>Scheduled</strong>.</p>
+      </div>
+
+      <div class="md:col-span-12">
+        <label class="block text-xs font-medium mb-1">Body</label>
+        <div class="rte">
+          <div id="body-toolbar" class="rte-toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" class="rte-btn" data-rte="bold" title="Bold"><strong>B</strong></button>
+            <button type="button" class="rte-btn" data-rte="italic" title="Italic"><em>I</em></button>
+            <button type="button" class="rte-btn" data-rte="strike" title="Strikethrough"><s>S</s></button>
+            <button type="button" class="rte-btn" data-rte="code" title="Inline code">&lt;/&gt;</button>
+            <div class="rte-divider"></div>
+            <button type="button" class="rte-btn" data-rte="h2" title="Heading 2">H2</button>
+            <button type="button" class="rte-btn" data-rte="h3" title="Heading 3">H3</button>
+            <button type="button" class="rte-btn" data-rte="paragraph" title="Paragraph">¶</button>
+            <div class="rte-divider"></div>
+            <button type="button" class="rte-btn" data-rte="bulletList" title="Bullet list">• List</button>
+            <button type="button" class="rte-btn" data-rte="orderedList" title="Numbered list">1. List</button>
+            <button type="button" class="rte-btn" data-rte="blockquote" title="Quote">&ldquo;&rdquo;</button>
+            <button type="button" class="rte-btn" data-rte="codeBlock" title="Code block">{ }</button>
+            <button type="button" class="rte-btn" data-rte="hr" title="Divider">&mdash;</button>
+            <div class="rte-divider"></div>
+            <button type="button" class="rte-btn" data-rte="link" title="Add link">Link</button>
+            <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">Unlink</button>
+            <div class="rte-spacer"></div>
+            <button type="button" class="rte-btn" data-rte="undo" title="Undo">&#8634;</button>
+            <button type="button" class="rte-btn" data-rte="redo" title="Redo">&#8635;</button>
+            <button type="button" class="rte-btn" data-rte="source" title="Edit HTML source">HTML</button>
+          </div>
+          <div id="body-editor" class="rte-content"></div>
+          <textarea id="body-source" class="rte-source" hidden></textarea>
+          <textarea id="page-body" name="body" hidden>{{ page.body|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-2 border-t border-[color:var(--border)]">
+      <a href="/dashboard/apps/cms/pages/" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">{% if creating %}Create page{% else %}Save changes{% endif %}</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Show the "Publish at" field only when the page is Scheduled.
+  (function () {
+    var st = document.getElementById('page-state');
+    var row = document.getElementById('publish-at-row');
+    if (!st || !row) return;
+    function sync() { row.style.display = (st.value === 'scheduled') ? '' : 'none'; }
+    st.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+
+<script type="module">
+  // TipTap 3.23.4 — same pinned ESM graph the product form uses. The dashboard
+  // CSP already whitelists esm.sh for exactly this.
+  import { Editor } from 'https://esm.sh/@tiptap/core@3.23.4';
+  import StarterKit from 'https://esm.sh/@tiptap/starter-kit@3.23.4?deps=@tiptap/core@3.23.4';
+  import Link from 'https://esm.sh/@tiptap/extension-link@3.23.4?deps=@tiptap/core@3.23.4';
+
+  function wireTiptap({ hiddenId, targetId, sourceId, toolbarId, allowHeadings, ariaLabel, exposeAs }) {
+    const hidden  = document.getElementById(hiddenId);
+    const target  = document.getElementById(targetId);
+    const source  = document.getElementById(sourceId);
+    const toolbar = document.getElementById(toolbarId);
+    if (!hidden || !target || !toolbar) return null;
+
+    const extensions = [
+      StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false }),
+      Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener', target: '_blank' } }),
+    ];
+
+    const editor = new Editor({
+      element: target,
+      extensions,
+      content: hidden.value || '<p></p>',
+      editorProps: { attributes: { 'aria-label': ariaLabel } },
+      onUpdate({ editor }) {
+        const html = editor.getHTML();
+        hidden.value = html;
+        if (!source.hidden) source.value = html;
+        refreshButtons();
+      },
+    });
+
+    if (exposeAs) window[exposeAs] = editor;
+
+    function btn(action) { return toolbar.querySelector(`[data-rte="${action}"]`); }
+    function setActive(action, on) {
+      const b = btn(action);
+      if (b) b.classList.toggle('is-active', !!on);
+    }
+    function refreshButtons() {
+      setActive('bold',        editor.isActive('bold'));
+      setActive('italic',      editor.isActive('italic'));
+      setActive('strike',      editor.isActive('strike'));
+      setActive('code',        editor.isActive('code'));
+      if (allowHeadings) {
+        setActive('h2',        editor.isActive('heading', { level: 2 }));
+        setActive('h3',        editor.isActive('heading', { level: 3 }));
+        setActive('paragraph', editor.isActive('paragraph'));
+      }
+      setActive('bulletList',  editor.isActive('bulletList'));
+      setActive('orderedList', editor.isActive('orderedList'));
+      setActive('blockquote',  editor.isActive('blockquote'));
+      setActive('codeBlock',   editor.isActive('codeBlock'));
+      setActive('link',        editor.isActive('link'));
+    }
+    editor.on('selectionUpdate', refreshButtons);
+
+    toolbar.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-rte]');
+      if (!b) return;
+      e.preventDefault();
+      const a = b.dataset.rte;
+      const chain = editor.chain().focus();
+      switch (a) {
+        case 'bold':        chain.toggleBold().run(); break;
+        case 'italic':      chain.toggleItalic().run(); break;
+        case 'strike':      chain.toggleStrike().run(); break;
+        case 'code':        chain.toggleCode().run(); break;
+        case 'h2':          chain.toggleHeading({ level: 2 }).run(); break;
+        case 'h3':          chain.toggleHeading({ level: 3 }).run(); break;
+        case 'paragraph':   chain.setParagraph().run(); break;
+        case 'bulletList':  chain.toggleBulletList().run(); break;
+        case 'orderedList': chain.toggleOrderedList().run(); break;
+        case 'blockquote':  chain.toggleBlockquote().run(); break;
+        case 'codeBlock':   chain.toggleCodeBlock().run(); break;
+        case 'hr':          chain.setHorizontalRule().run(); break;
+        case 'undo':        chain.undo().run(); break;
+        case 'redo':        chain.redo().run(); break;
+        case 'link': {
+          const prev = editor.getAttributes('link').href || '';
+          const url = window.prompt('URL', prev);
+          if (url === null) return;
+          if (url === '') { editor.chain().focus().unsetLink().run(); return; }
+          editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+          break;
+        }
+        case 'unlink':      chain.unsetLink().run(); break;
+        case 'source': {
+          const showingSource = !source.hidden;
+          if (showingSource) {
+            editor.commands.setContent(source.value || '<p></p>');
+            source.hidden = true;
+            target.hidden = false;
+            b.classList.remove('is-active');
+          } else {
+            source.value = editor.getHTML();
+            source.hidden = false;
+            target.hidden = true;
+            b.classList.add('is-active');
+          }
+          break;
+        }
+      }
+      refreshButtons();
+    });
+
+    refreshButtons();
+    return editor;
+  }
+
+  wireTiptap({
+    hiddenId: 'page-body',
+    targetId: 'body-editor',
+    sourceId: 'body-source',
+    toolbarId: 'body-toolbar',
+    allowHeadings: true,
+    ariaLabel: 'Page body editor',
+    exposeAs: 'morphPageBodyEditor',
+  });
+</script>
+{% endblock %}
