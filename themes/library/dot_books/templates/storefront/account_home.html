@@ -45,12 +45,13 @@
         <p class="title">Wishlist</p>
         <p class="meta" style="margin-top: .35rem;">Saved titles you'd come back to.</p>
       </a>
-      {% if summary.loyalty_points %}
-      <a href="/account/points/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-        <p class="title">Reader points <span style="color:var(--accent); font-weight:500;">{{ summary.loyalty_points }}</span></p>
-        <p class="meta" style="margin-top: .35rem;">One point per dollar, earned on every paid order. Redeem at checkout.</p>
-      </a>
-      {% endif %}
+      {% comment %}
+        Plugin-contributed account links. Each enabled plugin renders its
+        own account tile here via StorefrontBlock(slot='account_nav'); a
+        disabled plugin contributes nothing, so its tile vanishes. The
+        loyalty "Reader points" tile lives here now (loyalty_points plugin).
+      {% endcomment %}
+      {% storefront_blocks "account_nav" %}
       <a href="/account/profile/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
         <p class="title">Profile</p>
         <p class="meta" style="margin-top: .35rem;">Name, email, contact preferences.</p>

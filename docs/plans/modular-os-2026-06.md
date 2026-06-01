@@ -46,6 +46,16 @@ entirely under `plugins/installed/<name>/` and appears elsewhere only by
 - payments: move settings UI into the payments plugin via the Phase-B override; keep the (good,
   already-in-plugin) PaymentGatewayConfig model + enabled_gateways() helper + tests.
 
+## More contribution slots requested (same mechanism family)
+- **Customer-detail dashboard page** needs a plugin-contributed slot. Ask: the user
+  account page should have toggles to turn a user on/off as a **vendor** (contributed
+  by `marketplace`) and as an **affiliate** (contributed by `affiliates`) — each
+  toggle lives in its own app, not hard-coded into customers/admin_dashboard. Build a
+  `customer_detail_panels` contribution (plugins return a panel/partial for the
+  customer detail view), then marketplace + affiliates each contribute their toggle.
+  Disabling either plugin removes its toggle. Same pattern as `account_nav` /
+  `ACCOUNT_SUMMARY_FIELDS`.
+
 ## Status
 - Rule documented (CLAUDE.md, AGENTS.md). Audit done. Payments build HELD uncommitted.
 - Phases B/C are real engineering (new slots/hooks) — do them deliberately, not in a bloated context.

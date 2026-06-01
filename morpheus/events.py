@@ -6,6 +6,7 @@ names so plugin code reads naturally::
     from morpheus import events
     self.register_hook(events.ORDER_PLACED, self.on_order)
 """
+
 from __future__ import annotations
 
 from core.hooks import MorpheusEvents as _E
@@ -34,6 +35,7 @@ BEGIN_CHECKOUT = _E.BEGIN_CHECKOUT
 CART_CALCULATE_TOTAL = _E.CART_CALCULATE_TOTAL
 CART_CALCULATE_BREAKDOWN = _E.CART_CALCULATE_BREAKDOWN
 PRODUCT_CALCULATE_PRICE = _E.PRODUCT_CALCULATE_PRICE
+ACCOUNT_SUMMARY_FIELDS = _E.ACCOUNT_SUMMARY_FIELDS
 
 # Catalog
 PRODUCT_VIEWED = _E.PRODUCT_VIEWED

@@ -1,4 +1,4 @@
-{% load static morph_assistant %}<!DOCTYPE html>
+{% load static morph_assistant morph %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -709,11 +709,20 @@
     {% comment %}Assets is core — sits right under Users so the merchant can jump straight from contacts to the file library.{% endcomment %}
     <a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>
 
-    {% if 'affiliates' in active_plugins %}
+    {% plugin_enabled "affiliates" as affiliates_enabled %}
+    {% if affiliates_enabled %}
     {% comment %}
     Affiliates parent + children. Parent <a> lands on the list page
     (matches Orders / Products); children carry the rest. The submenu
     auto-opens whenever any affiliates page is active.
+
+    NOTE (modular-os): this block is hard-coded because affiliates
+    contributes its DashboardPages with nav='hidden' (see
+    affiliates/plugin.py) — they're deliberately kept OUT of the
+    sidebar_sections loop so this parent/child shape can be rendered.
+    The guard is now plugin_enabled (registry-gated) so disabling the
+    plugin removes the nav. TODO(modular-os): migrate to nav='main'
+    DashboardPages + a sidebar-group so this block can be deleted.
     {% endcomment %}
     {% with affiliates_prefix=active_apps_slug|slice:":11" %}
     <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if affiliates_prefix == 'affiliates/' %}active{% endif %}">

@@ -367,9 +367,20 @@ class MorpheusEvents:
     #                            plugin still subscribed; OrderService no
     #                            longer fires it. Will be removed once the
     #                            in-tree subscribers are migrated (done).
+    # ACCOUNT_SUMMARY_FIELDS    — value=dict, kwargs: user=Customer. The
+    #                             account-home summary dict (orders_count,
+    #                             pending_returns, … see storefront
+    #                             account._account_summary). Each plugin
+    #                             subscriber folds ITS OWN field(s) into the
+    #                             dict and returns it, so a disabled plugin's
+    #                             tile simply never appears. Fail-soft: the
+    #                             hook bus isolates a broken handler. This is
+    #                             how a plugin contributes an account-home
+    #                             tile without storefront editing its summary.
     CART_CALCULATE_BREAKDOWN = 'cart.calculate_breakdown'  # filter
     PRODUCT_CALCULATE_PRICE = 'product.calculate_price'  # filter
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
+    ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

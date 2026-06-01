@@ -186,11 +186,16 @@ class AccountPointsBoundaryTests(TestCase):
         self.client.force_login(self.alice)
         resp = self.client.get('/account/points/')
         self.assertEqual(resp.status_code, 200)
-        self.assertIn('420', resp.content.decode())
+        # Match the rendered balance ("{{ balance }} points") rather than a
+        # bare "420" — the theme's CSS carries a "420ms" motion token that a
+        # substring match would collide with.
+        self.assertIn('420 points', resp.content.decode())
 
     def test_other_customer_does_not_see_first_customers_points(self):
-        # Bob has zero points — Alice's 420 must not appear on his page.
+        # Bob has zero points — Alice's balance must not appear on his page.
         self.client.force_login(self.bob)
         resp = self.client.get('/account/points/')
         self.assertEqual(resp.status_code, 200)
-        self.assertNotIn('420', resp.content.decode())
+        body = resp.content.decode()
+        self.assertIn('0 points', body)
+        self.assertNotIn('420 points', body)

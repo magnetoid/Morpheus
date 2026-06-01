@@ -35,7 +35,7 @@ their balance and what it is worth today — shipped in v1.
 # ready (this module is loaded at settings-import time).
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 
 
 class LoyaltyPointsPlugin(Plugin):
@@ -54,6 +54,45 @@ class LoyaltyPointsPlugin(Plugin):
         # Answer the canonical cart-total filter so a chosen point spend
         # becomes an order discount, alongside coupons + gift cards.
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=15)
+        # Own the customer-facing /account/points/ route (modular-os: the
+        # route only exists while the plugin is enabled).
+        self.register_urls(
+            'plugins.installed.loyalty_points.urls',
+            prefix='',
+            namespace='loyalty_points',
+        )
+        # Contribute the points balance into the account-home summary so
+        # the account_nav tile can show it. Only fires while enabled.
+        self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=50)
+
+    def on_account_summary(self, value, user=None, **kwargs):
+        """Fold this customer's points balance into the account summary.
+
+        Subscribes to ``ACCOUNT_SUMMARY_FIELDS`` (a filter): mutate the
+        dict, return it. Fail-soft — never break the account page.
+        """
+        try:
+            from plugins.installed.loyalty_points.services import get_balance
+
+            value['loyalty_points'] = get_balance(user)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.loyalty').warning(
+                'account_summary points fold failed: %s', exc, exc_info=True
+            )
+        return value
+
+    def contribute_storefront_blocks(self) -> list:
+        # Account-home tile → /account/points/. Lives with the plugin so a
+        # disabled plugin drops the tile (registry-gated contribution).
+        return [
+            StorefrontBlock(
+                slot='account_nav',
+                template='loyalty_points/blocks/account_nav.html',
+                priority=50,
+            ),
+        ]
 
     @staticmethod
     def _requested_redeem(value, cart, customer) -> int:

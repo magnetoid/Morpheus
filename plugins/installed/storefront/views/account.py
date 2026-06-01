@@ -25,7 +25,17 @@ def _login_required(request, target):
 
 def _account_summary(user) -> dict:
     """Cheap counts + balances for the account home dashboard.
-    Fail-soft per plugin — a missing plugin shouldn't break the page."""
+    Fail-soft per plugin — a missing plugin shouldn't break the page.
+
+    Plugin-owned fields are contributed through the
+    ``ACCOUNT_SUMMARY_FIELDS`` filter (see core/hooks.py) — a plugin folds
+    its own field into the dict and a disabled plugin's tile vanishes
+    automatically. loyalty_points is migrated to that path (it subscribes
+    in plugins/installed/loyalty_points/plugin.py).
+
+    TODO(modular-os): migrate orders/returns/gift_cards/downloads the same
+    way so storefront stops hard-coding sibling-plugin fields here.
+    """
     s: dict = {
         'orders_count': 0,
         'pending_returns': 0,
@@ -33,14 +43,7 @@ def _account_summary(user) -> dict:
         'gift_card_count': 0,
         'gift_card_total': None,
         'download_count': 0,
-        'loyalty_points': 0,
     }
-    try:
-        from plugins.installed.loyalty_points.services import get_balance as _lb
-
-        s['loyalty_points'] = _lb(user)
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_summary.loyalty failed: %s', e, exc_info=True)
     try:
         from plugins.installed.orders.models import Order
 
@@ -93,6 +96,15 @@ def _account_summary(user) -> dict:
         ).count()
     except Exception as e:  # noqa: BLE001
         logger.warning('account_summary.download_count failed: %s', e, exc_info=True)
+    # Let enabled plugins fold their own fields into the summary. Each
+    # subscriber receives the dict as `value`, mutates/extends it, returns
+    # it. A disabled plugin contributes nothing, so its tile never renders.
+    try:
+        from core.hooks import MorpheusEvents, hook_registry
+
+        s = hook_registry.filter(MorpheusEvents.ACCOUNT_SUMMARY_FIELDS, value=s, user=user)
+    except Exception as e:  # noqa: BLE001
+        logger.warning('account_summary.filter failed: %s', e, exc_info=True)
     return s
 
 
@@ -365,51 +377,6 @@ def account_credits(request):
             'store_credit': store_credit,
             'txns': txns,
             'cards': cards,
-        },
-    )
-
-
-def account_points(request):
-    """Loyalty points: balance, what it's worth today, and recent ledger.
-
-    Read-only customer surface for the redemption v1. The actual
-    point→discount application happens at checkout via the loyalty
-    breakdown hook; this page shows the shopper what they have and what it
-    can buy. Login-gated like every other account page.
-    """
-    if not request.user.is_authenticated:
-        from morpheus.views import redirect
-
-        return redirect('/auth/login/?next=/account/points/')
-    balance = 0
-    redeem_value = None
-    txns: list = []
-    rate = None
-    try:
-        from plugins.installed.loyalty_points.services import get_balance
-        from plugins.installed.loyalty_points.services_redeem import (
-            points_to_amount,
-            redemption_rate,
-        )
-
-        balance = get_balance(request.user)
-        rate = redemption_rate()
-        redeem_value = points_to_amount(balance)
-        from plugins.installed.loyalty_points.models import PointsTransaction
-
-        txns = list(
-            PointsTransaction.objects.filter(customer=request.user).order_by('-created_at')[:30]
-        )
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_points failed: %s', e, exc_info=True)
-    return render(
-        request,
-        'storefront/account_points.html',
-        {
-            'balance': balance,
-            'redeem_value': redeem_value,
-            'rate': rate,
-            'txns': txns,
         },
     )
 

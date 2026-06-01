@@ -1,0 +1,10 @@
+{# Account-home tile for loyalty. Rendered into the storefront #}
+{# `account_nav` slot. `summary.loyalty_points` is folded into the #}
+{# account summary by this plugin's ACCOUNT_SUMMARY_FIELDS handler, so #}
+{# the tile only shows a count when the shopper has points. #}
+{% if summary.loyalty_points %}
+<a href="/account/points/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+  <p class="title">Reader points <span style="color:var(--accent); font-weight:500;">{{ summary.loyalty_points }}</span></p>
+  <p class="meta" style="margin-top: .35rem;">One point per dollar, earned on every paid order. Redeem at checkout.</p>
+</a>
+{% endif %}

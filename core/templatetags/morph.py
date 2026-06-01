@@ -35,6 +35,28 @@ logger = logging.getLogger('morpheus.templatetags')
 register = template.Library()
 
 
+@register.simple_tag
+def plugin_enabled(slug: str) -> bool:
+    """True when the plugin `slug` is currently active.
+
+    Thin wrapper over ``plugin_registry.is_active`` so templates can gate
+    a surface on a plugin without the brittle ``{% if 'x' in active_plugins
+    %}`` string check. Use as a boolean::
+
+        {% plugin_enabled "affiliates" as has_affiliates %}
+        {% if has_affiliates %} ... {% endif %}
+
+    Fail-soft: returns False if the registry can't be imported.
+    """
+    if not slug:
+        return False
+    try:
+        from plugins.registry import plugin_registry
+    except ImportError:
+        return False
+    return plugin_registry.is_active(slug)
+
+
 @register.simple_tag(takes_context=True)
 def storefront_blocks(context, slot: str) -> str:
     """Render every storefront block contributed for `slot`."""
