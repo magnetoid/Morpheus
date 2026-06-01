@@ -1,0 +1,71 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Dynamic Products · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Dynamic Products</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Personalized merchandising blocks. Each renders into a storefront slot and is
+        tuned per visitor. Disable the plugin and every block disappears.
+      </p>
+    </div>
+    <a href="/dashboard/dynamic-products/new/" class="btn btn-primary text-xs">+ New block</a>
+  </div>
+
+  {% if blocks %}
+  <div class="overflow-x-auto rounded-lg border border-[color:var(--border)]">
+    <table class="w-full text-sm">
+      <thead class="text-left text-[color:var(--text-muted)]">
+        <tr>
+          <th class="px-3 py-2">Name</th>
+          <th class="px-3 py-2">Strategy</th>
+          <th class="px-3 py-2">Slot</th>
+          <th class="px-3 py-2">Limit</th>
+          <th class="px-3 py-2">Order</th>
+          <th class="px-3 py-2">Status</th>
+          <th class="px-3 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for block in blocks %}
+        <tr class="border-t border-[color:var(--border)]">
+          <td class="px-3 py-2 font-medium">
+            <a href="/dashboard/dynamic-products/{{ block.pk }}/" class="hover:underline">{{ block.name }}</a>
+            {% if block.heading %}<div class="text-xs text-[color:var(--text-muted)]">“{{ block.heading }}”</div>{% endif %}
+          </td>
+          <td class="px-3 py-2">{{ block.get_strategy_display }}</td>
+          <td class="px-3 py-2"><code class="text-xs">{{ block.get_slot_display }}</code></td>
+          <td class="px-3 py-2">{{ block.limit }}</td>
+          <td class="px-3 py-2">{{ block.sort_order }}</td>
+          <td class="px-3 py-2">
+            {% if block.enabled %}
+              <span class="inline-block rounded px-1.5 py-0.5 text-xs bg-green-500/15 text-green-600">Enabled</span>
+            {% else %}
+              <span class="inline-block rounded px-1.5 py-0.5 text-xs bg-zinc-500/15 text-[color:var(--text-muted)]">Off</span>
+            {% endif %}
+          </td>
+          <td class="px-3 py-2 text-right">
+            <a href="/dashboard/dynamic-products/{{ block.pk }}/" class="btn btn-ghost text-xs">Edit</a>
+            <form method="post" action="/dashboard/dynamic-products/{{ block.pk }}/delete/" class="inline"
+                  onsubmit="return confirm('Delete this block?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost text-xs text-red-600">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="rounded-lg border border-dashed border-[color:var(--border)] p-8 text-center text-sm text-[color:var(--text-muted)]">
+    No dynamic blocks yet.
+    <a href="/dashboard/dynamic-products/new/" class="text-[color:var(--accent)] hover:underline">Create your first one →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% comment %}A single dynamic-products carousel/grid. Inputs: `heading`, `products`.
+   Uses the dot_books storefront card classes (.wrap/.grid-books/.book) so
+   it inherits the active theme's look; degrades to plain markup if the
+   theme doesn't define them. Renders nothing when there are no products.{% endcomment %}
+{% if products %}
+<section class="dynamic-products" style="padding: 3rem 0;">
+  <div class="wrap">
+    {% if heading %}
+    <div style="display:flex; align-items:end; justify-content:space-between; gap:1rem; margin-bottom:1.5rem;">
+      <h2 class="display display-m" style="margin:0;">{{ heading }}<span class="text-accent">.</span></h2>
+    </div>
+    {% endif %}
+    <div class="grid-books">
+      {% for product in products %}
+      <a href="/products/{{ product.slug }}/" class="book">
+        <div class="cover-wrap">
+          {% if product.primary_image %}
+            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy">
+          {% else %}
+            <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
+          {% endif %}
+        </div>
+        <div>
+          <p class="title">{{ product.name }}</p>
+          <p class="price">
+            {% if product.price_starts_from %}From {% endif %}{{ product.display_price }}
+          </p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

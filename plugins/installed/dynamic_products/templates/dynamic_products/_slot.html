@@ -1,0 +1,8 @@
+{% comment %}Renders every enabled DynamicBlock configured for this slot.
+   `block` here is the StorefrontBlock (carries .slot); `product`/`cart`
+   come from the surrounding page context when present.{% endcomment %}
+{% load dynamic_products %}
+{% dynamic_blocks_for block.slot request product as rendered_blocks %}
+{% for entry in rendered_blocks %}
+  {% include "dynamic_products/_carousel.html" with heading=entry.block.heading products=entry.products %}
+{% endfor %}

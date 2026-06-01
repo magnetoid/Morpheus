@@ -1,0 +1,107 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if block %}Edit block{% else %}New block{% endif %} · Dynamic Products{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <h1 class="text-xl font-semibold tracking-tight">
+    {% if block %}Edit “{{ block.name }}”{% else %}New dynamic block{% endif %}
+  </h1>
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Internal name</label>
+      <input type="text" name="name" required value="{{ block.name|default:'' }}"
+             class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Shopper-facing heading</label>
+      <input type="text" name="heading" value="{{ block.heading|default:'' }}"
+             placeholder="Picked for you"
+             class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Strategy</label>
+        <select name="strategy" class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+          {% for value, label in strategy_choices %}
+          <option value="{{ value }}" {% if block.strategy == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Slot</label>
+        <select name="slot" class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+          {% for value, label in slot_choices %}
+          <option value="{{ value }}" {% if block.slot == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Limit</label>
+        <input type="number" name="limit" min="1" max="24" value="{{ block.limit|default:4 }}"
+               class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Sort order</label>
+        <input type="number" name="sort_order" min="0" max="999" value="{{ block.sort_order|default:50 }}"
+               class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+      </div>
+      <div class="flex items-end pb-2">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="enabled" {% if not block or block.enabled %}checked{% endif %}>
+          Enabled
+        </label>
+      </div>
+    </div>
+
+    <fieldset class="rounded-lg border border-[color:var(--border)] p-3 space-y-3">
+      <legend class="px-1 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
+        Filters (apply to manual &amp; for-you)
+      </legend>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Categories</label>
+        <select name="categories" multiple size="5"
+                class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+          {% for cat in categories %}
+          <option value="{{ cat.pk }}" {% if cat.pk|stringformat:'s' in selected_cats %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Tags (comma-separated)</label>
+        <input type="text" name="tags" value="{{ tags_value }}" placeholder="sale, new-release"
+               class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Metafield key</label>
+          <input type="text" name="metafield_key" value="{{ block.metafield_key|default:'' }}"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Metafield value</label>
+          <input type="text" name="metafield_value" value="{{ block.metafield_value|default:'' }}"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="flex items-center gap-2">
+      <button type="submit" class="btn btn-primary text-sm">Save block</button>
+      <a href="/dashboard/dynamic-products/" class="btn btn-ghost text-sm">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
