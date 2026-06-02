@@ -38,13 +38,13 @@ storage**, so it is scoped here for a focused session rather than rushed.
    storefront plugin config (no migration) — mirror how the other caching toggles
    persist. Surface in that page's template.
 
-2. **Instant optimization on upload.**
-   - `MediaAsset.from_upload()`: when image + `optimize_on_upload`, generate a
-     sibling WebP (and AVIF if enabled), downscale originals past `max_dimension`,
-     strip EXIF. **Never destroy the original** — only add/auxiliary-encode.
-     Reuse `seo.services.images` encoders (cross-plugin via service import, not a
-     model import — keep the contract).
-   - Verify `ProductImage.save()` honours the same quality/format knobs.
+2. **Instant optimization on upload.** ✅ **PARTLY SHIPPED.**
+   - `MediaAsset.from_upload()` now best-effort pre-warms WebP variants (400/800)
+     for image uploads via `seo.services.images` (`_warm_variants`) — wrapped so it
+     can **never fail an upload**; the original file is untouched; on-the-fly `/img/`
+     stays the fallback. `ProductImage.save()` already writes a stored WebP.
+   - **Still TODO:** settings-driven widths / quality / AVIF, downscale of
+     oversized originals past `max_dimension`, EXIF strip.
 
 3. **Batch "optimize old images".** ✅ **SHIPPED** as
    `seo/management/commands/optimize_images.py` — pre-warms the WebP/AVIF variant

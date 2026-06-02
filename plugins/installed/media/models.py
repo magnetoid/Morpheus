@@ -152,4 +152,35 @@ class MediaAsset(models.Model):
             except Exception:  # noqa: BLE001 — Pillow optional / format not understood
                 pass
         asset.save()
+        if kind == cls.KIND_IMAGE:
+            cls._warm_variants(asset)
         return asset
+
+    @staticmethod
+    def _warm_variants(asset, widths=(400, 800)) -> None:
+        """Best-effort: pre-generate WebP variants for a freshly uploaded
+        image so the first storefront render is instant (the /img/ view
+        otherwise builds them on first request). Never raises — a failure
+        here must not fail the upload; on-the-fly generation is always the
+        fallback. Uses the seo plugin's encoder when present.
+        """
+        try:
+            from django.conf import settings
+
+            from plugins.installed.seo.services.images import (
+                generate_image_variant,
+                variant_cache_abs,
+            )
+
+            rel = asset.file.name
+            if not rel:
+                return
+            src_abs = os.path.join(str(settings.MEDIA_ROOT), rel)
+            if not os.path.isfile(src_abs):
+                return
+            for width in widths:
+                generate_image_variant(
+                    src_abs, variant_cache_abs(rel, width, 'webp'), width=width, fmt='webp'
+                )
+        except Exception:  # noqa: BLE001 — optimization is best-effort; never block uploads
+            pass

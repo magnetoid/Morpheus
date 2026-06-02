@@ -39,20 +39,29 @@ class OptimizeImagesCommandTests(TestCase):
         shutil.rmtree(self._tmp, ignore_errors=True)
 
     def test_generates_webp_variant_idempotently(self):
+        # 1200 is NOT in the upload auto-warm set (400/800), so it starts absent.
         rel = self.asset.file.name
-        cache_abs = variant_cache_abs(rel, 400, 'webp')
+        cache_abs = variant_cache_abs(rel, 1200, 'webp')
         self.assertFalse(os.path.isfile(cache_abs))
 
-        call_command('optimize_images', '--widths', '400')
+        call_command('optimize_images', '--widths', '1200')
         self.assertTrue(os.path.isfile(cache_abs))
 
         # Idempotent — a second pass regenerates nothing.
         mtime = os.path.getmtime(cache_abs)
-        call_command('optimize_images', '--widths', '400')
+        call_command('optimize_images', '--widths', '1200')
         self.assertEqual(os.path.getmtime(cache_abs), mtime)
 
     def test_dry_run_writes_nothing(self):
+        # 1600 is not auto-warmed on upload, so dry-run must leave it absent.
         rel = self.asset.file.name
-        cache_abs = variant_cache_abs(rel, 800, 'webp')
-        call_command('optimize_images', '--widths', '800', '--dry-run')
+        cache_abs = variant_cache_abs(rel, 1600, 'webp')
+        call_command('optimize_images', '--widths', '1600', '--dry-run')
         self.assertFalse(os.path.isfile(cache_abs))
+
+    def test_upload_warms_default_webp_variants(self):
+        # from_upload pre-generates webp at the default widths (400, 800) so
+        # the first storefront render is instant.
+        rel = self.asset.file.name
+        self.assertTrue(os.path.isfile(variant_cache_abs(rel, 400, 'webp')))
+        self.assertTrue(os.path.isfile(variant_cache_abs(rel, 800, 'webp')))
