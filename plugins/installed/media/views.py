@@ -195,6 +195,42 @@ class _UnifiedAsset:
             source_label=f'Digital product{label_suffix}',
         )
 
+    @classmethod
+    def from_variant_file(cls, variant) -> '_UnifiedAsset':
+        """Per-variant digital file (ProductVariant.digital_file) — e.g. a book
+        sold in multiple formats, each with its own PDF/EPUB/MOBI."""
+        try:
+            f = variant.digital_file
+            url = f.url if f else ''
+            size = f.size if f and f.storage.exists(f.name) else 0
+        except Exception:  # noqa: BLE001
+            url, size = '', 0
+        name = (getattr(variant.digital_file, 'name', '') or '').rsplit('/', 1)[-1]
+        ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+        mime = {
+            'pdf': 'application/pdf',
+            'epub': 'application/epub+zip',
+            'mobi': 'application/x-mobipocket-ebook',
+            'zip': 'application/zip',
+            'txt': 'text/plain',
+        }.get(ext, 'application/octet-stream')
+        prod_id = getattr(variant, 'product_id', None)
+        prod = getattr(variant, 'product', None)
+        return cls(
+            id=f'pv:{variant.id}',
+            kind='document',
+            url=url,
+            filename=name or f'variant-{variant.id}.bin',
+            mime_type=mime,
+            alt_text=(getattr(prod, 'name', '') or '')
+            + (f' · {variant.name}' if getattr(variant, 'name', '') else ''),
+            size_bytes=size,
+            created_at=getattr(variant, 'created_at', None) or getattr(prod, 'updated_at', None),
+            edit_url=f'/dashboard/products/{prod_id}/' if prod_id else '/dashboard/products/',
+            source='digital_variant',
+            source_label='Digital edition',
+        )
+
 
 def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_UnifiedAsset]:
     """Read-time union of MediaAsset, ProductImage, and Product.digital_file.
@@ -257,6 +293,30 @@ def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_Unifi
             )
         except Exception as e:  # noqa: BLE001
             logger.debug('media.federated: digital_file skipped: %s', e)
+
+        # 3b) Per-variant digital files (ProductVariant.digital_file) — a book
+        # sold in several formats keeps its PDF/EPUB on the variant, not the
+        # Product. These were invisible in the library before this branch.
+        try:
+            from plugins.installed.catalog.models import ProductVariant
+
+            pv_qs = (
+                ProductVariant.objects.select_related('product')
+                .exclude(digital_file='')
+                .exclude(digital_file__isnull=True)
+                .order_by('-id')
+            )
+            if search:
+                pv_qs = pv_qs.filter(
+                    Q(digital_file__icontains=search) | Q(product__name__icontains=search)
+                )
+            items.extend(
+                a
+                for a in (_UnifiedAsset.from_variant_file(v) for v in pv_qs[:300])
+                if _doc_view_matches(a.filename, a.mime_type, view)
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('media.federated: variant digital_file skipped: %s', e)
 
     items.sort(key=lambda a: a.created_at or '', reverse=True)
     return items[:500]
@@ -325,29 +385,45 @@ def _build_tabs(view: str) -> list[dict]:
     """
     base = MediaAsset.objects.all()
 
-    # Cheap federated counts — one COUNT(*) per source. Tolerate missing
-    # tables (fresh install before migrations) by zeroing out on error.
+    # Federated counts. Digital files (Product + per-variant) are classified by
+    # the same doc-tab rule the grid uses, so each tab's number matches what it
+    # actually shows. Tolerate missing tables (fresh install) by zeroing out.
     pi_count = 0
-    dp_count = 0
+    digital_count = 0
+    doc_files: list[tuple[str, str]] = []
     try:
-        from plugins.installed.catalog.models import Product, ProductImage
+        from plugins.installed.catalog.models import Product, ProductImage, ProductVariant
 
         pi_count = ProductImage.objects.count()
-        dp_count = (
+        digital_count = Product.objects.filter(product_type='digital').count()
+        prod_names = (
             Product.objects.filter(product_type='digital')
+            .exclude(status='archived')
             .exclude(digital_file='')
             .exclude(digital_file__isnull=True)
-            .count()
+            .values_list('digital_file', flat=True)
         )
+        var_names = (
+            ProductVariant.objects.exclude(digital_file='')
+            .exclude(digital_file__isnull=True)
+            .values_list('digital_file', flat=True)
+        )
+        doc_files = [(str(n).rsplit('/', 1)[-1], '') for n in prod_names]
+        doc_files += [(str(n).rsplit('/', 1)[-1], '') for n in var_names]
     except Exception:  # noqa: BLE001
         pass
+
+    def _doc_count(v: str) -> int:
+        return sum(1 for fn, mm in doc_files if _doc_view_matches(fn, mm, v))
+
+    dp_total = len(doc_files)
 
     tabs = [
         {
             'key': 'all',
             'label': 'All',
             'icon': 'layers',
-            'count': base.count() + pi_count + dp_count,
+            'count': base.count() + pi_count + dp_total,
             'active': view in ('all', ''),
         }
     ]
@@ -374,7 +450,7 @@ def _build_tabs(view: str) -> list[dict]:
                 'key': key,
                 'label': label,
                 'icon': icon,
-                'count': _filter_for_view(base, key).count(),
+                'count': _filter_for_view(base, key).count() + _doc_count(key),
                 'active': view == key,
             }
         )
@@ -383,7 +459,7 @@ def _build_tabs(view: str) -> list[dict]:
             'key': 'document',
             'label': 'Other docs',
             'icon': 'file',
-            'count': _filter_for_view(base, 'document').count() + dp_count,
+            'count': _filter_for_view(base, 'document').count() + _doc_count('document'),
             'active': view == 'document',
         }
     )
@@ -396,13 +472,6 @@ def _build_tabs(view: str) -> list[dict]:
             'active': view == 'other',
         }
     )
-    digital_count = 0
-    try:
-        from plugins.installed.catalog.models import Product
-
-        digital_count = Product.objects.filter(product_type='digital').count()
-    except Exception:  # noqa: BLE001
-        pass
     tabs.append(
         {
             'key': 'digital_products',
