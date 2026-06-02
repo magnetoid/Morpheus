@@ -124,26 +124,19 @@ class ShippingPlugin(Plugin):
     def contribute_dashboard_pages(self) -> list:
         from morpheus import DashboardPage  # noqa: PLC0415
 
+        # Zones + rates are one tabbed "Shipping" area now (the page templates
+        # carry the Zones | Rates tab bar), so the settings nav shows a single
+        # "Shipping" entry instead of two. Both views/URLs stay intact.
         return [
             DashboardPage(
-                label='Shipping zones',
+                label='Shipping',
                 slug='zones',
                 view='plugins.installed.shipping.dashboard.zones',
-                icon='map',
+                icon='truck',
                 section='shipping',
                 order=10,
                 nav='settings',
                 url='/dashboard/shipping/zones/',
-            ),
-            DashboardPage(
-                label='Shipping rates',
-                slug='rates',
-                view='plugins.installed.shipping.dashboard.rates',
-                icon='truck',
-                section='shipping',
-                order=20,
-                nav='settings',
-                url='/dashboard/shipping/rates/',
             ),
         ]
 

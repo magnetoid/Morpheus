@@ -5,13 +5,20 @@
 <div class="max-w-6xl mx-auto space-y-4">
   {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
 
-  <div class="flex flex-wrap items-end justify-between gap-3">
-    <div>
-      <h1 class="text-xl font-semibold tracking-tight">Shipping rates</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Purchasable shipping options inside a zone.</p>
-    </div>
-    <a href="{% url 'shipping_dashboard:zones' %}" class="btn btn-ghost">&larr; Zones</a>
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Shipping</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Zones, rates, and free-shipping rules.</p>
   </div>
+  <nav class="flex items-center gap-1" style="border-bottom:1px solid var(--border);">
+    <a href="{% url 'shipping_dashboard:zones' %}" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm"
+       style="border-bottom:2px solid transparent; color:var(--text-muted); font-weight:500; margin-bottom:-1px;">
+      <i data-lucide="map" class="h-3.5 w-3.5"></i> Zones
+    </a>
+    <a href="{% url 'shipping_dashboard:rates' %}" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm"
+       style="border-bottom:2px solid var(--text); color:var(--text); font-weight:600; margin-bottom:-1px;">
+      <i data-lucide="truck" class="h-3.5 w-3.5"></i> Rates
+    </a>
+  </nav>
 
   <div class="flex items-center gap-1.5 text-xs flex-wrap">
     <a href="?" class="btn btn-ghost text-xs {% if not zone_filter %}is-active{% endif %}">All zones</a>
