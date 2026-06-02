@@ -54,8 +54,11 @@ ADR 0003 + 0004.
 
 ## PHASE 3 — Revenue optimization (after foundation)
 
-### 3.1 Higher-converting merchandising modules — **BUILD AS COLLECTIONS**
-Reuse the collection system (not bespoke modules):
+### 3.1 Higher-converting merchandising modules — **COLLECTIONS, delivered as apps**
+Use the Collection system (NOT bespoke hardcoded modules). **Implement in the
+EXISTING advanced-ecommerce app (one app — do NOT scatter into new plugins).**
+**Surface them across the storefront as collections + sliders/carousels** (these
+also feed the Phase 1.2 homepage rails). Confirm exact shape at Phase 3:
 - [ ] Bestsellers, New this week, Under $10, Staff picks, Giftable editions,
       Themed collections, First-time buyer shelf.
 
@@ -67,8 +70,13 @@ Reuse the collection system (not bespoke modules):
 
 ## Cross-cutting catalog/SEO items (fold into the phases above)
 
-- **ISBN / EAN / codes** per Product + ProductVariant (`isbn`, `ean`, `upc`,
-  `gtin`, `mpn`); show on PDP + JSON-LD (`isbn`, `gtin13`). (supports 2.x)
+- **Metafields: UNIFY + attach to ALL products** (user: "i think that is
+  better"). Books already carry a `book` namespace (author, isbn, gutenberg_id,
+  format, language, pages, published_year, publisher). Ensure every product has
+  the unified metafield set; surface + edit on the product editor.
+- **ISBN / EAN / codes** = via **metafields, NOT new model columns** (user
+  preference). `book.isbn` already exists; add `book.ean`/etc as metafields;
+  show on PDP + JSON-LD (`isbn`, `gtin13`). (supports 2.x)
 - **SEO title formatting**: separate page vs product title templates; product
   title format supports **metafield** tokens. (supports 1.4)
 
