@@ -13,12 +13,43 @@ ADR 0003 + 0004.
 
 ## PHASE 1 — Fastest wins, highest revenue impact (DO FIRST)
 
-### 1.1 Product image completeness  ⟵ STARTING HERE
-- [ ] Backfill missing cover images (KPI: coverage **6.3% → 95%+**).
-- [ ] Ensure every listing card shows an image (fallback cover when missing).
-- [ ] Align feed images, page (PDP) images, and OG images — one source of truth.
-- Success: ≥95% live products have a cover; cards never show a blank; OG image
-  coverage 100% for live products.
+### 1.1 Product image completeness  ⟵ READY TO BUILD (spec below)
+
+**Audit (prod, 2026-06-03):** 859 active products; **55 (6.4%) have a
+ProductImage**; **1 (0.1%) has og_image**. They are Project Gutenberg books
+with a `book` metafield namespace: `author, isbn, gutenberg_id, format,
+language, pages, published_year, publisher`. Card template already has a weak
+`.placeholder` (truncated name) — that's the "low-information cards" issue.
+
+**Build — `catalog/management/commands/backfill_book_covers.py`:**
+- qs = `Product.objects.filter(status='active', images__isnull=True).distinct()`.
+- per product: `meta = Metafield.objects.for_obj(p)` →
+  `author = meta.get('book.author')`, `gid = meta.get('book.gutenberg_id')`.
+- if `--gutenberg` and gid: GET
+  `https://www.gutenberg.org/cache/epub/{gid}/pg{gid}.cover.medium.jpg`
+  (timeout 10s, accept only if 200 + image + >2KB). **TEST first** whether
+  Gutenberg serves covers for our ids (curl a couple).
+- else: generate a styled JPEG (Pillow, 800×1200): deterministic bg colour from
+  `hash(slug)`, serif **title** wrapped, **author**, "DOTBOOKS CLASSICS" label.
+  Font: try candidate paths (DejaVuSerif / Georgia / `/usr/share/fonts/...`),
+  fall back to `ImageFont.load_default()`. (Pillow is available — see
+  `catalog/image_pipeline.py`.)
+- save `ProductImage(product, is_primary=True, sort_order=0, alt_text=...)` via
+  `pi.image.save('cover-<slug>.jpg', ContentFile(bytes))` (webp auto-generates
+  in `ProductImage.save`); also set `product.og_image` to the same bytes →
+  OG/feed completeness in one pass.
+- flags: `--limit N`, `--gutenberg`, `--dry-run`; idempotent (skips products
+  that already have an image). Log every 25.
+- **Run on prod:** `python manage.py backfill_book_covers --gutenberg`
+  (batch via `--limit` first to sanity-check output).
+
+**Also (interim/safety):** upgrade theme `.placeholder` (category_detail.html
+:43 + home/search) into a real classic-cover look (serif title + DotBooks
+imprint) so even pre-backfill cards read as covers, not weak boxes.
+
+- Success: re-run the audit → coverage ≥95%, OG ≥95%; Playwright category page
+  shows covers, not text boxes. Align feed/PDP/OG (all use primary_image + the
+  new og_image).
 
 ### 1.2 Homepage for conversion
 - [ ] Stronger CTA hierarchy — primary "Shop featured book", secondary
