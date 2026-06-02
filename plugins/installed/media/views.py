@@ -247,7 +247,14 @@ def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_Unifi
             )
             if search:
                 dp_qs = dp_qs.filter(Q(name__icontains=search) | Q(digital_file__icontains=search))
-            items.extend(_UnifiedAsset.from_digital_file(p) for p in dp_qs[:200])
+            # Digital files are federated into the doc views, but must respect
+            # the *specific* sub-tab — a .txt digital product must not surface
+            # under PDFs (otherwise the PDF tab shows non-PDF files).
+            items.extend(
+                a
+                for a in (_UnifiedAsset.from_digital_file(p) for p in dp_qs[:200])
+                if _doc_view_matches(a.filename, a.mime_type, view)
+            )
         except Exception as e:  # noqa: BLE001
             logger.debug('media.federated: digital_file skipped: %s', e)
 
@@ -267,6 +274,22 @@ _DOC_VIEWS = (
     ),
     ('word', 'Word docs', 'file-text', ('word', 'wordprocessingml', '.doc', '.docx', '.rtf')),
 )
+
+
+def _doc_view_matches(filename: str, mime: str, view: str) -> bool:
+    """Whether a document-ish asset (by filename + mime) belongs in a doc
+    sub-tab. Digital-product files are federated into the doc views, but must
+    still respect the *specific* tab — a .txt must not show under PDFs.
+    """
+    if view == 'all':
+        return True
+    hay = f'{filename} {mime}'.lower()
+    for key, _label, _icon, needles in _DOC_VIEWS:
+        if view == key:
+            return any(n in hay for n in needles)
+    if view == 'document':  # "Other docs" — anything that isn't a specific doc type
+        return not any(n in hay for _k, _l, _i, needles in _DOC_VIEWS for n in needles)
+    return False  # image / video / audio / other → digital files don't belong
 
 
 def _filter_for_view(qs, view: str):
