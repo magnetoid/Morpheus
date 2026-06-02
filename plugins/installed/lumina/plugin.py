@@ -59,3 +59,8 @@ class LuminaPlugin(Plugin):
         return [
             StorefrontBlock(slot='footer_extra', template='lumina/blocks/nav_link.html'),
         ]
+
+    def contribute_hardcoded_pages(self) -> list:
+        # /create/ is a code-owned page (view + template); surface it in the CMS
+        # Pages list as a locked "managed in code" row.
+        return [{'title': 'Write a book', 'url': '/create/'}]

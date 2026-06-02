@@ -26,10 +26,47 @@ def _safe_list(model_path, *, order_by='-updated_at', limit=200):
         return []
 
 
+def _hardcoded_pages() -> list:
+    """Storefront pages that live in CODE, declared by ACTIVE plugins via an
+    optional ``contribute_hardcoded_pages()`` method (returns dicts with
+    ``title`` + ``url``). Read straight off the plugin registry's active set, so
+    a disabled plugin's pages drop out automatically — no cross-plugin imports,
+    no core-framework change. They render in the Pages list as locked
+    ("managed in code") rows so the list stays the registry of every page."""
+    try:
+        from plugins.registry import plugin_registry
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for plugin in plugin_registry.active_plugins():
+        fn = getattr(plugin, 'contribute_hardcoded_pages', None)
+        if not callable(fn):
+            continue
+        try:
+            for p in fn() or []:
+                url = (p.get('url') or '').strip()
+                if not url:
+                    continue
+                out.append(
+                    {
+                        'title': p.get('title') or url,
+                        'url': url,
+                        'owner': getattr(plugin, 'label', None) or plugin.name,
+                    }
+                )
+        except Exception:  # noqa: BLE001, S112 — a bad plugin must not break the list
+            continue
+    return sorted(out, key=lambda p: p['title'].lower())
+
+
 @staff_member_required
 def pages_list(request):
     rows = _safe_list('cms.Page')
-    return render(request, 'cms/dashboard/pages.html', {'rows': rows, 'active_nav': 'cms'})
+    return render(
+        request,
+        'cms/dashboard/pages.html',
+        {'rows': rows, 'hardcoded': _hardcoded_pages(), 'active_nav': 'cms'},
+    )
 
 
 @staff_member_required

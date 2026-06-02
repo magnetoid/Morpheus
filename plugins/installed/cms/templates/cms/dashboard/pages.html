@@ -40,9 +40,20 @@
             <form method="post" action="/dashboard/cms/pages/{{ r.id }}/delete/" class="inline" onsubmit="return confirm('Delete “{{ r.title|escapejs }}”? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-danger text-xs">Delete</button></form>
           </td>
         </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-center py-8 text-[color:var(--text-muted)]">No pages yet — click <strong>New page</strong> to create one.</td></tr>
         {% endfor %}
+        {% for h in hardcoded %}
+        <tr style="opacity:.9;">
+          <td><a href="{{ h.url }}" target="_blank" rel="noopener"><code class="font-mono text-xs">{{ h.url }}</code></a></td>
+          <td class="font-medium">{{ h.title }}</td>
+          <td><span class="pill pill-neutral">{{ h.owner }}</span></td>
+          <td><span class="pill pill-warn" title="Lives in code (a plugin's view + template) — not editable here">Managed in code</span></td>
+          <td class="text-[color:var(--text-muted)]">—</td>
+          <td class="text-right whitespace-nowrap"><a href="{{ h.url }}" target="_blank" rel="noopener" class="btn btn-ghost text-xs">View</a></td>
+        </tr>
+        {% endfor %}
+        {% if not rows and not hardcoded %}
+        <tr><td colspan="6" class="text-center py-8 text-[color:var(--text-muted)]">No pages yet — click <strong>New page</strong> to create one.</td></tr>
+        {% endif %}
       </tbody>
     </table>
   </div>

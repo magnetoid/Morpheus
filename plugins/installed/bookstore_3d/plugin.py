@@ -113,3 +113,8 @@ class Bookstore3DPlugin(Plugin):
         return [
             StorefrontBlock(slot='footer_extra', template='bookstore_3d/blocks/nav_link.html'),
         ]
+
+    def contribute_hardcoded_pages(self) -> list:
+        # /walkthrough/ is a code-owned page (view + template); surface it in the
+        # CMS Pages list as a locked "managed in code" row.
+        return [{'title': '3D bookstore', 'url': '/walkthrough/'}]

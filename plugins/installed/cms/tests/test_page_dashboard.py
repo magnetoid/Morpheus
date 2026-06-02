@@ -116,3 +116,12 @@ class PageDashboardTests(TestCase):
         )
         self.assertEqual(r.status_code, 200)  # re-renders form with error
         self.assertEqual(Page.objects.filter(slug='about').count(), 1)
+
+    def test_pages_list_shows_hardcoded(self):
+        # The list merges editable CMS pages with code-owned pages declared by
+        # active plugins via contribute_hardcoded_pages() (storefront, etc.).
+        self._staff()
+        r = self.client.get(LIST_URL)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Managed in code')  # a locked hardcoded row rendered
+        self.assertContains(r, '/checkout/')  # storefront's code-owned page
