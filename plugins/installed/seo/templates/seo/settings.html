@@ -60,6 +60,15 @@
     <textarea name="llms_txt_intro" rows="3" class="input">{{ s.llms_txt_intro }}</textarea>
   </label>
 
+  <h3 class="font-semibold mt-4">Structured data (JSON-LD)</h3>
+  <p class="text-xs text-[color:var(--text-muted)] -mt-2">
+    Pick which schema.org blocks the storefront emits in each page's <code>&lt;head&gt;</code>. Leave them all on unless you have a reason not to — richer structured data wins more rich results + AI citations.
+  </p>
+  <label class="text-sm"><input type="checkbox" name="jsonld_organization" {% if s.jsonld_organization %}checked{% endif %}> <strong>Organization</strong> — business identity, logo, social profiles</label>
+  <label class="text-sm"><input type="checkbox" name="jsonld_website" {% if s.jsonld_website %}checked{% endif %}> <strong>WebSite</strong> — sitelinks search box in Google</label>
+  <label class="text-sm"><input type="checkbox" name="jsonld_product" {% if s.jsonld_product %}checked{% endif %}> <strong>Product</strong> — price, availability, GTIN/ISBN, shipping &amp; returns</label>
+  <label class="text-sm"><input type="checkbox" name="jsonld_reviews" {% if s.jsonld_reviews %}checked{% endif %}> <strong>Product reviews</strong> — star ratings + review snippets inside Product</label>
+
   <h3 class="font-semibold mt-4">AI crawler matrix</h3>
   <p class="text-xs text-[color:var(--text-muted)] -mt-2">
     Per-bot rules emitted in <code>/robots.txt</code>. The 2026 best

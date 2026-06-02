@@ -336,14 +336,19 @@ def seo_website_jsonld():
 
 @register.simple_tag
 def seo_product_jsonld(product):
-    """Emit Product JSON-LD with offer / availability / aggregateRating."""
+    """Emit Product JSON-LD with offer / availability / aggregateRating.
+
+    Returns nothing when the merchant has turned Product structured data
+    off in SEO settings (``product_jsonld`` then returns an empty dict).
+    """
     if product is None:
         return ''
     from plugins.installed.seo.services import product_jsonld, _jsonld_dump
 
-    return mark_safe(
-        f'<script type="application/ld+json">{_jsonld_dump(product_jsonld(product))}</script>'
-    )
+    data = product_jsonld(product)
+    if not data:
+        return ''
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(data)}</script>')
 
 
 @register.simple_tag

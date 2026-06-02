@@ -28,6 +28,8 @@ from ._helpers import (
 
 def organization_jsonld() -> dict | None:
     s = site_settings()
+    if not getattr(s, 'jsonld_organization', True):
+        return None
     if not s.organization_name:
         return None
     # @type comes from PluginConfig['seo']['organization_type'] —
@@ -68,6 +70,8 @@ def organization_jsonld() -> dict | None:
 
 def website_jsonld() -> dict | None:
     s = site_settings()
+    if not getattr(s, 'jsonld_website', True):
+        return None
     base = _site_base_url()
     out = {
         '@context': 'https://schema.org',
@@ -112,6 +116,8 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
 
     slug = g('slug') or ''
     if not slug:
+        return {}
+    if not getattr(site_settings(), 'jsonld_product', True):
         return {}
 
     url = f'{base.rstrip("/")}/products/{slug}/'
@@ -195,16 +201,32 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         except Exception:  # noqa: BLE001
             pass
 
-    # Image: model exposes .primary_image.image.url; GraphQL exposes
-    # primary_image_url or primaryImage.url.
-    primary = g('primary_image')
-    if primary:
-        if isinstance(primary, dict):
-            out['image'] = primary.get('url') or primary.get('image_url') or ''
-        elif getattr(primary, 'image', None):
-            out['image'] = primary.image.url
-    elif g('primary_image_url'):
-        out['image'] = g('primary_image_url')
+    # Image — Google's Product guidance lists `image` as a *repeated*
+    # property and recommends several photos per product (it also picks
+    # the best aspect ratio per surface). Emit the whole gallery
+    # (primary first, capped) for ORM products; the GraphQL/dict path
+    # keeps its single primary URL. Falls back to the old single-image
+    # behaviour when no gallery rows exist.
+    images: list[str] = []
+    if not isinstance(product, dict):
+        try:
+            for pi in product.images.order_by('-is_primary', 'sort_order')[:8]:
+                u = getattr(getattr(pi, 'image', None), 'url', '') or ''
+                if u and u not in images:
+                    images.append(u)
+        except Exception:  # noqa: BLE001
+            images = []
+    if images:
+        out['image'] = images if len(images) > 1 else images[0]
+    else:
+        primary = g('primary_image')
+        if primary:
+            if isinstance(primary, dict):
+                out['image'] = primary.get('url') or primary.get('image_url') or ''
+            elif getattr(primary, 'image', None):
+                out['image'] = primary.image.url
+        elif g('primary_image_url'):
+            out['image'] = g('primary_image_url')
 
     # Category: model has .category.name; dict has .category as nested.
     cat = g('category')
@@ -317,8 +339,9 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
                 'currency': offer_curr,
             }
 
-    # Aggregate rating — ORM only.
-    if not isinstance(product, dict):
+    # Aggregate rating + Review nodes — ORM only, and only while the
+    # merchant keeps "Product reviews" structured data switched on.
+    if not isinstance(product, dict) and getattr(site_settings(), 'jsonld_reviews', True):
         try:
             from django.db.models import Avg, Count
 

@@ -565,6 +565,10 @@ def seo_settings_page(request):
             'llms_txt_enabled',
             'ai_shopping_feed_enabled',
             'ai_answer_block_enabled',
+            'jsonld_organization',
+            'jsonld_website',
+            'jsonld_product',
+            'jsonld_reviews',
         ):
             setattr(s, field, bool(request.POST.get(field)))
         for field, default in (('title_max_length', 60), ('description_max_length', 155)):

@@ -211,6 +211,23 @@ class SiteSeoSettings(models.Model):
         ),
     )
 
+    # ── Structured data (JSON-LD) emission ───────────────────────────────
+    # No-code control: pick which schema.org blocks the storefront emits,
+    # straight from the SEO settings page — no edit to jsonld.py. All
+    # default on, preserving current behaviour.
+    jsonld_organization = models.BooleanField(
+        default=True, help_text='Emit Organization JSON-LD site-wide.'
+    )
+    jsonld_website = models.BooleanField(
+        default=True, help_text='Emit WebSite JSON-LD (+ sitelinks search box).'
+    )
+    jsonld_product = models.BooleanField(
+        default=True, help_text='Emit Product JSON-LD on product pages.'
+    )
+    jsonld_reviews = models.BooleanField(
+        default=True, help_text='Include aggregateRating + Review snippets inside Product JSON-LD.'
+    )
+
     # Title formatting
     title_template = models.CharField(
         max_length=200,
