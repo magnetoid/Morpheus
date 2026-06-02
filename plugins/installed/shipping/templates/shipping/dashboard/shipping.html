@@ -1,0 +1,177 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Shipping · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Shipping</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Zones, rates, and free-shipping rules — all in one place.</p>
+  </div>
+
+  {# ───────────────────────── Zones ───────────────────────── #}
+  <section class="space-y-3">
+    <h2 class="text-base font-semibold flex items-center gap-2">
+      <i data-lucide="map" class="h-4 w-4"></i> Zones
+    </h2>
+    <div class="card card-padded">
+      <h3 class="text-sm font-semibold mb-2">{% if edit_zone %}Edit zone{% else %}+ New zone{% endif %}</h3>
+      <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="zone">
+        <input type="hidden" name="action" value="{% if edit_zone %}edit{% else %}create{% endif %}">
+        {% if edit_zone %}<input type="hidden" name="zone_id" value="{{ edit_zone.id }}">{% endif %}
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Name</span>
+          <input type="text" name="name" required value="{{ edit_zone.name|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+                 placeholder="e.g. Domestic — US, Rest of world">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Countries (comma-separated, * = catch-all)</span>
+          <input type="text" name="countries" value="{% if edit_zone %}{{ edit_zone.countries|join:', ' }}{% endif %}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                 placeholder="US, CA  or  *">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Sub-regions (optional)</span>
+          <input type="text" name="regions" value="{% if edit_zone %}{{ edit_zone.regions|join:', ' }}{% endif %}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                 placeholder="CA, NY (US states only)">
+        </label>
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" name="is_default" {% if edit_zone.is_default %}checked{% endif %}>
+          <span>Default zone (fallback when no address matches)</span>
+        </label>
+        <div class="md:col-span-2 flex gap-2 justify-end">
+          {% if edit_zone %}<a href="{% url 'shipping_dashboard:zones' %}" class="btn btn-ghost">Cancel</a>{% endif %}
+          <button type="submit" class="btn btn-primary">{% if edit_zone %}Save{% else %}Create{% endif %}</button>
+        </div>
+      </form>
+    </div>
+    <div class="card overflow-hidden">
+      {% if zone_rows %}
+      <table class="morph-table morph-table-zebra">
+        <thead><tr><th>Name</th><th>Countries</th><th>Regions</th><th>Default</th><th class="text-right">Actions</th></tr></thead>
+        <tbody>
+        {% for z in zone_rows %}
+          <tr>
+            <td class="font-medium"><a href="?zone={{ z.id }}#rates" class="hover:underline">{{ z.name }}</a></td>
+            <td><code class="font-mono text-xs">{{ z.countries|join:", " }}</code></td>
+            <td><code class="font-mono text-xs">{{ z.regions|join:", "|default:"—" }}</code></td>
+            <td>{% if z.is_default %}<span class="pill pill-success">Default</span>{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+            <td class="text-right whitespace-nowrap">
+              <a href="?edit_kind=zone&edit={{ z.id }}" class="btn btn-ghost text-xs">Edit</a>
+              <form method="post" class="inline">{% csrf_token %}
+                <input type="hidden" name="kind" value="zone">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="zone_id" value="{{ z.id }}">
+                <button type="submit" class="btn btn-ghost text-xs text-red-600"
+                        data-confirm="Delete zone {{ z.name }}? Associated rates will be deleted too.">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="card-padded text-sm text-[color:var(--text-muted)]">No zones yet — add one above.</div>{% endif %}
+    </div>
+  </section>
+
+  {# ───────────────────────── Rates ───────────────────────── #}
+  <section class="space-y-3" id="rates">
+    <h2 class="text-base font-semibold flex items-center gap-2">
+      <i data-lucide="truck" class="h-4 w-4"></i> Rates
+    </h2>
+    <div class="flex items-center gap-1.5 text-xs flex-wrap">
+      <a href="?" class="btn btn-ghost text-xs {% if not zone_filter %}is-active{% endif %}">All zones</a>
+      {% for z in zones %}
+        <a href="?zone={{ z.id }}#rates" class="btn btn-ghost text-xs {% if zone_filter == z.id|stringformat:'s' %}is-active{% endif %}">{{ z.name }}</a>
+      {% endfor %}
+    </div>
+    <div class="card card-padded">
+      <h3 class="text-sm font-semibold mb-2">{% if edit_rate %}Edit rate{% else %}+ New rate{% endif %}</h3>
+      <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="rate">
+        <input type="hidden" name="action" value="{% if edit_rate %}edit{% else %}create{% endif %}">
+        {% if edit_rate %}<input type="hidden" name="rate_id" value="{{ edit_rate.id }}">{% endif %}
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Name</span>
+          <input type="text" name="name" required value="{{ edit_rate.name|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+                 placeholder="e.g. Standard ground">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Zone</span>
+          <select name="zone" required class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            <option value="">— pick a zone —</option>
+            {% for z in zones %}<option value="{{ z.id }}" {% if edit_rate.zone_id == z.id %}selected{% endif %}>{{ z.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Computation</span>
+          <select name="computation" class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            {% for value, display in computation_choices %}<option value="{{ value }}" {% if edit_rate.computation == value %}selected{% endif %}>{{ display }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block text-xs md:col-span-2">
+          <span class="text-[color:var(--text-muted)]">Description</span>
+          <input type="text" name="description" value="{{ edit_rate.description|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+                 placeholder="2-5 business days">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Flat amount (USD)</span>
+          <input type="number" name="flat_amount" step="0.01" min="0"
+                 value="{% if edit_rate.flat_amount %}{{ edit_rate.flat_amount.amount }}{% endif %}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                 placeholder="5.99">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Priority (lower first)</span>
+          <input type="number" name="priority" min="0" value="{{ edit_rate.priority|default:50 }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono">
+        </label>
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" name="is_active" {% if not edit_rate or edit_rate.is_active %}checked{% endif %}>
+          <span>Active (shown to customers at checkout)</span>
+        </label>
+        <div class="md:col-span-3 flex gap-2 justify-end">
+          {% if edit_rate %}<a href="{% url 'shipping_dashboard:zones' %}#rates" class="btn btn-ghost">Cancel</a>{% endif %}
+          <button type="submit" class="btn btn-primary">{% if edit_rate %}Save{% else %}Create{% endif %}</button>
+        </div>
+      </form>
+    </div>
+    <div class="card overflow-hidden">
+      {% if rate_rows %}
+      <table class="morph-table morph-table-zebra">
+        <thead><tr><th>Name</th><th>Zone</th><th>Computation</th><th class="text-right">Flat amount</th><th>Active</th><th class="text-right">Priority</th><th class="text-right">Actions</th></tr></thead>
+        <tbody>
+        {% for r in rate_rows %}
+          <tr>
+            <td class="font-medium">{{ r.name }}</td>
+            <td>{{ r.zone.name }}</td>
+            <td><code class="font-mono text-xs">{{ r.get_computation_display }}</code></td>
+            <td class="text-right font-mono">{{ r.flat_amount|default:"—" }}</td>
+            <td>{% if r.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Paused</span>{% endif %}</td>
+            <td class="text-right font-mono text-xs">{{ r.priority }}</td>
+            <td class="text-right whitespace-nowrap">
+              <a href="?{% if zone_filter %}zone={{ zone_filter }}&{% endif %}edit_kind=rate&edit={{ r.id }}#rates" class="btn btn-ghost text-xs">Edit</a>
+              <form method="post" class="inline">{% csrf_token %}
+                <input type="hidden" name="kind" value="rate">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="rate_id" value="{{ r.id }}">
+                <button type="submit" class="btn btn-ghost text-xs text-red-600" data-confirm="Delete rate {{ r.name }}?">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="card-padded text-sm text-[color:var(--text-muted)]">No rates yet — add one above.</div>{% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -82,30 +82,63 @@ def _delete_zone(request, zone_id: str) -> None:
 
 @staff_member_required
 def zones(request):
-    from plugins.installed.shipping.models import ShippingZone  # noqa: PLC0415
+    """Unified Shipping settings — zones + rates on ONE page (ADR 0003: no
+    duplicate settings surfaces; the merge lives in the owning plugin). Kept at
+    the existing `zones` URL/name; the `rates` URL redirects here.
+    """
+    from plugins.installed.shipping.models import ShippingRate, ShippingZone  # noqa: PLC0415
 
     if request.method == 'POST':
+        kind = (request.POST.get('kind') or '').strip()
         action = (request.POST.get('action') or '').strip()
-        zone_id = (request.POST.get('zone_id') or '').strip()
-        if action == 'create':
-            _create_zone(request)
-        elif action == 'edit' and zone_id:
-            _edit_zone(request, zone_id)
-        elif action == 'delete' and zone_id:
-            _delete_zone(request, zone_id)
-        return HttpResponseRedirect(request.path)
+        if kind == 'zone':
+            zid = (request.POST.get('zone_id') or '').strip()
+            if action == 'create':
+                _create_zone(request)
+            elif action == 'edit' and zid:
+                _edit_zone(request, zid)
+            elif action == 'delete' and zid:
+                _delete_zone(request, zid)
+        elif kind == 'rate':
+            rid = (request.POST.get('rate_id') or '').strip()
+            if action == 'create':
+                _create_rate(request)
+            elif action == 'edit' and rid:
+                _edit_rate(request, rid)
+            elif action == 'delete' and rid:
+                _delete_rate(request, rid)
+        return HttpResponseRedirect(request.get_full_path())
 
+    edit_kind = (request.GET.get('edit_kind') or '').strip()
     edit_id = (request.GET.get('edit') or '').strip()
-    edit_obj = ShippingZone.objects.filter(pk=edit_id).first() if edit_id else None
-    rows = list(ShippingZone.objects.all().order_by('name'))
+    edit_zone = (
+        ShippingZone.objects.filter(pk=edit_id).first()
+        if (edit_kind == 'zone' and edit_id)
+        else None
+    )
+    edit_rate = (
+        ShippingRate.objects.filter(pk=edit_id).first()
+        if (edit_kind == 'rate' and edit_id)
+        else None
+    )
+    zone_filter = (request.GET.get('zone') or '').strip()
+    rate_qs = ShippingRate.objects.select_related('zone')
+    if zone_filter:
+        rate_qs = rate_qs.filter(zone_id=zone_filter)
+    zone_rows = list(ShippingZone.objects.all().order_by('name'))
     return render(
         request,
-        'shipping/dashboard/zones.html',
+        'shipping/dashboard/shipping.html',
         {
-            'rows': rows,
-            'edit_obj': edit_obj,
+            'zones': zone_rows,
+            'zone_rows': zone_rows,
+            'rate_rows': list(rate_qs.order_by('zone', 'priority', 'name')),
+            'computation_choices': ShippingRate.COMPUTATION_CHOICES,
+            'zone_filter': zone_filter,
+            'edit_zone': edit_zone,
+            'edit_rate': edit_rate,
             'active_nav': 'shipping',
-            'breadcrumb_trail': _trail({'label': 'Zones'}),
+            'breadcrumb_trail': _trail({'label': 'Shipping'}),
         },
     )
 
@@ -180,38 +213,8 @@ def _delete_rate(request, rate_id: str) -> None:
 
 @staff_member_required
 def rates(request):
-    from plugins.installed.shipping.models import ShippingRate, ShippingZone  # noqa: PLC0415
-
-    if request.method == 'POST':
-        action = (request.POST.get('action') or '').strip()
-        rate_id = (request.POST.get('rate_id') or '').strip()
-        if action == 'create':
-            _create_rate(request)
-        elif action == 'edit' and rate_id:
-            _edit_rate(request, rate_id)
-        elif action == 'delete' and rate_id:
-            _delete_rate(request, rate_id)
-        return HttpResponseRedirect(request.get_full_path())
-
-    zone_filter = (request.GET.get('zone') or '').strip()
-    qs = ShippingRate.objects.select_related('zone')
-    if zone_filter:
-        qs = qs.filter(zone_id=zone_filter)
-    rows = list(qs.order_by('zone', 'priority', 'name'))
-
-    edit_id = (request.GET.get('edit') or '').strip()
-    edit_obj = ShippingRate.objects.filter(pk=edit_id).first() if edit_id else None
-
-    return render(
-        request,
-        'shipping/dashboard/rates.html',
-        {
-            'rows': rows,
-            'zones': list(ShippingZone.objects.all().order_by('name')),
-            'computation_choices': ShippingRate.COMPUTATION_CHOICES,
-            'zone_filter': zone_filter,
-            'edit_obj': edit_obj,
-            'active_nav': 'shipping',
-            'breadcrumb_trail': _trail({'label': 'Rates'}),
-        },
-    )
+    """Back-compat redirect: rates merged into the unified Shipping page
+    (ADR 0003 — one settings surface per domain)."""
+    zone = (request.GET.get('zone') or '').strip()
+    base = '/dashboard/shipping/zones/'
+    return HttpResponseRedirect(f'{base}?zone={zone}#rates' if zone else f'{base}#rates')
