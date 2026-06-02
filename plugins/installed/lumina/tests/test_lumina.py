@@ -13,3 +13,15 @@ class LuminaLandingTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Lumina')
         self.assertContains(resp, '100 languages')
+
+    def test_features_anchor_target_exists(self):
+        # The "Explore features" CTA links to #features — that target must
+        # exist, or the button scrolls nowhere (the bug this fixed).
+        resp = Client().get('/create/')
+        self.assertContains(resp, 'id="features"')
+
+    def test_primary_ctas_launch_the_creator_app(self):
+        # Primary CTAs link straight to the Lumina creator app (the view's
+        # default), not just an on-page scroll.
+        resp = Client().get('/create/')
+        self.assertContains(resp, 'https://lumina.dotbooks.store')

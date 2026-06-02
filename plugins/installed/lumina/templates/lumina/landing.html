@@ -26,7 +26,7 @@ ONLY the theme's own classes (.wrap/.display-*/.lede/.eyebrow/.btn-*/
       shelf to sell. Share your knowledge, reach the world, and earn.
     </p>
     <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-      <a class="btn btn-primary" href="#start">Start your book</a>
+      <a class="btn btn-primary" href="{{ lumina_app_url|default:'#start' }}">Start your book</a>
       <a class="btn btn-ghost" href="#how">See how it works</a>
     </div>
     <p class="eyebrow" style="margin-top: 1.75rem; opacity: .8;">
@@ -36,7 +36,7 @@ ONLY the theme's own classes (.wrap/.display-*/.lede/.eyebrow/.btn-*/
 </section>
 
 {# ── Features ─────────────────────────────────────────────────────── #}
-<section style="padding: 3.5rem 0; border-top: 1px solid var(--rule);">
+<section id="features" style="padding: 3.5rem 0; border-top: 1px solid var(--rule);">
   <div class="wrap">
     <div style="max-width: 620px; margin-bottom: 2.5rem;">
       <p class="eyebrow">Everything you need to author</p>
@@ -109,7 +109,7 @@ ONLY the theme's own classes (.wrap/.display-*/.lede/.eyebrow/.btn-*/
       <div><p class="display display-l text-accent" style="line-height: 1;">~20 min</p><p class="eyebrow" style="margin-top: .35rem;">idea → first draft</p></div>
       <div><p class="display display-l text-accent" style="line-height: 1;">1 tap</p><p class="eyebrow" style="margin-top: .35rem;">publish &amp; sell</p></div>
     </div>
-    <a class="btn btn-primary" href="#start">Become an author</a>
+    <a class="btn btn-primary" href="{{ lumina_app_url|default:'#start' }}">Become an author</a>
   </div>
 </section>
 
