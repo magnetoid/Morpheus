@@ -30,6 +30,7 @@ def _journal_dict(page) -> dict:
         'excerpt': page.excerpt or '',
         'body': page.body or '',
         'published_at': pub,
+        'is_html': True,
     }
 
 

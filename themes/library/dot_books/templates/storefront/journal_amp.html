@@ -108,7 +108,13 @@
     <h1 class="title">{{ entry.title }}<span class="dot">.</span></h1>
 
     <div class="body">
-      {% if entry.body %}{{ entry.body|safe|linebreaks }}{% endif %}
+      {% if entry.body %}
+        {% if entry.is_html %}
+          {{ entry.body|safe }}
+        {% else %}
+          {{ entry.body|linebreaks }}
+        {% endif %}
+      {% endif %}
     </div>
 
     <hr class="rule">

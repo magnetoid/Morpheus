@@ -22,6 +22,7 @@ _JOURNAL_ENTRIES = [
             'We carry a few of these books on the shelf this season because we believe in the '
             'case for the long take.'
         ),
+        'is_html': False,
     },
     {
         'slug': 'why-we-dont-carry-books-we-havent-read',
@@ -34,6 +35,7 @@ _JOURNAL_ENTRIES = [
             'always be small. The promise: if a book is here, it earned the spot. We trade '
             'breadth for trust.'
         ),
+        'is_html': False,
     },
     {
         'slug': 'the-case-for-the-small-press',
@@ -46,6 +48,7 @@ _JOURNAL_ENTRIES = [
             "of — they're disproportionately from independent presses. Not because indie is "
             'automatically better, but because the editors there have time to be wrong on purpose.'
         ),
+        'is_html': False,
     },
 ]
 

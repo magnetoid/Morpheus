@@ -19,7 +19,11 @@
       {{ entry.title }}<span class="text-accent">.</span>
     </h1>
     <div itemprop="articleBody" style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
-      {{ entry.body|linebreaks }}
+      {% if entry.is_html %}
+        {{ entry.body|safe }}
+      {% else %}
+        {{ entry.body|linebreaks }}
+      {% endif %}
     </div>
 
     <hr class="rule" style="margin: 3rem 0;">
