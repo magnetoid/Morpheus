@@ -1,0 +1,15 @@
+---
+type: map
+status: derived
+tags:
+- map
+links: []
+created: '2026-06-02T18:07:51'
+updated: '2026-06-02T18:07:51'
+---
+
+# core/errors/tasks.py
+
+Symbols in `core/errors/tasks.py`.
+
+- L16 `prune_errors_task(keep_days: int=30)` (function) — Daily prune wrapper around the management command logic.

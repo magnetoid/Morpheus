@@ -1,0 +1,18 @@
+---
+type: map
+status: derived
+tags:
+- map
+links: []
+created: '2026-06-02T18:07:52'
+updated: '2026-06-02T18:07:52'
+---
+
+# plugins/installed/rbac/plugin.py
+
+Symbols in `plugins/installed/rbac/plugin.py`.
+
+- L12 `RbacPlugin` (class)
+- L24 `ready(self)` (method)
+- L36 `contribute_agent_tools(self)` (method)
+- L42 `contribute_dashboard_pages(self)` (method)

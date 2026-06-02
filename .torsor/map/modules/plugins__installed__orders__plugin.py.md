@@ -1,0 +1,21 @@
+---
+type: map
+status: derived
+tags:
+- map
+links: []
+created: '2026-06-02T18:07:52'
+updated: '2026-06-02T18:07:52'
+---
+
+# plugins/installed/orders/plugin.py
+
+Symbols in `plugins/installed/orders/plugin.py`.
+
+- L11 `OrdersPlugin` (class)
+- L19 `ready(self)` (method)
+- L26 `get_config_schema(self)` (method)
+- L46 `contribute_settings_panel(self)` (method)
+- L54 `on_payment_captured(self, payment, **kwargs)` (method)
+- L58 `on_order_placed(self, order, **kwargs)` (method) — Send the customer their order-confirmation email.
+- L66 `contribute_agent_tools(self)` (method)
