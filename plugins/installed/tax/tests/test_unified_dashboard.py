@@ -24,6 +24,26 @@ class UnifiedTaxDashboardTests(TestCase):
         self.assertTemplateUsed(r, 'tax/dashboard/tax.html')
         self.assertContains(r, 'Regions')
         self.assertContains(r, 'Rates')
+        self.assertContains(r, 'Tax calculation')
+
+    def test_config_saves_to_taxconfiguration_model(self):
+        from plugins.installed.tax.models import TaxConfiguration, TaxRegion
+
+        reg = TaxRegion.objects.create(name='EU-DE', country='DE')
+        self.client.post(
+            self.url,
+            {
+                'kind': 'config',
+                'provider': 'none',
+                'prices_include_tax': 'on',
+                'default_region': str(reg.id),
+            },
+        )
+        cfg = TaxConfiguration.objects.first()
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg.provider, 'none')
+        self.assertTrue(cfg.prices_include_tax)
+        self.assertEqual(cfg.default_region_id, reg.id)
 
     def test_create_region_then_rate_via_kind_dispatch(self):
         from plugins.installed.tax.models import TaxRate, TaxRegion

@@ -42,7 +42,12 @@ def regions(request):  # noqa: PLR0912, PLR0915 — flat region+rate dispatch vi
     duplicate settings surfaces; the merge lives in the owning plugin). Kept at
     the existing `regions` URL/name; the `rates` URL redirects here.
     """
-    from plugins.installed.tax.models import TaxCategory, TaxRate, TaxRegion  # noqa: PLC0415
+    from plugins.installed.tax.models import (  # noqa: PLC0415
+        TaxCategory,
+        TaxConfiguration,
+        TaxRate,
+        TaxRegion,
+    )
 
     if request.method == 'POST':
         kind = (request.POST.get('kind') or '').strip()
@@ -95,6 +100,8 @@ def regions(request):  # noqa: PLR0912, PLR0915 — flat region+rate dispatch vi
                 _edit_rate(request, rate_id)
             elif action == 'delete' and rate_id:
                 _delete_rate(request, rate_id)
+        elif kind == 'config':
+            _save_config(request)
         return HttpResponseRedirect(request.get_full_path())
 
     edit_kind = (request.GET.get('edit_kind') or '').strip()
@@ -123,10 +130,27 @@ def regions(request):  # noqa: PLR0912, PLR0915 — flat region+rate dispatch vi
             'region_filter': region_filter,
             'edit_region': edit_region,
             'edit_rate': edit_rate,
+            'tax_config': TaxConfiguration.objects.first(),
             'active_nav': 'tax',
             'breadcrumb_trail': _trail({'label': 'Tax'}),
         },
     )
+
+
+def _save_config(request) -> None:
+    from plugins.installed.tax.models import TaxConfiguration  # noqa: PLC0415
+
+    config = TaxConfiguration.objects.first() or TaxConfiguration()
+    provider = (request.POST.get('provider') or 'local').strip()
+    config.provider = provider if provider in {'local', 'stripe', 'none'} else 'local'
+    config.prices_include_tax = bool(request.POST.get('prices_include_tax'))
+    region_id = (request.POST.get('default_region') or '').strip()
+    config.default_region_id = region_id or None
+    try:
+        config.save()
+        messages.success(request, 'Tax settings saved.')
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f'Could not save tax settings: {exc}')
 
 
 def _create_rate(request) -> None:

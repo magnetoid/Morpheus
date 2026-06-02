@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel
+from morpheus import DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.tax')
 
@@ -111,23 +111,8 @@ class TaxPlugin(Plugin):
             ),
         ]
 
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Tax',
-            description='Configure tax provider, rounding, and inclusive pricing.',
-            schema=self.get_config_schema(),
-            category='taxes',
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {
-                'provider': {
-                    'type': 'string',
-                    'enum': ['local', 'stripe', 'none'],
-                    'default': 'local',
-                },
-                'prices_include_tax': {'type': 'boolean', 'default': False},
-            },
-        }
+    # No SettingsPanel: tax config (provider / inclusive pricing / default
+    # region) lives on the TaxConfiguration model and is edited in the
+    # "Tax calculation" section of the unified Tax page (dashboard.regions).
+    # The old panel wrote to plugin-config — a key nothing read — so it was a
+    # no-op AND a duplicate "Taxes" settings entry. Removed per ADR 0003.

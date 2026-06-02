@@ -10,6 +10,42 @@
     <p class="text-sm text-[color:var(--text-muted)]">Regions and their tax rates — all in one place.</p>
   </div>
 
+  {# ───────────────────────── Tax calculation ───────────────────────── #}
+  <section class="space-y-3">
+    <h2 class="text-base font-semibold flex items-center gap-2">
+      <i data-lucide="sliders-horizontal" class="h-4 w-4"></i> Tax calculation
+    </h2>
+    <div class="card card-padded">
+      <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="config">
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Provider</span>
+          <select name="provider" class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            <option value="local" {% if not tax_config or tax_config.provider == 'local' %}selected{% endif %}>Local rates</option>
+            <option value="stripe" {% if tax_config.provider == 'stripe' %}selected{% endif %}>Stripe Tax</option>
+            <option value="none" {% if tax_config.provider == 'none' %}selected{% endif %}>No tax</option>
+          </select>
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Default region</span>
+          <select name="default_region" class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            <option value="">— none (no tax when address missing) —</option>
+            {% for reg in regions %}<option value="{{ reg.id }}" {% if tax_config.default_region_id == reg.id %}selected{% endif %}>{{ reg.name }} ({{ reg.country }}{% if reg.region %}-{{ reg.region }}{% endif %})</option>{% endfor %}
+          </select>
+        </label>
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" name="prices_include_tax" {% if tax_config.prices_include_tax %}checked{% endif %}>
+          <span>Prices already include tax (EU pattern)</span>
+        </label>
+        <div class="md:col-span-3 flex justify-end">
+          <button type="submit" class="btn btn-primary">Save settings</button>
+        </div>
+      </form>
+      <p class="text-xs text-[color:var(--text-muted)] mt-2">Checkout uses these to decide whether and how to apply the rates below.</p>
+    </div>
+  </section>
+
   {# ───────────────────────── Regions ───────────────────────── #}
   <section class="space-y-3">
     <h2 class="text-base font-semibold flex items-center gap-2">
