@@ -37,71 +37,94 @@ def _norm_region(raw: str) -> str:
 
 
 @staff_member_required
-def regions(request):
-    from plugins.installed.tax.models import TaxRegion  # noqa: PLC0415
+def regions(request):  # noqa: PLR0912, PLR0915 — flat region+rate dispatch view
+    """Unified Tax settings — regions + rates on ONE page (ADR 0003: no
+    duplicate settings surfaces; the merge lives in the owning plugin). Kept at
+    the existing `regions` URL/name; the `rates` URL redirects here.
+    """
+    from plugins.installed.tax.models import TaxCategory, TaxRate, TaxRegion  # noqa: PLC0415
 
     if request.method == 'POST':
+        kind = (request.POST.get('kind') or '').strip()
         action = (request.POST.get('action') or '').strip()
-        region_id = (request.POST.get('region_id') or '').strip()
-
-        if action == 'create':
-            name = (request.POST.get('name') or '').strip()
-            country = _norm_country(request.POST.get('country') or '')
-            region = _norm_region(request.POST.get('region') or '')
-            is_default = bool(request.POST.get('is_default'))
-            if not name or not country:
-                messages.error(request, 'Name and country are required.')
-            else:
+        if kind == 'region':
+            region_id = (request.POST.get('region_id') or '').strip()
+            if action == 'create':
+                name = (request.POST.get('name') or '').strip()
+                country = _norm_country(request.POST.get('country') or '')
+                region = _norm_region(request.POST.get('region') or '')
+                if not name or not country:
+                    messages.error(request, 'Name and country are required.')
+                else:
+                    try:
+                        TaxRegion.objects.create(
+                            name=name,
+                            country=country,
+                            region=region,
+                            is_default=bool(request.POST.get('is_default')),
+                        )
+                        messages.success(request, f'Region "{name}" created.')
+                    except Exception as exc:  # noqa: BLE001
+                        messages.error(request, f'Could not create region: {exc}')
+            elif action == 'edit' and region_id:
                 try:
-                    TaxRegion.objects.create(
-                        name=name,
-                        country=country,
-                        region=region,
-                        is_default=is_default,
-                    )
-                    messages.success(request, f'Region "{name}" created.')
+                    obj = TaxRegion.objects.get(pk=region_id)
+                    obj.name = (request.POST.get('name') or obj.name).strip()
+                    obj.country = _norm_country(request.POST.get('country') or obj.country)
+                    obj.region = _norm_region(request.POST.get('region') or '')
+                    obj.is_default = bool(request.POST.get('is_default'))
+                    obj.save()
+                    messages.success(request, f'Region "{obj.name}" updated.')
+                except TaxRegion.DoesNotExist:
+                    messages.error(request, 'Region not found.')
                 except Exception as exc:  # noqa: BLE001
-                    messages.error(request, f'Could not create region: {exc}')
+                    messages.error(request, f'Could not save region: {exc}')
+            elif action == 'delete' and region_id:
+                try:
+                    obj = TaxRegion.objects.get(pk=region_id)
+                    nm = obj.name
+                    obj.delete()
+                    messages.success(request, f'Region "{nm}" deleted.')
+                except TaxRegion.DoesNotExist:
+                    messages.error(request, 'Region not found.')
+        elif kind == 'rate':
+            rate_id = (request.POST.get('rate_id') or '').strip()
+            if action == 'create':
+                _create_rate(request)
+            elif action == 'edit' and rate_id:
+                _edit_rate(request, rate_id)
+            elif action == 'delete' and rate_id:
+                _delete_rate(request, rate_id)
+        return HttpResponseRedirect(request.get_full_path())
 
-        elif action == 'edit' and region_id:
-            try:
-                obj = TaxRegion.objects.get(pk=region_id)
-                obj.name = (request.POST.get('name') or obj.name).strip()
-                obj.country = _norm_country(request.POST.get('country') or obj.country)
-                obj.region = _norm_region(request.POST.get('region') or '')
-                obj.is_default = bool(request.POST.get('is_default'))
-                obj.save()
-                messages.success(request, f'Region "{obj.name}" updated.')
-            except TaxRegion.DoesNotExist:
-                messages.error(request, 'Region not found.')
-            except Exception as exc:  # noqa: BLE001
-                messages.error(request, f'Could not save region: {exc}')
-
-        elif action == 'delete' and region_id:
-            try:
-                obj = TaxRegion.objects.get(pk=region_id)
-                name = obj.name
-                obj.delete()
-                messages.success(request, f'Region "{name}" deleted.')
-            except TaxRegion.DoesNotExist:
-                messages.error(request, 'Region not found.')
-
-        return HttpResponseRedirect(request.path)
-
+    edit_kind = (request.GET.get('edit_kind') or '').strip()
     edit_id = (request.GET.get('edit') or '').strip()
-    edit_obj = None
-    if edit_id:
-        edit_obj = TaxRegion.objects.filter(pk=edit_id).first()
-
-    rows = list(TaxRegion.objects.all().order_by('country', 'region', 'name'))
+    edit_region = (
+        TaxRegion.objects.filter(pk=edit_id).first()
+        if (edit_kind == 'region' and edit_id)
+        else None
+    )
+    edit_rate = (
+        TaxRate.objects.filter(pk=edit_id).first() if (edit_kind == 'rate' and edit_id) else None
+    )
+    region_filter = (request.GET.get('region') or '').strip()
+    rate_qs = TaxRate.objects.select_related('region', 'category')
+    if region_filter:
+        rate_qs = rate_qs.filter(region_id=region_filter)
+    region_rows = list(TaxRegion.objects.all().order_by('country', 'region', 'name'))
     return render(
         request,
-        'tax/dashboard/regions.html',
+        'tax/dashboard/tax.html',
         {
-            'rows': rows,
-            'edit_obj': edit_obj,
+            'region_rows': region_rows,
+            'regions': region_rows,
+            'rate_rows': list(rate_qs.order_by('region', 'priority', 'category')),
+            'categories': list(TaxCategory.objects.all().order_by('name')),
+            'region_filter': region_filter,
+            'edit_region': edit_region,
+            'edit_rate': edit_rate,
             'active_nav': 'tax',
-            'breadcrumb_trail': _trail({'label': 'Regions'}),
+            'breadcrumb_trail': _trail({'label': 'Tax'}),
         },
     )
 
@@ -172,38 +195,7 @@ def _delete_rate(request, rate_id: str) -> None:
 
 @staff_member_required
 def rates(request):
-    from plugins.installed.tax.models import TaxCategory, TaxRate, TaxRegion  # noqa: PLC0415
-
-    if request.method == 'POST':
-        action = (request.POST.get('action') or '').strip()
-        rate_id = (request.POST.get('rate_id') or '').strip()
-        if action == 'create':
-            _create_rate(request)
-        elif action == 'edit' and rate_id:
-            _edit_rate(request, rate_id)
-        elif action == 'delete' and rate_id:
-            _delete_rate(request, rate_id)
-        return HttpResponseRedirect(request.get_full_path())
-
-    region_filter = (request.GET.get('region') or '').strip()
-    qs = TaxRate.objects.select_related('region', 'category')
-    if region_filter:
-        qs = qs.filter(region_id=region_filter)
-    rows = list(qs.order_by('region', 'priority', 'category'))
-
-    edit_id = (request.GET.get('edit') or '').strip()
-    edit_obj = TaxRate.objects.filter(pk=edit_id).first() if edit_id else None
-
-    return render(
-        request,
-        'tax/dashboard/rates.html',
-        {
-            'rows': rows,
-            'regions': list(TaxRegion.objects.all().order_by('country', 'region', 'name')),
-            'categories': list(TaxCategory.objects.all().order_by('name')),
-            'region_filter': region_filter,
-            'edit_obj': edit_obj,
-            'active_nav': 'tax',
-            'breadcrumb_trail': _trail({'label': 'Rates'}),
-        },
-    )
+    """Back-compat redirect: rates merged into the unified Tax page (ADR 0003)."""
+    region = (request.GET.get('region') or '').strip()
+    base = '/dashboard/tax/regions/'
+    return HttpResponseRedirect(f'{base}?region={region}#rates' if region else f'{base}#rates')

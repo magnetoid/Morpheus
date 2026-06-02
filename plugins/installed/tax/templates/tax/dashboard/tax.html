@@ -1,0 +1,171 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Tax · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Tax</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Regions and their tax rates — all in one place.</p>
+  </div>
+
+  {# ───────────────────────── Regions ───────────────────────── #}
+  <section class="space-y-3">
+    <h2 class="text-base font-semibold flex items-center gap-2">
+      <i data-lucide="globe" class="h-4 w-4"></i> Regions
+    </h2>
+    <div class="card card-padded">
+      <h3 class="text-sm font-semibold mb-2">{% if edit_region %}Edit region{% else %}+ New region{% endif %}</h3>
+      <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="region">
+        <input type="hidden" name="action" value="{% if edit_region %}edit{% else %}create{% endif %}">
+        {% if edit_region %}<input type="hidden" name="region_id" value="{{ edit_region.id }}">{% endif %}
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Name</span>
+          <input type="text" name="name" required value="{{ edit_region.name|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+                 placeholder="e.g. United States – California">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Country (ISO alpha-2)</span>
+          <input type="text" name="country" required maxlength="2" value="{{ edit_region.country|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm uppercase font-mono"
+                 placeholder="US">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Region (optional)</span>
+          <input type="text" name="region" maxlength="10" value="{{ edit_region.region|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm uppercase font-mono"
+                 placeholder="CA">
+        </label>
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" name="is_default" {% if edit_region.is_default %}checked{% endif %}>
+          <span>Default region (used when no shipping address available)</span>
+        </label>
+        <div class="md:col-span-2 flex gap-2 justify-end">
+          {% if edit_region %}<a href="{% url 'tax_dashboard:regions' %}" class="btn btn-ghost">Cancel</a>{% endif %}
+          <button type="submit" class="btn btn-primary">{% if edit_region %}Save{% else %}Create{% endif %}</button>
+        </div>
+      </form>
+    </div>
+    <div class="card overflow-hidden">
+      {% if region_rows %}
+      <table class="morph-table morph-table-zebra">
+        <thead><tr><th>Name</th><th>Country</th><th>Region</th><th>Default</th><th class="text-right">Actions</th></tr></thead>
+        <tbody>
+        {% for r in region_rows %}
+          <tr>
+            <td class="font-medium"><a href="?region={{ r.id }}#rates" class="hover:underline">{{ r.name }}</a></td>
+            <td><code class="font-mono text-xs">{{ r.country }}</code></td>
+            <td><code class="font-mono text-xs">{{ r.region|default:"—" }}</code></td>
+            <td>{% if r.is_default %}<span class="pill pill-success">Default</span>{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+            <td class="text-right whitespace-nowrap">
+              <a href="?edit_kind=region&edit={{ r.id }}" class="btn btn-ghost text-xs">Edit</a>
+              <form method="post" class="inline">{% csrf_token %}
+                <input type="hidden" name="kind" value="region">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="region_id" value="{{ r.id }}">
+                <button type="submit" class="btn btn-ghost text-xs text-red-600"
+                        data-confirm="Delete region {{ r.name }}? Associated rates will be deleted too.">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="card-padded text-sm text-[color:var(--text-muted)]">No regions yet — add one above.</div>{% endif %}
+    </div>
+  </section>
+
+  {# ───────────────────────── Rates ───────────────────────── #}
+  <section class="space-y-3" id="rates">
+    <h2 class="text-base font-semibold flex items-center gap-2">
+      <i data-lucide="percent" class="h-4 w-4"></i> Rates
+    </h2>
+    <div class="flex items-center gap-1.5 text-xs flex-wrap">
+      <a href="?" class="btn btn-ghost text-xs {% if not region_filter %}is-active{% endif %}">All regions</a>
+      {% for reg in regions %}
+        <a href="?region={{ reg.id }}#rates" class="btn btn-ghost text-xs {% if region_filter == reg.id|stringformat:'s' %}is-active{% endif %}">{{ reg.country }}{% if reg.region %}-{{ reg.region }}{% endif %}</a>
+      {% endfor %}
+    </div>
+    <div class="card card-padded">
+      <h3 class="text-sm font-semibold mb-2">{% if edit_rate %}Edit rate{% else %}+ New rate{% endif %}</h3>
+      <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="rate">
+        <input type="hidden" name="action" value="{% if edit_rate %}edit{% else %}create{% endif %}">
+        {% if edit_rate %}<input type="hidden" name="rate_id" value="{{ edit_rate.id }}">{% endif %}
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Name</span>
+          <input type="text" name="name" required value="{{ edit_rate.name|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+                 placeholder="e.g. VAT 20%">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Region</span>
+          <select name="region" required class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            <option value="">— pick a region —</option>
+            {% for reg in regions %}<option value="{{ reg.id }}" {% if edit_rate.region_id == reg.id %}selected{% endif %}>{{ reg.name }} ({{ reg.country }}{% if reg.region %}-{{ reg.region }}{% endif %})</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Category (optional)</span>
+          <select name="category" class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            <option value="">— default rate —</option>
+            {% for cat in categories %}<option value="{{ cat.code }}" {% if edit_rate.category_id == cat.code %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Rate (%)</span>
+          <input type="number" name="rate_percent" required step="0.001" min="0" value="{{ edit_rate.rate_percent|default:'' }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                 placeholder="20.000">
+        </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Priority (lower first)</span>
+          <input type="number" name="priority" min="0" value="{{ edit_rate.priority|default:0 }}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono">
+        </label>
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" name="is_compound" {% if edit_rate.is_compound %}checked{% endif %}>
+          <span>Compound (applied on top of earlier rates)</span>
+        </label>
+        <div class="md:col-span-3 flex gap-2 justify-end">
+          {% if edit_rate %}<a href="{% url 'tax_dashboard:regions' %}#rates" class="btn btn-ghost">Cancel</a>{% endif %}
+          <button type="submit" class="btn btn-primary">{% if edit_rate %}Save{% else %}Create{% endif %}</button>
+        </div>
+      </form>
+    </div>
+    <div class="card overflow-hidden">
+      {% if rate_rows %}
+      <table class="morph-table morph-table-zebra">
+        <thead><tr><th>Name</th><th>Region</th><th>Category</th><th class="text-right">Rate</th><th>Compound</th><th class="text-right">Priority</th><th class="text-right">Actions</th></tr></thead>
+        <tbody>
+        {% for r in rate_rows %}
+          <tr>
+            <td class="font-medium">{{ r.name }}</td>
+            <td><code class="font-mono text-xs">{{ r.region.country }}{% if r.region.region %}-{{ r.region.region }}{% endif %}</code></td>
+            <td>{{ r.category.name|default:"—" }}</td>
+            <td class="text-right font-mono">{{ r.rate_percent }}%</td>
+            <td>{% if r.is_compound %}<span class="pill pill-warning">Compound</span>{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+            <td class="text-right font-mono text-xs">{{ r.priority }}</td>
+            <td class="text-right whitespace-nowrap">
+              <a href="?{% if region_filter %}region={{ region_filter }}&{% endif %}edit_kind=rate&edit={{ r.id }}#rates" class="btn btn-ghost text-xs">Edit</a>
+              <form method="post" class="inline">{% csrf_token %}
+                <input type="hidden" name="kind" value="rate">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="rate_id" value="{{ r.id }}">
+                <button type="submit" class="btn btn-ghost text-xs text-red-600" data-confirm="Delete rate {{ r.name }}?">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="card-padded text-sm text-[color:var(--text-muted)]">No rates yet — add one above.</div>{% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}
