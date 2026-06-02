@@ -53,6 +53,7 @@ class _UnifiedAsset:
         'size_bytes',
         'created_at',
         'edit_url',
+        'save_url',
         'source',
         'source_label',
     )
@@ -74,6 +75,7 @@ class _UnifiedAsset:
         size_bytes=0,
         created_at=None,
         edit_url='',
+        save_url='',
         source='media',
         source_label='',
     ):
@@ -91,12 +93,24 @@ class _UnifiedAsset:
         self.size_bytes = size_bytes
         self.created_at = created_at
         self.edit_url = edit_url
+        self.save_url = save_url
         self.source = source
         self.source_label = source_label
 
     @property
     def is_image(self) -> bool:
         return self.kind == 'image'
+
+    @property
+    def editable(self) -> str:
+        """How much meta the inline modal can edit: 'full' (MediaAsset →
+        title/alt/description/tags), 'alt' (ProductImage → alt only), or
+        'none' (digital files — preview + link + open-in-product only)."""
+        if self.source == 'media':
+            return 'full'
+        if self.source == 'product_image':
+            return 'alt'
+        return 'none'
 
     @property
     def human_size(self) -> str:
@@ -124,6 +138,7 @@ class _UnifiedAsset:
             size_bytes=a.size_bytes,
             created_at=a.created_at,
             edit_url=f'/dashboard/media/{a.id}/edit/',
+            save_url=f'/dashboard/media/{a.id}/edit/',
             source='media',
             source_label='Library',
         )
@@ -146,6 +161,7 @@ class _UnifiedAsset:
             size_bytes=size,
             created_at=pi.created_at,
             edit_url=f'/dashboard/products/{pi.product_id}/',
+            save_url=f'/dashboard/products/{pi.product_id}/images/{pi.id}/edit/',
             source='product_image',
             source_label='Product image',
         )

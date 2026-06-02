@@ -6,7 +6,21 @@ from __future__ import annotations
 
 from django.test import SimpleTestCase
 
-from plugins.installed.media.views import _doc_view_matches
+from plugins.installed.media.views import _doc_view_matches, _UnifiedAsset
+
+
+class UnifiedAssetEditableTests(SimpleTestCase):
+    def test_editable_by_source(self):
+        self.assertEqual(
+            _UnifiedAsset(id='a', kind='image', url='', source='media').editable, 'full'
+        )
+        self.assertEqual(
+            _UnifiedAsset(id='b', kind='image', url='', source='product_image').editable, 'alt'
+        )
+        self.assertEqual(
+            _UnifiedAsset(id='c', kind='document', url='', source='digital_variant').editable,
+            'none',
+        )
 
 
 class DocViewMatchTests(SimpleTestCase):

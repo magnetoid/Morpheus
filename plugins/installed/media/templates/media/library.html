@@ -106,10 +106,14 @@
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
     {% for a in assets %}
     <div class="card overflow-hidden asset-card" style="position: relative;">
-      <a href="{{ a.edit_url }}"
-         class="block{% if a.source == 'media' %} js-asset-edit{% endif %}"
+      <a href="{{ a.edit_url }}" class="block js-asset-open"
          style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;"
-         {% if a.source == 'media' %}data-action="{{ a.edit_url }}" data-title="{{ a.title }}" data-alt="{{ a.alt_text }}" data-description="{{ a.description }}" data-tags="{{ a.tags|join:', ' }}" data-filename="{{ a.filename }}" data-url="{{ a.url }}" data-is-image="{% if a.is_image %}1{% endif %}"{% endif %}>
+         data-source="{{ a.source }}" data-editable="{{ a.editable }}" data-save-url="{{ a.save_url }}"
+         data-edit-url="{{ a.edit_url }}" data-source-label="{{ a.source_label }}"
+         data-title="{{ a.title }}" data-alt="{{ a.alt_text }}" data-description="{{ a.description }}"
+         data-tags="{{ a.tags|join:', ' }}" data-filename="{{ a.filename }}" data-url="{{ a.url }}"
+         data-is-image="{% if a.is_image %}1{% endif %}" data-size="{{ a.human_size }}"
+         data-dims="{% if a.width %}{{ a.width }}×{{ a.height }}{% endif %}">
         {% if a.is_image %}
         <img src="{{ a.url }}" alt="{{ a.alt_text|default:a.filename }}"
              style="width: 100%; height: 100%; object-fit: contain; padding: 6px;" loading="lazy">
@@ -165,40 +169,45 @@
             <img id="asset-meta-preview" alt="" style="max-width:100%; max-height:240px; object-fit:contain; display:none;">
             <i id="asset-meta-preview-icon" data-lucide="file" class="h-14 w-14 text-[color:var(--text-subtle)]" style="display:none;"></i>
           </div>
+          <p id="asset-meta-details" class="text-xs text-[color:var(--text-muted)] mt-2"></p>
         </div>
         <div class="md:col-span-3 space-y-3">
-          <div>
+          <div id="asset-fld-title">
             <label class="block text-sm font-medium mb-1">Title</label>
             <input type="text" name="title" class="input" maxlength="200"
                    placeholder="Human-friendly name — used as the SEO title.">
           </div>
-          <div>
+          <div id="asset-fld-alt">
             <label class="block text-sm font-medium mb-1">Alt text</label>
             <input type="text" name="alt_text" class="input" maxlength="300"
                    placeholder="Describes the image for screen readers and search engines.">
           </div>
-          <div>
+          <div id="asset-fld-description">
             <label class="block text-sm font-medium mb-1">Description</label>
             <textarea name="description" class="input" rows="3"
                       placeholder="Caption / longer description. Surfaces in galleries and SEO metadata."></textarea>
           </div>
-          <div>
+          <div id="asset-fld-tags">
             <label class="block text-sm font-medium mb-1">Tags</label>
             <input type="text" name="tags" class="input" placeholder="hero, summer, lifestyle">
             <p class="text-xs text-[color:var(--text-muted)] mt-1">Comma-separated. Used for filtering the library.</p>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">Direct URL</label>
+            <label class="block text-sm font-medium mb-1">Direct link</label>
             <input id="asset-meta-url" type="text" class="input font-mono text-xs" readonly onclick="this.select()">
           </div>
+          <p id="asset-meta-product-hint" class="text-xs text-[color:var(--text-muted)]" style="display:none;">
+            This asset belongs to a product.
+            <a id="asset-meta-product-link" href="#" style="text-decoration:underline; font-weight:600;">Open in product editor →</a>
+          </p>
         </div>
       </div>
       <div class="morph-modal__foot" style="padding:1rem 1.2rem;">
         <a id="asset-meta-download" href="#" download class="btn" style="margin-right:auto;">
           <i data-lucide="download" class="h-4 w-4"></i> Download
         </a>
-        <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn" onclick="this.closest('dialog').close()">Close</button>
+        <button type="submit" id="asset-meta-save" class="btn btn-primary">Save</button>
       </div>
     </form>
   </dialog>
@@ -210,47 +219,71 @@
     const form = document.getElementById('asset-meta-form');
     const preview = document.getElementById('asset-meta-preview');
     const previewIcon = document.getElementById('asset-meta-preview-icon');
+    const saveBtn = document.getElementById('asset-meta-save');
     let activeTile = null;
 
     function fld(name) { return form.querySelector('[name="' + name + '"]'); }
+    function show(id, on) { const el = document.getElementById(id); if (el) { el.style.display = on ? '' : 'none'; } }
 
     function openFor(link) {
+      const d = link.dataset;
       activeTile = link.closest('.asset-card');
-      form.setAttribute('action', link.dataset.action || '');
-      fld('title').value = link.dataset.title || '';
-      fld('alt_text').value = link.dataset.alt || '';
-      fld('description').value = link.dataset.description || '';
-      fld('tags').value = link.dataset.tags || '';
-      document.getElementById('asset-meta-name').textContent = link.dataset.filename || 'asset';
-      document.getElementById('asset-meta-url').value = link.dataset.url || '';
-      document.getElementById('asset-meta-download').href = link.dataset.url || '#';
-      if (link.dataset.isImage === '1' && link.dataset.url) {
-        preview.src = link.dataset.url; preview.style.display = '';
-        previewIcon.style.display = 'none';
+      form.setAttribute('action', d.saveUrl || '');
+      fld('title').value = d.title || '';
+      fld('alt_text').value = d.alt || '';
+      fld('description').value = d.description || '';
+      fld('tags').value = d.tags || '';
+      document.getElementById('asset-meta-name').textContent = d.filename || 'asset';
+      document.getElementById('asset-meta-url').value = d.url || '';
+      document.getElementById('asset-meta-download').href = d.url || '#';
+      document.getElementById('asset-meta-details').textContent =
+        [d.sourceLabel, d.size, d.dims].filter(Boolean).join(' · ');
+
+      // Preview: image thumbnail, else a file-type icon.
+      if (d.isImage === '1' && d.url) {
+        preview.src = d.url; preview.style.display = ''; previewIcon.style.display = 'none';
       } else {
-        preview.removeAttribute('src'); preview.style.display = 'none';
-        previewIcon.style.display = '';
+        preview.removeAttribute('src'); preview.style.display = 'none'; previewIcon.style.display = '';
       }
+
+      // Editable fields depend on the source: full meta for library uploads,
+      // alt-only for product images, read-only for digital files.
+      const ed = d.editable || 'none';
+      show('asset-fld-title', ed === 'full');
+      show('asset-fld-description', ed === 'full');
+      show('asset-fld-tags', ed === 'full');
+      show('asset-fld-alt', ed === 'full' || ed === 'alt');
+      saveBtn.style.display = (ed === 'none') ? 'none' : '';
+
+      // Product-owned assets get a jump-link to their editor.
+      const isProduct = d.source && d.source !== 'media';
+      show('asset-meta-product-hint', isProduct);
+      if (isProduct) { document.getElementById('asset-meta-product-link').href = d.editUrl || '#'; }
+
       if (typeof modal.showModal === 'function') { modal.showModal(); }
     }
 
-    document.querySelectorAll('a.js-asset-edit').forEach(function (link) {
+    document.querySelectorAll('a.js-asset-open').forEach(function (link) {
       link.addEventListener('click', function (ev) { ev.preventDefault(); openFor(link); });
     });
 
-    // Server returns {ok:true, asset:{…}} — update the tile in place, then close.
+    // edit_meta → {ok, asset:{…}}; image_edit → {ok, alt_text}. Patch the tile
+    // + its data-* in place, then close.
     form.addEventListener('morph:saved', function (ev) {
-      const a = ev.detail && ev.detail.asset;
-      if (a && activeTile) {
+      const data = ev.detail || {};
+      const link = activeTile && activeTile.querySelector('a.js-asset-open');
+      if (link && data.asset) {                       // MediaAsset (full meta)
+        const a = data.asset;
+        link.dataset.title = a.title || '';
+        link.dataset.alt = a.alt_text || '';
+        link.dataset.description = a.description || '';
+        link.dataset.tags = (a.tags || []).join(', ');
         const cap = activeTile.querySelector('.asset-caption');
-        if (cap) { cap.textContent = a.display; cap.title = a.display; }
-        const link = activeTile.querySelector('a.js-asset-edit');
-        if (link) {
-          link.dataset.title = a.title || '';
-          link.dataset.alt = a.alt_text || '';
-          link.dataset.description = a.description || '';
-          link.dataset.tags = (a.tags || []).join(', ');
-        }
+        if (cap && a.display) { cap.textContent = a.display; cap.title = a.display; }
+      } else if (link && typeof data.alt_text === 'string') {  // ProductImage (alt only)
+        link.dataset.alt = data.alt_text;
+        const img = activeTile.querySelector('img');
+        if (img) { img.alt = data.alt_text; }
       }
       setTimeout(function () { if (modal.open) { modal.close(); } }, 500);
     });
