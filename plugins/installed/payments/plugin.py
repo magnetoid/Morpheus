@@ -125,13 +125,14 @@ class PaymentsPlugin(Plugin):
         }
 
     def contribute_settings_panel(self):
-        # The 'payments' category dispatches to the custom settings_payments
-        # view (one card per registered gateway with enable toggle + config).
-        # This panel only keeps the Payments category populated on the
-        # settings hub index; its schema is not rendered directly.
+        # Renders as a schema-driven card on the 'payments' settings category
+        # page (Stripe keys + capture strategy) via admin_dashboard's generic
+        # settings_category view. advanced_payments contributes its own
+        # 'Advanced payments' card to the same category — two plugins, one
+        # page; NOT a duplicate (ADR 0003). Disabling either removes its card.
         return SettingsPanel(
             label='Payment gateways',
-            description='Enable gateways and set their keys — Stripe, Manual / offline, and any others.',
+            description='Stripe API keys and capture strategy. Test + cash-on-delivery live in the Advanced payments card below.',
             schema=self.get_config_schema(),
             category='payments',
         )
