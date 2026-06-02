@@ -170,6 +170,17 @@
     outline-offset: 3px;
     border-radius: 4px;
   }
+  /* Skip-to-content — keyboard / screen-reader users jump past the nav.
+     Off-screen until focused; matches the brand ink/paper palette. */
+  .skip-link {
+    position: fixed; top: .5rem; left: .5rem; z-index: 200;
+    transform: translateY(-150%);
+    background: var(--ink); color: var(--paper);
+    padding: .6rem 1rem; border-radius: 8px; font-weight: 600;
+    font-size: .9rem; box-shadow: 0 8px 24px -8px rgba(14,14,14,.4);
+    transition: transform var(--motion-fast) var(--ease-out);
+  }
+  .skip-link:focus { transform: translateY(0); outline: 2px solid var(--accent); outline-offset: 2px; }
   /* Product card lift — the existing .book .cover-wrap zoom stays; this
      adds a subtle elevation cue so the whole card reads as a tappable
      surface, not just the image. */
@@ -346,6 +357,7 @@
 </script>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 {% gtm_noscript_body %}
 {% tracking_consent_banner %}
 
@@ -618,7 +630,7 @@
   </nav>
 </div>
 
-<main>
+<main id="main-content" tabindex="-1">
   {% block content %}{% endblock %}
 </main>
 
