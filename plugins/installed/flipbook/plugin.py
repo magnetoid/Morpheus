@@ -35,25 +35,28 @@ class FlipbookPlugin(Plugin):
             category='channels',
             description='Per-store flipbook preview controls.',
             schema={
-                'enabled': {
-                    'type': 'boolean',
-                    'title': 'Enable flipbook preview',
-                    'default': True,
-                    'description': 'When off, the storefront block + URL both 404.',
-                },
-                'max_preview_pages': {
-                    'type': 'integer',
-                    'title': 'Max pages to expose in preview',
-                    'minimum': 0,
-                    'maximum': 500,
-                    'default': 20,
-                    'description': 'Limits how many PDF pages render in the public preview. 0 = full book.',
-                },
-                'theme': {
-                    'type': 'string',
-                    'title': 'Page background',
-                    'enum': ['paper', 'cream', 'dark'],
-                    'default': 'paper',
+                'type': 'object',
+                'properties': {
+                    'enabled': {
+                        'type': 'boolean',
+                        'title': 'Enable flipbook preview',
+                        'default': True,
+                        'description': 'When off, the storefront block + URL both 404.',
+                    },
+                    'max_preview_pages': {
+                        'type': 'integer',
+                        'title': 'Max pages to expose in preview',
+                        'minimum': 0,
+                        'maximum': 500,
+                        'default': 20,
+                        'description': 'Limits how many PDF pages render in the public preview. 0 = full book.',
+                    },
+                    'theme': {
+                        'type': 'string',
+                        'title': 'Page background',
+                        'enum': ['paper', 'cream', 'dark'],
+                        'default': 'paper',
+                    },
                 },
             },
         )

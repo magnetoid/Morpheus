@@ -120,7 +120,7 @@
   /* Render the source PDF into per-page canvases, then hand them to
      StPageFlip for the 3D-flip experience. Truncates at MAX_PAGES so
      the preview stays bounded even on long PDFs. */
-  const SRC       = {{ source_url|escapejs|stringformat:"'%s'" }};
+  const SRC       = "{{ source_url|escapejs }}";
   const MAX_PAGES = {{ max_pages|default:20 }} || 9999;
 
   const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
