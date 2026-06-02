@@ -5,6 +5,10 @@ about: images, video, audio, PDFs, spreadsheets, Word docs, other
 documents, plus a special tab for *digital products* (Product rows
 with ``product_type='digital'`` and an attached ``digital_file``).
 """
+
+# ruff: noqa: PLC0415, UP037, PLR0911, S110 — inline model imports (cross-plugin, load-order-safe),
+# quoted self-ref annotations, the tab-classifier branch count, and optional-source count swallows
+# are all intentional and pre-date this change.
 from __future__ import annotations
 
 import json  # noqa: F401 — re-exported for picker callers
@@ -35,21 +39,53 @@ class _UnifiedAsset:
     """
 
     __slots__ = (
-        'id', 'kind', 'url', 'filename', 'mime_type', 'alt_text',
-        'width', 'height', 'size_bytes', 'created_at',
-        'edit_url', 'source', 'source_label',
+        'id',
+        'kind',
+        'url',
+        'filename',
+        'mime_type',
+        'alt_text',
+        'title',
+        'description',
+        'tags',
+        'width',
+        'height',
+        'size_bytes',
+        'created_at',
+        'edit_url',
+        'source',
+        'source_label',
     )
 
-    def __init__(self, *, id, kind, url, filename='', mime_type='',
-                 alt_text='', width=None, height=None, size_bytes=0,
-                 created_at=None, edit_url='', source='media',
-                 source_label=''):
+    def __init__(
+        self,
+        *,
+        id,
+        kind,
+        url,
+        filename='',
+        mime_type='',
+        alt_text='',
+        title='',
+        description='',
+        tags=None,
+        width=None,
+        height=None,
+        size_bytes=0,
+        created_at=None,
+        edit_url='',
+        source='media',
+        source_label='',
+    ):
         self.id = id
         self.kind = kind
         self.url = url
         self.filename = filename
         self.mime_type = mime_type
         self.alt_text = alt_text
+        self.title = title
+        self.description = description
+        self.tags = tags or []
         self.width = width
         self.height = height
         self.size_bytes = size_bytes
@@ -74,12 +110,22 @@ class _UnifiedAsset:
     @classmethod
     def from_media_asset(cls, a) -> '_UnifiedAsset':
         return cls(
-            id=str(a.id), kind=a.kind, url=a.url, filename=a.filename,
-            mime_type=a.mime_type, alt_text=a.alt_text,
-            width=a.width, height=a.height, size_bytes=a.size_bytes,
+            id=str(a.id),
+            kind=a.kind,
+            url=a.url,
+            filename=a.filename,
+            mime_type=a.mime_type,
+            alt_text=a.alt_text,
+            title=a.title,
+            description=a.description,
+            tags=list(a.tags or []),
+            width=a.width,
+            height=a.height,
+            size_bytes=a.size_bytes,
             created_at=a.created_at,
-            edit_url=f'/dashboard/media/{a.id}/',
-            source='media', source_label='Library',
+            edit_url=f'/dashboard/media/{a.id}/edit/',
+            source='media',
+            source_label='Library',
         )
 
     @classmethod
@@ -91,19 +137,28 @@ class _UnifiedAsset:
             url, size = '', 0
         name = (pi.image.name or '').rsplit('/', 1)[-1]
         return cls(
-            id=f'pi:{pi.id}', kind='image', url=url, filename=name or 'product-image',
+            id=f'pi:{pi.id}',
+            kind='image',
+            url=url,
+            filename=name or 'product-image',
             mime_type='image/' + (name.rsplit('.', 1)[-1].lower() if '.' in name else 'jpeg'),
-            alt_text=pi.alt_text or '', size_bytes=size,
+            alt_text=pi.alt_text or '',
+            size_bytes=size,
             created_at=pi.created_at,
             edit_url=f'/dashboard/products/{pi.product_id}/',
-            source='product_image', source_label='Product image',
+            source='product_image',
+            source_label='Product image',
         )
 
     @classmethod
     def from_digital_file(cls, prod) -> '_UnifiedAsset':
         try:
             url = prod.digital_file.url if prod.digital_file else ''
-            size = prod.digital_file.size if prod.digital_file and prod.digital_file.storage.exists(prod.digital_file.name) else 0
+            size = (
+                prod.digital_file.size
+                if prod.digital_file and prod.digital_file.storage.exists(prod.digital_file.name)
+                else 0
+            )
         except Exception:  # noqa: BLE001
             url, size = '', 0
         name = (prod.digital_file.name or '').rsplit('/', 1)[-1]
@@ -127,12 +182,17 @@ class _UnifiedAsset:
         elif status == 'archived':
             label_suffix = ' · ARCHIVED'
         return cls(
-            id=f'dp:{prod.id}', kind='document', url=url,
-            filename=name or f'{prod.slug}.bin', mime_type=mime,
-            alt_text=prod.name, size_bytes=size,
+            id=f'dp:{prod.id}',
+            kind='document',
+            url=url,
+            filename=name or f'{prod.slug}.bin',
+            mime_type=mime,
+            alt_text=prod.name,
+            size_bytes=size,
             created_at=prod.updated_at,
             edit_url=f'/dashboard/products/{prod.id}/',
-            source='digital_product', source_label=f'Digital product{label_suffix}',
+            source='digital_product',
+            source_label=f'Digital product{label_suffix}',
         )
 
 
@@ -157,6 +217,7 @@ def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_Unifi
     if view in ('all', 'image'):
         try:
             from plugins.installed.catalog.models import ProductImage
+
             pi_qs = ProductImage.objects.select_related('product').order_by('-created_at')
             if search:
                 pi_qs = pi_qs.filter(
@@ -172,21 +233,20 @@ def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_Unifi
     if view in ('all', 'document', 'pdf', 'spreadsheet', 'word', 'other'):
         try:
             from plugins.installed.catalog.models import Product
+
             # Archived products are dead inventory — their digital files
             # shouldn't appear in the media library, otherwise admins see
             # files belonging to dead listings alongside live assets.
             # Drafts stay surfaced (they're work-in-progress, not dead).
-            dp_qs = (Product.objects
-                     .filter(product_type='digital')
-                     .exclude(status='archived')
-                     .exclude(digital_file='')
-                     .exclude(digital_file__isnull=True)
-                     .order_by('-updated_at'))
+            dp_qs = (
+                Product.objects.filter(product_type='digital')
+                .exclude(status='archived')
+                .exclude(digital_file='')
+                .exclude(digital_file__isnull=True)
+                .order_by('-updated_at')
+            )
             if search:
-                dp_qs = dp_qs.filter(
-                    Q(name__icontains=search)
-                    | Q(digital_file__icontains=search)
-                )
+                dp_qs = dp_qs.filter(Q(name__icontains=search) | Q(digital_file__icontains=search))
             items.extend(_UnifiedAsset.from_digital_file(p) for p in dp_qs[:200])
         except Exception as e:  # noqa: BLE001
             logger.debug('media.federated: digital_file skipped: %s', e)
@@ -198,9 +258,14 @@ def _federated_assets(view: str, search: str = '', tag: str = '') -> list[_Unifi
 # Mime → "view" classifier for fine-grained tabs within the document kind.
 # Order is significant — first match wins.
 _DOC_VIEWS = (
-    ('pdf',         'PDFs',         'file-text', ('pdf',)),
-    ('spreadsheet', 'Spreadsheets', 'sheet',     ('spreadsheet', 'excel', 'csv', '.xls', '.xlsx', '.numbers')),
-    ('word',        'Word docs',    'file-text', ('word', 'wordprocessingml', '.doc', '.docx', '.rtf')),
+    ('pdf', 'PDFs', 'file-text', ('pdf',)),
+    (
+        'spreadsheet',
+        'Spreadsheets',
+        'sheet',
+        ('spreadsheet', 'excel', 'csv', '.xls', '.xlsx', '.numbers'),
+    ),
+    ('word', 'Word docs', 'file-text', ('word', 'wordprocessingml', '.doc', '.docx', '.rtf')),
 )
 
 
@@ -216,9 +281,7 @@ def _filter_for_view(qs, view: str):
         narrowed = qs.filter(kind=MediaAsset.KIND_DOCUMENT)
         for _, _, _, needles in _DOC_VIEWS:
             for n in needles:
-                narrowed = narrowed.exclude(
-                    Q(mime_type__icontains=n) | Q(filename__icontains=n)
-                )
+                narrowed = narrowed.exclude(Q(mime_type__icontains=n) | Q(filename__icontains=n))
         return narrowed
     if view == 'other':
         return qs.filter(kind=MediaAsset.KIND_OTHER)
@@ -245,60 +308,87 @@ def _build_tabs(view: str) -> list[dict]:
     dp_count = 0
     try:
         from plugins.installed.catalog.models import Product, ProductImage
+
         pi_count = ProductImage.objects.count()
-        dp_count = (Product.objects
-                    .filter(product_type='digital')
-                    .exclude(digital_file='')
-                    .exclude(digital_file__isnull=True)
-                    .count())
+        dp_count = (
+            Product.objects.filter(product_type='digital')
+            .exclude(digital_file='')
+            .exclude(digital_file__isnull=True)
+            .count()
+        )
     except Exception:  # noqa: BLE001
         pass
 
-    tabs = [{
-        'key': 'all', 'label': 'All', 'icon': 'layers',
-        'count': base.count() + pi_count + dp_count,
-        'active': view in ('all', ''),
-    }]
+    tabs = [
+        {
+            'key': 'all',
+            'label': 'All',
+            'icon': 'layers',
+            'count': base.count() + pi_count + dp_count,
+            'active': view in ('all', ''),
+        }
+    ]
     for key, label, icon in (
         ('image', 'Images', 'image'),
         ('video', 'Videos', 'film'),
-        ('audio', 'Audio',  'music'),
+        ('audio', 'Audio', 'music'),
     ):
         c = base.filter(kind=key).count()
         if key == 'image':
             c += pi_count
-        tabs.append({
-            'key': key, 'label': label, 'icon': icon,
-            'count': c,
-            'active': view == key,
-        })
+        tabs.append(
+            {
+                'key': key,
+                'label': label,
+                'icon': icon,
+                'count': c,
+                'active': view == key,
+            }
+        )
     for key, label, icon, _ in _DOC_VIEWS:
-        tabs.append({
-            'key': key, 'label': label, 'icon': icon,
-            'count': _filter_for_view(base, key).count(),
-            'active': view == key,
-        })
-    tabs.append({
-        'key': 'document', 'label': 'Other docs', 'icon': 'file',
-        'count': _filter_for_view(base, 'document').count() + dp_count,
-        'active': view == 'document',
-    })
-    tabs.append({
-        'key': 'other', 'label': 'Other', 'icon': 'box',
-        'count': base.filter(kind=MediaAsset.KIND_OTHER).count(),
-        'active': view == 'other',
-    })
+        tabs.append(
+            {
+                'key': key,
+                'label': label,
+                'icon': icon,
+                'count': _filter_for_view(base, key).count(),
+                'active': view == key,
+            }
+        )
+    tabs.append(
+        {
+            'key': 'document',
+            'label': 'Other docs',
+            'icon': 'file',
+            'count': _filter_for_view(base, 'document').count() + dp_count,
+            'active': view == 'document',
+        }
+    )
+    tabs.append(
+        {
+            'key': 'other',
+            'label': 'Other',
+            'icon': 'box',
+            'count': base.filter(kind=MediaAsset.KIND_OTHER).count(),
+            'active': view == 'other',
+        }
+    )
     digital_count = 0
     try:
         from plugins.installed.catalog.models import Product
+
         digital_count = Product.objects.filter(product_type='digital').count()
     except Exception:  # noqa: BLE001
         pass
-    tabs.append({
-        'key': 'digital_products', 'label': 'Digital products', 'icon': 'download',
-        'count': digital_count,
-        'active': view == 'digital_products',
-    })
+    tabs.append(
+        {
+            'key': 'digital_products',
+            'label': 'Digital products',
+            'icon': 'download',
+            'count': digital_count,
+            'active': view == 'digital_products',
+        }
+    )
     return tabs
 
 
@@ -312,31 +402,39 @@ def library(request: HttpRequest) -> HttpResponse:
         digital_products: list = []
         try:
             from plugins.installed.catalog.models import Product
+
             digital_products = list(
-                Product.objects.filter(product_type='digital')
-                .order_by('-updated_at')[:200]
+                Product.objects.filter(product_type='digital').order_by('-updated_at')[:200]
             )
         except Exception as e:  # noqa: BLE001
             logger.debug('media.library: digital products query failed: %s', e)
-        return render(request, 'media/library.html', {
-            'view': view,
-            'kind_tabs': _build_tabs(view),
-            'digital_products': digital_products,
-            'active_nav': 'assets',
-        })
+        return render(
+            request,
+            'media/library.html',
+            {
+                'view': view,
+                'kind_tabs': _build_tabs(view),
+                'digital_products': digital_products,
+                'active_nav': 'assets',
+            },
+        )
 
     search = (request.GET.get('q') or '').strip()
     tag = (request.GET.get('tag') or '').strip()
     assets = _federated_assets(view, search=search, tag=tag)
 
-    return render(request, 'media/library.html', {
-        'assets': assets,
-        'view': view,
-        'search': search,
-        'tag': tag,
-        'kind_tabs': _build_tabs(view),
-        'active_nav': 'assets',
-    })
+    return render(
+        request,
+        'media/library.html',
+        {
+            'assets': assets,
+            'view': view,
+            'search': search,
+            'tag': tag,
+            'kind_tabs': _build_tabs(view),
+            'active_nav': 'assets',
+        },
+    )
 
 
 @staff_member_required
@@ -379,17 +477,19 @@ def api_upload(request: HttpRequest) -> JsonResponse:
     except Exception as e:  # noqa: BLE001
         logger.warning('media: api upload failed: %s', e, exc_info=True)
         return JsonResponse({'error': str(e)}, status=500)
-    return JsonResponse({
-        'id': str(asset.id),
-        'url': asset.url,
-        'filename': asset.filename,
-        'kind': asset.kind,
-        'mime_type': asset.mime_type,
-        'width': asset.width,
-        'height': asset.height,
-        'size_bytes': asset.size_bytes,
-        'alt_text': asset.alt_text,
-    })
+    return JsonResponse(
+        {
+            'id': str(asset.id),
+            'url': asset.url,
+            'filename': asset.filename,
+            'kind': asset.kind,
+            'mime_type': asset.mime_type,
+            'width': asset.width,
+            'height': asset.height,
+            'size_bytes': asset.size_bytes,
+            'alt_text': asset.alt_text,
+        }
+    )
 
 
 @staff_member_required
@@ -405,20 +505,47 @@ def delete(request: HttpRequest, asset_id) -> HttpResponse:
 
 @staff_member_required
 def edit_meta(request: HttpRequest, asset_id) -> HttpResponse:
-    """Edit alt text + tags. The file itself is replaced via re-upload."""
+    """Edit title / alt text / description / tags. The file itself is
+    replaced via re-upload.
+
+    Responds with JSON when called over AJAX (the library's inline SEO
+    modal) so the client never mistakes an HTML redirect for success —
+    see the ``dashboard-ajax-json-contract`` landmine.
+    """
     asset = get_object_or_404(MediaAsset, pk=asset_id)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if request.method == 'POST':
+        asset.title = (request.POST.get('title') or '')[:200]
         asset.alt_text = (request.POST.get('alt_text') or '')[:300]
+        asset.description = (request.POST.get('description') or '').strip()
         raw_tags = (request.POST.get('tags') or '').strip()
         asset.tags = [t.strip() for t in raw_tags.split(',') if t.strip()]
-        asset.save(update_fields=['alt_text', 'tags', 'updated_at'])
+        asset.save(update_fields=['title', 'alt_text', 'description', 'tags', 'updated_at'])
+        if is_ajax:
+            return JsonResponse(
+                {
+                    'ok': True,
+                    'asset': {
+                        'id': str(asset.id),
+                        'title': asset.title,
+                        'alt_text': asset.alt_text,
+                        'description': asset.description,
+                        'tags': asset.tags,
+                        'display': asset.title or asset.filename or 'untitled',
+                    },
+                }
+            )
         messages.success(request, 'Asset updated.')
         return redirect('media:library')
-    return render(request, 'media/edit_meta.html', {
-        'asset': asset,
-        'tags_str': ', '.join(asset.tags or []),
-        'active_nav': 'media',
-    })
+    return render(
+        request,
+        'media/edit_meta.html',
+        {
+            'asset': asset,
+            'tags_str': ', '.join(asset.tags or []),
+            'active_nav': 'media',
+        },
+    )
 
 
 @staff_member_required
@@ -436,8 +563,12 @@ def picker_modal(request: HttpRequest) -> HttpResponse:
     search = (request.GET.get('q') or '').strip()
     if search:
         qs = qs.filter(filename__icontains=search) | qs.filter(alt_text__icontains=search)
-    return render(request, 'media/picker.html', {
-        'assets': list(qs[:60]),
-        'kind': kind,
-        'search': search,
-    })
+    return render(
+        request,
+        'media/picker.html',
+        {
+            'assets': list(qs[:60]),
+            'kind': kind,
+            'search': search,
+        },
+    )

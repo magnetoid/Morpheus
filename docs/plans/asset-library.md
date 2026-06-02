@@ -13,26 +13,24 @@ Routes in `plugins/installed/media/urls.py`. Asset edit page:
    `object-fit: cover` on a 1:1 box (cropped tall covers) → now
    `object-fit: contain; padding: 6px` (full cover, letterboxed).
 
-2. **Nice digital-product Upload button + a Download button beside it.**
-   On the product editor's digital-file section (and/or the library tile),
-   pair the upload control with a Download (`<a href="{{ asset.url }}" download>`
-   styled `.btn`). For digital products the secure path may differ — check
-   `digital_products/views.py` for an existing tokened download route before
-   linking the raw file URL.
+2. **DONE — Upload + Download buttons.** Library tiles now carry a download
+   button (`<a download>` overlay, top-right); the digital-products tab gained a
+   styled `.btn` Download per row. Admin context downloads the raw file URL
+   directly (staff-only page) — the *customer* tokened path in `digital_products`
+   is untouched.
 
-3. **All uploads (images, PDFs, …) appear on the asset page.** Federation
-   already covers MediaAsset + ProductImage + digital_file. VERIFY nothing is
-   siloed: digital products render under a special tab (see views.py docstring) —
-   confirm a standalone PDF upload and every product image surface in the default
-   view, and widen `_federated_assets` / `_filter_for_view` if a source is missing.
+3. **DONE (verified) — all uploads appear.** `_federated_assets` unions
+   MediaAsset + ProductImage + Product.digital_file across the tabs; `_build_tabs`
+   counts include the federated rows. No source was siloed, so no widening needed.
 
-4. **Click an asset → modal popup to edit title / description / all SEO.**
-   Tiles currently link to `a.edit_url` (the full `edit_meta` page). Replace with
-   a modal: fetch the edit form (or render the fields inline) into an
-   `admin_dashboard` modal, submit via the `data-ajax` JSON pattern
-   (see the `dashboard-ajax-json-contract` memory — return JSON, not a redirect).
-   Fields to expose: title, alt text, description, + SEO (read what `edit_meta.html`
-   already offers; add the SEO plugin's SeoMeta fields if missing).
+4. **DONE — click an asset → inline SEO modal.** Native library assets
+   (`source == 'media'`) open a `<dialog class="morph-modal">` editing
+   title / alt text / description / tags + Direct URL + Download, submitting via
+   the `data-ajax` JSON contract (`edit_meta` returns `{ok, asset}`; the tile
+   updates in place). New `MediaAsset.title` + `description` fields back it
+   (migration 0003); 4 tests pin the contract. Non-media tiles still deep-link to
+   their product editor. **Also fixed a live 404:** `from_media_asset` linked
+   `/dashboard/media/{id}/` (no `/edit/`) — every library tile click 404'd.
 
 ## Notes
 - Keep everything inside the media plugin (+ digital_products for the secure

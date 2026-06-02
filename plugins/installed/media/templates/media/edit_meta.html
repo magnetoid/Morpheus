@@ -31,10 +31,21 @@
       <form method="post" class="card card-padded space-y-3" data-morph-dirty>
         {% csrf_token %}
         <div>
+          <label class="block text-sm font-medium mb-1">Title</label>
+          <input type="text" name="title" class="input" maxlength="200"
+                 value="{{ asset.title|default:'' }}"
+                 placeholder="Human-friendly name — used as the SEO title.">
+        </div>
+        <div>
           <label class="block text-sm font-medium mb-1">Alt text</label>
           <input type="text" name="alt_text" class="input" maxlength="300"
                  value="{{ asset.alt_text|default:'' }}"
                  placeholder="Used by screen readers and as fallback when the image fails to load.">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Description</label>
+          <textarea name="description" class="input" rows="3"
+                    placeholder="Caption / longer description. Surfaces in galleries and SEO metadata.">{{ asset.description|default:'' }}</textarea>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Tags</label>

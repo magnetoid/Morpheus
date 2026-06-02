@@ -68,10 +68,11 @@
             <td>{{ p.price }}</td>
             <td>
               {% if p.digital_file %}
-                <a href="{{ p.digital_file.url }}" target="_blank" style="text-decoration: underline;">
-                  <i data-lucide="download" class="h-3.5 w-3.5" style="display:inline-block; vertical-align:middle;"></i>
-                  {{ p.digital_file.name|cut:"digital/" }}
+                <a href="{{ p.digital_file.url }}" download class="btn btn-ghost" style="font-size:.75rem;">
+                  <i data-lucide="download" class="h-3.5 w-3.5"></i> Download
                 </a>
+                <div class="text-[10px] text-[color:var(--text-muted)] truncate" style="max-width:200px;"
+                     title="{{ p.digital_file.name|cut:'digital/' }}">{{ p.digital_file.name|cut:"digital/" }}</div>
               {% else %}
                 <span class="pill pill-neutral">No file attached</span>
               {% endif %}
@@ -104,8 +105,11 @@
   {% if assets %}
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
     {% for a in assets %}
-    <div class="card overflow-hidden" style="position: relative;">
-      <a href="{{ a.edit_url }}" class="block" style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;">
+    <div class="card overflow-hidden asset-card" style="position: relative;">
+      <a href="{{ a.edit_url }}"
+         class="block{% if a.source == 'media' %} js-asset-edit{% endif %}"
+         style="aspect-ratio: 1/1; background: var(--surface-2); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;"
+         {% if a.source == 'media' %}data-action="{{ a.edit_url }}" data-title="{{ a.title }}" data-alt="{{ a.alt_text }}" data-description="{{ a.description }}" data-tags="{{ a.tags|join:', ' }}" data-filename="{{ a.filename }}" data-url="{{ a.url }}" data-is-image="{% if a.is_image %}1{% endif %}"{% endif %}>
         {% if a.is_image %}
         <img src="{{ a.url }}" alt="{{ a.alt_text|default:a.filename }}"
              style="width: 100%; height: 100%; object-fit: contain; padding: 6px;" loading="lazy">
@@ -124,8 +128,14 @@
         </span>
         {% endif %}
       </a>
+      {% if a.url %}
+      <a href="{{ a.url }}" download class="asset-dl" title="Download {{ a.filename }}"
+         style="position:absolute; top:.3rem; right:.3rem; z-index:3; display:inline-flex; align-items:center; justify-content:center; width:1.7rem; height:1.7rem; border-radius:6px; background:rgba(14,14,14,.62); color:#fff; backdrop-filter:blur(2px);">
+        <i data-lucide="download" class="h-3.5 w-3.5"></i>
+      </a>
+      {% endif %}
       <div class="px-2 py-1.5">
-        <p class="text-xs font-medium truncate" title="{{ a.filename }}">{{ a.filename|default:"untitled" }}</p>
+        <p class="asset-caption text-xs font-medium truncate" title="{{ a.title|default:a.filename }}">{{ a.title|default:a.filename|default:"untitled" }}</p>
         <p class="text-[10px] text-[color:var(--text-muted)] flex items-center justify-between">
           <span>{{ a.human_size }}</span>
           {% if a.width %}<span>{{ a.width }}×{{ a.height }}</span>{% endif %}
@@ -135,6 +145,117 @@
     {% endfor %}
   </div>
   {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
+
+  {# ── Inline metadata / SEO editor — opens on click for native library assets ── #}
+  <dialog id="asset-meta-modal" class="morph-modal">
+    <form id="asset-meta-form" method="post" data-ajax>
+      {% csrf_token %}
+      <div class="morph-modal__head">
+        <div class="min-w-0">
+          <h2 class="font-semibold text-base">Asset details &amp; SEO</h2>
+          <p id="asset-meta-name" class="text-xs text-[color:var(--text-muted)] truncate"></p>
+        </div>
+        <button type="button" class="btn btn-ghost" aria-label="Close" onclick="this.closest('dialog').close()">
+          <i data-lucide="x" class="h-4 w-4"></i>
+        </button>
+      </div>
+      <div class="morph-modal__body grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="md:col-span-2">
+          <div class="card overflow-hidden" style="display:flex; align-items:center; justify-content:center; background:var(--surface-2); min-height:180px;">
+            <img id="asset-meta-preview" alt="" style="max-width:100%; max-height:240px; object-fit:contain; display:none;">
+            <i id="asset-meta-preview-icon" data-lucide="file" class="h-14 w-14 text-[color:var(--text-subtle)]" style="display:none;"></i>
+          </div>
+        </div>
+        <div class="md:col-span-3 space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Title</label>
+            <input type="text" name="title" class="input" maxlength="200"
+                   placeholder="Human-friendly name — used as the SEO title.">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Alt text</label>
+            <input type="text" name="alt_text" class="input" maxlength="300"
+                   placeholder="Describes the image for screen readers and search engines.">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Description</label>
+            <textarea name="description" class="input" rows="3"
+                      placeholder="Caption / longer description. Surfaces in galleries and SEO metadata."></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Tags</label>
+            <input type="text" name="tags" class="input" placeholder="hero, summer, lifestyle">
+            <p class="text-xs text-[color:var(--text-muted)] mt-1">Comma-separated. Used for filtering the library.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Direct URL</label>
+            <input id="asset-meta-url" type="text" class="input font-mono text-xs" readonly onclick="this.select()">
+          </div>
+        </div>
+      </div>
+      <div class="morph-modal__foot" style="padding:1rem 1.2rem;">
+        <a id="asset-meta-download" href="#" download class="btn" style="margin-right:auto;">
+          <i data-lucide="download" class="h-4 w-4"></i> Download
+        </a>
+        <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+  (function () {
+    const modal = document.getElementById('asset-meta-modal');
+    if (!modal) return;
+    const form = document.getElementById('asset-meta-form');
+    const preview = document.getElementById('asset-meta-preview');
+    const previewIcon = document.getElementById('asset-meta-preview-icon');
+    let activeTile = null;
+
+    function fld(name) { return form.querySelector('[name="' + name + '"]'); }
+
+    function openFor(link) {
+      activeTile = link.closest('.asset-card');
+      form.setAttribute('action', link.dataset.action || '');
+      fld('title').value = link.dataset.title || '';
+      fld('alt_text').value = link.dataset.alt || '';
+      fld('description').value = link.dataset.description || '';
+      fld('tags').value = link.dataset.tags || '';
+      document.getElementById('asset-meta-name').textContent = link.dataset.filename || 'asset';
+      document.getElementById('asset-meta-url').value = link.dataset.url || '';
+      document.getElementById('asset-meta-download').href = link.dataset.url || '#';
+      if (link.dataset.isImage === '1' && link.dataset.url) {
+        preview.src = link.dataset.url; preview.style.display = '';
+        previewIcon.style.display = 'none';
+      } else {
+        preview.removeAttribute('src'); preview.style.display = 'none';
+        previewIcon.style.display = '';
+      }
+      if (typeof modal.showModal === 'function') { modal.showModal(); }
+    }
+
+    document.querySelectorAll('a.js-asset-edit').forEach(function (link) {
+      link.addEventListener('click', function (ev) { ev.preventDefault(); openFor(link); });
+    });
+
+    // Server returns {ok:true, asset:{…}} — update the tile in place, then close.
+    form.addEventListener('morph:saved', function (ev) {
+      const a = ev.detail && ev.detail.asset;
+      if (a && activeTile) {
+        const cap = activeTile.querySelector('.asset-caption');
+        if (cap) { cap.textContent = a.display; cap.title = a.display; }
+        const link = activeTile.querySelector('a.js-asset-edit');
+        if (link) {
+          link.dataset.title = a.title || '';
+          link.dataset.alt = a.alt_text || '';
+          link.dataset.description = a.description || '';
+          link.dataset.tags = (a.tags || []).join(', ');
+        }
+      }
+      setTimeout(function () { if (modal.open) { modal.close(); } }, 500);
+    });
+  })();
+  </script>
   {% else %}
   {% include "admin_dashboard/_empty_state.html" with icon="image" title="No assets in this view" hint="Upload images, videos, PDFs, or spreadsheets to reuse them across the platform." %}
   {% endif %}

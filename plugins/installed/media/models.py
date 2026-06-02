@@ -1,4 +1,7 @@
 """MediaAsset — every uploaded file in one table."""
+# ruff: noqa: UP037, PLC0415, S110 — quoted self-ref annotation, lazy PIL import, and the
+# optional-dep (Pillow) swallow are intentional and pre-date this change.
+
 from __future__ import annotations
 
 import os
@@ -22,6 +25,7 @@ class MediaAsset(models.Model):
     model — Tag is a heavy abstraction we don't need yet) so search
     stays a single ILIKE on the JSON.
     """
+
     KIND_IMAGE = 'image'
     KIND_VIDEO = 'video'
     KIND_AUDIO = 'audio'
@@ -37,23 +41,39 @@ class MediaAsset(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     file = models.FileField(upload_to=_upload_path)
-    filename = models.CharField(max_length=300, blank=True,
-                                help_text='Original filename, preserved for display.')
+    filename = models.CharField(
+        max_length=300, blank=True, help_text='Original filename, preserved for display.'
+    )
     mime_type = models.CharField(max_length=100, blank=True)
     kind = models.CharField(max_length=20, choices=KIND_CHOICES, default=KIND_OTHER, db_index=True)
     size_bytes = models.PositiveBigIntegerField(default=0)
-    alt_text = models.CharField(max_length=300, blank=True,
-                                help_text='Used for image accessibility; safe to leave blank for non-images.')
-    tags = models.JSONField(default=list, blank=True,
-                            help_text='Flat list of strings. Used for filtering the library.')
+    title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='Display name / SEO title. Falls back to the filename when blank.',
+    )
+    alt_text = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text='Used for image accessibility; safe to leave blank for non-images.',
+    )
+    description = models.TextField(
+        blank=True, help_text='Caption / long description. Surfaces in galleries and SEO metadata.'
+    )
+    tags = models.JSONField(
+        default=list, blank=True, help_text='Flat list of strings. Used for filtering the library.'
+    )
 
     # Image-specific dimensions; populated on upload when kind=image.
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
 
     uploaded_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='+',
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -89,8 +109,9 @@ class MediaAsset(models.Model):
         return f'{n:,.1f} GB'
 
     @classmethod
-    def from_upload(cls, *, uploaded_file, uploaded_by=None,
-                    alt_text: str = '', tags: list | None = None) -> 'MediaAsset':
+    def from_upload(
+        cls, *, uploaded_file, uploaded_by=None, alt_text: str = '', tags: list | None = None
+    ) -> 'MediaAsset':
         """Create a MediaAsset from a Django UploadedFile.
 
         Auto-detects `kind` from the upload's content_type and reads
@@ -104,14 +125,16 @@ class MediaAsset(models.Model):
             kind = cls.KIND_VIDEO
         elif mime.startswith('audio/'):
             kind = cls.KIND_AUDIO
-        elif mime in ('application/pdf', 'text/plain', 'text/csv') \
-                or mime.startswith('application/vnd.'):
+        elif mime in ('application/pdf', 'text/plain', 'text/csv') or mime.startswith(
+            'application/vnd.'
+        ):
             kind = cls.KIND_DOCUMENT
         else:
             kind = cls.KIND_OTHER
 
         asset = cls(
-            kind=kind, mime_type=mime,
+            kind=kind,
+            mime_type=mime,
             filename=os.path.basename(getattr(uploaded_file, 'name', '') or ''),
             size_bytes=getattr(uploaded_file, 'size', 0) or 0,
             alt_text=alt_text or '',
@@ -122,6 +145,7 @@ class MediaAsset(models.Model):
         if kind == cls.KIND_IMAGE:
             try:
                 from PIL import Image  # noqa: WPS433 — optional dep
+
                 asset.file.seek(0)
                 with Image.open(asset.file) as im:
                     asset.width, asset.height = im.size
