@@ -1,6 +1,8 @@
 """Content / static pages — About, Contact, Journal, Shipping, Returns,
 newsletter capture, and the generic coming-soon placeholder.
 """
+# ruff: noqa: PLC0415, S110, I001 — lazy optional-plugin imports + best-effort
+# CRM swallows are intentional and pre-date this change.
 
 from __future__ import annotations
 
@@ -215,6 +217,7 @@ def journal_detail(request, slug):
             'breadcrumb_items': breadcrumb_items,
             'seo_title': f'{entry["title"]} — Journal — dot books',
             'seo_description': entry.get('excerpt', '')[:160],
+            'seo_image': entry.get('image', ''),
             'seo_og_type': 'article',
         },
     )
