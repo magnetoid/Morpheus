@@ -32,6 +32,8 @@ class CmsPlugin(Plugin):
             prefix='dashboard/cms/',
             namespace='cms_dashboard',
         )
+        # Read + write GraphQL surface for Pages/Blocks (gated cms.read / cms.write).
+        self.register_graphql_extension('plugins.installed.cms.graphql.queries')
         self.register_hook(events.CMS_FORM_SUBMITTED, self.on_form_submitted, priority=50)
         # Theme sections register on import. Pull the active theme's
         # section bundle so the section_registry is populated before
@@ -70,12 +72,23 @@ class CmsPlugin(Plugin):
     def contribute_agent_tools(self) -> list:
         from plugins.installed.cms.agent_tools import (
             create_page_tool,
+            delete_page_tool,
+            get_page_tool,
             list_pages_tool,
             recent_submissions_tool,
+            update_page_tool,
             upsert_block_tool,
         )
 
-        return [create_page_tool, list_pages_tool, upsert_block_tool, recent_submissions_tool]
+        return [
+            create_page_tool,
+            get_page_tool,
+            list_pages_tool,
+            update_page_tool,
+            delete_page_tool,
+            upsert_block_tool,
+            recent_submissions_tool,
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         return [
