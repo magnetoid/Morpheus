@@ -46,12 +46,15 @@ storage**, so it is scoped here for a focused session rather than rushed.
      model import — keep the contract).
    - Verify `ProductImage.save()` honours the same quality/format knobs.
 
-3. **Batch "optimize old images".** A management command
-   `media/management/commands/optimize_images.py` iterating `MediaAsset` (images)
-   + `catalog.ProductImage`: (re)generate variants, optionally downscale oversized
-   originals. **Idempotent**, `--dry-run`, `--limit`, `--since`. Wrap in a Celery
-   task and add a **"Optimize existing images" button** on the caching page that
-   enqueues it (non-blocking) + reports progress (count done / total / bytes saved).
+3. **Batch "optimize old images".** ✅ **SHIPPED** as
+   `seo/management/commands/optimize_images.py` — pre-warms the WebP/AVIF variant
+   cache for every `catalog.ProductImage` + image `media.MediaAsset`, writing only
+   under `seo_img_cache/` (the exact paths `/img/<fmt>/<width>/<path>` serves).
+   Idempotent; flags `--widths`, `--avif`, `--limit`, `--dry-run`; 2 tests. A
+   shared `images.variant_cache_abs()` helper guarantees warmer + view agree on
+   paths. **Still TODO:** wrap it in a Celery task + an **"Optimize existing
+   images" button** on the caching settings page (non-blocking, progress report) —
+   the dashboard surface the ask named.
 
 4. **SEO compliance checks.** Alt text already has `catalog/backfill_alt_text`;
    responsive `srcset` + lazy + dimensions already via `seo_responsive_image`.

@@ -3,6 +3,9 @@
 Backs ``/img/<fmt>/<width>/<path>`` — Pillow resizes the source image
 and writes a cached WebP / AVIF variant.
 """
+
+# ruff: noqa: PLC0415, E402, I001, PLW2901 — imports are deliberately local (optional
+# Pillow; avoid import-time Django settings access); the Pillow in-place reassigns are fine.
 from __future__ import annotations
 
 
@@ -10,6 +13,21 @@ from __future__ import annotations
 # cache doesn't explode with arbitrary widths from crawlers.
 ALLOWED_IMAGE_WIDTHS = (200, 400, 600, 800, 1200, 1600, 2000)
 ALLOWED_IMAGE_FORMATS = ('webp', 'avif')
+
+
+def variant_cache_abs(rel: str, width: int, fmt: str) -> str:
+    """Absolute path of the cached variant for ``(rel, width, fmt)``.
+
+    The same on-disk layout ``parse_image_variant_path`` resolves —
+    exposed so the ``optimize_images`` batch warmer writes to exactly the
+    paths the ``/img/`` view later reads.
+    """
+    import os
+
+    from django.conf import settings
+
+    cache_rel = os.path.join('seo_img_cache', f'w{width}', fmt, rel.lstrip('/') + f'.{fmt}')
+    return os.path.join(str(settings.MEDIA_ROOT), cache_rel)
 
 
 def parse_image_variant_path(fmt: str, width: int, path: str):
@@ -21,6 +39,7 @@ def parse_image_variant_path(fmt: str, width: int, path: str):
     """
     from django.conf import settings
     import os
+
     if fmt not in ALLOWED_IMAGE_FORMATS:
         return None
     if width not in ALLOWED_IMAGE_WIDTHS:
@@ -32,9 +51,7 @@ def parse_image_variant_path(fmt: str, width: int, path: str):
     src_abs = os.path.join(str(settings.MEDIA_ROOT), rel)
     if not os.path.isfile(src_abs):
         return None
-    cache_rel = os.path.join('seo_img_cache', f'w{width}', fmt, rel + f'.{fmt}')
-    cache_abs = os.path.join(str(settings.MEDIA_ROOT), cache_rel)
-    return src_abs, cache_abs
+    return src_abs, variant_cache_abs(rel, width, fmt)
 
 
 def generate_image_variant(src_abs: str, cache_abs: str, *, width: int, fmt: str) -> str:
@@ -43,10 +60,12 @@ def generate_image_variant(src_abs: str, cache_abs: str, *, width: int, fmt: str
     when the cache already exists. Returns the cache absolute path.
     """
     import os
+
     if os.path.isfile(cache_abs):
         return cache_abs
     os.makedirs(os.path.dirname(cache_abs), exist_ok=True)
     from PIL import Image
+
     with Image.open(src_abs) as im:
         # Keep aspect ratio; only downscale.
         if im.width > width:
