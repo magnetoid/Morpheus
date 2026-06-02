@@ -140,3 +140,27 @@ Each owning plugin calls `register_hardcoded_page(...)` in its `AppConfig.ready(
 ## 10. Open Questions
 
 None — design is locked.
+
+## 11. Status & next-session pickup (2026-06-02)
+
+- **Phase 1 — DONE, deployed, user-confirmed working.** Editor (TipTap body +
+  New/Edit/Duplicate/Delete) live at `/dashboard/cms/pages/` (list) and
+  `/dashboard/cms/pages/new/`. Routes in `cms/urls_dashboard.py` (registered in
+  `cms/plugin.py:ready()` under `dashboard/cms/`); views in `cms/dashboard.py`;
+  9 tests in `cms/tests/test_page_dashboard.py`. Shared `.rte-*` editor CSS moved
+  to `admin_dashboard/base.html`; TipTap pinned 3.23.4 via esm.sh (StarterKit v3
+  bundles Link — pass `link:false`).
+- **Phase 5 added (user request): GraphQL + MCP write access for CMS entities.**
+  Build `cms/graphql/schema.py` (Strawberry; `register_graphql_extension` in
+  `ready()`) — Query `cmsPages/cmsPage`, Mutations
+  `createPage/updatePage/deletePage/duplicatePage/upsertBlock`. Mirror the
+  affiliates pattern (`api.graphql_permissions`: `require_authenticated`,
+  `has_scope`) — staff/scope-gated. Add `@tool`s to `cms/agent_tools.py`:
+  `cms.update_page`, `cms.delete_page`, `cms.get_page` (scopes `cms.write`,
+  `requires_approval`) — `create_page`/`upsert_block` already exist.
+- **Remaining:** Phase 2 (registry — non-live, safest, the most direct payoff to
+  the original "every page in the CMS list" ask), Phase 3 (migrate
+  About/Shipping/Returns — DEPLOY-GATED, touches live storefront), Phase 4 (docs).
+- **Landmine hit this session:** dashboard `data-ajax` forms + fetch endpoints
+  must return JSON on success AND failure (see the `dashboard-ajax-json-contract`
+  memory) — `product_edit` + `image_upload` were swallowing failures.
