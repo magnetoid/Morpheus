@@ -160,9 +160,14 @@ def seo_title(title: str, *, category: str = '', site_name: str = '') -> str:
         except Exception:  # noqa: BLE001
             pass
 
+    if not title:
+        # A page that passes no title (e.g. the homepage) reads as the brand —
+        # never "Untitled — Dot Books". Render the site name alone.
+        return (site_name or 'Untitled')[:max_len]
+
     try:
         rendered = template_str.format(
-            title=title or 'Untitled',
+            title=title,
             site_name=site_name or '',
             category=category or '',
         )
