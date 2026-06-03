@@ -97,7 +97,7 @@
             <input type="radio" name="shipping_rate_id" value="{{ r.id }}"
                    {% if r.id|stringformat:'s' == selected_rate_id or forloop.first and not selected_rate_id %}checked{% endif %}>
             <span style="flex:1;">{{ r.label }}</span>
-            <span class="meta">{{ r.amount }} {{ r.currency }}</span>
+            <span class="meta">{{ r|money }}</span>
           </label>
           {% endfor %}
         </fieldset>
@@ -154,30 +154,30 @@
       <div style="display:flex; gap:1rem; padding:.65rem 0; border-bottom:1px solid var(--rule);">
         <div style="flex:1;">
           <p style="font-family: var(--serif); font-size: .98rem;">{{ item.productName }}</p>
-          <p class="meta">{{ item.quantity }} × {{ item.unitPrice }}</p>
+          <p class="meta">{{ item.quantity }} × {{ item.unitPrice|money }}</p>
         </div>
-        <p style="font-family: var(--serif); font-weight: 600;">{{ item.totalPrice }}</p>
+        <p style="font-family: var(--serif); font-weight: 600;">{{ item.totalPrice|money }}</p>
       </div>
       {% endfor %}
       <div style="display:flex; justify-content:space-between; padding-top: 1rem;">
         <p>Subtotal</p>
-        <p>{{ cart.subtotal }}</p>
+        <p>{{ cart.subtotal|money }}</p>
       </div>
       {% if cart.shipping %}
       <div style="display:flex; justify-content:space-between;">
         <p>Shipping</p>
-        <p>{{ cart.shipping }}</p>
+        <p>{{ cart.shipping|money }}</p>
       </div>
       {% endif %}
       {% if cart.tax %}
       <div style="display:flex; justify-content:space-between;">
         <p>Tax</p>
-        <p>{{ cart.tax }}</p>
+        <p>{{ cart.tax|money }}</p>
       </div>
       {% endif %}
       <div style="display:flex; justify-content:space-between; padding-top: .75rem; margin-top: .75rem; border-top: 1px solid var(--rule);">
         <p style="font-family: var(--serif); font-size: 1.1rem;">Total</p>
-        <p style="font-family: var(--serif); font-size: 1.4rem; font-weight: 600;">{{ cart.total }}</p>
+        <p style="font-family: var(--serif); font-size: 1.4rem; font-weight: 600;">{{ cart.total|money }}</p>
       </div>
     </aside>
 
