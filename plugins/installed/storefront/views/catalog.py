@@ -807,14 +807,18 @@ def category_detail(request, slug):
         'name': ('name',),
     }
     order = sort_map.get(sort, sort_map['featured'])
-    products = list(
+    from django.core.paginator import Paginator  # noqa: PLC0415
+
+    qs = (
         Product.objects.filter(status='active')
         .filter(Q(category=category) | Q(additional_categories=category))
         .select_related('category')
         .prefetch_related('images')  # primary_image hits this — avoid an N+1 per card
         .distinct()
-        .order_by(*order)[:60]
+        .order_by(*order)
     )
+    page_obj = Paginator(qs, 24).get_page(request.GET.get('page') or 1)
+    products = list(page_obj.object_list)
     _attach_book_authors(products)
     intro = _CATEGORY_INTROS.get(slug, {})
     breadcrumb_items = [
@@ -840,6 +844,7 @@ def category_detail(request, slug):
         {
             'category': category,
             'products': products,
+            'page_obj': page_obj,
             'sort': sort,
             'sort_options': [
                 ('featured', 'Featured'),
@@ -873,11 +878,25 @@ def collection_detail(request, slug):
     collection = Collection.objects.filter(slug=slug, is_active=True).first()
     if collection is None:
         raise Http404
-    products = list(
+    sort = (request.GET.get('sort') or 'featured').strip()
+    sort_map = {
+        'featured': ('-is_featured', '-created_at'),
+        'newest': ('-created_at',),
+        'price_asc': ('price',),
+        'price_desc': ('-price',),
+        'name': ('name',),
+    }
+    from django.core.paginator import Paginator  # noqa: PLC0415
+
+    qs = (
         Product.objects.filter(status='active', collections=collection)
         .select_related('category')
-        .order_by('-is_featured', '-created_at')[:60]
+        .prefetch_related('images')
+        .order_by(*sort_map.get(sort, sort_map['featured']))
     )
+    page_obj = Paginator(qs, 24).get_page(request.GET.get('page') or 1)
+    products = list(page_obj.object_list)
+    _attach_book_authors(products)
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
@@ -901,6 +920,15 @@ def collection_detail(request, slug):
         {
             'category': collection,
             'products': products,
+            'page_obj': page_obj,
+            'sort': sort,
+            'sort_options': [
+                ('featured', 'Featured'),
+                ('newest', 'Newest'),
+                ('price_asc', 'Price: low to high'),
+                ('price_desc', 'Price: high to low'),
+                ('name', 'Title A–Z'),
+            ],
             'intro_eyebrow': 'Collection',
             'intro_lede': collection.description or '',
             'breadcrumb_items': breadcrumb_items,
