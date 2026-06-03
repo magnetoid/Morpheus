@@ -114,23 +114,7 @@
     {% if products %}
     <div class="grid-books">
       {% for p in products %}
-      <a href="/products/{{ p.slug }}/" class="book ko-reveal-on-scroll" data-product-card>
-        <div class="cover-wrap">
-          {% if p.primary_image %}
-            {% with vt_name="cover-"|add:p.slug|slugify %}
-            {% seo_responsive_image p.primary_image.image alt=p.primary_image.alt_text|default:p.name widths="400,600,800" sizes="(min-width: 1200px) 280px, (min-width: 768px) 33vw, 50vw" view_transition_name=vt_name %}
-            {% endwith %}
-          {% else %}
-            <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
-          {% endif %}
-          {% if p.is_on_sale %}<span class="ribbon">{{ p.discount_percentage }}% off</span>{% endif %}
-        </div>
-        <div>
-          <p class="title">{{ p.name }}</p>
-          <p class="author">{{ p.short_description|striptags|truncatewords:8 }}</p>
-          <p class="price">{% if p.price_starts_from %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ p.display_price|money }}{% if p.compare_at_price %}<span class="compare">{{ p.compare_at_price|money }}</span>{% endif %}</p>
-        </div>
-      </a>
+      {% include "storefront/_product_card.html" with product=p %}
       {% endfor %}
     </div>
 

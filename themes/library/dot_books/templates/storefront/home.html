@@ -82,24 +82,7 @@
     </div>
     <div class="grid-books">
       {% for product in featured_products %}
-      <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
-        <div class="cover-wrap">
-          {% if product.primaryImage and product.primaryImage.url %}
-            <img src="{{ product.primaryImage.url }}" alt="{{ product.primaryImage.altText|default:product.name }}" loading="{% caching_img_loading_attr %}" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
-          {% else %}
-            <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
-          {% endif %}
-          {% if product.isOnSale %}<span class="ribbon">{{ product.discountPercentage }}% off</span>{% endif %}
-        </div>
-        <div>
-          <p class="title">{{ product.name }}</p>
-          <p class="author">{{ product.category.name|default:"Independent press" }}</p>
-          <p class="price">
-            {% if product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ product.price|money }}
-            {% if product.isOnSale %}<span class="compare">{{ product.compareAtPrice|money }}</span>{% endif %}
-          </p>
-        </div>
-      </a>
+      {% include "storefront/_product_card.html" with product=product %}
       {% empty %}
       <div style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
         <p class="lede" style="margin: 0 auto;">The shelf is being restocked. Check back tomorrow.</p>
@@ -123,20 +106,7 @@
     </div>
     <div class="grid-books">
       {% for product in staff_picks %}
-      <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
-        <div class="cover-wrap">
-          {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="{% caching_img_loading_attr %}" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
-          {% else %}
-            <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
-          {% endif %}
-        </div>
-        <div>
-          <p class="title">{{ product.name }}</p>
-          <p class="author">{{ product.category.name|default:"Independent press" }}</p>
-          <p class="price">{% if product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</p>
-        </div>
-      </a>
+      {% include "storefront/_product_card.html" with product=product %}
       {% endfor %}
     </div>
   </div>
