@@ -43,3 +43,40 @@ class NavCategoriesTests(TestCase):
 
     def test_empty_when_no_categories(self):
         self.assertEqual(nav_categories(request=None)['nav_categories'], [])
+
+
+class NavAuthorsTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_distinct_sorted_authors_with_slugs(self):
+        from decimal import Decimal
+
+        from django.contrib.contenttypes.models import ContentType
+        from djmoney.money import Money
+
+        from plugins.installed.catalog.context_processors import nav_authors
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.metafields.models import Metafield
+
+        ct = ContentType.objects.get_for_model(Product)
+        for i, name in enumerate(['Zadie Smith', 'Italo Calvino', 'Zadie Smith']):
+            p = Product.objects.create(
+                name=f'B{i}',
+                slug=f'b{i}',
+                sku=f'B-{i}',
+                price=Money(Decimal('5.00'), 'USD'),
+                product_type='simple',
+            )
+            Metafield.objects.create(
+                content_type=ct,
+                object_id=str(p.id),
+                namespace='book',
+                key='author',
+                value=name,
+                value_type='string',
+            )
+        authors = nav_authors(request=None)['nav_authors']
+        names = [a['name'] for a in authors]
+        self.assertEqual(names, ['Italo Calvino', 'Zadie Smith'])  # distinct + sorted
+        self.assertEqual(authors[0]['slug'], 'italo-calvino')
