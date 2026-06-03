@@ -758,6 +758,31 @@ _CATEGORY_INTROS = {
 }
 
 
+def _attach_book_authors(products) -> None:
+    """One query: attach the `book.author` metafield as ``.author_name`` on each
+    product so the card grid can show the real author without an N+1."""
+    for p in products:
+        p.author_name = ''
+    if not products:
+        return
+    try:
+        from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
+        from plugins.installed.catalog.models import Product  # noqa: PLC0415
+        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+        ct = ContentType.objects.get_for_model(Product)
+        by_id = {str(p.id): p for p in products}
+        rows = Metafield.objects.filter(
+            content_type=ct, namespace='book', key='author', object_id__in=list(by_id)
+        )
+        for m in rows:
+            target = by_id.get(m.object_id)
+            if target is not None:
+                target.author_name = m.typed_value or ''
+    except Exception:  # noqa: BLE001 — card metadata is best-effort, never break the page
+        pass
+
+
 def category_detail(request, slug):
     """Category landing — products + editorial framing."""
     from morpheus.views import Http404
@@ -773,13 +798,24 @@ def category_detail(request, slug):
     # etc.).
     from django.db.models import Q  # noqa: PLC0415
 
+    sort = (request.GET.get('sort') or 'featured').strip()
+    sort_map = {
+        'featured': ('-is_featured', '-created_at'),
+        'newest': ('-created_at',),
+        'price_asc': ('price',),
+        'price_desc': ('-price',),
+        'name': ('name',),
+    }
+    order = sort_map.get(sort, sort_map['featured'])
     products = list(
         Product.objects.filter(status='active')
         .filter(Q(category=category) | Q(additional_categories=category))
         .select_related('category')
+        .prefetch_related('images')  # primary_image hits this — avoid an N+1 per card
         .distinct()
-        .order_by('-is_featured', '-created_at')[:60]
+        .order_by(*order)[:60]
     )
+    _attach_book_authors(products)
     intro = _CATEGORY_INTROS.get(slug, {})
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
@@ -804,6 +840,14 @@ def category_detail(request, slug):
         {
             'category': category,
             'products': products,
+            'sort': sort,
+            'sort_options': [
+                ('featured', 'Featured'),
+                ('newest', 'Newest'),
+                ('price_asc', 'Price: low to high'),
+                ('price_desc', 'Price: high to low'),
+                ('name', 'Title A–Z'),
+            ],
             'intro_eyebrow': category.description
             and 'On the shelf'
             or intro.get('eyebrow', 'On the shelf'),

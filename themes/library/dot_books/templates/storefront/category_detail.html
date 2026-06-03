@@ -33,6 +33,18 @@
 <section style="padding-top: 1.5rem; padding-bottom: 5rem;">
   <div class="wrap">
     {% if products %}
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
+      <p class="meta" style="margin:0;">{{ products|length }} book{{ products|length|pluralize }}</p>
+      <form method="get" style="display:flex; align-items:center; gap:0.5rem; margin:0;">
+        <label for="sort" class="meta" style="margin:0;">{% translate "Sort" %}</label>
+        <select name="sort" id="sort" onchange="this.form.submit()"
+                style="font-size:0.85rem; padding:0.45rem 0.7rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper); color:var(--ink); cursor:pointer;">
+          {% for value, label in sort_options %}
+          <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
     <div class="grid-books">
       {% for p in products %}
       <a href="/products/{{ p.slug }}/" class="book">
@@ -46,7 +58,7 @@
         </div>
         <div>
           <p class="title">{{ p.name }}</p>
-          <p class="author">{{ p.short_description|striptags|truncatewords:8 }}</p>
+          <p class="author">{% if p.author_name %}{{ p.author_name }}{% else %}{{ p.short_description|striptags|truncatewords:8 }}{% endif %}</p>
           <p class="price">{% if p.price_starts_from %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ p.display_price|money }}</p>
         </div>
       </a>
