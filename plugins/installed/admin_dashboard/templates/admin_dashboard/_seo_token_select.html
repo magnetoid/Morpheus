@@ -1,0 +1,12 @@
+{% comment %}
+"Insert field" dropdown for SEO title/description inputs. Inserts a {token}
+(product field or metafield) at the cursor of the input whose id == `target`.
+Requires `seo_tokens` in context + the wiring script in product_form.html.
+{% endcomment %}
+{% if seo_tokens %}
+<select class="input seo-token-insert" data-target="{{ target }}" aria-label="Insert a field token"
+        style="max-width: 12rem; font-size: .78rem; padding: .25rem .5rem;">
+  <option value="">Insert field…</option>
+  {% for t in seo_tokens %}<option value="{{ t.token }}">{{ t.label }}</option>{% endfor %}
+</select>
+{% endif %}

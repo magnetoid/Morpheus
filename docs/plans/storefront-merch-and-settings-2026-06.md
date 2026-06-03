@@ -150,8 +150,16 @@ also feed the Phase 1.2 homepage rails).
   (`seo/services/jsonld.py` → isbn/gtin13/gtin12/gtin14/mpn/asin), and the
   product editor's "Identifiers / product codes" card (writes via
   `Metafield.objects.set`, gated on the `identifiers_present` marker).
-- **SEO title formatting**: separate page vs product title templates; product
-  title format supports **metafield** tokens. (supports 1.4)
+- **SEO title formatting**: product title/description support **metafield +
+  field tokens**. ✅ DONE (2026-06-03). `seo/services/tokens.py:expand_tokens`
+  replaces `{name}/{sku}/{category}/{price}` + any metafield (`{author}`,
+  `{isbn13}`, …) at render time inside `resolve_meta` (so it works for any
+  object, incl. pages). The product editor's Meta title + Meta description get
+  an "Insert field ▾" dropdown (`_seo_token_select.html`, fed by
+  `available_tokens()`) that inserts a token at the cursor. 5 tests.
+  Follow-up: add the same dropdown to the page/collection editors (reuse the
+  partial + pass `seo_tokens`). Store-level page vs product title *patterns*
+  still live in `SiteSeoSettings.title_template` ({title}/{site_name}).
 
 ## PARKED — settings unification (ADR 0004), resume after Phase 1
 

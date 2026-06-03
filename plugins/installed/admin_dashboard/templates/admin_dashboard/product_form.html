@@ -1008,15 +1008,21 @@
         <div class="space-y-3">
           <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Search snippet</h3>
           <div>
-            <label class="block text-sm font-medium mb-1">Meta title</label>
-            <input type="text" name="meta_title" class="input" maxlength="200"
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <label class="block text-sm font-medium">Meta title</label>
+              {% include "admin_dashboard/_seo_token_select.html" with target="seo-meta-title" %}
+            </div>
+            <input type="text" id="seo-meta-title" name="meta_title" class="input" maxlength="200"
                    value="{{ form.meta_title.value|default:'' }}"
                    placeholder="{{ seo_defaults.meta_title|default:'Defaults to product name' }}">
-            <p class="text-xs text-[color:var(--text-muted)] mt-1">~60 characters works best in Google.</p>
+            <p class="text-xs text-[color:var(--text-muted)] mt-1">~60 characters works best in Google. Use <code>{name}</code>, <code>{author}</code>, etc. to pull in fields.</p>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">Meta description</label>
-            <textarea name="meta_description" rows="2" class="input"
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <label class="block text-sm font-medium">Meta description</label>
+              {% include "admin_dashboard/_seo_token_select.html" with target="seo-meta-desc" %}
+            </div>
+            <textarea id="seo-meta-desc" name="meta_description" rows="2" class="input"
                       placeholder="{{ seo_defaults.meta_description|default:'~155 characters. Plain text only.' }}">{{ form.meta_description.value|default:'' }}</textarea>
             <p class="text-xs text-[color:var(--text-muted)] mt-1">~155 characters. Plain text only.</p>
           </div>
@@ -1034,6 +1040,28 @@
                      placeholder="{{ seo_defaults.canonical_url|default:'Default: /products/…/' }}">
             </div>
           </div>
+          {% if seo_tokens %}
+          <script>
+          (function () {
+            document.querySelectorAll('.seo-token-insert').forEach(function (sel) {
+              sel.addEventListener('change', function () {
+                var tok = sel.value;
+                if (!tok) return;
+                var el = document.getElementById(sel.dataset.target);
+                if (el) {
+                  var s = el.selectionStart || 0, e = el.selectionEnd || 0, v = el.value || '';
+                  el.value = v.slice(0, s) + tok + v.slice(e);
+                  var pos = s + tok.length;
+                  el.focus();
+                  try { el.setSelectionRange(pos, pos); } catch (err) { /* number/url inputs */ }
+                  el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                sel.value = '';
+              });
+            });
+          })();
+          </script>
+          {% endif %}
         </div>
 
         {# Open Graph (Facebook / LinkedIn / Slack). #}

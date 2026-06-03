@@ -292,6 +292,16 @@ def _identifier_fields(product) -> list[dict]:
         return []
 
 
+def _seo_tokens(product) -> list[dict]:
+    """``[{token, label}]`` for the SEO title/description "Insert field" menu."""
+    try:
+        from plugins.installed.seo.services.tokens import available_tokens  # noqa: PLC0415
+
+        return available_tokens(product)
+    except Exception:  # noqa: BLE001
+        return []
+
+
 @staff_member_required
 def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
@@ -381,6 +391,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             'bv_bulk_link_url': bv_bulk_link_url,
             'seo_defaults': _seo_field_defaults(product),
             'identifier_fields': _identifier_fields(product),
+            'seo_tokens': _seo_tokens(product),
             'active_nav': 'products',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

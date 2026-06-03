@@ -55,6 +55,15 @@ def resolve_meta(
         or native('meta_description')
         or fallback_description
     )
+    # Expand {name}/{author}/{isbn13}/… field + metafield tokens the merchant
+    # typed into the title/description (no-op when there are none).
+    try:
+        from plugins.installed.seo.services.tokens import expand_tokens
+
+        title = expand_tokens(title, obj)
+        description = expand_tokens(description, obj)
+    except Exception:  # noqa: BLE001 — never break meta resolution over tokens
+        pass
     og_image = (
         (meta.og_image if meta and meta.og_image else '')
         or fallback_image
