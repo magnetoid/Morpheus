@@ -13,7 +13,7 @@ shape raises (a |default chain across shapes does). product.id is a raw
 UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
 {% endcomment %}
 {% firstof product.primary_image.image.url product.primaryImage.url as img %}
-{% firstof product.display_price product.price as disp_price %}
+{# Price: apply |money to the raw Money/dict directly, never via firstof-as (it stringifies to "$8.00", so |money would double the symbol → "$$8.00"). #}
 <div class="book" data-product-card>
   <a href="/products/{{ product.slug }}/" class="book__cover" aria-label="{{ product.name }}">
     <div class="cover-wrap">
@@ -32,7 +32,7 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
       <p class="title">{{ product.name }}</p>
       {% if product.author_name %}<p class="author">{{ product.author_name }}</p>{% endif %}
     </a>
-    <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ disp_price|money }}</p>
+    <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if product.display_price %}{{ product.display_price|money }}{% elif product.price %}{{ product.price|money }}{% endif %}</p>
     <div class="book__actions">
       <form method="post" action="/cart/add/{{ product.id }}/" class="book__add">
         {% csrf_token %}
@@ -43,7 +43,7 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
               data-slug="{{ product.slug }}"
               data-name="{{ product.name }}"
               data-img="{{ img }}"
-              data-price="{{ disp_price|money }}"
+              data-price="{% if product.display_price %}{{ product.display_price|money }}{% elif product.price %}{{ product.price|money }}{% endif %}"
               data-add="/cart/add/{{ product.id }}/">{% translate "Quick view" %}</button>
     </div>
   </div>

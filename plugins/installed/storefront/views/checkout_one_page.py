@@ -157,6 +157,26 @@ def _validate(addr: dict, *, no_shipping: bool) -> str:
     return ''
 
 
+def _shipping_input(addr: dict) -> dict:
+    """Map the storefront address form to GraphQL ``AddressInput`` fields.
+
+    NB: the input uses ``line1``/``line2`` (NOT ``addressLine1``/``2``) — see
+    ``plugins/installed/orders/graphql/inputs.py``. Wrong names fail schema
+    validation → 500 on checkout submit. Covered by a regression test.
+    """
+    return {
+        'firstName': addr.get('first_name', ''),
+        'lastName': addr.get('last_name', ''),
+        'line1': addr.get('address_line1', ''),
+        'line2': addr.get('address_line2', ''),
+        'city': addr.get('city', ''),
+        'state': addr.get('state', ''),
+        'postalCode': addr.get('postal_code', ''),
+        'country': addr.get('country', ''),
+        'phone': addr.get('phone', ''),
+    }
+
+
 def _submit_order(
     *, request, cart_id: str, addr: dict, rate_id: str, payment_method: str = ''
 ) -> dict:
@@ -169,17 +189,7 @@ def _submit_order(
       }
     }
     """
-    shipping_input = {
-        'firstName': addr.get('first_name', ''),
-        'lastName': addr.get('last_name', ''),
-        'addressLine1': addr.get('address_line1', ''),
-        'addressLine2': addr.get('address_line2', ''),
-        'city': addr.get('city', ''),
-        'state': addr.get('state', ''),
-        'postalCode': addr.get('postal_code', ''),
-        'country': addr.get('country', ''),
-        'phone': addr.get('phone', ''),
-    }
+    shipping_input = _shipping_input(addr)
     data = (
         internal_graphql(
             mutation,
