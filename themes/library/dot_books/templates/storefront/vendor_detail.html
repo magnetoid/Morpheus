@@ -54,20 +54,7 @@
 
     <div class="vendor-products">
       {% for p in products %}
-      <a href="/products/{{ p.slug }}/" class="book">
-        <div class="cover-wrap" style="aspect-ratio: 2/3;">
-          {% if p.primary_image and p.primary_image.image %}
-            <img src="{{ p.primary_image.image.url }}"
-                 alt="{{ p.primary_image.alt_text|default:p.name }}"
-                 loading="{% caching_img_loading_attr %}" decoding="async">
-          {% else %}
-            <div class="placeholder">{{ p.name }}</div>
-          {% endif %}
-        </div>
-        <p class="title">{{ p.name }}</p>
-        {% if p.short_description %}<p class="author">{{ p.short_description|striptags|truncatewords:8 }}</p>{% endif %}
-        <p class="price">{% if p.price_starts_from %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ p.display_price|money }}</p>
-      </a>
+      {% include "storefront/_product_card.html" with product=p %}
       {% endfor %}
     </div>
   </div>
