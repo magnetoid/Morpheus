@@ -66,11 +66,21 @@ imprint) so even pre-backfill cards read as covers, not weak boxes.
 - Success: fiction grid shows complete cards (image+price+format), visible
   sort/filter, badges where applicable.
 
-### 1.4 Standardize metadata & branding
-- [ ] Change "Morpheus" title suffixes → **DotBooks** branding sitewide.
-- [ ] Complete social metadata (OG/Twitter) for all live products.
-- [ ] Improve cart/home template title structure.
-- Success: no "Morpheus" in public <title>; OG complete; cart/home titles sane.
+### 1.4 Standardize metadata & branding  ✅ MOSTLY DONE (d391374, ffeb2bf — live)
+- [x] Title suffix was already "Dot Books" (Fiction/Cart/etc). Footer
+      "Made on Morpheus." → "Made by readers, for readers." + modern
+      `mobile-web-app-capable` meta.
+- [x] Improve cart/home titles → home `<title>` now "Dot Books — an independent
+      bookshop" (+ meta description); cart "Your cart — Dot Books".
+- [ ] Complete OG/Twitter for all live products — **blocked on og_image**
+      (Phase 1.1 images, skipped). Product OG title/desc/url already emit via
+      `{% seo_product_og %}`; only the image is missing.
+- **Landmine learned:** the storefront `<title>` is emitted ONLY by
+      `{% seo_meta %}` (base.html:7-9, `fallback_title=seo_title|default:"dot
+      books."`). `{% block title %}{% seo_title %}` in child templates is
+      VESTIGIAL — never rendered. To set a page title, set the `seo_title`
+      context var OR override `{% block seo %}` with a `fallback_title`.
+- (Admin dashboard `<title>` still "· Morpheus" — staff-only, left as-is.)
 
 ## PHASE 2 — Catalog cleanup & commercial consistency
 
