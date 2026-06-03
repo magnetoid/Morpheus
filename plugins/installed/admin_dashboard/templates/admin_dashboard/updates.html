@@ -1,0 +1,61 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Updates · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Updates</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Installed versions of core, plugins and themes. Remote update-checks &amp; one-click apply are coming — for now this is your version inventory (also <code>manage.py morph_versions</code>).</p>
+  </div>
+
+  <div class="card card-padded flex items-center justify-between gap-3">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Morpheus core</p>
+      <p class="text-lg font-semibold">{{ core_version }}</p>
+    </div>
+    <span class="pill pill-success">Up to date</span>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold text-sm">Plugins <span class="text-[color:var(--text-muted)] font-normal">({{ plugin_enabled_count }}/{{ plugins|length }} enabled)</span></h2>
+    </div>
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Plugin</th><th>Version</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for p in plugins %}
+        <tr class="{% if not p.enabled %}opacity-60{% endif %}">
+          <td class="font-medium">{{ p.label }} <span class="text-[color:var(--text-muted)] font-mono text-xs">{{ p.name }}</span></td>
+          <td class="font-mono text-xs">v{{ p.version }}</td>
+          <td>{% if p.enabled %}<span class="pill pill-success">Enabled</span>{% else %}<span class="pill">Disabled</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold text-sm">Themes <span class="text-[color:var(--text-muted)] font-normal">({{ themes|length }})</span></h2>
+    </div>
+    {% if themes %}
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Theme</th><th>Version</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in themes %}
+        <tr>
+          <td class="font-medium">{{ t.label|default:t.name }} <span class="text-[color:var(--text-muted)] font-mono text-xs">{{ t.name }}</span></td>
+          <td class="font-mono text-xs">v{{ t.version }}</td>
+          <td>{% if t.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill">Installed</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No themes discovered.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

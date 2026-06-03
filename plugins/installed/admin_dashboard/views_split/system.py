@@ -1,0 +1,36 @@
+"""System pages for the admin dashboard — the updating-system UI (phase 2).
+
+Read-only **Updates** page: surfaces the component version inventory
+(core / plugins / themes) from ``core.versioning``. Remote update-checks +
+apply land in later phases (docs/plans/updating-system-2026-06.md).
+"""
+
+# ruff: noqa: PLC0415, I001
+# Inline imports match the views_split convention.
+
+from __future__ import annotations
+
+from morpheus.views import HttpRequest, HttpResponse, render, staff_member_required
+
+
+@staff_member_required
+def updates_page(request: HttpRequest) -> HttpResponse:
+    from core.versioning import component_versions
+
+    data = component_versions()
+    plugins = data.get('plugins') or []
+    return render(
+        request,
+        'admin_dashboard/updates.html',
+        {
+            'core_version': data.get('core', 'unknown'),
+            'plugins': plugins,
+            'themes': data.get('themes') or [],
+            'plugin_enabled_count': sum(1 for p in plugins if p.get('enabled')),
+            'active_nav': 'updates',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Updates'},
+            ],
+        },
+    )
