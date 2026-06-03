@@ -140,8 +140,16 @@ also feed the Phase 1.2 homepage rails).
   format, language, pages, published_year, publisher). Ensure every product has
   the unified metafield set; surface + edit on the product editor.
 - **ISBN / EAN / codes** = via **metafields, NOT new model columns** (user
-  preference). `book.isbn` already exists; add `book.ean`/etc as metafields;
-  show on PDP + JSON-LD (`isbn`, `gtin13`). (supports 2.x)
+  preference). ✅ DONE (2026-06-03). Canonical registry
+  `plugins/installed/metafields/identifiers.py:PRODUCT_IDENTIFIERS`
+  (isbn13, isbn10, ean13, upc, gtin14, mpn, asin, barcode) stored in the
+  generic **`identifiers`** namespace (future-proof — not book-bound).
+  `product_identifiers(obj)` (legacy fallback: `book.isbn` → isbn13) drives
+  all three surfaces from one source: PDP "Product codes" block
+  (`product_codes` ctx), schema.org Product JSON-LD
+  (`seo/services/jsonld.py` → isbn/gtin13/gtin12/gtin14/mpn/asin), and the
+  product editor's "Identifiers / product codes" card (writes via
+  `Metafield.objects.set`, gated on the `identifiers_present` marker).
 - **SEO title formatting**: separate page vs product title templates; product
   title format supports **metafield** tokens. (supports 1.4)
 

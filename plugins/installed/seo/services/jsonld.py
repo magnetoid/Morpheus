@@ -182,8 +182,6 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
                 out['inLanguage'] = str(book_mf['language'])
             if book_mf.get('published_year'):
                 out['datePublished'] = str(book_mf['published_year'])
-            if book_mf.get('isbn'):
-                out['isbn'] = str(book_mf['isbn']).strip()
             if book_mf.get('author'):
                 out['author'] = {
                     '@type': 'Person',
@@ -534,6 +532,19 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
             out[field_name] = (digits or candidate_barcode)[
                 : int(''.join(c for c in field_name if c.isdigit()) or 14)
             ]
+        # Explicit product-identifier metafields (ISBN-13→isbn, EAN→gtin13,
+        # UPC→gtin12, GTIN-14→gtin14, MPN→mpn, ASIN→asin) — emitted for ANY
+        # product and authoritative: a code the merchant set explicitly wins
+        # over the isbn/barcode-derived value above. Same registry as the
+        # PDP + editor (metafields.identifiers).
+        try:
+            from plugins.installed.metafields.identifiers import product_identifiers
+
+            for code in product_identifiers(product):
+                if code['jsonld']:
+                    out[code['jsonld']] = code['value']
+        except Exception:  # noqa: BLE001
+            pass
 
     return out
 

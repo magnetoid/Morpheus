@@ -196,6 +196,18 @@
         </div>
         {% endif %}
 
+        {% if product_codes %}
+        <div style="margin: 1.5rem 0;">
+          <p class="eyebrow" style="margin-bottom: 0.75rem;">Product codes</p>
+          <dl style="display:grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; font-size: 0.92rem; color: var(--ink-2); line-height: 1.5;">
+            {% for c in product_codes %}
+            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ c.label }}</dt>
+            <dd style="margin: 0; font-variant-numeric: tabular-nums;">{{ c.value }}</dd>
+            {% endfor %}
+          </dl>
+        </div>
+        {% endif %}
+
         {% if product.collections %}
         <div class="pdp-collections" style="margin: 1.25rem 0;">
           <p class="eyebrow" style="margin-bottom: 0.6rem;">Featured in</p>

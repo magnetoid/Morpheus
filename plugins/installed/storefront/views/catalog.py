@@ -495,6 +495,7 @@ def product_detail(request, slug):
             'videos': videos,
             'related_products': related,
             'book_specs': _book_specs(slug),
+            'product_codes': _product_codes(product_row),
             'reviews': _published_reviews(slug, product_row=product_row),
             'pdp_faqs': _pdp_faqs(slug, product_row=product_row),
             'breadcrumb_items': breadcrumb_items,
@@ -594,8 +595,17 @@ _BOOK_SPEC_FIELDS = (
     ('format', 'Format', ''),
     ('pages', 'Pages', ''),
     ('language', 'Language', ''),
-    ('isbn', 'ISBN', ''),
 )
+
+
+def _product_codes(product_row) -> list[dict]:
+    """Product identifier codes (ISBN/EAN/GTIN/UPC/MPN/ASIN) for the PDP."""
+    try:
+        from plugins.installed.metafields.identifiers import product_identifiers
+
+        return product_identifiers(product_row)
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _book_specs(slug: str) -> list[dict]:

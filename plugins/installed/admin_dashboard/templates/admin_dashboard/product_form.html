@@ -970,6 +970,23 @@
     </div>
     {% endif %}
 
+    {# Product identifier codes — 'identifiers' metafields; shown on PDP + JSON-LD. #}
+    {% if identifier_fields %}
+    <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
+      <h2 class="font-semibold text-sm">Identifiers / product codes</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">ISBN, EAN/GTIN, UPC, MPN, ASIN, barcode — shown on the product page and emitted in feeds &amp; structured data. Leave blank if not applicable.</p>
+      <input type="hidden" name="identifiers_present" value="1">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% for f in identifier_fields %}
+        <div>
+          <label class="block text-sm font-medium mb-1">{{ f.label }}</label>
+          <input type="text" name="identifier_{{ f.key }}" class="input" value="{{ f.value }}"{% if f.placeholder %} placeholder="{{ f.placeholder }}"{% endif %}>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     <details class="card" id="product-seo-details" data-pt-show="simple,variable,digital,bundle">
       <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
         <div>

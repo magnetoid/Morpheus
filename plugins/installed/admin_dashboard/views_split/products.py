@@ -241,6 +241,57 @@ def product_new(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _save_product_identifiers(product, post) -> None:
+    """Persist the product-identifier codes (ISBN/EAN/GTIN/UPC/MPN/ASIN) from
+    the edit form into the ``identifiers`` metafield namespace. Gated on the
+    card's hidden marker so a POST without the card never wipes codes.
+    Fail-soft: a missing metafields plugin must not break product save."""
+    if not post.get('identifiers_present'):
+        return
+    try:
+        from plugins.installed.metafields.identifiers import (  # noqa: PLC0415
+            IDENTIFIERS_NAMESPACE,
+            PRODUCT_IDENTIFIERS,
+        )
+        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+        for key, _label, _jsonld, _ph in PRODUCT_IDENTIFIERS:
+            raw = (post.get(f'identifier_{key}') or '').strip()
+            if raw:
+                Metafield.objects.set(
+                    product,
+                    namespace=IDENTIFIERS_NAMESPACE,
+                    key=key,
+                    value=raw,
+                    value_type='string',
+                )
+            else:
+                Metafield.objects.delete_for(
+                    product,
+                    namespace=IDENTIFIERS_NAMESPACE,
+                    key=key,
+                )
+    except Exception:  # noqa: BLE001 — codes are best-effort, never block save
+        pass
+
+
+def _identifier_fields(product) -> list[dict]:
+    """``[{key, label, placeholder, value}]`` for the editor's codes card."""
+    try:
+        from plugins.installed.metafields.identifiers import (  # noqa: PLC0415
+            PRODUCT_IDENTIFIERS,
+            identifier_values,
+        )
+
+        vals = identifier_values(product)
+        return [
+            {'key': k, 'label': label, 'placeholder': ph, 'value': vals.get(k, '')}
+            for k, label, _jsonld, ph in PRODUCT_IDENTIFIERS
+        ]
+    except Exception:  # noqa: BLE001
+        return []
+
+
 @staff_member_required
 def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
@@ -250,6 +301,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         form = ProductForm(request.POST, files=request.FILES, instance=product)
         if form.is_valid():
             form.save()
+            _save_product_identifiers(product, request.POST)
             messages.success(request, 'Product saved.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
         # Invalid form over AJAX: return the errors as JSON (400) so the client
@@ -328,6 +380,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             'bv_locations': bv_locations,
             'bv_bulk_link_url': bv_bulk_link_url,
             'seo_defaults': _seo_field_defaults(product),
+            'identifier_fields': _identifier_fields(product),
             'active_nav': 'products',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
