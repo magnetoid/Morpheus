@@ -67,6 +67,40 @@
         </tbody>
       </table>
     </div>
+    {# Editable cache controls (ADR 0005) — the six curated cache settings + quick purge. #}
+    {% for cz in cf_cache_zones %}
+    <div class="card-padded border-t border-[color:var(--border)]">
+      <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <h3 class="font-medium text-sm">Cache controls — {{ cz.zone.domain }}</h3>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="cf_purge_all">
+          <input type="hidden" name="zone_id" value="{{ cz.zone.id }}">
+          <button type="submit" class="btn btn-ghost text-xs text-red-600"
+                  data-confirm="Purge ALL cached content for {{ cz.zone.domain }}? Visitors get cold cache until it re-warms."><i data-lucide="trash-2" class="h-4 w-4"></i> Purge everything</button>
+        </form>
+      </div>
+      {% if cz.error %}
+      <p class="text-xs text-amber-600">Live Cloudflare settings unavailable: {{ cz.error }}</p>
+      {% else %}
+      <div class="space-y-2">
+        {% for s in cz.settings %}
+        <form method="post" class="flex items-center gap-2 flex-wrap text-sm">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="cf_patch_setting">
+          <input type="hidden" name="zone_id" value="{{ cz.zone.id }}">
+          <input type="hidden" name="setting_id" value="{{ s.id }}">
+          <span class="font-medium w-44">{{ s.label }}</span>
+          <input type="text" name="value" value="{{ s.value }}"
+                 class="rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1 text-sm font-mono w-36">
+          <span class="text-xs text-[color:var(--text-muted)] flex-1">{{ s.help }}</span>
+          <button type="submit" class="btn btn-ghost text-xs">Save</button>
+        </form>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
     {% else %}
     <div class="card-padded border-t border-[color:var(--border)] text-sm text-[color:var(--text-muted)]">
       No Cloudflare account connected. <a href="/dashboard/cloudflare/" class="underline">Add one</a> to enable edge caching + automatic purge on product / category updates.

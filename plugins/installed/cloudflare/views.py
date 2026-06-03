@@ -4,6 +4,9 @@ URL roots all live under /dashboard/cloudflare/ via register_urls in
 plugin.py. Sidebar surfaces via DashboardPage entries with url= set so
 they go through the canonical /dashboard/cloudflare/* path.
 """
+# Lazy (in-function) imports are the established pattern; the zone view is
+# intentionally branchy.
+# ruff: noqa: PLC0415, PLR0912, PLR0915
 
 from __future__ import annotations
 
@@ -11,7 +14,7 @@ import logging
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 
 logger = logging.getLogger('morpheus.cloudflare')
@@ -28,7 +31,7 @@ def _install_graphql_cache_rule(zone) -> None:
     stay uncached. Per-response cache-key includes the body so
     different queries don't collide.
     """
-    from plugins.installed.cloudflare.services import _client_for, CloudflareError
+    from plugins.installed.cloudflare.services import CloudflareError, _client_for
 
     cf = _client_for(zone)
     DESC = 'Morpheus — cache anonymous GraphQL POSTs'
@@ -277,12 +280,14 @@ def zone_detail(request, zone_id):
 
     # Curated subset of settings the merchant actually wants to see.
     # Full list is 50+ — we just expose the load-bearing ones.
+    # Security / TLS / HTTP knobs. The six cache-relevant settings
+    # (cache_level, browser_cache_ttl, brotli, early_hints, polish, mirage)
+    # moved to the unified Caching page — see cloudflare.services.CACHE_SETTINGS
+    # and ADR 0005. Kept here: everything that isn't a cache control.
     notable_settings = [
         ('always_use_https', 'Always use HTTPS', 'on/off — redirect HTTP → HTTPS'),
         ('automatic_https_rewrites', 'Automatic HTTPS rewrites', 'on/off — rewrite mixed content'),
-        ('brotli', 'Brotli', 'on/off — compress responses with Brotli'),
         ('http3', 'HTTP/3', 'on/off — QUIC for the storefront'),
-        ('early_hints', 'Early Hints', 'on/off — 103 hints for preload'),
         ('0rtt', '0-RTT', 'on/off — TLS 1.3 0-RTT (reduces handshake latency)'),
         ('ipv6', 'IPv6 Compatibility', 'on/off'),
         ('opportunistic_encryption', 'Opportunistic Encryption', 'on/off'),
@@ -292,12 +297,8 @@ def zone_detail(request, zone_id):
             'Security level',
             'off / essentially_off / low / medium / high / under_attack',
         ),
-        ('cache_level', 'Cache level', 'aggressive / basic / simplified'),
-        ('browser_cache_ttl', 'Browser cache TTL (s)', 'seconds, 0 = respect origin'),
         ('challenge_ttl', 'Challenge TTL (s)', 'how long a CAPTCHA pass lasts'),
         ('rocket_loader', 'Rocket Loader', 'on/off (mostly deprecated)'),
-        ('mirage', 'Mirage', 'on/off — mobile image optimization (paid)'),
-        ('polish', 'Polish', 'off / lossless / lossy (paid)'),
         ('hotlink_protection', 'Hotlink protection', 'on/off'),
         ('email_obfuscation', 'Email obfuscation', 'on/off'),
         ('server_side_exclude', 'Server-side excludes', 'on/off'),

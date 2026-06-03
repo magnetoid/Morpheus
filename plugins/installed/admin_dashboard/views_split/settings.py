@@ -341,6 +341,51 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 )
             except Exception as e:  # noqa: BLE001 — broker down: report, don't 500
                 messages.error(request, f'Could not start image optimization: {e}')
+        elif action == 'cf_patch_setting':
+            # Edit one Cloudflare cache setting (cache_level, browser_cache_ttl,
+            # brotli, early_hints, polish, mirage) for a zone — ADR 0005. Only
+            # the curated cache subset is editable here; everything else stays
+            # on the Cloudflare zone page.
+            zone_id = (request.POST.get('zone_id') or '').strip()
+            setting_id = (request.POST.get('setting_id') or '').strip()
+            value = (request.POST.get('value') or '').strip()
+            try:
+                from plugins.installed.cloudflare.models import CloudflareZone
+                from plugins.installed.cloudflare.services import (
+                    CACHE_SETTING_IDS,
+                    CloudflareError,
+                    patch_zone_setting,
+                )
+
+                if setting_id not in CACHE_SETTING_IDS:
+                    messages.error(request, 'Not an editable cache setting.')
+                else:
+                    zone = CloudflareZone.objects.get(pk=zone_id)
+                    coerced = int(value) if setting_id == 'browser_cache_ttl' else value
+                    patch_zone_setting(zone, setting_id, coerced)
+                    messages.success(request, f'Cloudflare · {setting_id} → {value}.')
+            except (ValueError, TypeError):
+                messages.error(request, 'Browser cache TTL must be an integer.')
+            except CloudflareError as e:
+                messages.error(request, f'Cloudflare API error: {e}')
+            except Exception as e:  # noqa: BLE001
+                messages.error(request, f'Could not update Cloudflare setting: {e}')
+        elif action == 'cf_purge_all':
+            zone_id = (request.POST.get('zone_id') or '').strip()
+            try:
+                from plugins.installed.cloudflare.models import CloudflareZone
+                from plugins.installed.cloudflare.services import (
+                    CloudflareError,
+                    purge_everything,
+                )
+
+                zone = CloudflareZone.objects.get(pk=zone_id)
+                purge_everything(zone=zone, triggered_by=str(request.user))
+                messages.success(request, f'Purged everything for {zone.domain}.')
+            except CloudflareError as e:
+                messages.error(request, f'Cloudflare API error: {e}')
+            except Exception as e:  # noqa: BLE001
+                messages.error(request, f'Could not purge Cloudflare cache: {e}')
         return HttpResponseRedirect(request.path)
 
     # ── Django cache backend status ────────────────────────────────────────
@@ -466,6 +511,31 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001
         recent_purges_count = 0
 
+    # ── Cloudflare cache controls (live per-zone read; fail-soft) ──────────
+    # ADR 0005: the six curated cache settings are editable here. One CF API
+    # read per zone — guarded so a bad token / disabled plugin never 500s.
+    cf_cache_zones = []
+    if cf_zones:
+        try:
+            from plugins.installed.cloudflare.services import (
+                CACHE_SETTINGS,
+                zone_settings_map,
+            )
+
+            for zone in cf_zones:
+                row = {'zone': zone, 'settings': [], 'error': ''}
+                try:
+                    smap = zone_settings_map(zone)
+                    row['settings'] = [
+                        {'id': sid, 'label': label, 'help': help_text, 'value': smap.get(sid, '')}
+                        for sid, label, help_text in CACHE_SETTINGS
+                    ]
+                except Exception as e:  # noqa: BLE001
+                    row['error'] = f'{type(e).__name__}: {e}'
+                cf_cache_zones.append(row)
+        except Exception:  # noqa: BLE001
+            pass
+
     # ── Image-optimization last-run status (SEO task; ADR 0005) ────────────
     image_optimize_status = None
     try:
@@ -497,6 +567,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
             'warmup': warmup,
             'recent_activity': recent_activity,
             'cf_zones': cf_zones,
+            'cf_cache_zones': cf_cache_zones,
             'cf_account_count': cf_account_count,
             'recent_purges_count': recent_purges_count,
             'active_nav': 'settings',

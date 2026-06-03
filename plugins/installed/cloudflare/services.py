@@ -3,15 +3,33 @@
 The HTTP layer is wrapped in a small `CloudflareClient` so tests can inject a
 fake. Each public service function logs a `CacheInvalidation` audit row.
 """
+
+# Lazy (in-function) imports are the established pattern in this plugin.
+# ruff: noqa: PLC0415
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 from django.db import DatabaseError
 from django.utils import timezone
 
 logger = logging.getLogger('morpheus.cloudflare')
+
+# Cache-relevant zone settings surfaced + edited on the unified Caching page
+# (admin_dashboard.settings_caching). zone_detail owns everything else
+# (security / TLS / DNS / firewall + the advanced edge toggles). Single home
+# per ADR 0003/0005: these six live ONLY on the Caching page.
+CACHE_SETTINGS: list[tuple[str, str, str]] = [
+    ('cache_level', 'Cache level', 'aggressive / basic / simplified'),
+    ('browser_cache_ttl', 'Browser cache TTL (s)', 'seconds, 0 = respect origin'),
+    ('brotli', 'Brotli', 'on / off — compress responses with Brotli'),
+    ('early_hints', 'Early Hints', 'on / off — 103 hints for preload'),
+    ('polish', 'Polish', 'off / lossless / lossy — image optimization (paid)'),
+    ('mirage', 'Mirage', 'on / off — mobile image optimization (paid)'),
+]
+CACHE_SETTING_IDS = frozenset(sid for sid, _, _ in CACHE_SETTINGS)
 
 
 class CloudflareError(RuntimeError):
@@ -32,8 +50,9 @@ class CloudflareClient:
         self._token = api_token
         self._session = session
 
-    def _request(self, method: str, path: str,
-                 *, payload: dict | None = None, params: dict | None = None) -> dict:
+    def _request(
+        self, method: str, path: str, *, payload: dict | None = None, params: dict | None = None
+    ) -> dict:
         if self._session is not None:
             return self._session.request(method, path, payload=payload, params=params)
         import requests
@@ -52,9 +71,7 @@ class CloudflareClient:
         body = resp.json() if resp.content else {}
         if not body.get('success', False):
             errors = body.get('errors') or [{'message': f'HTTP {resp.status_code}'}]
-            raise CloudflareError(
-                f'Cloudflare API error ({resp.status_code}): {errors}'
-            )
+            raise CloudflareError(f'Cloudflare API error ({resp.status_code}): {errors}')
         return body
 
     def _get(self, path: str, params: dict | None = None) -> dict:
@@ -94,8 +111,9 @@ class CloudflareClient:
 
     # ── Analytics ────────────────────────────────────────────────────────
 
-    def get_analytics_dashboard(self, zone_id: str, since: str = '-10080',
-                                until: str = '0') -> dict:
+    def get_analytics_dashboard(
+        self, zone_id: str, since: str = '-10080', until: str = '0'
+    ) -> dict:
         """Dashboard summary (requests, bandwidth, threats, cache stats).
 
         `since` / `until` are negative minutes-from-now per CF docs:
@@ -111,21 +129,34 @@ class CloudflareClient:
     def list_firewall_events(self, zone_id: str, limit: int = 50) -> dict:
         # GraphQL is the modern endpoint but the legacy REST one works
         # for an overview and doesn't require account-scoped tokens.
-        return self._get(f'/zones/{zone_id}/security/events',
-                          params={'per_page': limit})
+        return self._get(f'/zones/{zone_id}/security/events', params={'per_page': limit})
 
     # ── DNS ──────────────────────────────────────────────────────────────
 
     def list_dns_records(self, zone_id: str) -> dict:
         return self._get(f'/zones/{zone_id}/dns_records', params={'per_page': 100})
 
-    def create_dns_record(self, zone_id: str, *, type: str, name: str,
-                          content: str, ttl: int = 1, proxied: bool = False) -> dict:
+    def create_dns_record(
+        self,
+        zone_id: str,
+        *,
+        type: str,
+        name: str,
+        content: str,
+        ttl: int = 1,
+        proxied: bool = False,
+    ) -> dict:
         """Create a new DNS record. ttl=1 means 'auto' per CF docs."""
-        return self._post(f'/zones/{zone_id}/dns_records', {
-            'type': type, 'name': name, 'content': content,
-            'ttl': ttl, 'proxied': proxied,
-        })
+        return self._post(
+            f'/zones/{zone_id}/dns_records',
+            {
+                'type': type,
+                'name': name,
+                'content': content,
+                'ttl': ttl,
+                'proxied': proxied,
+            },
+        )
 
     def delete_dns_record(self, zone_id: str, record_id: str) -> dict:
         return self._request('DELETE', f'/zones/{zone_id}/dns_records/{record_id}')
@@ -136,9 +167,13 @@ class CloudflareClient:
         return self._get(f'/zones/{zone_id}/bot_management')
 
     def patch_bot_fight_mode(self, zone_id: str, enabled: bool) -> dict:
-        return self._request('PUT', f'/zones/{zone_id}/bot_management', payload={
-            'fight_mode': bool(enabled),
-        })
+        return self._request(
+            'PUT',
+            f'/zones/{zone_id}/bot_management',
+            payload={
+                'fight_mode': bool(enabled),
+            },
+        )
 
     # ── Speed / cache top-level toggles ──────────────────────────────────
 
@@ -174,9 +209,7 @@ class CloudflareClient:
 
     def get_cache_ruleset(self, zone_id: str) -> dict:
         """Read the http_request_cache_settings ruleset entrypoint."""
-        return self._get(
-            f'/zones/{zone_id}/rulesets/phases/http_request_cache_settings/entrypoint'
-        )
+        return self._get(f'/zones/{zone_id}/rulesets/phases/http_request_cache_settings/entrypoint')
 
     def put_cache_ruleset(self, zone_id: str, rules: list[dict]) -> dict:
         """Replace the entire cache-settings ruleset with `rules`."""
@@ -222,7 +255,7 @@ def purge_urls(
     urls: Iterable[str],
     triggered_by: str = '',
     client: CloudflareClient | None = None,
-) -> 'CacheInvalidation':  # noqa: F821
+) -> CacheInvalidation:  # noqa: F821
     return _record_purge(
         zone=zone,
         scope='urls',
@@ -238,7 +271,7 @@ def purge_tags(
     tags: Iterable[str],
     triggered_by: str = '',
     client: CloudflareClient | None = None,
-) -> 'CacheInvalidation':  # noqa: F821
+) -> CacheInvalidation:  # noqa: F821
     return _record_purge(
         zone=zone,
         scope='tags',
@@ -253,7 +286,7 @@ def purge_everything(
     zone,
     triggered_by: str = '',
     client: CloudflareClient | None = None,
-) -> 'CacheInvalidation':  # noqa: F821
+) -> CacheInvalidation:  # noqa: F821
     return _record_purge(
         zone=zone,
         scope='purge_everything',
@@ -267,7 +300,10 @@ def _record_purge(*, zone, scope, targets, triggered_by, client):
     from plugins.installed.cloudflare.models import CacheInvalidation
 
     inv = CacheInvalidation.objects.create(
-        zone=zone, scope=scope, targets=targets, triggered_by=triggered_by[:120],
+        zone=zone,
+        scope=scope,
+        targets=targets,
+        triggered_by=triggered_by[:120],
         status='pending',
     )
 
@@ -322,8 +358,7 @@ def sync_zones(account) -> dict:
     try:
         body = cf.list_zones(account_id=account.account_id or None)
     except CloudflareError as e:
-        logger.warning('cloudflare: sync_zones failed for account %s: %s',
-                       account.label, e)
+        logger.warning('cloudflare: sync_zones failed for account %s: %s', account.label, e)
         raise
 
     zones = body.get('result') or []
@@ -335,7 +370,8 @@ def sync_zones(account) -> dict:
         if not zone_id or not domain:
             continue
         obj, was_created = CloudflareZone.objects.update_or_create(
-            account=account, zone_id=zone_id,
+            account=account,
+            zone_id=zone_id,
             defaults={'domain': domain, 'is_active': True},
         )
         if was_created:
@@ -399,7 +435,8 @@ def purge_for_product_update(product) -> list:
 
     invalidations = []
     qs = CloudflareZone.objects.filter(
-        is_active=True, auto_purge_on_product_update=True,
+        is_active=True,
+        auto_purge_on_product_update=True,
     ).select_related('account')
     paths = [f'/p/{product.slug}', f'/products/{product.slug}']
     tags = [f'product:{product.slug}']
@@ -434,7 +471,8 @@ def purge_for_category_update(category) -> list:
 
     invalidations = []
     qs = CloudflareZone.objects.filter(
-        is_active=True, auto_purge_on_collection_update=True,
+        is_active=True,
+        auto_purge_on_collection_update=True,
     ).select_related('account')
     slug = getattr(category, 'slug', '') or ''
     pk = getattr(category, 'id', '') or getattr(category, 'pk', '') or ''
@@ -444,9 +482,7 @@ def purge_for_category_update(category) -> list:
 
     for zone in qs:
         try:
-            invalidations.append(
-                purge_tags(zone=zone, tags=tags, triggered_by=f'category:{pk}')
-            )
+            invalidations.append(purge_tags(zone=zone, tags=tags, triggered_by=f'category:{pk}'))
         except Exception as e:  # noqa: BLE001
             logger.warning('cloudflare: purge_for_category_update tag failed: %s', e)
     return invalidations
