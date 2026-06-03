@@ -233,9 +233,9 @@
   .nav-mega__chev { opacity: .55; transition: transform .2s ease; }
   .nav-mega:hover .nav-mega__chev, .nav-mega:focus-within .nav-mega__chev { transform: rotate(180deg); }
   .nav-mega__panel {
-    position: absolute; top: 100%; left: 50%;
-    transform: translateX(-50%) translateY(8px);
-    min-width: 560px; max-width: 92vw; background: var(--paper);
+    position: absolute; top: 100%; left: 0;
+    transform: translateY(8px);
+    min-width: 560px; max-width: min(92vw, 720px); background: var(--paper);
     border: 1px solid var(--rule); border-radius: 12px;
     box-shadow: 0 20px 54px -14px rgba(14,14,14,.22); padding: 1.6rem 1.6rem 1.1rem;
     opacity: 0; visibility: hidden; pointer-events: none;
@@ -243,7 +243,7 @@
   }
   .nav-mega__panel::before { content: ""; position: absolute; top: -14px; left: 0; right: 0; height: 14px; }
   .nav-mega:hover .nav-mega__panel, .nav-mega:focus-within .nav-mega__panel {
-    opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(-50%) translateY(0);
+    opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
   }
   .nav-mega__grid { display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 1.3rem 2rem; }
   .nav-mega__col { display: flex; flex-direction: column; gap: .1rem; }
