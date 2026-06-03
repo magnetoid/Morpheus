@@ -38,6 +38,22 @@ def _git(args: list[str], cwd: Path, timeout: int = 10) -> str | None:
     return result.stdout.strip()
 
 
+def _git_ok(args: list[str], cwd: Path, timeout: int = 10) -> bool:
+    """Run git for its exit code only (e.g. merge-base --is-ancestor)."""
+    try:
+        result = subprocess.run(
+            ['git', *args],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except Exception:  # noqa: BLE001
+        return False
+    return result.returncode == 0
+
+
 def _repo_root() -> Path:
     from django.conf import settings
 
@@ -81,3 +97,121 @@ def platform_update_status(*, fetch: bool = False) -> dict:
     out['latest'] = _git(['describe', '--tags', '--always', upstream], root) or ''
     out['available'] = 'yes' if out['behind'] > 0 else 'no'
     return out
+
+
+def apply_platform_update(*, confirm: bool = False, run_migrations: bool = True) -> dict:  # noqa: PLR0911
+    """Fast-forward the deployed checkout to its upstream — phase 4.
+
+    Conservative + reliable by construction:
+      * **dry-run by default** — without ``confirm=True`` it only returns a
+        plan and mutates nothing.
+      * **opt-in** — even with ``confirm`` it refuses unless
+        ``settings.MORPHEUS_SELF_UPDATE_ENABLED`` is on.
+      * **fast-forward only** — aborts if local has diverged (never force).
+      * **backup first** (``morph_backup``), then ``git merge --ff-only`` →
+        ``migrate`` → ``check``; any failure **rolls the code back** to the
+        prior commit. (DB migrations are not auto-reversed — the pre-update
+        backup is the restore point; this is reported loudly.)
+      * **inert** where there's no ``.git`` (built container) → ``unavailable``.
+
+    CLI-only (``manage.py morph_apply_update``); deliberately not web-triggerable.
+    """
+    from django.conf import settings
+
+    root = _repo_root()
+    if not (root / '.git').exists():
+        return {
+            'ok': False,
+            'status': 'unavailable',
+            'reason': 'No git metadata in this deployment.',
+        }
+
+    status = platform_update_status(fetch=True)
+    if status.get('available') == 'no':
+        return {
+            'ok': True,
+            'status': 'noop',
+            'message': 'Already up to date.',
+            'current': status.get('current'),
+        }
+    if status.get('available') != 'yes':
+        return {
+            'ok': False,
+            'status': status.get('available', 'unknown'),
+            'reason': status.get('reason', 'Update status could not be determined.'),
+        }
+
+    upstream = status['upstream']
+    prior_sha = _git(['rev-parse', 'HEAD'], root) or ''
+    plan = {
+        'from': status.get('current'),
+        'to': status.get('latest'),
+        'behind': status.get('behind'),
+        'upstream': upstream,
+    }
+
+    if not confirm:
+        return {
+            'ok': True,
+            'status': 'dry_run',
+            'plan': plan,
+            'message': 'Dry run — pass confirm=True (CLI: --confirm) to apply.',
+        }
+
+    if not getattr(settings, 'MORPHEUS_SELF_UPDATE_ENABLED', False):
+        return {
+            'ok': False,
+            'status': 'disabled',
+            'plan': plan,
+            'reason': 'Self-update is disabled. Set MORPHEUS_SELF_UPDATE_ENABLED=1 to allow.',
+        }
+
+    # Fast-forward only: HEAD must be an ancestor of upstream.
+    if not _git_ok(['merge-base', '--is-ancestor', 'HEAD', upstream], root):
+        return {
+            'ok': False,
+            'status': 'diverged',
+            'plan': plan,
+            'reason': 'Local has diverged from upstream; fast-forward not possible. Resolve manually.',
+        }
+
+    from django.core.management import call_command
+
+    try:
+        call_command('morph_backup')
+    except Exception:  # noqa: BLE001 — proceed even if backup is unavailable, but note it
+        plan['backup'] = 'failed'
+
+    if not _git_ok(['merge', '--ff-only', upstream], root):
+        return {
+            'ok': False,
+            'status': 'apply_failed',
+            'plan': plan,
+            'reason': 'git fast-forward failed; working tree unchanged.',
+        }
+
+    def _rollback(reason: str) -> dict:
+        _git_ok(['reset', '--hard', prior_sha], root)
+        return {'ok': False, 'status': 'rolled_back', 'plan': plan, 'reason': reason}
+
+    if run_migrations:
+        try:
+            call_command('migrate', '--noinput')
+        except Exception as e:  # noqa: BLE001
+            return _rollback(
+                f'migrate failed ({str(e)[:160]}); code reverted to {prior_sha[:7]}. '
+                'REVIEW DB — restore the pre-update backup if needed.'
+            )
+
+    try:
+        call_command('check')
+    except Exception as e:  # noqa: BLE001
+        return _rollback(f'post-update healthcheck failed ({str(e)[:160]}); code reverted.')
+
+    return {
+        'ok': True,
+        'status': 'applied',
+        'from': prior_sha[:7],
+        'to': status.get('latest'),
+        'plan': plan,
+    }

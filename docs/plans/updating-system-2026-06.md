@@ -67,7 +67,17 @@ licensed channel. Keep `UpdateSource` an interface so channels are pluggable.
   Updates page. Read-only + fail-soft (prod container has no `.git` →
   "unavailable", which is correct: this Coolify deploy updates via `git push`;
   the in-app updater serves self-hosted git installs).
-- **Next: Phase 4 (apply + rollback) — HIGH-STAKES, fresh session.** Code-
-  mutating; must go through `core/safety.py` + backup + staged swap +
-  healthcheck + auto-rollback + maintenance mode. Plugins/themes first, core
-  last. Do NOT build on a compacted context.
+- 2026-06-03: **Phase 4 (apply + rollback) shipped — conservatively.**
+  `core/updates.py:apply_platform_update(confirm=, run_migrations=)` +
+  `manage.py morph_apply_update` (dry-run by default). Safety posture:
+  **dry-run unless `--confirm`**; **opt-in** (`MORPHEUS_SELF_UPDATE_ENABLED`,
+  default off); **fast-forward only** (aborts on divergence); **backup first**
+  (`morph_backup`) → `migrate` → `check`, with **code rollback** (`git reset
+  --hard` to the prior sha) on any failure; **CLI-only** (no web trigger);
+  **inert without `.git`**. DB migrations are NOT auto-reversed — the
+  pre-update backup is the documented restore point. Guard tests (dry-run /
+  disabled / noop / unavailable) never run a real apply.
+- **Remaining hardening (future):** per-plugin/theme update channels (vs the
+  monorepo whole-checkout apply), DB-snapshot restore on migrate failure,
+  maintenance-mode middleware during apply, signature verification of refs,
+  and an AI-assisted "review changelog + stage" step (phase 5).

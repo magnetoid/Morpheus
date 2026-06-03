@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from django.test import SimpleTestCase
+from pathlib import Path
+from unittest import mock
 
-from core.updates import platform_update_status
+from django.test import SimpleTestCase, override_settings
+
+from core.updates import apply_platform_update, platform_update_status
 from core.versioning import component_versions, core_version
 
 
@@ -45,3 +48,47 @@ class PlatformUpdateStatusTests(SimpleTestCase):
             # A real git checkout reports the deployed ref + an integer delta.
             self.assertTrue(status.get('current'))
             self.assertIsInstance(status.get('behind'), int)
+
+
+class ApplyUpdateGuardTests(SimpleTestCase):
+    """The apply path must never mutate without confirm + opt-in. These mock
+    an 'update available' state so the guards are exercised, but every case
+    here returns BEFORE any git mutation."""
+
+    _AVAILABLE = {
+        'source': 'git',
+        'available': 'yes',
+        'upstream': 'origin/main',
+        'current': 'v0.1.0-1-gabc',
+        'latest': 'v0.1.0-3-gdef',
+        'behind': 2,
+    }
+
+    def test_dry_run_returns_plan_no_mutation(self):
+        with mock.patch('core.updates.platform_update_status', return_value=dict(self._AVAILABLE)):
+            res = apply_platform_update(confirm=False)
+        self.assertTrue(res['ok'])
+        self.assertEqual(res['status'], 'dry_run')
+        self.assertEqual(res['plan']['behind'], 2)
+
+    @override_settings(MORPHEUS_SELF_UPDATE_ENABLED=False)
+    def test_confirm_without_optin_is_disabled(self):
+        with mock.patch('core.updates.platform_update_status', return_value=dict(self._AVAILABLE)):
+            res = apply_platform_update(confirm=True)
+        self.assertFalse(res['ok'])
+        self.assertEqual(res['status'], 'disabled')
+
+    def test_noop_when_up_to_date(self):
+        with mock.patch(
+            'core.updates.platform_update_status',
+            return_value={'source': 'git', 'available': 'no', 'current': 'x'},
+        ):
+            res = apply_platform_update(confirm=True)
+        self.assertTrue(res['ok'])
+        self.assertEqual(res['status'], 'noop')
+
+    def test_unavailable_without_git(self):
+        with mock.patch('core.updates._repo_root', return_value=Path('/nonexistent-morph-xyz')):
+            res = apply_platform_update(confirm=True)
+        self.assertFalse(res['ok'])
+        self.assertEqual(res['status'], 'unavailable')

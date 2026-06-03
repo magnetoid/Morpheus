@@ -38,6 +38,11 @@ MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 # Display version next to the logo in the admin sidebar.
 MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.1.0')
 
+# Opt-in gate for the in-app platform self-updater (git fast-forward apply).
+# OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
+# is on. See core/updates.py + docs/plans/updating-system-2026-06.md.
+MORPHEUS_SELF_UPDATE_ENABLED = config('MORPHEUS_SELF_UPDATE_ENABLED', default=False, cast=bool)
+
 # Optional Google Places API key — when set, checkout/address forms
 # surface address autocomplete. Empty string disables the feature
 # (no script tag rendered, no UI changes).
