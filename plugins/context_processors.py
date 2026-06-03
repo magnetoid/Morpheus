@@ -1,4 +1,5 @@
 """Plugin context processor — exposes active plugins + dashboard contributions."""
+
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -11,25 +12,24 @@ _SECTION_ORDER = [
     # Marketing sits first so its section header lands right under the
     # static daily-use links (Home / Assistant / Insights / Orders /
     # Products / Customers) instead of getting buried near the bottom.
-    'marketing',    # Campaigns, Promotions, Coupons
-    'ai',           # AI & agents — Morpheus's defining surface
-    'sales',        # Orders (drafts surface inline)
-    'catalog',      # Products, Categories, Collections
-    'crm',          # Leads, Accounts, Deals, Tasks
-    'customers',    # Reviews, Subscriptions
-    'cms',          # Pages, Blocks, Menus, Forms
-    'analytics',    # Sessions, Events, Funnels
-    'seo',          # SEO audit, redirects, JSON-LD config
-    'growth',       # Affiliates, loyalty
+    'marketing',  # Campaigns, Promotions, Coupons
+    'ai',  # AI & agents — Morpheus's defining surface
+    'sales',  # Orders (drafts surface inline)
+    'catalog',  # Products, Categories, Collections
+    'crm',  # Leads, Accounts, Deals, Tasks
+    'customers',  # Reviews, Subscriptions
+    'cms',  # Pages, Blocks, Menus, Forms
+    'analytics',  # Sessions, Events, Funnels
+    'seo',  # SEO audit, redirects, JSON-LD config
+    'growth',  # Affiliates, loyalty
     'marketplace',  # Vendor onboarding, splits, payouts
-    'plugins',      # uncategorised main-nav plugin pages
-
+    'plugins',  # uncategorised main-nav plugin pages
     # Settings sidebar (admin / setup)
-    'developer',    # Webhooks endpoints + deliveries
-    'access',       # Roles & users (RBAC)
-    'data',         # Bulk CSV import/export, Demo data
-    'settings',     # legacy 'settings' bucket — anything left over
-    'apps',         # the Apps catalog page
+    'developer',  # Webhooks endpoints + deliveries
+    'access',  # Roles & users (RBAC)
+    'data',  # Bulk CSV import/export, Demo data
+    'settings',  # legacy 'settings' bucket — anything left over
+    'apps',  # the Apps catalog page
 ]
 
 _SECTION_LABELS = {
@@ -56,23 +56,23 @@ _SECTION_LABELS = {
 # Lucide icon for each known section. Falls through to 'folder' for
 # anything not listed — matches the template default.
 _SECTION_ICONS = {
-    'ai':          'sparkles',
-    'sales':       'shopping-cart',
-    'catalog':     'package',
-    'crm':         'users',
-    'customers':   'users',
-    'marketing':   'megaphone',
-    'cms':         'book-open',
-    'analytics':   'bar-chart-3',
-    'seo':         'search',
-    'growth':      'trending-up',
+    'ai': 'sparkles',
+    'sales': 'shopping-cart',
+    'catalog': 'package',
+    'crm': 'users',
+    'customers': 'users',
+    'marketing': 'megaphone',
+    'cms': 'book-open',
+    'analytics': 'bar-chart-3',
+    'seo': 'search',
+    'growth': 'trending-up',
     'marketplace': 'store',
-    'plugins':     'puzzle',
-    'developer':   'terminal',
-    'access':      'shield',
-    'data':        'database',
-    'settings':    'settings',
-    'apps':        'grid-3x3',
+    'plugins': 'puzzle',
+    'developer': 'terminal',
+    'access': 'shield',
+    'data': 'database',
+    'settings': 'settings',
+    'apps': 'grid-3x3',
 }
 
 
@@ -102,13 +102,15 @@ def _group_by_section(pages, *, active_apps_slug: str = ''):
                 if f'{p.plugin}/{p.slug}' == active_apps_slug:
                     is_active = True
                     break
-        out.append({
-            'key': key,
-            'label': _SECTION_LABELS.get(key, key.replace('_', ' ').title()),
-            'icon':  _SECTION_ICONS.get(key, 'folder'),
-            'pages': pages_in_section,
-            'is_active': is_active,
-        })
+        out.append(
+            {
+                'key': key,
+                'label': _SECTION_LABELS.get(key, key.replace('_', ' ').title()),
+                'icon': _SECTION_ICONS.get(key, 'folder'),
+                'pages': pages_in_section,
+                'is_active': is_active,
+            }
+        )
     return out
 
 
@@ -124,12 +126,14 @@ def plugin_context(request):
     # lives) rather than at the bottom of the main rail — keeps the
     # daily-use sidebar focused.
     main_pages = [
-        p for p in pages
+        p
+        for p in pages
         if getattr(p, 'nav', 'main') not in ('settings', 'hidden')
         and getattr(p, 'section', '') != 'apps'
     ]
     settings_pages = [
-        p for p in pages
+        p
+        for p in pages
         if getattr(p, 'nav', 'main') == 'settings'
         or (getattr(p, 'nav', 'main') == 'main' and getattr(p, 'section', '') == 'apps')
     ]
@@ -141,18 +145,34 @@ def plugin_context(request):
         from plugins.installed.admin_dashboard.settings_categories import (
             SETTINGS_CATEGORIES,
         )
+
         panels_by_cat: dict[str, int] = {}
         for entry in plugin_registry.all_settings_panels():
-            panel = entry.get('panel') if isinstance(entry, dict) else entry[1] if isinstance(entry, tuple) else entry
+            panel = (
+                entry.get('panel')
+                if isinstance(entry, dict)
+                else entry[1]
+                if isinstance(entry, tuple)
+                else entry
+            )
             cat = getattr(panel, 'category', '') or 'apps'
             panels_by_cat[cat] = panels_by_cat.get(cat, 0) + 1
+        # Domains whose settings live on a dedicated rich page (Tax, Shipping)
+        # are suppressed here so the settings sidebar shows ONE entry per domain
+        # — the page itself (in settings_sections), never also a duplicate
+        # category link. Their panels (carrier creds, Bookvault, …) stay
+        # reachable via the settings hub. ADR 0004; the full "absorb the panels
+        # onto the page" step is the remaining follow-up.
+        _page_owned = {'shipping', 'taxes'}
         settings_category_nav = [
-            c for c in SETTINGS_CATEGORIES
+            c
+            for c in SETTINGS_CATEGORIES
             # 'general', 'apps', 'notifications' always render: 'general'
             # carries store basics, 'apps' is the long-tail bucket, and
             # 'notifications' carries the editable email templates link
             # (which lives in the template, not a SettingsPanel).
-            if panels_by_cat.get(c.slug) or c.slug in ('general', 'apps', 'notifications')
+            if (panels_by_cat.get(c.slug) or c.slug in ('general', 'apps', 'notifications'))
+            and c.slug not in _page_owned
         ]
     except Exception:  # noqa: BLE001 — never fail the page on missing module
         settings_category_nav = []
@@ -171,14 +191,14 @@ def plugin_context(request):
     #   /dashboard/apps/<plugin>/<slug>/          → active_apps_slug='<plugin>/<slug>'
     path = getattr(request, 'path', '') or ''
     if path.startswith('/dashboard/settings/'):
-        rest = path[len('/dashboard/settings/'):].strip('/').split('/', 1)
+        rest = path[len('/dashboard/settings/') :].strip('/').split('/', 1)
         head = rest[0] if rest and rest[0] else ''
         if head == 'email-templates':
             active_settings_category = 'notifications'
         else:
             active_settings_category = head
     elif path.startswith('/dashboard/apps/'):
-        rest = path[len('/dashboard/apps/'):].strip('/').split('/')
+        rest = path[len('/dashboard/apps/') :].strip('/').split('/')
         if len(rest) >= 2 and rest[0]:
             active_apps_slug = f'{rest[0]}/{rest[1]}'
 
@@ -186,7 +206,7 @@ def plugin_context(request):
         'active_plugins': plugin_registry._active,
         'plugin_registry': plugin_registry,
         'nav_badges': nav_badges,
-        'dashboard_pages': pages,                          # back-compat flat list
+        'dashboard_pages': pages,  # back-compat flat list
         'sidebar_sections': _group_by_section(main_pages, active_apps_slug=active_apps_slug),
         'settings_sections': _group_by_section(settings_pages, active_apps_slug=active_apps_slug),
         # Schema-driven settings panels (form-based).
@@ -215,16 +235,19 @@ def _compute_nav_badges(request) -> dict:
     badges = {'returns': 0, 'insights': 0, 'notifications': 0}
     try:
         from plugins.installed.orders.refunds import ReturnRequest
+
         badges['returns'] = ReturnRequest.objects.filter(state='requested').count()
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.ai_assistant.models import MerchantInsight
+
         badges['insights'] = MerchantInsight.objects.filter(is_read=False).count()
     except Exception:  # noqa: BLE001
         pass
     try:
         from plugins.installed.notifications_center.services import unread_count_for
+
         badges['notifications'] = unread_count_for(getattr(request, 'user', None))
     except Exception:  # noqa: BLE001
         pass
