@@ -62,11 +62,9 @@
           </div>
         </div>
         {% storefront_blocks "cart_summary_extra" %}
-        {# A/B test: checkout_flow ('control' = 3-step at /checkout/, 'one_page' = /checkout/quick/). #}
-        {% variant 'checkout_flow' as checkout_variant %}
-        <a href="{% if checkout_variant == 'one_page' %}/checkout/quick/{% else %}/checkout/{% endif %}"
+        {# Single short flow: one-page checkout (address + shipping + payment picker on one screen). #}
+        <a href="/checkout/quick/"
            class="btn btn-primary"
-           data-experiment="checkout_flow" data-variant="{{ checkout_variant }}"
            style="width:100%; justify-content: center; margin-top: 1.25rem;">Checkout</a>
         <p class="meta" style="text-align:center; margin-top: 1rem;">Free shipping over $40<span class="text-accent">.</span></p>
       </aside>
