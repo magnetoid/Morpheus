@@ -32,7 +32,11 @@
           <p style="font-family: var(--serif); font-size: 1.5rem; line-height: 1.15;"><em>{{ pick.name }}</em></p>
           <p class="meta">{{ pick.category.name|default:"" }}</p>
           <p style="margin-top: 1rem; max-width: 50ch; color: var(--ink-2); line-height: 1.6;">{{ pick.shortDescription|default:""|striptags|truncatewords:36 }}</p>
-          <a href="/products/{{ pick.slug }}/" class="btn-link" style="margin-top:1rem;">Read more</a>
+          <p style="font-family: var(--serif); font-size: 1.4rem; margin-top: 1.25rem;">{% if pick.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ pick.price|money }}</p>
+          <div style="margin-top: 1.25rem; display:flex; gap: 0.75rem; align-items:center; flex-wrap: wrap;">
+            <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop this book</a>
+            <a href="/products/" class="btn btn-ghost">Browse all books</a>
+          </div>
         </div>
         {% endif %}
         {% endwith %}
@@ -105,23 +109,6 @@
   </div>
 </section>
 
-<!-- Manifesto block -->
-<section style="background: var(--paper-2); padding: 6rem 0;">
-  <div class="wrap" style="text-align: center;">
-    <p class="eyebrow">A note from us</p>
-    <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
-      We don't sell books that need a marketing budget to be worth reading<span class="text-accent">.</span>
-    </h2>
-    <p class="lede" style="margin: 0 auto;">
-      Every title here was read by at least one of us before it made it onto the shelf. That's both a constraint and a promise. If we put it in front of you, it earned the spot.
-    </p>
-    <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;">
-      <a href="/about/" class="btn-link">Read the manifesto →</a>
-      <a href="/vendors/" class="btn-link">Meet the publishers →</a>
-    </div>
-  </div>
-</section>
-
 <!-- Staff picks rail (Curated row 2) -->
 {% if staff_picks %}
 <section>
@@ -155,6 +142,23 @@
   </div>
 </section>
 {% endif %}
+
+<!-- Manifesto block — placed after the shoppable rails so product density leads. -->
+<section style="background: var(--paper-2); padding: 6rem 0;">
+  <div class="wrap" style="text-align: center;">
+    <p class="eyebrow">A note from us</p>
+    <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
+      We don't sell books that need a marketing budget to be worth reading<span class="text-accent">.</span>
+    </h2>
+    <p class="lede" style="margin: 0 auto;">
+      Every title here was read by at least one of us before it made it onto the shelf. That's both a constraint and a promise. If we put it in front of you, it earned the spot.
+    </p>
+    <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;">
+      <a href="/about/" class="btn-link">Read the manifesto →</a>
+      <a href="/vendors/" class="btn-link">Meet the publishers →</a>
+    </div>
+  </div>
+</section>
 
 <hr class="rule">
 
