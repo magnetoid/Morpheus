@@ -1,0 +1,82 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if is_new %}New collection{% else %}{{ collection.name }}{% endif %} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h1 class="text-xl font-semibold tracking-tight">{% if is_new %}New collection{% else %}Edit collection{% endif %}</h1>
+    {% if not is_new %}
+    <a href="/collection/{{ collection.slug }}/" target="_blank" rel="noopener" class="btn btn-ghost text-sm"><i data-lucide="external-link" class="h-4 w-4"></i> View on storefront</a>
+    {% endif %}
+  </div>
+
+  {% if form.non_field_errors %}<div class="card card-padded form-error-banner">{{ form.non_field_errors }}</div>{% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="space-y-4">
+    {% csrf_token %}
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Details</h2>
+      <div>
+        <label class="block text-sm font-medium mb-1">Name</label>
+        {{ form.name }}
+        {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">URL slug</label>
+        {{ form.slug }}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Leave blank to auto-generate from the name. Powers <code>/collection/&lt;slug&gt;/</code>.</p>
+        {% if form.slug.errors %}<p class="field-error">{{ form.slug.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Description</label>
+        {{ form.description }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Image</label>
+        {% if collection.image %}<img src="{{ collection.image.url }}" alt="" style="max-height:80px;border-radius:6px;margin-bottom:.5rem;">{% endif %}
+        {{ form.image }}
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <label class="flex items-center gap-2 text-sm">{{ form.is_active }} Active</label>
+        <label class="flex items-center gap-2 text-sm">{{ form.is_featured }} Featured (homepage rail)</label>
+        <div>
+          <label class="block text-sm font-medium mb-1">Sort order</label>
+          {{ form.sort_order }}
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Products</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Hold ⌘/Ctrl to select multiple. These appear on the collection page.</p>
+      {{ form.products }}
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">SEO</h2>
+      <div>
+        <label class="block text-sm font-medium mb-1">Meta title</label>
+        {{ form.meta_title }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Meta description</label>
+        {{ form.meta_description }}
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3">
+      <button type="submit" class="btn btn-primary">{% if is_new %}Create collection{% else %}Save changes{% endif %}</button>
+      {% if not is_new %}
+      <button type="submit" form="collection-delete-form" class="btn btn-ghost text-[color:var(--danger,#c0392b)]" onclick="return confirm('Delete this collection? Products are not deleted.');">Delete</button>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if not is_new %}
+  <form method="post" id="collection-delete-form" action="{% url 'admin_dashboard:collection_delete' collection_id=collection.id %}">{% csrf_token %}</form>
+  {% endif %}
+</div>
+{% endblock %}

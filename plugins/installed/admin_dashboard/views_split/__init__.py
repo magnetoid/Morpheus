@@ -18,6 +18,7 @@ from plugins.installed.admin_dashboard.views_split.home import *  # noqa: F401, 
 from plugins.installed.admin_dashboard.views_split.orders import *  # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.products import *  # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.categories import *  # noqa: F401, F403
+from plugins.installed.admin_dashboard.views_split.collections import *  # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.customers import *  # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.marketing import *  # noqa: F401, F403
 from plugins.installed.admin_dashboard.views_split.analytics import *  # noqa: F401, F403

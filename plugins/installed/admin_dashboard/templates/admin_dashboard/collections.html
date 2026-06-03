@@ -1,0 +1,60 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Collections · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Collections</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Curated groups of products with their own <code>/collection/&lt;slug&gt;/</code> page. Featured collections also appear as homepage rails.</p>
+    </div>
+    <a href="{% url 'admin_dashboard:collection_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New collection</a>
+  </div>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+      <input name="q" value="{{ search }}" placeholder="Search by name" class="input input-search">
+    </div>
+    <button class="btn btn-primary">Search</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    {% if collections %}
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Slug</th>
+          <th class="text-right">Products</th>
+          <th>Featured</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in collections %}
+        <tr class="{% if not c.is_active %}opacity-60{% endif %}">
+          <td><a href="{% url 'admin_dashboard:collection_edit' collection_id=c.id %}" class="font-medium hover:underline">{{ c.name }}</a></td>
+          <td class="text-[color:var(--text-muted)] font-mono text-xs">{{ c.slug }}</td>
+          <td class="text-right tabular-nums">{{ c.product_count }}</td>
+          <td>{% if c.is_featured %}<span class="pill pill-success">Featured</span>{% else %}<span class="pill">—</span>{% endif %}</td>
+          <td>{% if c.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill">Inactive</span>{% endif %}</td>
+          <td class="text-right">
+            <a href="/collection/{{ c.slug }}/" target="_blank" rel="noopener" class="btn btn-ghost text-xs" title="View on storefront"><i data-lucide="external-link" class="h-3.5 w-3.5"></i></a>
+            <a href="{% url 'admin_dashboard:collection_edit' collection_id=c.id %}" class="btn btn-ghost text-xs" title="Edit"><i data-lucide="pencil" class="h-3.5 w-3.5"></i></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% elif search %}
+    {% include "admin_dashboard/_empty_state.html" with icon="search-x" title="No collections match" hint="Nothing matches your search." action_url="?" action_label="Clear search" %}
+    {% else %}
+    {% include "admin_dashboard/_empty_state.html" with icon="layers" title="No collections yet" hint="Group products into curated, shoppable pages." action_url="/dashboard/collections/new/" action_label="New collection" action_icon="plus" %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
