@@ -1,27 +1,20 @@
 """Auto-split from the legacy admin_dashboard/views.py monolith."""
+
+# Legacy auto-split view module: lazy (in-function) imports are the established
+# pattern here, and the dispatch views are intentionally branchy.
+# ruff: noqa: PLC0415, PLR0912, PLR0915, S110
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any
-
-from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
-from morpheus.views import get_object_or_404, redirect, render
-from django.db.models import Sum
-from django.utils import timezone
-
-from plugins.installed.admin_dashboard.forms import (
-    AddressForm,
-    CouponForm,
-    CustomerForm,
-    DraftOrderForm,
-    FulfillmentForm,
-    ProductForm,
-    RefundForm,
-    VariantForm,
+from morpheus.views import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseRedirect,
+    messages,
+    redirect,
+    render,
+    staff_member_required,
 )
-from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
-)
+
 
 def _panels_by_category() -> dict:
     """Index every active plugin's SettingsPanel by its category slug."""
@@ -33,12 +26,14 @@ def _panels_by_category() -> dict:
         if panel is None:
             continue
         cat = getattr(panel, 'category', '') or 'apps'
-        by_cat.setdefault(cat, []).append({
-            'plugin': plugin.name,
-            'plugin_label': plugin.label,
-            'plugin_description': plugin.description,
-            'panel': panel,
-        })
+        by_cat.setdefault(cat, []).append(
+            {
+                'plugin': plugin.name,
+                'plugin_label': plugin.label,
+                'plugin_description': plugin.description,
+                'panel': panel,
+            }
+        )
     for entries in by_cat.values():
         entries.sort(key=lambda e: (e['panel'].label or e['plugin_label']).lower())
     return by_cat
@@ -54,14 +49,16 @@ def _build_panel_fields(plugin_instance, schema: dict) -> list[dict]:
         value = config.get(key, prop.get('default', ''))
         if kind == 'boolean':
             value = bool(value)
-        fields.append({
-            'key': key,
-            'title': prop.get('title') or key.replace('_', ' ').title(),
-            'description': prop.get('description', ''),
-            'kind': kind,
-            'enum': prop.get('enum') or [],
-            'value': value,
-        })
+        fields.append(
+            {
+                'key': key,
+                'title': prop.get('title') or key.replace('_', ' ').title(),
+                'description': prop.get('description', ''),
+                'kind': kind,
+                'enum': prop.get('enum') or [],
+                'value': value,
+            }
+        )
     return fields
 
 
@@ -77,6 +74,7 @@ def settings_view(request: HttpRequest) -> HttpResponse:
     link for backward compat.
     """
     from django.conf import settings as dj_settings
+
     from plugins.installed.admin_dashboard.settings_categories import (
         SETTINGS_CATEGORIES,
     )
@@ -85,12 +83,14 @@ def settings_view(request: HttpRequest) -> HttpResponse:
     cards = []
     for cat in SETTINGS_CATEGORIES:
         entries = by_cat.get(cat.slug, [])
-        cards.append({
-            'category': cat,
-            'count': len(entries),
-            # Show up to 3 plugin labels as a hint of what's inside.
-            'plugins': [e['panel'].label or e['plugin_label'] for e in entries[:3]],
-        })
+        cards.append(
+            {
+                'category': cat,
+                'count': len(entries),
+                # Show up to 3 plugin labels as a hint of what's inside.
+                'plugins': [e['panel'].label or e['plugin_label'] for e in entries[:3]],
+            }
+        )
 
     store_summary = {
         'name': getattr(dj_settings, 'STORE_NAME', '—'),
@@ -98,20 +98,28 @@ def settings_view(request: HttpRequest) -> HttpResponse:
         'country': getattr(dj_settings, 'STORE_COUNTRY', '—'),
         'theme': getattr(dj_settings, 'MORPHEUS_ACTIVE_THEME', '—'),
     }
-    return render(request, 'admin_dashboard/settings.html', {
-        'cards': cards,
-        'store_summary': store_summary,
-        'active_nav': 'settings',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Settings'},
-        ],
-    })
+    return render(
+        request,
+        'admin_dashboard/settings.html',
+        {
+            'cards': cards,
+            'store_summary': store_summary,
+            'active_nav': 'settings',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Settings'},
+            ],
+        },
+    )
 
 
 _CORE_FORMS_BY_CATEGORY = {
     'general': ('StoreGeneralForm', 'Store details', 'Name, description, currency, locale.'),
-    'notifications': ('StoreNotificationsForm', 'Email sender + SMTP', 'Outbound email used for transactional notifications.'),
+    'notifications': (
+        'StoreNotificationsForm',
+        'Email sender + SMTP',
+        'Outbound email used for transactional notifications.',
+    ),
 }
 
 
@@ -121,6 +129,7 @@ def _core_form_for(category: str):
     if entry is None:
         return None
     from plugins.installed.admin_dashboard import forms as dashboard_forms
+
     cls = getattr(dashboard_forms, entry[0])
     return cls, entry[1], entry[2]
 
@@ -148,6 +157,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     base_url = (request.POST.get('base_url') or '').strip()
     try:
         from plugins.registry import plugin_registry
+
         ai_plugin = plugin_registry.get('ai_assistant')
         if ai_plugin is not None:
             cfg = ai_plugin.get_config()
@@ -159,6 +169,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
         pass
 
     from plugins.installed.ai_assistant.services.probe import probe
+
     result = probe(provider, api_key=api_key, base_url=base_url)
     return JsonResponse(result)
 
@@ -235,6 +246,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     """
     from django.conf import settings as dj_settings
     from django.core.cache import cache
+
     from plugins.installed.admin_dashboard.settings_categories import get_category
     from plugins.registry import plugin_registry
 
@@ -249,9 +261,15 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 messages.error(request, f'Cache clear failed: {e}')
         elif action == 'save_storefront' and sf is not None:
             try:
-                sf.set_config('html_cache_control', (request.POST.get('html_cache_control') or '').strip())
-                sf.set_config('asset_max_age_seconds', int(request.POST.get('asset_max_age_seconds') or 0))
-                sf.set_config('graphql_edge_cache_ttl', int(request.POST.get('graphql_edge_cache_ttl') or 0))
+                sf.set_config(
+                    'html_cache_control', (request.POST.get('html_cache_control') or '').strip()
+                )
+                sf.set_config(
+                    'asset_max_age_seconds', int(request.POST.get('asset_max_age_seconds') or 0)
+                )
+                sf.set_config(
+                    'graphql_edge_cache_ttl', int(request.POST.get('graphql_edge_cache_ttl') or 0)
+                )
                 messages.success(request, 'Cache-Control headers saved.')
             except (TypeError, ValueError):
                 messages.error(request, 'TTL fields must be integers.')
@@ -262,12 +280,20 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
             sf.set_config('responsive_srcset', request.POST.get('responsive_srcset') == 'on')
             messages.success(request, 'Image optimization settings saved.')
         elif action == 'save_hints' and sf is not None:
-            sf.set_config('preconnect_origins', (request.POST.get('preconnect_origins') or '').strip())
-            sf.set_config('dns_prefetch_origins', (request.POST.get('dns_prefetch_origins') or '').strip())
+            sf.set_config(
+                'preconnect_origins', (request.POST.get('preconnect_origins') or '').strip()
+            )
+            sf.set_config(
+                'dns_prefetch_origins', (request.POST.get('dns_prefetch_origins') or '').strip()
+            )
             messages.success(request, 'Resource hints saved.')
         elif action == 'save_pwa' and sf is not None:
-            sf.set_config('service_worker_enabled', request.POST.get('service_worker_enabled') == 'on')
-            sf.set_config('offline_page_path', (request.POST.get('offline_page_path') or '/offline/').strip())
+            sf.set_config(
+                'service_worker_enabled', request.POST.get('service_worker_enabled') == 'on'
+            )
+            sf.set_config(
+                'offline_page_path', (request.POST.get('offline_page_path') or '/offline/').strip()
+            )
             messages.success(request, 'PWA settings saved.')
         elif action == 'save_compression' and sf is not None:
             sf.set_config('brotli_enabled', request.POST.get('brotli_enabled') == 'on')
@@ -276,7 +302,9 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
             messages.success(request, 'Compression settings saved.')
         elif action == 'save_critical' and sf is not None:
             sf.set_config('inline_critical_css', request.POST.get('inline_critical_css') == 'on')
-            sf.set_config('defer_non_critical_js', request.POST.get('defer_non_critical_js') == 'on')
+            sf.set_config(
+                'defer_non_critical_js', request.POST.get('defer_non_critical_js') == 'on'
+            )
             sf.set_config('font_display', (request.POST.get('font_display') or 'swap').strip())
             sf.set_config('preload_fonts', (request.POST.get('preload_fonts') or '').strip())
             messages.success(request, 'Critical-path settings saved.')
@@ -284,7 +312,9 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
             try:
                 sf.set_config('home_cache_ttl', int(request.POST.get('home_cache_ttl') or 0))
                 sf.set_config('product_cache_ttl', int(request.POST.get('product_cache_ttl') or 0))
-                sf.set_config('category_cache_ttl', int(request.POST.get('category_cache_ttl') or 0))
+                sf.set_config(
+                    'category_cache_ttl', int(request.POST.get('category_cache_ttl') or 0)
+                )
                 sf.set_config('search_cache_ttl', int(request.POST.get('search_cache_ttl') or 0))
                 messages.success(request, 'Per-route TTLs saved.')
             except (TypeError, ValueError):
@@ -292,7 +322,9 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
         elif action == 'save_warmup' and sf is not None:
             sf.set_config('post_deploy_warmup', request.POST.get('post_deploy_warmup') == 'on')
             sf.set_config('warmup_top_n', int(request.POST.get('warmup_top_n') or 20))
-            sf.set_config('warmup_extra_urls', (request.POST.get('warmup_extra_urls') or '').strip())
+            sf.set_config(
+                'warmup_extra_urls', (request.POST.get('warmup_extra_urls') or '').strip()
+            )
             messages.success(request, 'Cache-warmup settings saved.')
         return HttpResponseRedirect(request.path)
 
@@ -304,12 +336,13 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     cache_error = ''
     try:
         import time
+
         sentinel_key = '_morpheus_health_ping'
         t0 = time.monotonic()
         cache.set(sentinel_key, 'ok', 5)
         got = cache.get(sentinel_key)
         cache_round_trip_ms = int((time.monotonic() - t0) * 1000)
-        cache_alive = (got == 'ok')
+        cache_alive = got == 'ok'
     except Exception as e:  # noqa: BLE001
         cache_error = f'{type(e).__name__}: {e}'
 
@@ -318,6 +351,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     if 'redis' in default_backend.lower():
         try:
             from django_redis import get_redis_connection
+
             conn = get_redis_connection('default')
             info = conn.info(section='stats')
             mem = conn.info(section='memory')
@@ -330,7 +364,9 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 'keyspace_misses': info.get('keyspace_misses', 0),
                 'evicted_keys': info.get('evicted_keys', 0),
                 'expired_keys': info.get('expired_keys', 0),
-                'db0_keys': (keyspace.get('db0') or {}).get('keys', 0) if isinstance(keyspace.get('db0'), dict) else 0,
+                'db0_keys': (keyspace.get('db0') or {}).get('keys', 0)
+                if isinstance(keyspace.get('db0'), dict)
+                else 0,
             }
             hits = redis_stats['keyspace_hits']
             misses = redis_stats['keyspace_misses']
@@ -342,8 +378,13 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     storefront_plugin = plugin_registry.get('storefront')
     sf_cfg = storefront_plugin.get_config() if storefront_plugin else {}
     storefront = {
-        'asset_max_age_seconds': int(sf_cfg.get('asset_max_age_seconds') or 31536000),  # 1 year default
-        'html_cache_control': (sf_cfg.get('html_cache_control') or 'public, max-age=0, s-maxage=300, must-revalidate, stale-while-revalidate=86400, stale-if-error=86400'),
+        'asset_max_age_seconds': int(
+            sf_cfg.get('asset_max_age_seconds') or 31536000
+        ),  # 1 year default
+        'html_cache_control': (
+            sf_cfg.get('html_cache_control')
+            or 'public, max-age=0, s-maxage=300, must-revalidate, stale-while-revalidate=86400, stale-if-error=86400'
+        ),
         'graphql_edge_cache_ttl': int(sf_cfg.get('graphql_edge_cache_ttl') or 0),
     }
     assets = {
@@ -387,9 +428,9 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     recent_activity = []
     try:
         from plugins.installed.cloudflare.models import CacheInvalidation
+
         recent_activity = list(
-            CacheInvalidation.objects.select_related('zone')
-            .order_by('-created_at')[:10]
+            CacheInvalidation.objects.select_related('zone').order_by('-created_at')[:10]
         )
     except Exception:  # noqa: BLE001
         pass
@@ -399,41 +440,48 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     cf_account_count = 0
     try:
         from plugins.installed.cloudflare.models import (
-            CacheInvalidation, CloudflareAccount, CloudflareZone,
+            CacheInvalidation,
+            CloudflareAccount,
+            CloudflareZone,
         )
+
         cf_zones = list(CloudflareZone.objects.select_related('account')[:10])
         cf_account_count = CloudflareAccount.objects.count()
         recent_purges_count = CacheInvalidation.objects.count()
     except Exception:  # noqa: BLE001
         recent_purges_count = 0
 
-    return render(request, 'admin_dashboard/settings_caching.html', {
-        'category': get_category('caching'),
-        'default_backend': default_backend.split('.')[-1] or default_backend,
-        'default_location': default_location,
-        'cache_alive': cache_alive,
-        'cache_round_trip_ms': cache_round_trip_ms,
-        'cache_error': cache_error,
-        'redis_stats': redis_stats,
-        'storefront': storefront,
-        'assets': assets,
-        'hints': hints,
-        'pwa': pwa,
-        'compression': compression,
-        'critical': critical,
-        'route_ttls': route_ttls,
-        'warmup': warmup,
-        'recent_activity': recent_activity,
-        'cf_zones': cf_zones,
-        'cf_account_count': cf_account_count,
-        'recent_purges_count': recent_purges_count,
-        'active_nav': 'settings',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Settings',  'url': '/dashboard/settings/'},
-            {'label': 'Caching'},
-        ],
-    })
+    return render(
+        request,
+        'admin_dashboard/settings_caching.html',
+        {
+            'category': get_category('caching'),
+            'default_backend': default_backend.split('.')[-1] or default_backend,
+            'default_location': default_location,
+            'cache_alive': cache_alive,
+            'cache_round_trip_ms': cache_round_trip_ms,
+            'cache_error': cache_error,
+            'redis_stats': redis_stats,
+            'storefront': storefront,
+            'assets': assets,
+            'hints': hints,
+            'pwa': pwa,
+            'compression': compression,
+            'critical': critical,
+            'route_ttls': route_ttls,
+            'warmup': warmup,
+            'recent_activity': recent_activity,
+            'cf_zones': cf_zones,
+            'cf_account_count': cf_account_count,
+            'recent_purges_count': recent_purges_count,
+            'active_nav': 'settings',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Settings', 'url': '/dashboard/settings/'},
+                {'label': 'Caching'},
+            ],
+        },
+    )
 
 
 def settings_ai(request: HttpRequest) -> HttpResponse:
@@ -444,8 +492,8 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
     per-provider Save. The agent_core 'Agents' panel still renders below
     as a regular schema-driven panel for runtime config.
     """
-    from plugins.registry import plugin_registry
     from plugins.installed.admin_dashboard.settings_categories import get_category
+    from plugins.registry import plugin_registry
 
     cat = get_category('ai')
     ai_plugin = plugin_registry.get('ai_assistant')
@@ -458,11 +506,10 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
     last_call_by_provider: dict[str, dict] = {}
     try:
         from core.audit.models import AuditEvent
-        recent = (
-            AuditEvent.objects
-            .filter(event_type='agents.decision')
-            .order_by('-created_at')[:200]
-        )
+
+        recent = AuditEvent.objects.filter(event_type='agents.decision').order_by('-created_at')[
+            :200
+        ]
         for ev in recent:
             slug = (ev.metadata or {}).get('provider') or ''
             if not slug or slug in last_call_by_provider:
@@ -482,15 +529,17 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         base_url = cfg.get(f'{p["slug"]}_base_url', '') or ''
         model = cfg.get(f'{p["slug"]}_model', '') or p.get('placeholder_model', '')
         configured = bool(api_key) or p.get('api_key_optional')
-        cards.append({
-            **p,
-            'api_key': api_key,
-            'base_url': base_url,
-            'model': model,
-            'configured': configured,
-            'is_active': p['slug'] == active,
-            'last_call': last_call_by_provider.get(p['slug']),
-        })
+        cards.append(
+            {
+                **p,
+                'api_key': api_key,
+                'base_url': base_url,
+                'model': model,
+                'configured': configured,
+                'is_active': p['slug'] == active,
+                'last_call': last_call_by_provider.get(p['slug']),
+            }
+        )
 
     # Active-provider banner data — resolved model + status, the only
     # answer to "which provider is Linda actually using right now?".
@@ -499,6 +548,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
     if active_card:
         try:
             from core.agents.llm import get_llm_provider
+
             resolved_model = getattr(get_llm_provider(), 'model', '') or ''
         except Exception:  # noqa: BLE001
             resolved_model = active_card.get('model', '')
@@ -531,20 +581,21 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         ('enable_synthetic_testing', 'Synthetic testing'),
         ('agent_purchase_requires_approval', 'Agent purchases require approval'),
     ]
-    features = [
-        {'key': k, 'label': lbl, 'value': bool(cfg.get(k))}
-        for k, lbl in feature_flags
-    ]
+    features = [{'key': k, 'label': lbl, 'value': bool(cfg.get(k))} for k, lbl in feature_flags]
 
-    return render(request, 'admin_dashboard/settings_ai.html', {
-        'category': cat,
-        'cards': cards,
-        'active_provider': active,
-        'active_banner': active_banner,
-        'features': features,
-        'agent_core_card': agent_core_card,
-        'active_nav': 'settings',
-    })
+    return render(
+        request,
+        'admin_dashboard/settings_ai.html',
+        {
+            'category': cat,
+            'cards': cards,
+            'active_provider': active,
+            'active_banner': active_banner,
+            'features': features,
+            'agent_core_card': agent_core_card,
+            'active_nav': 'settings',
+        },
+    )
 
 
 @staff_member_required
@@ -580,10 +631,13 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
         # canonical URL pattern post-2026-05-23: every plugin with a
         # SettingsPanel is reachable at /dashboard/settings/<plugin>/).
         from plugins.registry import plugin_registry
+
         if plugin_registry.settings_panel(category) is not None:
             from plugins.installed.admin_dashboard.urls import plugin_settings_view
+
             return plugin_settings_view(request, plugin=category)
         from morpheus.views import Http404
+
         raise Http404('Unknown settings category or plugin')
 
     core_card = None
@@ -591,6 +645,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
     if core_entry is not None:
         FormCls, core_title, core_description = core_entry
         from core.models import StoreSettings
+
         instance = StoreSettings.objects.first()
 
         if request.method == 'POST' and request.POST.get('_form') == 'core':
@@ -615,28 +670,34 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
         instance = plugin_registry.get(entry['plugin'])
         if instance is None:
             continue
-        cards.append({
-            'plugin': instance,
-            'plugin_name': entry['plugin'],
-            'panel': entry['panel'],
-            'fields': _build_panel_fields(instance, entry['panel'].schema),
-            # New canonical URL — post-2026-05-23. The legacy
-            # /dashboard/apps/<plugin>/settings/ 301-redirects here so
-            # any bookmarks keep working.
-            'submit_url': f'/dashboard/settings/{entry["plugin"]}/',
-        })
+        cards.append(
+            {
+                'plugin': instance,
+                'plugin_name': entry['plugin'],
+                'panel': entry['panel'],
+                'fields': _build_panel_fields(instance, entry['panel'].schema),
+                # New canonical URL — post-2026-05-23. The legacy
+                # /dashboard/apps/<plugin>/settings/ 301-redirects here so
+                # any bookmarks keep working.
+                'submit_url': f'/dashboard/settings/{entry["plugin"]}/',
+            }
+        )
 
-    return render(request, 'admin_dashboard/settings_category.html', {
-        'category': cat,
-        'core_card': core_card,
-        'cards': cards,
-        'active_nav': 'settings',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Settings',  'url': '/dashboard/settings/'},
-            {'label': cat.label},
-        ],
-    })
+    return render(
+        request,
+        'admin_dashboard/settings_category.html',
+        {
+            'category': cat,
+            'core_card': core_card,
+            'cards': cards,
+            'active_nav': 'settings',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Settings', 'url': '/dashboard/settings/'},
+                {'label': cat.label},
+            ],
+        },
+    )
 
 
 # ── AI insights (kept for back-compat with old URL) ──────────────────────────
@@ -666,9 +727,13 @@ def _filesystem_default(key: str) -> str:
     `.parent` hops to reach the project root, then `core/emails/...`
     """
     from pathlib import Path
+
     base = (
         Path(__file__).resolve().parent.parent.parent.parent.parent
-        / 'core' / 'emails' / 'templates' / 'emails'
+        / 'core'
+        / 'emails'
+        / 'templates'
+        / 'emails'
     )
     fp = base / f'{key}.txt'
     try:
@@ -686,31 +751,36 @@ def email_templates_list(request: HttpRequest) -> HttpResponse:
     rows = []
     for key, label, default_subject in _EMAIL_TEMPLATE_KEYS:
         tpl = existing.get(key)
-        rows.append({
-            'key': key,
-            'label': label,
-            'subject': tpl.subject if tpl else default_subject,
-            'is_active': tpl.is_active if tpl else False,
-            'updated_at': tpl.updated_at if tpl else None,
-            'is_customised': tpl is not None,
-        })
-    return render(request, 'admin_dashboard/email_templates_list.html', {
-        'rows': rows,
-        'active_nav': 'settings',
-    })
+        rows.append(
+            {
+                'key': key,
+                'label': label,
+                'subject': tpl.subject if tpl else default_subject,
+                'is_active': tpl.is_active if tpl else False,
+                'updated_at': tpl.updated_at if tpl else None,
+                'is_customised': tpl is not None,
+            }
+        )
+    return render(
+        request,
+        'admin_dashboard/email_templates_list.html',
+        {
+            'rows': rows,
+            'active_nav': 'settings',
+        },
+    )
 
 
 @staff_member_required
 def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
     """Edit one template. Reset = delete the row → falls back to filesystem default."""
-    from morpheus.views import HttpResponseRedirect
-
     from plugins.installed.cms.models import EmailTemplate
 
     label_map = {k: lbl for k, lbl, _ in _EMAIL_TEMPLATE_KEYS}
     default_subject_map = {k: subj for k, _, subj in _EMAIL_TEMPLATE_KEYS}
     if key not in label_map:
         from django.http import Http404
+
         raise Http404('Unknown template.')
 
     tpl = EmailTemplate.objects.filter(key=key).first()
@@ -738,20 +808,22 @@ def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
         )
         return HttpResponseRedirect('/dashboard/settings/email-templates/')
 
-    return render(request, 'admin_dashboard/email_template_edit.html', {
-        'key': key,
-        'label': label_map[key],
-        'subject': tpl.subject if tpl else default_subject_map[key],
-        'body_text': tpl.body_text if tpl else _filesystem_default(key),
-        'body_html': tpl.body_html if tpl else '',
-        'is_active': tpl.is_active if tpl else True,
-        'is_customised': tpl is not None,
-        'default_subject': default_subject_map[key],
-        'default_body_text': _filesystem_default(key),
-        'active_nav': 'settings',
-    })
+    return render(
+        request,
+        'admin_dashboard/email_template_edit.html',
+        {
+            'key': key,
+            'label': label_map[key],
+            'subject': tpl.subject if tpl else default_subject_map[key],
+            'body_text': tpl.body_text if tpl else _filesystem_default(key),
+            'body_html': tpl.body_html if tpl else '',
+            'is_active': tpl.is_active if tpl else True,
+            'is_customised': tpl is not None,
+            'default_subject': default_subject_map[key],
+            'default_body_text': _filesystem_default(key),
+            'active_nav': 'settings',
+        },
+    )
 
 
 # ─── Returns / RMA ────────────────────────────────────────────────────────────
-
-
