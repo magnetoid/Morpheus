@@ -105,9 +105,27 @@ imprint) so even pre-backfill cards read as covers, not weak boxes.
 Use the Collection system (NOT bespoke hardcoded modules). **Implement in the
 EXISTING advanced-ecommerce app (one app — do NOT scatter into new plugins).**
 **Surface them across the storefront as collections + sliders/carousels** (these
-also feed the Phase 1.2 homepage rails). Confirm exact shape at Phase 3:
-- [ ] Bestsellers, New this week, Under $10, Staff picks, Giftable editions,
-      Themed collections, First-time buyer shelf.
+also feed the Phase 1.2 homepage rails).
+
+- [x] **Featured-collection rails on the homepage** (2026-06-03). advanced_ecommerce
+      contributes a `home_after_rails` storefront block (new generic slot in
+      home.html, placed with the shoppable rails before editorial) that renders
+      each `Collection.is_featured` set as a slider linking to `/collection/<slug>/`.
+      De-duped against the Staff-picks collection the home view already shows
+      (reads `staff_picks_collection.slug` from context — no hardcoding). Caps +
+      on/off in the plugin settings panel (`enable_collection_rails`,
+      `collection_rail_products`, `max_collection_rails`). Disabling the plugin
+      removes the rails. Surfaces `reading-the-spring` (50 books), previously
+      invisible. Merchants curate via the existing Collections admin.
+- **Data reality (prod 2026-06-03, checked before building):** "Under $10" and
+      "Bestsellers" rails are **NOT viable here** — 829/859 books sit in $5–10
+      (min 4.50, max 18.99) so "under $10" = the whole catalog, and there are
+      **0 OrderItems** so bestsellers is empty. Skipped rather than ship empty/
+      undifferentiated rails. Revisit when price variety + order history exist.
+- [ ] Future rail types once data supports them: New-this-week, Giftable
+      editions, Themed collections, First-time buyer shelf. (A smart/rule-based
+      Collection engine would generalise these — deferred; manual `is_featured`
+      collections cover today's need.)
 
 ### 3.2 Trust / conversion proof
 - [ ] Secure-checkout reassurance; visible shipping/returns near conversion.

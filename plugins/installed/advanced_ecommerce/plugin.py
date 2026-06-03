@@ -26,6 +26,7 @@ Settings (admin):
   * `free_shipping_target` (number, default 40) — used by the cart bar.
   * `enable_recently_viewed` (bool, default True).
 """
+
 from __future__ import annotations
 
 import logging
@@ -80,6 +81,12 @@ class AdvancedEcommercePlugin(Plugin):
     def contribute_storefront_blocks(self):
         return [
             StorefrontBlock(
+                slot='home_after_rails',
+                template='advanced_ecommerce/blocks/collection_rails.html',
+                priority=30,
+                context_keys=['staff_picks_collection'],
+            ),
+            StorefrontBlock(
                 slot='home_below_grid',
                 template='advanced_ecommerce/blocks/recently_viewed.html',
                 priority=20,
@@ -126,6 +133,22 @@ class AdvancedEcommercePlugin(Plugin):
                     'type': 'boolean',
                     'title': 'Show recently-viewed rail',
                     'default': True,
+                },
+                'enable_collection_rails': {
+                    'type': 'boolean',
+                    'title': 'Show featured-collection rails on the homepage',
+                    'description': 'Each Collection marked "featured" becomes a shoppable slider on the home page.',
+                    'default': True,
+                },
+                'collection_rail_products': {
+                    'type': 'integer',
+                    'title': 'Products per collection rail',
+                    'default': 8,
+                },
+                'max_collection_rails': {
+                    'type': 'integer',
+                    'title': 'Max collection rails on the homepage',
+                    'default': 3,
                 },
                 'low_stock_threshold': {
                     'type': 'integer',

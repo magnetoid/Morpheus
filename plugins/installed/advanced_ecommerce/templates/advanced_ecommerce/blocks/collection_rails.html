@@ -1,0 +1,38 @@
+{# Featured-collection rails. Each featured Collection (minus the one the    #}
+{# home view already shows as Staff picks) becomes a shoppable slider linking #}
+{# to its /collection/<slug>/ page. Data = Collection.is_featured; caps +     #}
+{# on/off live in the plugin's settings panel. Plugin-toggleable surface.     #}
+{% load morph %}{% load caching %}{% load i18n %}{% load advanced_ecommerce %}
+{% featured_collection_rails exclude_slug=staff_picks_collection.slug as collection_rails %}
+{% for rail in collection_rails %}
+<section>
+  <div class="wrap">
+    <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;">
+      <div>
+        <p class="eyebrow">{% translate "Collection" %}</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">{{ rail.collection.name }}<span class="text-accent">.</span></h2>
+        {% if rail.collection.description %}<p class="meta" style="margin-top: 0.5rem; max-width: 50ch;">{{ rail.collection.description }}</p>{% endif %}
+      </div>
+      <a href="/collection/{{ rail.collection.slug }}/" class="btn-link">{% translate "Browse all" %} →</a>
+    </div>
+    <div class="grid-books">
+      {% for product in rail.products %}
+      <a href="/products/{{ product.slug }}/" class="book ko-reveal-on-scroll">
+        <div class="cover-wrap">
+          {% if product.primary_image %}
+            <img src="{{ product.primary_image.image.url }}" alt="{{ product.primary_image.alt_text|default:product.name }}" loading="{% caching_img_loading_attr %}" decoding="async" style="view-transition-name: cover-{{ product.slug|slugify }};">
+          {% else %}
+            <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
+          {% endif %}
+        </div>
+        <div>
+          <p class="title">{{ product.name }}</p>
+          <p class="author">{{ product.category.name|default:"Independent press" }}</p>
+          <p class="price">{% if product.price_starts_from %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ product.display_price|money }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endfor %}
