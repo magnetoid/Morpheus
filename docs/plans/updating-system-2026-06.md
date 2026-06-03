@@ -60,6 +60,14 @@ licensed channel. Keep `UpdateSource` an interface so channels are pluggable.
   `morph_versions` command + 4 tests.
 - 2026-06-03: Phase 2 (read-only Updates page) shipped — `/dashboard/updates/`
   in the Settings sidebar; surfaces core/plugin/theme versions.
-- **Next: Phase 3 (remote update-check) — start in a fresh session.** Phases
-  3–4 touch the live update/apply path; per CLAUDE.md (reliability + don't push
-  a compacted context through a high-stakes phase) they get a clean session.
+- 2026-06-03: **Channel decided = git refs/tags.** Phase 3 (remote
+  update-check) shipped — `core/updates.py:platform_update_status(fetch=)`
+  compares the deployed checkout vs its upstream; `manage.py
+  morph_check_updates`; "Check for updates" button + platform status on the
+  Updates page. Read-only + fail-soft (prod container has no `.git` →
+  "unavailable", which is correct: this Coolify deploy updates via `git push`;
+  the in-app updater serves self-hosted git installs).
+- **Next: Phase 4 (apply + rollback) — HIGH-STAKES, fresh session.** Code-
+  mutating; must go through `core/safety.py` + backup + staged swap +
+  healthcheck + auto-rollback + maintenance mode. Plugins/themes first, core
+  last. Do NOT build on a compacted context.

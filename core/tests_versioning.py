@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.test import SimpleTestCase
 
+from core.updates import platform_update_status
 from core.versioning import component_versions, core_version
 
 
@@ -31,3 +32,16 @@ class ComponentVersionsTests(SimpleTestCase):
         for t in component_versions()['themes']:
             for key in ('name', 'version', 'active'):
                 self.assertIn(key, t)
+
+
+class PlatformUpdateStatusTests(SimpleTestCase):
+    def test_status_shape_and_failsoft(self):
+        # Read-only; returns a dict with a known 'available' state whether or
+        # not this checkout has .git (dev: git present; container: unavailable).
+        status = platform_update_status(fetch=False)
+        self.assertEqual(status.get('source'), 'git')
+        self.assertIn(status.get('available'), {'yes', 'no', 'unknown', 'unavailable'})
+        if status['available'] in {'yes', 'no'}:
+            # A real git checkout reports the deployed ref + an integer delta.
+            self.assertTrue(status.get('current'))
+            self.assertIsInstance(status.get('behind'), int)

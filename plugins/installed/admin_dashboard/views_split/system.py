@@ -10,11 +10,19 @@ apply land in later phases (docs/plans/updating-system-2026-06.md).
 
 from __future__ import annotations
 
-from morpheus.views import HttpRequest, HttpResponse, render, staff_member_required
+from morpheus.views import (
+    HttpRequest,
+    HttpResponse,
+    messages,
+    redirect,
+    render,
+    staff_member_required,
+)
 
 
 @staff_member_required
 def updates_page(request: HttpRequest) -> HttpResponse:
+    from core.updates import platform_update_status
     from core.versioning import component_versions
 
     data = component_versions()
@@ -27,6 +35,7 @@ def updates_page(request: HttpRequest) -> HttpResponse:
             'plugins': plugins,
             'themes': data.get('themes') or [],
             'plugin_enabled_count': sum(1 for p in plugins if p.get('enabled')),
+            'platform': platform_update_status(fetch=False),
             'active_nav': 'updates',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -34,3 +43,27 @@ def updates_page(request: HttpRequest) -> HttpResponse:
             ],
         },
     )
+
+
+@staff_member_required
+def updates_check(request: HttpRequest) -> HttpResponse:
+    """Fetch remote refs + recompute platform update status (best-effort)."""
+    if request.method != 'POST':
+        return redirect('admin_dashboard:updates')
+    from core.updates import platform_update_status
+
+    status = platform_update_status(fetch=True)
+    avail = status.get('available')
+    if avail == 'yes':
+        messages.success(
+            request, f'Update available — {status.get("behind")} commit(s) behind upstream.'
+        )
+    elif avail == 'no':
+        messages.success(request, 'You are on the latest version.')
+    elif avail == 'unavailable':
+        messages.info(
+            request, status.get('reason') or 'Update check unavailable in this deployment.'
+        )
+    else:
+        messages.info(request, status.get('reason') or 'Could not determine update status.')
+    return redirect('admin_dashboard:updates')

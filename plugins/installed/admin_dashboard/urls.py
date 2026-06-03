@@ -224,6 +224,7 @@ urlpatterns = [
         name='collection_delete',
     ),
     path('updates/', views.updates_page, name='updates'),
+    path('updates/check/', views.updates_check, name='updates_check'),
     path('customers/', views.customers_list, name='customers'),
     path('customers/bulk/', views.customers_bulk, name='customers_bulk'),
     path('customers/new/', views.customer_new, name='customer_new'),
