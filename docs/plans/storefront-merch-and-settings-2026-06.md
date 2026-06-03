@@ -85,9 +85,15 @@ imprint) so even pre-backfill cards read as covers, not weak boxes.
 ## PHASE 2 — Catalog cleanup & commercial consistency
 
 ### 2.1 Catalog quality sprint
-- [ ] Uncategorized products **74 → 0**.
+- [x] **Uncategorized 73 → 0** (2026-06-03, prod data change). Classified the 73
+      `category=None` classics by hand (only 7 had gutenberg_id; no subject
+      metafield) → 63 Fiction, 5 Non-fiction, 3 Children, 1 Poetry, 1 Essays.
+      Verified `REMAINING_UNCAT = 0`.
 - [ ] Expand short descriptions (descriptions <120 chars → near zero).
 - [ ] Normalize card content quality; fix low-information products.
+- [ ] **Format/variant standardization (2.2)** — THIS unblocks the deferred 1.3
+      Digital/Print labels + format badges (today 695/859 are product_type
+      'simple', book.format on only 64).
 
 ### 2.2 Standardize format/variant model
 - [ ] If both digital + print intended for many books, complete that rollout
