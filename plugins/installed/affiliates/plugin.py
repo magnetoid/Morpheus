@@ -5,7 +5,7 @@
 # manifest importable before the app registry is ready.
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 
 
 class AffiliatesPlugin(Plugin):
@@ -42,6 +42,19 @@ class AffiliatesPlugin(Plugin):
         from plugins.installed.affiliates.customer_panel import affiliate_panel
 
         self.register_hook(events.CUSTOMER_DETAIL_PANELS, affiliate_panel, priority=40)
+
+    def contribute_storefront_blocks(self) -> list:
+        # Account-page tile linking the signed-in affiliate to their
+        # dashboard (/affiliates/me/). Renders only when the user actually
+        # has an Affiliate row; disabling the plugin removes the tile.
+        return [
+            StorefrontBlock(
+                slot='account_nav',
+                template='affiliates/blocks/account_tile.html',
+                priority=40,
+                context_keys=['request'],
+            ),
+        ]
 
     def on_order_placed(self, order, **kwargs):
         """Attribute an affiliate to a freshly-placed order.

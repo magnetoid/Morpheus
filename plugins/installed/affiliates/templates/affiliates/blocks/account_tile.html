@@ -1,0 +1,13 @@
+{% comment %}
+Account-page tile → affiliate dashboard. Shown only when the signed-in
+user has an Affiliate row (any status). Contributed to the account_nav
+slot by the affiliates plugin; vanishes if the plugin is disabled.
+{% endcomment %}
+{% load affiliates_account %}
+{% affiliate_for request.user as aff %}
+{% if aff %}
+<a href="/affiliates/me/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+  <p class="title">Affiliate dashboard{% if aff.status != 'approved' %} <span style="color:var(--muted); font-weight:400;">(application {{ aff.status }})</span>{% endif %}</p>
+  <p class="meta" style="margin-top: .35rem;">Your links, conversions &amp; payouts.</p>
+</a>
+{% endif %}

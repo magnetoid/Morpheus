@@ -1,0 +1,13 @@
+{% comment %}
+Account-page tile → vendor dashboard. Shown only when the signed-in user
+has a Vendor row (any status). Contributed to the account_nav slot by the
+marketplace plugin; vanishes if the plugin is disabled.
+{% endcomment %}
+{% load marketplace_account %}
+{% vendor_for request.user as vendor %}
+{% if vendor %}
+<a href="/vendor/me/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+  <p class="title">Vendor dashboard{% if vendor.status != 'approved' %} <span style="color:var(--muted); font-weight:400;">(application {{ vendor.status }})</span>{% endif %}</p>
+  <p class="meta" style="margin-top: .35rem;">Your products, orders &amp; payouts.</p>
+</a>
+{% endif %}

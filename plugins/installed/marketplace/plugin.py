@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 
 logger = logging.getLogger('morpheus.marketplace')
 
@@ -32,6 +32,19 @@ class MarketplacePlugin(Plugin):
         from plugins.installed.marketplace.customer_panel import vendor_panel  # noqa: PLC0415
 
         self.register_hook(events.CUSTOMER_DETAIL_PANELS, vendor_panel, priority=30)
+
+    def contribute_storefront_blocks(self) -> list:
+        # Account-page tile linking the signed-in vendor to their dashboard
+        # (/vendor/me/). Renders only when the user has a Vendor row;
+        # disabling the plugin removes the tile.
+        return [
+            StorefrontBlock(
+                slot='account_nav',
+                template='marketplace/blocks/account_tile.html',
+                priority=30,
+                context_keys=['request'],
+            ),
+        ]
 
     def on_order_placed(self, order, **kwargs):
         try:
