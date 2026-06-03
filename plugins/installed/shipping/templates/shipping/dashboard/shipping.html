@@ -173,5 +173,52 @@
       {% else %}<div class="card-padded text-sm text-[color:var(--text-muted)]">No rates yet — add one above.</div>{% endif %}
     </div>
   </section>
+
+  {# ───────────────────────── Carriers & options ───────────────────────── #}
+  <section class="space-y-3">
+    <h2 class="text-base font-semibold flex items-center gap-2">
+      <i data-lucide="sliders-horizontal" class="h-4 w-4"></i> Carriers &amp; options
+    </h2>
+    <div class="card card-padded">
+      <p class="text-xs text-[color:var(--text-muted)] mb-3">Live-rate carrier credentials (used by the Shippo / EasyPost rate types) and tax handling for the shipping cost.</p>
+      <form method="post" class="space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="config">
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" name="tax_shipping" {% if shipping_config.tax_shipping %}checked{% endif %}>
+          <span>Apply tax to shipping cost</span>
+        </label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="block text-xs">
+            <span class="text-[color:var(--text-muted)]">Shippo · API key</span>
+            <input type="text" name="shippo_api_key" value="{{ shipping_config.shippo_api_key|default:'' }}" autocomplete="off"
+                   class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                   placeholder="ShippoToken from goshippo.com">
+          </label>
+          <label class="block text-xs">
+            <span class="text-[color:var(--text-muted)]">EasyPost · API key</span>
+            <input type="text" name="easypost_api_key" value="{{ shipping_config.easypost_api_key|default:'' }}" autocomplete="off"
+                   class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                   placeholder="API key from easypost.com">
+          </label>
+          <label class="block text-xs">
+            <span class="text-[color:var(--text-muted)]">Shippo · Origin address (JSON)</span>
+            <textarea name="shippo_default_address" rows="5"
+                      class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                      placeholder='{"name":"Warehouse","street1":"…","city":"…","state":"…","zip":"…","country":"US"}'>{{ shippo_address_json }}</textarea>
+          </label>
+          <label class="block text-xs">
+            <span class="text-[color:var(--text-muted)]">EasyPost · Origin address (JSON — falls back to Shippo)</span>
+            <textarea name="easypost_default_address" rows="5"
+                      class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                      placeholder='{"street1":"…","city":"…","state":"…","zip":"…","country":"US"}'>{{ easypost_address_json }}</textarea>
+          </label>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" class="btn btn-primary">Save carrier settings</button>
+        </div>
+      </form>
+    </div>
+  </section>
 </div>
 {% endblock %}

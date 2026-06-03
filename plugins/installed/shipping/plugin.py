@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin
 
 logger = logging.getLogger('morpheus.shipping')
 
@@ -140,53 +140,9 @@ class ShippingPlugin(Plugin):
             ),
         ]
 
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Shipping',
-            description='Manage shipping zones, rates, free-shipping rules.',
-            schema=self.get_config_schema(),
-            category='shipping',
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {
-                'tax_shipping': {
-                    'type': 'boolean',
-                    'default': False,
-                    'title': 'Apply tax to shipping cost',
-                },
-                # ── Carrier credentials ────────────────────────────
-                # Used by carrier_shippo / carrier_easypost rate types.
-                # Origin address is supplied as JSON so it can hold
-                # the full {name, street1, city, state, zip, country}
-                # shape both adapters expect.
-                'shippo_api_key': {
-                    'type': 'string',
-                    'default': '',
-                    'title': 'Shippo · API key',
-                    'description': 'Live rates + label printing via goshippo.com. '
-                    'ShippoToken from your dashboard.',
-                },
-                'shippo_default_address': {
-                    'type': 'object',
-                    'default': {},
-                    'title': 'Shippo · Origin address',
-                    'description': 'Where parcels ship from. JSON object with '
-                    'street1, city, state, zip, country.',
-                },
-                'easypost_api_key': {
-                    'type': 'string',
-                    'default': '',
-                    'title': 'EasyPost · API key',
-                    'description': 'Live rates + labels via easypost.com.',
-                },
-                'easypost_default_address': {
-                    'type': 'object',
-                    'default': {},
-                    'title': 'EasyPost · Origin address',
-                    'description': 'Falls back to Shippo origin if blank.',
-                },
-            },
-        }
+    # No SettingsPanel: carrier credentials (Shippo / EasyPost keys + origin)
+    # and the tax-on-shipping flag are edited in the "Carriers & options"
+    # section of the unified Shipping page (dashboard.zones), which writes them
+    # to PluginConfig.config — the same dict services.quote_rate reads. The old
+    # panel was a duplicate "Shipping" settings entry alongside the merged page;
+    # removed per ADR 0003 (one settings surface per domain, in the owning app).

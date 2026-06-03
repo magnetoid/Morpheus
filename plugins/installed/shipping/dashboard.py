@@ -6,6 +6,7 @@ to drop into the Django admin to edit their rates. Model layer untouched.
 
 from __future__ import annotations
 
+import json
 import logging
 from decimal import Decimal, InvalidOperation
 
@@ -80,6 +81,47 @@ def _delete_zone(request, zone_id: str) -> None:
         messages.error(request, 'Zone not found.')
 
 
+def _load_config() -> dict:
+    """Carrier config as the quote path sees it (PluginConfig.config)."""
+    from plugins.installed.shipping.services import _shipping_config  # noqa: PLC0415
+
+    return _shipping_config()
+
+
+def _save_config(request) -> None:
+    """Persist carrier credentials + the tax-on-shipping flag to the shipping
+    plugin's PluginConfig.config — the same dict services.quote_rate reads.
+    Folds the old SettingsPanel into the page (ADR 0003)."""
+    from plugins.registry import plugin_registry  # noqa: PLC0415
+
+    instance = plugin_registry.get('shipping')
+    if instance is None:
+        messages.error(request, 'Shipping plugin unavailable.')
+        return
+    # Validate the JSON origin addresses up front so a bad paste can't half-save.
+    addresses: dict[str, dict] = {}
+    for field in ('shippo_default_address', 'easypost_default_address'):
+        raw = (request.POST.get(field) or '').strip()
+        if not raw:
+            addresses[field] = {}
+            continue
+        try:
+            parsed = json.loads(raw)
+        except ValueError:
+            messages.error(request, f'{field.replace("_", " ")}: must be valid JSON.')
+            return
+        if not isinstance(parsed, dict):
+            messages.error(request, f'{field.replace("_", " ")}: must be a JSON object.')
+            return
+        addresses[field] = parsed
+    instance.set_config('tax_shipping', bool(request.POST.get('tax_shipping')))
+    instance.set_config('shippo_api_key', (request.POST.get('shippo_api_key') or '').strip())
+    instance.set_config('easypost_api_key', (request.POST.get('easypost_api_key') or '').strip())
+    for field, val in addresses.items():
+        instance.set_config(field, val)
+    messages.success(request, 'Carrier settings saved.')
+
+
 @staff_member_required
 def zones(request):
     """Unified Shipping settings — zones + rates on ONE page (ADR 0003: no
@@ -107,6 +149,8 @@ def zones(request):
                 _edit_rate(request, rid)
             elif action == 'delete' and rid:
                 _delete_rate(request, rid)
+        elif kind == 'config':
+            _save_config(request)
         return HttpResponseRedirect(request.get_full_path())
 
     edit_kind = (request.GET.get('edit_kind') or '').strip()
@@ -126,6 +170,7 @@ def zones(request):
     if zone_filter:
         rate_qs = rate_qs.filter(zone_id=zone_filter)
     zone_rows = list(ShippingZone.objects.all().order_by('name'))
+    cfg = _load_config()
     return render(
         request,
         'shipping/dashboard/shipping.html',
@@ -137,6 +182,17 @@ def zones(request):
             'zone_filter': zone_filter,
             'edit_zone': edit_zone,
             'edit_rate': edit_rate,
+            'shipping_config': cfg,
+            'shippo_address_json': (
+                json.dumps(cfg.get('shippo_default_address'), indent=2)
+                if cfg.get('shippo_default_address')
+                else ''
+            ),
+            'easypost_address_json': (
+                json.dumps(cfg.get('easypost_default_address'), indent=2)
+                if cfg.get('easypost_default_address')
+                else ''
+            ),
             'active_nav': 'shipping',
             'breadcrumb_trail': _trail({'label': 'Shipping'}),
         },

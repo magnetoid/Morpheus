@@ -1,9 +1,9 @@
 """Shipping services — quote rates for a cart given an address."""
+
 from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from djmoney.money import Money
 
@@ -11,22 +11,27 @@ logger = logging.getLogger('morpheus.shipping')
 
 
 def _matching_zones(country: str, region: str = ''):
-    from plugins.installed.shipping.models import ShippingZone
+    from plugins.installed.shipping.models import ShippingZone  # noqa: PLC0415
+
     matches = []
     for zone in ShippingZone.objects.all():
         if zone.matches(country, region):
             matches.append(zone)
     if matches:
         # Specific (regioned) > country-only > catch-all > default
-        matches.sort(key=lambda z: (
-            -len(z.regions), -len(z.countries), 0 if z.is_default else 1,
-        ))
+        matches.sort(
+            key=lambda z: (
+                -len(z.regions),
+                -len(z.countries),
+                0 if z.is_default else 1,
+            )
+        )
     else:
         matches = list(ShippingZone.objects.filter(is_default=True))
     return matches
 
 
-def _quote_one(rate, *, subtotal: Money, total_weight_kg: Decimal = Decimal('0')) -> Optional[Money]:
+def _quote_one(rate, *, subtotal: Money, total_weight_kg: Decimal = Decimal('0')) -> Money | None:  # noqa: PLR0911
     if not rate.is_active:
         return None
     if rate.computation == 'flat':
@@ -44,7 +49,7 @@ def _quote_one(rate, *, subtotal: Money, total_weight_kg: Decimal = Decimal('0')
     return None
 
 
-def _tier_amount(tiers: list, value: Decimal, currency: str) -> Optional[Money]:
+def _tier_amount(tiers: list, value: Decimal, currency: str) -> Money | None:
     """Walk tiers (sorted ascending by threshold) and return the matching amount."""
     chosen = None
     for tier in sorted(tiers, key=lambda t: Decimal(str(t.get('threshold', 0)))):
@@ -82,16 +87,17 @@ def _carrier_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
 
 
 def _shipping_config() -> dict:
-    """Resolve the shipping plugin's PluginConfig.config_data, fail-soft."""
+    """Resolve the shipping plugin's PluginConfig.config, fail-soft."""
     try:
-        from plugins.models import PluginConfig
+        from plugins.models import PluginConfig  # noqa: PLC0415
+
         cfg = PluginConfig.objects.filter(plugin_name='shipping').first()
-        return dict(cfg.config_data or {}) if cfg else {}
+        return dict(cfg.config or {}) if cfg else {}
     except Exception:  # noqa: BLE001
         return {}
 
 
-def _shippo_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
+def _shippo_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):  # noqa: PLR0911
     """Live rate from Shippo's REST API. ~1 RTT, cached at the cart layer.
 
     Each ShippingRate row carries the Shippo `servicelevel.token` it
@@ -113,7 +119,7 @@ def _shippo_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
     token = (metadata.get('shippo_servicelevel') or '').strip()
 
     try:
-        import requests
+        import requests  # noqa: PLC0415
     except ImportError:
         logger.warning('shippo: `requests` not installed')
         return None
@@ -148,11 +154,16 @@ def _shippo_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
             'zip': dest.get('zip', dest.get('postal_code', '')),
             'country': dest.get('country', ''),
         },
-        'parcels': [{
-            'length': '10', 'width': '10', 'height': '10',
-            'distance_unit': 'cm',
-            'weight': str(weight_g), 'mass_unit': 'g',
-        }],
+        'parcels': [
+            {
+                'length': '10',
+                'width': '10',
+                'height': '10',
+                'distance_unit': 'cm',
+                'weight': str(weight_g),
+                'mass_unit': 'g',
+            }
+        ],
         'async': False,
     }
     try:
@@ -175,8 +186,7 @@ def _shippo_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
     # Filter to the merchant-selected service level if one is bound.
     if token:
         rates_returned = [
-            r for r in rates_returned
-            if (r.get('servicelevel') or {}).get('token') == token
+            r for r in rates_returned if (r.get('servicelevel') or {}).get('token') == token
         ]
         if not rates_returned:
             return None
@@ -186,11 +196,11 @@ def _shippo_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
         amount = Decimal(str(cheapest.get('amount') or '0'))
     except Exception:  # noqa: BLE001
         return None
-    currency = (cheapest.get('currency') or str(subtotal.currency))
+    currency = cheapest.get('currency') or str(subtotal.currency)
     return Money(amount, currency)
 
 
-def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
+def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):  # noqa: PLR0911
     """Live rate from EasyPost. Mirrors Shippo's shape — same envelope,
     different endpoint + auth.
     """
@@ -203,7 +213,7 @@ def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
         return None
 
     try:
-        import requests
+        import requests  # noqa: PLC0415
     except ImportError:
         return None
 
@@ -240,7 +250,9 @@ def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
                         'country': origin.get('country', 'US'),
                     },
                     'parcel': {
-                        'length': 6, 'width': 4, 'height': 2,
+                        'length': 6,
+                        'width': 4,
+                        'height': 2,
                         'weight': weight_oz,
                     },
                 },
@@ -257,11 +269,13 @@ def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
     if not rates_returned:
         return None
     if target_carrier:
-        rates_returned = [r for r in rates_returned
-                          if (r.get('carrier') or '').lower() == target_carrier]
+        rates_returned = [
+            r for r in rates_returned if (r.get('carrier') or '').lower() == target_carrier
+        ]
     if target_service:
-        rates_returned = [r for r in rates_returned
-                          if (r.get('service') or '').lower() == target_service]
+        rates_returned = [
+            r for r in rates_returned if (r.get('service') or '').lower() == target_service
+        ]
     if not rates_returned:
         return None
 
@@ -270,7 +284,7 @@ def _easypost_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
         amount = Decimal(str(cheapest.get('rate') or '0'))
     except Exception:  # noqa: BLE001
         return None
-    currency = (cheapest.get('currency') or str(subtotal.currency))
+    currency = cheapest.get('currency') or str(subtotal.currency)
     return Money(amount, currency)
 
 
@@ -302,13 +316,15 @@ def _bookvault_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
     postcode = dest.get('zip') or dest.get('postal_code') or ''
 
     try:
-        from plugins.installed.bookvault.services import get_shipping_rates
+        from plugins.installed.bookvault.services import get_shipping_rates  # noqa: PLC0415
     except Exception as e:  # noqa: BLE001
         logger.warning('bookvault: import failed: %s', e)
         return None
 
     services = get_shipping_rates(
-        cart=cart, country_code=country, postcode=postcode,
+        cart=cart,
+        country_code=country,
+        postcode=postcode,
     )
     if not services:
         return None
@@ -331,9 +347,7 @@ def list_available_rates(*, cart, country: str, region: str = ''):
     items = list(cart.items.select_related('product').all())
     if not items:
         return []
-    subtotal_amount = sum(
-        Decimal(i.unit_price.amount) * i.quantity for i in items
-    )
+    subtotal_amount = sum(Decimal(i.unit_price.amount) * i.quantity for i in items)
     currency = str(items[0].unit_price.currency)
     subtotal = Money(subtotal_amount, currency)
 
@@ -349,9 +363,9 @@ def list_available_rates(*, cart, country: str, region: str = ''):
         if unit in ('kg', 'kgs'):
             return w_d
         if unit in ('g', 'gram', 'grams'):
-            return (w_d / Decimal('1000'))
+            return w_d / Decimal('1000')
         if unit in ('lb', 'lbs', 'pound', 'pounds'):
-            return (w_d * Decimal('0.453592'))
+            return w_d * Decimal('0.453592')
         return w_d
 
     total_weight_kg = Decimal('0')
@@ -375,14 +389,16 @@ def list_available_rates(*, cart, country: str, region: str = ''):
             amount = _quote_one(rate, subtotal=subtotal, total_weight_kg=total_weight_kg)
             if amount is None:
                 continue
-            out.append({
-                'rate_id': str(rate.id),
-                'name': rate.name,
-                'amount': amount,
-                'estimated_days_min': rate.estimated_days_min,
-                'estimated_days_max': rate.estimated_days_max,
-                'zone': zone.name,
-            })
+            out.append(
+                {
+                    'rate_id': str(rate.id),
+                    'name': rate.name,
+                    'amount': amount,
+                    'estimated_days_min': rate.estimated_days_min,
+                    'estimated_days_max': rate.estimated_days_max,
+                    'zone': zone.name,
+                }
+            )
     return out
 
 
