@@ -1,0 +1,19 @@
+# Project Charter — Morpheus OS
+
+> Morpheus OS is a modular, plugin-native, AI-first e-commerce platform. The core
+
+## Charter
+
+- [Project Charter — Morpheus OS](charter.md)
+
+## Architecture
+
+- [System Patterns](architecture/system-patterns.md)
+- [Tech Context](architecture/tech-context.md)
+- [ADR 0001: Adopt torsor-helper](architecture/decisions/0001-adopt-torsor-helper.md)
+- [ADR 0002: Image-optimization controls live on the SEO dashboard, run via Celery](architecture/decisions/0002-image-optimization-controls-live-on-the-seo-dashboard-run-via-celery.md)
+
+## Active
+
+- [Active Context](active/context.md)
+- [Progress](active/progress.md)

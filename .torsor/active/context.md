@@ -4,14 +4,14 @@ status: active
 tags:
 - active
 links: []
-created: '2026-06-02T21:48:22'
-updated: '2026-06-02T21:48:22'
+created: '2026-06-04T01:01:46'
+updated: '2026-06-04T01:01:46'
 ---
 
 # Active Context
 
 ## Current focus
-Settings de-duplication (ADR 0003) is underway. Shipping is merged to one page (live). Remaining duplicate settings surfaces are audited + ready to merge using the proven shipping pattern (combined view + one template + delete old templates + redirect old URLs + nav to one entry + tests). Best done in a fresh session — these are live-CRUD dashboard rewrites.
+Storefront + settings polish session complete. Shipped (all committed to main, NOT pushed — holding per batch-before-push): (1) shipping carrier SettingsPanel folded into the unified page (788a872); (2) Caching unification — image-opt + Cloudflare cache controls now both on /dashboard/settings/caching/, ADR 0005 supersedes ADR 0002 (386d3e9 fix + a6f5920 + 263c28c); (3) checkout one-page money-dict render bug fixed (9fa4063); (4) Genres mega menu from the live Category tree + header declutter (df6a11a). All tested on sqlite.
 
 ## Open questions
-De-dup merge backlog (ranked, each in its OWNING plugin, mirror the shipping merge): (1) TAX — tax/plugin.py:99-118 two pages 'Tax regions'+'Tax rates' (tax/dashboard.py regions()+rates(), templates regions.html+rates.html) → ONE 'Tax' page; tax/dashboard.py rate logic uses _create_rate/_edit_rate/_delete_rate helpers, regions() inlines its CRUD. (2) SHIPPING panel — shipping/plugin.py:144 SettingsPanel 'Shipping' still exists alongside the merged page; fold carrier-config schema into the Shipping page as a 3rd section + drop the panel. (3) CLOUDFLARE — cloudflare/plugin.py:37 DashboardPage + :74 SettingsPanel both 'Cloudflare' (developer); keep one. (4) PAYMENTS — payments/plugin.py:132 + advanced_payments/plugin.py:94 two panels under category 'payments'; unify (advanced_payments toggles into the payments panel) + consider a single Payments page. LEAVE AI (ai_assistant + ai_content panels are distinct concerns/plugins, not true duplication). Also still open: Asset Part B (WP product media picker); disable the Test gateway after testing.
+Remaining de-dup backlog: PAYMENTS (payments + advanced_payments two panels under category 'payments' — unify). KNOWN SEPARATE BUG: 4 pre-existing failures in cloudflare/tests/test_purge.py (test_zone_last_purge_at_updates_on_success etc.) fail on baseline HEAD — purge logic / test-fake mismatch, worth a look. Also: ecommerce.py:655 has the same cfg.config_data dead-read bug as shipping had. Docs TODO: ARCHITECTURE.md note that Caching is the single home for edge/image-perf settings. Nothing pushed this session — user says "ship" to deploy.

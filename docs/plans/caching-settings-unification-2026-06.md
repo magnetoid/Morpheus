@@ -84,4 +84,16 @@
 - Image-opt task enqueue must fail-soft when the Celery broker is down.
 
 ## Status log
-- 2026-06: plan written; decisions captured. Implementation starting Phase 1.
+- 2026-06: plan written; decisions captured.
+- 2026-06: **Phase 0 (prereq fix) shipped** (386d3e9) — settings_caching POST
+  path 500'd (HttpResponseRedirect out of scope); de-linted the legacy view file.
+- 2026-06: **Phase 1 shipped** (a6f5920) — image-optimization (Optimize button +
+  status) moved from SEO settings onto the Caching page; ADR 0005 supersedes 0002;
+  4 tests.
+- 2026-06: **Phase 2 shipped** (263c28c) — six CF cache settings + per-zone purge
+  editable on the Caching page (cloudflare.services.CACHE_SETTINGS), removed from
+  zone_detail (single home, ADR 0003); 4 tests. DNS/firewall/analytics + advanced
+  edge toggles stay on the CF zone page.
+- Verified: 8/8 caching tests green (sqlite). NOTE: 4 pre-existing failures in
+  cloudflare/tests/test_purge.py are unrelated (fail on baseline) — separate bug.
+- Phase 3 (docs): this status log + torsor updated. ARCHITECTURE.md note still TODO.
