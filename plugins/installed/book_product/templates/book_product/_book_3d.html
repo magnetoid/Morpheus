@@ -1,0 +1,114 @@
+{% comment %}
+Reusable 3D book viewer. Renders every `.book-3d[data-pdf-url]` element on the
+page: PDF.js rasterises page 1 of the cover PDF → a CanvasTexture on the front
+face of a three.js book; OrbitControls let the shopper drag to rotate.
+
+Loaded from CDN (unpkg) via an ES-module importmap — same no-build pattern as
+the bookstore_3d plugin. CSP: storefront is report-only; the dashboard CSP
+allows unpkg in script-src/connect-src/worker-src (see core/security_headers).
+Fail-soft: any load/parse error leaves a plain message, never a white box.
+
+Include this ONCE per page (it carries the importmap, which must be unique).
+{% endcomment %}
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  const PDFJS = 'https://unpkg.com/pdfjs-dist@4.7.76/build/pdf.min.mjs';
+  const WORKER = 'https://unpkg.com/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs';
+
+  async function coverTexture(pdfUrl) {
+    const pdfjs = await import(PDFJS);
+    pdfjs.GlobalWorkerOptions.workerSrc = WORKER;
+    const pdf = await pdfjs.getDocument(pdfUrl).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return { tex, aspect: viewport.width / viewport.height };
+  }
+
+  async function mount(el) {
+    el.textContent = '';
+    let cover;
+    try {
+      cover = await coverTexture(el.dataset.pdfUrl);
+    } catch (err) {
+      el.innerHTML = '<p style="padding:1rem;font:14px system-ui;color:#6b6b66;">' +
+        'Couldn’t render the cover PDF preview.</p>';
+      return;
+    }
+    const W = el.clientWidth || 360, H = el.clientHeight || 320;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
+    camera.position.set(0.6, 0.4, 6);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W, H);
+    el.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+    const key = new THREE.DirectionalLight(0xffffff, 1.1);
+    key.position.set(3, 4, 5);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.4);
+    rim.position.set(-4, 2, -3);
+    scene.add(rim);
+
+    const h = 3.4, w = h * cover.aspect, d = 0.5;
+    const cream = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.9 });
+    const spine = new THREE.MeshStandardMaterial({ color: 0x8a5a44, roughness: 0.7 });
+    const back = new THREE.MeshStandardMaterial({ color: 0xe7ddca, roughness: 0.9 });
+    const front = new THREE.MeshStandardMaterial({ map: cover.tex, roughness: 0.55 });
+    // BoxGeometry face order: +x, -x, +y, -y, +z, -z
+    const book = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      [cream, spine, cream, cream, front, back]
+    );
+    book.rotation.y = -0.5;
+    scene.add(book);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.minDistance = 4;
+    controls.maxDistance = 9;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.1;
+    renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
+
+    const ro = new ResizeObserver(() => {
+      const nw = el.clientWidth, nh = el.clientHeight;
+      if (!nw || !nh) return;
+      camera.aspect = nw / nh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    });
+    ro.observe(el);
+
+    (function loop() {
+      requestAnimationFrame(loop);
+      controls.update();
+      renderer.render(scene, camera);
+    })();
+  }
+
+  function init() {
+    document.querySelectorAll('.book-3d[data-pdf-url]').forEach((el) => {
+      if (!el.dataset.mounted) { el.dataset.mounted = '1'; mount(el); }
+    });
+  }
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+</script>

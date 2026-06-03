@@ -1079,8 +1079,11 @@
         <input type="file" name="cover_pdf" accept="application/pdf" class="input">
         {% if book_widget.book.cover_pdf %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: <a href="{{ book_widget.book.cover_pdf.url }}" class="underline" target="_blank" rel="noopener">{{ book_widget.book.cover_pdf.name }}</a></p>{% endif %}
       </div>
-      {# 3D preview mounts here (book_product P5). #}
-      {% if book_widget.book.cover_pdf %}<div id="book-3d-preview" data-pdf-url="{{ book_widget.book.cover_pdf.url }}" class="rounded border border-[color:var(--border)]" style="height:320px;"></div>{% endif %}
+      {# 3D cover preview (three.js + PDF.js) — book_product/_book_3d.html. #}
+      {% if book_widget.book.cover_pdf %}
+      <div class="book-3d rounded border border-[color:var(--border)] bg-[color:var(--surface,#faf8f3)]" data-pdf-url="{{ book_widget.book.cover_pdf.url }}" style="height:340px;"></div>
+      {% include "book_product/_book_3d.html" %}
+      {% endif %}
     </div>
     {% endif %}
 

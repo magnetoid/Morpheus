@@ -96,7 +96,11 @@ _CSP_DASHBOARD_ENFORCE = '; '.join(
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
         # esm.sh is in script-src (TipTap); allow its module/sourcemap fetches too.
-        "connect-src 'self' https://esm.sh",
+        # unpkg.com fetches: PDF.js module + worker for the book_product 3D
+        # cover preview (three.js + pdf.js). connect-src covers the worker/wasm
+        # fetch; worker-src allows the PDF.js web worker (blob: + unpkg).
+        "connect-src 'self' https://esm.sh https://unpkg.com",
+        "worker-src 'self' blob: https://unpkg.com",
         "frame-ancestors 'none'",
         "object-src 'none'",
         "base-uri 'self'",
