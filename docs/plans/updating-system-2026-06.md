@@ -57,4 +57,9 @@ licensed channel. Keep `UpdateSource` an interface so channels are pluggable.
 
 ## Status log
 - 2026-06-03: Phase 1 (inventory) shipped — `core/versioning.py` +
-  `morph_versions` command + tests.
+  `morph_versions` command + 4 tests.
+- 2026-06-03: Phase 2 (read-only Updates page) shipped — `/dashboard/updates/`
+  in the Settings sidebar; surfaces core/plugin/theme versions.
+- **Next: Phase 3 (remote update-check) — start in a fresh session.** Phases
+  3–4 touch the live update/apply path; per CLAUDE.md (reliability + don't push
+  a compacted context through a high-stakes phase) they get a clean session.
