@@ -987,6 +987,103 @@
     </div>
     {% endif %}
 
+    {% if book_widget %}
+    {# ── Book details (book_product plugin) ─────────────────────────────── #}
+    <div class="card card-padded space-y-3" id="book-details-card">
+      <h2 class="font-semibold text-sm flex items-center gap-2"><i data-lucide="book-open" class="h-4 w-4"></i> Book details</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Author, edition, physical attributes, and the cover PDF that drives the 3D preview. Stored on the book record, not as meta tags.</p>
+      <input type="hidden" name="book_submitted" value="1">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Author</label>
+          <input type="text" name="author" class="input" value="{{ book_widget.book.author|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Subtitle</label>
+          <input type="text" name="subtitle" class="input" value="{{ book_widget.book.subtitle|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Publisher</label>
+          <input type="text" name="publisher" class="input" value="{{ book_widget.book.publisher|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Imprint</label>
+          <input type="text" name="imprint" class="input" value="{{ book_widget.book.imprint|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Print type</label>
+          <select name="print_type" class="input">
+            {% for val, lbl in book_widget.print_types %}<option value="{{ val }}" {% if book_widget.book.print_type == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Paper type</label>
+          <select name="paper_type" class="input">
+            <option value="">—</option>
+            {% for val, lbl in book_widget.paper_types %}<option value="{{ val }}" {% if book_widget.book.paper_type == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Binding</label>
+          <input type="text" name="binding" class="input" value="{{ book_widget.book.binding|default:'' }}" placeholder="e.g. sewn, perfect-bound">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Page count</label>
+          <input type="number" name="page_count" min="0" class="input" value="{{ book_widget.book.page_count|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Language</label>
+          <input type="text" name="language" class="input" value="{{ book_widget.book.language|default:'' }}" placeholder="en">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Edition</label>
+          <input type="text" name="edition" class="input" value="{{ book_widget.book.edition|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Series</label>
+          <input type="text" name="series" class="input" value="{{ book_widget.book.series|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Series position</label>
+          <input type="text" name="series_position" class="input" value="{{ book_widget.book.series_position|default:'' }}" placeholder="e.g. Book 2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Publication date</label>
+          <input type="date" name="publication_date" class="input" value="{{ book_widget.book.publication_date|date:'Y-m-d' }}">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Width (mm)</label>
+          <input type="number" name="width_mm" min="0" class="input" value="{{ book_widget.book.width_mm|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Height (mm)</label>
+          <input type="number" name="height_mm" min="0" class="input" value="{{ book_widget.book.height_mm|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Spine (mm)</label>
+          <input type="number" name="spine_mm" min="0" class="input" value="{{ book_widget.book.spine_mm|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Weight (g)</label>
+          <input type="number" name="weight_g" min="0" class="input" value="{{ book_widget.book.weight_g|default:'' }}">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Synopsis</label>
+        <textarea name="synopsis" rows="3" class="input">{{ book_widget.book.synopsis|default:'' }}</textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Cover PDF <span class="text-xs text-[color:var(--text-muted)]">(drives the 3D preview)</span></label>
+        <input type="file" name="cover_pdf" accept="application/pdf" class="input">
+        {% if book_widget.book.cover_pdf %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: <a href="{{ book_widget.book.cover_pdf.url }}" class="underline" target="_blank" rel="noopener">{{ book_widget.book.cover_pdf.name }}</a></p>{% endif %}
+      </div>
+      {# 3D preview mounts here (book_product P5). #}
+      {% if book_widget.book.cover_pdf %}<div id="book-3d-preview" data-pdf-url="{{ book_widget.book.cover_pdf.url }}" class="rounded border border-[color:var(--border)]" style="height:320px;"></div>{% endif %}
+    </div>
+    {% endif %}
+
     <details class="card" id="product-seo-details" data-pt-show="simple,variable,digital,bundle">
       <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
         <div>

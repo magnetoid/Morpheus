@@ -312,6 +312,12 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             _save_product_identifiers(product, request.POST)
+            try:
+                from plugins.installed.book_product.dashboard import save_book_fields
+
+                save_book_fields(product, request.POST, request.FILES)
+            except Exception:  # noqa: BLE001 — book_product optional/disabled
+                pass
             messages.success(request, 'Product saved.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
         # Invalid form over AJAX: return the errors as JSON (400) so the client
@@ -372,10 +378,21 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     except Exception:  # noqa: BLE001 — never break the product page if BV is wedged
         bv_authed = False
 
+    # Book Product widget — owning plugin supplies the context; disabled/absent
+    # → no card.
+    book_widget: dict = {}
+    try:
+        from plugins.installed.book_product.dashboard import book_widget_context
+
+        book_widget = book_widget_context(product)
+    except Exception:  # noqa: BLE001
+        book_widget = {}
+
     return render(
         request,
         'admin_dashboard/product_form.html',
         {
+            'book_widget': book_widget,
             'form': form,
             'product': product,
             'categories': categories,

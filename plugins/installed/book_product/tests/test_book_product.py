@@ -37,6 +37,44 @@ class BookProductModelTests(TestCase):
         self.assertIn('Grace Hopper', str(book))
 
 
+class BookWidgetSaveTests(TestCase):
+    def _product(self, slug, sku):
+        return Product.objects.create(
+            name='P',
+            slug=slug,
+            sku=sku,
+            price=Money(Decimal('5.00'), 'USD'),
+            product_type='simple',
+        )
+
+    def test_save_creates_book_when_submitted(self):
+        from plugins.installed.book_product.dashboard import save_book_fields
+
+        product = self._product('w1', 'W-1')
+        save_book_fields(
+            product,
+            {
+                'book_submitted': '1',
+                'author': 'Borges',
+                'page_count': '140',
+                'print_type': 'hardcover',
+                'page_count_bad': 'x',
+            },
+            None,
+        )
+        book = BookProduct.objects.get(product=product)
+        self.assertEqual(book.author, 'Borges')
+        self.assertEqual(book.page_count, 140)
+        self.assertEqual(book.print_type, 'hardcover')
+
+    def test_no_book_created_on_plain_save(self):
+        from plugins.installed.book_product.dashboard import save_book_fields
+
+        product = self._product('w2', 'W-2')
+        save_book_fields(product, {'author': 'ignored — no marker'}, None)
+        self.assertFalse(BookProduct.objects.filter(product=product).exists())
+
+
 class BookMetafieldMigrationTests(TestCase):
     """The 0002 data migration copies book.* metafields onto the model."""
 
