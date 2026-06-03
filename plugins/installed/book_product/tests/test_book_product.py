@@ -75,6 +75,25 @@ class BookWidgetSaveTests(TestCase):
         self.assertFalse(BookProduct.objects.filter(product=product).exists())
 
 
+class BookForProductTagTests(TestCase):
+    def test_resolves_by_slug_dict_and_misses_safely(self):
+        from plugins.installed.book_product.templatetags.book_extras import book_for_product
+
+        product = Product.objects.create(
+            name='Tagged',
+            slug='tagged',
+            sku='TAG-1',
+            price=Money(Decimal('7.00'), 'USD'),
+            product_type='simple',
+        )
+        book = BookProduct.objects.create(product=product, author='Calvino')
+
+        self.assertEqual(book_for_product({'slug': 'tagged'}), book)
+        self.assertEqual(book_for_product(product), book)  # model input
+        self.assertIsNone(book_for_product({'slug': 'missing'}))
+        self.assertIsNone(book_for_product(None))
+
+
 class BookMetafieldMigrationTests(TestCase):
     """The 0002 data migration copies book.* metafields onto the model."""
 

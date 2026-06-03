@@ -1,0 +1,33 @@
+{% comment %}
+PDP book block — renders book details + the 3D cover preview for any product
+that has a BookProduct. Injected into the pdp_below_form slot by
+book_product.contribute_storefront_blocks. Self-gating: no BookProduct → nothing.
+{% endcomment %}
+{% load book_extras %}
+{% book_for_product product as book %}
+{% if book %}
+<section class="book-edition" style="margin:2rem 0; border-top:1px solid var(--rule); padding-top:1.75rem;">
+  <h2 style="font-family:var(--serif); font-size:1.3rem; margin:0 0 1rem;">About this edition</h2>
+
+  {% if book.cover_pdf %}
+  <div class="book-3d" data-pdf-url="{{ book.cover_pdf.url }}"
+       style="height:420px; margin:0 0 1.5rem; border:1px solid var(--rule); border-radius:10px; background:var(--paper-2);"
+       aria-label="Interactive 3D preview of the book cover — drag to rotate"></div>
+  {% include "book_product/_book_3d.html" %}
+  {% endif %}
+
+  <dl style="display:grid; grid-template-columns:auto 1fr; gap:.45rem 1.5rem; font-size:.92rem; margin:0;">
+    {% if book.author %}<dt style="color:var(--muted);">Author</dt><dd style="margin:0;">{{ book.author }}</dd>{% endif %}
+    {% if book.publisher %}<dt style="color:var(--muted);">Publisher</dt><dd style="margin:0;">{{ book.publisher }}{% if book.imprint %} · {{ book.imprint }}{% endif %}</dd>{% endif %}
+    {% if book.publication_date %}<dt style="color:var(--muted);">Published</dt><dd style="margin:0;">{{ book.publication_date|date:"F Y" }}</dd>{% endif %}
+    {% if book.print_type %}<dt style="color:var(--muted);">Format</dt><dd style="margin:0;">{{ book.get_print_type_display }}{% if book.binding %} · {{ book.binding }}{% endif %}</dd>{% endif %}
+    {% if book.paper_type %}<dt style="color:var(--muted);">Paper</dt><dd style="margin:0;">{{ book.get_paper_type_display }}</dd>{% endif %}
+    {% if book.page_count %}<dt style="color:var(--muted);">Pages</dt><dd style="margin:0;">{{ book.page_count }}</dd>{% endif %}
+    {% if book.language %}<dt style="color:var(--muted);">Language</dt><dd style="margin:0;">{{ book.language }}</dd>{% endif %}
+    {% if book.edition %}<dt style="color:var(--muted);">Edition</dt><dd style="margin:0;">{{ book.edition }}</dd>{% endif %}
+    {% if book.series %}<dt style="color:var(--muted);">Series</dt><dd style="margin:0;">{{ book.series }}{% if book.series_position %} ({{ book.series_position }}){% endif %}</dd>{% endif %}
+  </dl>
+
+  {% if book.synopsis %}<p style="margin:1.25rem 0 0; line-height:1.6;">{{ book.synopsis|linebreaksbr }}</p>{% endif %}
+</section>
+{% endif %}

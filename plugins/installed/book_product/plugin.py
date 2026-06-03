@@ -3,7 +3,7 @@
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, StorefrontBlock
 
 
 class BookProductPlugin(Plugin):
@@ -23,6 +23,19 @@ class BookProductPlugin(Plugin):
         # once the views exist — registering a missing module here would break
         # boot.
         pass
+
+    def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
+        # Book details + 3D cover preview on the PDP. Self-gates on a
+        # BookProduct existing (the template renders nothing otherwise), so it
+        # disappears with the plugin.
+        return [
+            StorefrontBlock(
+                slot='pdp_below_form',
+                template='storefront/blocks/_book_pdp.html',
+                priority=40,
+                context_keys=['product'],
+            ),
+        ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
         # Lives under Settings → Product Types (the category is declared in

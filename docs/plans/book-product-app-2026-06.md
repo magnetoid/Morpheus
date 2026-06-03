@@ -85,4 +85,22 @@
 - three.js/PDF.js are CDN ESM — fail-soft if the script fails (no white screen).
 
 ## Status log
-- 2026-06: spec written; system mapped. Starting Phase 1.
+- 2026-06: spec written; system mapped.
+- 2026-06: **P1+P2** (51de7af) — plugin + BookProduct model + migration + register
+  + Settings → Product Types category & Books panel. System check clean.
+- 2026-06: **P3** (24197fc) — idempotent fail-soft data migration book.* metafields
+  → model columns.
+- 2026-06: **P4** (book widget) — "Book details" card on the product-edit page
+  (book_product.dashboard.book_widget_context + save_book_fields, guarded).
+- 2026-06: **P5** (586b9c7) — three.js 3D cover-PDF viewer (_book_3d.html) mounted
+  in the dashboard widget; dashboard CSP widened minimally (unpkg connect/worker).
+- 2026-06: **P6** — storefront PDP block (_book_pdp.html) shows book details + the
+  3D viewer; book_for_product template tag resolves the BookProduct from the
+  GraphQL product dict. contribute_storefront_blocks → pdp_below_form.
+- **Decision: bookstore_3d is a separate "walkthrough" plugin** (not the per-book
+  viewer); flipbook is left intact (we surface, don't move it). Per goal note 4.
+- **Deferred (P6b, follow-up): meta-tag removal.** The goal's "maybe remove meta
+  tags" is tentative + riskier (touches SEO schema emission). Data already lives
+  on the model; the `book.*` metafields remain harmless for now. Switch book
+  schema.org/meta to read the model + stop writing book.* in a focused later pass.
+- Remaining: P7 (tests/docs/torsor) + live Playwright verification post-deploy.
