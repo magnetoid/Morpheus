@@ -15,13 +15,19 @@ picker). Config lives in this plugin's PluginConfig via
 ``contribute_settings_panel`` (category ``payments``), not in
 admin_dashboard.
 
+Defaults: **COD on, Test off.** The settings panel is the real control —
+its toggles are projected onto ``PaymentGatewayConfig`` (the table the
+platform actually reads via ``payments.is_enabled``) by ``sync.py``, wired
+on ``post_save`` (panel save) + ``post_migrate`` (seed) in ``ready()``.
+Without that bridge the panel writes only PluginConfig, which checkout
+never reads — the toggles would be cosmetic. ``cod_instructions`` rides
+into the cod row's ``config['instructions']``, which the picker renders.
+
 Checkout selection is wired (payments/services/routing.py): the storefront
 picker lists ``enabled_gateways()`` and threads the chosen slug into
-``create_payment_intent_for``. Both ``cod`` and ``test`` are OFF until a
-merchant flips them on in Settings → Payments (``enabled_gateways()`` keys
-off ``PaymentGatewayConfig``; only stripe + manual are on by default). A
-disabled / unknown slug submitted at checkout falls back to stripe
-server-side, so the picker can never select a gateway that isn't enabled.
+``create_payment_intent_for``. A disabled / unknown slug submitted at
+checkout falls back to stripe server-side, so the picker can never select
+a gateway that isn't enabled.
 """
 
 # ruff: noqa: PLC0415
@@ -65,6 +71,33 @@ class AdvancedPaymentsPlugin(Plugin):
             gateway_registry.register(CashOnDeliveryGateway())
         except Exception as exc:  # noqa: BLE001 — never break boot over a gateway
             logger.warning('advanced_payments: gateway registration failed: %s', exc)
+
+        # The panel toggles save to PluginConfig, but the platform reads
+        # PaymentGatewayConfig (payments.is_enabled). Bridge the two so the
+        # panel is the real control: resync on panel-save (post_save) and
+        # seed sane defaults after migrate (post_migrate). See sync.py.
+        try:
+            from django.apps import apps
+            from django.db.models.signals import post_migrate, post_save
+
+            from plugins.installed.advanced_payments.sync import (
+                _on_plugin_config_saved,
+                sync_gateway_config,
+            )
+            from plugins.models import PluginConfig
+
+            post_save.connect(
+                _on_plugin_config_saved,
+                sender=PluginConfig,
+                dispatch_uid='advanced_payments.sync_on_config_save',
+            )
+            post_migrate.connect(
+                sync_gateway_config,
+                sender=apps.get_app_config('advanced_payments'),
+                dispatch_uid='advanced_payments.sync_on_migrate',
+            )
+        except Exception as exc:  # noqa: BLE001 — never break boot over a signal
+            logger.warning('advanced_payments: sync wiring failed: %s', exc)
 
     def get_config_schema(self) -> dict:
         return {
