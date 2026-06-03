@@ -241,6 +241,7 @@ TEMPLATES = [
                 'core.context_processors.cart_context',
                 'core.context_processors.display_currency',
                 'core.context_processors.channel_context',
+                'plugins.installed.catalog.context_processors.nav_categories',
                 'themes.context_processors.theme_context',
                 'plugins.context_processors.plugin_context',
                 'plugins.installed.markets.services.market_context',

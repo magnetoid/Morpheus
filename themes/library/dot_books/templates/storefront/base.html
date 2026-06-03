@@ -226,6 +226,32 @@
   .nav a { color: var(--ink-2); transition: color .15s; }
   .nav a:hover { color: var(--accent-ink); }
   @media (min-width: 768px) { .nav { display: flex; } }
+  /* Genres mega menu */
+  .nav-mega { position: relative; }
+  .nav-mega__trigger { display: inline-flex; align-items: center; gap: .28rem; }
+  .nav-mega__trigger::after, .nav-mega__panel a::after { display: none !important; }
+  .nav-mega__chev { opacity: .55; transition: transform .2s ease; }
+  .nav-mega:hover .nav-mega__chev, .nav-mega:focus-within .nav-mega__chev { transform: rotate(180deg); }
+  .nav-mega__panel {
+    position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    min-width: 560px; max-width: 92vw; background: var(--paper);
+    border: 1px solid var(--rule); border-radius: 12px;
+    box-shadow: 0 20px 54px -14px rgba(14,14,14,.22); padding: 1.6rem 1.6rem 1.1rem;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease; z-index: 60;
+  }
+  .nav-mega__panel::before { content: ""; position: absolute; top: -14px; left: 0; right: 0; height: 14px; }
+  .nav-mega:hover .nav-mega__panel, .nav-mega:focus-within .nav-mega__panel {
+    opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(-50%) translateY(0);
+  }
+  .nav-mega__grid { display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 1.3rem 2rem; }
+  .nav-mega__col { display: flex; flex-direction: column; gap: .1rem; }
+  .nav-mega__head { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; color: var(--ink); margin-bottom: .4rem; }
+  .nav-mega__head:hover { color: var(--accent-ink); }
+  .nav-mega__link { font-size: .85rem; color: var(--muted); padding: .14rem 0; }
+  .nav-mega__link:hover { color: var(--accent-ink); }
+  .nav-mega__all { display: block; margin-top: 1.15rem; padding-top: .95rem; border-top: 1px solid var(--rule); font-size: .82rem; font-weight: 600; color: var(--accent-ink); }
   .icons { display: flex; align-items: center; gap: 0.65rem; }
   .icon-btn { width: 38px; height: 38px; border-radius: 999px; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; transition: background .15s, border-color .15s; }
   .icon-btn:hover { background: var(--paper-2); border-color: var(--rule); }
@@ -398,13 +424,29 @@
     <a href="/" class="wordmark" aria-label="Home">dot books<span class="dot">.</span></a>
     <nav class="nav" aria-label="Primary">
       <a href="/products/">All books</a>
-      <a href="/marketplace/">Marketplace</a>
-      <a href="/stories/">Stories</a>
-      <a href="/staff-picks/">Staff picks</a>
+      {% if nav_categories %}
+      <div class="nav-mega">
+        <a href="/categories/" class="nav-mega__trigger" aria-haspopup="true">Genres
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="nav-mega__chev"><path d="m6 9 6 6 6-6"/></svg>
+        </a>
+        <div class="nav-mega__panel">
+          <div class="nav-mega__grid">
+            {% for cat in nav_categories %}
+            <div class="nav-mega__col">
+              <a href="/category/{{ cat.slug }}/" class="nav-mega__head">{{ cat.name }}</a>
+              {% for child in cat.children %}
+              <a href="/category/{{ child.slug }}/" class="nav-mega__link">{{ child.name }}</a>
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+          <a href="/categories/" class="nav-mega__all">Browse all genres &rarr;</a>
+        </div>
+      </div>
+      {% else %}
       <a href="/categories/">Genres</a>
-      <a href="/category/fiction/">Fiction</a>
-      <a href="/category/nonfiction/">Non-fiction</a>
-      <a href="/category/poetry/">Poetry</a>
+      {% endif %}
+      <a href="/staff-picks/">Staff picks</a>
       <a href="/journal/">Journal</a>
       {% storefront_blocks "nav_primary_extra" %}
     </nav>
@@ -642,9 +684,12 @@
   <nav class="nav-mobile">
     <a href="/products/">All books</a>
     <a href="/products/?featured=true">New &amp; notable</a>
-    <a href="/category/fiction/">Fiction</a>
-    <a href="/category/nonfiction/">Non-fiction</a>
-    <a href="/category/poetry/">Poetry</a>
+    {% for cat in nav_categories %}
+    <a href="/category/{{ cat.slug }}/">{{ cat.name }}</a>
+    {% empty %}
+    <a href="/categories/">Genres</a>
+    {% endfor %}
+    <a href="/staff-picks/">Staff picks</a>
     <a href="/journal/">Journal</a>
     {% storefront_blocks "nav_primary_extra" %}
     <a href="/account/">Account</a>
