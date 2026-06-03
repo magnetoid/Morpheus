@@ -326,6 +326,21 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 'warmup_extra_urls', (request.POST.get('warmup_extra_urls') or '').strip()
             )
             messages.success(request, 'Cache-warmup settings saved.')
+        elif action == 'optimize_images':
+            # Re-warm WebP/AVIF image variants in the background. Lives here
+            # (the Caching page) rather than the SEO dashboard — ADR 0005,
+            # superseding ADR 0002. Fail-soft when the broker is down.
+            try:
+                from plugins.installed.seo.tasks import optimize_images_task
+
+                optimize_images_task.delay(avif=bool(request.POST.get('avif')))
+                messages.success(
+                    request,
+                    'Image optimization started — warming WebP/AVIF variants in the '
+                    'background. Refresh in a minute for the result.',
+                )
+            except Exception as e:  # noqa: BLE001 — broker down: report, don't 500
+                messages.error(request, f'Could not start image optimization: {e}')
         return HttpResponseRedirect(request.path)
 
     # ── Django cache backend status ────────────────────────────────────────
@@ -451,11 +466,21 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001
         recent_purges_count = 0
 
+    # ── Image-optimization last-run status (SEO task; ADR 0005) ────────────
+    image_optimize_status = None
+    try:
+        from plugins.installed.seo.tasks import last_image_optimize_status
+
+        image_optimize_status = last_image_optimize_status()
+    except Exception:  # noqa: BLE001
+        pass
+
     return render(
         request,
         'admin_dashboard/settings_caching.html',
         {
             'category': get_category('caching'),
+            'image_optimize_status': image_optimize_status,
             'default_backend': default_backend.split('.')[-1] or default_backend,
             'default_location': default_location,
             'cache_alive': cache_alive,

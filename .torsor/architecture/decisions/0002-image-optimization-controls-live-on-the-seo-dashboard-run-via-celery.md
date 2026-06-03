@@ -1,12 +1,13 @@
 ---
 type: decision
-status: accepted
+status: superseded
 tags:
 - adr
 links: []
 created: '2026-06-02T18:23:19'
-updated: '2026-06-02T18:23:19'
+updated: '2026-06-04T00:27:04'
 rules: []
+superseded_by: 0005-caching-page-is-the-single-home-for-image-optimization-edge-cache-controls
 ---
 
 # ADR 0002: Image-optimization controls live on the SEO dashboard, run via Celery

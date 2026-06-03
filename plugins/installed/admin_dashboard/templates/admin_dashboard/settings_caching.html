@@ -108,7 +108,7 @@
   </form>
 
   {# ── 3. IMAGE + ASSET OPTIMIZATION ───────────────────────────────── #}
-  <form method="post" class="card">
+  <form method="post" class="card" id="image">
     {% csrf_token %}
     <input type="hidden" name="action" value="save_assets">
     <div class="card-padded border-b border-[color:var(--border)] flex items-center gap-3">
@@ -150,6 +150,32 @@
     </div>
     <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
       <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+
+  {# ── 3b. OPTIMIZE EXISTING IMAGES (background backfill) ───────────── #}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="optimize_images">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center gap-3">
+      <i data-lucide="wand-2" class="h-5 w-5 text-[color:var(--accent,#c5694e)]"></i>
+      <div>
+        <h2 class="font-semibold">Optimize existing images</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Pre-generate responsive WebP/AVIF variants for every existing product + media-library image so the first storefront view is instant. New uploads optimize automatically; this backfills the rest. Runs in the background.</p>
+      </div>
+    </div>
+    <div class="card-padded space-y-3">
+      {% if image_optimize_status %}
+      <p class="text-xs rounded px-3 py-2 bg-[color:var(--surface-2,#f5f5f4)]">
+        {% if image_optimize_status.state == 'running' %}⏳ Optimization running…{% elif image_optimize_status.state == 'failed' %}⚠️ Last run failed: {{ image_optimize_status.summary }}{% else %}✓ Last run: {{ image_optimize_status.summary }}{% endif %}
+      </p>
+      {% endif %}
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="avif"> Also generate AVIF (smaller files, slower to build)
+      </label>
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="image" class="h-4 w-4"></i> Optimize existing images</button>
     </div>
   </form>
 

@@ -541,19 +541,7 @@ def seo_settings_page(request):
 
     s = site_settings()
     if request.method == 'POST':
-        if request.POST.get('action') == 'optimize_images':
-            from plugins.installed.seo.tasks import optimize_images_task
-
-            try:
-                optimize_images_task.delay(avif=bool(request.POST.get('avif')))
-                messages.success(
-                    request,
-                    'Image optimization started — warming WebP variants in the background. '
-                    'Refresh in a minute for the result.',
-                )
-            except Exception as e:  # noqa: BLE001 — broker down: report, don't 500
-                messages.error(request, f'Could not start image optimization: {e}')
-            return redirect('seo_dashboard:settings')
+        # Image optimization moved to /dashboard/settings/caching/ (ADR 0005).
         for field in (
             'organization_name',
             'organization_logo_url',
@@ -643,8 +631,6 @@ def seo_settings_page(request):
             'rows': [r for r in crawler_rows if r['kind'] == 'training'],
         },
     ]
-    from plugins.installed.seo.tasks import last_image_optimize_status
-
     return render(
         request,
         'seo/settings.html',
@@ -653,7 +639,6 @@ def seo_settings_page(request):
             'active_nav': 'seo',
             'crawler_rows': crawler_rows,
             'crawler_groups': crawler_groups,
-            'image_optimize_status': last_image_optimize_status(),
         },
     )
 
