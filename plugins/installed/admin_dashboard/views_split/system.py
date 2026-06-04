@@ -22,6 +22,8 @@ from morpheus.views import (
 
 @staff_member_required
 def updates_page(request: HttpRequest) -> HttpResponse:
+    from django.conf import settings as dj_settings
+
     from core.updates import platform_update_status
     from core.versioning import component_versions
 
@@ -36,6 +38,9 @@ def updates_page(request: HttpRequest) -> HttpResponse:
             'themes': data.get('themes') or [],
             'plugin_enabled_count': sum(1 for p in plugins if p.get('enabled')),
             'platform': platform_update_status(fetch=False),
+            'self_update_enabled': bool(
+                getattr(dj_settings, 'MORPHEUS_SELF_UPDATE_ENABLED', False)
+            ),
             'active_nav': 'updates',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -66,4 +71,40 @@ def updates_check(request: HttpRequest) -> HttpResponse:
         )
     else:
         messages.info(request, status.get('reason') or 'Could not determine update status.')
+    return redirect('admin_dashboard:updates')
+
+
+@staff_member_required
+def updates_apply(request: HttpRequest) -> HttpResponse:
+    """Apply the pending platform update from the dashboard — wraps the same
+    guarded core.updates.apply_platform_update the CLI uses (opt-in via
+    MORPHEUS_SELF_UPDATE_ENABLED, ff-only, backup, auto-rollback)."""
+    if request.method != 'POST':
+        return redirect('admin_dashboard:updates')
+    from core.updates import apply_platform_update
+
+    result = apply_platform_update(confirm=True)
+    status = result.get('status')
+    if status == 'applied':
+        messages.success(
+            request,
+            f'Updated {result.get("from")} → {result.get("to")}. '
+            'Migrations ran and the healthcheck passed.',
+        )
+    elif status == 'noop':
+        messages.success(request, 'Already up to date.')
+    elif status == 'rolled_back':
+        messages.error(
+            request, result.get('reason') or 'Update failed — rolled back to the prior version.'
+        )
+    elif status in ('diverged', 'apply_failed'):
+        messages.error(request, result.get('reason') or 'Update could not be applied.')
+    elif status == 'disabled':
+        messages.info(request, result.get('reason') or 'Self-update is disabled.')
+    elif status == 'unavailable':
+        messages.info(request, result.get('reason') or 'Update unavailable in this deployment.')
+    else:
+        messages.info(
+            request, result.get('reason') or result.get('message') or 'Update status unknown.'
+        )
     return redirect('admin_dashboard:updates')

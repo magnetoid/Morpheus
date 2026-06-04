@@ -7,7 +7,7 @@
 
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Updates</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">Installed versions of core, plugins and themes. Remote update-checks &amp; one-click apply are coming — for now this is your version inventory (also <code>manage.py morph_versions</code>).</p>
+    <p class="text-sm text-[color:var(--text-muted)]">Installed versions of core, plugins and themes, plus the central updater: check for updates and apply them (git fast-forward, backup + auto-rollback). CLI parity: <code>manage.py morph_versions</code> / <code>morph_check_updates</code> / <code>morph_apply_update</code>.</p>
   </div>
 
   <div class="card card-padded">
@@ -26,6 +26,19 @@
       {% if platform.available == 'yes' %}
         <span class="pill" style="background:var(--warning-bg,#fef3c7);">Update available</span>
         <span class="text-[color:var(--text-muted)]">{{ platform.behind }} commit(s) behind <code>{{ platform.upstream }}</code> · deployed <code>{{ platform.current }}</code></span>
+        <div class="mt-2">
+          {% if self_update_enabled %}
+          <form method="post" action="{% url 'admin_dashboard:updates_apply' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary text-sm"
+                    data-confirm="Apply update? This fast-forwards the deployment from {{ platform.current }} to {{ platform.latest }}, backs up first, runs migrations, and auto-rolls-back on failure.">
+              <i data-lucide="download" class="h-4 w-4"></i> Apply update
+            </button>
+          </form>
+          {% else %}
+          <span class="text-xs text-[color:var(--text-muted)]">Self-update is off. Set <code>MORPHEUS_SELF_UPDATE_ENABLED=1</code> to enable one-click apply, or run <code>manage.py morph_apply_update --confirm</code>.</span>
+          {% endif %}
+        </div>
       {% elif platform.available == 'no' %}
         <span class="pill pill-success">Up to date</span>
         <span class="text-[color:var(--text-muted)]">on <code>{{ platform.branch }}</code> at <code>{{ platform.current }}</code></span>
