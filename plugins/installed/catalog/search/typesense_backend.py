@@ -199,8 +199,6 @@ def reindex_all(batch_size: int = 500) -> dict:
 
 def _serialize(product) -> dict:
     """Project one Product → Typesense document shape."""
-    from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
-
     doc: dict[str, Any] = {
         'id': str(product.pk),
         'name': str(getattr(product, 'name', '') or '')[:300],
@@ -219,16 +217,12 @@ def _serialize(product) -> dict:
         with suppress(Exception):
             doc['price'] = float(getattr(price, 'amount', price))
     with suppress(Exception):
-        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+        from plugins.installed.book_product.compat import book_attrs  # noqa: PLC0415
 
-        ct = ContentType.objects.get_for_model(product.__class__)
-        for mf in Metafield.objects.filter(
-            content_type=ct,
-            object_id=product.pk,
-            namespace='book',
-            key__in=('author', 'publisher', 'isbn'),
-        ):
-            doc[mf.key] = str(mf.value or '')[:300]
+        attrs = book_attrs(product)  # model-first, legacy book.* fallback
+        for key in ('author', 'publisher', 'isbn'):
+            if attrs.get(key):
+                doc[key] = str(attrs[key])[:300]
     return doc
 
 

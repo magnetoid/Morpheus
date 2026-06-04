@@ -24,8 +24,10 @@ migration + the `backfill_book_product` command.
   `services/audit.py`. ✅ DONE — all route through `compat.book_attrs` /
   `distinct_values`; jsonld Book schema verified from a model-only product.
 - **search** (catalog/search/django_backend.py, typesense_backend.py): index
-  book.author/publisher/isbn. ⬜ TODO — affects search relevance/index.
-- **webstories** (webstories/services.py): synopsis/author panel. ⬜ TODO
+  book.author/publisher/isbn. ✅ DONE — django backend unions BookProduct +
+  metafield ids; typesense doc built from compat.book_attrs.
+- **webstories** (webstories/services.py): synopsis/author panel. ✅ DONE —
+  `_book_metafields` now returns compat.book_attrs.
 - **writers**: demo_data/seeds+services, digital_products convert_gutenberg —
   still WRITE `book.*`. ⬜ TODO — point at BookProduct (or rely on backfill).
 - **identifiers** (metafields/identifiers.py:43): legacy ISBN read — separate
@@ -62,5 +64,13 @@ migration + the `backfill_book_product` command.
   (`distinct_values`). Added `compat.book_attrs(product)` — a drop-in `{key:value}`
   dict, model-first + book.* fallback. Verified Book schema emits from a
   model-only product (5 compat tests incl. a jsonld assertion).
-- **Remaining:** search backends (3), webstories (4), writers (5),
-  drop-fallback + delete metafields (6). Search is the next blast-radius item.
+- 2026-06: Phase 3 (search) + Phase 4 (webstories) shipped — both search
+  backends + the web-story panels read book attributes model-first via compat.
+  **All readers are now model-first** (catalog, nav, PDP, SEO, search,
+  webstories), each with a legacy book.* fallback, so the system is correct
+  regardless of which writers still write metafields. 44 tests green (~27s
+  thanks to celery-eager-in-tests).
+- **Remaining (optional hardening):** writers → model (5: demo_data,
+  convert_gutenberg — the backfill/migration already sync these), then drop the
+  fallback + delete the book.* metafields (6, only after a prod backfill). Lower
+  urgency: reads work today via the fallback.

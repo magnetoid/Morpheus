@@ -35,24 +35,16 @@ def _image_url_for(image_row) -> str:
 
 
 def _book_metafields(product) -> dict[str, str]:
-    """Pull namespace='book' metafields for synopsis / author / etc.
+    """Book attributes (synopsis / author / …) for the story panels.
 
-    Gracefully empty when the metafields plugin isn't installed."""
+    Model-first (BookProduct) with a legacy book.* metafield fallback; empty
+    when book_product/metafields aren't available."""
     try:
-        from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
+        from plugins.installed.book_product.compat import book_attrs  # noqa: PLC0415
 
-        from plugins.installed.catalog.models import Product  # noqa: PLC0415
-        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
-
-        ct = ContentType.objects.get_for_model(Product)
-        rows = Metafield.objects.filter(
-            content_type=ct,
-            object_id=product.pk,
-            namespace='book',
-        )
-        return {m.key: m.value for m in rows}
+        return book_attrs(product)
     except Exception as e:  # noqa: BLE001
-        logger.debug('webstories: book metafields skipped: %s', e)
+        logger.debug('webstories: book attrs skipped: %s', e)
         return {}
 
 
