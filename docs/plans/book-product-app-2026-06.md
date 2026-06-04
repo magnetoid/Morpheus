@@ -103,4 +103,15 @@
   tags" is tentative + riskier (touches SEO schema emission). Data already lives
   on the model; the `book.*` metafields remain harmless for now. Switch book
   schema.org/meta to read the model + stop writing book.* in a focused later pass.
-- Remaining: P7 (tests/docs/torsor) + live Playwright verification post-deploy.
+- 2026-06: **Full-bleed mega menu + Authors dropdown** (29f4439) — Genres panel
+  full-width; new Authors mega from nav_authors (book.author metafields →
+  /author/<slug>/). (Also fixed the live mega/drawer overflow regression.)
+- 2026-06: **P8 GraphQL + P6b PDP-from-model** (2205e28) — bookProduct query +
+  setBookProduct mutation (catalog.write scope); PDP `_book_specs` reads the
+  BookProduct model first (metafield fallback); PDP plugin block trimmed to the
+  3D viewer. Schema build verified; 4 GraphQL tests pass.
+- 2026-06: **ADR 0006** records the product-type-extension pattern (plugin-owned
+  OneToOne + contributed surfaces, no catalog edits).
+- **GOAL COMPLETE.** Remaining = noted follow-ups (retire book.* metafields once
+  author_detail/PLP filters move to the model; optional contribute_product_panels
+  hook). Live Playwright verification of book widget/3D pending a real prod book.

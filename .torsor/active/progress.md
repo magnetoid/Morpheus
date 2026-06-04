@@ -4,10 +4,10 @@ status: active
 tags:
 - active
 links: []
-created: '2026-06-04T01:01:46'
-updated: '2026-06-04T01:01:46'
+created: '2026-06-04T02:04:46'
+updated: '2026-06-04T02:04:46'
 ---
 
 # Progress
 
-Done + committed (main, unpushed): shipping panel fold (ADR 0003); caching settings unification Phases 0-2 (ADR 0005, supersedes 0002) incl. a live 500 fix on the caching page; checkout |money fix; storefront Genres mega menu + nav_categories context processor. Test runner note: use `DATABASE_URL='sqlite:///:memory:' python manage.py test …` locally (bare manage.py test hits the .env Docker `db` host). Caching plan: docs/plans/caching-settings-unification-2026-06.md.
+All pushed to main + deploying. book_product phases P1-P8 done: scaffold+model (51de7af), data migration (24197fc), Settings/widget (P1+P2/P4), 3D viewer+CSP (586b9c7), PDP block, full-width mega+Authors (29f4439), GraphQL+PDP-model (2205e28). Tests green on sqlite (book_product: model, migration, widget-save, tag, 4 GraphQL; nav: 4; caching: 8; shipping: 7; checkout render). Schema build smoke confirms bookProduct/setBookProduct/BookProductType merged.
