@@ -366,18 +366,9 @@ def score_aeo(product) -> dict:
     # 6. E-E-A-T author / entity — a named author or publisher entity.
     has_author = False
     try:
-        from django.contrib.contenttypes.models import ContentType
-        from plugins.installed.metafields.models import Metafield
+        from plugins.installed.book_product.compat import book_attrs
 
-        ct = ContentType.objects.get_for_model(type(product))
-        book_meta = {
-            r.key: r.value
-            for r in Metafield.objects.filter(
-                content_type=ct,
-                object_id=str(product.pk),
-                namespace='book',
-            )
-        }
+        book_meta = book_attrs(product)  # model-first, legacy book.* fallback
         has_author = bool(book_meta.get('author') or book_meta.get('publisher'))
     except Exception:  # noqa: BLE001
         has_author = False

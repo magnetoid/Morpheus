@@ -148,18 +148,9 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
     book_mf: dict = {}
     if not isinstance(product, dict):
         try:
-            from django.contrib.contenttypes.models import ContentType
-            from plugins.installed.metafields.models import Metafield
+            from plugins.installed.book_product.compat import book_attrs
 
-            ct = ContentType.objects.get_for_model(type(product))
-            book_mf = {
-                m.key: m.value
-                for m in Metafield.objects.filter(
-                    content_type=ct,
-                    object_id=product.pk,
-                    namespace='book',
-                )
-            }
+            book_mf = book_attrs(product)
         except Exception:  # noqa: BLE001
             book_mf = {}
         if book_mf:
@@ -465,18 +456,9 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
     if not isinstance(product, dict):
         candidate_barcode = ''
         try:
-            from django.contrib.contenttypes.models import ContentType
-            from plugins.installed.metafields.models import Metafield
+            from plugins.installed.book_product.compat import book_attrs
 
-            ct = ContentType.objects.get_for_model(type(product))
-            book_meta = {
-                row.key: row.value
-                for row in Metafield.objects.filter(
-                    content_type=ct,
-                    object_id=product.pk,
-                    namespace='book',
-                )
-            }
+            book_meta = book_attrs(product)
             if book_meta.get('isbn'):
                 candidate_barcode = str(book_meta['isbn']).strip()
             if book_meta.get('publisher'):

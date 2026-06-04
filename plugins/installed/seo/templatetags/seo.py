@@ -468,17 +468,17 @@ def seo_ai_answer_block(context, product) -> dict:
     # Key facts from the `book` metafield namespace — labelled + ordered
     # so the block reads like a spec table an AI can parse cleanly.
     try:
-        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+        from plugins.installed.book_product.compat import book_attrs  # noqa: PLC0415
 
-        meta = Metafield.objects.for_obj(product, ns='book')
+        meta = book_attrs(product)  # model-first, legacy book.* fallback
         label_order = [
-            ('book.author', 'Author'),
-            ('book.publisher', 'Publisher'),
-            ('book.format', 'Format'),
-            ('book.pages', 'Pages'),
-            ('book.published_year', 'Published'),
-            ('book.language', 'Language'),
-            ('book.isbn', 'ISBN'),
+            ('author', 'Author'),
+            ('publisher', 'Publisher'),
+            ('format', 'Format'),
+            ('pages', 'Pages'),
+            ('published_year', 'Published'),
+            ('language', 'Language'),
+            ('isbn', 'ISBN'),
         ]
         facts = []
         for key, label in label_order:

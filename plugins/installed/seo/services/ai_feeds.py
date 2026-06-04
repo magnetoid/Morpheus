@@ -8,6 +8,8 @@ rendering of any product without parsing HTML.
 into a single ``ItemList`` for AI shopping crawlers (Google AI Shopping,
 Perplexity, etc.).
 """
+# Lazy (in-function) imports + fail-soft feed builders are the pattern here.
+# ruff: noqa: PLC0415, S110
 
 from __future__ import annotations
 
@@ -64,21 +66,13 @@ def render_product_markdown(product) -> str:
         parts.extend(['', '## About', plain])
     # Book-shop specifics — pull metafields if the catalog uses them.
     try:
-        from django.contrib.contenttypes.models import ContentType
-        from plugins.installed.metafields.models import Metafield
+        from plugins.installed.book_product.compat import book_attrs
 
-        ct = ContentType.objects.get_for_model(type(product))
-        rows = list(
-            Metafield.objects.filter(
-                content_type=ct,
-                object_id=product.pk,
-                namespace='book',
-            ).values_list('key', 'value')
-        )
-        if rows:
+        attrs = book_attrs(product)  # model-first, legacy book.* fallback
+        if attrs:
             parts.append('')
             parts.append('## Specifications')
-            for k, v in rows:
+            for k, v in attrs.items():
                 parts.append(f'- {k}: {v}')
     except Exception:  # noqa: BLE001
         pass

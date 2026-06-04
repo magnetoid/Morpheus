@@ -4,6 +4,9 @@ The five XML sitemaps + the iteration helper that drives the main one
 all live here. Crawler-facing files that aren't sitemaps (robots.txt,
 llms.txt, PWA manifest) live in ``crawler_files`` instead.
 """
+# Legacy sitemap module: lazy (in-function) imports + fail-soft builders are the
+# established pattern here.
+# ruff: noqa: PLC0415, S110, SIM105, SIM113, PLR1730, UP035
 
 from __future__ import annotations
 
@@ -22,19 +25,11 @@ def _iter_author_entries(base: str) -> Iterable[dict]:
     by ``slugify(name)`` — match the same shape here so the sitemap URLs
     actually resolve."""
     try:
-        from django.contrib.contenttypes.models import ContentType
         from django.utils.text import slugify
 
-        from plugins.installed.catalog.models import Product
-        from plugins.installed.metafields.models import Metafield
+        from plugins.installed.book_product.compat import distinct_values
 
-        ct = ContentType.objects.get_for_model(Product)
-        names = (
-            Metafield.objects.filter(content_type=ct, namespace='book', key='author')
-            .exclude(value='')
-            .values_list('value', flat=True)
-            .distinct()
-        )
+        names = distinct_values('author')  # model-first, legacy book.* fallback
         seen: set[str] = set()
         for name in names:
             slug = slugify(name)

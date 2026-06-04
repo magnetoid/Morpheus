@@ -52,3 +52,43 @@ class CompatTests(TestCase):
         self.assertEqual(compat.resolve_slug('author', 'ada-model'), 'Ada Model')
         self.assertEqual(compat.resolve_slug('author', 'bob-meta'), 'Bob Meta')
         self.assertIsNone(compat.resolve_slug('author', 'nobody'))
+
+    def test_book_attrs_model_first_and_fallback(self):
+        from datetime import date
+
+        book = BookProduct.objects.get(product=self.p_model)
+        book.publisher = 'Model House'
+        book.page_count = 288
+        book.print_type = 'hardcover'
+        book.language = 'en'
+        book.publication_date = date(1999, 5, 1)
+        book.save()
+        attrs = compat.book_attrs(self.p_model)
+        self.assertEqual(attrs['author'], 'Ada Model')
+        self.assertEqual(attrs['pages'], '288')
+        self.assertEqual(attrs['format'], 'hardcover')
+        self.assertEqual(attrs['published_year'], '1999')
+        # Metafield-only product still yields attrs via fallback.
+        self.assertEqual(compat.book_attrs(self.p_meta).get('author'), 'Bob Meta')
+
+
+class JsonldBookSchemaTests(TestCase):
+    def test_book_schema_emitted_from_model(self):
+        from plugins.installed.seo.services.jsonld import product_jsonld
+
+        p = Product.objects.create(
+            name='Hardback',
+            slug='hb',
+            sku='HB-1',
+            price=Money(Decimal('20.00'), 'USD'),
+            product_type='simple',
+            status='active',
+        )
+        BookProduct.objects.create(
+            product=p, author='Iris Model', page_count=420, print_type='hardcover'
+        )
+        data = product_jsonld(p)
+        self.assertIn('Book', data.get('@type', []))
+        self.assertEqual(data.get('numberOfPages'), 420)
+        self.assertEqual((data.get('author') or {}).get('name'), 'Iris Model')
+        self.assertEqual(data.get('bookFormat'), 'https://schema.org/Hardcover')

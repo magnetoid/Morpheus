@@ -81,6 +81,52 @@ def product_ids_for(field: str, value: str) -> list[str]:
     return list(ids)
 
 
+def book_attrs(product) -> dict:
+    """A product's book attributes as a flat ``{key: value}`` dict with bare
+    keys ('author', 'publisher', 'pages', 'format', 'language',
+    'published_year', …), model-first with legacy book.* metafield fallback.
+    Drop-in for readers that consumed the raw ``book.*`` metafield dict.
+    """
+    out: dict = {}
+    try:
+        from plugins.installed.book_product.models import BookProduct  # noqa: PLC0415
+
+        book = BookProduct.objects.filter(product=product).first()
+    except Exception:  # noqa: BLE001
+        book = None
+    if book is not None:
+        for key, val in (
+            ('author', book.author),
+            ('subtitle', book.subtitle),
+            ('publisher', book.publisher),
+            ('imprint', book.imprint),
+            ('synopsis', book.synopsis),
+            ('language', book.language),
+            ('series', book.series),
+            ('edition', book.edition),
+            ('binding', book.binding),
+        ):
+            if val:
+                out[key] = val
+        if book.page_count:
+            out['pages'] = str(book.page_count)
+        if book.print_type:
+            out['format'] = book.print_type
+        if book.publication_date:
+            out['published_year'] = str(book.publication_date.year)
+            out['publication_date'] = book.publication_date.isoformat()
+    try:
+        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+        for full_key, value in (Metafield.objects.for_obj(product, ns='book') or {}).items():
+            key = full_key.split('.', 1)[-1]
+            if key not in out and value not in (None, ''):
+                out[key] = value
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
 def resolve_slug(field: str, slug: str) -> str | None:
     """Reverse a slug back to the stored value for `field` (e.g. /author/<slug>/)."""
     for value in distinct_values(field):

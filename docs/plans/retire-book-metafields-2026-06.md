@@ -21,7 +21,8 @@ migration + the `backfill_book_product` command.
 - **PDP** (storefront/catalog.py `_book_specs`): already model-first (P6b). ✅
 - **SEO** (seo/...): `templatetags/seo.py` book specs; `services/jsonld.py` Book
   schema.org; `services/sitemaps.py` author sitemap; `services/ai_feeds.py`;
-  `services/audit.py`. ⬜ TODO — highest blast radius (don't break structured data).
+  `services/audit.py`. ✅ DONE — all route through `compat.book_attrs` /
+  `distinct_values`; jsonld Book schema verified from a model-only product.
 - **search** (catalog/search/django_backend.py, typesense_backend.py): index
   book.author/publisher/isbn. ⬜ TODO — affects search relevance/index.
 - **webstories** (webstories/services.py): synopsis/author panel. ⬜ TODO
@@ -55,3 +56,11 @@ migration + the `backfill_book_product` command.
 - 2026-06: Phase 1 shipped — catalog browse (PLP filter, facet, author_detail,
   author-name annotation) + nav_authors read model-first via book_product.compat;
   metafield fallback preserved. 7 tests (compat union + nav regression).
+- 2026-06: Phase 2 shipped — all SEO surfaces route through compat: jsonld Book
+  schema.org, the AI markdown feed, the SEO audit's author/E-E-A-T check, the
+  PDP spec template tag (`book_facts_jsonld`), and the author sitemap
+  (`distinct_values`). Added `compat.book_attrs(product)` — a drop-in `{key:value}`
+  dict, model-first + book.* fallback. Verified Book schema emits from a
+  model-only product (5 compat tests incl. a jsonld assertion).
+- **Remaining:** search backends (3), webstories (4), writers (5),
+  drop-fallback + delete metafields (6). Search is the next blast-radius item.
