@@ -28,8 +28,9 @@ migration + the `backfill_book_product` command.
   metafield ids; typesense doc built from compat.book_attrs.
 - **webstories** (webstories/services.py): synopsis/author panel. ✅ DONE —
   `_book_metafields` now returns compat.book_attrs.
-- **writers**: demo_data/seeds+services, digital_products convert_gutenberg —
-  still WRITE `book.*`. ⬜ TODO — point at BookProduct (or rely on backfill).
+- **writers**: demo_data now also writes the BookProduct model
+  (compat.set_book_attrs) ✅; convert_gutenberg still writes book.* (covered by
+  the read fallback + backfill) — low priority.
 - **identifiers** (metafields/identifiers.py:43): legacy ISBN read — separate
   concern (ISBN stays in the `identifiers` namespace; leave).
 
@@ -70,7 +71,11 @@ migration + the `backfill_book_product` command.
   webstories), each with a legacy book.* fallback, so the system is correct
   regardless of which writers still write metafields. 44 tests green (~27s
   thanks to celery-eager-in-tests).
-- **Remaining (optional hardening):** writers → model (5: demo_data,
-  convert_gutenberg — the backfill/migration already sync these), then drop the
-  fallback + delete the book.* metafields (6, only after a prod backfill). Lower
-  urgency: reads work today via the fallback.
+- 2026-06: Phase 5 — the demo_data seeder now populates the BookProduct model
+  (compat.set_book_attrs, normalizing format/pages/year/language) alongside the
+  metafields; new seeded books are model-backed, not fallback-only. 6 compat
+  tests green.
+- **Only Phase 6 remains (deferred, risky):** drop the metafield read fallback +
+  delete the `book.*` metafields — do ONLY after a prod backfill run, since it
+  deletes data. convert_gutenberg can move to the model in the same pass. Until
+  then the system is fully model-first with a safe fallback.

@@ -127,6 +127,78 @@ def book_attrs(product) -> dict:
     return out
 
 
+_FORMAT_MAP = {
+    'paperback': 'paperback',
+    'softcover': 'paperback',
+    'hardcover': 'hardcover',
+    'hardback': 'hardcover',
+    'mass market paperback': 'mass_market',
+    'mass market': 'mass_market',
+    'board book': 'board_book',
+    'spiral': 'spiral',
+    'ebook': 'ebook',
+    'e-book': 'ebook',
+    'audiobook': 'audiobook',
+    'audio book': 'audiobook',
+}
+_LANGUAGE_MAP = {
+    'english': 'en',
+    'eng': 'en',
+    'french': 'fr',
+    'german': 'de',
+    'spanish': 'es',
+    'italian': 'it',
+}
+
+
+def set_book_attrs(product, raw: dict) -> None:
+    """Upsert a BookProduct from a raw ``book.*``-shaped dict (author, publisher,
+    pages, format, published_year, language, …) — used by seeders/importers so
+    new books land on the model, not just metafields. Normalizes format →
+    print_type, pages → page_count, published_year → publication_date. Fail-soft.
+    """
+    try:
+        from plugins.installed.book_product.models import BookProduct, PrintType  # noqa: PLC0415
+
+        book, _ = BookProduct.objects.get_or_create(product=product)
+
+        def _s(key: str) -> str:
+            return str(raw.get(key) or '').strip()
+
+        for src, dst, cap in (
+            ('author', 'author', 300),
+            ('subtitle', 'subtitle', 300),
+            ('publisher', 'publisher', 200),
+            ('imprint', 'imprint', 200),
+            ('series', 'series', 200),
+            ('edition', 'edition', 100),
+            ('binding', 'binding', 100),
+        ):
+            if _s(src):
+                setattr(book, dst, _s(src)[:cap])
+        if _s('synopsis'):
+            book.synopsis = _s('synopsis')
+        lang = _s('language').lower()
+        if lang:
+            book.language = _LANGUAGE_MAP.get(lang, lang[:20])
+        fmt = _s('format').lower()
+        if fmt in PrintType.values:
+            book.print_type = fmt
+        elif fmt in _FORMAT_MAP:
+            book.print_type = _FORMAT_MAP[fmt]
+        pages = _s('pages')
+        if pages.isdigit():
+            book.page_count = int(pages)
+        year = _s('published_year')[:4]
+        if year.isdigit() and book.publication_date is None:
+            from datetime import date  # noqa: PLC0415
+
+            book.publication_date = date(int(year), 1, 1)
+        book.save()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def resolve_slug(field: str, slug: str) -> str | None:
     """Reverse a slug back to the stored value for `field` (e.g. /author/<slug>/)."""
     for value in distinct_values(field):

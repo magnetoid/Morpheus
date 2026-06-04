@@ -48,6 +48,27 @@ class CompatTests(TestCase):
         self.assertEqual(compat.product_ids_for('author', 'ada model'), [str(self.p_model.id)])
         self.assertEqual(compat.product_ids_for('author', 'Bob Meta'), [str(self.p_meta.id)])
 
+    def test_set_book_attrs_writes_model_normalized(self):
+        from plugins.installed.book_product.compat import set_book_attrs
+
+        p = self._product('w9', 'W-9')
+        set_book_attrs(
+            p,
+            {
+                'author': 'Tolkien',
+                'format': 'Paperback',
+                'pages': 423,
+                'published_year': 1937,
+                'language': 'English',
+            },
+        )
+        b = BookProduct.objects.get(product=p)
+        self.assertEqual(b.author, 'Tolkien')
+        self.assertEqual(b.print_type, 'paperback')
+        self.assertEqual(b.page_count, 423)
+        self.assertEqual(b.language, 'en')
+        self.assertEqual(b.publication_date.year, 1937)
+
     def test_resolve_slug_both_sources(self):
         self.assertEqual(compat.resolve_slug('author', 'ada-model'), 'Ada Model')
         self.assertEqual(compat.resolve_slug('author', 'bob-meta'), 'Bob Meta')

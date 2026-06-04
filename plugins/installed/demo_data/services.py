@@ -1,4 +1,8 @@
 """Idempotent loader for the demo bookstore dataset."""
+# Legacy seeder: lazy/mid-file imports + demo-only randomness + best-effort
+# network cover fetch are the established patterns here.
+# ruff: noqa: PLC0415, S110, S310, S311, E402, I001
+
 from __future__ import annotations
 
 import logging
@@ -143,6 +147,15 @@ def _seed_book_metafields(product, slug: str) -> None:
     meta = seeds.BOOK_METADATA.get(slug)
     if not meta:
         return
+    # Populate the BookProduct model (authoritative since the book.* metafield
+    # retirement). Metafields are still written too — gutenberg_id drives cover
+    # download and they remain a read fallback.
+    try:
+        from plugins.installed.book_product.compat import set_book_attrs
+
+        set_book_attrs(product, meta)
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from plugins.installed.metafields.models import Metafield
     except Exception:  # noqa: BLE001
@@ -168,6 +181,7 @@ def _seed_book_cover(product, slug: str) -> None:
         import urllib.request
         from django.core.files.base import ContentFile
         from plugins.installed.catalog.models import ProductImage
+
         req = urllib.request.Request(url, headers={'User-Agent': 'Morpheus-DemoSeed/1.0'})
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = resp.read()
@@ -182,8 +196,8 @@ def _seed_book_cover(product, slug: str) -> None:
 def _seed_customers(summary: SeedSummary) -> None:
     User = get_user_model()
     demo_customers = [
-        {'email': 'reader.one@example.com',  'first_name': 'Mara',  'last_name': 'Holst'},
-        {'email': 'reader.two@example.com',  'first_name': 'Idris', 'last_name': 'Khan'},
+        {'email': 'reader.one@example.com', 'first_name': 'Mara', 'last_name': 'Holst'},
+        {'email': 'reader.two@example.com', 'first_name': 'Idris', 'last_name': 'Khan'},
         {'email': 'reader.three@example.com', 'first_name': 'Lucia', 'last_name': 'Berg'},
     ]
     for c in demo_customers:
@@ -225,12 +239,20 @@ def _seed_orders(summary: SeedSummary, currency: str) -> None:
         source='demo',
     )
     OrderItem.objects.create(
-        order=order, product=book_a, product_name=book_a.name,
-        quantity=1, unit_price=book_a.price, total_price=book_a.price,
+        order=order,
+        product=book_a,
+        product_name=book_a.name,
+        quantity=1,
+        unit_price=book_a.price,
+        total_price=book_a.price,
     )
     OrderItem.objects.create(
-        order=order, product=book_b, product_name=book_b.name,
-        quantity=1, unit_price=book_b.price, total_price=book_b.price,
+        order=order,
+        product=book_b,
+        product_name=book_b.name,
+        quantity=1,
+        unit_price=book_b.price,
+        total_price=book_b.price,
     )
     summary.inc('orders')
 
@@ -266,33 +288,72 @@ _TOPIC_PRODUCTS = {
         'category': 'Random reads',
         'price_range': (Decimal('12'), Decimal('38')),
         'titles': [
-            'The Quiet Hour', 'Letters from a Distant Garden', 'Anatomy of Patience',
-            'On Solitude and Other Habits', 'The Architecture of Memory',
-            'Small Animals at Dawn', 'A Catalogue of Lost Names', 'Four Seasons in Lisbon',
-            'How to Read a Window', 'The Long Sentence', 'Notebook of Salt',
-            'Rooms in the Margin', 'A Theory of Walking', 'Almost Nothing Happens',
-            'Field Guide to the Familiar', 'The Translator\'s Confession',
-            'Late Apricots', 'Inventory of Departures', 'A Brief History of Hesitation',
-            'The Last Bookshop in Town', 'Coastal Disturbances', 'Houses That Outlive Us',
-            'On the Use of Quiet', 'The Slowest Marathon', 'A Year of Empty Mornings',
-            'Letters Never Sent', 'Notes from the Greenhouse', 'The Cartographer\'s Daughter',
-            'Wintering in Prose', 'A Practical Guide to Stillness',
+            'The Quiet Hour',
+            'Letters from a Distant Garden',
+            'Anatomy of Patience',
+            'On Solitude and Other Habits',
+            'The Architecture of Memory',
+            'Small Animals at Dawn',
+            'A Catalogue of Lost Names',
+            'Four Seasons in Lisbon',
+            'How to Read a Window',
+            'The Long Sentence',
+            'Notebook of Salt',
+            'Rooms in the Margin',
+            'A Theory of Walking',
+            'Almost Nothing Happens',
+            'Field Guide to the Familiar',
+            "The Translator's Confession",
+            'Late Apricots',
+            'Inventory of Departures',
+            'A Brief History of Hesitation',
+            'The Last Bookshop in Town',
+            'Coastal Disturbances',
+            'Houses That Outlive Us',
+            'On the Use of Quiet',
+            'The Slowest Marathon',
+            'A Year of Empty Mornings',
+            'Letters Never Sent',
+            'Notes from the Greenhouse',
+            "The Cartographer's Daughter",
+            'Wintering in Prose',
+            'A Practical Guide to Stillness',
         ],
     },
     'apparel': {
         'category': 'Capsule pieces',
         'price_range': (Decimal('45'), Decimal('220')),
         'titles': [
-            'Heritage Linen Shirt', 'Field Trouser', 'Boxy Cardigan',
-            'Slate Wool Blazer', 'Selvedge Denim', 'Sailcloth Tote',
-            'Workwear Coat', 'Collarless Shirt', 'Drawcord Trouser',
-            'Heavyweight Tee', 'Felted Cap', 'Dyed Cotton Scarf',
-            'Slow Knit Pullover', 'Yarn-dyed Twill Pant', 'Reverse Sweat',
-            'Crewneck in Charcoal', 'Pleated Wide Trouser', 'Half-zip Pullover',
-            'Engineer Cap', 'Box Pocket Shirt', 'Three-button Knit',
-            'French-seam Tee', 'Lightweight Coat', 'Oversized Knit',
-            'Hopsack Trouser', 'Garment-dyed Hoodie', 'Cropped Anorak',
-            'Selvedge Shorts', 'Field Vest', 'Boxy Overshirt',
+            'Heritage Linen Shirt',
+            'Field Trouser',
+            'Boxy Cardigan',
+            'Slate Wool Blazer',
+            'Selvedge Denim',
+            'Sailcloth Tote',
+            'Workwear Coat',
+            'Collarless Shirt',
+            'Drawcord Trouser',
+            'Heavyweight Tee',
+            'Felted Cap',
+            'Dyed Cotton Scarf',
+            'Slow Knit Pullover',
+            'Yarn-dyed Twill Pant',
+            'Reverse Sweat',
+            'Crewneck in Charcoal',
+            'Pleated Wide Trouser',
+            'Half-zip Pullover',
+            'Engineer Cap',
+            'Box Pocket Shirt',
+            'Three-button Knit',
+            'French-seam Tee',
+            'Lightweight Coat',
+            'Oversized Knit',
+            'Hopsack Trouser',
+            'Garment-dyed Hoodie',
+            'Cropped Anorak',
+            'Selvedge Shorts',
+            'Field Vest',
+            'Boxy Overshirt',
         ],
     },
     'general': {
@@ -323,9 +384,9 @@ def _detect_topic() -> str:
     return 'general'
 
 
-def seed_random_products(*, count: int = 30, topic: str = '',
-                         currency: str = 'USD',
-                         wipe_random: bool = False) -> SeedSummary:
+def seed_random_products(
+    *, count: int = 30, topic: str = '', currency: str = 'USD', wipe_random: bool = False
+) -> SeedSummary:
     """Generate N random products themed for the active storefront.
 
     Idempotent across runs at the title level — adding more re-runs only
