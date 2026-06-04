@@ -1,0 +1,24 @@
+{% extends "storefront/base.html" %}
+
+{% block title %}{{ facet_value }} — {{ facet_label }} — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap">
+    <p class="eyebrow" style="margin-bottom: .5rem;">
+      <a href="/products/" style="color: var(--muted);">All books</a> · {{ facet_label }}
+    </p>
+    <h1 class="display display-xl" style="margin: 0 0 2rem;">{{ facet_value }}</h1>
+
+    {% if products %}
+    <div class="grid-books">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lede">Nothing on this shelf yet. Browse the <a href="/products/" style="border-bottom:1px dotted var(--rule);">full catalogue</a>.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

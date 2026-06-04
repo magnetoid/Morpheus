@@ -22,6 +22,11 @@ class BookProductPlugin(Plugin):
         # Full GraphQL control: bookProduct query + setBookProduct mutation.
         self.register_graphql_extension('plugins.installed.book_product.graphql.queries')
         self.register_graphql_extension('plugins.installed.book_product.graphql.mutations')
+        # Facet landing pages: /publisher/, /series/, /imprint/, /format/,
+        # /language/ — each lists the books carrying that attribute value.
+        self.register_urls(
+            'plugins.installed.book_product.urls', prefix='', namespace='book_product'
+        )
 
     def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
         # Book details + 3D cover preview on the PDP. Self-gates on a

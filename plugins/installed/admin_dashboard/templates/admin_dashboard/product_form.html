@@ -1084,6 +1084,17 @@
       <div class="book-3d rounded border border-[color:var(--border)] bg-[color:var(--surface,#faf8f3)]" data-pdf-url="{{ book_widget.book.cover_pdf.url }}" style="height:340px;"></div>
       {% include "book_product/_book_3d.html" %}
       {% endif %}
+      {# Facet pages this book appears on — each attribute is a browsable category page. #}
+      {% if book_widget.facets %}
+      <div class="border-t border-[color:var(--border)] pt-3">
+        <div class="text-xs font-medium text-[color:var(--text-muted)] mb-2">Appears on these pages</div>
+        <div class="flex flex-wrap gap-1.5">
+          {% for f in book_widget.facets %}
+          <a href="{{ f.url }}" target="_blank" rel="noopener" class="pill pill-neutral text-xs hover:underline" title="{{ f.label }}">{{ f.value }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
 

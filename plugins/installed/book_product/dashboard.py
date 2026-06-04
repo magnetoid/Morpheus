@@ -29,6 +29,8 @@ _INT_FIELDS = ('page_count', 'width_mm', 'height_mm', 'spine_mm', 'weight_g')
 
 def book_widget_context(product) -> dict[str, Any]:
     """Context for the 'Book details' card on the product-edit page."""
+    from django.utils.text import slugify  # noqa: PLC0415
+
     from plugins.installed.book_product.models import (  # noqa: PLC0415
         BookProduct,
         PaperType,
@@ -40,7 +42,46 @@ def book_widget_context(product) -> dict[str, Any]:
         'book': book,
         'print_types': PrintType.choices,
         'paper_types': PaperType.choices,
+        'facets': _facets(book, slugify) if book else [],
     }
+
+
+def _facets(book, slugify) -> list[dict]:
+    """The category-style facet pages this book appears on (label, value, url)."""
+    out: list[dict] = []
+    if book.author:
+        out.append(
+            {'label': 'Author', 'value': book.author, 'url': f'/author/{slugify(book.author)}/'}
+        )
+    if book.publisher:
+        out.append(
+            {
+                'label': 'Publisher',
+                'value': book.publisher,
+                'url': f'/publisher/{slugify(book.publisher)}/',
+            }
+        )
+    if book.series:
+        out.append(
+            {'label': 'Series', 'value': book.series, 'url': f'/series/{slugify(book.series)}/'}
+        )
+    if book.imprint:
+        out.append(
+            {'label': 'Imprint', 'value': book.imprint, 'url': f'/imprint/{slugify(book.imprint)}/'}
+        )
+    if book.print_type:
+        out.append(
+            {
+                'label': 'Format',
+                'value': book.get_print_type_display(),
+                'url': f'/format/{book.print_type}/',
+            }
+        )
+    if book.language:
+        out.append(
+            {'label': 'Language', 'value': book.language, 'url': f'/language/{book.language}/'}
+        )
+    return out
 
 
 def save_book_fields(product, post, files=None) -> None:
