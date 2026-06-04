@@ -4,9 +4,11 @@ from __future__ import annotations
 
 _NAV_CACHE_KEY = 'storefront:nav_categories:v1'
 _NAV_AUTHORS_CACHE_KEY = 'storefront:nav_authors:v1'
+_NAV_BOOKS_CACHE_KEY = 'storefront:nav_featured_books:v1'
 _NAV_CACHE_TTL = 300
 _MAX_CHILDREN = 8
 _MAX_AUTHORS = 30
+_MAX_NAV_BOOKS = 8
 
 
 def nav_categories(request):
@@ -75,3 +77,48 @@ def nav_authors(request):
     except Exception:  # noqa: BLE001
         data = []
     return {'nav_authors': data}
+
+
+def _cover_url(image_row) -> str:
+    """Prefer the WebP variant (smaller) for a ProductImage; '' when absent."""
+    if getattr(image_row, 'webp_image', None) and image_row.webp_image.name:
+        return image_row.webp_image.url
+    if getattr(image_row, 'image', None) and image_row.image.name:
+        return image_row.image.url
+    return ''
+
+
+def nav_featured_books(request):
+    """A handful of book covers for the mega menu — featured first, then recent.
+
+    Only active products that actually have a cover image are included (a
+    coverless tile is worse than fewer tiles). Cached + fail-soft.
+    """
+    from django.core.cache import cache  # noqa: PLC0415
+
+    cached = cache.get(_NAV_BOOKS_CACHE_KEY)
+    if cached is not None:
+        return {'nav_featured_books': cached}
+
+    data: list[dict] = []
+    try:
+        from plugins.installed.catalog.models import Product  # noqa: PLC0415
+
+        seen: set = set()
+        qs = (
+            Product.objects.filter(status='active')
+            .order_by('-is_featured', '-created_at')
+            .prefetch_related('images')[: _MAX_NAV_BOOKS * 4]
+        )
+        for p in qs:
+            cover = _cover_url(p.primary_image)
+            if not cover or p.id in seen:
+                continue
+            seen.add(p.id)
+            data.append({'name': p.name, 'slug': p.slug, 'image': cover})
+            if len(data) >= _MAX_NAV_BOOKS:
+                break
+        cache.set(_NAV_BOOKS_CACHE_KEY, data, _NAV_CACHE_TTL)
+    except Exception:  # noqa: BLE001 — nav must never break a page render
+        data = []
+    return {'nav_featured_books': data}
