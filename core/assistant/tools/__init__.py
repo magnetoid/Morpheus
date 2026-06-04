@@ -7,6 +7,10 @@ Each tool wraps a single capability the Assistant can use to inspect or
 operate the platform. Tools follow the same `Tool` shape as the agent
 kernel so the runtime treats them uniformly.
 """
+# Lazy (in-function) imports keep tool resolution working when a sub-module
+# fails to import — the established pattern in this package.
+# ruff: noqa: PLC0415
+
 from __future__ import annotations
 
 from core.assistant.tools.database import (
@@ -17,11 +21,6 @@ from core.assistant.tools.database import (
 from core.assistant.tools.delegate import (
     invoke_agent_tool,
     list_available_agents_tool,
-)
-from core.assistant.tools.spawn import (
-    poll_workers_tool,
-    spawn_workers_tool,
-    wait_for_workers_tool,
 )
 from core.assistant.tools.ecommerce import (
     analytics_summary_tool,
@@ -52,6 +51,11 @@ from core.assistant.tools.ecommerce_writes import (
     products_update_price_tool,
     products_update_status_tool,
 )
+from core.assistant.tools.spawn import (
+    poll_workers_tool,
+    spawn_workers_tool,
+    wait_for_workers_tool,
+)
 
 
 def get_default_tools() -> list:
@@ -65,13 +69,20 @@ def get_default_tools() -> list:
     """
     # Local import — keeps `memory.py` lazy so failed imports don't break
     # tool resolution at construct time.
+    from core.assistant.tools.admin_ops import (
+        plugins_toggle_tool,
+        settings_set_tool,
+        updates_apply_tool,
+        updates_status_tool,
+    )
+    from core.assistant.tools.health import platform_circuit_breakers_tool
     from core.assistant.tools.memory import (
         memory_forget_tool,
         memory_recall_tool,
         memory_remember_tool,
     )
     from core.assistant.tools.navigation import dashboard_navigate_tool
-    from core.assistant.tools.health import platform_circuit_breakers_tool
+
     return [
         # Database — schema introspection
         list_models_tool,
@@ -116,6 +127,11 @@ def get_default_tools() -> list:
         dashboard_navigate_tool,
         # Platform health — circuit breakers, dependency state, "is X down".
         platform_circuit_breakers_tool,
+        # Platform ops — self-update + store config + plugin toggles (gated).
+        updates_status_tool,
+        updates_apply_tool,
+        settings_set_tool,
+        plugins_toggle_tool,
         # Delegate — fan out N parallel Workers, then collect their results.
         # spawn_workers_tool is the primary path; invoke_agent_tool is a
         # back-compat shim that wraps spawn + wait_for.
