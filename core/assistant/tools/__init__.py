@@ -72,8 +72,10 @@ def get_default_tools() -> list:
     from core.assistant.tools.admin_ops import (
         plugins_toggle_tool,
         settings_set_tool,
+        theme_activate_tool,
         updates_apply_tool,
         updates_status_tool,
+        workflows_run_tool,
     )
     from core.assistant.tools.health import platform_circuit_breakers_tool
     from core.assistant.tools.memory import (
@@ -132,6 +134,8 @@ def get_default_tools() -> list:
         updates_apply_tool,
         settings_set_tool,
         plugins_toggle_tool,
+        theme_activate_tool,
+        workflows_run_tool,
         # Delegate — fan out N parallel Workers, then collect their results.
         # spawn_workers_tool is the primary path; invoke_agent_tool is a
         # back-compat shim that wraps spawn + wait_for.

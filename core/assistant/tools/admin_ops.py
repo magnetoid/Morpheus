@@ -159,3 +159,84 @@ def plugins_toggle_tool(
         output={'plugin': plugin, 'enabled': bool(enabled)},
         display=f'{plugin} {state} (restart to apply fully).',
     )
+
+
+@tool(
+    name='theme.activate',
+    description=(
+        'Switch the active storefront theme by name. SITE-WIDE change — after '
+        'the user approves, pass confirmed=True, hard_gate_ack="YES", and '
+        'echo=<the theme name typed back>.'
+    ),
+    scopes=['system.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'theme': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+            'hard_gate_ack': {'type': 'string', 'default': ''},
+            'echo': {'type': 'string', 'default': ''},
+        },
+        'required': ['theme'],
+    },
+    requires_approval=True,
+)
+def theme_activate_tool(
+    *, theme: str, confirmed: bool = False, hard_gate_ack: str = '', echo: str = ''
+) -> ToolResult:
+    _require_confirmed(confirmed)
+    _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=theme, echo=echo)
+    from themes.models import ThemeConfig  # noqa: PLC0415
+    from themes.registry import theme_registry  # noqa: PLC0415
+
+    if theme_registry.get(theme) is None:
+        discovered = sorted(t.name for t in theme_registry.all_themes())
+        raise ToolError(f'theme {theme!r} not found among {discovered}')
+    row, _ = ThemeConfig.objects.get_or_create(theme_name=theme)
+    row.is_active = True
+    row.save()  # ThemeConfig.save() deactivates the others
+    theme_registry.set_active(theme)
+    return ToolResult(output={'active_theme': theme}, display=f'Activated theme {theme}.')
+
+
+@tool(
+    name='workflows.run',
+    description=(
+        'Run a saved workflow by name against a payload. dry_run=True (default) '
+        'evaluates safely without firing actions; to actually fire, pass '
+        'dry_run=False AND confirmed=True after the user approves.'
+    ),
+    scopes=['system.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'payload': {'type': 'object', 'default': {}},
+            'dry_run': {'type': 'boolean', 'default': True},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['name'],
+    },
+    requires_approval=True,
+)
+def workflows_run_tool(
+    *, name: str, payload: dict | None = None, dry_run: bool = True, confirmed: bool = False
+) -> ToolResult:
+    if not dry_run:
+        _require_confirmed(confirmed)
+    from plugins.installed.workflows.engine import run_workflow  # noqa: PLC0415
+    from plugins.installed.workflows.models import Workflow  # noqa: PLC0415
+
+    wf = Workflow.objects.filter(name__iexact=name, is_active=True).first()
+    if wf is None:
+        raise ToolError(f'no active workflow named {name!r}')
+    run = run_workflow(wf, payload or {}, dry_run=dry_run)
+    return ToolResult(
+        output={
+            'workflow': name,
+            'dry_run': dry_run,
+            'state': getattr(run, 'state', None),
+            'run_id': str(getattr(run, 'id', '')),
+        },
+        display=f'Workflow {name}: {getattr(run, "state", "?")} ({"dry-run" if dry_run else "live"}).',
+    )
