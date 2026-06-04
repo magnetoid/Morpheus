@@ -19,10 +19,9 @@ class BookProductPlugin(Plugin):
     requires = ['catalog']
 
     def ready(self) -> None:
-        # URLs (the 3D-preview asset endpoint) are registered in a later phase
-        # once the views exist — registering a missing module here would break
-        # boot.
-        pass
+        # Full GraphQL control: bookProduct query + setBookProduct mutation.
+        self.register_graphql_extension('plugins.installed.book_product.graphql.queries')
+        self.register_graphql_extension('plugins.installed.book_product.graphql.mutations')
 
     def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
         # Book details + 3D cover preview on the PDP. Self-gates on a

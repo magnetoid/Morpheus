@@ -609,22 +609,66 @@ def _product_codes(product_row) -> list[dict]:
 
 
 def _book_specs(slug: str) -> list[dict]:
-    """Return ``[{label, value, link?}, ...]`` of book metafields for the PDP."""
+    """Book attributes for the PDP ``[{label, value, link?}, ...]``.
+
+    Reads the BookProduct **model** first (the book_product plugin); falls back
+    to the legacy ``book.*`` metafields only when no BookProduct row exists.
+    Both paths are lazy + fail-soft.
+    """
+    from urllib.parse import urlencode
+
+    from django.utils.text import slugify
+
+    model_specs = _book_specs_from_model(slug, slugify, urlencode)
+    if model_specs is not None:
+        return model_specs
+    return _book_specs_from_metafields(slug, slugify, urlencode)
+
+
+def _book_specs_from_model(slug, slugify, urlencode):  # noqa: PLR0911 — flat field map
+    try:
+        from plugins.installed.book_product.models import BookProduct
+    except Exception:  # noqa: BLE001 — plugin absent
+        return None
+    try:
+        book = BookProduct.objects.select_related('product').filter(product__slug=slug).first()
+    except Exception:  # noqa: BLE001
+        return None
+    if book is None:
+        return None
+    author_link = f'/author/{slugify(book.author)}/' if book.author else ''
+    pub_link = '/products/?' + urlencode({'publisher': book.publisher}) if book.publisher else ''
+    series = f'{book.series} ({book.series_position})' if book.series_position else book.series
+    rows = [
+        ('Author', book.author, author_link),
+        ('Publisher', book.publisher, pub_link),
+        ('Imprint', book.imprint, ''),
+        ('Published', book.publication_date.strftime('%B %Y') if book.publication_date else '', ''),
+        ('Format', book.get_print_type_display() if book.print_type else '', ''),
+        ('Paper', book.get_paper_type_display() if book.paper_type else '', ''),
+        ('Pages', str(book.page_count) if book.page_count else '', ''),
+        ('Language', book.language, ''),
+        ('Edition', book.edition, ''),
+        ('Series', series, ''),
+    ]
+    return [
+        {'label': lbl, 'value': str(val), 'link': link}
+        for lbl, val, link in rows
+        if val not in (None, '')
+    ]
+
+
+def _book_specs_from_metafields(slug, slugify, urlencode):
     try:
         from plugins.installed.catalog.models import Product
         from plugins.installed.metafields.models import Metafield
-    except Exception:  # noqa: BLE001
-        return []
-    try:
+
         product = Product.objects.filter(slug=slug).first()
         if product is None:
             return []
         meta = Metafield.objects.for_obj(product, ns='book')
     except Exception:  # noqa: BLE001
         return []
-    from urllib.parse import urlencode
-    from django.utils.text import slugify
-
     out = []
     for key, label, link_kind in _BOOK_SPEC_FIELDS:
         value = meta.get(f'book.{key}') or meta.get(key)
