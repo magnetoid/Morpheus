@@ -1052,6 +1052,19 @@ def author_detail(request, slug):
         {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
         {'name': author_name, 'url': request.build_absolute_uri(request.path)},
     ]
+    # Merchant-editable per-author SEO + intro (Book taxonomies dashboard).
+    book_term = None
+    try:
+        from plugins.installed.book_product.models import BookTaxonomyTerm
+
+        book_term = BookTaxonomyTerm.objects.filter(taxonomy='author', slug=slug).first()
+    except Exception:  # noqa: BLE001
+        book_term = None
+    default_desc = (
+        bio_page.excerpt
+        if bio_page and bio_page.excerpt
+        else f'Books by {author_name}, on the dot books shelf.'
+    )
     return render(
         request,
         'storefront/author_detail.html',
@@ -1062,11 +1075,16 @@ def author_detail(request, slug):
             'bib_items': bib_items,
             'breadcrumb_items': breadcrumb_items,
             'bio_page': bio_page,
-            'seo_title': f'{author_name} — dot books',
+            'book_term': book_term,
+            'seo_title': (
+                book_term.meta_title
+                if book_term and book_term.meta_title
+                else f'{author_name} — dot books'
+            ),
             'seo_description': (
-                bio_page.excerpt
-                if bio_page and bio_page.excerpt
-                else f'Books by {author_name}, on the dot books shelf.'
+                book_term.meta_description
+                if book_term and book_term.meta_description
+                else default_desc
             )[:160],
             'seo_og_type': 'profile',
         },

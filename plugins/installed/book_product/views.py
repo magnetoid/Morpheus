@@ -18,7 +18,8 @@ def _active_products(books):
     return [b.product for b in books if getattr(b.product, 'status', '') == 'active']
 
 
-def _render(request, label, value, products):
+def _render(request, label, value, products, *, term=None):
+    seo_title = term.meta_title if (term and term.meta_title) else f'{value} — {label} — dot books'
     return render(
         request,
         'storefront/book_facet.html',
@@ -26,6 +27,9 @@ def _render(request, label, value, products):
             'facet_label': label,
             'facet_value': value,
             'products': products,
+            'term': term,
+            'seo_title': seo_title,
+            'seo_description': term.meta_description if term else '',
             'active_nav': '',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/'},
@@ -36,8 +40,9 @@ def _render(request, label, value, products):
     )
 
 
-def _slug_facet(request, field, slug, label, *, order_by='-product__is_featured'):
-    """Landing page for a free-text book field matched by slugify(value)."""
+def _slug_facet(request, field, slug, label, *, taxonomy=None, order_by='-product__is_featured'):
+    """Landing page for a free-text book field matched by slugify(value).
+    When `taxonomy` is given, its BookTaxonomyTerm (if any) supplies SEO + intro."""
     from plugins.installed.book_product.models import BookProduct  # noqa: PLC0415
 
     values = BookProduct.objects.exclude(**{field: ''}).values_list(field, flat=True).distinct()
@@ -49,7 +54,12 @@ def _slug_facet(request, field, slug, label, *, order_by='-product__is_featured'
         .select_related('product')
         .order_by(order_by, '-product__created_at')
     )
-    return _render(request, label, match, _active_products(books))
+    term = None
+    if taxonomy:
+        from plugins.installed.book_product.models import BookTaxonomyTerm  # noqa: PLC0415
+
+        term = BookTaxonomyTerm.objects.filter(taxonomy=taxonomy, slug=slug).first()
+    return _render(request, label, match, _active_products(books), term=term)
 
 
 def _value_facet(request, field, value, label, display):
@@ -68,16 +78,18 @@ def _value_facet(request, field, value, label, display):
 
 
 def publisher_detail(request, slug):
-    return _slug_facet(request, 'publisher', slug, 'Publisher')
+    return _slug_facet(request, 'publisher', slug, 'Publisher', taxonomy='publisher')
 
 
 def imprint_detail(request, slug):
-    return _slug_facet(request, 'imprint', slug, 'Imprint')
+    return _slug_facet(request, 'imprint', slug, 'Imprint', taxonomy='imprint')
 
 
 def series_detail(request, slug):
     # Series reads best in reading order.
-    return _slug_facet(request, 'series', slug, 'Series', order_by='series_position')
+    return _slug_facet(
+        request, 'series', slug, 'Series', taxonomy='series', order_by='series_position'
+    )
 
 
 def format_detail(request, value):

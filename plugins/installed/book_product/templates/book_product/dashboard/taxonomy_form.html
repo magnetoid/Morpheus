@@ -1,0 +1,44 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ name }} · Book taxonomies · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex items-center justify-between gap-3 flex-wrap">
+    <h1 class="text-xl font-semibold tracking-tight">{{ taxonomy_label }} · {{ name }}</h1>
+    <a href="{{ page_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-sm"><i data-lucide="external-link" class="h-4 w-4"></i> View landing page</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="card card-padded space-y-4">
+    {% csrf_token %}
+    <div>
+      <label class="block text-sm font-medium mb-1">Display name</label>
+      <input type="text" name="name" class="input w-full" value="{{ term.name|default:name }}">
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">Shown as the page heading. The URL slug (<code>{{ slug }}</code>) stays fixed so existing links keep working.</p>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Intro / description</label>
+      <textarea name="description" rows="4" class="input w-full">{{ term.description|default:'' }}</textarea>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">Editorial blurb shown at the top of the landing page.</p>
+    </div>
+    <hr class="border-[color:var(--border)]">
+    <div>
+      <label class="block text-sm font-medium mb-1">SEO title</label>
+      <input type="text" name="meta_title" class="input w-full" value="{{ term.meta_title|default:'' }}" maxlength="200" placeholder="{{ name }} — dot books">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">SEO meta description</label>
+      <textarea name="meta_description" rows="3" class="input w-full" maxlength="320">{{ term.meta_description|default:'' }}</textarea>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Image</label>
+      {% if term.image %}<p class="text-xs text-[color:var(--text-muted)] mb-1">Current: <a href="{{ term.image.url }}" target="_blank" rel="noopener" class="underline">{{ term.image.name }}</a></p>{% endif %}
+      <input type="file" name="image" accept="image/*" class="input w-full">
+    </div>
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

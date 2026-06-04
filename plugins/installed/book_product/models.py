@@ -80,3 +80,39 @@ class BookProduct(models.Model):
 
     def __str__(self) -> str:
         return f'{self.author} — {self.product_id}' if self.author else str(self.product_id)
+
+
+class BookTaxonomy(models.TextChoices):
+    AUTHOR = 'author', 'Author'
+    PUBLISHER = 'publisher', 'Publisher'
+    SERIES = 'series', 'Series'
+    IMPRINT = 'imprint', 'Imprint'
+
+
+class BookTaxonomyTerm(models.Model):
+    """Per-term SEO/metadata overlay for a book taxonomy value.
+
+    Terms (a given author, publisher, series, imprint) derive from BookProduct
+    field values; a row here exists only when the merchant customizes one's
+    landing page — its SEO + intro blurb + image — exactly like editing a
+    Category/Collection. The facet page (/author/<slug>/ etc.) renders it.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    taxonomy = models.CharField(max_length=20, choices=BookTaxonomy.choices, db_index=True)
+    slug = models.SlugField(max_length=200, db_index=True)
+    name = models.CharField(max_length=300)
+    description = models.TextField(blank=True)
+    meta_title = models.CharField(max_length=200, blank=True)
+    meta_description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='book_taxonomies/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('taxonomy', 'slug')]
+        verbose_name = 'Book taxonomy term'
+        verbose_name_plural = 'Book taxonomy terms'
+
+    def __str__(self) -> str:
+        return f'{self.get_taxonomy_display()}: {self.name}'

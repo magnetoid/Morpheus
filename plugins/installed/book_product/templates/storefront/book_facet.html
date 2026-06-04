@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 
-{% block title %}{{ facet_value }} — {{ facet_label }} — dot books{% endblock %}
+{% block title %}{{ seo_title|default:facet_value }}{% endblock %}
 
 {% block content %}
 <section style="padding: 3rem 0 5rem;">
@@ -8,7 +8,10 @@
     <p class="eyebrow" style="margin-bottom: .5rem;">
       <a href="/products/" style="color: var(--muted);">All books</a> · {{ facet_label }}
     </p>
-    <h1 class="display display-xl" style="margin: 0 0 2rem;">{{ facet_value }}</h1>
+    <h1 class="display display-xl" style="margin: 0 0 {% if term.description %}1rem{% else %}2rem{% endif %};">{{ facet_value }}</h1>
+
+    {% if term.image %}<img src="{{ term.image.url }}" alt="{{ facet_value }}" style="max-width:160px; border-radius:8px; margin:0 0 1.25rem;">{% endif %}
+    {% if term.description %}<div class="lede" style="max-width:60ch; margin:0 0 2.25rem;">{{ term.description|linebreaks }}</div>{% endif %}
 
     {% if products %}
     <div class="grid-books">

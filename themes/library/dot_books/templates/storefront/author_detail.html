@@ -20,7 +20,10 @@
     <h1 class="display display-xl" style="margin: 1rem 0 1rem;">
       {{ author_name }}<span class="text-accent">.</span>
     </h1>
-    {% if bio_page %}
+    {% if book_term.description %}
+      {% if book_term.image %}<img src="{{ book_term.image.url }}" alt="{{ author_name }}" style="max-width:160px; border-radius:8px; margin:0 0 1.25rem;">{% endif %}
+      <div class="lede">{{ book_term.description|linebreaks }}</div>
+    {% elif bio_page %}
       {% if bio_page.excerpt %}<p class="lede">{{ bio_page.excerpt }}</p>{% endif %}
       {% if bio_page.body %}
       <div style="margin-top: 2rem; font-family: var(--serif); font-size: 1.05rem; line-height: 1.7; color: var(--ink-2);">

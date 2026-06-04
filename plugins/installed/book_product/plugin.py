@@ -27,6 +27,28 @@ class BookProductPlugin(Plugin):
         self.register_urls(
             'plugins.installed.book_product.urls', prefix='', namespace='book_product'
         )
+        # Dashboard: Book taxonomies (per-term SEO editing) under Products.
+        self.register_urls(
+            'plugins.installed.book_product.urls_dashboard',
+            prefix='dashboard/book-taxonomies/',
+            namespace='book_product_dashboard',
+        )
+
+    def contribute_dashboard_pages(self) -> list:
+        from morpheus import DashboardPage  # noqa: PLC0415
+
+        return [
+            DashboardPage(
+                label='Book taxonomies',
+                slug='book-taxonomies',
+                view='plugins.installed.book_product.dashboard_taxonomies.taxonomies_list',
+                icon='tags',
+                section='catalog',
+                order=40,
+                nav='main',
+                url='/dashboard/book-taxonomies/',
+            ),
+        ]
 
     def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
         # Book details + 3D cover preview on the PDP. Self-gates on a
