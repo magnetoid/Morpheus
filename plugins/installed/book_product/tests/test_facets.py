@@ -52,6 +52,27 @@ class BookFacetPageTests(TestCase):
         self.assertEqual(self.client.get('/publisher/nobody/').status_code, 404)
         self.assertEqual(self.client.get('/format/hardcover/').status_code, 404)  # no books
 
+    def test_pdp_specs_link_to_facets(self):
+        from plugins.installed.storefront.views.catalog import _book_specs
+
+        _book(
+            'linked',
+            'L-1',
+            author='Borges',
+            publisher='Sur',
+            print_type='hardcover',
+            language='en',
+            imprint='Vintage',
+            series='Ficciones',
+        )
+        links = {s['label']: s['link'] for s in _book_specs('linked')}
+        self.assertEqual(links['Author'], '/author/borges/')
+        self.assertEqual(links['Publisher'], '/publisher/sur/')
+        self.assertEqual(links['Imprint'], '/imprint/vintage/')
+        self.assertEqual(links['Format'], '/format/hardcover/')
+        self.assertEqual(links['Language'], '/language/en/')
+        self.assertEqual(links['Series'], '/series/ficciones/')
+
     def test_dashboard_widget_facet_links(self):
         from plugins.installed.book_product.dashboard import book_widget_context
 

@@ -636,20 +636,28 @@ def _book_specs_from_model(slug, slugify, urlencode):  # noqa: PLR0911 — flat 
         return None
     if book is None:
         return None
-    author_link = f'/author/{slugify(book.author)}/' if book.author else ''
-    pub_link = '/products/?' + urlencode({'publisher': book.publisher}) if book.publisher else ''
+
+    # Each value links to its facet landing page (book_product) — the PDP's
+    # book attributes are browsable like categories.
+    def _link(prefix, val):
+        return f'/{prefix}/{slugify(val)}/' if val else ''
+
     series = f'{book.series} ({book.series_position})' if book.series_position else book.series
     rows = [
-        ('Author', book.author, author_link),
-        ('Publisher', book.publisher, pub_link),
-        ('Imprint', book.imprint, ''),
+        ('Author', book.author, _link('author', book.author)),
+        ('Publisher', book.publisher, _link('publisher', book.publisher)),
+        ('Imprint', book.imprint, _link('imprint', book.imprint)),
         ('Published', book.publication_date.strftime('%B %Y') if book.publication_date else '', ''),
-        ('Format', book.get_print_type_display() if book.print_type else '', ''),
+        (
+            'Format',
+            book.get_print_type_display() if book.print_type else '',
+            f'/format/{book.print_type}/' if book.print_type else '',
+        ),
         ('Paper', book.get_paper_type_display() if book.paper_type else '', ''),
         ('Pages', str(book.page_count) if book.page_count else '', ''),
-        ('Language', book.language, ''),
+        ('Language', book.language, f'/language/{book.language}/' if book.language else ''),
         ('Edition', book.edition, ''),
-        ('Series', series, ''),
+        ('Series', series, _link('series', book.series)),
     ]
     return [
         {'label': lbl, 'value': str(val), 'link': link}
