@@ -92,6 +92,56 @@ class AutofillTests(TestCase):
         self.assertEqual(meta.description, 'A wonderful read.')
         self.assertTrue(meta.auto_filled)
 
+    def test_autofill_stores_clean_title_without_brand(self):
+        # The brand is applied at render via the title_template, not baked in.
+        product = Product.objects.create(
+            name='Brandless Title',
+            slug='brandless-title',
+            sku='S2',
+            price=Money(10, 'USD'),
+            status='active',
+        )
+        meta = autofill_meta_for(product)
+        self.assertEqual(meta.title, 'Brandless Title')
+        self.assertNotIn('—', meta.title)
+
+
+class DocumentTitleTests(TestCase):
+    def test_brand_falls_back_to_store_name(self):
+        from core.models import StoreSettings
+        from plugins.installed.seo.services.meta import brand_name
+
+        StoreSettings.objects.all().delete()
+        StoreSettings.objects.create(store_name='dotbooks')
+        self.assertEqual(brand_name(), 'dotbooks')
+
+    def test_document_title_applies_template_and_brand(self):
+        from core.models import StoreSettings
+        from plugins.installed.seo.services.meta import format_document_title
+
+        StoreSettings.objects.all().delete()
+        StoreSettings.objects.create(store_name='dotbooks')
+        self.assertEqual(format_document_title('My Page'), 'My Page — dotbooks')
+        # Idempotent — never double-brands an already-suffixed title.
+        self.assertEqual(format_document_title('My Page — dotbooks'), 'My Page — dotbooks')
+
+    def test_object_page_gets_branded_document_title(self):
+        from core.models import StoreSettings
+
+        StoreSettings.objects.all().delete()
+        StoreSettings.objects.create(store_name='dotbooks')
+        product = Product.objects.create(
+            name='Branded Book',
+            slug='branded-book',
+            sku='S3',
+            price=Money(10, 'USD'),
+            status='active',
+        )
+        out = resolve_meta(obj=product, fallback_title='ignored')
+        self.assertEqual(out.title, 'Branded Book')  # clean (og/schema use this)
+        self.assertEqual(out.document_title, 'Branded Book — dotbooks')  # <title>
+        self.assertIn('<title>Branded Book — dotbooks</title>', out.to_html())
+
 
 class RedirectTests(TestCase):
     def test_resolve_redirect_returns_target(self):

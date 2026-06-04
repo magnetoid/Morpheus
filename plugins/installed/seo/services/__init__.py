@@ -67,6 +67,7 @@ from .jsonld import (
 from .sitemaps import (
     _sitemap_max_urls,
     iter_sitemap_entries,
+    regenerate_sitemap,
     render_image_sitemap_xml,
     render_news_sitemap_xml,
     render_opensearch_xml,
@@ -157,6 +158,7 @@ __all__ = [
     'render_sitemap_index_xml',
     'render_sitemap_xml',
     'sitemap_counts',
+    'regenerate_sitemap',
     # crawler files
     'AI_CRAWLERS',
     'get_ai_crawler_policy',

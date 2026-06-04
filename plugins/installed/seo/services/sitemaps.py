@@ -71,6 +71,79 @@ def _iter_webstory_entries(base: str) -> Iterable[dict]:
         logger.debug('seo: sitemap webstories skipped: %s', e)
 
 
+def _iter_book_facet_entries(base: str) -> Iterable[dict]:
+    """Book-taxonomy landing pages owned by the book_product plugin:
+    ``/publisher/<slug>/``, ``/series/<slug>/``, ``/imprint/<slug>/`` (matched by
+    ``slugify`` of the stored value) and ``/format/<value>/``,
+    ``/language/<value>/`` (matched by the raw enum value). Only taxonomies with
+    at least one *active* product are emitted — the facet views 404 on an empty
+    set, so listing an empty one would put a dead URL in the sitemap."""
+    try:
+        from django.utils.text import slugify
+
+        from plugins.installed.book_product.models import BookProduct
+
+        active = BookProduct.objects.filter(product__status='active')
+        for prefix, field in (
+            ('publisher', 'publisher'),
+            ('series', 'series'),
+            ('imprint', 'imprint'),
+        ):
+            seen: set[str] = set()
+            for value in active.exclude(**{field: ''}).values_list(field, flat=True):
+                slug = slugify(value or '')
+                if not slug or slug in seen:
+                    continue
+                seen.add(slug)
+                yield {
+                    'loc': urljoin(base, f'/{prefix}/{slug}/'),
+                    'changefreq': 'weekly',
+                    'priority': '0.5',
+                }
+        for prefix, field in (('format', 'print_type'), ('language', 'language')):
+            seen = set()
+            for raw in active.exclude(**{field: ''}).values_list(field, flat=True):
+                value = (raw or '').strip()
+                if not value or value in seen:
+                    continue
+                seen.add(value)
+                yield {
+                    'loc': urljoin(base, f'/{prefix}/{value}/'),
+                    'changefreq': 'weekly',
+                    'priority': '0.5',
+                }
+    except Exception as e:  # noqa: BLE001 — book_product plugin optional
+        logger.debug('seo: sitemap book facets skipped: %s', e)
+
+
+def _iter_cms_page_entries(base: str) -> Iterable[dict]:
+    """Every *published* CMS page, so any page a merchant adds shows up in the
+    sitemap automatically. Journal posts live at ``/journal/<slug>/``; every
+    other page renders through the CMS resolver at ``/p/<slug>/``. Scheduled
+    (future ``publish_at``) pages are held back until they go live."""
+    try:
+        from django.utils import timezone
+
+        from plugins.installed.cms.models import Page
+
+        now = timezone.now()
+        for p in Page.objects.filter(state='published').only(
+            'slug', 'updated_at', 'publish_at', 'metadata'
+        ):
+            if p.publish_at and p.publish_at > now:
+                continue
+            is_journal = (p.metadata or {}).get('category') == 'journal'
+            path = f'/journal/{p.slug}/' if is_journal else f'/p/{p.slug}/'
+            yield {
+                'loc': urljoin(base, path),
+                'lastmod': p.updated_at.isoformat() if p.updated_at else '',
+                'changefreq': 'monthly',
+                'priority': '0.5',
+            }
+    except Exception as e:  # noqa: BLE001 — cms plugin optional
+        logger.debug('seo: sitemap cms pages skipped: %s', e)
+
+
 def iter_sitemap_entries() -> Iterable[dict]:
     """Yield entries that should appear in the sitemap. Pulls from:
 
@@ -122,6 +195,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
         logger.debug('seo: sitemap catalog skipped: %s', e)
 
     yield from _iter_author_entries(base)
+    yield from _iter_book_facet_entries(base)
     yield from _iter_webstory_entries(base)
 
     # Static editorial routes shipped by the storefront plugin. These don't
@@ -140,21 +214,9 @@ def iter_sitemap_entries() -> Iterable[dict]:
     for path in ('/shipping/', '/returns/'):
         yield {'loc': urljoin(base, path), 'changefreq': 'monthly', 'priority': '0.4'}
 
-    # Journal entries — pulled from cms.Page rows tagged metadata.category=='journal'.
-    try:
-        from plugins.installed.cms.models import Page
-
-        for j in Page.objects.filter(state='published', metadata__category='journal').only(
-            'slug', 'updated_at'
-        ):
-            yield {
-                'loc': urljoin(base, f'/journal/{j.slug}/'),
-                'lastmod': j.updated_at.isoformat() if j.updated_at else '',
-                'changefreq': 'monthly',
-                'priority': '0.5',
-            }
-    except Exception as e:  # noqa: BLE001 — cms plugin is optional
-        logger.debug('seo: sitemap journal skipped: %s', e)
+    # Every published CMS page (journal posts + standalone /p/<slug>/ pages),
+    # so any page a merchant adds is picked up automatically.
+    yield from _iter_cms_page_entries(base)
 
     try:
         from plugins.installed.seo.models import SitemapEntry
@@ -174,7 +236,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
         logger.debug('seo: manual sitemap entries skipped: %s', e)
 
 
-def sitemap_counts() -> dict:
+def sitemap_counts() -> dict:  # noqa: PLR0912 — flat per-source classifier; branches are clearer than a dispatch table
     """Aggregate ``iter_sitemap_entries()`` into per-source counts +
     overall last-modified timestamps. Used by the Sitemap dashboard.
 
@@ -194,12 +256,15 @@ def sitemap_counts() -> dict:
         'collection_count': 0,
         'vendor_count': 0,
         'author_count': 0,
+        'book_facet_count': 0,
+        'page_count': 0,
         'journal_count': 0,
         'static_count': 0,
         'manual_count': 0,
         'last_modified': '',
         'truncated': False,
     }
+    book_facet_prefixes = ('/publisher/', '/series/', '/imprint/', '/format/', '/language/')
     base = _site_base_url().rstrip('/')
     static_routes = (
         '/',
@@ -229,8 +294,12 @@ def sitemap_counts() -> dict:
             counts['vendor_count'] += 1
         elif path.startswith('/author/'):
             counts['author_count'] += 1
+        elif path.startswith(book_facet_prefixes):
+            counts['book_facet_count'] += 1
         elif path.startswith('/journal/') and path != '/journal/':
             counts['journal_count'] += 1
+        elif path.startswith('/p/'):
+            counts['page_count'] += 1
         elif path in static_routes:
             counts['static_count'] += 1
         else:
@@ -242,6 +311,44 @@ def sitemap_counts() -> dict:
     if counts['total'] > cap:
         counts['truncated'] = True
     return counts
+
+
+def regenerate_sitemap(triggered_by: str = 'dashboard') -> dict:
+    """Re-publish the sitemap. It's rendered live on every request, so
+    'regenerate' means: recount entries, purge the CDN's cached copies of the
+    sitemap URLs (so the edge re-fetches the fresh document), and ping IndexNow
+    so crawlers re-pull. Every step is best-effort — a missing Cloudflare/
+    IndexNow config degrades gracefully. Returns a summary dict for the caller
+    (dashboard flash, management command, Linda tool)."""
+    from .indexnow import ping_indexnow
+
+    base = _site_base_url().rstrip('/')
+    paths = ('/sitemap.xml', '/sitemap-index.xml', '/sitemap-images.xml', '/sitemap-news.xml')
+    result = {'counts': {}, 'purged_zones': 0, 'pinged': False, 'ping_status': ''}
+    try:
+        result['counts'] = sitemap_counts()
+    except Exception as e:  # noqa: BLE001
+        logger.warning('seo.regenerate_sitemap: counts failed: %s', e)
+    try:
+        from plugins.installed.cloudflare.models import CloudflareZone
+        from plugins.installed.cloudflare.services import purge_urls
+
+        for zone in CloudflareZone.objects.filter(is_active=True):
+            purge_urls(
+                zone=zone,
+                urls=[f'https://{zone.domain}{p}' for p in paths],
+                triggered_by=triggered_by or 'sitemap-regenerate',
+            )
+            result['purged_zones'] += 1
+    except Exception as e:  # noqa: BLE001 — cloudflare plugin optional
+        logger.debug('seo.regenerate_sitemap: cloudflare purge skipped: %s', e)
+    try:
+        ping = ping_indexnow([f'{base}/sitemap-index.xml'])
+        result['pinged'] = bool(ping.get('ok'))
+        result['ping_status'] = str(ping.get('status') or ping.get('error') or '')
+    except Exception as e:  # noqa: BLE001
+        logger.warning('seo.regenerate_sitemap: ping failed: %s', e)
+    return result
 
 
 def _sitemap_max_urls() -> int:

@@ -907,6 +907,16 @@ def sitemap_page(request):
                 f'/dashboard/seo/sitemap/?ping={"ok" if ok else "err"}&status={status}'
             )
 
+        if action == 'regenerate':
+            from plugins.installed.seo.services import regenerate_sitemap
+
+            res = regenerate_sitemap(triggered_by='dashboard')
+            total = (res.get('counts') or {}).get('total', 0)
+            return HttpResponseRedirect(
+                f'/dashboard/seo/sitemap/?regen=ok&total={total}'
+                f'&purged={res.get("purged_zones", 0)}&pinged={int(bool(res.get("pinged")))}'
+            )
+
         if action == 'ping_url':
             target = (request.POST.get('target_url') or '').strip()
             if target:

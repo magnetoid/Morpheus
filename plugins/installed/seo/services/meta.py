@@ -19,6 +19,73 @@ from django.conf import settings
 from ._helpers import ResolvedMeta, site_settings, strip_html
 
 
+def brand_name() -> str:
+    """The merchant's brand for title suffixes — the SAME resolution the
+    ``seo_title`` tag uses, so object pages (autofilled titles) and template
+    pages agree: SiteSeoSettings.organization_name → core.StoreSettings.store_name
+    → settings.STORE_NAME. Fixes products reading 'Morpheus Store' while the rest
+    of the site reads the configured brand.
+    """
+    try:
+        name = (getattr(site_settings(), 'organization_name', '') or '').strip()
+        if name:
+            return name
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from core.models import StoreSettings
+
+        store = StoreSettings.objects.first()
+        name = (getattr(store, 'store_name', '') or '').strip()
+        if name:
+            return name
+    except Exception:  # noqa: BLE001
+        pass
+    return getattr(settings, 'STORE_NAME', '') or ''
+
+
+def format_document_title(page_title: str, *, category: str = '') -> str:
+    """Build the branded ``<title>`` the way Yoast/RankMath do: apply the
+    SEO settings ``title_template`` ({title}/{site_name}/{category}) to the
+    page name, using ``brand_name()`` for {site_name}.
+
+    Fallback chain: SEO settings title_template → ``{title} — {site_name}``;
+    {site_name} → SEO org name → store name → STORE_NAME. Idempotent (won't
+    double-append the brand) and clamps to ``title_max_length`` (default 60).
+    """
+    page_title = (page_title or '').strip()
+    brand = brand_name().strip()
+    # Don't double-brand a title that already carries the suffix.
+    if brand:
+        for sep in (' — ', ' – ', ' | ', ' - '):
+            if page_title.endswith(sep + brand):
+                page_title = page_title[: -len(sep + brand)].rstrip()
+                break
+
+    template_str = '{title} — {site_name}'
+    max_len = 60
+    try:
+        s = site_settings()
+        template_str = (getattr(s, 'title_template', '') or template_str).strip()
+        cap = int(getattr(s, 'title_max_length', 0) or 0)
+        if cap > 0:
+            max_len = cap
+    except Exception:  # noqa: BLE001 — never crash a render over SEO formatting
+        pass
+
+    if not page_title:
+        return (brand or 'Untitled')[:max_len]
+    if not brand or page_title == brand:
+        return page_title[:max_len]
+    try:
+        out = template_str.format(
+            title=page_title, site_name=brand, category=category or ''
+        ).strip()
+    except (KeyError, IndexError, ValueError):
+        out = f'{page_title} — {brand}'
+    return out[:max_len]
+
+
 def resolve_meta(
     *,
     obj: Any | None = None,
@@ -123,8 +190,14 @@ def resolve_meta(
     if meta and meta.structured_data:
         structured = {**structured, **meta.structured_data}
 
+    # The document <title> applies the settings title_template (page name +
+    # brand) for object pages; brand-as-fallback pages (homepage/static) keep
+    # whatever title the template chose, so we never render "brand — brand".
+    document_title = format_document_title(title) if obj is not None else title
+
     return ResolvedMeta(
         title=title,
+        document_title=document_title,
         description=description,
         og_title=og_title,
         og_description=og_description,
@@ -191,9 +264,9 @@ def autofill_meta_for(obj: Any) -> 'SeoMeta | None':  # noqa: F821
     meta, _ = SeoMeta.objects.get_or_create(content_type=ct, object_id=str(obj.pk))
 
     if not meta.title:
-        meta.title = (
-            f'{getattr(obj, "name", "")} — {getattr(settings, "STORE_NAME", "Morpheus Store")}'
-        ).strip(' —')
+        # Store the clean page name only — the brand suffix is applied at render
+        # by format_document_title() (settings title_template), Yoast-style.
+        meta.title = (getattr(obj, 'name', '') or '').strip()
     if not meta.description:
         desc = getattr(obj, 'short_description', '') or getattr(obj, 'description', '')
         meta.description = (desc or '')[:300]

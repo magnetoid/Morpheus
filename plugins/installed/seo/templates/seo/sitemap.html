@@ -7,9 +7,17 @@
     <h1 class="text-xl font-semibold">Sitemap</h1>
     <p class="text-xs text-[color:var(--text-muted)]">Every sitemap surface, its current contents, and the controls that drive it. {{ counts.total }} URLs total across all sub-sitemaps.</p>
   </div>
-  <a href="/dashboard/seo/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; SEO overview</a>
+  <div class="flex items-center gap-3">
+    <form method="post" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Regenerating…';">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="regenerate">
+      <button type="submit" class="btn btn-primary" title="Recount entries, purge the CDN copy of every sitemap, and ping crawlers to re-fetch">↻ Regenerate sitemap</button>
+    </form>
+    <a href="/dashboard/seo/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; SEO overview</a>
+  </div>
 </div>
 
+{% if request.GET.regen == 'ok' %}<p class="pill pill-success mb-4">Sitemap regenerated — {{ request.GET.total }} URLs, {{ request.GET.purged }} CDN zone(s) purged, crawler ping {% if request.GET.pinged == '1' %}sent{% else %}skipped{% endif %}.</p>{% endif %}
 {% if counts.truncated %}
   <div class="pill pill-danger mb-4">Sitemap truncated at {{ counts.total }} entries (cap reached). Split-sitemap rollout pending.</div>
 {% endif %}
@@ -17,13 +25,15 @@
 {% if last_ping == 'ok' %}<p class="pill pill-success mb-4">IndexNow accepted (HTTP {{ last_ping_status }}).</p>{% elif last_ping == 'err' %}<p class="pill pill-danger mb-4">IndexNow failed: {{ last_ping_status }}.</p>{% endif %}
 
 {% comment %}── Top counters ──{% endcomment %}
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
   <div class="card card-padded kpi"><span class="kpi__label">Total URLs</span><span class="kpi__value">{{ counts.total }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Products</span><span class="kpi__value">{{ counts.product_count }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Categories</span><span class="kpi__value">{{ counts.category_count }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Collections</span><span class="kpi__value">{{ counts.collection_count }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Vendors</span><span class="kpi__value">{{ counts.vendor_count }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Authors</span><span class="kpi__value">{{ counts.author_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Book facets</span><span class="kpi__value">{{ counts.book_facet_count }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Pages</span><span class="kpi__value">{{ counts.page_count }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Journal</span><span class="kpi__value">{{ counts.journal_count }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Static pages</span><span class="kpi__value">{{ counts.static_count }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Manual entries</span><span class="kpi__value">{{ counts.manual_count }}</span></div>

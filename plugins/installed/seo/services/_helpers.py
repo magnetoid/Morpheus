@@ -41,6 +41,7 @@ class ResolvedMeta:
     """Concrete, fallback-resolved meta values ready for rendering."""
 
     title: str = ''
+    document_title: str = ''  # branded <title> (title_template applied); falls back to title
     description: str = ''
     og_title: str = ''
     og_description: str = ''
@@ -55,8 +56,9 @@ class ResolvedMeta:
     def to_html(self) -> str:
         """Render the meta tags as an HTML fragment for the <head>."""
         parts: list[str] = []
-        if self.title:
-            parts.append(f'<title>{escape(self.title)}</title>')
+        doc_title = self.document_title or self.title
+        if doc_title:
+            parts.append(f'<title>{escape(doc_title)}</title>')
         if self.description:
             parts.append(f'<meta name="description" content="{escape(self.description)}">')
         if self.keywords:
