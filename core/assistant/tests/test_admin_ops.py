@@ -164,3 +164,25 @@ class WorkflowsRunTests(TestCase):
         # dry_run=False without confirmed must refuse before touching anything.
         with self.assertRaises(ToolError):
             workflows_run_tool.invoke({'name': 'whatever', 'dry_run': False})
+
+
+class OrdersRefundTests(TestCase):
+    def test_hard_gate_required(self):
+        from core.assistant.tools.admin_ops import orders_refund_tool
+
+        # confirmed alone is not enough — refunds move money (need ack + echo).
+        with self.assertRaises(ToolError):
+            orders_refund_tool.invoke({'order_number': 'X1', 'confirmed': True})
+
+    def test_unknown_order_after_gate(self):
+        from core.assistant.tools.admin_ops import orders_refund_tool
+
+        with self.assertRaises(ToolError):
+            orders_refund_tool.invoke(
+                {
+                    'order_number': 'nope',
+                    'confirmed': True,
+                    'hard_gate_ack': 'YES',
+                    'echo': 'nope',
+                }
+            )

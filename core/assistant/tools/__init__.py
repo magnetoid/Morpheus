@@ -70,6 +70,7 @@ def get_default_tools() -> list:
     # Local import — keeps `memory.py` lazy so failed imports don't break
     # tool resolution at construct time.
     from core.assistant.tools.admin_ops import (
+        orders_refund_tool,
         plugins_toggle_tool,
         settings_set_tool,
         theme_activate_tool,
@@ -136,6 +137,7 @@ def get_default_tools() -> list:
         plugins_toggle_tool,
         theme_activate_tool,
         workflows_run_tool,
+        orders_refund_tool,
         # Delegate — fan out N parallel Workers, then collect their results.
         # spawn_workers_tool is the primary path; invoke_agent_tool is a
         # back-compat shim that wraps spawn + wait_for.
