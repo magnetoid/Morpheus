@@ -53,10 +53,9 @@ def nav_categories(request):
 def nav_authors(request):
     """Distinct book authors for the storefront Authors mega menu.
 
-    Sourced from the `book.author` metafields so each link resolves at
-    /author/<slugify(name)>/ (the author_detail view matches on slugify). Cached
-    + fail-soft. (When the book.* metafields are retired in favour of the
-    BookProduct model, switch this and author_detail together.)
+    Reads the BookProduct model first, falling back to legacy `book.author`
+    metafields (book_product.compat) — each links to /author/<slugify(name)>/,
+    which author_detail resolves the same way. Cached + fail-soft.
     """
     from django.core.cache import cache  # noqa: PLC0415
 
@@ -66,23 +65,12 @@ def nav_authors(request):
 
     data: list[dict] = []
     try:
-        from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
         from django.utils.text import slugify  # noqa: PLC0415
 
-        from plugins.installed.catalog.models import Product  # noqa: PLC0415
-        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+        from plugins.installed.book_product.compat import distinct_values  # noqa: PLC0415
 
-        ct = ContentType.objects.get_for_model(Product)
-        names = (
-            Metafield.objects.filter(content_type=ct, namespace='book', key='author')
-            .exclude(value='')
-            .values_list('value', flat=True)
-            .distinct()
-        )
-        for name in sorted({n.strip() for n in names if n and n.strip()}, key=str.lower):
+        for name in distinct_values('author')[:_MAX_AUTHORS]:
             data.append({'name': name, 'slug': slugify(name)})
-            if len(data) >= _MAX_AUTHORS:
-                break
         cache.set(_NAV_AUTHORS_CACHE_KEY, data, _NAV_CACHE_TTL)
     except Exception:  # noqa: BLE001
         data = []

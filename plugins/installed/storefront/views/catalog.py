@@ -66,26 +66,18 @@ def product_list(request):
     if tag_slug:
         qs = qs.filter(tags__name__iexact=tag_slug)
 
-    # Book metafield filters — `?author=Hanna Rieder`, `?publisher=Pelican Press`.
+    # Book filters — `?author=Hanna Rieder`, `?publisher=Pelican Press`.
+    # Model-first (BookProduct) with a legacy book.* metafield fallback.
     book_filter = {}
     for qk in ('author', 'publisher'):
         v = (request.GET.get(qk) or '').strip()
         if v:
             book_filter[qk] = v
-    if book_filter:
+    for qk, v in book_filter.items():
         try:
-            from django.contrib.contenttypes.models import ContentType
-            from plugins.installed.metafields.models import Metafield
+            from plugins.installed.book_product.compat import product_ids_for
 
-            ct = ContentType.objects.get_for_model(Product)
-            for qk, v in book_filter.items():
-                ids = Metafield.objects.filter(
-                    content_type=ct,
-                    namespace='book',
-                    key=qk,
-                    value__iexact=v,
-                ).values_list('object_id', flat=True)
-                qs = qs.filter(id__in=list(ids))
+            qs = qs.filter(id__in=product_ids_for(qk, v))
         except Exception:  # noqa: BLE001
             pass
 
@@ -181,20 +173,12 @@ def product_list(request):
 
     categories_list = list(Category.objects.filter(parent__isnull=True).order_by('name'))
 
-    # Author facet — distinct values from book.author metafields.
+    # Author facet — distinct authors (BookProduct model ∪ legacy metafields).
     available_authors: list[str] = []
     try:
-        from django.contrib.contenttypes.models import ContentType
-        from plugins.installed.metafields.models import Metafield
+        from plugins.installed.book_product.compat import distinct_values
 
-        ct = ContentType.objects.get_for_model(Product)
-        available_authors = sorted(
-            set(
-                Metafield.objects.filter(content_type=ct, namespace='book', key='author')
-                .exclude(value='')
-                .values_list('value', flat=True)
-            )
-        )
+        available_authors = distinct_values('author')
     except Exception:  # noqa: BLE001
         pass
 
@@ -821,28 +805,42 @@ _CATEGORY_INTROS = {
 
 
 def _attach_book_authors(products) -> None:
-    """One query: attach the `book.author` metafield as ``.author_name`` on each
-    product so the card grid can show the real author without an N+1."""
+    """Attach ``.author_name`` to each product for the card grid (no N+1).
+    BookProduct model first; legacy book.author metafield fills any gaps."""
     for p in products:
         p.author_name = ''
     if not products:
         return
+    by_id = {str(p.id): p for p in products}
     try:
-        from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
-        from plugins.installed.catalog.models import Product  # noqa: PLC0415
-        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+        from plugins.installed.book_product.models import BookProduct  # noqa: PLC0415
 
-        ct = ContentType.objects.get_for_model(Product)
-        by_id = {str(p.id): p for p in products}
-        rows = Metafield.objects.filter(
-            content_type=ct, namespace='book', key='author', object_id__in=list(by_id)
-        )
-        for m in rows:
-            target = by_id.get(m.object_id)
+        for pid, author in (
+            BookProduct.objects.filter(product_id__in=list(by_id))
+            .exclude(author='')
+            .values_list('product_id', 'author')
+        ):
+            target = by_id.get(str(pid))
             if target is not None:
-                target.author_name = m.typed_value or ''
-    except Exception:  # noqa: BLE001 — card metadata is best-effort, never break the page
+                target.author_name = author
+    except Exception:  # noqa: BLE001
         pass
+    missing = [pid for pid, p in by_id.items() if not p.author_name]
+    if missing:
+        try:
+            from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
+            from plugins.installed.catalog.models import Product  # noqa: PLC0415
+            from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+            ct = ContentType.objects.get_for_model(Product)
+            for m in Metafield.objects.filter(
+                content_type=ct, namespace='book', key='author', object_id__in=missing
+            ):
+                target = by_id.get(m.object_id)
+                if target is not None and not target.author_name:
+                    target.author_name = m.typed_value or ''
+        except Exception:  # noqa: BLE001 — card metadata is best-effort
+            pass
 
 
 def category_detail(request, slug):
@@ -1006,38 +1004,21 @@ def collection_detail(request, slug):
 def author_detail(request, slug):
     """Author landing page — bibliography + optional bio."""
     from morpheus.views import Http404
-    from django.utils.text import slugify
 
     author_name = ''
     bibliography = []
     try:
-        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.book_product.compat import product_ids_for, resolve_slug
         from plugins.installed.catalog.models import Product
-        from plugins.installed.metafields.models import Metafield
 
-        ct = ContentType.objects.get_for_model(Product)
-        names = (
-            Metafield.objects.filter(content_type=ct, namespace='book', key='author')
-            .exclude(value='')
-            .values_list('value', flat=True)
-            .distinct()
-        )
-        match = next((n for n in names if slugify(n) == slug), None)
+        match = resolve_slug('author', slug)
         if match is None:
             raise Http404
         author_name = match
-        product_ids = list(
-            Metafield.objects.filter(
-                content_type=ct,
-                namespace='book',
-                key='author',
-                value__iexact=match,
-            ).values_list('object_id', flat=True)
-        )
         bibliography = list(
-            Product.objects.filter(id__in=product_ids, status='active').order_by(
-                '-is_featured', '-created_at'
-            )
+            Product.objects.filter(
+                id__in=product_ids_for('author', match), status='active'
+            ).order_by('-is_featured', '-created_at')
         )
     except Http404:
         raise
