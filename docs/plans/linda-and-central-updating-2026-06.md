@@ -53,4 +53,16 @@ AI-assisted proposal (phase 5), no maintenance mode.
 - Dashboard `data-ajax`/POST update actions return JSON on success AND failure.
 
 ## Status log
-- 2026-06: analysis done (research map); plan written. Building A1 first.
+- 2026-06: analysis done (research map); plan written.
+- 2026-06: **A1 shipped** (e988efa) — `/dashboard/updates/` Apply action wraps the
+  guarded `apply_platform_update` (opt-in, ff-only, backup, rollback); 4 tests.
+  The central updating system is now dashboard-driven (check + apply), CLI-parity.
+- 2026-06: **B shipped** (e3d6e5a) — Linda +4 platform-ops tools (updates.status,
+  updates.apply [hard-gated], settings.set, plugins.toggle [refuses protected]) →
+  42 tools; persona updated; 9 tests. Inventory/SEO/CRM stay Worker-delegated.
+- **Delivered:** central updating system (UI) + Linda can now self-update, write
+  store config, and toggle plugins (+ delegate the rest). Core of both asks done.
+- **Remaining (breadth — future increments):** more direct shop-control tools
+  (theme switch, workflow trigger, refunds, webhooks); updating-system Phase 5
+  (per-plugin/theme channels, AI-assisted staging, maintenance-mode middleware,
+  DB-snapshot restore). Best continued in a fresh session (context hygiene).
