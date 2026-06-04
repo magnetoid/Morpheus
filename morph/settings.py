@@ -363,6 +363,17 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 4
 CELERY_BEAT_SCHEDULE = {}  # populated by plugins via plugin.ready()
 
+if _RUNNING_TESTS:
+    # Run tasks inline and never dial the (unreachable, in tests) Redis broker /
+    # result backend. Without this, any test that creates an object firing a
+    # product.*/order.* hook spent minutes retrying the result-backend connection
+    # on each .delay(). Eager + no eager-result-store = no broker/backend I/O.
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = False
+    CELERY_TASK_STORE_EAGER_RESULT = False
+    CELERY_BROKER_URL = 'memory://'
+    CELERY_RESULT_BACKEND = 'cache+memory://'
+
 # ── Static & Media ─────────────────────────────────────────────────────────────
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
