@@ -72,7 +72,8 @@ def load_learned_skills() -> int:
         'privilege — each tool still checks its own scopes. Use after completing a '
         'non-trivial, repeatable workflow. tool_names must be tools you actually used.'
     ),
-    scopes=['system.write'],
+    # Linda's self-development toolkit — Workers lack the 'selfdev' scope.
+    scopes=['system.write', 'selfdev'],
     schema={
         'type': 'object',
         'properties': {

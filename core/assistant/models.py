@@ -193,6 +193,7 @@ class CodeProposal(models.Model):
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='draft', db_index=True)
     findings = models.JSONField(default=list, blank=True)  # static-scan results
     passed = models.BooleanField(default=False)  # no CRITICAL/HIGH findings
+    consensus = models.JSONField(default=dict, blank=True)  # multi-model review (Phase 5)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 

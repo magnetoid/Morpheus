@@ -80,6 +80,7 @@ def get_default_tools() -> list:
     )
     from core.assistant.tools.code import (
         code_draft_tool,
+        code_evaluate_proposal_tool,
         code_list_proposals_tool,
         run_python_tool,
     )
@@ -131,8 +132,10 @@ def get_default_tools() -> list:
         skills_record_outcome_tool,
         # Code — compose tools in a sandboxed Python script (read/safe tools only).
         run_python_tool,
-        # Self-development — draft a NEW tool's source (scanned; review-only, not live).
+        # Self-development — draft a NEW tool's source (scanned; review-only, not live),
+        # multi-model consensus review, and proposal listing. Linda-only (selfdev scope).
         code_draft_tool,
+        code_evaluate_proposal_tool,
         code_list_proposals_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first
         orders_update_status_tool,

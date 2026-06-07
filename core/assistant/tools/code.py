@@ -133,13 +133,25 @@ def run_python_tool(*, code: str, agent=None, context=None, description: str = '
         'tool is missing and you can write a small, safe one. Write a complete '
         'module that defines an @tool-decorated function.'
     ),
-    scopes=['system.write'],
+    # 'selfdev' = Linda's self-development toolkit. Workers don't carry this scope,
+    # so these tools stay Linda-only (the kernel assistant skips scope-filtering).
+    scopes=['system.write', 'selfdev'],
     schema={
         'type': 'object',
         'properties': {
-            'name': {'type': 'string', 'description': 'kebab/snake tool name, e.g. "low-stock-report".'},
-            'source': {'type': 'string', 'description': 'Full Python module source defining an @tool function.'},
-            'rationale': {'type': 'string', 'description': 'Why this tool is needed.', 'default': ''},
+            'name': {
+                'type': 'string',
+                'description': 'kebab/snake tool name, e.g. "low-stock-report".',
+            },
+            'source': {
+                'type': 'string',
+                'description': 'Full Python module source defining an @tool function.',
+            },
+            'rationale': {
+                'type': 'string',
+                'description': 'Why this tool is needed.',
+                'default': '',
+            },
         },
         'required': ['name', 'source'],
     },
@@ -188,11 +200,15 @@ def code_draft_tool(*, name: str, source: str, rationale: str = '') -> ToolResul
         'List your drafted code proposals with their scan status, so you (and the '
         'merchant) can see what is pending review. Read-only.'
     ),
-    scopes=['system.read'],
+    scopes=['system.read', 'selfdev'],
     schema={
         'type': 'object',
         'properties': {
-            'status': {'type': 'string', 'description': "Filter: draft|approved|rejected|applied.", 'default': ''},
+            'status': {
+                'type': 'string',
+                'description': 'Filter: draft|approved|rejected|applied.',
+                'default': '',
+            },
         },
     },
 )
@@ -214,4 +230,50 @@ def code_list_proposals_tool(*, status: str = '') -> ToolResult:
         }
         for p in qs[:50]
     ]
-    return ToolResult(output={'proposals': rows, 'count': len(rows)}, display=f'{len(rows)} proposal(s).')
+    return ToolResult(
+        output={'proposals': rows, 'count': len(rows)}, display=f'{len(rows)} proposal(s).'
+    )
+
+
+@tool(
+    name='code.evaluate_proposal',
+    description=(
+        'Run a MULTI-MODEL consensus review of a drafted code proposal: several '
+        'configured LLM providers independently critique it and a quorum decides. '
+        'A model reviewing its own output rubber-stamps it, so cross-model review '
+        'catches more. Advisory only — never auto-approves; a human still gates. '
+        'Returns insufficient when <2 providers are configured.'
+    ),
+    scopes=['system.write', 'selfdev'],
+    schema={
+        'type': 'object',
+        'properties': {'proposal_id': {'type': 'string'}},
+        'required': ['proposal_id'],
+    },
+)
+def code_evaluate_proposal_tool(*, proposal_id: str) -> ToolResult:
+    from core.assistant.consensus import evaluate
+    from core.assistant.models import CodeProposal
+
+    proposal = CodeProposal.objects.filter(id=proposal_id).first()
+    if proposal is None:
+        raise ToolError(f'no proposal with id {proposal_id!r}')
+    result = evaluate(proposal)
+    proposal.consensus = result
+    proposal.save(update_fields=['consensus', 'updated_at'])
+    decision = result.get('decision')
+    return ToolResult(
+        output={
+            'proposal_id': proposal_id,
+            'decision': decision,
+            'providers': result.get('providers', 0),
+            'approvals': result.get('approvals', 0),
+            'concerns': result.get('concerns', []),
+            'note': result.get('note', ''),
+        },
+        display=(
+            f'Consensus on "{proposal.name}": {decision} '
+            f'({result.get("approvals", 0)}/{result.get("providers", 0)} approve). '
+            f'Advisory — a human still approves before anything goes live.'
+        ),
+    )
