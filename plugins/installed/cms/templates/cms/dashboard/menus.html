@@ -1,12 +1,37 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}CMS menus{% endblock %}
+{% block title %}Menus · CMS · Morpheus{% endblock %}
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Menus</h1>
-<div class="card"><table class="morph-table">
-<thead><tr><th>Key</th><th>Label</th><th>Active</th></tr></thead>
-<tbody>{% for r in rows %}
-<tr><td><code>{{ r.key }}</code></td><td>{{ r.label }}</td>
-<td>{% if r.is_active %}<span class="pill pill-success">on</span>{% else %}<span class="pill pill-neutral">off</span>{% endif %}</td></tr>
-{% empty %}<tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--text-muted);">No menus.</td></tr>
-{% endfor %}</tbody></table></div>
+<div class="max-w-6xl mx-auto space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Menus</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Navigation menus rendered by the storefront. The <code>header</code> menu drives the desktop nav; <code>mobile</code> drives the hamburger drawer.</p>
+    </div>
+    <a href="/dashboard/cms/menus/new/" class="btn btn-primary">+ New menu</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="morph-table morph-table-zebra">
+      <thead>
+        <tr><th>Key</th><th>Label</th><th>Items</th><th>Active</th><th class="text-right">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><code class="font-mono text-xs">{{ r.key }}</code></td>
+          <td class="font-medium">{{ r.label }}</td>
+          <td class="text-[color:var(--text-muted)]">{{ r.items.count }}</td>
+          <td>{% if r.is_active %}<span class="pill pill-success">on</span>{% else %}<span class="pill pill-neutral">off</span>{% endif %}</td>
+          <td class="text-right whitespace-nowrap">
+            <a href="/dashboard/cms/menus/{{ r.id }}/edit/" class="btn btn-ghost text-xs">Edit</a>
+            <form method="post" action="/dashboard/cms/menus/{{ r.id }}/delete/" class="inline" onsubmit="return confirm('Delete “{{ r.label|escapejs }}”? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-danger text-xs">Delete</button></form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No menus yet. Create <code>header</code> and <code>mobile</code>, or run <code>manage.py seed_nav_menus</code>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

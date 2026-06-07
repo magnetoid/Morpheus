@@ -1,0 +1,87 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if creating %}New menu{% else %}Edit {{ menu.label }}{% endif %} · CMS · Morpheus{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-5">
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="text-xl font-semibold tracking-tight">{% if creating %}New menu{% else %}Edit menu — {{ menu.label }}{% endif %}</h1>
+    <a href="/dashboard/apps/cms/menus/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; All menus</a>
+  </div>
+
+  {% comment %} Menu meta {% endcomment %}
+  <div class="card card-padded">
+    <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_menu">
+      <label class="text-sm">Key
+        <input class="input w-full mt-1" name="key" value="{{ menu.key|default:'' }}" placeholder="header" required>
+        <span class="text-xs text-[color:var(--text-muted)]"><code>header</code> = desktop nav, <code>mobile</code> = drawer</span>
+      </label>
+      <label class="text-sm">Label
+        <input class="input w-full mt-1" name="label" value="{{ menu.label|default:'' }}" placeholder="Header navigation" required>
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="is_active" {% if menu.is_active or creating %}checked{% endif %}> Active
+      </label>
+      <div class="md:col-span-3">
+        <button type="submit" class="btn btn-primary">{% if creating %}Create menu{% else %}Save menu{% endif %}</button>
+      </div>
+    </form>
+  </div>
+
+  {% if not creating %}
+  {% comment %} Items {% endcomment %}
+  <div class="card card-padded space-y-3">
+    <h2 class="font-semibold">Items</h2>
+    {% for it in items %}
+    <div class="flex flex-wrap items-end gap-2 border-b border-[color:var(--border)] pb-3">
+      <form method="post" class="flex flex-wrap items-end gap-2 flex-1 min-w-0">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_item">
+        <input type="hidden" name="item_id" value="{{ it.id }}">
+        <label class="text-xs flex-1 min-w-[140px]">Label
+          <input class="input w-full mt-1" name="item_label" value="{{ it.label }}" required>
+        </label>
+        <label class="text-xs flex-1 min-w-[160px]">URL
+          <input class="input w-full mt-1" name="item_url" value="{{ it.url }}" placeholder="/products/"{% if it.kind != 'link' %} disabled{% endif %}>
+        </label>
+        <label class="text-xs min-w-[150px]">Type
+          <select class="input w-full mt-1" name="item_kind">
+            {% for val, lbl in kind_choices %}<option value="{{ val }}"{% if it.kind == val %} selected{% endif %}>{{ lbl }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="flex items-center gap-1 text-xs pb-2"><input type="checkbox" name="item_new_tab" {% if it.target == '_blank' %}checked{% endif %}> New tab</label>
+        <button type="submit" class="btn btn-secondary text-xs">Save</button>
+      </form>
+      <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="move_item"><input type="hidden" name="item_id" value="{{ it.id }}"><input type="hidden" name="direction" value="up"><button type="submit" class="btn btn-ghost text-xs" title="Move up" {% if forloop.first %}disabled{% endif %}>↑</button></form>
+      <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="move_item"><input type="hidden" name="item_id" value="{{ it.id }}"><input type="hidden" name="direction" value="down"><button type="submit" class="btn btn-ghost text-xs" title="Move down" {% if forloop.last %}disabled{% endif %}>↓</button></form>
+      <form method="post" class="inline" onsubmit="return confirm('Remove “{{ it.label|escapejs }}”?');">{% csrf_token %}<input type="hidden" name="action" value="delete_item"><input type="hidden" name="item_id" value="{{ it.id }}"><button type="submit" class="btn btn-danger text-xs">✕</button></form>
+    </div>
+    {% empty %}
+    <p class="text-sm text-[color:var(--text-muted)]">No items yet — add the first one below.</p>
+    {% endfor %}
+
+    {% comment %} Add item {% endcomment %}
+    <form method="post" class="flex flex-wrap items-end gap-2 pt-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_item">
+      <label class="text-xs flex-1 min-w-[140px]">Label
+        <input class="input w-full mt-1" name="item_label" placeholder="Staff picks" required>
+      </label>
+      <label class="text-xs flex-1 min-w-[160px]">URL
+        <input class="input w-full mt-1" name="item_url" placeholder="/staff-picks/">
+      </label>
+      <label class="text-xs min-w-[150px]">Type
+        <select class="input w-full mt-1" name="item_kind">
+          {% for val, lbl in kind_choices %}<option value="{{ val }}">{{ lbl }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="flex items-center gap-1 text-xs pb-2"><input type="checkbox" name="item_new_tab"> New tab</label>
+      <button type="submit" class="btn btn-primary text-xs">+ Add item</button>
+    </form>
+    <p class="text-xs text-[color:var(--text-muted)]">For <em>Genres</em> / <em>Authors</em> mega-menus, pick the matching Type — the storefront fills the panel from your live categories &amp; authors (URL is the trigger link).</p>
+  </div>
+  {% else %}
+  <p class="text-sm text-[color:var(--text-muted)]">Save the menu first, then add items.</p>
+  {% endif %}
+</div>
+{% endblock %}

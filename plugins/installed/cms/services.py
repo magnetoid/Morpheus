@@ -105,10 +105,17 @@ def get_menu(key: str) -> dict | None:
             {
                 'label': it.label,
                 'url': it.url,
+                'kind': it.kind,
                 'target': it.target,
                 'icon': it.icon,
                 'children': [
-                    {'label': c.label, 'url': c.url, 'target': c.target, 'icon': c.icon}
+                    {
+                        'label': c.label,
+                        'url': c.url,
+                        'kind': c.kind,
+                        'target': c.target,
+                        'icon': c.icon,
+                    }
                     for c in it.children.all().order_by('order')
                 ],
             }

@@ -20,4 +20,7 @@ urlpatterns = [
     path('pages/<uuid:page_id>/edit/', dashboard.page_edit, name='page_edit'),
     path('pages/<uuid:page_id>/duplicate/', dashboard.page_duplicate, name='page_duplicate'),
     path('pages/<uuid:page_id>/delete/', dashboard.page_delete, name='page_delete'),
+    path('menus/new/', dashboard.menu_edit, {'menu_id': None}, name='menu_new'),
+    path('menus/<uuid:menu_id>/edit/', dashboard.menu_edit, name='menu_edit'),
+    path('menus/<uuid:menu_id>/delete/', dashboard.menu_delete, name='menu_delete'),
 ]

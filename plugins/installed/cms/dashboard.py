@@ -220,3 +220,137 @@ def page_delete(request, page_id):
     page.delete()
     messages.success(request, f'Deleted “{title}”.')
     return redirect(_PAGES_LIST_URL)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Menu builder — header + mobile nav, editable from the dashboard.
+# Wired into the storefront via cms.context_processors.nav_menus; the theme
+# renders header_menu / mobile_menu (mega_* kinds drive the Genres/Authors
+# panels). menus_list (above) links here.
+# ──────────────────────────────────────────────────────────────────────────
+
+_MENUS_LIST_URL = '/dashboard/apps/cms/menus/'
+
+
+def _bust_menu_cache():
+    try:
+        from django.core.cache import cache
+
+        cache.delete_many(['storefront:nav_menu:header:v1', 'storefront:nav_menu:mobile:v1'])
+    except Exception:  # noqa: BLE001, S110 — cache bust is best-effort
+        pass
+
+
+def _menu_item_action(request, menu, action):
+    """Handle the per-item POST actions (add/edit/delete/move) for menu_edit."""
+    from plugins.installed.cms.models import MenuItem
+
+    valid_kinds = {c[0] for c in MenuItem.KIND_CHOICES}
+    item = menu.items.filter(pk=request.POST.get('item_id')).first()
+
+    if action == 'add_item':
+        label = (request.POST.get('item_label') or '').strip()[:120]
+        if not label:
+            messages.error(request, 'An item needs a label.')
+            return
+        kind = request.POST.get('item_kind') or MenuItem.KIND_LINK
+        last = menu.items.order_by('-order').first()
+        MenuItem.objects.create(
+            menu=menu,
+            label=label,
+            url=(request.POST.get('item_url') or '').strip()[:500],
+            kind=kind if kind in valid_kinds else MenuItem.KIND_LINK,
+            target='_blank' if request.POST.get('item_new_tab') == 'on' else '_self',
+            order=(last.order + 10) if last else 10,
+        )
+        messages.success(request, f'Added “{label}”.')
+
+    elif action == 'edit_item' and item:
+        item.label = (request.POST.get('item_label') or '').strip()[:120] or item.label
+        kind = request.POST.get('item_kind') or item.kind
+        if kind in valid_kinds:
+            item.kind = kind
+        item.url = (request.POST.get('item_url') or '').strip()[:500]
+        item.target = '_blank' if request.POST.get('item_new_tab') == 'on' else '_self'
+        item.save()
+        messages.success(request, 'Item updated.')
+
+    elif action == 'delete_item' and item:
+        item.delete()
+        messages.success(request, 'Item removed.')
+
+    elif action == 'move_item' and item:
+        siblings = list(menu.items.order_by('order', 'id'))
+        idx = siblings.index(item)
+        direction = request.POST.get('direction')
+        swap = None
+        if direction == 'up' and idx > 0:
+            swap = siblings[idx - 1]
+        elif direction == 'down' and idx < len(siblings) - 1:
+            swap = siblings[idx + 1]
+        if swap is not None:
+            item.order, swap.order = swap.order, item.order
+            MenuItem.objects.bulk_update([item, swap], ['order'])
+
+
+@staff_member_required
+def menu_edit(request, menu_id=None):
+    """Create (menu_id None) or edit a Menu + its items. POST dispatches on an
+    ``action`` field so the whole editor lives behind one route."""
+    from plugins.installed.cms.models import Menu, MenuItem
+
+    menu = get_object_or_404(Menu, pk=menu_id) if menu_id else None
+
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+        if action == 'save_menu':
+            key = slugify(request.POST.get('key') or '')[:80]
+            label = (request.POST.get('label') or '').strip()[:120]
+            if not key or not label:
+                messages.error(request, 'Both a key and a label are required.')
+                return redirect(request.path)
+            clash = Menu.objects.filter(key=key)
+            if menu:
+                clash = clash.exclude(pk=menu.pk)
+            if clash.exists():
+                messages.error(request, f'The key “{key}” is already used by another menu.')
+                return redirect(request.path)
+            menu = menu or Menu()
+            menu.key, menu.label = key, label
+            menu.is_active = request.POST.get('is_active') == 'on'
+            menu.save()
+            _bust_menu_cache()
+            messages.success(request, f'Saved “{menu.label}”.')
+            return redirect(f'/dashboard/cms/menus/{menu.pk}/edit/')
+
+        if menu is None:  # item actions need an existing menu
+            return redirect(_MENUS_LIST_URL)
+        _menu_item_action(request, menu, action)
+        _bust_menu_cache()
+        return redirect(f'/dashboard/cms/menus/{menu.pk}/edit/')
+
+    items = list(menu.items.filter(parent__isnull=True).order_by('order', 'id')) if menu else []
+    return render(
+        request,
+        'cms/dashboard/menu_form.html',
+        {
+            'menu': menu,
+            'items': items,
+            'kind_choices': MenuItem.KIND_CHOICES,
+            'creating': menu is None,
+            'active_nav': 'cms',
+        },
+    )
+
+
+@staff_member_required
+@require_http_methods(['POST'])
+def menu_delete(request, menu_id):
+    from plugins.installed.cms.models import Menu
+
+    menu = get_object_or_404(Menu, pk=menu_id)
+    label = menu.label
+    menu.delete()
+    _bust_menu_cache()
+    messages.success(request, f'Deleted “{label}”.')
+    return redirect(_MENUS_LIST_URL)

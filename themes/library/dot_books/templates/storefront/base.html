@@ -446,72 +446,20 @@
   <div class="wrap topbar-row">
     <a href="/" class="wordmark" aria-label="Home">dot books<span class="dot">.</span></a>
     <nav class="nav" aria-label="Primary">
-      <a href="/products/">All books</a>
-      {% if nav_categories %}
-      <div class="nav-mega">
-        <a href="/categories/" class="nav-mega__trigger" aria-haspopup="true">Genres
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="nav-mega__chev"><path d="m6 9 6 6 6-6"/></svg>
-        </a>
-        <div class="nav-mega__panel">
-          <div class="nav-mega__grid">
-            {% for cat in nav_categories %}
-            <div class="nav-mega__col">
-              <a href="/category/{{ cat.slug }}/" class="nav-mega__head">{{ cat.name }}</a>
-              {% for child in cat.children %}
-              <a href="/category/{{ child.slug }}/" class="nav-mega__link">{{ child.name }}</a>
-              {% endfor %}
-            </div>
-            {% endfor %}
-          </div>
-          {% if nav_featured_books %}
-          <div class="nav-mega__books">
-            <div class="nav-mega__books-h">Featured books</div>
-            <div class="nav-mega__covers">
-              {% for b in nav_featured_books %}
-              <a class="nav-mega__cover" href="/products/{{ b.slug }}/" title="{{ b.name }}">
-                <img src="{{ b.image }}" alt="{{ b.name }}" loading="lazy" decoding="async">
-                <span>{{ b.name }}</span>
-              </a>
-              {% endfor %}
-            </div>
-          </div>
-          {% endif %}
-          <a href="/categories/" class="nav-mega__all">Browse all genres &rarr;</a>
-        </div>
-      </div>
+      {% comment %}Menu-driven (dashboard → CMS → Menus, key "header"). Falls back to the built-in nav when no header menu is configured.{% endcomment %}
+      {% if header_menu and header_menu.items %}
+        {% for item in header_menu.items %}
+          {% if item.kind == 'mega_categories' %}{% include "storefront/_nav_mega_genres.html" with label=item.label %}
+          {% elif item.kind == 'mega_authors' %}{% include "storefront/_nav_mega_authors.html" with label=item.label %}
+          {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
+        {% endfor %}
       {% else %}
-      <a href="/categories/">Genres</a>
+        <a href="/products/">All books</a>
+        {% include "storefront/_nav_mega_genres.html" with label="Genres" %}
+        {% include "storefront/_nav_mega_authors.html" with label="Authors" %}
+        <a href="/staff-picks/">Staff picks</a>
+        <a href="/journal/">Journal</a>
       {% endif %}
-      {% if nav_authors %}
-      <div class="nav-mega">
-        <a href="/products/" class="nav-mega__trigger" aria-haspopup="true">Authors
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="nav-mega__chev"><path d="m6 9 6 6 6-6"/></svg>
-        </a>
-        <div class="nav-mega__panel">
-          <div class="nav-mega__authors">
-            {% for a in nav_authors %}
-            <a href="/author/{{ a.slug }}/">{{ a.name }}</a>
-            {% endfor %}
-          </div>
-          {% if nav_featured_books %}
-          <div class="nav-mega__books">
-            <div class="nav-mega__books-h">Featured books</div>
-            <div class="nav-mega__covers">
-              {% for b in nav_featured_books %}
-              <a class="nav-mega__cover" href="/products/{{ b.slug }}/" title="{{ b.name }}">
-                <img src="{{ b.image }}" alt="{{ b.name }}" loading="lazy" decoding="async">
-                <span>{{ b.name }}</span>
-              </a>
-              {% endfor %}
-            </div>
-          </div>
-          {% endif %}
-          <a href="/products/" class="nav-mega__all">Browse all books &rarr;</a>
-        </div>
-      </div>
-      {% endif %}
-      <a href="/staff-picks/">Staff picks</a>
-      <a href="/journal/">Journal</a>
       {% storefront_blocks "nav_primary_extra" %}
     </nav>
     <div class="icons">
@@ -746,17 +694,27 @@
     </button>
   </div>
   <nav class="nav-mobile">
-    <a href="/products/">All books</a>
-    <a href="/products/?featured=true">New &amp; notable</a>
-    {% for cat in nav_categories %}
-    <a href="/category/{{ cat.slug }}/">{{ cat.name }}</a>
-    {% empty %}
-    <a href="/categories/">Genres</a>
-    {% endfor %}
-    <a href="/staff-picks/">Staff picks</a>
-    <a href="/journal/">Journal</a>
-    {% storefront_blocks "nav_primary_extra" %}
-    <a href="/account/">Account</a>
+    {% comment %}Menu-driven (dashboard → CMS → Menus, key "mobile"). Mega kinds collapse to a single link in the drawer. Falls back to the built-in drawer when no mobile menu is configured.{% endcomment %}
+    {% if mobile_menu and mobile_menu.items %}
+      {% for item in mobile_menu.items %}
+        {% if item.kind == 'mega_categories' %}<a href="{{ item.url|default:'/categories/' }}">{{ item.label|default:"Genres" }}</a>
+        {% elif item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:"Authors" }}</a>
+        {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
+      {% endfor %}
+      <a href="/account/">Account</a>
+    {% else %}
+      <a href="/products/">All books</a>
+      <a href="/products/?featured=true">New &amp; notable</a>
+      {% for cat in nav_categories %}
+      <a href="/category/{{ cat.slug }}/">{{ cat.name }}</a>
+      {% empty %}
+      <a href="/categories/">Genres</a>
+      {% endfor %}
+      <a href="/staff-picks/">Staff picks</a>
+      <a href="/journal/">Journal</a>
+      {% storefront_blocks "nav_primary_extra" %}
+      <a href="/account/">Account</a>
+    {% endif %}
   </nav>
 </div>
 

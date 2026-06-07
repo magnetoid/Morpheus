@@ -225,12 +225,30 @@ class Menu(models.Model):
 
 
 class MenuItem(models.Model):
-    """One link within a Menu."""
+    """One entry within a Menu.
+
+    ``kind`` lets a storefront render dynamic entries, not just static links:
+      - ``link``            — a plain label → url (default).
+      - ``mega_categories`` — the Genres mega-menu (driven by nav_categories).
+      - ``mega_authors``    — the Authors mega-menu (driven by nav_authors).
+    Mega kinds ignore ``url`` (the theme supplies the panel); ``url`` is still
+    used as the mega trigger's own href / the mobile-drawer fallback link.
+    """
+
+    KIND_LINK = 'link'
+    KIND_MEGA_CATEGORIES = 'mega_categories'
+    KIND_MEGA_AUTHORS = 'mega_authors'
+    KIND_CHOICES = [
+        (KIND_LINK, 'Link'),
+        (KIND_MEGA_CATEGORIES, 'Genres mega-menu'),
+        (KIND_MEGA_AUTHORS, 'Authors mega-menu'),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     menu = models.ForeignKey(Menu, on_delete=models.CASCADE, related_name='items')
     label = models.CharField(max_length=120)
-    url = models.CharField(max_length=500)
+    url = models.CharField(max_length=500, blank=True)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default=KIND_LINK)
     target = models.CharField(max_length=10, default='_self', blank=True)
     parent = models.ForeignKey(
         'self',
