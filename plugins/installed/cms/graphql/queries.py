@@ -17,6 +17,9 @@ from __future__ import annotations
 from typing import List, Optional
 
 import strawberry
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from strawberry.scalars import JSON
 
 from api.graphql_permissions import require_scope
 
@@ -33,7 +36,21 @@ class CmsPageType:
     body: str
     state: str
     layout: str
+    publish_at: Optional[str]
+    metadata: JSON
     updated_at: str
+
+
+@strawberry.type
+class CmsJournalEntryType:
+    slug: str
+    title: str
+    excerpt: str
+    body: str
+    published_at: Optional[str]
+    updated_at: Optional[str]
+    image: str
+    author: str
 
 
 def _page_type(p) -> CmsPageType:
@@ -45,7 +62,24 @@ def _page_type(p) -> CmsPageType:
         body=p.body,
         state=p.state,
         layout=p.layout,
+        publish_at=p.publish_at.isoformat() if p.publish_at else None,
+        metadata=dict(p.metadata or {}),
         updated_at=p.updated_at.isoformat(),
+    )
+
+
+def _journal_entry_type(entry: dict) -> CmsJournalEntryType:
+    published_at = entry.get('published_at')
+    updated_at = entry.get('updated_at')
+    return CmsJournalEntryType(
+        slug=entry.get('slug', ''),
+        title=entry.get('title', ''),
+        excerpt=entry.get('excerpt', ''),
+        body=entry.get('body', ''),
+        published_at=published_at.isoformat() if published_at else None,
+        updated_at=updated_at.isoformat() if updated_at else None,
+        image=entry.get('image', ''),
+        author=entry.get('author', ''),
     )
 
 
@@ -69,6 +103,21 @@ class CmsQueryExtension:
         p = Page.objects.filter(slug=slug).first()
         return _page_type(p) if p else None
 
+    @strawberry.field(description='List published journal entries from CMS pages.')
+    def journal_entries(self, info: strawberry.Info, limit: int = 50) -> List[CmsJournalEntryType]:
+        require_scope(info, 'cms.read')
+        from plugins.installed.cms.services import list_journal_entries
+
+        return [_journal_entry_type(entry) for entry in list_journal_entries(limit=limit)]
+
+    @strawberry.field(description='Get one published journal entry by slug (or null).')
+    def journal_entry(self, info: strawberry.Info, slug: str) -> Optional[CmsJournalEntryType]:
+        require_scope(info, 'cms.read')
+        from plugins.installed.cms.services import get_journal_entry
+
+        entry = get_journal_entry(slug)
+        return _journal_entry_type(entry) if entry else None
+
 
 @strawberry.input
 class CmsPageInput:
@@ -78,6 +127,22 @@ class CmsPageInput:
     excerpt: Optional[str] = None
     state: Optional[str] = None
     layout: Optional[str] = None
+    publish_at: Optional[str] = None
+    metadata: Optional[JSON] = None
+
+
+def _parsed_publish_at(raw_value: Optional[str]):
+    if raw_value is None:
+        return None
+    raw_value = raw_value.strip()
+    if not raw_value:
+        return None
+    parsed = parse_datetime(raw_value)
+    if parsed is None:
+        raise ValueError('publish_at must be a valid ISO-8601 datetime string.')
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
 
 
 @strawberry.type
@@ -102,6 +167,8 @@ class CmsMutationExtension:
             excerpt=(input.excerpt or '')[:300],
             state=input.state if input.state in _STATES else 'draft',
             layout=input.layout if input.layout in _LAYOUTS else 'default',
+            publish_at=_parsed_publish_at(input.publish_at),
+            metadata=dict(input.metadata or {}),
         )
         return _page_type(p)
 
@@ -125,6 +192,10 @@ class CmsMutationExtension:
             p.state = input.state
         if input.layout is not None and input.layout in _LAYOUTS:
             p.layout = input.layout
+        if input.publish_at is not None:
+            p.publish_at = _parsed_publish_at(input.publish_at)
+        if input.metadata is not None:
+            p.metadata = dict(input.metadata or {})
         if input.slug:
             new_slug = slugify(input.slug)[:200]
             if new_slug and new_slug != p.slug and not Page.objects.filter(slug=new_slug).exists():
