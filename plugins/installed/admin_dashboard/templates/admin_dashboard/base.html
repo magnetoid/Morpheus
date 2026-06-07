@@ -463,7 +463,9 @@
      slides in from the left, backdrop dims content, swipe-to-close
      compatible. Triggered by the existing #sidebar-open button + matching
      #sidebar-close in the drawer. */
-  @media (max-width: 768px) {
+  /* Mobile + TABLET (< 1024px): sidebar is an off-canvas drawer so the
+     content gets the full width. Desktop (>= 1024px) keeps it in-flow. */
+  @media (max-width: 1023px) {
     .sidebar {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
       width: 18rem; max-width: 80vw;
@@ -478,6 +480,13 @@
       transition: opacity var(--motion-fast) var(--ease-out);
     }
     #sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
+  }
+  /* Desktop (>= 1024px): the sidebar is in-flow; the collapse toggle slides it
+     off-canvas (margin) so the content reclaims the space. Smooth + reversible;
+     avoids an icon-rail that the accordion nav doesn't fit cleanly. */
+  @media (min-width: 1024px) {
+    #sidebar { transition: margin-left var(--motion-med) var(--ease-out); }
+    body.sidebar-collapsed #sidebar { margin-left: -14rem; }
   }
   /* Subtle row hover on data tables — used everywhere a list renders. */
   table tbody tr { transition: background var(--motion-fast) var(--ease-out); }
@@ -658,16 +667,20 @@
 </head>
 <body class="min-h-screen flex" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
 
+<script>
+  {% comment %}Restore the desktop sidebar-collapsed state before paint (no flash).{% endcomment %}
+  try { if (localStorage.getItem('morph:sidebar-collapsed') === '1') document.body.classList.add('sidebar-collapsed'); } catch (_) {}
+</script>
 <div id="htmx-progress" aria-hidden="true"></div>
-<div id="sidebar-backdrop" class="drawer-backdrop md:hidden"></div>
-<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full md:translate-x-0 md:static transition-transform duration-200 ease-out" hx-boost="false">
+<div id="sidebar-backdrop" class="drawer-backdrop lg:hidden"></div>
+<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full lg:translate-x-0 lg:static transition-transform duration-200 ease-out" hx-boost="false">
   <div class="h-12 flex items-center justify-between px-3 border-b border-[color:var(--border)]">
     <a href="{% url 'admin_dashboard:home' %}" class="flex items-center gap-2 font-semibold tracking-tight">
       <i data-lucide="hexagon" class="h-5 w-5"></i>
       <span>Morpheus</span>
       <span style="font-size:.65rem; font-weight:500; color:var(--text-muted); margin-left:.15rem; padding:.05rem .35rem; border:1px solid var(--border); border-radius:4px;">{{ MORPHEUS_VERSION|default:"v0.1.0" }}</span>
     </a>
-    <button id="sidebar-close" class="md:hidden btn btn-ghost p-1.5"><i data-lucide="x" class="h-4 w-4"></i></button>
+    <button id="sidebar-close" class="lg:hidden btn btn-ghost p-1.5"><i data-lucide="x" class="h-4 w-4"></i></button>
   </div>
   {# ── MAIN NAV (slides out when entering Settings) ─────────────────────── #}
   <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0">
@@ -860,7 +873,8 @@
 
 <div class="flex-1 flex flex-col min-w-0">
   <header class="h-12 flex items-center gap-2 px-3 lg:px-4 border-b border-[color:var(--border)] bg-[color:var(--bg)]" hx-boost="false">
-    <button id="sidebar-open" class="md:hidden btn btn-ghost p-1.5"><i data-lucide="menu" class="h-5 w-5"></i></button>
+    <button id="sidebar-open" class="lg:hidden btn btn-ghost p-1.5" aria-label="Open menu"><i data-lucide="menu" class="h-5 w-5"></i></button>
+    <button id="sidebar-toggle" class="hidden lg:inline-flex btn btn-ghost p-1.5" aria-label="Collapse menu" title="Toggle sidebar (⌘\)"><i data-lucide="panel-left" class="h-5 w-5"></i></button>
     <button id="palette-open" class="relative flex-1 max-w-xl text-left input input-search"
             type="button"
             style="cursor: text; color: var(--text-muted); display: flex; align-items: center; gap: .35rem;">
@@ -945,7 +959,8 @@
     #theme-modes button.is-active:hover { background: var(--brand-soft); }
   </style>
 
-  <main id="main-content" class="flex-1 overflow-y-auto p-3 lg:p-5">
+  <main id="main-content" class="flex-1 overflow-y-auto">
+   <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
     {% if messages %}
     {# Pipe Django messages framework into the toast queue. Morph.toast is #}
     {# defined in dashboard.js (loaded with `defer`) so we buffer onto its #}
@@ -962,6 +977,7 @@
     </script>
     {% endif %}
     {% block content %}{% endblock %}
+   </div>
   </main>
 </div>
 
@@ -981,6 +997,17 @@
     document.getElementById('sidebar-open')?.addEventListener('click', open);
     document.getElementById('sidebar-close')?.addEventListener('click', close);
     bd.addEventListener('click', close);
+    // Desktop (>=1024px) collapse toggle — slides the in-flow sidebar away and
+    // the content reclaims the space. Persisted; restored before paint by the
+    // inline script at the top of <body>.
+    const tgl = document.getElementById('sidebar-toggle');
+    tgl?.addEventListener('click', () => {
+      const collapsed = document.body.classList.toggle('sidebar-collapsed');
+      try { localStorage.setItem('morph:sidebar-collapsed', collapsed ? '1' : '0'); } catch (_) {}
+    });
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') { e.preventDefault(); tgl?.click(); }
+    });
     // User menu dropdown
     const utoggle = document.getElementById('user-menu-toggle');
     const upanel = document.getElementById('user-menu-panel');
