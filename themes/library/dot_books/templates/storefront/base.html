@@ -229,7 +229,9 @@
   /* Mobile hamburger — storefront is plain CSS (no Tailwind), so the button is
      shown below the nav breakpoint and hidden once the inline .nav appears. */
   .nav-burger { display: inline-flex; }
-  @media (min-width: 768px) { .nav-burger { display: none; } }
+  /* Hide on desktop. Uses .icon-btn.nav-burger (specificity 0,2,0) so it beats
+     the later `.icon-btn { display:inline-flex }` rule regardless of source order. */
+  @media (min-width: 768px) { .icon-btn.nav-burger { display: none; } }
   /* Genres mega menu */
   .nav-mega { position: relative; }
   .nav-mega__trigger { display: inline-flex; align-items: center; gap: .28rem; }
