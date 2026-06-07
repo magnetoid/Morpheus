@@ -239,7 +239,7 @@
   /* Full-bleed mega panel — spans the whole viewport width below the header,
      content centered to a max width. Always on-screen; roomy for many items. */
   .nav-mega__panel {
-    position: fixed; top: 64px; left: 0; right: 0; width: 100%;
+    position: fixed; top: var(--mega-menu-top, 64px); left: 0; right: 0; width: 100%;
     transform: translateY(6px);
     max-height: 76vh; overflow-y: auto;
     background: var(--paper); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
@@ -249,7 +249,7 @@
     transition: opacity .18s ease, transform .18s ease; z-index: 60;
   }
   /* Hover bridge spanning the gap between the header trigger and the panel. */
-  .nav-mega__panel::before { content: ""; position: absolute; top: -18px; left: 0; right: 0; height: 18px; }
+  .nav-mega__panel::before { content: ""; position: absolute; top: -32px; left: 0; right: 0; height: 32px; }
   .nav-mega:hover .nav-mega__panel, .nav-mega:focus-within .nav-mega__panel {
     opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
   }
@@ -846,6 +846,30 @@
   const dr = document.getElementById('drawer');
   document.getElementById('drawer-open')?.addEventListener('click', () => dr.classList.add('open'));
   document.getElementById('drawer-close')?.addEventListener('click', () => dr.classList.remove('open'));
+})();
+</script>
+<script>
+(() => {
+  const root = document.documentElement;
+  function updateMegaMenuTop() {
+    const triggers = Array.from(document.querySelectorAll('.nav-mega__trigger'));
+    const topbar = document.querySelector('.topbar');
+    if (!triggers.length && !topbar) return;
+    const triggerBottom = triggers.length
+      ? Math.max(...triggers.map((el) => el.getBoundingClientRect().bottom))
+      : 0;
+    const topbarBottom = topbar ? topbar.getBoundingClientRect().bottom : Number.POSITIVE_INFINITY;
+    const top = Math.min(topbarBottom, triggerBottom + 6);
+    if (Number.isFinite(top) && top > 0) {
+      root.style.setProperty('--mega-menu-top', `${Math.round(top)}px`);
+    }
+  }
+
+  window.addEventListener('resize', updateMegaMenuTop, { passive: true });
+  window.addEventListener('load', updateMegaMenuTop, { once: true });
+  document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(updateMegaMenuTop), { once: true });
+  if (document.fonts?.ready) document.fonts.ready.then(updateMegaMenuTop).catch(() => {});
+  updateMegaMenuTop();
 })();
 </script>
 {% storefront_blocks "global_below_body" %}
