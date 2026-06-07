@@ -134,6 +134,11 @@ class LearnedSkill(models.Model):
     source = models.CharField(max_length=200, blank=True, default='distilled')
     enabled = models.BooleanField(default=True, db_index=True)
     version = models.PositiveIntegerField(default=1)
+    # Outcome feedback (Phase 3 — skills self-improve / prune from use).
+    uses = models.PositiveIntegerField(default=0)
+    successes = models.PositiveIntegerField(default=0)
+    failures = models.PositiveIntegerField(default=0)
+    last_used_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
 
@@ -143,6 +148,9 @@ class LearnedSkill(models.Model):
 
     def __str__(self) -> str:
         return f'LearnedSkill({self.name})'
+
+    def success_rate(self) -> float:
+        return (self.successes / self.uses) if self.uses else 0.0
 
     def to_skill(self):
         """Build a runtime ``Skill`` from this row, resolving ``tool_names``

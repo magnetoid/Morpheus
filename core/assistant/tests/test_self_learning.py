@@ -6,13 +6,16 @@ from __future__ import annotations
 from django.test import SimpleTestCase, TestCase
 
 from core.agents.llm import _PROVIDER_CLASSES, HermesProvider, OpenAIProvider
-from core.agents.skills import skill_registry
+from core.agents.skills import Skill, skill_registry
 from core.agents.tools import ToolError
 from core.assistant.models import LearnedSkill
 from core.assistant.tools.skills import (
     all_resolvable_tools,
     load_learned_skills,
+    record_skill_outcome,
     skills_distill_tool,
+    skills_list_tool,
+    skills_record_outcome_tool,
 )
 from plugins.installed.ai_assistant.services.config import get_provider_config
 
@@ -79,3 +82,48 @@ class SkillDistillTests(TestCase):
         self.assertGreaterEqual(loaded, 1)
         self.assertIsNotNone(skill_registry.get('on'))
         self.assertIsNone(skill_registry.get('off'))
+
+
+class SkillOutcomeTests(TestCase):
+    def _skill(self, name='s', **kw):
+        kw.setdefault('enabled', True)
+        return LearnedSkill.objects.create(name=name, label=name, tool_names=['x'], **kw)
+
+    def test_record_outcome_counts(self):
+        self._skill()
+        record_skill_outcome('s', True)
+        record_skill_outcome('s', False)
+        s = LearnedSkill.objects.get(name='s')
+        self.assertEqual(s.uses, 2)
+        self.assertEqual(s.successes, 1)
+        self.assertEqual(s.failures, 1)
+        self.assertEqual(s.success_rate(), 0.5)
+
+    def test_auto_prune_on_repeated_failure(self):
+        s = self._skill(name='flaky')
+        skill_registry.register(Skill(name='flaky', label='Flaky'))
+        # 5 failures → below threshold after MIN_USES → auto-retired.
+        for _ in range(5):
+            record_skill_outcome('flaky', False)
+        s.refresh_from_db()
+        self.assertFalse(s.enabled)
+        self.assertIsNone(skill_registry.get('flaky'))
+
+    def test_good_skill_not_pruned(self):
+        s = self._skill(name='solid')
+        for _ in range(6):
+            record_skill_outcome('solid', True)
+        s.refresh_from_db()
+        self.assertTrue(s.enabled)
+
+    def test_record_outcome_tool_unknown(self):
+        with self.assertRaises(ToolError):
+            skills_record_outcome_tool.invoke({'name': 'nope', 'success': True})
+
+    def test_skills_list_tool(self):
+        self._skill(name='visible')
+        self._skill(name='hidden', enabled=False)
+        out = skills_list_tool.invoke({}).output
+        names = [s['name'] for s in out['skills']]
+        self.assertIn('visible', names)
+        self.assertNotIn('hidden', names)

@@ -27,6 +27,9 @@ a process-wide `skill_registry`. They're the canonical specialization
 mechanism — adding a per-role `MorpheusAgent` subclass is now blocked
 by the pre-commit hook (see `.githooks/pre-commit`).
 """
+
+# ruff: noqa: UP035 — typing.Iterable kept for consistency with the package.
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -64,12 +67,15 @@ class SkillRegistry:
     def get(self, name: str) -> Skill | None:
         return self._skills.get(name)
 
+    def unregister(self, name: str) -> None:
+        self._skills.pop(name, None)
+
     def all(self) -> list[Skill]:
         return list(self._skills.values())
 
     def resolve(self, names: Iterable[str]) -> list[Skill]:
         out: list[Skill] = []
-        for name in (names or []):
+        for name in names or []:
             s = self._skills.get(name)
             if s is not None:
                 out.append(s)

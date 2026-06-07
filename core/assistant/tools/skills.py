@@ -147,3 +147,140 @@ def skills_distill_tool(
             f'({len(tool_names)} tools) — Workers can now opt in with skills=["{slug}"].'
         ),
     )
+
+
+# ── Phase 3: skills self-improve / prune from outcomes ──────────────────────
+
+AUTO_PRUNE_MIN_USES = 5
+AUTO_PRUNE_THRESHOLD = 0.5  # success rate below this (after MIN_USES) → auto-retire
+
+
+def record_skill_outcome(name: str, success: bool):
+    """Record one use outcome on a LearnedSkill. Auto-retires (disables +
+    unregisters + signals the self-improvement engine) a skill that keeps
+    failing, so bad skills stop being offered. Returns (row, pruned) or None."""
+    from django.utils import timezone
+
+    from core.assistant.models import LearnedSkill
+
+    row = LearnedSkill.objects.filter(name=name).first()
+    if row is None:
+        return None
+    row.uses += 1
+    if success:
+        row.successes += 1
+    else:
+        row.failures += 1
+    row.last_used_at = timezone.now()
+    fields = ['uses', 'successes', 'failures', 'last_used_at']
+    pruned = False
+    if (
+        row.enabled
+        and row.uses >= AUTO_PRUNE_MIN_USES
+        and row.success_rate() < AUTO_PRUNE_THRESHOLD
+    ):
+        row.enabled = False
+        fields.append('enabled')
+        pruned = True
+    row.save(update_fields=fields)
+    if pruned:
+        try:
+            from core.agents.skills import skill_registry
+
+            skill_registry.unregister(name)
+        except Exception as e:  # noqa: BLE001
+            logger.debug('unregister %s failed: %s', name, e)
+        try:
+            from core.self_improvement.services import emit_signal
+
+            emit_signal(
+                source='agent.skill_health',
+                fingerprint=f'skill:{name}',
+                severity=40,
+                payload={
+                    'skill': name,
+                    'uses': row.uses,
+                    'success_rate': round(row.success_rate(), 2),
+                    'action': 'auto-retired',
+                },
+            )
+        except Exception as e:  # noqa: BLE001 — self-improvement optional
+            logger.debug('skill signal emit failed: %s', e)
+    return row, pruned
+
+
+@tool(
+    name='skills.record_outcome',
+    description=(
+        'Record whether a learned skill worked after you used it (success=true/false). '
+        'Outcomes accumulate; a skill that keeps failing is auto-retired so it stops '
+        'being offered. Call this after a Worker that used a skill finishes.'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string', 'description': 'The learned-skill name.'},
+            'success': {'type': 'boolean'},
+            'note': {'type': 'string', 'default': ''},
+        },
+        'required': ['name', 'success'],
+    },
+)
+def skills_record_outcome_tool(*, name: str, success: bool, note: str = '') -> ToolResult:
+    from django.utils.text import slugify
+
+    res = record_skill_outcome(slugify(name)[:120], bool(success))
+    if res is None:
+        raise ToolError(f'no learned skill named {name!r}')
+    row, pruned = res
+    return ToolResult(
+        output={
+            'name': row.name,
+            'uses': row.uses,
+            'success_rate': round(row.success_rate(), 2),
+            'enabled': row.enabled,
+            'retired': pruned,
+        },
+        display=(
+            f'Recorded {"success" if success else "failure"} for "{row.label}" '
+            f'({row.successes}/{row.uses}).'
+            + (' Auto-retired (too many failures).' if pruned else '')
+        ),
+    )
+
+
+@tool(
+    name='skills.list',
+    description=(
+        'List your learned skills with their usage stats (uses, success rate, '
+        'enabled) so you can decide which to reuse, improve (re-distill with a '
+        'better prompt), or retire. Read-only.'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'include_disabled': {'type': 'boolean', 'default': False},
+        },
+    },
+)
+def skills_list_tool(*, include_disabled: bool = False) -> ToolResult:
+    from core.assistant.models import LearnedSkill
+
+    qs = LearnedSkill.objects.all()
+    if not include_disabled:
+        qs = qs.filter(enabled=True)
+    rows = [
+        {
+            'name': r.name,
+            'label': r.label,
+            'enabled': r.enabled,
+            'tools': r.tool_names,
+            'uses': r.uses,
+            'success_rate': round(r.success_rate(), 2),
+            'last_used_at': r.last_used_at.isoformat() if r.last_used_at else None,
+        }
+        for r in qs
+    ]
+    return ToolResult(output={'skills': rows, 'count': len(rows)}, display=f'{len(rows)} skill(s).')
