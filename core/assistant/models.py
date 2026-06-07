@@ -167,3 +167,38 @@ class LearnedSkill(models.Model):
             tools=tools,
             system_prompt_prelude=self.system_prompt_prelude,
         )
+
+
+class CodeProposal(models.Model):
+    """A piece of code Linda DRAFTED for herself (uplift Phase 4 — self-written
+    modules). It is statically scanned but NEVER executed and NEVER written to
+    the repo by drafting — it sits as a proposal for human review. Turning a
+    proposal into live code (file write + branch/PR) is a separate, gated,
+    default-OFF step (requires MORPHEUS_SELF_UPDATE_ENABLED + a hard-gate).
+    """
+
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('applied', 'Applied'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.SlugField(max_length=120, db_index=True)
+    kind = models.CharField(max_length=20, default='tool')  # tool | skill | module
+    rationale = models.TextField(blank=True)
+    target_path = models.CharField(max_length=300, blank=True)  # informational only
+    source = models.TextField()
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='draft', db_index=True)
+    findings = models.JSONField(default=list, blank=True)  # static-scan results
+    passed = models.BooleanField(default=False)  # no CRITICAL/HIGH findings
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'assistant'
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f'CodeProposal({self.name}/{self.status})'

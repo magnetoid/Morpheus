@@ -78,7 +78,11 @@ def get_default_tools() -> list:
         updates_status_tool,
         workflows_run_tool,
     )
-    from core.assistant.tools.code import run_python_tool
+    from core.assistant.tools.code import (
+        code_draft_tool,
+        code_list_proposals_tool,
+        run_python_tool,
+    )
     from core.assistant.tools.health import platform_circuit_breakers_tool
     from core.assistant.tools.memory import (
         memory_forget_tool,
@@ -127,6 +131,9 @@ def get_default_tools() -> list:
         skills_record_outcome_tool,
         # Code — compose tools in a sandboxed Python script (read/safe tools only).
         run_python_tool,
+        # Self-development — draft a NEW tool's source (scanned; review-only, not live).
+        code_draft_tool,
+        code_list_proposals_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first
         orders_update_status_tool,
         orders_cancel_tool,

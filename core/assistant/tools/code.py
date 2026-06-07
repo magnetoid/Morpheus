@@ -118,3 +118,100 @@ def run_python_tool(*, code: str, agent=None, context=None, description: str = '
         output={'result': result, 'tool_calls': calls, 'call_count': len(calls)},
         display=f'Ran script — {len(calls)} tool call(s).',
     )
+
+
+# ── Phase 4: self-written modules — DRAFT + review only (apply is gated/off) ──
+
+
+@tool(
+    name='code.draft_tool',
+    description=(
+        'Draft the Python SOURCE for a NEW agent tool and save it as a reviewable '
+        'proposal. The source is statically safety-scanned (dangerous calls, '
+        'hallucinated imports, shape) but is NEVER executed and NEVER written to '
+        'the repo — a human reviews + applies it separately. Use when an existing '
+        'tool is missing and you can write a small, safe one. Write a complete '
+        'module that defines an @tool-decorated function.'
+    ),
+    scopes=['system.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string', 'description': 'kebab/snake tool name, e.g. "low-stock-report".'},
+            'source': {'type': 'string', 'description': 'Full Python module source defining an @tool function.'},
+            'rationale': {'type': 'string', 'description': 'Why this tool is needed.', 'default': ''},
+        },
+        'required': ['name', 'source'],
+    },
+)
+def code_draft_tool(*, name: str, source: str, rationale: str = '') -> ToolResult:
+    from django.utils.text import slugify
+
+    from core.assistant.codegen import passed, scan_source
+    from core.assistant.models import CodeProposal
+
+    slug = slugify(name)[:120]
+    if not slug:
+        raise ToolError('name must be a non-empty identifier')
+    findings = scan_source(source, kind='tool')
+    ok = passed(findings)
+    proposal = CodeProposal.objects.create(
+        name=slug,
+        kind='tool',
+        rationale=rationale,
+        target_path=f'core/assistant/tools/generated/{slug}.py',
+        source=source,
+        findings=findings,
+        passed=ok,
+        status='draft',
+    )
+    blocking = [f for f in findings if f.get('severity') in ('CRITICAL', 'HIGH')]
+    return ToolResult(
+        output={
+            'proposal_id': str(proposal.id),
+            'name': slug,
+            'passed': ok,
+            'findings': findings,
+            'status': 'draft',
+            'note': 'Saved as a DRAFT proposal. Not executed, not written to the repo — awaiting human review.',
+        },
+        display=(
+            f'Drafted tool "{slug}" — {"clean scan ✓" if ok else f"{len(blocking)} blocking finding(s)"}. '
+            f'Saved as a draft for human review (not live).'
+        ),
+    )
+
+
+@tool(
+    name='code.list_proposals',
+    description=(
+        'List your drafted code proposals with their scan status, so you (and the '
+        'merchant) can see what is pending review. Read-only.'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'status': {'type': 'string', 'description': "Filter: draft|approved|rejected|applied.", 'default': ''},
+        },
+    },
+)
+def code_list_proposals_tool(*, status: str = '') -> ToolResult:
+    from core.assistant.models import CodeProposal
+
+    qs = CodeProposal.objects.all()
+    if status:
+        qs = qs.filter(status=status)
+    rows = [
+        {
+            'id': str(p.id),
+            'name': p.name,
+            'kind': p.kind,
+            'status': p.status,
+            'passed': p.passed,
+            'findings': len(p.findings or []),
+            'created_at': p.created_at.isoformat(),
+        }
+        for p in qs[:50]
+    ]
+    return ToolResult(output={'proposals': rows, 'count': len(rows)}, display=f'{len(rows)} proposal(s).')

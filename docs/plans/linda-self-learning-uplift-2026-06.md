@@ -142,4 +142,15 @@ self-building (writes/sandboxes/ships its own tools & modules) + connect-everywh
 (MCP + code via `run_python` + GraphQL) — all through ONE agent, one tool/scope/
 audit interface, behind the propose→sandbox→verify→gate→apply→rollback spine.
 
-## Status: plan drafted (this session). Implementation not started — Phase 0/1 are the cheap, high-signal starts.
+## Status
+- **Phases 0–3 shipped + prod-verified** (Hermes provider; self-authored skills;
+  run_python sandbox; skill self-improvement/auto-prune).
+- **Phase 4 — v1 shipped (DRAFT-only).** Linda can draft a new tool's source; it's
+  statically safety-scanned (`codegen.scan_source`: dangerous calls, hallucinated
+  imports, SQL-fstring, shape) and stored as a `CodeProposal` (status=draft). It is
+  NEVER executed and NEVER written to the repo. Tools: `code.draft_tool`,
+  `code.list_proposals`.
+- **Phase 4 — apply step still TODO + OFF** (the dangerous part): turning an
+  approved proposal into live code = file write + branch/PR, gated by
+  MORPHEUS_SELF_UPDATE_ENABLED + a hard-gate + a mandatory security-reviewer pass,
+  never to `main`. Needs the gating policy signed off before it's built/enabled.
