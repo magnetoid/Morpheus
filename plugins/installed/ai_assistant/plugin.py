@@ -10,6 +10,11 @@ This plugin still owns the storefront-side hooks that produce signals
 the agent layer consumes (embedding refresh on product create/update,
 view recording, search logging).
 """
+
+# Lazy (in-function) task/service imports keep hooks load-order-safe; fail-soft
+# hooks intentionally swallow errors. Pre-existing idioms.
+# ruff: noqa: PLC0415, S110, I001
+
 from morpheus import Plugin, SettingsPanel, events
 
 
@@ -17,24 +22,24 @@ class AIAssistantPlugin(Plugin):
     # Historical name kept stable (referenced everywhere as the
     # provider-config store + plugin key); label clearly says what
     # this plugin does NOT include: Linda lives in core.assistant.
-    name = "ai_assistant"
-    label = "AI signals (embeddings, search, pricing)"
-    version = "2.0.0"
+    name = 'ai_assistant'
+    label = 'AI signals (embeddings, search, pricing)'
+    version = '2.0.0'
     description = (
-        "AI signals layer: product embeddings, semantic search, "
-        "recommendations, dynamic pricing, AI-providers configuration. "
+        'AI signals layer: product embeddings, semantic search, '
+        'recommendations, dynamic pricing, AI-providers configuration. '
         "Linda (the merchant assistant) lives in core.assistant — she's "
         "always available regardless of this plugin's state. This panel "
-        "is where you wire OpenAI / Anthropic / Packy / Grok / etc. keys."
+        'is where you wire OpenAI / Anthropic / Packy / Grok / etc. keys.'
     )
     has_models = True
-    requires = ["catalog", "orders", "customers"]
+    requires = ['catalog', 'orders', 'customers']
 
     def ready(self):
         # GraphQL extensions
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.queries')
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.mutations')
-        
+
         # REST/Webhook/Manifest URLs
         self.register_urls('plugins.installed.ai_assistant.urls', prefix='api/')
 
@@ -60,6 +65,7 @@ class AIAssistantPlugin(Plugin):
     def _register_pulse_schedule(self) -> None:
         from django.conf import settings
         from celery.schedules import crontab
+
         schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
         if schedule is None:
             return
@@ -87,6 +93,7 @@ class AIAssistantPlugin(Plugin):
         for the daily cron. Async via Celery; never blocks the hook."""
         try:
             from plugins.installed.ai_assistant.tasks import pulse_daily_refresh
+
             pulse_daily_refresh.delay()
         except Exception:  # noqa: BLE001
             pass
@@ -94,22 +101,26 @@ class AIAssistantPlugin(Plugin):
     def on_order_placed(self, order, **kwargs):
         """Update recommendation model after purchase."""
         from plugins.installed.ai_assistant.tasks import update_recommendations_after_order
+
         update_recommendations_after_order.delay(str(order.id))
 
     def on_customer_registered(self, customer, **kwargs):
         """Initialize memory store for new customer."""
         from plugins.installed.ai_assistant.tasks import initialize_customer_memory
+
         initialize_customer_memory.delay(str(customer.id))
 
     def on_cart_abandoned(self, cart, **kwargs):
         """Generate AI-personalized cart recovery message."""
         from plugins.installed.ai_assistant.tasks import generate_cart_recovery
+
         generate_cart_recovery.delay(str(cart.id))
 
     def on_product_created(self, product, **kwargs):
         """If product has no description, auto-generate one. Always (re)embed."""
         if not product.description:
             from plugins.installed.ai_assistant.tasks import generate_product_description
+
             generate_product_description.delay(str(product.id))
         self._enqueue_embedding(product)
 
@@ -120,11 +131,14 @@ class AIAssistantPlugin(Plugin):
         """Best-effort: schedule an embedding refresh; never raise from a hook."""
         try:
             from plugins.installed.ai_assistant.tasks import refresh_product_embedding
+
             refresh_product_embedding.delay(str(product.id))
         except Exception:  # noqa: BLE001 — task system may be down; degrade gracefully
             import logging
+
             logging.getLogger('morpheus.ai').warning(
-                'Failed to enqueue embedding refresh for product %s', product.id,
+                'Failed to enqueue embedding refresh for product %s',
+                product.id,
                 exc_info=True,
             )
 
@@ -133,6 +147,7 @@ class AIAssistantPlugin(Plugin):
         if not self.get_config_value('enable_dynamic_pricing', False):
             return value
         from plugins.installed.ai_assistant.services.pricing import DynamicPricingService
+
         return DynamicPricingService.calculate(value, product=product, customer=customer)
 
     def get_config_schema(self):
@@ -140,137 +155,195 @@ class AIAssistantPlugin(Plugin):
         # the dashboard. Providers are grouped together at the top, then
         # the active selection, then feature toggles.
         return {
-            "type": "object",
-            "properties": {
+            'type': 'object',
+            'properties': {
                 # ── OpenAI ────────────────────────────────────────────
-                "openai_api_key": {
-                    "type": "string",
-                    "title": "OpenAI · API Key",
-                    "description": "Leave blank to use the OPENAI_API_KEY env var.",
+                'openai_api_key': {
+                    'type': 'string',
+                    'title': 'OpenAI · API Key',
+                    'description': 'Leave blank to use the OPENAI_API_KEY env var.',
                 },
-                "openai_base_url": {
-                    "type": "string",
-                    "title": "OpenAI · Base URL",
-                    "description": "Override only if proxying. Default: https://api.openai.com/v1",
+                'openai_base_url': {
+                    'type': 'string',
+                    'title': 'OpenAI · Base URL',
+                    'description': 'Override only if proxying. Default: https://api.openai.com/v1',
                 },
-                "openai_model": {
-                    "type": "string",
-                    "title": "OpenAI · Default model",
-                    "default": "gpt-4o-mini",
+                'openai_model': {
+                    'type': 'string',
+                    'title': 'OpenAI · Default model',
+                    'default': 'gpt-4o-mini',
                 },
                 # ── Anthropic ─────────────────────────────────────────
-                "anthropic_api_key": {
-                    "type": "string",
-                    "title": "Anthropic · API Key",
-                    "description": "Leave blank to use the ANTHROPIC_API_KEY env var.",
+                'anthropic_api_key': {
+                    'type': 'string',
+                    'title': 'Anthropic · API Key',
+                    'description': 'Leave blank to use the ANTHROPIC_API_KEY env var.',
                 },
-                "anthropic_model": {
-                    "type": "string",
-                    "title": "Anthropic · Default model",
-                    "default": "claude-3-5-sonnet-latest",
+                'anthropic_model': {
+                    'type': 'string',
+                    'title': 'Anthropic · Default model',
+                    'default': 'claude-3-5-sonnet-latest',
                 },
                 # ── Google Gemini ─────────────────────────────────────
-                "gemini_api_key": {
-                    "type": "string",
-                    "title": "Gemini · API Key",
-                    "description": "Google AI Studio key (GEMINI_API_KEY).",
+                'gemini_api_key': {
+                    'type': 'string',
+                    'title': 'Gemini · API Key',
+                    'description': 'Google AI Studio key (GEMINI_API_KEY).',
                 },
-                "gemini_model": {
-                    "type": "string",
-                    "title": "Gemini · Default model",
-                    "default": "gemini-2.0-flash",
+                'gemini_model': {
+                    'type': 'string',
+                    'title': 'Gemini · Default model',
+                    'default': 'gemini-2.0-flash',
                 },
                 # ── OpenRouter ────────────────────────────────────────
-                "openrouter_api_key": {
-                    "type": "string",
-                    "title": "OpenRouter · API Key",
-                    "description": "Single-key access to many model vendors. https://openrouter.ai/keys",
+                'openrouter_api_key': {
+                    'type': 'string',
+                    'title': 'OpenRouter · API Key',
+                    'description': 'Single-key access to many model vendors. https://openrouter.ai/keys',
                 },
-                "openrouter_base_url": {
-                    "type": "string",
-                    "title": "OpenRouter · Base URL",
-                    "default": "https://openrouter.ai/api/v1",
+                'openrouter_base_url': {
+                    'type': 'string',
+                    'title': 'OpenRouter · Base URL',
+                    'default': 'https://openrouter.ai/api/v1',
                 },
-                "openrouter_model": {
-                    "type": "string",
-                    "title": "OpenRouter · Default model",
-                    "description": "Format: vendor/model — e.g. anthropic/claude-3.5-sonnet",
+                'openrouter_model': {
+                    'type': 'string',
+                    'title': 'OpenRouter · Default model',
+                    'description': 'Format: vendor/model — e.g. anthropic/claude-3.5-sonnet',
                 },
                 # ── Grok (xAI) ────────────────────────────────────────
-                "grok_api_key": {
-                    "type": "string",
-                    "title": "Grok · API Key",
-                    "description": "xAI API key. https://console.x.ai",
+                'grok_api_key': {
+                    'type': 'string',
+                    'title': 'Grok · API Key',
+                    'description': 'xAI API key. https://console.x.ai',
                 },
-                "grok_base_url": {
-                    "type": "string",
-                    "title": "Grok · Base URL",
-                    "default": "https://api.x.ai/v1",
+                'grok_base_url': {
+                    'type': 'string',
+                    'title': 'Grok · Base URL',
+                    'default': 'https://api.x.ai/v1',
                 },
-                "grok_model": {
-                    "type": "string",
-                    "title": "Grok · Default model",
-                    "default": "grok-4",
-                    "description": "e.g. grok-4 · grok-4-fast-reasoning · grok-3",
+                'grok_model': {
+                    'type': 'string',
+                    'title': 'Grok · Default model',
+                    'default': 'grok-4',
+                    'description': 'e.g. grok-4 · grok-4-fast-reasoning · grok-3',
                 },
                 # ── Packy (www.packyapi.com — Chinese LLM gateway) ────
-                "packy_api_key": {
-                    "type": "string",
-                    "title": "Packy · API Key",
-                    "description": "packyapi.com key. OpenAI-compatible gateway proxying Claude, GPT, Gemini etc.",
+                'packy_api_key': {
+                    'type': 'string',
+                    'title': 'Packy · API Key',
+                    'description': 'packyapi.com key. OpenAI-compatible gateway proxying Claude, GPT, Gemini etc.',
                 },
-                "packy_base_url": {
-                    "type": "string",
-                    "title": "Packy · Base URL",
-                    "default": "https://www.packyapi.com/v1",
+                'packy_base_url': {
+                    'type': 'string',
+                    'title': 'Packy · Base URL',
+                    'default': 'https://www.packyapi.com/v1',
                 },
-                "packy_model": {
-                    "type": "string",
-                    "title": "Packy · Default model",
-                    "default": "claude-3-5-sonnet-20241022",
-                    "description": "Model group prefix selects upstream — e.g. claude-officially/claude-haiku-4-5-20251001",
+                'packy_model': {
+                    'type': 'string',
+                    'title': 'Packy · Default model',
+                    'default': 'claude-3-5-sonnet-20241022',
+                    'description': 'Model group prefix selects upstream — e.g. claude-officially/claude-haiku-4-5-20251001',
+                },
+                # ── Hermes (NousResearch — native function-calling) ───
+                'hermes_api_key': {
+                    'type': 'string',
+                    'title': 'Hermes · API Key',
+                    'description': "NousResearch Hermes 3/4. Defaults to the OpenRouter gateway — paste an OpenRouter key, or point Base URL at Nous's own inference API.",
+                },
+                'hermes_base_url': {
+                    'type': 'string',
+                    'title': 'Hermes · Base URL',
+                    'default': 'https://openrouter.ai/api/v1',
+                },
+                'hermes_model': {
+                    'type': 'string',
+                    'title': 'Hermes · Default model',
+                    'default': 'nousresearch/hermes-3-llama-3.1-405b',
+                    'description': 'e.g. nousresearch/hermes-3-llama-3.1-405b · nousresearch/hermes-4-405b',
                 },
                 # ── Ollama (cloud or self-hosted) ─────────────────────
-                "ollama_base_url": {
-                    "type": "string",
-                    "title": "Ollama · Base URL",
-                    "description": "Self-hosted: http://localhost:11434 · Cloud: https://ollama.com",
-                    "default": "http://localhost:11434",
+                'ollama_base_url': {
+                    'type': 'string',
+                    'title': 'Ollama · Base URL',
+                    'description': 'Self-hosted: http://localhost:11434 · Cloud: https://ollama.com',
+                    'default': 'http://localhost:11434',
                 },
-                "ollama_api_key": {
-                    "type": "string",
-                    "title": "Ollama · API Key",
-                    "description": "Required for Ollama Cloud only.",
+                'ollama_api_key': {
+                    'type': 'string',
+                    'title': 'Ollama · API Key',
+                    'description': 'Required for Ollama Cloud only.',
                 },
-                "ollama_model": {
-                    "type": "string",
-                    "title": "Ollama · Default model",
-                    "default": "llama3.2",
+                'ollama_model': {
+                    'type': 'string',
+                    'title': 'Ollama · Default model',
+                    'default': 'llama3.2',
                 },
                 # ── Active provider selector ─────────────────────────
-                "ai_provider": {
-                    "type": "string",
-                    "enum": ["openai", "anthropic", "gemini", "openrouter", "grok", "packy", "ollama"],
-                    "default": "openai",
-                    "title": "Active provider",
-                    "description": "Which provider the assistant + agent layer call by default.",
+                'ai_provider': {
+                    'type': 'string',
+                    'enum': [
+                        'openai',
+                        'anthropic',
+                        'gemini',
+                        'openrouter',
+                        'grok',
+                        'packy',
+                        'hermes',
+                        'ollama',
+                    ],
+                    'default': 'openai',
+                    'title': 'Active provider',
+                    'description': 'Which provider the assistant + agent layer call by default.',
                 },
                 # ── Feature toggles ──────────────────────────────────
-                "enable_intent_engine": {"type": "boolean", "default": True, "title": "Enable intent engine"},
-                "enable_semantic_search": {"type": "boolean", "default": True, "title": "Enable semantic search"},
-                "enable_dynamic_pricing": {"type": "boolean", "default": False, "title": "Enable dynamic pricing"},
-                "enable_zero_shot_catalog": {"type": "boolean", "default": True, "title": "Enable zero-shot catalog"},
-                "enable_autonomous_operator": {"type": "boolean", "default": False, "title": "Enable autonomous operator"},
-                "enable_synthetic_testing": {"type": "boolean", "default": False, "title": "Enable synthetic testing"},
-                "agent_purchase_requires_approval": {"type": "boolean", "default": True, "title": "Agent purchases require approval"},
-                "memory_confidence_decay_days": {"type": "integer", "default": 90, "title": "Memory confidence decay (days)"},
+                'enable_intent_engine': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Enable intent engine',
+                },
+                'enable_semantic_search': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Enable semantic search',
+                },
+                'enable_dynamic_pricing': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Enable dynamic pricing',
+                },
+                'enable_zero_shot_catalog': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Enable zero-shot catalog',
+                },
+                'enable_autonomous_operator': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Enable autonomous operator',
+                },
+                'enable_synthetic_testing': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Enable synthetic testing',
+                },
+                'agent_purchase_requires_approval': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Agent purchases require approval',
+                },
+                'memory_confidence_decay_days': {
+                    'type': 'integer',
+                    'default': 90,
+                    'title': 'Memory confidence decay (days)',
+                },
             },
         }
 
     def contribute_settings_panel(self):
         return SettingsPanel(
             label='AI providers',
-            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, Packy, and Ollama. Pick the active provider with "Active provider".',
+            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, Packy, Hermes (NousResearch), and Ollama. Pick the active provider with "Active provider".',
             schema=self.get_config_schema(),
             category='ai',
         )

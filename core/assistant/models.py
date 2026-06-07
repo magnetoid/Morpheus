@@ -1,4 +1,9 @@
 """Assistant persistence models — DB-backed conversation history."""
+
+# Pre-existing legacy models lack __str__ (DJ008); to_skill() uses lazy imports
+# (PLC0415/I001) to avoid an agents↔assistant import cycle.
+# ruff: noqa: DJ008, PLC0415, I001
+
 from __future__ import annotations
 
 import uuid
@@ -27,7 +32,9 @@ class AssistantMessage(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
-        AssistantConversation, on_delete=models.CASCADE, related_name='messages',
+        AssistantConversation,
+        on_delete=models.CASCADE,
+        related_name='messages',
     )
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     content = models.TextField(blank=True)
@@ -48,20 +55,26 @@ class LindaMemory(models.Model):
     `memory.remember` tool. Free-text key + value, scoped to keep
     seasonal/audience-specific notes from leaking across contexts.
     """
+
     SCOPE_CHOICES = [
-        ('merchant',         'Merchant preference'),
+        ('merchant', 'Merchant preference'),
         ('customer-segment', 'Customer segment'),
-        ('seasonal',         'Seasonal / time-bound'),
+        ('seasonal', 'Seasonal / time-bound'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scope = models.CharField(
-        max_length=24, choices=SCOPE_CHOICES, default='merchant', db_index=True,
+        max_length=24,
+        choices=SCOPE_CHOICES,
+        default='merchant',
+        db_index=True,
     )
     key = models.CharField(max_length=160, db_index=True)
     value = models.TextField()
     source = models.CharField(
-        max_length=40, blank=True, default='',
+        max_length=40,
+        blank=True,
+        default='',
         help_text="Free-text source tag — 'user-told' / 'inferred' / etc.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -91,6 +104,7 @@ class LindaMemory(models.Model):
         """
         import math
         from django.utils import timezone
+
         src = (self.source or '').lower()
         if 'told' in src:
             confidence = 1.0
@@ -100,3 +114,48 @@ class LindaMemory(models.Model):
             confidence = 0.8
         age_days = (timezone.now() - self.updated_at).total_seconds() / 86400.0
         return confidence * math.exp(-age_days / max(half_life_days, 1.0))
+
+
+class LearnedSkill(models.Model):
+    """A skill Linda authored from experience — a named bundle of EXISTING agent
+    tools + a system-prompt prelude, persisted so it survives restarts and is
+    registered into the ``skill_registry`` at boot. A skill grants NO new
+    privilege: every tool still enforces its own scopes at call time. This is the
+    self-learning loop's output (ADR 0011: one agent, grown via skills/tools).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.SlugField(max_length=120, unique=True, db_index=True)
+    label = models.CharField(max_length=160)
+    description = models.TextField(blank=True)
+    system_prompt_prelude = models.TextField(blank=True)
+    tool_names = models.JSONField(default=list)  # names of registered tools it bundles
+    examples = models.JSONField(default=list, blank=True)
+    source = models.CharField(max_length=200, blank=True, default='distilled')
+    enabled = models.BooleanField(default=True, db_index=True)
+    version = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    class Meta:
+        app_label = 'assistant'
+        ordering = ['name']
+
+    def __str__(self) -> str:
+        return f'LearnedSkill({self.name})'
+
+    def to_skill(self):
+        """Build a runtime ``Skill`` from this row, resolving ``tool_names``
+        against Linda's live tool catalog (unknown names are dropped — fail-soft)."""
+        from core.agents.skills import Skill  # noqa: PLC0415
+        from core.assistant.tools.skills import all_resolvable_tools  # noqa: PLC0415
+
+        catalog = all_resolvable_tools()
+        tools = tuple(catalog[n] for n in (self.tool_names or []) if n in catalog)
+        return Skill(
+            name=self.name,
+            label=self.label,
+            description=self.description,
+            tools=tools,
+            system_prompt_prelude=self.system_prompt_prelude,
+        )

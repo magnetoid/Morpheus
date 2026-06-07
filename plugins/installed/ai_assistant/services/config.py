@@ -13,6 +13,10 @@ Resolution order, highest first:
 Never raises — returns a `ProviderConfig` with empty strings instead so the
 caller can decide how to fail (e.g. fall back to MockLLMProvider).
 """
+
+# Lazy plugin-registry import + fail-soft lookups are intentional. Pre-existing.
+# ruff: noqa: PLC0415, S112
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -40,6 +44,9 @@ _DEFAULT_BASE_URLS = {
     # one OpenAI-compatible chat-completions endpoint. Model groups are
     # selected via the model name prefix (e.g. "claude-officially/...").
     'packy': 'https://www.packyapi.com/v1',
+    # Hermes (NousResearch) — defaults to the OpenRouter gateway that hosts the
+    # Hermes family; override to Nous's own inference API in the panel.
+    'hermes': 'https://openrouter.ai/api/v1',
 }
 
 _DEFAULT_MODELS = {
@@ -50,6 +57,7 @@ _DEFAULT_MODELS = {
     'ollama': 'llama3.2',
     'grok': 'grok-4',
     'packy': 'claude-3-5-sonnet-20241022',
+    'hermes': 'nousresearch/hermes-3-llama-3.1-405b',
 }
 
 
@@ -121,10 +129,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'grok': 'XAI_BASE_URL',
             'packy': 'PACKY_BASE_URL',
         }
-        base_url = (
-            getattr(settings, env_base.get(name, ''), '')
-            or _DEFAULT_BASE_URLS.get(name, '')
-        )
+        base_url = getattr(settings, env_base.get(name, ''), '') or _DEFAULT_BASE_URLS.get(name, '')
 
     if not model:
         # Last-resort: legacy generic AI_MODEL only when it makes sense for

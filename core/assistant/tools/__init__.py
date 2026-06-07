@@ -85,6 +85,7 @@ def get_default_tools() -> list:
         memory_remember_tool,
     )
     from core.assistant.tools.navigation import dashboard_navigate_tool
+    from core.assistant.tools.skills import skills_distill_tool
 
     return [
         # Database — schema introspection
@@ -115,6 +116,8 @@ def get_default_tools() -> list:
         memory_recall_tool,
         memory_remember_tool,
         memory_forget_tool,
+        # Self-learning — distill a reusable skill from a completed workflow.
+        skills_distill_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first
         orders_update_status_tool,
         orders_cancel_tool,

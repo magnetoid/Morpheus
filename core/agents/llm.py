@@ -12,6 +12,11 @@ Built-in providers:
 * `OllamaProvider` — local inference (best-effort tool support).
 * `MockLLMProvider` — deterministic, used in tests.
 """
+
+# Lazy (in-function) SDK + provider-config imports keep this load-order-safe.
+# Pre-existing typing/import idioms across the provider classes.
+# ruff: noqa: PLC0415, UP035, UP037, I001, F541
+
 from __future__ import annotations
 
 import functools
@@ -46,6 +51,7 @@ def _openai_client(api_key: str = '', base_url: str = '', **extra):
     SDK retry loop.
     """
     import openai
+
     kwargs: dict[str, Any] = {
         'timeout': LLM_HTTP_TIMEOUT_SECS,
         'max_retries': 0,
@@ -69,6 +75,7 @@ def _llm_breaker(fn: Callable) -> Callable:
     from the same state — when OpenAI is down, Anthropic still works, and
     the breaker only opens for OpenAI's specific failure pattern.
     """
+
     @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
         try:
@@ -76,18 +83,21 @@ def _llm_breaker(fn: Callable) -> Callable:
                 return fn(self, *args, **kwargs)
         except CircuitOpenError as exc:
             logger.warning(
-                'llm provider %s short-circuited: %s', self.name, exc,
+                'llm provider %s short-circuited: %s',
+                self.name,
+                exc,
             )
             return LLMResponse(
                 text=f'[Upstream AI provider is degraded — circuit open. {exc}]',
                 model=getattr(self, 'model', '') or 'unknown',
             )
+
     return wrapped
 
 
 @dataclass(slots=True)
 class LLMMessage:
-    role: str            # 'system' | 'user' | 'assistant' | 'tool'
+    role: str  # 'system' | 'user' | 'assistant' | 'tool'
     content: str = ''
     name: str | None = None
     tool_call_id: str | None = None
@@ -97,6 +107,7 @@ class LLMMessage:
 @dataclass(slots=True)
 class LLMToolCall:
     """A tool invocation requested by the model."""
+
     id: str
     name: str
     arguments: dict[str, Any]
@@ -130,8 +141,7 @@ class LLMProvider(ABC):
         tools: list[Any] | None = None,
         temperature: float = 0.3,
         max_tokens: int = 1024,
-    ) -> LLMResponse:
-        ...
+    ) -> LLMResponse: ...
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -144,6 +154,7 @@ class OpenAIProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config('openai')
         base = cfg.base_url if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1' else ''
         self._client = _openai_client(api_key=cfg.api_key, base_url=base)
@@ -153,11 +164,13 @@ class OpenAIProvider(LLMProvider):
         out: list[dict[str, Any]] = []
         for m in messages:
             if m.role == 'tool':
-                out.append({
-                    'role': 'tool',
-                    'tool_call_id': m.tool_call_id or '',
-                    'content': m.content,
-                })
+                out.append(
+                    {
+                        'role': 'tool',
+                        'tool_call_id': m.tool_call_id or '',
+                        'content': m.content,
+                    }
+                )
                 continue
             entry: dict[str, Any] = {'role': m.role, 'content': m.content}
             if m.tool_calls:
@@ -196,7 +209,7 @@ class OpenAIProvider(LLMProvider):
         choice = completion.choices[0]
         msg = choice.message
         tool_calls: list[LLMToolCall] = []
-        for tc in (getattr(msg, 'tool_calls', None) or []):
+        for tc in getattr(msg, 'tool_calls', None) or []:
             try:
                 args = json.loads(tc.function.arguments or '{}')
             except json.JSONDecodeError:
@@ -223,6 +236,7 @@ class AnthropicProvider(LLMProvider):
     def __init__(self, model: str | None = None) -> None:
         import anthropic
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config('anthropic')
         # Same timeout discipline as the OpenAI client — must be less
         # than the gunicorn worker timeout so the LLM call fails
@@ -245,26 +259,32 @@ class AnthropicProvider(LLMProvider):
                     system_chunks.append(m.content)
                 continue
             if m.role == 'tool':
-                out.append({
-                    'role': 'user',
-                    'content': [{
-                        'type': 'tool_result',
-                        'tool_use_id': m.tool_call_id or '',
-                        'content': m.content,
-                    }],
-                })
+                out.append(
+                    {
+                        'role': 'user',
+                        'content': [
+                            {
+                                'type': 'tool_result',
+                                'tool_use_id': m.tool_call_id or '',
+                                'content': m.content,
+                            }
+                        ],
+                    }
+                )
                 continue
             if m.role == 'assistant' and m.tool_calls:
                 blocks: list[dict[str, Any]] = []
                 if m.content:
                     blocks.append({'type': 'text', 'text': m.content})
                 for tc in m.tool_calls:
-                    blocks.append({
-                        'type': 'tool_use',
-                        'id': tc.id,
-                        'name': tc.name,
-                        'input': tc.arguments,
-                    })
+                    blocks.append(
+                        {
+                            'type': 'tool_use',
+                            'id': tc.id,
+                            'name': tc.name,
+                            'input': tc.arguments,
+                        }
+                    )
                 out.append({'role': 'assistant', 'content': blocks})
                 continue
             out.append({'role': m.role, 'content': m.content})
@@ -299,11 +319,13 @@ class AnthropicProvider(LLMProvider):
             if btype == 'text':
                 text_chunks.append(getattr(block, 'text', '') or '')
             elif btype == 'tool_use':
-                tool_calls.append(LLMToolCall(
-                    id=getattr(block, 'id', ''),
-                    name=getattr(block, 'name', ''),
-                    arguments=getattr(block, 'input', {}) or {},
-                ))
+                tool_calls.append(
+                    LLMToolCall(
+                        id=getattr(block, 'id', ''),
+                        name=getattr(block, 'name', ''),
+                        arguments=getattr(block, 'input', {}) or {},
+                    )
+                )
         usage = getattr(resp, 'usage', None)
         return LLMResponse(
             text='\n'.join(text_chunks),
@@ -326,6 +348,7 @@ class OllamaProvider(LLMProvider):
     def __init__(self, model: str | None = None) -> None:
         import requests
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config('ollama')
         self._requests = requests
         self._api_key = cfg.api_key
@@ -380,12 +403,15 @@ class GeminiProvider(LLMProvider):
     def __init__(self, model: str | None = None) -> None:
         import requests
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config('gemini')
         if not cfg.api_key:
             raise RuntimeError('Gemini API key not configured')
         self._requests = requests
         self._api_key = cfg.api_key
-        self.base_url = (cfg.base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip('/')
+        self.base_url = (cfg.base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip(
+            '/'
+        )
         self.model = model or cfg.model or 'gemini-2.0-flash'
 
     @_llm_breaker
@@ -451,6 +477,7 @@ class OpenRouterProvider(OpenAIProvider):
 
     def __init__(self, model: str | None = None) -> None:
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config('openrouter')
         self._client = _openai_client(
             api_key=cfg.api_key,
@@ -469,6 +496,7 @@ class GrokProvider(OpenAIProvider):
 
     def __init__(self, model: str | None = None) -> None:
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config('grok')
         self._client = _openai_client(
             api_key=cfg.api_key,
@@ -487,12 +515,34 @@ class PackyProvider(OpenAIProvider):
 
     def __init__(self, model: str | None = None) -> None:
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config('packy')
         self._client = _openai_client(
             api_key=cfg.api_key,
             base_url=cfg.base_url or 'https://www.packyapi.com/v1',
         )
         self.model = model or cfg.model or 'claude-3-5-sonnet-20241022'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Hermes (NousResearch) — Hermes 3/4, native function-calling. OpenAI-compatible;
+# defaults to the OpenRouter gateway (point base_url at Nous's own inference API
+# instead via the AI Providers panel).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class HermesProvider(OpenAIProvider):
+    name = 'hermes'
+
+    def __init__(self, model: str | None = None) -> None:
+        from plugins.installed.ai_assistant.services.config import get_provider_config
+
+        cfg = get_provider_config('hermes')
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://openrouter.ai/api/v1',
+        )
+        self.model = model or cfg.model or 'nousresearch/hermes-3-llama-3.1-405b'
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -555,6 +605,7 @@ _PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
     'openrouter': OpenRouterProvider,
     'grok': GrokProvider,
     'packy': PackyProvider,
+    'hermes': HermesProvider,
 }
 
 
@@ -567,6 +618,7 @@ def get_llm_provider(name: str | None = None, *, model: str | None = None) -> LL
     else:
         try:
             from plugins.installed.ai_assistant.services.config import get_active_provider_name
+
             chosen = get_active_provider_name()
         except Exception:  # noqa: BLE001 — registry not ready (early boot, tests)
             chosen = (getattr(settings, 'AI_PROVIDER', '') or '').strip().lower()
