@@ -153,7 +153,7 @@ class CreatePaymentIntentRoutingTests(TestCase):
         self.assertEqual(_gateway_of(order), 'manual')
 
     def test_cod_returns_offline_success_when_enabled(self):
-        PaymentGatewayConfig.objects.create(slug='cod', enabled=True)
+        PaymentGatewayConfig.objects.update_or_create(slug='cod', defaults={'enabled': True})
         order = _make_order()
         result = routing.create_payment_intent_for(order, 'cod')
         self.assertTrue(result['success'])
@@ -161,7 +161,7 @@ class CreatePaymentIntentRoutingTests(TestCase):
         self.assertEqual(_gateway_of(order), 'cod')
 
     def test_test_gateway_returns_success_when_enabled(self):
-        PaymentGatewayConfig.objects.create(slug='test', enabled=True)
+        PaymentGatewayConfig.objects.update_or_create(slug='test', defaults={'enabled': True})
         order = _make_order()
         result = routing.create_payment_intent_for(order, 'test')
         self.assertTrue(result['success'])
