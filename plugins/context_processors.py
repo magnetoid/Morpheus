@@ -1,38 +1,96 @@
 """Plugin context processor — exposes active plugins + dashboard contributions."""
 
-# Lazy (in-function) plugin imports keep this load-order-safe; fail-soft badge
-# counters intentionally swallow errors. Pre-existing idioms.
-# ruff: noqa: PLC0415, S110, SIM105, SIM108
-
 from __future__ import annotations
 
 from collections import OrderedDict
 
-# Single source of truth for dashboard nav sections (ADR 0012). Section keys,
-# labels, icons, order, the legacy→canonical alias map, and the unknown→apps
-# resolution all live in core.nav — never redefine them here.
-from core.nav import ordered_keys, resolve_section, section_meta
+
+# Section display order in the admin sidebar — Shopify-style top-to-bottom.
+# Sections not in this list fall through to alphabetical order at the bottom.
+_SECTION_ORDER = [
+    # Main sidebar (daily-use)
+    # Marketing sits first so its section header lands right under the
+    # static daily-use links (Home / Assistant / Insights / Orders /
+    # Products / Customers) instead of getting buried near the bottom.
+    'marketing',  # Campaigns, Promotions, Coupons
+    'ai',  # AI & agents — Morpheus's defining surface
+    'sales',  # Orders (drafts surface inline)
+    'catalog',  # Products, Categories, Collections
+    'crm',  # Leads, Accounts, Deals, Tasks
+    'customers',  # Reviews, Subscriptions
+    'cms',  # Pages, Blocks, Menus, Forms
+    'analytics',  # Sessions, Events, Funnels
+    'seo',  # SEO audit, redirects, JSON-LD config
+    'growth',  # Affiliates, loyalty
+    'marketplace',  # Vendor onboarding, splits, payouts
+    'plugins',  # uncategorised main-nav plugin pages
+    # Settings sidebar (admin / setup)
+    'developer',  # Webhooks endpoints + deliveries
+    'access',  # Roles & users (RBAC)
+    'data',  # Bulk CSV import/export, Demo data
+    'settings',  # legacy 'settings' bucket — anything left over
+    'apps',  # the Apps catalog page
+]
+
+_SECTION_LABELS = {
+    'ai': 'AI & agents',
+    'sales': 'Sales',
+    'catalog': 'Catalog',
+    'crm': 'Customers & CRM',
+    'customers': 'Customers',
+    'marketing': 'Marketing',
+    'cms': 'Content',
+    'analytics': 'Analytics',
+    'seo': 'SEO',
+    'growth': 'Growth',
+    'marketplace': 'Multivendor',
+    'plugins': 'More plugins',
+    'developer': 'Developer tools',
+    'access': 'Access & roles',
+    'data': 'Data tools',
+    'settings': 'Settings',
+    'apps': 'Apps',
+}
+
+
+# Lucide icon for each known section. Falls through to 'folder' for
+# anything not listed — matches the template default.
+_SECTION_ICONS = {
+    'ai': 'sparkles',
+    'sales': 'shopping-cart',
+    'catalog': 'package',
+    'crm': 'users',
+    'customers': 'users',
+    'marketing': 'megaphone',
+    'cms': 'book-open',
+    'analytics': 'bar-chart-3',
+    'seo': 'search',
+    'growth': 'trending-up',
+    'marketplace': 'store',
+    'plugins': 'puzzle',
+    'developer': 'terminal',
+    'access': 'shield',
+    'data': 'database',
+    'settings': 'settings',
+    'apps': 'grid-3x3',
+}
 
 
 def _group_by_section(pages, *, active_apps_slug: str = ''):
-    """Group + order pages by their RESOLVED section the same way for any
-    sidebar. Every page's ``section`` is resolved through ``core.nav`` so an
-    unknown value lands in ``apps`` instead of minting a stray header.
+    """Group + order pages by section the same way for any sidebar.
 
-    ``active_apps_slug`` is the current `plugin/slug` (computed elsewhere in
-    this module) — when supplied, the matching section is marked
+    ``active_apps_slug`` is the current `plugin/slug` (computed elsewhere
+    in this module) — when supplied, the matching section is marked
     ``is_active=True`` so the template can pre-expand it.
     """
     by_section: dict[str, list] = {}
     for page in pages:
-        by_section.setdefault(resolve_section(page.section), []).append(page)
+        by_section.setdefault(page.section or 'plugins', []).append(page)
 
     grouped: OrderedDict[str, list] = OrderedDict()
-    for key in ordered_keys():
+    for key in _SECTION_ORDER:
         if key in by_section:
             grouped[key] = by_section.pop(key)
-    # Defensive: resolve_section only ever returns registry keys, so this is
-    # normally empty — kept so a future registry gap can't silently drop pages.
     for key in sorted(by_section.keys()):
         grouped[key] = by_section[key]
 
@@ -44,12 +102,11 @@ def _group_by_section(pages, *, active_apps_slug: str = ''):
                 if f'{p.plugin}/{p.slug}' == active_apps_slug:
                     is_active = True
                     break
-        meta = section_meta(key)
         out.append(
             {
                 'key': key,
-                'label': meta.label,
-                'icon': meta.icon,
+                'label': _SECTION_LABELS.get(key, key.replace('_', ' ').title()),
+                'icon': _SECTION_ICONS.get(key, 'folder'),
                 'pages': pages_in_section,
                 'is_active': is_active,
             }
@@ -72,16 +129,13 @@ def plugin_context(request):
         p
         for p in pages
         if getattr(p, 'nav', 'main') not in ('settings', 'hidden')
-        and resolve_section(getattr(p, 'section', '')) != 'apps'
+        and getattr(p, 'section', '') != 'apps'
     ]
     settings_pages = [
         p
         for p in pages
         if getattr(p, 'nav', 'main') == 'settings'
-        or (
-            getattr(p, 'nav', 'main') == 'main'
-            and resolve_section(getattr(p, 'section', '')) == 'apps'
-        )
+        or (getattr(p, 'nav', 'main') == 'main' and getattr(p, 'section', '') == 'apps')
     ]
 
     # Shopify-style settings categories — drives the settings sidebar.
