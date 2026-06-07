@@ -1,6 +1,6 @@
 """CMS dashboard pages."""
 
-# ruff: noqa: PLC0415 — model imports are lazy (load-order safe), matching siblings.
+# ruff: noqa: PLC0415, I001, S110 — lazy model imports + fail-soft seo lookups, matching siblings.
 from __future__ import annotations
 
 from django.contrib import messages
@@ -103,9 +103,49 @@ def _parse_publish_at(raw):
     return dt
 
 
+def _page_seo(page):
+    """(title, description) from the page's SeoMeta override, or ('', '')."""
+    if page is None or not getattr(page, 'pk', None):
+        return '', ''
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.seo.models import SeoMeta
+
+        ct = ContentType.objects.get_for_model(type(page))
+        sm = SeoMeta.objects.filter(content_type=ct, object_id=str(page.pk)).first()
+        if sm:
+            return sm.title or '', sm.description or ''
+    except Exception:  # noqa: BLE001 — seo plugin optional
+        pass
+    return '', ''
+
+
+def _save_page_seo(page, meta_title, meta_description):
+    """Upsert the page's SeoMeta override (seo plugin, generic FK). Only writes
+    when there's content or an existing row (no empty clutter). Fail-soft."""
+    title = (meta_title or '').strip()[:255]
+    description = (meta_description or '').strip()[:500]
+    try:
+        from django.contrib.contenttypes.models import ContentType
+        from plugins.installed.seo.models import SeoMeta
+
+        ct = ContentType.objects.get_for_model(type(page))
+        qs = SeoMeta.objects.filter(content_type=ct, object_id=str(page.pk))
+        if title or description or qs.exists():
+            SeoMeta.objects.update_or_create(
+                content_type=ct,
+                object_id=str(page.pk),
+                defaults={'title': title, 'description': description, 'auto_filled': False},
+            )
+    except Exception:  # noqa: BLE001 — seo plugin optional
+        pass
+
+
 def _page_form_context(request, page, *, creating):
     from plugins.installed.cms.models import Page
 
+    seo_title, seo_description = _page_seo(page)
+    cover_image = (getattr(page, 'metadata', None) or {}).get('cover', '') if page else ''
     return {
         'page': page,
         'creating': creating,
@@ -113,12 +153,15 @@ def _page_form_context(request, page, *, creating):
         'layout_choices': Page.LAYOUT_CHOICES,
         'form_action': request.path,
         'active_nav': 'cms',
+        'page_meta_title': seo_title,
+        'page_meta_description': seo_description,
+        'cover_image': cover_image,
     }
 
 
 @staff_member_required
 @require_http_methods(['GET', 'POST'])
-def page_edit(request, page_id=None):
+def page_edit(request, page_id=None):  # noqa: PLR0912 — flat validate→save view
     """Create (page_id is None) or edit a CMS Page."""
     from plugins.installed.cms.models import Page
 
@@ -174,7 +217,19 @@ def page_edit(request, page_id=None):
                 page.author = request.user
         page.title, page.slug, page.excerpt = title, slug, excerpt
         page.body, page.state, page.layout, page.publish_at = body, state, layout, publish_at
+        # Cover image (journal OG/cover) lives in metadata; preserve the rest
+        # (e.g. category='journal').
+        cover = (request.POST.get('cover_image') or '').strip()[:600]
+        meta = dict(page.metadata or {})
+        if cover:
+            meta['cover'] = cover
+        else:
+            meta.pop('cover', None)
+        page.metadata = meta
         page.save()
+        _save_page_seo(
+            page, request.POST.get('meta_title', ''), request.POST.get('meta_description', '')
+        )
         messages.success(request, f'Saved “{page.title}”.')
         return redirect(_PAGES_LIST_URL)
 

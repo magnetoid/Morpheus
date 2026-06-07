@@ -209,6 +209,10 @@ def journal_detail(request, slug):
         {'name': 'Journal', 'url': request.build_absolute_uri('/journal/')},
         {'name': entry.get('title', ''), 'url': request.build_absolute_uri(request.path)},
     ]
+    # Front-end admin-bar "Edit this journal" link for staff (CMS page editor).
+    active_edit_url = ''
+    if entry.get('id') and request.user.is_authenticated and request.user.is_staff:
+        active_edit_url = f'/dashboard/cms/pages/{entry["id"]}/edit/'
     return render(
         request,
         'storefront/journal_detail.html',
@@ -219,6 +223,8 @@ def journal_detail(request, slug):
             'seo_description': entry.get('excerpt', '')[:160],
             'seo_image': entry.get('image', ''),
             'seo_og_type': 'article',
+            'active_edit_url': active_edit_url,
+            'active_edit_label': 'Edit this journal',
         },
     )
 

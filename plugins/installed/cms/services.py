@@ -38,6 +38,7 @@ def _journal_dict(page) -> dict:
     if not author and getattr(page, 'author', None):
         author = (page.author.get_full_name() or page.author.get_username() or '').strip()
     return {
+        'id': str(page.id),
         'slug': page.slug,
         'title': page.title,
         'date_label': pub.strftime('%B · %-d min read') if pub else '',

@@ -88,6 +88,24 @@
       </div>
     </div>
 
+    {% comment %}Cover image + SEO — used for the journal cover/OG image and search snippets.{% endcomment %}
+    <div class="space-y-4 pt-4 border-t border-[color:var(--border)]">
+      <h2 class="text-sm font-semibold">Cover image &amp; SEO</h2>
+      <div>
+        <label class="block text-xs font-medium mb-1" for="page-cover">Cover image URL</label>
+        <input type="url" id="page-cover" name="cover_image" class="input" value="{{ cover_image|default:'' }}" placeholder="https://… (paste, or copy a URL from the Media library)">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Shown as the journal cover + social/OG image. Browse <a href="/dashboard/media/" target="_blank" rel="noopener" class="underline">Media</a> to upload &amp; copy a URL. {% if cover_image %}<a href="{{ cover_image }}" target="_blank" rel="noopener" class="underline">preview</a>{% endif %}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1" for="page-meta-title">SEO title <span class="text-[color:var(--text-muted)]">(≤60 chars; blank = auto from title)</span></label>
+        <input type="text" id="page-meta-title" name="meta_title" maxlength="255" class="input" value="{{ page_meta_title|default:'' }}">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1" for="page-meta-desc">SEO description <span class="text-[color:var(--text-muted)]">(≤160 chars)</span></label>
+        <textarea id="page-meta-desc" name="meta_description" rows="2" maxlength="500" class="input">{{ page_meta_description|default:'' }}</textarea>
+      </div>
+    </div>
+
     <div class="flex items-center justify-end gap-2 pt-2 border-t border-[color:var(--border)]">
       <a href="/dashboard/apps/cms/pages/" class="btn btn-ghost">Cancel</a>
       <button type="submit" class="btn btn-primary">{% if creating %}Create page{% else %}Save changes{% endif %}</button>
