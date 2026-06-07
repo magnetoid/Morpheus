@@ -76,6 +76,7 @@
             <div class="rte-divider"></div>
             <button type="button" class="rte-btn" data-rte="link" title="Add link">Link</button>
             <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">Unlink</button>
+            <button type="button" class="rte-btn" data-rte="image" title="Insert image (upload)">🖼 Image</button>
             <div class="rte-spacer"></div>
             <button type="button" class="rte-btn" data-rte="undo" title="Undo">&#8634;</button>
             <button type="button" class="rte-btn" data-rte="redo" title="Redo">&#8635;</button>
@@ -131,6 +132,38 @@
   import { Editor } from 'https://esm.sh/@tiptap/core@3.23.4';
   import StarterKit from 'https://esm.sh/@tiptap/starter-kit@3.23.4?deps=@tiptap/core@3.23.4';
   import Link from 'https://esm.sh/@tiptap/extension-link@3.23.4?deps=@tiptap/core@3.23.4';
+  import Image from 'https://esm.sh/@tiptap/extension-image@3.23.4?deps=@tiptap/core@3.23.4';
+
+  // Upload a chosen image to the Media library, then insert it at the cursor.
+  function pickAndUploadImage(editor) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const tokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const resp = await fetch('/dashboard/media/api/upload/', {
+          method: 'POST',
+          body: fd,
+          credentials: 'same-origin',
+          headers: tokenEl ? { 'X-CSRFToken': tokenEl.value } : {},
+        });
+        const data = await resp.json();
+        if (resp.ok && data.url) {
+          editor.chain().focus().setImage({ src: data.url, alt: data.alt_text || data.filename || '' }).run();
+        } else {
+          window.alert('Image upload failed: ' + (data.error || resp.status));
+        }
+      } catch (err) {
+        window.alert('Image upload failed: ' + err);
+      }
+    };
+    input.click();
+  }
 
   function wireTiptap({ hiddenId, targetId, sourceId, toolbarId, allowHeadings, ariaLabel, exposeAs }) {
     const hidden  = document.getElementById(hiddenId);
@@ -144,6 +177,7 @@
       // the only one (avoids the "Duplicate extension names: link" console warning).
       StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false, link: false }),
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener', target: '_blank' } }),
+      Image.configure({ inline: false, HTMLAttributes: { loading: 'lazy', class: 'rte-img' } }),
     ];
 
     const editor = new Editor({
@@ -214,6 +248,7 @@
           break;
         }
         case 'unlink':      chain.unsetLink().run(); break;
+        case 'image':       pickAndUploadImage(editor); break;
         case 'source': {
           const showingSource = !source.hidden;
           if (showingSource) {
