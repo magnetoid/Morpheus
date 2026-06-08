@@ -1,33 +1,38 @@
 """Tests for Linda — the hard-coded staff AI assistant."""
+
+# Lazy imports inside test methods are intentional (load-order isolation).
+# ruff: noqa: PLC0415
 from __future__ import annotations
 
 from django.test import TestCase
 
-from core.assistant import (
-    Assistant,
-    AssistantStore,
-    get_default_provider,
-    get_default_tools,
-)
-from core.assistant._mock_provider import MockAssistantProvider, _Resp
+from core.assistant import Assistant, get_default_tools
+from core.assistant._mock_provider import MockAssistantProvider
 
 
 class AssistantBootTests(TestCase):
-
     def test_assistant_constructs_without_plugins(self):
         a = Assistant(provider=MockAssistantProvider())
         self.assertEqual(a.name, 'assistant')
 
     def test_default_tools_loaded(self):
         names = {t.name for t in get_default_tools()}
-        for required in ('fs.read_file', 'fs.list_dir', 'db.list_models',
-                         'plugins.list', 'system.server_info',
-                         'delegate.list_agents', 'delegate.invoke_agent'):
+        # Representative spread of the post-pivot curated catalog (2026-05-23:
+        # collapsed to one generic worker; raw fs.* / plugins.list / server_info
+        # are intentionally NOT in Linda's default toolset).
+        for required in (
+            'db.list_models',
+            'orders.search',
+            'products.search',
+            'run_python',
+            'memory.recall',
+            'delegate.list_agents',
+            'delegate.invoke_agent',
+        ):
             self.assertIn(required, names)
 
 
 class AssistantRunTests(TestCase):
-
     def test_run_returns_completed_with_mock_provider(self):
         a = Assistant(provider=MockAssistantProvider(), tools=[])
         result = a.run(message='hi', conversation_key='test:1')
@@ -38,6 +43,7 @@ class AssistantRunTests(TestCase):
         class _Boom:
             def respond(self, **kw):
                 raise RuntimeError('provider down')
+
         a = Assistant(provider=_Boom(), tools=[])
         result = a.run(message='hi', conversation_key='test:2')
         self.assertEqual(result.state, 'failed')
@@ -55,24 +61,27 @@ class AssistantRunTests(TestCase):
 
 
 class FilesystemToolTests(TestCase):
-
     def test_list_dir_returns_entries(self):
         from core.assistant.tools.filesystem import list_dir_tool
+
         result = list_dir_tool.invoke({'path': '.'})
         self.assertIn('entries', result.output)
         self.assertGreater(len(result.output['entries']), 0)
 
     def test_path_traversal_rejected(self):
-        from core.assistant.tools.filesystem import read_file_tool, ToolError
+        from core.assistant.tools.filesystem import ToolError, read_file_tool
+
         with self.assertRaises(ToolError):
             read_file_tool.invoke({'path': '../../../etc/passwd'})
 
 
 class FallbackStoreTests(TestCase):
-
     def test_file_history_round_trip(self, tmp_path=None):
-        import os, tempfile
+        import os
+        import tempfile
+
         from core.assistant.persistence import AssistantStore, StoredMessage
+
         os.environ['MORPHEUS_ASSISTANT_FALLBACK'] = tempfile.mkdtemp()
         store = AssistantStore(prefer_db=False)
         store.append(conversation_key='k1', message=StoredMessage(role='user', content='ping'))
