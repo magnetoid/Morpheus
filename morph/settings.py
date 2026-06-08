@@ -106,6 +106,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.reviews',
     'plugins.installed.loyalty_points',
     'plugins.installed.lumina',
+    'plugins.installed.linda_generated',
     'plugins.installed.bookstore_3d',
     'plugins.installed.book_product',
     'plugins.installed.product_gallery',

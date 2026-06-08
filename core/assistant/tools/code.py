@@ -171,7 +171,9 @@ def code_draft_tool(*, name: str, source: str, rationale: str = '') -> ToolResul
         name=slug,
         kind='tool',
         rationale=rationale,
-        target_path=f'core/assistant/tools/generated/{slug}.py',
+        # Applied code lands under plugins/installed/ (ADR 0014: core/ is hard-
+        # blocked; linda_generated is the disable-testable landing zone).
+        target_path=f'plugins/installed/linda_generated/tools/{slug}.py',
         source=source,
         findings=findings,
         passed=ok,
@@ -277,3 +279,74 @@ def code_evaluate_proposal_tool(*, proposal_id: str) -> ToolResult:
             f'Advisory — a human still approves before anything goes live.'
         ),
     )
+
+
+@tool(
+    name='code.apply_proposal',
+    description=(
+        'Apply an OWNER-APPROVED code proposal: write its source to a NEW git '
+        'branch (never main), behind every gate (kill switch + re-scan + consensus '
+        '+ path boundary + circuit breaker). DORMANT by default — does nothing '
+        'unless ops set MORPHEUS_SELF_UPDATE_ENABLED AND the owner approved the '
+        'proposal (via the selfdev_approve command). After the user approves, pass '
+        'confirmed=True, hard_gate_ack="YES", and echo the proposal name. Never '
+        'touches the live running code — the change lands ONLY on a selfdev/* '
+        'branch for review (staging deploy / promote is a separate phase).'
+    ),
+    scopes=['system.write', 'selfdev'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'proposal_id': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+            'hard_gate_ack': {'type': 'string', 'default': ''},
+            'echo': {
+                'type': 'string',
+                'description': 'Type the proposal name to confirm.',
+                'default': '',
+            },
+        },
+        'required': ['proposal_id'],
+    },
+    requires_approval=True,
+)
+def code_apply_proposal_tool(
+    *, proposal_id: str, confirmed: bool = False, hard_gate_ack: str = '', echo: str = ''
+) -> ToolResult:
+    from core.assistant.apply import apply_enabled, apply_proposal
+    from core.assistant.models import CodeProposal
+
+    proposal = CodeProposal.objects.filter(id=proposal_id).first()
+    if proposal is None:
+        raise ToolError(f'no proposal with id {proposal_id!r}')
+
+    # Master kill switch — short-circuit while dormant so the gate prompts below
+    # never even appear unless ops has armed self-update.
+    if not apply_enabled():
+        return ToolResult(
+            output={
+                'applied': False,
+                'dormant': True,
+                'reason': 'self-update disabled (MORPHEUS_SELF_UPDATE_ENABLED unset)',
+            },
+            display='Self-development apply is OFF (dormant). Nothing was written.',
+        )
+
+    # Type-to-confirm ack + echo (ADR 0014) on top of the recorded owner approval.
+    if not confirmed:
+        raise ToolError('re-call with confirmed=True after the owner has approved.')
+    if (hard_gate_ack or '').strip().upper() != 'YES':
+        raise ToolError('this writes code — pass hard_gate_ack="YES" and echo the proposal name.')
+    if (echo or '').strip().lower() != (proposal.name or '').strip().lower():
+        raise ToolError(f'echo mismatch — type the proposal name {proposal.name!r} to confirm.')
+
+    result = apply_proposal(proposal)
+    if result.get('applied'):
+        return ToolResult(
+            output=result,
+            display=(
+                f'Applied "{proposal.name}" to branch {result["branch"]} — '
+                f'NOT live; awaiting review/deploy.'
+            ),
+        )
+    return ToolResult(output=result, display=f'Apply blocked: {result.get("reason")}')

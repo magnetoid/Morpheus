@@ -165,10 +165,20 @@ audit interface, behind the propose→sandbox→verify→gate→apply→rollback
 > consensus+sandbox, Linda-never-self-approves, audit+rollback, circuit breaker,
 > `selfdev`-only) are locked. Build may now proceed; turning the switch ON is a
 > separate deliberate owner action.
-- **Phase 4 apply step** (build dormant): approved proposal → write under
-  `plugins/installed/` → sandbox → staging clone → eval → auto-promote to prod.
-  Gated by MORPHEUS_SELF_UPDATE_ENABLED + owner-only upfront approval + mandatory
-  checks. See ADR 0014 for the full policy.
+- **Phase 4 apply step — write+gate half SHIPPED (dormant).** `core/assistant/apply.py`:
+  `apply_enabled()` (kill switch, default OFF) → `preflight()` (re-scan + consensus +
+  path boundary via `core/safety.py` + circuit breaker) → `apply_proposal()` writes the
+  source to a NEW `selfdev/*` branch via git PLUMBING (hash-object + temp index +
+  commit-tree + branch) — never main, never the live working tree. Owner approval is
+  `CodeProposal.approve(superuser)` via the `selfdev_approve` mgmt command; the
+  `code.apply_proposal` tool adds an ack+echo hard-gate. Applied code lands in the new
+  `linda_generated` plugin (disable-testable; `core/` is hard-blocked). Tests:
+  `core/assistant/tests/test_apply.py` (dormant default, every gate, happy path on a
+  throwaway repo). See `docs/plans/linda-selfdev-phase4-apply-2026-06.md`.
+  STILL OFF until ops sets `MORPHEUS_SELF_UPDATE_ENABLED`.
+- **Phase 4/7 promote (NOT built):** staging clone + auto-promote to prod via the
+  `environments` plugin — the "go public" half. Wiring the applied tool into Linda's
+  catalog at runtime also lands here.
 - **Phase 6 — objective shape/schema self-eval SHIPPED (static, no execution).**
   `codegen._shape_findings`: a drafted tool is checked for a valid schema, a
   signature that matches the schema (params ↔ properties), and a ToolResult return —

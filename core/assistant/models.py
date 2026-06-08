@@ -194,6 +194,12 @@ class CodeProposal(models.Model):
     findings = models.JSONField(default=list, blank=True)  # static-scan results
     passed = models.BooleanField(default=False)  # no CRITICAL/HIGH findings
     consensus = models.JSONField(default=dict, blank=True)  # multi-model review (Phase 5)
+    # Phase 4 apply (ADR 0014): owner approval is the binding human step; the
+    # apply engine writes the source to a git branch (never main), gated.
+    approver = models.CharField(max_length=200, blank=True)  # superuser email/username
+    approved_at = models.DateTimeField(null=True, blank=True)
+    applied_branch = models.CharField(max_length=200, blank=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -203,3 +209,26 @@ class CodeProposal(models.Model):
 
     def __str__(self) -> str:
         return f'CodeProposal({self.name}/{self.status})'
+
+    def approve(self, user) -> None:
+        """Owner approval — the binding human gate (ADR 0014). Only a superuser
+        may approve; this records WHO and WHEN and flips status to 'approved'.
+        Raises PermissionError otherwise (fail-closed)."""
+        from django.utils import timezone
+
+        if user is None or not getattr(user, 'is_superuser', False):
+            raise PermissionError('only the owner (a superuser) may approve a code proposal')
+        if self.status not in ('draft', 'approved'):
+            raise ValueError(f'cannot approve a proposal in status {self.status!r}')
+        self.approver = getattr(user, 'email', '') or getattr(user, 'username', '') or str(user.pk)
+        self.approved_at = timezone.now()
+        self.status = 'approved'
+        self.save(update_fields=['approver', 'approved_at', 'status', 'updated_at'])
+
+    def mark_applied(self, branch: str) -> None:
+        from django.utils import timezone
+
+        self.applied_branch = branch[:200]
+        self.applied_at = timezone.now()
+        self.status = 'applied'
+        self.save(update_fields=['applied_branch', 'applied_at', 'status', 'updated_at'])

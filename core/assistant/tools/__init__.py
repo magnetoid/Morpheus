@@ -79,6 +79,7 @@ def get_default_tools() -> list:
         workflows_run_tool,
     )
     from core.assistant.tools.code import (
+        code_apply_proposal_tool,
         code_draft_tool,
         code_evaluate_proposal_tool,
         code_list_proposals_tool,
@@ -137,6 +138,9 @@ def get_default_tools() -> list:
         code_draft_tool,
         code_evaluate_proposal_tool,
         code_list_proposals_tool,
+        # Phase 4 apply (ADR 0014) — owner-approved proposal → code on a branch.
+        # DORMANT: inert unless MORPHEUS_SELF_UPDATE_ENABLED + owner approval.
+        code_apply_proposal_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first
         orders_update_status_tool,
         orders_cancel_tool,
