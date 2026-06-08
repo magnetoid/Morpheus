@@ -483,12 +483,18 @@
     #sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
   }
   /* Right-side chevron on every expandable parent (hardcoded nav-children
-     groups), matching the plugin section-group chevron. Rotates open via :has(). */
+     groups), matching the plugin section-group chevron. Rotates open via :has().
+     It's also a click-toggle handle (JS below): click the chevron to expand/
+     collapse the group; click the label to navigate — so hardcoded parents
+     behave like the section-group buttons. Box-sized hit area + pointer. */
   .nav-link .nav-chev {
     margin-left: auto; opacity: .5; flex: none;
-    transition: transform var(--motion-fast) var(--ease-out);
+    box-sizing: content-box; padding: .35rem; margin-right: -.35rem;
+    cursor: pointer; border-radius: 4px;
+    transition: transform var(--motion-fast) var(--ease-out), opacity var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
     transform: rotate(-90deg);
   }
+  .nav-link .nav-chev:hover { opacity: 1; background: var(--nav-hover-bg); }
   .nav-link:has(+ .nav-children.open) .nav-chev { transform: rotate(0); }
 
   /* Desktop (>= 1024px) collapse → ICON RAIL: the sidebar narrows to a strip of
@@ -1166,6 +1172,29 @@
         btn.classList.toggle('collapsed', willCollapse);
         group?.classList.toggle('collapsed', willCollapse);
         localStorage.setItem(key, willCollapse ? '1' : '0');
+      });
+    });
+
+    // Hardcoded expandable parents (Linda / Orders / Products / Affiliates) —
+    // make the chevron a click-toggle handle so they behave like the section
+    // groups above: click the chevron to expand/collapse (persisted per parent),
+    // click the label to navigate. The active route always forces its group open
+    // (the server renders `.open`), so a persisted "closed" never hides the page
+    // you're on.
+    document.querySelectorAll('#nav-main .nav-link > .nav-chev').forEach(chev => {
+      const parent = chev.closest('.nav-link');
+      const children = parent ? parent.nextElementSibling : null;
+      if (!children || !children.classList.contains('nav-children')) return;
+      const key = 'nav.parent.' + (parent.getAttribute('href') || '');
+      // Active route wins; otherwise honour the persisted manual choice.
+      if (!children.classList.contains('open')) {
+        if (localStorage.getItem(key) === '1') children.classList.add('open');
+      }
+      chev.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const open = children.classList.toggle('open');
+        localStorage.setItem(key, open ? '1' : '0');
       });
     });
 
