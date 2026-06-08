@@ -10,6 +10,9 @@ Wires download fulfilment for `product_type == 'digital'` items:
   * Configurable defaults via the schema panel: token TTL (hours) and
     max downloads per token.
 """
+
+# Handlers use lazy imports (load-order-safe; the established plugin pattern).
+# ruff: noqa: PLC0415, I001
 from __future__ import annotations
 
 import logging
@@ -20,9 +23,9 @@ logger = logging.getLogger('morpheus.digital_products')
 
 
 class DigitalProductsPlugin(Plugin):
-    name = "digital_products"
-    label = "Digital Products"
-    version = "0.1.0"
+    name = 'digital_products'
+    label = 'Digital Products'
+    version = '0.1.0'
     description = (
         'Sell digital downloads — token-protected delivery, expiry, '
         'count limits, automatic email after payment.'
@@ -38,11 +41,39 @@ class DigitalProductsPlugin(Plugin):
         )
         self.register_celery_tasks('plugins.installed.digital_products.tasks')
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=80)
+        # Contribute the customer's active-download count into the account
+        # summary — only while enabled, so disabling the plugin removes the
+        # Downloads tile (ADR 0013) instead of storefront hard-coding the query.
+        self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=40)
         self._register_beat_schedule()
+
+    def on_account_summary(self, value, user=None, **kwargs):
+        """Fold this customer's active download count into the account summary.
+        Mutate the dict + return it; fail-soft — never break the account page."""
+        if user is None:
+            return value
+        try:
+            from django.utils import timezone
+
+            from plugins.installed.digital_products.models import DownloadToken
+
+            count = DownloadToken.objects.filter(
+                order__customer=user,
+                expires_at__gt=timezone.now(),
+                revoked_at__isnull=True,
+            ).count()
+            if count:
+                value['download_count'] = count
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger('morpheus.digital_products').warning(
+                'account_summary download fold failed: %s', exc, exc_info=True
+            )
+        return value
 
     def _register_beat_schedule(self) -> None:
         from django.conf import settings as dj_settings
         from celery.schedules import crontab
+
         schedule = getattr(dj_settings, 'CELERY_BEAT_SCHEDULE', None)
         if schedule is None:
             return
@@ -60,13 +91,17 @@ class DigitalProductsPlugin(Plugin):
             'type': 'object',
             'properties': {
                 'token_ttl_hours': {
-                    'type': 'integer', 'title': 'Token expiry (hours)',
-                    'default': 168, 'minimum': 1,
+                    'type': 'integer',
+                    'title': 'Token expiry (hours)',
+                    'default': 168,
+                    'minimum': 1,
                     'description': 'How long a download link stays valid. Default 7 days.',
                 },
                 'max_downloads_per_token': {
-                    'type': 'integer', 'title': 'Max downloads per token',
-                    'default': 5, 'minimum': 1,
+                    'type': 'integer',
+                    'title': 'Max downloads per token',
+                    'default': 5,
+                    'minimum': 1,
                     'description': 'How many times a single link can be used.',
                 },
             },
@@ -104,12 +139,8 @@ class DigitalProductsPlugin(Plugin):
             # (lets a single product sell PDF + EPUB + MP3 as separate
             # variants); falls back to the product-level digital_file
             # (single-SKU digital products).
-            variant_is_digital = bool(
-                variant and getattr(variant, 'variant_type', '') == 'digital'
-            )
-            variant_has_file = bool(
-                variant and getattr(variant, 'digital_file', None)
-            )
+            variant_is_digital = bool(variant and getattr(variant, 'variant_type', '') == 'digital')
+            variant_has_file = bool(variant and getattr(variant, 'digital_file', None))
             product_has_file = bool(getattr(product, 'digital_file', None))
 
             # Issue a token when there's actually a file to deliver:
@@ -139,6 +170,7 @@ class DigitalProductsPlugin(Plugin):
             return
 
         from morpheus import hooks
+
         try:
             hooks.fire('digital.tokens_issued', order=order, tokens=tokens)
         except Exception as e:  # noqa: BLE001 — never block payment finalisation

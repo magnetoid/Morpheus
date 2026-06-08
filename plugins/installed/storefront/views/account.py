@@ -33,16 +33,17 @@ def _account_summary(user) -> dict:
     automatically. loyalty_points is migrated to that path (it subscribes
     in plugins/installed/loyalty_points/plugin.py).
 
-    TODO(modular-os): migrate orders/returns/gift_cards/downloads the same
-    way so storefront stops hard-coding sibling-plugin fields here.
+    gift_cards + digital_products now contribute their own fields via that hook
+    (each plugin's ``on_account_summary``), so a disabled plugin's tile vanishes —
+    storefront no longer imports their models here.
+
+    TODO(modular-os): migrate the remaining orders/returns/store_credit fields
+    the same way (orders is foundational, so this is lower priority).
     """
     s: dict = {
         'orders_count': 0,
         'pending_returns': 0,
         'store_credit_balance': None,
-        'gift_card_count': 0,
-        'gift_card_total': None,
-        'download_count': 0,
     }
     try:
         from plugins.installed.orders.models import Order
@@ -65,37 +66,6 @@ def _account_summary(user) -> dict:
         s['store_credit_balance'] = _sc.balance(user)
     except Exception as e:  # noqa: BLE001
         logger.warning('account_summary.store_credit failed: %s', e, exc_info=True)
-    try:
-        from plugins.installed.gift_cards.models import GiftCard
-        from decimal import Decimal
-
-        cards = GiftCard.objects.filter(
-            issued_to_customer=user,
-            state='active',
-        )
-        s['gift_card_count'] = cards.count()
-        if cards.exists():
-            total = sum(
-                (Decimal(str(c.balance.amount)) for c in cards),
-                Decimal('0'),
-            )
-            currency = str(cards.first().balance.currency)
-            from djmoney.money import Money
-
-            s['gift_card_total'] = Money(total, currency)
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_summary.gift_cards failed: %s', e, exc_info=True)
-    try:
-        from plugins.installed.digital_products.models import DownloadToken
-        from django.utils import timezone
-
-        s['download_count'] = DownloadToken.objects.filter(
-            order__customer=user,
-            expires_at__gt=timezone.now(),
-            revoked_at__isnull=True,
-        ).count()
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_summary.download_count failed: %s', e, exc_info=True)
     # Let enabled plugins fold their own fields into the summary. Each
     # subscriber receives the dict as `value`, mutates/extends it, returns
     # it. A disabled plugin contributes nothing, so its tile never renders.
