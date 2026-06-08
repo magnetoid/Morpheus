@@ -75,3 +75,40 @@ class DraftToolTests(TestCase):
         out = code_list_proposals_tool.invoke({}).output
         self.assertGreaterEqual(out['count'], 1)
         self.assertIn('a', [p['name'] for p in out['proposals']])
+
+
+class ShapeEvalTests(SimpleTestCase):
+    _DECL = "from core.assistant.tools.filesystem import ToolResult, tool\n"
+
+    def test_signature_schema_mismatch(self):
+        src = self._DECL + (
+            "@tool(name='y.t', description='d', schema={'type':'object','properties':{}})\n"
+            'def y_t(*, foo):\n'
+            '    return ToolResult(output={})\n'
+        )
+        self.assertIn('sig_mismatch', _codes(scan_source(src)))
+
+    def test_param_in_schema_ok(self):
+        src = self._DECL + (
+            "@tool(name='y.t', description='d', schema={'type':'object','properties':{'foo':{}}})\n"
+            'def y_t(*, foo):\n'
+            '    return ToolResult(output={})\n'
+        )
+        self.assertNotIn('sig_mismatch', _codes(scan_source(src)))
+
+    def test_missing_toolresult_return(self):
+        src = self._DECL + (
+            "@tool(name='z.t', description='d', schema={'type':'object','properties':{}})\n"
+            'def z_t():\n'
+            '    return 5\n'
+        )
+        self.assertIn('no_toolresult', _codes(scan_source(src)))
+
+    def test_runtime_kwargs_not_flagged(self):
+        # agent/context are runtime-injected, not schema properties.
+        src = self._DECL + (
+            "@tool(name='r.t', description='d', schema={'type':'object','properties':{}})\n"
+            'def r_t(*, agent=None, context=None):\n'
+            '    return ToolResult(output={})\n'
+        )
+        self.assertNotIn('sig_mismatch', _codes(scan_source(src)))

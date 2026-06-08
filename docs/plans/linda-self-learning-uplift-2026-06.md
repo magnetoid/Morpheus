@@ -150,7 +150,23 @@ audit interface, behind the propose→sandbox→verify→gate→apply→rollback
   imports, SQL-fstring, shape) and stored as a `CodeProposal` (status=draft). It is
   NEVER executed and NEVER written to the repo. Tools: `code.draft_tool`,
   `code.list_proposals`.
-- **Phase 4 — apply step still TODO + OFF** (the dangerous part): turning an
-  approved proposal into live code = file write + branch/PR, gated by
-  MORPHEUS_SELF_UPDATE_ENABLED + a hard-gate + a mandatory security-reviewer pass,
-  never to `main`. Needs the gating policy signed off before it's built/enabled.
+- **Phase 5 — multi-model consensus shipped.** `core/assistant/consensus.py` +
+  `code.evaluate_proposal`: a proposal is reviewed by several CONFIGURED providers
+  independently (a model rubber-stamps its own output), 2/3 quorum, degrade-safe
+  (<2 providers → `insufficient`, defer to human). Advisory — never auto-approves.
+- **Self-dev tools are Linda-only** via a `selfdev` scope the generic Worker lacks.
+
+### Remaining (design agreed; not built — the autonomous loop's tail)
+- **Phase 4 apply step** (OFF): approved proposal → live code = file write +
+  branch/PR, gated by MORPHEUS_SELF_UPDATE_ENABLED + hard-gate + mandatory
+  security-review, never to `main`. Gating policy must be signed off first.
+- **Phase 6 — objective shape/schema self-eval SHIPPED (static, no execution).**
+  `codegen._shape_findings`: a drafted tool is checked for a valid schema, a
+  signature that matches the schema (params ↔ properties), and a ToolResult return —
+  folded into `scan_source`, so every draft is objectively self-evaluated. NOTE:
+  *functional* execution-with-inputs is deliberately NOT in-process (running a drafted
+  module means importing/executing it) — that moves to P7's isolated env.
+- **Phase 7 — staging→promote:** wire the `environments` plugin (Environment/Snapshot/
+  Deployment — already exists, was unsurfaced) so Linda deploys a change to a STAGING
+  clone, evaluates it there, then promotes to prod ("go public") behind the hard-gate.
+  This is the "test itself, then go public" loop, incrementally + measured.

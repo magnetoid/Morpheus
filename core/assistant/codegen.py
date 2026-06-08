@@ -121,20 +121,88 @@ def scan_source(source: str, *, kind: str = 'tool') -> list[dict]:  # noqa: PLR0
                 )
             )
 
-    # Shape: a tool draft should define a function decorated with @tool.
+    # Objective shape/schema/signature self-eval (Phase 6) — no execution.
     if kind == 'tool':
-        has_tool = False
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                for dec in node.decorator_list:
-                    target = dec.func if isinstance(dec, ast.Call) else dec
-                    nm = target.id if isinstance(target, ast.Name) else getattr(target, 'attr', '')
-                    if nm == 'tool':
-                        has_tool = True
-        if not has_tool:
-            findings.append(_finding('MEDIUM', 'no_tool', 'no @tool-decorated function found'))
+        findings.extend(_shape_findings(tree))
 
     return findings
+
+
+_RUNTIME_KWARGS = frozenset({'agent', 'context', 'request', 'customer', 'self'})
+
+
+def _const_str(node):
+    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+
+
+def _dict_str_keys(node) -> dict:
+    """{str-key: value-node} for an ast.Dict literal (non-string keys skipped)."""
+    out: dict = {}
+    if isinstance(node, ast.Dict):
+        for k, v in zip(node.keys, node.values, strict=False):
+            if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                out[k.value] = v
+    return out
+
+
+def _shape_findings(tree) -> list[dict]:  # noqa: PLR0912 — flat shape validator
+    """Objective, execution-free checks that a tool draft is well-formed: it has a
+    valid schema, its signature matches the schema, and it returns a ToolResult."""
+    fn = call = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            for dec in node.decorator_list:
+                target = dec.func if isinstance(dec, ast.Call) else dec
+                nm = target.id if isinstance(target, ast.Name) else getattr(target, 'attr', '')
+                if nm == 'tool':
+                    fn, call = node, (dec if isinstance(dec, ast.Call) else None)
+    if fn is None:
+        return [_finding('MEDIUM', 'no_tool', 'no @tool-decorated function found')]
+
+    out: list[dict] = []
+    kw = {k.arg: k.value for k in (call.keywords if call else [])}
+    if not _const_str(kw.get('name')):
+        out.append(_finding('MEDIUM', 'tool_name', '@tool is missing a name'))
+    if not _const_str(kw.get('description')):
+        out.append(_finding('LOW', 'tool_desc', '@tool is missing a description'))
+
+    prop_keys: set = set()
+    props_known = False  # did we actually parse a properties dict (even if empty)?
+    schema = kw.get('schema')
+    if not isinstance(schema, ast.Dict):
+        out.append(
+            _finding('MEDIUM', 'tool_schema', '@tool schema is missing or not a literal dict')
+        )
+    else:
+        sd = _dict_str_keys(schema)
+        props = sd.get('properties')
+        if isinstance(props, ast.Dict):
+            prop_keys = set(_dict_str_keys(props))
+            props_known = True
+        else:
+            out.append(_finding('MEDIUM', 'schema_props', 'schema has no properties dict'))
+
+    params = [a.arg for a in (fn.args.args + fn.args.kwonlyargs) if a.arg not in _RUNTIME_KWARGS]
+    for p in params:
+        if props_known and p not in prop_keys:
+            out.append(
+                _finding(
+                    'MEDIUM', 'sig_mismatch', f'param {p!r} is not declared in schema.properties'
+                )
+            )
+
+    returns_toolresult = any(
+        isinstance(n, ast.Return)
+        and isinstance(n.value, ast.Call)
+        and (
+            getattr(n.value.func, 'id', '') == 'ToolResult'
+            or getattr(n.value.func, 'attr', '') == 'ToolResult'
+        )
+        for n in ast.walk(fn)
+    )
+    if not returns_toolresult:
+        out.append(_finding('LOW', 'no_toolresult', 'function never returns a ToolResult'))
+    return out
 
 
 def passed(findings: list[dict]) -> bool:
