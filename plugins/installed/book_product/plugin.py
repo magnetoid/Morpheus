@@ -45,7 +45,11 @@ class BookProductPlugin(Plugin):
                 icon='tags',
                 section='catalog',
                 order=40,
-                nav='main',
+                # Surfaced as a child link under the hardcoded Products group
+                # (admin_dashboard base.html, guarded by plugin_enabled), so this
+                # standalone entry is hidden to avoid showing the item twice. The
+                # page + /dashboard/book-taxonomies/ route are unaffected.
+                nav='hidden',
                 url='/dashboard/book-taxonomies/',
             ),
         ]

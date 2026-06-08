@@ -482,12 +482,34 @@
     }
     #sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
   }
-  /* Desktop (>= 1024px): the sidebar is in-flow; the collapse toggle slides it
-     off-canvas (margin) so the content reclaims the space. Smooth + reversible;
-     avoids an icon-rail that the accordion nav doesn't fit cleanly. */
+  /* Right-side chevron on every expandable parent (hardcoded nav-children
+     groups), matching the plugin section-group chevron. Rotates open via :has(). */
+  .nav-link .nav-chev {
+    margin-left: auto; opacity: .5; flex: none;
+    transition: transform var(--motion-fast) var(--ease-out);
+    transform: rotate(-90deg);
+  }
+  .nav-link:has(+ .nav-children.open) .nav-chev { transform: rotate(0); }
+
+  /* Desktop (>= 1024px) collapse → ICON RAIL: the sidebar narrows to a strip of
+     icons (it does NOT disappear). Labels, sub-menus, chevrons, badges hide;
+     icons centre. Width is animated; state persists in localStorage. */
   @media (min-width: 1024px) {
-    #sidebar { transition: margin-left var(--motion-med) var(--ease-out); }
-    body.sidebar-collapsed #sidebar { margin-left: -14rem; }
+    #sidebar { transition: width var(--motion-med) var(--ease-out); }
+    body.sidebar-collapsed #sidebar { width: 4rem; }
+    body.sidebar-collapsed #sidebar .nav-link {
+      justify-content: center; gap: 0; padding-left: 0; padding-right: 0; font-size: 0;
+    }
+    body.sidebar-collapsed #sidebar .nav-link > i,
+    body.sidebar-collapsed #sidebar .nav-link > svg { font-size: 1rem; }
+    body.sidebar-collapsed #sidebar .nav-section-btn { justify-content: center; padding-left: 0; padding-right: 0; }
+    body.sidebar-collapsed #sidebar .nav-children,
+    body.sidebar-collapsed #sidebar .nav-link .nav-chev,
+    body.sidebar-collapsed #sidebar .nav-link .pill,
+    body.sidebar-collapsed #sidebar .nav-section-btn > span,
+    body.sidebar-collapsed #sidebar .nav-section-btn .chev,
+    body.sidebar-collapsed #sidebar .nav-section-label,
+    body.sidebar-collapsed #sidebar .h-12 a span { display: none; }
   }
   /* Subtle row hover on data tables — used everywhere a list renders. */
   table tbody tr { transition: background var(--motion-fast) var(--ease-out); }
@@ -701,7 +723,7 @@
     routes every objective through delegate.spawn_workers internally.
     {% endcomment %}
     {% with agents_active=request.path|slice:":17" %}
-    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Linda</a>
+    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Linda<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
     <div class="nav-children {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}open{% endif %}">
       <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}">Chat</a>
       <a href="/dashboard/agents/" class="nav-link {% if request.path == '/dashboard/agents/' %}active{% endif %}">Activity</a>
@@ -722,7 +744,7 @@
     {% endcomment %}
 
     <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}">
-      <i data-lucide="shopping-bag" class="h-4 w-4"></i> Orders
+      <i data-lucide="shopping-bag" class="h-4 w-4"></i> Orders<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i>
     </a>
     <div class="nav-children {% if active_nav == 'orders' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}">All orders</a>
@@ -733,11 +755,13 @@
       </a>
     </div>
 
-    <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products</a>
-    <div class="nav-children {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' or active_nav == 'collections' %}open{% endif %}">
+    {% plugin_enabled "book_product" as book_product_enabled %}
+    <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
+    <div class="nav-children {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' or active_nav == 'collections' or active_nav == 'book_taxonomies' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' and request.path != '/dashboard/products/content-audit/' %}active{% endif %}">All products</a>
       <a href="{% url 'admin_dashboard:categories' %}" class="nav-link {% if active_nav == 'categories' %}active{% endif %}">Categories</a>
       <a href="{% url 'admin_dashboard:collections' %}" class="nav-link {% if active_nav == 'collections' %}active{% endif %}">Collections</a>
+      {% if book_product_enabled %}<a href="/dashboard/book-taxonomies/" class="nav-link {% if active_nav == 'book_taxonomies' %}active{% endif %}">Book taxonomies</a>{% endif %}
       <a href="{% url 'admin_dashboard:content_audit' %}" class="nav-link {% if request.path == '/dashboard/products/content-audit/' %}active{% endif %}">Content audit</a>
       <a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>
     </div>
@@ -764,7 +788,7 @@
     {% endcomment %}
     {% with affiliates_prefix=active_apps_slug|slice:":11" %}
     <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if affiliates_prefix == 'affiliates/' %}active{% endif %}">
-      <i data-lucide="link" class="h-4 w-4"></i> Affiliates
+      <i data-lucide="link" class="h-4 w-4"></i> Affiliates<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i>
     </a>
     <div class="nav-children {% if affiliates_prefix == 'affiliates/' %}open{% endif %}">
       <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' %}active{% endif %}">Affiliates list</a>
