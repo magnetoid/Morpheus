@@ -41,6 +41,7 @@ Saleor, Medusa, and Vendure are excellent self-hostable platforms. Morpheus's be
 | Universal Commerce Protocol (`/.well-known/ucp.json`) | ✅ | — | — | — |
 | Visa TAP + Mastercard VI acceptance (`/.well-known/agent.json`) | ✅ | — | — | — |
 | Always-on hard-coded merchant assistant (Linda) | ✅ | — | — | — |
+| Self-improving agent (skills from experience + gated self-written tools) | ✅ | — | — | — |
 | Hybrid retrieval (BM25 + dense + RRF) on storefront search | ✅ | — | — | — |
 | EU AI Act decision-provenance audit trail | ✅ | — | — | — |
 | **Auto-generated Google Web Stories per product (AMP)** | ✅ | — | — | — |
@@ -53,7 +54,7 @@ Saleor, Medusa, and Vendure are excellent self-hostable platforms. Morpheus's be
 
 (✱ = extension framework exists, no plugin-isolation guarantees comparable to Morpheus's `safe_db` + crash-isolation contract.)
 
-**The platform is the product; the plugins are the surface.** Every model, hook, dashboard, and state transition is designed to be machine-actionable first and human-pretty second — which is what makes the AI layer feel native rather than bolted on. The Assistant is not a chatbot tab — it's a hard-coded operator in `core/` that survives plugin failure, has system-level scopes, **20+ tools spanning read and gated writes**, and can delegate to specialised agents that other plugins contribute. External AI clients reach the platform over a real **Model Context Protocol** server, with brand-voice config that propagates to every generation in the system.
+**The platform is the product; the plugins are the surface.** Every model, hook, dashboard, and state transition is designed to be machine-actionable first and human-pretty second — which is what makes the AI layer feel native rather than bolted on. The Assistant is not a chatbot tab — it's a hard-coded operator in `core/` that survives plugin failure, has system-level scopes, **50+ tools spanning reads, gated writes, sandboxed `run_python` multi-tool composition, self-learning skills, and a gated self-development pipeline**, and can fan out parallel generic Workers. External AI clients reach the platform over a real **Model Context Protocol** server, with brand-voice config that propagates to every generation in the system.
 
 What you get:
 
@@ -64,7 +65,7 @@ What you get:
 | **Event-sourced + outbox** | Every state change emits a hook *and* writes to a transactional outbox shipped to NATS JetStream. Replayable, auditable, fanout-friendly. HMAC-SHA256 on every outbound webhook. |
 | **Schema-less custom data** | A first-class [`metafields`](plugins/installed/metafields/) plugin: `(content_type, object_id, namespace, key, value)` triples on **any** Django model out of the box. The Shopify escape valve, but generic. |
 | **Central media library** | A dedicated [`media`](plugins/installed/media/) plugin: one `MediaAsset` model, sharded uploads, kind tabs, embeddable picker — used everywhere a file ID is needed. |
-| **Hard-coded Assistant in core** | A single Morpheus Assistant lives in [`core/assistant/`](core/assistant/) — never a plugin. **20 first-class tools** spanning filesystem, DB introspection, ecommerce reads (orders / products / customers / analytics / content / settings / media / metafields) and gated writes (orders.cancel, products.update_price, metafields.set, …). JSONL fallback persistence so the chat works even when the DB is unreachable. |
+| **Hard-coded Assistant in core** | A single Morpheus Assistant lives in [`core/assistant/`](core/assistant/) — never a plugin. **50+ first-class tools** (source: [`get_default_tools`](core/assistant/tools/__init__.py)) spanning DB introspection, ecommerce reads (orders / products / customers / analytics / content / settings / media / metafields), gated writes (orders.cancel, products.update_price, metafields.set, …), cross-session memory, self-learning skills, sandboxed `run_python` composition, and a gated self-development pipeline. JSONL fallback persistence so the chat works even when the DB is unreachable. |
 | **Kernel agent layer** | [`core/agents/`](core/agents/) is a peer of `core/hooks` and `plugins/`. Real LLM tool-use loop, provider abstraction (OpenAI / Anthropic / Gemini / OpenRouter / Grok / Ollama / Mock), versioned prompts, capability scopes, lossless trace, **Skills** (reusable tool bundles), background scheduling, **brand-voice-aware system prompts**. |
 | **Agentic-commerce ready** | A first-class **MCP server cluster** exposes audience-scoped surfaces (storefront / cart / checkout / admin) to external AI clients via JSON-RPC 2.0, plus UCP + Trusted-Agent discovery at `/.well-known/`. Bearer-token auth on the admin surface, public reads everywhere else. |
 | **AI-first discoverability** | A dedicated [`seo`](plugins/installed/seo/) plugin closes the **2026 SEO + AEO** loop end-to-end: 15-bot AI crawler matrix, per-object meta + JSON-LD (Product/Book/Review/Article/FAQ/QA/Breadcrumb/Organization), markdown export, `/llms.txt`, IndexNow, RSS+Atom journal feeds, hreflang, security.txt, sitemap index + image/news sub-sitemaps, paste-a-slug **SEO inspector**, sitemap truncation banner, 404→redirect manager. |
@@ -132,6 +133,14 @@ celery -A morph beat -l info               # for observability rollups + agent s
 ```
 
 For the full stack with observability: `docker compose -f docker-compose.dev.yml up -d`
+
+> **Out of the box vs. taking real money.** A fresh install boots the full storefront +
+> dashboard, and `morph_seed_demo` (or the one-prompt bootstrap) gives you a catalog to
+> click through immediately. But to accept **real payments** you must set live Stripe
+> keys, and outbound email uses Django's console backend until you configure SMTP — so
+> checkout is *wired and testable* (use the `advanced_payments` sandbox gateway) but not
+> charging cards until you configure it. The path to a transacting store is the
+> checklist in [`docs/REVENUE_PATH.md`](docs/REVENUE_PATH.md).
 
 ---
 
@@ -242,6 +251,7 @@ What this buys you:
 - **Clean teardown.** Disable `webstories` and the `<amp-story-player>` block disappears from every PDP — no dangling include, no broken template, no orphaned URL. Disable `lumina` and the `/create/` route plus its nav link are simply gone. Same for `bookstore_3d`'s `/walkthrough/`. The platform keeps booting; the surface is just no longer there.
 - **No cross-plugin coupling.** Plugins never import each other's models. They coordinate through the [`core.hooks`](core/hooks.py) event bus and contribute through slots — so two plugins can both target the same slot (ordered by `priority`) without knowing about each other.
 - **Crash isolation.** A plugin whose `ready()` throws is logged and excluded; its slots stay empty and every sibling keeps loading. Modularity isn't just an organising idea — it's enforced at activation time.
+- **Test-enforced.** Hardcoded plugin links in the dashboard shell sit behind `{% plugin_enabled "<plugin>" %}`, and [`admin_dashboard/tests/test_disable_guards.py`](plugins/installed/admin_dashboard/tests/test_disable_guards.py) fails the build the moment one is added unguarded — the disable test is CI, not just a convention.
 - **Themes are swappable.** Because a theme only owns slots + presentation, you can fork [`dot_books`](themes/library/dot_books/) or ship a brand-new theme that exposes the *same* slot names, and every plugin lights up unchanged.
 
 Full guides: [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) (the App SDK — manifest, contributions, hooks) and [`docs/THEME_DEVELOPMENT.md`](docs/THEME_DEVELOPMENT.md) (the Theme SDK — slots, layout, the dot_books reference).
@@ -255,7 +265,7 @@ Full guides: [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) (the App
 | Module | Role |
 |---|---|
 | [`core/`](core/) | hooks, models, Celery, observability bootstrap, request_id, JSON logging, Sentry, channels, exchange rates, money helpers |
-| [`core/assistant/`](core/assistant/) | **Hard-coded Morpheus Assistant** — runtime, providers, **20 system + ecommerce tools**, JSONL-fallback persistence |
+| [`core/assistant/`](core/assistant/) | **Hard-coded Morpheus Assistant** — runtime, providers, **50+ tools** (reads / gated writes / memory / self-learning / `run_python` / gated self-dev), JSONL-fallback persistence |
 | [`core/agents/`](core/agents/) | Agent kernel — `MorpheusAgent`, `Tool`, **`Skill`**, `AgentRuntime`, `LLMProvider`, prompts registry, scopes, trace, policies |
 | [`core/audit/`](core/audit/) | **Tamper-evident audit log** — `core.audit.record(event_type, actor, target, metadata)` |
 | [`core/i18n/`](core/i18n/) | **Translation kernel** — generic-FK `Translation` rows, `{{ obj\|trans:"field" }}`, agent tools |
@@ -296,7 +306,7 @@ The default install enables 60+ plugins — the canonical list is [`MORPHEUS_DEF
 
 | Plugin | What it does |
 |---|---|
-| [`agent_core`](plugins/installed/agent_core/) | **Persistence + GraphQL + dashboard for the agent kernel.** Built-in agents (Concierge, Merchant Ops, Pricing, Content Writer). Background agents lifecycle + observability dashboard |
+| [`agent_core`](plugins/installed/agent_core/) | **Persistence + GraphQL + dashboard for the agent kernel.** Registers the generic `Worker` agent + parallel fan-out (specialised by Skill bundles, not subclasses — ADR 0011); background-agent lifecycle + observability dashboard; `AgentRun` / `AgentStep` trace rows |
 | [`agent_mcp`](plugins/installed/agent_mcp/) | **MCP server cluster** — JSON-RPC 2.0 endpoints (`/mcp/storefront/v1/`, `/mcp/cart/v1/`, `/mcp/checkout/v1/`, `/mcp/admin/v1/`, + legacy `/mcp/v1/`) so external AI clients can transact through Morpheus without per-vendor integrations. Also serves the `/.well-known/` UCP + Trusted-Agent discovery docs |
 | [`ai_assistant`](plugins/installed/ai_assistant/) | AI provider config (OpenAI / Anthropic / Gemini / OpenRouter / **Grok (xAI)** / Ollama), embeddings, semantic search, recommendations, dynamic pricing. Per-provider key + model + live model picker from `/v1/models` |
 | [`ai_content`](plugins/installed/ai_content/) | **Brand voice config** — single source of truth that propagates to every AI generation in the platform via `services.get_brand_voice()`. Tone, audience, guidelines edited once propagate to product copy, email rewrites, SEO drafts |
@@ -377,15 +387,19 @@ This is what makes Morpheus different from every other open-source commerce plat
 
 [`core/assistant/`](core/assistant/) defines a single `Assistant` class. Mounted at `/dashboard/assistant/`. Reachable even when plugins explode. JSONL fallback persistence at `/tmp/morpheus-assistant/` when the DB is down.
 
-**20 first-class tools** out of the box:
+**50+ first-class tools** out of the box (the source of truth is [`get_default_tools`](core/assistant/tools/__init__.py) — never a hard-coded count). By domain:
 
 | Domain | Tools |
 |---|---|
-| **Reads — Ecommerce** | `orders.search`, `orders.get`, `recent_orders`, `products.search`, `products.get`, `customers.search`, `customers.get`, `analytics.summary`, `analytics.top_products`, `cms.pages`, `email.templates`, `media.search`, `metafields.list_for` |
-| **Reads — System** | `db.list_models`, `db.describe_model`, `db.count_rows`, `settings.list` (secrets auto-redacted), `fs.read_file`, `fs.list_dir`, `fs.search_files`, `logs.recent_errors`, `logs.search`, `system.info`, `system.disk`, `system.git_log` |
+| **Reads — Ecommerce** | `orders.search`, `orders.get`, `db.recent_orders`, `products.search`, `products.get`, `customers.search`, `customers.get`, `analytics.summary`, `analytics.top_products`, `cms.pages`, `email.templates`, `media.search`, `metafields.list_for` |
+| **Reads — System** | `db.list_models`, `db.describe_model`, `db.count_rows`, `settings.list` (secrets auto-redacted), `markets.list`, `platform.circuit_breakers` |
 | **Writes — gated by `confirmed=True`** | `orders.update_status`, `orders.cancel`, `orders.add_note`, `products.update_status`, `products.update_price`, `customers.add_note`, `cms.publish_page`, `cms.unpublish_page`, `metafields.set`, `metafields.delete` |
-| **Plugins** | `plugins.list`, `plugins.enable`, `plugins.disable` (require approval) |
-| **Delegate** | `delegate.invoke_agent` — route to a specialised agent for domain-specific work |
+| **Memory (cross-session)** | `memory.recall`, `memory.remember`, `memory.forget` |
+| **Self-learning** | `skills.distill` (turn a successful run into a reusable skill), `skills.list`, `skills.record_outcome` (auto-prunes skills that underperform) |
+| **Code composition** | `run_python` — compose read/safe tools in a sandboxed Python script (no import/file/network; 3 s wall; 50-call cap) |
+| **Self-development — Linda-only, gated** | `code.draft_tool`, `code.evaluate_proposal` (multi-model consensus), `code.list_proposals`, `code.apply_proposal` — draft → static safety-scan → consensus → owner-approved apply to a git branch. **Dormant** unless `MORPHEUS_SELF_UPDATE_ENABLED` |
+| **Platform ops — require approval** | `plugins.toggle`, `settings.set`, `theme.activate`, `workflows.run`, `updates.status`, `updates.apply`, `dashboard.navigate` |
+| **Delegate** | `delegate.spawn_workers` / `poll_workers` / `wait_for_workers` — fan out N generic Workers in parallel; `delegate.invoke_agent`, `delegate.list_agents` |
 
 A floating chat widget is included on every admin page via the `{% morph_ask %}` template tag, with auto-context derived from `request.path`.
 
@@ -411,15 +425,16 @@ Concepts:
 - **Hook integration** — `hook_registry.filter(AgentEvents.TOOL_CALLING, value=args, …)` runs before every tool call so plugins can transform or veto args.
 - **Trace** — every run captures every step. Persisted to `AgentRun` + `AgentStep` rows by `agent_core` for a lossless audit trail.
 
-### 3. Built-in agents (shipped by `agent_core` + `crm`)
+### 3. One generic Worker, specialised by Skills (not subclasses)
 
-| Agent | Audience | What it does |
-|---|---|---|
-| **Concierge** | storefront | Helps shoppers — searches catalog, recommends, answers product questions |
-| **Merchant Ops** | merchant | Admin assistant — runs reports, drafts emails, queries the DB through tools |
-| **Pricing** | system | Reviews and adjusts prices via the `product.calculate_price` hook |
-| **Content Writer** | merchant | Generates SEO copy, product descriptions, blog posts |
-| **Account Manager** | merchant | (CRM) Surfaces deal stage changes, follow-up tasks, lead-to-customer journeys |
+Post-pivot (2026-05-23), Morpheus runs **one** generic `Worker` agent rather than a
+zoo of specialist classes — **ADR 0011**. Specialisation is a **Skill bundle** plus
+the caller's scopes, never a new class. Linda fans out N Workers in parallel via
+`delegate.spawn_workers` — each handed only the Skills it needs (reporting, pricing,
+content, support) — and collects results with `poll_workers` / `wait_for_workers`.
+To add a capability you ship a Skill (`contribute_skills()`), not an agent subclass;
+this is enforced by convention + review, and is why the tool/skill/scope interface is
+the only surface that ever grows.
 
 ### 4. Background agents
 
@@ -430,6 +445,30 @@ Schedule any registered agent to run autonomously on a fixed interval. Backed by
 ### 5. Observability dashboard
 
 [`/dashboard/agents/observability/`](https://dotbooks.store/dashboard/agents/observability/) — per-agent runs / tokens / tool calls / avg duration over a configurable window, state breakdown, top tools, recent failures linking to run detail.
+
+### 6. Self-learning + self-development (the closed loop — gated)
+
+Linda doesn't just *call* tools — she improves her own toolkit, behind the safety
+boundary ([`core/safety.py`](core/safety.py)) and a default-off kill switch:
+
+- **Self-authored skills.** After a successful multi-step run, `skills.distill` turns
+  the trajectory into a persisted, runtime-registered `Skill`; per-skill outcomes are
+  tracked and chronic underperformers auto-pruned.
+- **`run_python` composition.** Multi-tool pipelines run as one sandboxed script
+  (read/safe tools only — no import/file/network, 3 s wall, 50-call cap) instead of
+  turn-by-turn calls.
+- **Self-written code — gated, dormant.** `code.draft_tool` drafts a new tool's source
+  → static safety scan ([`codegen.scan_source`](core/assistant/codegen.py): dangerous
+  calls, hallucinated imports, SQL-fstring, tool-shape) → multi-model **consensus**
+  review ([`consensus.py`](core/assistant/consensus.py), 2/3 quorum) → **owner**
+  approval → `code.apply_proposal` writes it to a git **branch** (never `main`, never
+  the live working tree) under [`plugins/installed/linda_generated/`](plugins/installed/linda_generated/).
+  The whole apply path is **OFF** unless ops sets `MORPHEUS_SELF_UPDATE_ENABLED`; the
+  signed-off policy is **ADR 0014**. Self-dev tools are Linda-only via a `selfdev`
+  scope the generic Worker never carries.
+
+The spine: **propose → sandbox → verify → consensus → owner-gate → audit → rollback** —
+a self-improving agent on a live store, kept safe at every step.
 
 ---
 
@@ -596,7 +635,9 @@ A live tracker of how Morpheus compares to Saleor, the previous open-source benc
 | Backups (pg_dump + media) | manual | ✅ (`manage.py morph_backup`) |
 | **Metafields on every model** | ❌ | ✅ (`metafields` — GenericForeignKey) |
 | **Central media library** | ❌ | ✅ (`media` — `MediaAsset` + picker) |
-| **Hard-coded Assistant w/ 20 tools** | ❌ | ✅ |
+| **Hard-coded Assistant w/ 50+ tools** | ❌ | ✅ |
+| **Self-learning skills + sandboxed `run_python` composition** | ❌ | ✅ |
+| **Gated self-development (draft → consensus → owner-approved apply)** | ❌ | ✅ (dormant by default; ADR 0014) |
 | **Kernel agent layer (tool-use loop, scopes, trace)** | ❌ | ✅ |
 | **MCP server (external AI client wire)** | ❌ | ✅ (`agent_mcp` — JSON-RPC 2.0) |
 | **Brand voice config (one place, every generation)** | ❌ | ✅ (`ai_content`) |
@@ -660,7 +701,7 @@ A live snapshot of where we are and where we're going. Items move between tiers 
 | **Multi-store** (single deploy serves N storefronts) | `core.StoreChannel` already models the per-channel cut; routing host → channel + admin isolation per store is the missing piece. |
 | **Enterprise compliance posture** | Third-party attestations on RBAC + audit log + data export — GDPR, PCI DSS SAQ-A, SOC 2 Type I as a starting set. |
 | **Visual page builder for CMS Pages + Storefront Blocks** | A drag-and-drop block composer that targets the existing `cms.Page` + `StorefrontBlock` shape — no proprietary JSON format. |
-| **Real-time agent presence on storefront** | Already foreshadowed by `core/channels.py`. Concierge agent can see who's on the site, what they're looking at, and proactively engage (with consent). |
+| **Real-time agent presence on storefront** | Already foreshadowed by `core/channels.py`. A storefront-facing Worker (Concierge skill) can see who's on the site, what they're looking at, and proactively engage (with consent). |
 | **Federated catalog (`morpheus://`) discovery** | Cross-store product search via the same MCP shape the platform already exposes for AI clients. |
 
 ### Architectural cleanup (in flight)
