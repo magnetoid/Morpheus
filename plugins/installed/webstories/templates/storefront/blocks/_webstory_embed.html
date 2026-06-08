@@ -1,5 +1,6 @@
 {% comment %}
-Story-player thumbnail rendered into PDP slot `pdp_above_long_description`.
+Story-player thumbnail rendered into PDP slot `pdp_below_long_description`
+(below the long description), centered horizontally.
 
 Gates itself on the OneToOne related row — when there's no WebStory or
 the story isn't published, the block emits nothing.
@@ -28,8 +29,9 @@ stylesheet) and renders a tappable card that opens the full
 </section>
 <style>
   .pdp-webstory {
-    margin: 3rem 0;
+    margin: 3rem auto;
     padding: 0;
+    text-align: center;
   }
   .pdp-webstory__heading {
     font-family: 'Fraunces', Georgia, serif;
@@ -50,6 +52,9 @@ stylesheet) and renders a tappable card that opens the full
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     cursor: pointer;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
   }
 </style>
 {% endif %}

@@ -38,14 +38,13 @@ class WebstoriesPlugin(Plugin):
         )
 
     def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
-        # Render the story-player thumbnail above the long description —
-        # high prominence without crowding the price/add-to-cart band.
+        # Render the story-player thumbnail BELOW the long description, centered.
         # NOTE: must be `contribute_storefront_blocks` (the base-class
         # contract). A method named `storefront_blocks` is silently
         # ignored by the plugin registry.
         return [
             StorefrontBlock(
-                slot='pdp_above_long_description',
+                slot='pdp_below_long_description',
                 template='storefront/blocks/_webstory_embed.html',
                 priority=40,
             )
