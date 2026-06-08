@@ -818,9 +818,12 @@
     const triggerBottom = triggers.length
       ? Math.max(...triggers.map((el) => el.getBoundingClientRect().bottom))
       : 0;
-    const topbarBottom = topbar ? topbar.getBoundingClientRect().bottom : Number.POSITIVE_INFINITY;
-    const top = Math.min(topbarBottom, triggerBottom + 6);
-    if (Number.isFinite(top) && top > 0) {
+    // Sit the panel FLUSH at the live topbar bottom. Using the topbar bottom
+    // (not trigger-bottom) keeps the panel attached to the bar regardless of the
+    // staff admin bar's +32px offset, so the hover bridge always reaches the
+    // trigger and the menu never drops on hover. triggerBottom is the floor.
+    const top = Number.isFinite(topbarBottom) ? topbarBottom : (triggerBottom + 6);
+    if (top > 0) {
       root.style.setProperty('--mega-menu-top', `${Math.round(top)}px`);
     }
   }
