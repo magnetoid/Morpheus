@@ -2,11 +2,14 @@
 
 # Morpheus OS
 
-### A modular, plugin-native ecommerce platform.
+### The open-source commerce platform you can *talk to*.
 
-**Catalog → cart → checkout → fulfillment in a tiny core. Everything else is a plugin.**
+**Describe your shop in one sentence → a real store in ~20 seconds.**
+**Flip any feature on or off like an app.**
+**Hand the back office to an AI that actually runs it.**
 
-Open source · Plugin-native · Event-sourced · Production-grade · AI-native
+A Shopify-grade store you genuinely **own** — where AI is a built-in co-worker, not a
+monthly add-on, and every feature is a plugin you can switch off without leaving a trace.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live-dotbooks.store-ff5722.svg)](https://dotbooks.store)
@@ -17,6 +20,8 @@ Open source · Plugin-native · Event-sourced · Production-grade · AI-native
 [![One-prompt bootstrap](https://img.shields.io/badge/bootstrap-1%20prompt%20%E2%86%92%20live%20store-22c55e.svg)](#one-prompt-store-bootstrap)
 [![Stack](https://img.shields.io/badge/django%206-postgres-2563eb.svg)](#tech-stack)
 
+### [▶ See it live](https://dotbooks.store) · [🚀 Deploy in minutes](#quick-start) · [🧠 How it works](#the-mental-model)
+
 [Quick start](#quick-start) · [The mental model](#the-mental-model) · [The modularity contract](#the-modularity-contract) · [What's inside](#whats-inside) · [The agent layer](#the-agent-layer) · [Agentic commerce surfaces](#agentic-commerce-surfaces) · [Discovery / SEO / AEO](#discovery--seo--aeo) · [Roadmap](#roadmap) · [Showcase](#showcase) · [Docs](#documentation)
 
 </div>
@@ -24,6 +29,8 @@ Open source · Plugin-native · Event-sourced · Production-grade · AI-native
 ---
 
 ## What Morpheus is
+
+> **Catalog → cart → checkout → fulfillment in a tiny core. Everything else is a plugin.**
 
 **Morpheus OS is a modular ecommerce platform.** The core is small — catalog, cart, checkout, fulfillment, plus the handful of foundations everything depends on (auth, hooks, settings, i18n, observability, the safety boundary). *Everything else is a plugin:* reviews, loyalty, markets, CMS, SEO, payments gateways, the agent layer, the 3D storefront — all self-contained packages under [`plugins/installed/`](plugins/installed/) that you can enable, disable, or fork without touching the engine.
 
@@ -149,70 +156,38 @@ For the full stack with observability: `docker compose -f docker-compose.dev.yml
 Three layers, two registries. Internalise this and the rest of the codebase reads itself.
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                                LAYER 1 — CORE                                │
-│  Tiny, almost everything else can be ripped out and the engine still boots.  │
-│                                                                              │
-│  core/                hooks · models · tasks · settings · request_id · logs  │
-│  core/assistant/      ★ HARD-CODED MORPHEUS ASSISTANT (always reachable)     │
-│  core/agents/         ★ Agent kernel (MorpheusAgent · Tool · Skill · LLM)    │
-│  core/audit/          ★ Tamper-evident security log                          │
-│  core/i18n/           ★ Translation kernel (generic-FK Translation rows)     │
-│  core/embeddings.py   ★ Embedding provider abstraction                       │
-│  core/utils/          ★ safe_db decorator · sliding-window rate limiter      │
-│  core/management/     ★ morph_backup (pg_dump + media tar)                   │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                     │
-                          ┌──────────┼──────────┐
-                          ▼          ▼          ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              LAYER 2 — PLUGINS                                │
-│   60+ enabled by default (source of truth: MORPHEUS_DEFAULT_PLUGINS).         │
-│   Each is a self-contained Python package. Disable one → its surfaces vanish. │
-│                                                                              │
-│  COMMERCE          AI / AGENTS        DISCOVERY          INFRA / OPS          │
-│  catalog           agent_core         seo  (2026 stack)  cloudflare           │
-│  orders            agent_mcp          webstories         observability        │
-│  customers         ai_assistant       pwa                environments         │
-│  payments          ai_content         flipbook           webhooks_ui          │
-│  advanced_payments functions          tracking           backups              │
-│  inventory         store_bootstrap                       demo_data            │
-│  tax                                  FOUNDATIONS         markets              │
-│  shipping          GROWTH             media               localization        │
-│  promotions        crm                metafields          bookvault            │
-│  draft_orders      affiliates         importers           admin_dashboard     │
-│  storefront        marketplace        rbac                advanced_ecommerce  │
-│  gift_cards        marketing          notifications_      analytics           │
-│  reviews           loyalty_points     center              product_gallery     │
-│  subscriptions     wishlist                               product_videos      │
-│  digital_products  cart_abandonment   STOREFRONT EXTRAS                       │
-│  dynamic_products  workflows          lumina  (/create/)                      │
-│                    personalisation    bookstore_3d  (/walkthrough/)           │
-│                                       B2B / Workflows → b2b                    │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                     │
-                                     ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              LAYER 3 — THEMES                                 │
-│       Plugins ship features. Themes ship presentation. They never mix.       │
-│                                                                              │
-│  themes/library/dot_books/   ← active by default; modern editorial            │
-│                                                                              │
-│  A theme declares which slots exist + owns layout + CSS. Plugins contribute   │
-│  via {% storefront_blocks "slot" %} into those slots. That's the boundary —   │
-│  and it's the platform's defining principle. See "The modularity contract".  │
-└──────────────────────────────────────────────────────────────────────────────┘
+  LAYER 1 · CORE   — tiny; rip almost everything else out and it still boots
+  ───────────────────────────────────────────────────────────────────────────
+    core/            hooks · settings · request lifecycle · i18n · audit · money
+    core/assistant/  ★ Linda — the always-on, hard-coded merchant AI
+    core/agents/     ★ the agent kernel (ONE generic Worker · Tools · Skills · LLM)
+    core/safety.py   ★ the single boundary for what AI is ever allowed to touch
 
-The two registries that wire it all together:
+        ▼   plugins fill the gaps   ▼
 
-  PluginRegistry        — discovers, topologically sorts, activates.
-                          Crashes in plugin.ready() are caught + isolated.
-                          Collects each plugin's contributions:
-                          • storefront blocks  • dashboard pages  • settings panels
-                          • agents · agent tools · skills · URLs · GraphQL extensions
+  LAYER 2 · PLUGINS — 60+ on by default; switch one off and its surface vanishes
+  ───────────────────────────────────────────────────────────────────────────
+    Commerce      catalog · book_product · orders · payments · inventory · tax ·
+                  shipping · promotions · gift_cards · subscriptions · reviews …
+    AI / Agents   ai_assistant · agent_core · agent_mcp · store_bootstrap ·
+                  ai_content · functions · linda_generated (self-dev landing zone)
+    Discovery     seo (2026 AEO stack) · webstories · pwa · tracking
+    Growth        crm · affiliates · marketplace · loyalty_points · wishlist · b2b
+    Storefront    storefront · admin_dashboard · cms · lumina · bookstore_3d
+    Foundations   media · metafields · importers · rbac · markets · localization
+                  └─ full, authoritative list → MORPHEUS_DEFAULT_PLUGINS
 
-  AgentRegistry         — knows every Tool and every Agent the platform exposes.
-                          Skills resolve into Tool bundles at agent invocation time.
+        ▼   presentation only — zero features   ▼
+
+  LAYER 3 · THEMES  — declare the slots, own the layout + CSS, ship nothing else
+  ───────────────────────────────────────────────────────────────────────────
+    themes/library/dot_books/   active by default · editorial · no build step
+
+  Two registries wire it together:
+    PluginRegistry — discovers, sorts, activates; isolates a crashing plugin;
+                     collects each plugin's blocks · pages · panels · tools · skills
+    AgentRegistry  — every Tool + Skill the platform exposes; Skills resolve into
+                     Tool bundles at invocation time
 ```
 
 ### Three non-obvious rules
