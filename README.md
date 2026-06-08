@@ -287,6 +287,7 @@ The default install enables 60+ plugins — the canonical list is [`MORPHEUS_DEF
 | Plugin | What it does |
 |---|---|
 | [`catalog`](plugins/installed/catalog/) | Products, variants, categories, collections, attributes, vendors — `agent_metadata` on every Product |
+| [`book_product`](plugins/installed/book_product/) | **Book product-type extension** — author / print & paper type / page count on a real model (not meta tags), cover-PDF 3D preview, per-term **book taxonomies** (publisher / series / imprint / format / language) with their own SEO + facet landing pages, dashboard book widget. Disable it and books fall back to plain products |
 | [`orders`](plugins/installed/orders/) | Cart → Order FSM, fulfillments, refunds, immutable `OrderEvent` log, **authoritative `cart_totals` GraphQL query** |
 | [`customers`](plugins/installed/customers/) | Custom user + addresses + CDP fields (`lifetime_value`, `purchase_count`, `last_order_at`) |
 | [`payments`](plugins/installed/payments/) | `PaymentGateway` ABC + `GatewayRegistry`. Stripe + Manual adapters; idempotent intents |
@@ -312,6 +313,7 @@ The default install enables 60+ plugins — the canonical list is [`MORPHEUS_DEF
 | [`ai_content`](plugins/installed/ai_content/) | **Brand voice config** — single source of truth that propagates to every AI generation in the platform via `services.get_brand_voice()`. Tone, audience, guidelines edited once propagate to product copy, email rewrites, SEO drafts |
 | [`store_bootstrap`](plugins/installed/store_bootstrap/) | **One-prompt store seed** — merchant describes a concept in one sentence, plugin generates brand voice + categories + 10-12 starter products in ~20s. Idempotent on SHA-256 of prompt. The AI-first onboarding moment |
 | [`functions`](plugins/installed/functions/) | Sandboxed merchant-defined logic for cart totals, pricing, shipping, validation |
+| [`linda_generated`](plugins/installed/linda_generated/) | **Landing zone for Linda's self-authored tools** — populated only by the gated self-development pipeline (ADR 0014); empty until the owner enables + approves self-dev. Disable to remove all generated tools (the disable test holds) |
 
 #### Foundations
 
@@ -367,9 +369,9 @@ The default install enables 60+ plugins — the canonical list is [`MORPHEUS_DEF
 | [`backups`](plugins/installed/backups/) | Scheduled `morph_backup` + restore tooling |
 | [`cloudflare`](plugins/installed/cloudflare/) | DNS, cache purge, WAF, R2 — auto-purge on `product.updated` |
 | [`tracking`](plugins/installed/tracking/) | **GA4 + GTM control center** — server-side Measurement Protocol v2 on the hook bus (ORDER_PAID / ADD_TO_CART / BEGIN_CHECKOUT / view_item / search / signup / login), client-side GTM with **Consent Mode v2 defaults emitted before the container loads** (the #1 EEA-compliance bug per Google's own docs), storefront consent banner, audit log, container export |
-| [`demo_data`](plugins/installed/demo_data/) | `manage.py morph_seed_demo` + theme-aware on-demand random product generator |
+| [`demo_data`](plugins/installed/demo_data/) | `manage.py morph_seed_demo` + theme-aware on-demand random product generator. **Dev/seed plugin — in the repo but no longer in `MORPHEUS_DEFAULT_PLUGINS` (disabled by default); enable it when you want demo content** |
 
-> Not shown above (all real, all in [`MORPHEUS_DEFAULT_PLUGINS`](morph/settings.py)): `markets`, `localization`, `bookvault`, `notifications_center`, `workflows`, `personalisation`, `post_purchase`, `experiments`, `fraud_rules`, `trust_signals`, `consent`, `subscriptions`. Browse [`plugins/installed/`](plugins/installed/) for the full set.
+> Not shown above (all real, all in [`MORPHEUS_DEFAULT_PLUGINS`](morph/settings.py)): `markets`, `localization`, `bookvault`, `notifications_center`, `workflows`, `personalisation`, `post_purchase`, `experiments`, `fraud_rules`, `trust_signals`, `consent`. Browse [`plugins/installed/`](plugins/installed/) for the full set.
 
 ### First-party theme
 
