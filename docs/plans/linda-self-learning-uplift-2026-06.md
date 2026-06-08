@@ -156,10 +156,19 @@ audit interface, behind the propose→sandbox→verify→gate→apply→rollback
   (<2 providers → `insufficient`, defer to human). Advisory — never auto-approves.
 - **Self-dev tools are Linda-only** via a `selfdev` scope the generic Worker lacks.
 
-### Remaining (design agreed; not built — the autonomous loop's tail)
-- **Phase 4 apply step** (OFF): approved proposal → live code = file write +
-  branch/PR, gated by MORPHEUS_SELF_UPDATE_ENABLED + hard-gate + mandatory
-  security-review, never to `main`. Gating policy must be signed off first.
+### Remaining (the autonomous loop's tail — gating policy SIGNED OFF 2026-06-08)
+> Policy ratified in **ADR 0014** (`.torsor/architecture/decisions/0014-…`). The
+> owner set the four axes: **apply target = full-auto-after-staging**, **blast
+> radius = any plugin file** (never core), **approver = owner-only**, **posture =
+> dormant** (build OFF behind `MORPHEUS_SELF_UPDATE_ENABLED`). All non-negotiables
+> (kill switch default-OFF, hard-blocked paths, mandatory scan+security-review+
+> consensus+sandbox, Linda-never-self-approves, audit+rollback, circuit breaker,
+> `selfdev`-only) are locked. Build may now proceed; turning the switch ON is a
+> separate deliberate owner action.
+- **Phase 4 apply step** (build dormant): approved proposal → write under
+  `plugins/installed/` → sandbox → staging clone → eval → auto-promote to prod.
+  Gated by MORPHEUS_SELF_UPDATE_ENABLED + owner-only upfront approval + mandatory
+  checks. See ADR 0014 for the full policy.
 - **Phase 6 — objective shape/schema self-eval SHIPPED (static, no execution).**
   `codegen._shape_findings`: a drafted tool is checked for a valid schema, a
   signature that matches the schema (params ↔ properties), and a ToolResult return —
