@@ -754,7 +754,7 @@
     </a>
     <div class="nav-children {% if active_nav == 'orders' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}">All orders</a>
-      <a href="/dashboard/draft-orders/" class="nav-link {% if active_nav == 'drafts' %}active{% endif %}">Drafts</a>
+      {% plugin_enabled "draft_orders" as draft_orders_enabled %}{% if draft_orders_enabled %}<a href="/dashboard/draft-orders/" class="nav-link {% if active_nav == 'drafts' %}active{% endif %}">Drafts</a>{% endif %}
       <a href="/dashboard/returns/" class="nav-link {% if active_nav == 'returns' %}active{% endif %}">
         Returns
         {% if nav_badges.returns %}<span class="pill pill-warn" style="margin-left:.4rem;">{{ nav_badges.returns }}</span>{% endif %}
@@ -762,6 +762,7 @@
     </div>
 
     {% plugin_enabled "book_product" as book_product_enabled %}
+    {% plugin_enabled "reviews" as reviews_enabled %}
     <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
     <div class="nav-children {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' or active_nav == 'collections' or active_nav == 'book_taxonomies' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' and request.path != '/dashboard/products/content-audit/' %}active{% endif %}">All products</a>
@@ -769,13 +770,14 @@
       <a href="{% url 'admin_dashboard:collections' %}" class="nav-link {% if active_nav == 'collections' %}active{% endif %}">Collections</a>
       {% if book_product_enabled %}<a href="/dashboard/book-taxonomies/" class="nav-link {% if active_nav == 'book_taxonomies' %}active{% endif %}">Book taxonomies</a>{% endif %}
       <a href="{% url 'admin_dashboard:content_audit' %}" class="nav-link {% if request.path == '/dashboard/products/content-audit/' %}active{% endif %}">Content audit</a>
-      <a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>
+      {% if reviews_enabled %}<a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>{% endif %}
     </div>
 
     <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Users</a>
 
-    {% comment %}Assets is core — sits right under Users so the merchant can jump straight from contacts to the file library.{% endcomment %}
-    <a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>
+    {% comment %}Assets = the media plugin's library. Guarded so it vanishes when media is disabled (disable test). If media should never be off, add it to PROTECTED_PLUGINS instead.{% endcomment %}
+    {% plugin_enabled "media" as media_enabled %}
+    {% if media_enabled %}<a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>{% endif %}
 
     {% plugin_enabled "affiliates" as affiliates_enabled %}
     {% if affiliates_enabled %}
