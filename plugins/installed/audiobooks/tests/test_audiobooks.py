@@ -107,3 +107,35 @@ class ProductFormHandlerTests(TestCase):
             product=mug, post={'audiobook_enabled': '1'}, files=None
         )
         self.assertFalse(Audiobook.objects.filter(variant__product=mug).exists())
+
+
+class StorefrontPlayerTests(TestCase):
+    """The PDP player self-gates: `audiobook_for` returns an audiobook only when
+    it's ready (status='ready' + a file), so a half-built one never shows."""
+
+    def test_audiobook_for_returns_ready_only(self):
+        from plugins.installed.audiobooks.models import Audiobook
+        from plugins.installed.audiobooks.templatetags.audiobooks import audiobook_for
+        from plugins.installed.catalog.models import Product, ProductVariant
+
+        product = Product.objects.create(
+            name='Book',
+            slug='ab-pl',
+            sku='ABPL-1',
+            status='active',
+            price=Money(Decimal('9.99'), 'USD'),
+        )
+        variant = ProductVariant.objects.create(
+            product=product,
+            name='Audiobook',
+            sku='ABPL-1-A',
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        ab = Audiobook.objects.create(variant=variant, status='none')
+        self.assertIsNone(audiobook_for(product))  # not ready → hidden
+
+        ab.audio_file = 'audiobooks/x.mp3'  # assign the name (no real file IO)
+        ab.status = 'ready'
+        ab.save()
+        self.assertEqual(audiobook_for(product), ab)

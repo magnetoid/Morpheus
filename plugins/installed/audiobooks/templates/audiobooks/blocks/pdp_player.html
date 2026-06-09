@@ -1,0 +1,26 @@
+{# PDP audiobook player, contributed into the storefront `pdp_below_form` slot. #}
+{# Self-gates: renders nothing unless the book has a ready audiobook edition. #}
+{% load audiobooks %}
+{% audiobook_for product as ab %}
+{% if ab %}
+<section class="pdp-audiobook" style="margin: 1.5rem 0;">
+  {% if ab.sample_file %}
+  <button type="button" class="btn"
+          style="display:inline-flex; align-items:center; gap:.5rem;"
+          onclick="document.getElementById('audiobook-modal-{{ ab.id }}').showModal()">
+    🎧 Listen to a sample
+  </button>
+  <dialog id="audiobook-modal-{{ ab.id }}"
+          style="border:none; border-radius:14px; padding:1.75rem; max-width:440px; box-shadow:0 12px 40px rgba(0,0,0,.18);">
+    <h3 style="font-family:'Fraunces',Georgia,serif; font-size:1.25rem; margin:0 0 .25rem;">Audiobook sample</h3>
+    {% if ab.narrator %}<p style="font-size:.9rem; color:var(--text-muted,#6b6258); margin:0 0 1rem;">Narrated by {{ ab.narrator }}</p>{% endif %}
+    <audio controls preload="none" style="width:100%;" src="{{ ab.sample_file.url }}">Your browser doesn&rsquo;t support the audio element.</audio>
+    <p style="font-size:.85rem; color:var(--text-muted,#6b6258); margin:1rem 0 0;">Choose the <strong>Audiobook</strong> edition above for the full narration.</p>
+    <button type="button" class="btn btn-secondary" style="margin-top:1.25rem;"
+            onclick="document.getElementById('audiobook-modal-{{ ab.id }}').close()">Close</button>
+  </dialog>
+  {% else %}
+  <p class="meta" style="font-size:.9rem;">🎧 <strong>Audiobook edition available</strong> &mdash; choose it above to listen.</p>
+  {% endif %}
+</section>
+{% endif %}

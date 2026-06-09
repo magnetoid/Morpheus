@@ -11,7 +11,7 @@ a plain digital edition. See docs/plans/audiobooks-2026-06.md.
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 
 
 class AudiobooksPlugin(Plugin):
@@ -104,6 +104,18 @@ class AudiobooksPlugin(Plugin):
             logging.getLogger('morpheus.audiobooks').warning(
                 'audiobook product-form save failed: %s', exc, exc_info=True
             )
+
+    def contribute_storefront_blocks(self) -> list:
+        # PDP "Listen to a sample" modal player — self-gates on a ready audiobook
+        # (renders nothing otherwise), so it disappears when the plugin is disabled.
+        return [
+            StorefrontBlock(
+                slot='pdp_below_form',
+                template='audiobooks/blocks/pdp_player.html',
+                priority=30,
+                context_keys=['product'],
+            ),
+        ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
         # Settings → Product Types → Audiobooks. The ElevenLabs key is a secret;
