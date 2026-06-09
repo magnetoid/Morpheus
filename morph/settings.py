@@ -108,6 +108,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.lumina',
     'plugins.installed.linda_generated',
     'plugins.installed.bookstore_3d',
+    'plugins.installed.audiobooks',
     'plugins.installed.book_product',
     'plugins.installed.product_gallery',
     'plugins.installed.product_videos',
