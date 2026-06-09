@@ -32,6 +32,13 @@ class AudiobooksPlugin(Plugin):
         # show the card. The storefront PDP player block is the next phase.
         self.register_hook(events.PRODUCT_FORM_CARDS, self.on_product_form_cards, priority=50)
         self.register_hook(events.PRODUCT_FORM_SAVED, self.on_product_form_saved, priority=50)
+        # ElevenLabs narration: the dashboard "Generate" button enqueues a task.
+        self.register_urls(
+            'plugins.installed.audiobooks.urls',
+            prefix='dashboard/audiobooks/',
+            namespace='audiobooks',
+        )
+        self.register_celery_tasks('plugins.installed.audiobooks.tasks')
 
     def on_product_form_cards(self, value, product=None, **kwargs):
         """Contribute the 'Audiobook edition' card for book products."""

@@ -45,7 +45,16 @@
     <input type="file" name="audiobook_sample" accept="audio/*" class="input">
   </div>
 
-  <button type="button" class="btn btn-secondary text-xs" disabled title="Coming soon">
-    <i data-lucide="sparkles" class="h-3 w-3"></i> Generate with ElevenLabs (coming soon)
-  </button>
+  {% if audiobook %}
+  <div class="flex items-center gap-2 flex-wrap">
+    <button type="button" class="btn btn-secondary text-xs"
+            onclick="fetch('/dashboard/audiobooks/{{ audiobook.id }}/generate/', {method:'POST', headers:{'X-CSRFToken': (document.querySelector('[name=csrfmiddlewaretoken]')||{}).value}}).then(r=>r.json()).then(d=>{this.textContent = d.ok ? 'Generating… refresh shortly' : ('Failed: '+(d.error||d.reason||''));}).catch(function(){this.textContent='Request failed';}.bind(this));">
+      <i data-lucide="sparkles" class="h-3 w-3"></i> Generate with ElevenLabs
+    </button>
+    <span class="text-xs text-[color:var(--text-muted)]">Status: {{ audiobook.get_status_display }}</span>
+  </div>
+  <p class="text-xs text-[color:var(--text-muted)]">Narrates the title, author, synopsis &amp; description with your configured ElevenLabs voice. Set the key + voice in Settings &rarr; Product Types &rarr; Audiobooks.</p>
+  {% else %}
+  <p class="text-xs text-[color:var(--text-muted)]">Save the audiobook edition first, then ElevenLabs can generate the narration here.</p>
+  {% endif %}
 </div>
