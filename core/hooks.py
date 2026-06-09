@@ -396,6 +396,16 @@ class MorpheusEvents:
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
+    # PRODUCT_FORM_CARDS — filter, value=list[dict], kwargs: product=Product.
+    #   A plugin appends {'template': '<path>', 'context': {...}, 'order': int}
+    #   to contribute a card into the dashboard product-edit form WITHOUT
+    #   admin_dashboard knowing about it (the modular alternative to hardcoding
+    #   book/bookvault cards). The view renders each template with the product.
+    PRODUCT_FORM_CARDS = 'product.form_cards'  # filter
+    # PRODUCT_FORM_SAVED — fire, kwargs: product=Product, post=QueryDict,
+    #   files=MultiValueDict. Fired after a product is saved in the dashboard so
+    #   a plugin can persist its own product-form fields (its card's inputs).
+    PRODUCT_FORM_SAVED = 'product.form_saved'  # fire
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

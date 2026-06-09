@@ -1,6 +1,6 @@
 """Auto-split from the legacy admin_dashboard/views.py monolith."""
 
-# ruff: noqa: PLC0415, I001, F401, S110, PLR0912
+# ruff: noqa: PLC0415, I001, F401, S110, PLR0912, PLR0915
 # Inline imports throughout: every view imports only what it needs to
 # stay fast at startup + avoid circular deps with catalog / product_videos
 # / bookvault / seo / core.agents. The `_shared` re-exports cover legacy
@@ -302,6 +302,34 @@ def _seo_tokens(product) -> list[dict]:
         return []
 
 
+def _collect_product_form_cards(product, request) -> list:
+    """Render plugin-contributed product-form cards (PRODUCT_FORM_CARDS filter).
+
+    The modular extension point: a plugin appends {'template', 'context', 'order'}
+    and we render it here, so admin_dashboard never imports the plugin. Fail-soft
+    per card — one broken card can't break the product form.
+    """
+    from django.template.loader import render_to_string
+
+    from core.hooks import MorpheusEvents, hook_registry
+
+    out: list = []
+    cards = hook_registry.filter(MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=product)
+    for card in sorted(cards or [], key=lambda c: c.get('order', 100)):
+        tpl = card.get('template')
+        if not tpl:
+            continue
+        try:
+            out.append(
+                render_to_string(
+                    tpl, {**card.get('context', {}), 'product': product}, request=request
+                )
+            )
+        except Exception as e:  # noqa: BLE001 — one bad card can't break the form
+            logger.warning('product_form_card render failed (%s): %s', tpl, e, exc_info=True)
+    return out
+
+
 @staff_member_required
 def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
@@ -318,6 +346,16 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
                 save_book_fields(product, request.POST, request.FILES)
             except Exception:  # noqa: BLE001 — book_product optional/disabled
                 pass
+            # Let plugins persist their own product-form fields (their contributed
+            # cards) — the modular path; the hook bus isolates a broken handler.
+            from core.hooks import MorpheusEvents, hook_registry
+
+            hook_registry.fire(
+                MorpheusEvents.PRODUCT_FORM_SAVED,
+                product=product,
+                post=request.POST,
+                files=request.FILES,
+            )
             messages.success(request, 'Product saved.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
         # Invalid form over AJAX: return the errors as JSON (400) so the client
@@ -388,11 +426,15 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     except Exception:  # noqa: BLE001
         book_widget = {}
 
+    # Plugin-contributed product-form cards (modular extension point).
+    extra_product_cards = _collect_product_form_cards(product, request)
+
     return render(
         request,
         'admin_dashboard/product_form.html',
         {
             'book_widget': book_widget,
+            'extra_product_cards': extra_product_cards,
             'form': form,
             'product': product,
             'categories': categories,

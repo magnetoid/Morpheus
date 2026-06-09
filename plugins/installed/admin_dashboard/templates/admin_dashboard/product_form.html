@@ -1246,6 +1246,9 @@
       </div>
     </details>
 
+  {# Plugin-contributed product-form cards (PRODUCT_FORM_CARDS extension point). #}
+  {% for card in extra_product_cards %}{{ card|safe }}{% endfor %}
+
   </form>
 
   </div> {# /lg:col-span-8 — close LEFT column #}

@@ -7,9 +7,11 @@ disable it and the player + generation + settings vanish while the variant stays
 a plain digital edition. See docs/plans/audiobooks-2026-06.md.
 """
 
+# Hook handlers use lazy imports (load-order-safe; the established plugin pattern).
+# ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, events
 
 
 class AudiobooksPlugin(Plugin):
@@ -25,9 +27,83 @@ class AudiobooksPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
-        # Storefront PDP player block + the admin "Audiobook edition" field are
-        # wired in the next phases (docs/plans/audiobooks-2026-06.md).
-        pass
+        # Contribute the "Audiobook edition" card into the dashboard product form
+        # (modular extension point) and persist it on save. Only book products
+        # show the card. The storefront PDP player block is the next phase.
+        self.register_hook(events.PRODUCT_FORM_CARDS, self.on_product_form_cards, priority=50)
+        self.register_hook(events.PRODUCT_FORM_SAVED, self.on_product_form_saved, priority=50)
+
+    def on_product_form_cards(self, value, product=None, **kwargs):
+        """Contribute the 'Audiobook edition' card for book products."""
+        if product is None or not getattr(product, 'book', None):
+            return value
+        ab = None
+        try:
+            from plugins.installed.audiobooks.models import Audiobook
+
+            ab = (
+                Audiobook.objects.filter(variant__product=product).select_related('variant').first()
+            )
+        except Exception:  # noqa: BLE001
+            ab = None
+        value.append(
+            {
+                'template': 'audiobooks/blocks/product_form_card.html',
+                'context': {'audiobook': ab},
+                'order': 45,
+            }
+        )
+        return value
+
+    def on_product_form_saved(self, product=None, post=None, files=None, **kwargs):
+        """Create/update the audiobook EDITION (a digital variant) + its audio."""
+        if product is None or post is None or post.get('audiobook_enabled') != '1':
+            return
+        if not getattr(product, 'book', None):
+            return
+        try:
+            from decimal import Decimal
+
+            from djmoney.money import Money
+
+            from plugins.installed.audiobooks.models import Audiobook
+            from plugins.installed.catalog.models import ProductVariant
+
+            ab = (
+                Audiobook.objects.filter(variant__product=product).select_related('variant').first()
+            )
+            if ab is None:
+                fallback_sku = f'{product.sku or product.id}-AUDIO'
+                variant = ProductVariant.objects.create(
+                    product=product,
+                    name='Audiobook',
+                    sku=(post.get('audiobook_sku') or fallback_sku)[:100],
+                    variant_type='digital',
+                    requires_shipping=False,
+                )
+                ab = Audiobook.objects.create(variant=variant)
+            variant = ab.variant
+
+            price = (post.get('audiobook_price') or '').strip()
+            if price:
+                currency = str(product.price.currency) if product.price else 'USD'
+                variant.price = Money(Decimal(price), currency)
+                variant.save(update_fields=['price'])
+
+            ab.narrator = (post.get('audiobook_narrator') or '')[:200]
+            if files and files.get('audiobook_audio'):
+                ab.audio_file = files['audiobook_audio']
+                ab.source = 'uploaded'
+                ab.status = 'ready'
+            if files and files.get('audiobook_sample'):
+                ab.sample_file = files['audiobook_sample']
+            ab.save()
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.audiobooks').warning(
+                'audiobook product-form save failed: %s', exc, exc_info=True
+            )
 
     def contribute_settings_panel(self) -> SettingsPanel:
         # Settings → Product Types → Audiobooks. The ElevenLabs key is a secret;

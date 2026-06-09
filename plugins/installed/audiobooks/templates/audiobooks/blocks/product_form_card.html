@@ -1,0 +1,51 @@
+{# Audiobook-edition card, contributed into the dashboard product form via the #}
+{# PRODUCT_FORM_CARDS extension point. Inputs submit with the product form. #}
+<div class="card card-padded space-y-3" id="audiobook-card">
+  <h2 class="font-semibold text-sm flex items-center gap-2">
+    <i data-lucide="headphones" class="h-4 w-4"></i> Audiobook edition
+  </h2>
+  <p class="text-xs text-[color:var(--text-muted)]">
+    A priced <strong>digital edition</strong> with a player on the product page — shown in the
+    storefront's &ldquo;Choose an edition&rdquo; picker. Upload narration now; ElevenLabs generation is coming.
+  </p>
+
+  <label class="flex items-center gap-2 text-sm">
+    <input type="checkbox" name="audiobook_enabled" value="1" {% if audiobook %}checked{% endif %}>
+    Offer an audiobook edition of this book
+  </label>
+
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="block text-sm font-medium mb-1">Price</label>
+      <input type="text" name="audiobook_price" class="input"
+             value="{% if audiobook and audiobook.variant.price %}{{ audiobook.variant.price.amount }}{% endif %}"
+             placeholder="14.99">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">SKU</label>
+      <input type="text" name="audiobook_sku" class="input"
+             value="{% if audiobook %}{{ audiobook.variant.sku }}{% endif %}" placeholder="auto">
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-1">Narrator</label>
+    <input type="text" name="audiobook_narrator" class="input"
+           value="{% if audiobook %}{{ audiobook.narrator }}{% endif %}" placeholder="e.g. Jane Doe">
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-1">Audio file (full narration)</label>
+    <input type="file" name="audiobook_audio" accept="audio/*" class="input">
+    {% if audiobook and audiobook.is_ready %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: {{ audiobook.audio_file.name }} &middot; ready &check;</p>{% endif %}
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-1">Sample clip (free preview)</label>
+    <input type="file" name="audiobook_sample" accept="audio/*" class="input">
+  </div>
+
+  <button type="button" class="btn btn-secondary text-xs" disabled title="Coming soon">
+    <i data-lucide="sparkles" class="h-3 w-3"></i> Generate with ElevenLabs (coming soon)
+  </button>
+</div>
