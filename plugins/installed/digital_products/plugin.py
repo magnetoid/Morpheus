@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 
 logger = logging.getLogger('morpheus.digital_products')
 
@@ -39,6 +39,12 @@ class DigitalProductsPlugin(Plugin):
             prefix='digital/',
             namespace='digital_products',
         )
+        # Own /account/downloads/ at the site root — only while enabled (ADR 0013).
+        self.register_urls(
+            'plugins.installed.digital_products.storefront_urls',
+            prefix='',
+            namespace='digital_products_account',
+        )
         self.register_celery_tasks('plugins.installed.digital_products.tasks')
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=80)
         # Contribute the customer's active-download count into the account
@@ -46,6 +52,17 @@ class DigitalProductsPlugin(Plugin):
         # Downloads tile (ADR 0013) instead of storefront hard-coding the query.
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=40)
         self._register_beat_schedule()
+
+    def contribute_storefront_blocks(self) -> list:
+        # Account-home tile → /account/downloads/. Lives with the plugin so a
+        # disabled plugin drops the tile (registry-gated contribution).
+        return [
+            StorefrontBlock(
+                slot='account_nav',
+                template='digital_products/blocks/account_nav.html',
+                priority=45,
+            ),
+        ]
 
     def on_account_summary(self, value, user=None, **kwargs):
         """Fold this customer's active download count into the account summary.

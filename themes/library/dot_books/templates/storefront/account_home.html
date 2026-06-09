@@ -35,12 +35,7 @@
         </p>
       </a>
       {% endif %}
-      {% if summary.download_count %}
-      <a href="/account/downloads/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-        <p class="title">Downloads <span style="color:var(--muted); font-weight:400;">({{ summary.download_count }})</span></p>
-        <p class="meta" style="margin-top: .35rem;">Active digital download links.</p>
-      </a>
-      {% endif %}
+      {# Downloads tile now contributed by digital_products via the account_nav slot below. #}
       <a href="/wishlist/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
         <p class="title">Wishlist</p>
         <p class="meta" style="margin-top: .35rem;">Saved titles you'd come back to.</p>

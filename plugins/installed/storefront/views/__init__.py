@@ -18,7 +18,7 @@ Layout:
                    account_addresses / account_address_form /
                    account_address_delete / account_returns /
                    account_return_status / account_credits /
-                   account_downloads / order_confirmation
+                   order_confirmation
   content.py     — about / contact / journal_index / journal_detail /
                    newsletter_subscribe / shipping / returns / coming_soon
   vendor.py      — vendors_directory / vendor_detail
@@ -31,7 +31,6 @@ from .account import (
     account_address_form,
     account_addresses,
     account_credits,
-    account_downloads,
     account_home,
     account_order_detail,
     account_order_return,
@@ -125,7 +124,6 @@ __all__ = [
     'account_returns',
     'account_return_status',
     'account_credits',
-    'account_downloads',
     'account_payment_methods',
     'order_confirmation',
     # content / vendor

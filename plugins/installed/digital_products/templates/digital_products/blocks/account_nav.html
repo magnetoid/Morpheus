@@ -1,0 +1,11 @@
+{# Account-home tile for digital downloads. Rendered into the storefront #}
+{# `account_nav` slot — only while digital_products is enabled, so a disabled #}
+{# plugin drops the tile. `summary.download_count` is folded in by this #}
+{# plugin's ACCOUNT_SUMMARY_FIELDS handler, so the tile shows only when the #}
+{# shopper has active downloads. #}
+{% if summary.download_count %}
+<a href="/account/downloads/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+  <p class="title">Downloads <span style="color:var(--muted); font-weight:400;">({{ summary.download_count }})</span></p>
+  <p class="meta" style="margin-top: .35rem;">Active digital download links.</p>
+</a>
+{% endif %}

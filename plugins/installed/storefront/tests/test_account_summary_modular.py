@@ -80,3 +80,15 @@ class AccountSummaryModularityTests(TestCase):
         self.assertTrue(
             any('DigitalProductsPlugin' in q for q in quals), 'digital_products not subscribed'
         )
+
+    def test_downloads_route_is_owned_by_digital_products(self):
+        # The /account/downloads/ route is registered BY the plugin, so disabling
+        # digital_products makes it 404 (ADR 0013) — and the storefront no longer
+        # owns it.
+        from django.urls import NoReverseMatch, reverse
+
+        self.assertEqual(
+            reverse('digital_products_account:account_downloads'), '/account/downloads/'
+        )
+        with self.assertRaises(NoReverseMatch):
+            reverse('storefront:account_downloads')

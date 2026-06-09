@@ -86,9 +86,9 @@ urlpatterns = [
         'account/returns/<uuid:rma_id>/', views.account_return_status, name='account_return_status'
     ),
     path('account/credits/', views.account_credits, name='account_credits'),
-    # /account/points/ now lives in the loyalty_points plugin (registers
-    # its own storefront URL) so disabling the plugin removes the route.
-    path('account/downloads/', views.account_downloads, name='account_downloads'),
+    # /account/points/ (loyalty_points) and /account/downloads/ (digital_products)
+    # now live in their owning plugins (each registers its own storefront URL),
+    # so disabling the plugin removes the route — the disable test (ADR 0013).
     path(
         'account/payment-methods/',
         views.account_payment_methods,

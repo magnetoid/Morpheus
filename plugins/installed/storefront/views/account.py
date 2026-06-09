@@ -331,13 +331,19 @@ def account_credits(request):
     except Exception as e:  # noqa: BLE001
         logger.warning('account_credits.store_credit failed: %s', e, exc_info=True)
     try:
-        from plugins.installed.gift_cards.models import GiftCard
+        # Gift cards are an optional plugin: only query them while it's enabled,
+        # so disabling gift_cards removes the section here (ADR 0013). Store
+        # credit (orders) stays — it's foundational, so this page itself remains.
+        from plugins.registry import plugin_registry
 
-        cards = list(
-            GiftCard.objects.filter(issued_to_customer=request.user, state='active').order_by(
-                '-created_at'
+        if plugin_registry.is_active('gift_cards'):
+            from plugins.installed.gift_cards.models import GiftCard
+
+            cards = list(
+                GiftCard.objects.filter(issued_to_customer=request.user, state='active').order_by(
+                    '-created_at'
+                )
             )
-        )
     except Exception as e:  # noqa: BLE001
         logger.warning('account_credits.gift_cards failed: %s', e, exc_info=True)
     return render(
@@ -347,37 +353,6 @@ def account_credits(request):
             'store_credit': store_credit,
             'txns': txns,
             'cards': cards,
-        },
-    )
-
-
-def account_downloads(request):
-    """Active digital download links — token-protected, time-bound."""
-    if not request.user.is_authenticated:
-        from morpheus.views import redirect
-
-        return redirect('/auth/login/?next=/account/downloads/')
-    tokens: list = []
-    try:
-        from plugins.installed.digital_products.models import DownloadToken
-        from django.utils import timezone
-
-        tokens = list(
-            DownloadToken.objects.filter(order__customer=request.user, revoked_at__isnull=True)
-            .select_related('product', 'order')
-            .order_by('-created_at')[:50]
-        )
-        now = timezone.now()
-        for t in tokens:
-            t.is_expired = bool(t.expires_at and t.expires_at <= now)
-            t.is_exhausted = t.downloads_used >= t.max_downloads
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_downloads.tokens failed: %s', e, exc_info=True)
-    return render(
-        request,
-        'storefront/account_downloads.html',
-        {
-            'tokens': tokens,
         },
     )
 
