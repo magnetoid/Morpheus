@@ -91,6 +91,18 @@ reviews / loyalty_points / crm subscribing (guarded by
 setup / pulse tiles in `admin_dashboard/views_split/home.py` still import
 orders / catalog / ai_assistant / agent_core / inventory models directly.
 
+**Core → plugin imports (wrong direction; core should never import
+`plugins.installed.*`):** `core/emails` is fixed (cms's EmailTemplate now
+arrives via the `EMAIL_TEMPLATE_OVERRIDE` filter; the site base URL moved
+to `core/utils/site.py` and seo delegates to it). Still leaking:
+`core/agents/llm.py` + `core/assistant/consensus.py` reach into
+ai_assistant's provider config (~10 sites); `core/assistant/tools/*`
+queries catalog/orders/cms/metafields/… models directly — the right fix
+is migrating those tools to each plugin's `contribute_agent_tools()`;
+and `core/context_processors.cart_context` imports orders.Cart
+(`Plugin.register_context_processor` exists but nothing consumes the
+registry's list yet, so it can't move until that API is wired up).
+
 ---
 
 ## How to research

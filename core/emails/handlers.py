@@ -8,6 +8,7 @@ SMTP failures still get logged so they're discoverable in observability.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from django.conf import settings
@@ -25,7 +26,7 @@ _REGISTERED = False
 
 def register_handlers() -> None:
     """Idempotent: subscribe each domain event to its email sender."""
-    global _REGISTERED
+    global _REGISTERED  # noqa: PLW0603 — module-level once-guard
     if _REGISTERED:
         return
     hook_registry.register(events.ORDER_PLACED, on_order_placed, priority=70)
@@ -85,14 +86,9 @@ def on_digital_tokens_issued(order: Any = None, tokens: Any = None, **kwargs: An
     to = getattr(order, 'email', None) or getattr(getattr(order, 'customer', None), 'email', None)
     if not to:
         return
-    base = ''
-    try:
-        from plugins.installed.seo.services import _site_base_url
+    from core.utils.site import site_base_url  # noqa: PLC0415 — avoid import cycle at app load
 
-        base = _site_base_url() or ''
-    except Exception:  # noqa: BLE001
-        pass
-    import os
+    base = site_base_url() or ''
 
     def _row(t):
         variant = getattr(t.order_item, 'variant', None) if t.order_item_id else None
@@ -209,31 +205,18 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
 
 
 def _db_override(template_base: str, ctx: dict) -> tuple[str | None, str | None, str | None]:
-    """Look up an active EmailTemplate by key. Returns
-    ``(subject, body_text, body_html)`` or ``(None, None, None)`` when
-    nothing matches — caller falls back to the filesystem template.
+    """Merchant-edited copy for this email, via EMAIL_TEMPLATE_OVERRIDE.
 
-    Renders subject + bodies through the Django engine so the same
-    ``{{ order.... }}`` placeholders work in DB-stored copy.
+    Fires the filter so the owning plugin (cms's EmailTemplate rows) can
+    supply ``(subject, body_text, body_html)``; ``(None, None, None)``
+    means no override and the caller falls back to the filesystem
+    template.
     """
     key = template_base.split('/', 1)[-1]
     try:
-        from django.template import Context, Template
-        from plugins.installed.cms.models import EmailTemplate
-
-        tpl = EmailTemplate.objects.filter(key=key, is_active=True).first()
-    except Exception:  # noqa: BLE001 — model not migrated, app not loaded, etc.
-        return (None, None, None)
-    if tpl is None:
-        return (None, None, None)
-    try:
-        d_ctx = Context(ctx, autoescape=False)
-        rendered_subject = Template(tpl.subject or '').render(d_ctx) if tpl.subject else None
-        rendered_text = Template(tpl.body_text or '').render(d_ctx) if tpl.body_text else None
-        rendered_html = (
-            Template(tpl.body_html).render(Context(ctx, autoescape=True)) if tpl.body_html else None
+        return hook_registry.filter(
+            events.EMAIL_TEMPLATE_OVERRIDE, value=(None, None, None), key=key, ctx=ctx
         )
-    except Exception as e:  # noqa: BLE001 — bad merchant template shouldn't kill the send
-        logger.warning('emails: DB override %s render failed: %s', key, e)
+    except Exception as e:  # noqa: BLE001 — an override must never kill the send
+        logger.warning('emails: template-override filter for %s failed: %s', key, e)
         return (None, None, None)
-    return (rendered_subject, rendered_text, rendered_html)

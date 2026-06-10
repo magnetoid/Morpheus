@@ -35,6 +35,10 @@ class CmsPlugin(Plugin):
         # Read + write GraphQL surface for Pages/Blocks (gated cms.read / cms.write).
         self.register_graphql_extension('plugins.installed.cms.graphql.queries')
         self.register_hook(events.CMS_FORM_SUBMITTED, self.on_form_submitted, priority=50)
+        # Supply merchant-edited transactional-email copy to core.emails.
+        self.register_hook(
+            events.EMAIL_TEMPLATE_OVERRIDE, self.on_email_template_override, priority=50
+        )
         # Theme sections register on import. Pull the active theme's
         # section bundle so the section_registry is populated before
         # any page render tries to look up a section_id. Other themes
@@ -48,6 +52,42 @@ class CmsPlugin(Plugin):
             importlib.import_module(f'themes.library.{theme}.sections')
         except Exception as exc:  # noqa: BLE001 — theme may not ship sections
             logger.debug('cms: no sections module for theme: %s', exc)
+
+    def on_email_template_override(self, value, key=None, ctx=None, **kwargs):
+        """Supply merchant-edited copy for a transactional email.
+
+        Subscribes to ``EMAIL_TEMPLATE_OVERRIDE`` (a filter): look up an
+        active ``EmailTemplate`` row for ``key`` and return the rendered
+        ``(subject, body_text, body_html)``. Renders through the Django
+        engine so the same ``{{ order.... }}`` placeholders work in
+        DB-stored copy. Leaves ``value`` untouched when another plugin
+        already supplied copy or no row matches.
+        """
+        if value and any(v is not None for v in value):
+            return value
+        from django.template import Context, Template
+        from plugins.installed.cms.models import EmailTemplate
+
+        try:
+            tpl = EmailTemplate.objects.filter(key=key, is_active=True).first()
+        except Exception:  # noqa: BLE001 — model not migrated yet, etc.
+            return value
+        if tpl is None:
+            return value
+        ctx = ctx or {}
+        try:
+            d_ctx = Context(ctx, autoescape=False)
+            subject = Template(tpl.subject or '').render(d_ctx) if tpl.subject else None
+            text = Template(tpl.body_text or '').render(d_ctx) if tpl.body_text else None
+            html = (
+                Template(tpl.body_html).render(Context(ctx, autoescape=True))
+                if tpl.body_html
+                else None
+            )
+        except Exception as e:  # noqa: BLE001 — bad merchant template shouldn't kill the send
+            logger.warning('cms: email template %s render failed: %s', key, e)
+            return value
+        return (subject, text, html)
 
     def on_form_submitted(self, form, submission, **kwargs):
         """Bridge to CRM if installed: form submission → Lead + Interaction."""
