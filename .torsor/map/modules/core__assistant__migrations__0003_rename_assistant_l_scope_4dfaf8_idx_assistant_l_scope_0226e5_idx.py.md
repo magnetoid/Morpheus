@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-09T21:57:01'
-updated: '2026-06-09T21:57:01'
+created: '2026-06-10T20:08:48'
+updated: '2026-06-10T20:08:48'
 ---
 
 # core/assistant/migrations/0003_rename_assistant_l_scope_4dfaf8_idx_assistant_l_scope_0226e5_idx.py

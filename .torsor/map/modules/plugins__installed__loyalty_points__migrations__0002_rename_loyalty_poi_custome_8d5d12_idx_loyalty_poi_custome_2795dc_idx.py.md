@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-09T21:57:02'
-updated: '2026-06-09T21:57:02'
+created: '2026-06-10T20:08:50'
+updated: '2026-06-10T20:08:50'
 ---
 
 # plugins/installed/loyalty_points/migrations/0002_rename_loyalty_poi_custome_8d5d12_idx_loyalty_poi_custome_2795dc_idx.py
