@@ -1,4 +1,5 @@
 """Tests for plugin contribution surfaces."""
+
 from __future__ import annotations
 
 from django.test import TestCase
@@ -7,7 +8,6 @@ from core.agents import agent_registry
 
 
 class AgentCoreContributionsTests(TestCase):
-
     def test_worker_agent_is_registered(self):
         # Post-pivot (2026-05-23) — single generic Worker, not 5 specialists.
         names = {a.name for a in agent_registry.all_agents()}
@@ -48,3 +48,19 @@ class AgentCoreContributionsTests(TestCase):
         self.assertIn('inventory.low_stock_report', tool_names)
         self.assertIn('inventory.adjust_stock', tool_names)
         self.assertIn('seo.set_meta', tool_names)
+
+    def test_worker_covers_all_tool_scopes(self):
+        # The Worker is the one generic agent: its scope set MUST be a superset
+        # of every scope any registered tool declares, or that tool silently
+        # vanishes from worker.get_tools(). This guards against the scope list
+        # rotting as plugins add new scopes (it had dropped crm/affiliates/tax).
+        worker = agent_registry.get_agent('worker')
+        worker_scopes = set(worker.scopes)
+        tool_scopes = {s for t in agent_registry.platform_tools() for s in (t.scopes or [])}
+        missing = tool_scopes - worker_scopes
+        self.assertEqual(
+            missing,
+            set(),
+            f'Worker scope set is missing tool scopes {sorted(missing)} — '
+            f'add them to WorkerAgent.scopes in core/agents/builtin/worker.py',
+        )

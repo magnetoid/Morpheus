@@ -5,66 +5,28 @@ names so plugin code reads naturally::
 
     from morpheus import events
     self.register_hook(events.ORDER_PLACED, self.on_order)
+
+This mirror is generated **dynamically** from `MorpheusEvents` — every
+uppercase constant declared there is surfaced here automatically. It used
+to be a hand-maintained list, which silently drifted: `PRODUCT_FORM_CARDS`
+and `PRODUCT_FORM_SAVED` were added to `MorpheusEvents` but not here, so
+`events.PRODUCT_FORM_CARDS` raised `AttributeError` inside the audiobooks
+plugin's `ready()` and crashed its activation. Generating the names removes
+that whole failure mode. `test_events_module_mirrors_registry` guards it.
 """
 
 from __future__ import annotations
 
 from core.hooks import MorpheusEvents as _E
 
-# Orders
-ORDER_PLACED = _E.ORDER_PLACED
-ORDER_CONFIRMED = _E.ORDER_CONFIRMED
-ORDER_PAID = _E.ORDER_PAID
-ORDER_CANCELLED = _E.ORDER_CANCELLED
-ORDER_FULFILLED = _E.ORDER_FULFILLED
+# Surface every event constant declared on MorpheusEvents. Keeping this
+# generated (not hand-listed) means a new event can never be missing here.
+globals().update(
+    {
+        _name: _value
+        for _name, _value in vars(_E).items()
+        if _name.isupper() and not _name.startswith('_')
+    }
+)
 
-# Payments
-PAYMENT_CAPTURED = _E.PAYMENT_CAPTURED
-PAYMENT_FAILED = _E.PAYMENT_FAILED
-PAYMENT_REFUNDED = _E.PAYMENT_REFUNDED
-
-# Cart
-CART_CREATED = _E.CART_CREATED
-CART_UPDATED = _E.CART_UPDATED
-CART_ABANDONED = _E.CART_ABANDONED
-ADD_TO_CART = _E.ADD_TO_CART
-REMOVE_FROM_CART = _E.REMOVE_FROM_CART
-BEGIN_CHECKOUT = _E.BEGIN_CHECKOUT
-
-# Filters
-CART_CALCULATE_TOTAL = _E.CART_CALCULATE_TOTAL
-CART_CALCULATE_BREAKDOWN = _E.CART_CALCULATE_BREAKDOWN
-PRODUCT_CALCULATE_PRICE = _E.PRODUCT_CALCULATE_PRICE
-ACCOUNT_SUMMARY_FIELDS = _E.ACCOUNT_SUMMARY_FIELDS
-CUSTOMER_DETAIL_PANELS = _E.CUSTOMER_DETAIL_PANELS
-
-# Catalog
-PRODUCT_VIEWED = _E.PRODUCT_VIEWED
-PRODUCT_CREATED = _E.PRODUCT_CREATED
-PRODUCT_UPDATED = _E.PRODUCT_UPDATED
-CATEGORY_UPDATED = _E.CATEGORY_UPDATED
-
-# Customers
-CUSTOMER_REGISTERED = _E.CUSTOMER_REGISTERED
-CUSTOMER_LOGIN = _E.CUSTOMER_LOGIN
-
-# Inventory
-PRODUCT_LOW_STOCK = _E.PRODUCT_LOW_STOCK
-PRODUCT_OUT_OF_STOCK = _E.PRODUCT_OUT_OF_STOCK
-
-# Search
-SEARCH_PERFORMED = _E.SEARCH_PERFORMED
-
-# AI
-AI_DESCRIPTION_GENERATED = _E.AI_DESCRIPTION_GENERATED
-AI_RECOMMENDATION_REQUESTED = _E.AI_RECOMMENDATION_REQUESTED
-
-# Agent intents
-AGENT_INTENT_PROPOSED = _E.AGENT_INTENT_PROPOSED
-AGENT_INTENT_AUTHORIZED = _E.AGENT_INTENT_AUTHORIZED
-AGENT_INTENT_REJECTED = _E.AGENT_INTENT_REJECTED
-AGENT_INTENT_COMPLETED = _E.AGENT_INTENT_COMPLETED
-AGENT_INTENT_FAILED = _E.AGENT_INTENT_FAILED
-
-# CMS
-CMS_FORM_SUBMITTED = _E.CMS_FORM_SUBMITTED
+__all__ = [name for name in list(globals()) if name.isupper() and not name.startswith('_')]
