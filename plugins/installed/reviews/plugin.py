@@ -1,7 +1,8 @@
 """Reviews plugin manifest."""
+
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, StorefrontBlock
+from morpheus import Plugin, StorefrontBlock, events
 
 
 class ReviewsPlugin(Plugin):
@@ -18,13 +19,40 @@ class ReviewsPlugin(Plugin):
     def ready(self) -> None:
         # Storefront write endpoint.
         self.register_urls(
-            'plugins.installed.reviews.urls', prefix='reviews/', namespace='reviews',
+            'plugins.installed.reviews.urls',
+            prefix='reviews/',
+            namespace='reviews',
         )
         # Merchant moderation surface.
         self.register_urls(
             'plugins.installed.reviews.urls_dashboard',
-            prefix='dashboard/reviews/', namespace='reviews_dashboard',
+            prefix='dashboard/reviews/',
+            namespace='reviews_dashboard',
         )
+
+        # Contribute new-review activity to the dashboard home feed.
+        self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=40)
+
+    def on_activity_feed(self, value, limit=20, **kwargs):
+        """Fold recent reviews into the dashboard home feed
+        (``ACTIVITY_FEED`` filter). Append own items, return the list.
+        """
+        from plugins.installed.catalog.models import Review  # noqa: PLC0415
+
+        qs = Review.objects.select_related('product', 'customer').order_by('-created_at')
+        for r in qs[:limit]:
+            who = r.customer.email if r.customer else 'a reader'
+            value.append(
+                {
+                    'kind': 'review',
+                    'icon': 'star',
+                    'label': f'New review on {r.product.name} ({r.rating}/5)',
+                    'hint': f'by {who}',
+                    'url': f'/admin/catalog/review/{r.id}/change/',
+                    'when': r.created_at,
+                }
+            )
+        return value
 
     def contribute_storefront_blocks(self) -> list:
         return [

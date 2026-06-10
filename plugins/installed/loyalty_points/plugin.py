@@ -64,6 +64,8 @@ class LoyaltyPointsPlugin(Plugin):
         # Contribute the points balance into the account-home summary so
         # the account_nav tile can show it. Only fires while enabled.
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=50)
+        # Contribute points-earned activity to the dashboard home feed.
+        self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=50)
 
     def on_account_summary(self, value, user=None, **kwargs):
         """Fold this customer's points balance into the account summary.
@@ -80,6 +82,31 @@ class LoyaltyPointsPlugin(Plugin):
 
             logging.getLogger('morpheus.loyalty').warning(
                 'account_summary points fold failed: %s', exc, exc_info=True
+            )
+        return value
+
+    def on_activity_feed(self, value, limit=20, **kwargs):
+        """Fold recent points awards into the dashboard home feed
+        (``ACTIVITY_FEED`` filter). Append own items, return the list.
+        """
+        from plugins.installed.loyalty_points.models import PointsTransaction  # noqa: PLC0415
+
+        qs = (
+            PointsTransaction.objects.select_related('customer')
+            .filter(reason='earn_order')
+            .order_by('-created_at')
+        )
+        for tx in qs[:limit]:
+            who = tx.customer.email if tx.customer else 'a reader'
+            value.append(
+                {
+                    'kind': 'loyalty',
+                    'icon': 'award',
+                    'label': f'+{tx.points} reader points to {who}',
+                    'hint': tx.note or f'Order #{tx.order_number}',
+                    'url': f'/dashboard/customers/?q={who}',
+                    'when': tx.created_at,
+                }
             )
         return value
 

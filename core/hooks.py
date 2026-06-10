@@ -406,6 +406,15 @@ class MorpheusEvents:
     #   files=MultiValueDict. Fired after a product is saved in the dashboard so
     #   a plugin can persist its own product-form fields (its card's inputs).
     PRODUCT_FORM_SAVED = 'product.form_saved'  # fire
+    # ACTIVITY_FEED — filter, value=list[dict], kwargs: limit=int. The
+    #   dashboard-home activity feed. Each plugin subscriber appends ITS OWN
+    #   recent-event dicts — {'kind': str, 'icon': str, 'label': str,
+    #   'hint': str, 'url': str, 'when': datetime} — and returns the list;
+    #   admin_dashboard merges, sorts newest-first, and caps at `limit`.
+    #   The modular alternative to home.py importing sibling-plugin models
+    #   for its reviews / loyalty / newsletter tiles. Fail-soft: the hook
+    #   bus isolates a broken handler so one bad source can't break home.
+    ACTIVITY_FEED = 'dashboard.activity_feed'  # filter
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

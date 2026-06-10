@@ -81,15 +81,15 @@ disable; `admin_dashboard/tests/test_disable_guards.py` fails the build if a
 plugin link is added unguarded. (loyalty's `/account/points/` and the
 payments settings panel — the old known debt — are now properly contributed.)
 
-**Known debt to repay (both still fail the disable test):** the dashboard
-home activity feed (`admin_dashboard/views_split/home.py`) hardcodes
-reviews / loyalty / newsletter tiles by importing sibling-plugin models — a
-disabled plugin keeps its app in `INSTALLED_APPS`, so the model still
-imports and the tile still renders. Fix = an `ACTIVITY_FEED` hook each plugin
-subscribes to (mirror `ACCOUNT_SUMMARY_FIELDS`); the file also carries ~40
-pre-existing ruff errors that must be cleaned first. Likewise
-`storefront/views/account.py` still hardcodes orders/returns/gift_cards/
-downloads fields (loyalty already migrated to `ACCOUNT_SUMMARY_FIELDS`).
+**Known debt to repay (still fails the disable test):**
+`storefront/views/account.py` still hardcodes orders/returns/store-credit
+fields (loyalty, gift_cards and digital_products already migrated to
+`ACCOUNT_SUMMARY_FIELDS`). The dashboard home *activity feed* is fixed —
+assembled via the `ACTIVITY_FEED` filter with orders / agent_core /
+reviews / loyalty_points / crm subscribing (guarded by
+`admin_dashboard/tests/test_activity_feed_modular.py`) — but the KPI /
+setup / pulse tiles in `admin_dashboard/views_split/home.py` still import
+orders / catalog / ai_assistant / agent_core / inventory models directly.
 
 ---
 
