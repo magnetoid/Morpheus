@@ -91,7 +91,13 @@ _CSP_REPORT_ONLY = '; '.join(
 _CSP_DASHBOARD_ENFORCE = '; '.join(
     [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh",
+        # 'unsafe-eval' is required by the TipTap v3 rich-text editor (esm.sh
+        # build uses new Function) AND the Tailwind Play CDN's JIT compiler.
+        # Without it the product-form editor never constructs and you can't
+        # edit descriptions. script-src already allows 'unsafe-inline' and the
+        # storefront report-only CSP already permits 'unsafe-eval', so this is
+        # a consistency fix, not a new relaxation. Dashboard is staff-only.
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh",
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
