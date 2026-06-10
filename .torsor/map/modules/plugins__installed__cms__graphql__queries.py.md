@@ -4,23 +4,28 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:52'
-updated: '2026-06-02T18:07:52'
+created: '2026-06-09T21:57:01'
+updated: '2026-06-09T21:57:01'
 ---
 
 # plugins/installed/cms/graphql/queries.py
 
 Symbols in `plugins/installed/cms/graphql/queries.py`.
 
-- L28 `CmsPageType` (class)
-- L39 `_page_type(p)` (function)
-- L53 `CmsQueryExtension` (class)
-- L55 `cms_pages(self, info: strawberry.Info, state: Optional[str]=None)` (method)
-- L65 `cms_page(self, info: strawberry.Info, slug: str)` (method)
-- L74 `CmsPageInput` (class)
-- L84 `CmsMutationExtension` (class)
-- L86 `create_page(self, info: strawberry.Info, input: CmsPageInput)` (method)
-- L109 `update_page(self, info: strawberry.Info, slug: str, input: CmsPageInput)` (method)
-- L136 `delete_page(self, info: strawberry.Info, slug: str)` (method)
-- L144 `duplicate_page(self, info: strawberry.Info, slug: str)` (method)
-- L167 `upsert_block(self, info: strawberry.Info, key: str, label: str, body: str='', kind: str='html')` (method)
+- L31 `CmsPageType` (class)
+- L45 `CmsJournalEntryType` (class)
+- L56 `_page_type(p)` (function)
+- L71 `_journal_entry_type(entry: dict)` (function)
+- L87 `CmsQueryExtension` (class)
+- L89 `cms_pages(self, info: strawberry.Info, state: Optional[str]=None)` (method)
+- L99 `cms_page(self, info: strawberry.Info, slug: str)` (method)
+- L107 `journal_entries(self, info: strawberry.Info, limit: int=50)` (method)
+- L114 `journal_entry(self, info: strawberry.Info, slug: str)` (method)
+- L123 `CmsPageInput` (class)
+- L134 `_parsed_publish_at(raw_value: Optional[str])` (function)
+- L149 `CmsMutationExtension` (class)
+- L151 `create_page(self, info: strawberry.Info, input: CmsPageInput)` (method)
+- L176 `update_page(self, info: strawberry.Info, slug: str, input: CmsPageInput)` (method)
+- L207 `delete_page(self, info: strawberry.Info, slug: str)` (method)
+- L215 `duplicate_page(self, info: strawberry.Info, slug: str)` (method)
+- L238 `upsert_block(self, info: strawberry.Info, key: str, label: str, body: str='', kind: str='html')` (method)

@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:51'
-updated: '2026-06-02T18:07:51'
+created: '2026-06-09T21:57:01'
+updated: '2026-06-09T21:57:01'
 ---
 
 # core/migrations/0002_alter_storesettings_store_name.py

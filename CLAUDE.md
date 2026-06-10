@@ -120,6 +120,18 @@ means:
 A passing type/lint/syntax check is *necessary*, not *sufficient*.
 Smoke against the live URL.
 
+**Landmine — running tests locally.** Bare `python manage.py test` reads
+`DATABASE_URL` from `.env` and tries to reach the Docker `db` host, so it
+hangs/dies outside the container. Always pin an in-memory DB:
+
+```bash
+DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<name>
+```
+
+CI gates a change with `ruff check .`, `ruff format --check .`, and
+`python manage.py makemigrations --check --dry-run` (the migration check is
+the one that fails every prod boot if you ship a model without one).
+
 ---
 
 ## Think before coding

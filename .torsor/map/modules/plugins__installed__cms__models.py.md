@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:52'
-updated: '2026-06-02T18:07:52'
+created: '2026-06-09T21:57:01'
+updated: '2026-06-09T21:57:01'
 ---
 
 # plugins/installed/cms/models.py
@@ -23,9 +23,9 @@ Symbols in `plugins/installed/cms/models.py`.
 - L207 `__str__(self)` (method)
 - L211 `Menu` (class) — Named navigation menu (header, footer, mobile).
 - L223 `__str__(self)` (method)
-- L227 `MenuItem` (class) — One link within a Menu.
-- L249 `Form` (class) — A merchant-defined form (contact, newsletter, lead-gen).
-- L275 `__str__(self)` (method)
-- L279 `FormSubmission` (class)
-- L293 `EmailTemplate` (class) — Merchant-editable transactional email template.
-- L339 `__str__(self)` (method)
+- L227 `MenuItem` (class) — One entry within a Menu.
+- L267 `Form` (class) — A merchant-defined form (contact, newsletter, lead-gen).
+- L293 `__str__(self)` (method)
+- L297 `FormSubmission` (class)
+- L311 `EmailTemplate` (class) — Merchant-editable transactional email template.
+- L357 `__str__(self)` (method)

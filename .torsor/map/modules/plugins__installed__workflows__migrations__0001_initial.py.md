@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:53'
-updated: '2026-06-02T18:07:53'
+created: '2026-06-09T21:57:02'
+updated: '2026-06-09T21:57:02'
 ---
 
 # plugins/installed/workflows/migrations/0001_initial.py

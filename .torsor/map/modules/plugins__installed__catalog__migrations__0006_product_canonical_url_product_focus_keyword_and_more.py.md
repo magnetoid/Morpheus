@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:52'
-updated: '2026-06-02T18:07:52'
+created: '2026-06-09T21:57:01'
+updated: '2026-06-09T21:57:01'
 ---
 
 # plugins/installed/catalog/migrations/0006_product_canonical_url_product_focus_keyword_and_more.py

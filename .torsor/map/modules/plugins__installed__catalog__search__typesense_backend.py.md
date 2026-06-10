@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:52'
-updated: '2026-06-02T18:07:52'
+created: '2026-06-09T21:57:01'
+updated: '2026-06-09T21:57:01'
 ---
 
 # plugins/installed/catalog/search/typesense_backend.py
@@ -18,6 +18,6 @@ Symbols in `plugins/installed/catalog/search/typesense_backend.py`.
 - L153 `delete_product(product_id: str)` (function)
 - L164 `reindex_all(batch_size: int=500)` (function) — Full reindex — drop + recreate the collection, batch-insert all
 - L200 `_serialize(product)` (function) — Project one Product → Typesense document shape.
-- L235 `_client()` (function)
-- L254 `_collection_name()` (function)
-- L259 `_is_active()` (function)
+- L229 `_client()` (function)
+- L248 `_collection_name()` (function)
+- L253 `_is_active()` (function)

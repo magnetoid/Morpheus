@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:52'
-updated: '2026-06-02T18:07:52'
+created: '2026-06-09T21:57:02'
+updated: '2026-06-09T21:57:02'
 ---
 
 # plugins/installed/marketplace/plugin.py
@@ -14,7 +14,8 @@ Symbols in `plugins/installed/marketplace/plugin.py`.
 
 - L12 `MarketplacePlugin` (class)
 - L20 `ready(self)` (method)
-- L36 `on_order_placed(self, order, **kwargs)` (method)
-- L44 `contribute_settings_panel(self)` (method)
-- L52 `get_config_schema(self)` (method)
-- L82 `contribute_dashboard_pages(self)` (method)
+- L36 `contribute_storefront_blocks(self)` (method)
+- L49 `on_order_placed(self, order, **kwargs)` (method)
+- L57 `contribute_settings_panel(self)` (method)
+- L65 `get_config_schema(self)` (method)
+- L95 `contribute_dashboard_pages(self)` (method)

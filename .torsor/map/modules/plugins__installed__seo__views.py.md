@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-02T18:07:52'
-updated: '2026-06-02T18:07:52'
+created: '2026-06-09T21:57:02'
+updated: '2026-06-09T21:57:02'
 ---
 
 # plugins/installed/seo/views.py
@@ -35,12 +35,12 @@ Symbols in `plugins/installed/seo/views.py`.
 - L417 `seo_overview(request)` (function)
 - L504 `_cwv_summary()` (function) — Aggregate the last 1000 web-vitals beacon reports into p75 per
 - L539 `seo_settings_page(request)` (function)
-- L646 `not_found_log(request)` (function)
-- L655 `not_found_create_redirect(request, log_id)` (function)
-- L677 `audit_page(request)` (function)
-- L691 `keywords_page(request)` (function)
-- L711 `bulk_meta(request)` (function) — Bulk-edit SEO titles + descriptions across products.
-- L809 `sitemap_page(request)` (function) — Sitemap dashboard — single page for every sitemap surface,
-- L1044 `redirects_page(request)` (function) — List + create + edit + delete 301/302 Redirect rules.
-- L1103 `seo_inspector(request)` (function) — Paste-a-slug, see-everything inspector for a single Product /
-- L1342 `not_found_dismiss(request, pk)` (function) — Mark a NotFoundLog row resolved without creating a redirect.
+- L647 `not_found_log(request)` (function)
+- L656 `not_found_create_redirect(request, log_id)` (function)
+- L678 `audit_page(request)` (function)
+- L692 `keywords_page(request)` (function)
+- L712 `bulk_meta(request)` (function) — Bulk-edit SEO titles + descriptions across products.
+- L810 `sitemap_page(request)` (function) — Sitemap dashboard — single page for every sitemap surface,
+- L1055 `redirects_page(request)` (function) — List + create + edit + delete 301/302 Redirect rules.
+- L1114 `seo_inspector(request)` (function) — Paste-a-slug, see-everything inspector for a single Product /
+- L1353 `not_found_dismiss(request, pk)` (function) — Mark a NotFoundLog row resolved without creating a redirect.
