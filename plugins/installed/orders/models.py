@@ -224,22 +224,25 @@ class Order(models.Model):
         suffix = ''.join(str(secrets.randbelow(10)) for _ in range(8))
         return f'{prefix}{suffix}'
 
-    def log_event(self, event_type, message='', prev_state=''):
+    def log_event(self, event_type, message='', prev_state='', new_state=None):
+        # Inside an FSM transition body self.status still holds the
+        # *source* state (django-fsm flips it after the method returns),
+        # so transitions must pass their target explicitly.
         OrderEvent.objects.create(
             order=self,
             event_type=event_type,
             previous_state=prev_state,
-            new_state=self.status,
+            new_state=self.status if new_state is None else new_state,
             message=message,
         )
 
     @transition(field=status, source='pending', target='confirmed')
     def confirm(self):
-        self.log_event('ORDER_CONFIRMED', prev_state='pending')
+        self.log_event('ORDER_CONFIRMED', prev_state='pending', new_state='confirmed')
 
     @transition(field=status, source='confirmed', target='processing')
     def process(self):
-        self.log_event('ORDER_PROCESSING', prev_state='confirmed')
+        self.log_event('ORDER_PROCESSING', prev_state='confirmed', new_state='processing')
 
     @transition(
         field=status,
@@ -247,7 +250,7 @@ class Order(models.Model):
         target='fulfilled',
     )
     def fulfill(self):
-        self.log_event('ORDER_FULFILLED', prev_state=self.status)
+        self.log_event('ORDER_FULFILLED', prev_state=self.status, new_state='fulfilled')
 
     @transition(
         field=status,
@@ -257,11 +260,13 @@ class Order(models.Model):
     def ship(self, tracking_number: str = ''):
         if tracking_number:
             self.tracking_number = tracking_number
-        self.log_event('ORDER_SHIPPED', message=tracking_number, prev_state=self.status)
+        self.log_event(
+            'ORDER_SHIPPED', message=tracking_number, prev_state=self.status, new_state='shipped'
+        )
 
     @transition(field=status, source='shipped', target='delivered')
     def deliver(self):
-        self.log_event('ORDER_DELIVERED', prev_state='shipped')
+        self.log_event('ORDER_DELIVERED', prev_state='shipped', new_state='delivered')
 
     @transition(field=status, source='*', target='cancelled')
     def cancel(self, reason=''):
@@ -269,7 +274,7 @@ class Order(models.Model):
         self.cancelled_at = timezone.now()
         if reason:
             self.staff_notes += f'\nCancelled: {reason}'
-        self.log_event('ORDER_CANCELLED', message=reason, prev_state=prev)
+        self.log_event('ORDER_CANCELLED', message=reason, prev_state=prev, new_state='cancelled')
 
 
 class OrderItem(models.Model):
