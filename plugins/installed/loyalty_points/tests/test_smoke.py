@@ -31,5 +31,6 @@ class LoyaltySmoke(TestCase):
         from core.hooks import hook_registry, MorpheusEvents
 
         handlers = hook_registry._handlers.get(MorpheusEvents.ORDER_PAID, [])
-        names = [h.__qualname__ for _, h in handlers]
+        # Entries are (priority, handler, mode) tuples; handler is index 1.
+        names = [entry[1].__qualname__ for entry in handlers]
         self.assertIn('_on_order_paid', names)

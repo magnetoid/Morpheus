@@ -3,11 +3,17 @@
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
+from unittest import skipUnless
+
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase
 
+_DEMO_INSTALLED = apps.is_installed('plugins.installed.demo_data')
 
+
+@skipUnless(_DEMO_INSTALLED, 'demo_data is opt-in (not in MORPHEUS_DEFAULT_PLUGINS)')
 class GrantDemoAccessTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(

@@ -1,4 +1,5 @@
 """Cloudflare purge service tests using a fake API client."""
+
 from __future__ import annotations
 
 from django.test import TestCase
@@ -21,7 +22,8 @@ class _FakeSession:
         self.calls: list[tuple[str, dict]] = []
         self._raise_on = raise_on
 
-    def post(self, path: str, payload: dict) -> dict:
+    def request(self, method: str, path: str, *, payload: dict = None, params: dict = None) -> dict:
+        # Mirrors CloudflareClient._request → session.request(method, path, ...).
         self.calls.append((path, payload))
         if self._raise_on and self._raise_on in path:
             raise CloudflareError('boom')
@@ -29,18 +31,21 @@ class _FakeSession:
 
 
 class CloudflarePurgeTests(TestCase):
-
     def setUp(self) -> None:
         self.account = CloudflareAccount.objects.create(label='t', api_token='tok')
         self.zone = CloudflareZone.objects.create(
-            account=self.account, zone_id='zone-1', domain='shop.example',
+            account=self.account,
+            zone_id='zone-1',
+            domain='shop.example',
         )
 
     def test_purge_urls_records_succeeded_invalidation(self):
         session = _FakeSession()
         client = CloudflareClient(api_token='tok', session=session)
         inv = purge_urls(
-            zone=self.zone, urls=['https://shop.example/p/x'], triggered_by='test',
+            zone=self.zone,
+            urls=['https://shop.example/p/x'],
+            triggered_by='test',
             client=client,
         )
         self.assertEqual(inv.status, 'succeeded')
@@ -72,7 +77,6 @@ class CloudflarePurgeTests(TestCase):
 
 
 class CloudflareClientErrorTests(TestCase):
-
     def test_purge_requires_at_least_one_target(self):
         client = CloudflareClient(api_token='tok', session=_FakeSession())
         with self.assertRaises(ValueError):
@@ -80,7 +84,6 @@ class CloudflareClientErrorTests(TestCase):
 
 
 class CloudflareInvalidationCounterTests(TestCase):
-
     def test_invalidation_count_increments(self):
         account = CloudflareAccount.objects.create(label='c', api_token='tok')
         zone = CloudflareZone.objects.create(account=account, zone_id='z', domain='a.example')

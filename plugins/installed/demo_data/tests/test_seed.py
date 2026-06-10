@@ -1,8 +1,10 @@
 """morph_seed_demo command tests — idempotent, fixture-driven."""
+
 from __future__ import annotations
 
-from unittest import skipIf
+from unittest import skipIf, skipUnless
 
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db import connection
@@ -14,10 +16,11 @@ from plugins.installed.orders.models import Order
 # Cascade-delete on Vendor over UUID PKs hits a known SQLite/django-taggit
 # OverflowError. The wipe path is only exercised on Postgres in production.
 _IS_SQLITE = connection.vendor == 'sqlite'
+_DEMO_INSTALLED = apps.is_installed('plugins.installed.demo_data')
 
 
+@skipUnless(_DEMO_INSTALLED, 'demo_data is opt-in (not in MORPHEUS_DEFAULT_PLUGINS)')
 class SeedDemoTests(TestCase):
-
     def test_seed_creates_categories_and_books(self):
         call_command('morph_seed_demo')
         self.assertGreaterEqual(Category.objects.count(), 6)
@@ -36,7 +39,8 @@ class SeedDemoTests(TestCase):
     def test_seed_creates_at_least_one_paid_order(self):
         call_command('morph_seed_demo')
         self.assertGreaterEqual(
-            Order.objects.filter(payment_status='paid').count(), 1,
+            Order.objects.filter(payment_status='paid').count(),
+            1,
         )
 
     def test_demo_customer_exists_after_seed(self):

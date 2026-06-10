@@ -1,4 +1,5 @@
 """Tests for the embedding-aware semantic search service."""
+
 from __future__ import annotations
 
 from django.test import TestCase
@@ -19,7 +20,6 @@ from plugins.installed.catalog.models import Product
 
 
 class EmbeddingTests(TestCase):
-
     def test_embed_returns_fixed_dim_floats(self):
         v = embed('hello world')
         self.assertEqual(len(v), EMBEDDING_DIM)
@@ -34,22 +34,30 @@ class EmbeddingTests(TestCase):
 
 
 class SemanticSearchTests(TestCase):
-
     def setUp(self) -> None:
         self.p1 = Product.objects.create(
-            name='Pro Blender', slug='pro-blender', sku='B1',
+            name='Pro Blender',
+            slug='pro-blender',
+            sku='B1',
             short_description='powerful kitchen blender',
             description='professional grade blender for smoothies',
-            price=Money(75, 'USD'), status='active',
+            price=Money(75, 'USD'),
+            status='active',
         )
         self.p2 = Product.objects.create(
-            name='Toaster', slug='toaster', sku='T1',
+            name='Toaster',
+            slug='toaster',
+            sku='T1',
             short_description='2-slice toaster',
             description='wide slot toaster',
-            price=Money(25, 'USD'), status='active',
+            price=Money(25, 'USD'),
+            status='active',
         )
 
     def test_keyword_fallback_when_no_embeddings(self):
+        # Products auto-embed via the product.created hook, so clear embeddings
+        # to exercise the genuine no-embeddings keyword-fallback path.
+        ProductEmbedding.objects.all().delete()
         results, used = semantic_search('blender', limit=5)
         self.assertFalse(used)
         self.assertIn(self.p1, results)
@@ -77,22 +85,31 @@ class HybridSearchTests(TestCase):
 
     def setUp(self) -> None:
         self.blender = Product.objects.create(
-            name='Pro Blender', slug='pro-blender', sku='B1',
+            name='Pro Blender',
+            slug='pro-blender',
+            sku='B1',
             short_description='powerful kitchen blender',
             description='professional grade blender for smoothies',
-            price=Money(75, 'USD'), status='active',
+            price=Money(75, 'USD'),
+            status='active',
         )
         self.toaster = Product.objects.create(
-            name='Toaster', slug='toaster', sku='T1',
+            name='Toaster',
+            slug='toaster',
+            sku='T1',
             short_description='2-slice toaster',
             description='wide slot toaster for bread',
-            price=Money(25, 'USD'), status='active',
+            price=Money(25, 'USD'),
+            status='active',
         )
         self.kettle = Product.objects.create(
-            name='Kettle', slug='kettle', sku='K1',
+            name='Kettle',
+            slug='kettle',
+            sku='K1',
             short_description='1.7L electric kettle',
             description='fast-boil cordless kettle',
-            price=Money(40, 'USD'), status='active',
+            price=Money(40, 'USD'),
+            status='active',
         )
 
     def test_hybrid_falls_back_when_query_empty(self):

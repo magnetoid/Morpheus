@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from unittest import skipIf
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from djmoney.money import Money
@@ -115,6 +117,10 @@ class DynamicProductsEngineTests(TestCase):
         out = recommend(block, request=self._request(), customer=None)
         self.assertEqual([p.pk for p in out], [in_cat.pk])
 
+    @skipIf(
+        connection.vendor == 'sqlite',
+        'manual tag filter uses a JSON __contains lookup unsupported on sqlite (works on postgres)',
+    )
     def test_manual_filters_by_tag(self):
         tagged = _product('sale1', tags=['sale'])
         _product('full', tags=['new'])
@@ -148,7 +154,7 @@ class DynamicProductsEngineTests(TestCase):
     def test_bought_together_from_orders(self):
         anchor = _product('anchor')
         partner = _product('partner')
-        buyer = Customer.objects.create_user(email='b@example.com', password='pw')
+        buyer = Customer.objects.create_user(username='b', email='b@example.com', password='pw')
         _paid_order(buyer, [anchor, partner])
         block = DynamicBlock.objects.create(
             name='BT', slot='pdp_below_form', strategy='bought_together'
@@ -169,7 +175,7 @@ class DynamicProductsEngineTests(TestCase):
     def test_for_you_excludes_purchased(self):
         bought = _product('bought', category=self.cat)
         fresh = _product('fresh', category=self.cat)
-        buyer = Customer.objects.create_user(email='fy@example.com', password='pw')
+        buyer = Customer.objects.create_user(username='fy', email='fy@example.com', password='pw')
         # Buyer purchased `bought` and viewed something in the same category.
         _paid_order(buyer, [bought])
         block = DynamicBlock.objects.create(name='FY', slot='home_above_grid', strategy='for_you')
