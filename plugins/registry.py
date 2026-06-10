@@ -2,6 +2,7 @@
 Morpheus CMS — Plugin Registry
 Discovers, validates, loads, and manages the lifecycle of all plugins.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -30,6 +31,10 @@ class PluginRegistry:
         self._plugins: dict[str, MorpheusPlugin] = {}
         self._classes: dict[str, Type[MorpheusPlugin]] = {}
         self._active: set[str] = set()
+        # Plugins whose ready() has run this process. ready() wires hooks +
+        # URLs, which disable does NOT unwind, so re-enabling must not run it
+        # twice. activate() uses this to skip re-wiring on a re-enable.
+        self._wired: set[str] = set()
         self._graphql_extensions: list[str] = []
         self._plugin_urls: list[dict] = []
         self._task_modules: list[str] = []
@@ -37,9 +42,9 @@ class PluginRegistry:
         # ── Contribution indexes ─────────────────────────────────────────────
         # Populated by `_collect_contributions(plugin)` after `ready()`.
         # See `plugins.contributions` for shapes.
-        self._storefront_blocks: list = []      # [StorefrontBlock]
-        self._dashboard_pages: list = []        # [DashboardPage]
-        self._settings_panels: dict = {}        # name -> SettingsPanel
+        self._storefront_blocks: list = []  # [StorefrontBlock]
+        self._dashboard_pages: list = []  # [DashboardPage]
+        self._settings_panels: dict = {}  # name -> SettingsPanel
         self._ready = False
 
     # ── Discovery ──────────────────────────────────────────────────────────────
@@ -47,14 +52,14 @@ class PluginRegistry:
     def discover(self, plugin_module_paths: list[str]) -> None:
         for module_path in plugin_module_paths:
             try:
-                mod = importlib.import_module(f"{module_path}.plugin")
+                mod = importlib.import_module(f'{module_path}.plugin')
             except ImportError as e:
-                logger.error("Failed to import plugin %s: %s", module_path, e, exc_info=True)
+                logger.error('Failed to import plugin %s: %s', module_path, e, exc_info=True)
                 continue
             plugin_class = self._find_plugin_class(mod, module_path)
             if plugin_class:
                 self._classes[plugin_class.name] = plugin_class
-                logger.debug("Discovered plugin: %s (%s)", plugin_class.name, module_path)
+                logger.debug('Discovered plugin: %s (%s)', plugin_class.name, module_path)
 
     def _find_plugin_class(self, module, module_path: str) -> Type[MorpheusPlugin] | None:
         for attr_name in dir(module):
@@ -66,7 +71,7 @@ class PluginRegistry:
                 and obj.name
             ):
                 return obj
-        logger.warning("No MorpheusPlugin subclass found in %s.plugin", module_path)
+        logger.warning('No MorpheusPlugin subclass found in %s.plugin', module_path)
         return None
 
     # ── Validation ────────────────────────────────────────────────────────────
@@ -115,7 +120,7 @@ class PluginRegistry:
 
         if len(ordered) != len(names):
             cycle = [n for n, deg in in_degree.items() if deg > 0]
-            raise ValueError(f"Circular plugin dependency detected among: {cycle}")
+            raise ValueError(f'Circular plugin dependency detected among: {cycle}')
         return ordered
 
     # ── Activation ────────────────────────────────────────────────────────────
@@ -127,12 +132,12 @@ class PluginRegistry:
         errors = self.validate()
         if errors:
             for err in errors:
-                logger.error("Plugin validation error: %s", err)
+                logger.error('Plugin validation error: %s', err)
 
         try:
             order = self._topo_sort(list(self._classes.keys()))
         except ValueError as e:
-            logger.error("%s — falling back to alphabetical order.", e)
+            logger.error('%s — falling back to alphabetical order.', e)
             order = sorted(self._classes.keys())
 
         enabled_names = self._get_enabled_from_db()
@@ -152,22 +157,24 @@ class PluginRegistry:
         # on every shell invocation.
         active = sorted(self._active)
         logger.info(
-            "Plugin system ready: %d active (%s)",
-            len(active), ', '.join(active),
+            'Plugin system ready: %d active (%s)',
+            len(active),
+            ', '.join(active),
         )
 
     def _activate(self, plugin: MorpheusPlugin) -> None:
         try:
             plugin.ready()
         except Exception as e:  # noqa: BLE001 — bad plugin must not bring down the app
-            logger.error("Failed to activate plugin %s: %s", plugin.name, e, exc_info=True)
+            logger.error('Failed to activate plugin %s: %s', plugin.name, e, exc_info=True)
             return
+        self._wired.add(plugin.name)
         self._active.add(plugin.name)
         self._collect_contributions(plugin)
         # Per-plugin success is DEBUG (still surfaces in dev / tracing);
         # the boot summary at the end of activate_all() carries the
         # human-readable count + names list at INFO.
-        logger.debug("Plugin activated: %s v%s", plugin.name, plugin.version)
+        logger.debug('Plugin activated: %s v%s', plugin.name, plugin.version)
 
     def deactivate(self, name: str) -> None:
         if name in self._plugins and name in self._active:
@@ -175,7 +182,64 @@ class PluginRegistry:
             self._active.discard(name)
             self._drop_contributions(name)
             self._update_db_status(name, enabled=False)
-            logger.info("Plugin deactivated: %s", name)
+            logger.info('Plugin deactivated: %s', name)
+
+    def activate(self, name: str) -> bool:
+        """Enable a plugin at runtime — the mirror of `deactivate()`.
+
+        Returns True if the plugin is active afterwards. Used by the dashboard
+        apps toggle so enabling a plugin lights up its hooks, URLs, settings
+        panel and other contributions immediately, without a server restart.
+
+        Idempotency: `ready()` wires hooks + URLs, which `deactivate()` does
+        NOT unwind, so running it twice would double-register them. We track
+        wired plugins in `self._wired` and only run `ready()` (and re-mount
+        URLs) on the first activation this process; a re-enable after a disable
+        just re-collects the contributions that `_drop_contributions` removed.
+
+        Caveat: a plugin that contributes process-level config fixed at boot
+        (middleware, settings) still needs a restart for those parts — the
+        apps view keeps surfacing the "restart" pill while `name not in
+        _active`, which stays true if activation here fails.
+        """
+        instance = self._plugins.get(name)
+        if instance is None:
+            return False
+        if name in self._active:
+            return True
+        if name not in self._wired:
+            try:
+                instance.ready()
+            except Exception as e:  # noqa: BLE001 — a bad plugin must not break the toggle
+                logger.error('Failed to activate plugin %s: %s', name, e, exc_info=True)
+                return False
+            self._wired.add(name)
+            self._refresh_urlconf()
+        self._active.add(name)
+        self._collect_contributions(instance)
+        self._update_db_status(name, enabled=True)
+        logger.info('Plugin activated at runtime: %s', name)
+        return True
+
+    def _refresh_urlconf(self) -> None:
+        """Re-mount plugin URLs into the live URLconf after a runtime enable.
+
+        `plugins.urls.urlpatterns` is built once (at first request) from
+        `get_urlpatterns()`. A plugin enabled at runtime added its entry to
+        `_plugin_urls` during `ready()`, so rebuild that module list in place
+        and clear Django's resolver caches; the next request rebuilds the root
+        resolver and re-reads the updated patterns. No-op at boot (the urlconf
+        isn't imported yet)."""
+        try:
+            from importlib import import_module
+
+            from django.urls import clear_url_caches
+
+            urls_mod = import_module('plugins.urls')
+            urls_mod.urlpatterns[:] = self.get_urlpatterns()
+            clear_url_caches()
+        except Exception as e:  # noqa: BLE001 — URL refresh failure must not break the toggle
+            logger.warning('Failed to refresh URLconf after activate: %s', e, exc_info=True)
 
     # ── Contributions ─────────────────────────────────────────────────────────
 
@@ -188,25 +252,32 @@ class PluginRegistry:
                 block.plugin = plugin.name
                 self._storefront_blocks.append(block)
         except Exception as e:  # noqa: BLE001
-            logger.warning('plugins: %s.contribute_storefront_blocks failed: %s', plugin.name, e, exc_info=True)
+            logger.warning(
+                'plugins: %s.contribute_storefront_blocks failed: %s', plugin.name, e, exc_info=True
+            )
         try:
             for page in plugin.contribute_dashboard_pages() or []:
                 page.plugin = plugin.name
                 self._dashboard_pages.append(page)
         except Exception as e:  # noqa: BLE001
-            logger.warning('plugins: %s.contribute_dashboard_pages failed: %s', plugin.name, e, exc_info=True)
+            logger.warning(
+                'plugins: %s.contribute_dashboard_pages failed: %s', plugin.name, e, exc_info=True
+            )
         try:
             panel = plugin.contribute_settings_panel()
             if panel is not None:
                 panel.plugin = plugin.name
                 self._settings_panels[plugin.name] = panel
         except Exception as e:  # noqa: BLE001
-            logger.warning('plugins: %s.contribute_settings_panel failed: %s', plugin.name, e, exc_info=True)
+            logger.warning(
+                'plugins: %s.contribute_settings_panel failed: %s', plugin.name, e, exc_info=True
+            )
         # Agent layer contributions — tools first so any agent that depends
         # on a sibling tool finds it already registered.
         try:
             from core.agents.registry import agent_registry
             from core.agents.skills import skill_registry
+
             for tool in plugin.contribute_agent_tools() or []:
                 agent_registry.register_tool(tool, plugin=plugin.name)
             for skill in plugin.contribute_skills() or []:
@@ -214,7 +285,9 @@ class PluginRegistry:
             for agent in plugin.contribute_agents() or []:
                 agent_registry.register_agent(agent, plugin=plugin.name)
         except Exception as e:  # noqa: BLE001
-            logger.warning('plugins: %s agent contributions failed: %s', plugin.name, e, exc_info=True)
+            logger.warning(
+                'plugins: %s agent contributions failed: %s', plugin.name, e, exc_info=True
+            )
         # Sort blocks and pages once per activation so render-time stays cheap.
         self._storefront_blocks.sort(key=lambda b: (b.slot, b.priority, b.plugin))
         self._dashboard_pages.sort(key=lambda p: (p.section, p.order, p.label))
@@ -225,6 +298,7 @@ class PluginRegistry:
         self._settings_panels.pop(plugin_name, None)
         try:
             from core.agents.registry import agent_registry
+
             agent_registry.drop_plugin(plugin_name)
         except Exception as e:  # noqa: BLE001
             logger.warning('plugins: %s agent drop failed: %s', plugin_name, e, exc_info=True)
@@ -249,11 +323,11 @@ class PluginRegistry:
 
     def _get_enabled_from_db(self) -> set[str]:
         from django.db import DatabaseError
+
         try:
             from plugins.models import PluginConfig
-            existing_rows = list(
-                PluginConfig.objects.values_list('plugin_name', 'is_enabled')
-            )
+
+            existing_rows = list(PluginConfig.objects.values_list('plugin_name', 'is_enabled'))
         except (DatabaseError, ImportError, LookupError):
             logger.warning('PluginConfig table unavailable — activating all discovered plugins.')
             return set(self._classes.keys())
@@ -267,6 +341,7 @@ class PluginRegistry:
         if new_names:
             try:
                 from plugins.models import PluginConfig
+
                 PluginConfig.objects.bulk_create(
                     [PluginConfig(plugin_name=n, is_enabled=True) for n in new_names],
                     ignore_conflicts=True,
@@ -280,13 +355,16 @@ class PluginRegistry:
 
     def _update_db_status(self, name: str, enabled: bool) -> None:
         from django.db import DatabaseError
+
         try:
             from plugins.models import PluginConfig
+
             PluginConfig.objects.update_or_create(
-                plugin_name=name, defaults={'is_enabled': enabled},
+                plugin_name=name,
+                defaults={'is_enabled': enabled},
             )
         except (DatabaseError, ImportError) as e:
-            logger.error("Failed to update DB status for plugin %s: %s", name, e)
+            logger.error('Failed to update DB status for plugin %s: %s', name, e)
 
     # ── Registration (called by plugin.ready()) ────────────────────────────────
 
@@ -313,7 +391,7 @@ class PluginRegistry:
             try:
                 mod = importlib.import_module(module_path)
             except ImportError as e:
-                logger.error("Failed to load GQL extension %s: %s", module_path, e, exc_info=True)
+                logger.error('Failed to load GQL extension %s: %s', module_path, e, exc_info=True)
                 continue
             for attr in dir(mod):
                 obj = getattr(mod, attr)
@@ -325,6 +403,7 @@ class PluginRegistry:
 
     def get_urlpatterns(self):
         from django.urls import include, path
+
         patterns = []
         for entry in self._plugin_urls:
             try:
@@ -335,7 +414,7 @@ class PluginRegistry:
                     )
                 )
             except Exception as e:  # noqa: BLE001 — log misconfigured URLs, keep app booting
-                logger.error("Failed to include URLs %s: %s", entry, e)
+                logger.error('Failed to include URLs %s: %s', entry, e)
         return patterns
 
     # ── Accessors ─────────────────────────────────────────────────────────────
@@ -353,7 +432,7 @@ class PluginRegistry:
         return [p for p in self._plugins.values() if p.name in self._active]
 
     def __repr__(self) -> str:
-        return f"<PluginRegistry: {len(self._plugins)} plugins, {len(self._active)} active>"
+        return f'<PluginRegistry: {len(self._plugins)} plugins, {len(self._active)} active>'
 
 
 plugin_registry = PluginRegistry()

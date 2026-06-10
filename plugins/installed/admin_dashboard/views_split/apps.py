@@ -1,4 +1,5 @@
 """Auto-split from the legacy admin_dashboard/views.py monolith."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -20,8 +21,16 @@ from plugins.installed.admin_dashboard.forms import (
     VariantForm,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric, _bulk_ids, _period, _pct_delta, _since, _sparkline_points, _trend, logger,
+    Metric,
+    _bulk_ids,
+    _period,
+    _pct_delta,
+    _since,
+    _sparkline_points,
+    _trend,
+    logger,
 )
+
 
 @staff_member_required
 def apps_view(request: HttpRequest) -> HttpResponse:
@@ -40,6 +49,7 @@ def apps_view(request: HttpRequest) -> HttpResponse:
     db_enabled: dict[str, bool] = {}
     try:
         from plugins.models import PluginConfig
+
         db_enabled = dict(PluginConfig.objects.values_list('plugin_name', 'is_enabled'))
     except Exception:  # noqa: BLE001 — table may not be migrated yet
         pass
@@ -55,24 +65,30 @@ def apps_view(request: HttpRequest) -> HttpResponse:
         db_intends_on = db_enabled.get(name, True)
         # "Active" is what the merchant sees in the button label.
         # We prefer the DB intent (matches what they just clicked).
-        plugins.append({
-            'name': name,
-            'label': getattr(cls, 'label', name),
-            'description': getattr(cls, 'description', ''),
-            'version': getattr(cls, 'version', ''),
-            'active': db_intends_on,
-            # When the DB says "on" but the runtime didn't pick it up at
-            # boot, we show a "Restart to take effect" hint so the
-            # merchant isn't confused why their just-enabled plugin
-            # doesn't surface its dashboard pages yet.
-            'needs_restart': db_intends_on and not runtime_active,
-            'pages': [p for p in plugin_registry.dashboard_pages() if p.plugin == name],
-            'has_settings': plugin_registry.settings_panel(name) is not None,
-        })
-    return render(request, 'admin_dashboard/apps.html', {
-        'plugins': plugins,
-        'active_nav': 'apps',
-    })
+        plugins.append(
+            {
+                'name': name,
+                'label': getattr(cls, 'label', name),
+                'description': getattr(cls, 'description', ''),
+                'version': getattr(cls, 'version', ''),
+                'active': db_intends_on,
+                # When the DB says "on" but the runtime didn't pick it up at
+                # boot, we show a "Restart to take effect" hint so the
+                # merchant isn't confused why their just-enabled plugin
+                # doesn't surface its dashboard pages yet.
+                'needs_restart': db_intends_on and not runtime_active,
+                'pages': [p for p in plugin_registry.dashboard_pages() if p.plugin == name],
+                'has_settings': plugin_registry.settings_panel(name) is not None,
+            }
+        )
+    return render(
+        request,
+        'admin_dashboard/apps.html',
+        {
+            'plugins': plugins,
+            'active_nav': 'apps',
+        },
+    )
 
 
 @staff_member_required
@@ -97,7 +113,8 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
 
     registry_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'data', 'apps_registry.json',
+        'data',
+        'apps_registry.json',
     )
     apps_data = {'apps': []}
     try:
@@ -112,16 +129,17 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
     installed_theme_dirs: set[str] = set()
     try:
         themes_root = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__)
-            )))),
-            'themes', 'library',
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            ),
+            'themes',
+            'library',
         )
         if os.path.isdir(themes_root):
             installed_theme_dirs = {
-                d for d in os.listdir(themes_root)
-                if os.path.isdir(os.path.join(themes_root, d))
-                and not d.startswith('_')
+                d
+                for d in os.listdir(themes_root)
+                if os.path.isdir(os.path.join(themes_root, d)) and not d.startswith('_')
             }
     except OSError:
         pass
@@ -148,35 +166,46 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
         cat = r.get('category') or 'Other'
         categories.setdefault(cat, []).append(r)
 
-    return render(request, 'admin_dashboard/apps_store.html', {
-        'categories': sorted(categories.items()),
-        'total': len(rows),
-        'installed_count': sum(1 for r in rows if r['is_installed']),
-        'registry_version': apps_data.get('version', '?'),
-        'registry_updated_at': apps_data.get('updated_at', ''),
-        'active_nav': 'apps',
-    })
+    return render(
+        request,
+        'admin_dashboard/apps_store.html',
+        {
+            'categories': sorted(categories.items()),
+            'total': len(rows),
+            'installed_count': sum(1 for r in rows if r['is_installed']),
+            'registry_version': apps_data.get('version', '?'),
+            'registry_updated_at': apps_data.get('updated_at', ''),
+            'active_nav': 'apps',
+        },
+    )
 
 
-PROTECTED_PLUGINS = frozenset({
-    'admin_dashboard',  # disabling this hides its own toggle UI — soft brick
-    'catalog', 'customers', 'orders', 'payments',  # core commerce primitives
-    # Linda lives in core.assistant (not a plugin), but agent_core
-    # provides her tool catalogue + the five sub-agents she delegates
-    # to. Disabling it would silently strip every catalog / order /
-    # inventory tool Linda can call — chat keeps working, every
-    # answer becomes "I can't access that".
-    'agent_core',
-})
+PROTECTED_PLUGINS = frozenset(
+    {
+        'admin_dashboard',  # disabling this hides its own toggle UI — soft brick
+        'catalog',
+        'customers',
+        'orders',
+        'payments',  # core commerce primitives
+        # Linda lives in core.assistant (not a plugin), but agent_core
+        # provides her tool catalogue + the five sub-agents she delegates
+        # to. Disabling it would silently strip every catalog / order /
+        # inventory tool Linda can call — chat keeps working, every
+        # answer becomes "I can't access that".
+        'agent_core',
+    }
+)
 
 
 # Plugins that are technically present (Django apps, models, migrations)
 # but should NEVER appear in the /dashboard/apps/ catalogue. They're
 # part of a higher-level concept the merchant interacts with directly.
 # Hiding them stops the "what is this app, can I disable it?" confusion.
-SYSTEM_PLUGINS = frozenset({
-    'agent_core',   # surfaced via Linda's UI (core/assistant/)
-})
+SYSTEM_PLUGINS = frozenset(
+    {
+        'agent_core',  # surfaced via Linda's UI (core/assistant/)
+    }
+)
 
 
 def _toggle_plugin(request: HttpRequest):
@@ -187,10 +216,12 @@ def _toggle_plugin(request: HttpRequest):
     pages drop out of the running process. The merchant sees the
     change instantly without a container restart.
 
-    On ENABLE — writes PluginConfig.is_enabled=True. Full activation
-    (running ready() + collecting contributions) happens at the next
-    boot. The apps view surfaces a "Restart to take effect" pill on
-    plugins in this state so the merchant knows what's pending.
+    On ENABLE — writes PluginConfig.is_enabled=True AND immediately calls
+    plugin_registry.activate() so ready() runs, URLs re-mount, and the
+    settings panel / storefront blocks / nav entries appear without a
+    restart. Only if runtime activation fails (e.g. a plugin needing
+    boot-level config like middleware) does the apps view keep the
+    "Restart to take effect" pill.
 
     Refuses to disable protected plugins — the dashboard plugin's own
     UI lives in admin_dashboard, so disabling it would lock the
@@ -209,6 +240,7 @@ def _toggle_plugin(request: HttpRequest):
         return redirect('admin_dashboard:apps')
     try:
         from plugins.models import PluginConfig
+
         row, _ = PluginConfig.objects.get_or_create(plugin_name=name)
         row.is_enabled = desired
         row.save(update_fields=['is_enabled', 'updated_at'])
@@ -219,19 +251,23 @@ def _toggle_plugin(request: HttpRequest):
     # Apply the runtime side of the change.
     try:
         from plugins.registry import plugin_registry
+
         if not desired:
             # registry.deactivate runs on_disable + drops contributions +
             # removes the plugin from _active. Idempotent — safe to call
             # on a plugin that's already inactive.
             plugin_registry.deactivate(name)
             messages.success(request, f'{name!r} disabled.')
+        elif plugin_registry.activate(name):
+            # registry.activate runs ready() (first time), re-mounts URLs and
+            # re-collects contributions so the plugin lights up immediately.
+            messages.success(request, f'{name!r} enabled.')
         else:
-            # Enabling at runtime is more invasive (URL re-mount, signal
-            # re-wiring) — we punt to the next restart. Surface a
-            # friendly message so the merchant knows the state.
-            messages.success(
+            # Activation failed (e.g. a plugin needing boot-level config). The
+            # DB write stands; the apps view keeps the "restart" pill.
+            messages.warning(
                 request,
-                f'{name!r} enabled — restart the web container for it to fully load.',
+                f'{name!r} enabled, but it needs a web-container restart to fully load.',
             )
     except Exception as e:  # noqa: BLE001 — never let a runtime hiccup hide the DB write
         logger.warning('admin_dashboard: runtime toggle for %s failed: %s', name, e, exc_info=True)
@@ -239,5 +275,3 @@ def _toggle_plugin(request: HttpRequest):
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────
-
-

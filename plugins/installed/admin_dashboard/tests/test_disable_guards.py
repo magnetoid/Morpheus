@@ -84,3 +84,42 @@ class DashboardNavGuardTests(TestCase):
         src = _BASE_HTML.read_text(encoding='utf-8')
         self.assertIn('{% plugin_enabled "affiliates" as affiliates_enabled %}', src)
         self.assertIn('/dashboard/apps/affiliates/list/', src)
+
+
+class HotEnableTests(TestCase):
+    """registry.activate() lights a plugin up at runtime — the mirror of
+    deactivate() — so toggling a plugin ON in the dashboard no longer needs a
+    web-container restart (the regression behind the audiobooks panel report).
+    """
+
+    PLUGIN = 'audiobooks'  # not protected, safe to toggle in a test
+
+    def setUp(self):
+        # Always leave the registry as we found it, even if an assertion fails.
+        self.addCleanup(plugin_registry.activate, self.PLUGIN)
+
+    def test_reenable_restores_contributions_without_restart(self):
+        # Baseline: active with a settings panel registered.
+        plugin_registry.activate(self.PLUGIN)
+        self.assertIn(self.PLUGIN, plugin_registry._active)
+        self.assertIsNotNone(plugin_registry.settings_panel(self.PLUGIN))
+
+        # Disable drops the contributions (panel disappears).
+        plugin_registry.deactivate(self.PLUGIN)
+        self.assertNotIn(self.PLUGIN, plugin_registry._active)
+        self.assertIsNone(plugin_registry.settings_panel(self.PLUGIN))
+
+        # Re-enable brings them straight back — no restart.
+        self.assertTrue(plugin_registry.activate(self.PLUGIN))
+        self.assertIn(self.PLUGIN, plugin_registry._active)
+        self.assertIsNotNone(plugin_registry.settings_panel(self.PLUGIN))
+
+    def test_activate_is_idempotent_no_duplicate_panels(self):
+        plugin_registry.activate(self.PLUGIN)
+        before = len(plugin_registry._storefront_blocks)
+        # Activating an already-active plugin must not re-collect contributions.
+        self.assertTrue(plugin_registry.activate(self.PLUGIN))
+        self.assertEqual(len(plugin_registry._storefront_blocks), before)
+
+    def test_activate_unknown_plugin_returns_false(self):
+        self.assertFalse(plugin_registry.activate('does_not_exist'))
