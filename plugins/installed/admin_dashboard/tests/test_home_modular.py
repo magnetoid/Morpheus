@@ -19,27 +19,30 @@ from djmoney.money import Money
 _HOME_PY = Path(settings.BASE_DIR) / 'plugins/installed/admin_dashboard/views_split/home.py'
 
 
-def _function_body(src: str, name: str) -> str:
-    start = src.index(f'def {name}')
-    end = src.find('\ndef ', start + 1)
-    return src[start:] if end == -1 else src[start:end]
-
-
 class DashboardHomeModularityTests(TestCase):
-    def test_home_assembly_no_longer_imports_sibling_plugin_models(self):
-        # Scope to dashboard_home + _compute_setup_steps — pulse_refresh /
-        # pulse_dismiss are whole ai_assistant-owned routes and migrate in a
-        # separate increment (see the plan doc).
+    def test_home_no_longer_imports_sibling_plugin_models(self):
+        # The WHOLE module: with the pulse routes moved to ai_assistant,
+        # home.py owns nothing but filter-firing and the email setup step.
         src = _HOME_PY.read_text(encoding='utf-8')
-        for fn in ('dashboard_home', '_compute_setup_steps'):
-            body = _function_body(src, fn)
-            for plugin in ('orders', 'catalog', 'ai_assistant', 'agent_core', 'inventory'):
-                self.assertNotIn(
-                    f'installed.{plugin}',
-                    body,
-                    f'{fn} still imports {plugin} — it belongs in that '
-                    "plugin's dashboard filter subscriber",
-                )
+        for plugin in ('orders', 'catalog', 'ai_assistant', 'agent_core', 'inventory'):
+            self.assertNotIn(
+                f'installed.{plugin}',
+                src,
+                f'home.py still imports {plugin} — it belongs in that '
+                "plugin's dashboard filter subscriber",
+            )
+
+    def test_pulse_routes_are_owned_by_ai_assistant(self):
+        # Same /dashboard/pulse/... paths as before, registered BY the
+        # plugin — so disabling ai_assistant 404s them, and the dashboard
+        # no longer owns the names.
+        from django.urls import NoReverseMatch, reverse
+
+        self.assertEqual(
+            reverse('ai_assistant_dashboard:pulse_refresh'), '/dashboard/pulse/refresh/'
+        )
+        with self.assertRaises(NoReverseMatch):
+            reverse('admin_dashboard:pulse_refresh')
 
     def test_contributing_plugins_are_subscribed(self):
         from core.hooks import MorpheusEvents, hook_registry

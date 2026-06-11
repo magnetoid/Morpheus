@@ -206,7 +206,7 @@
         </h2>
         <p class="text-xs text-[color:var(--text-muted)]">Top-5 ranked things to look at — refreshed daily and on key events.</p>
       </div>
-      <form method="post" action="{% url 'admin_dashboard:pulse_refresh' %}" class="m-0">
+      <form method="post" action="{% url 'ai_assistant_dashboard:pulse_refresh' %}" class="m-0">
         {% csrf_token %}
         <button type="submit" class="btn btn-ghost text-xs">Refresh now</button>
       </form>
@@ -233,7 +233,7 @@
               {{ p.suggested_action.label|default:"Open" }} →
             </a>
             {% endif %}
-            <form method="post" action="{% url 'admin_dashboard:pulse_dismiss' insight_id=p.id %}" class="m-0">
+            <form method="post" action="{% url 'ai_assistant_dashboard:pulse_dismiss' insight_id=p.id %}" class="m-0">
               {% csrf_token %}
               <button type="submit" class="text-xs text-[color:var(--text-muted)] hover:underline">Dismiss</button>
             </form>

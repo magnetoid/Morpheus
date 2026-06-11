@@ -154,8 +154,6 @@ def plugin_settings_redirect(request: HttpRequest, plugin: str) -> HttpResponse:
 urlpatterns = [
     path('', views.dashboard_home, name='home'),
     path('me/', views.my_account, name='my_account'),
-    path('pulse/refresh/', views.pulse_refresh, name='pulse_refresh'),
-    path('pulse/<uuid:insight_id>/dismiss/', views.pulse_dismiss, name='pulse_dismiss'),
     path('orders/', views.orders_list, name='orders'),
     path('orders/bulk/', views.orders_bulk, name='orders_bulk'),
     path('orders/new/', views.order_new, name='order_new'),

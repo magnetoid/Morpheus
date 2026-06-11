@@ -11,8 +11,6 @@ import contextlib
 from morpheus.views import (
     HttpRequest,
     HttpResponse,
-    messages,
-    redirect,
     render,
     staff_member_required,
 )
@@ -100,34 +98,6 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
             'date_presets': DATE_PRESETS,
         },
     )
-
-
-@staff_member_required
-def pulse_refresh(request: HttpRequest) -> HttpResponse:
-    """Force a Pulse regeneration on demand. Sync — small enough to not need a task."""
-    if request.method != 'POST':
-        return redirect('/dashboard/')
-    try:
-        from plugins.installed.ai_assistant.services.pulse import generate_pulse_insights
-
-        generate_pulse_insights()
-    except Exception as e:  # noqa: BLE001
-        messages.error(request, f'Pulse refresh failed: {e}')
-    else:
-        messages.success(request, 'Pulse refreshed.')
-    return redirect('/dashboard/')
-
-
-@staff_member_required
-def pulse_dismiss(request: HttpRequest, insight_id: str) -> HttpResponse:
-    """Mark a Pulse card read so it falls off the panel."""
-    if request.method != 'POST':
-        return redirect('/dashboard/')
-    with _safe_block('pulse_dismiss'):
-        from plugins.installed.ai_assistant.models import MerchantInsight
-
-        MerchantInsight.objects.filter(id=insight_id).update(is_read=True)
-    return redirect('/dashboard/')
 
 
 def _compute_activity_feed(limit: int = 20) -> list:

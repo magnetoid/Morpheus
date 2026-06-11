@@ -42,6 +42,13 @@ class AIAssistantPlugin(Plugin):
 
         # REST/Webhook/Manifest URLs
         self.register_urls('plugins.installed.ai_assistant.urls', prefix='api/')
+        # Pulse refresh/dismiss — same /dashboard/pulse/... paths the
+        # dashboard used to own; they 404 when this plugin is disabled.
+        self.register_urls(
+            'plugins.installed.ai_assistant.urls_dashboard',
+            prefix='dashboard/pulse/',
+            namespace='ai_assistant_dashboard',
+        )
 
         # React to store events. PRODUCT_VIEWED + SEARCH_PERFORMED are
         # owned by the `analytics` plugin (the canonical persistence
