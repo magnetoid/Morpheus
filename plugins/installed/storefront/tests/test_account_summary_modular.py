@@ -23,22 +23,19 @@ _ACCOUNT_PY = Path(settings.BASE_DIR) / 'plugins/installed/storefront/views/acco
 class AccountSummaryModularityTests(TestCase):
     def test_account_summary_no_longer_imports_sibling_plugin_models(self):
         # Scope to the _account_summary function body — the dedicated account
-        # sub-pages (credits / downloads) still query those plugins directly;
-        # migrating whole pages to plugin-owned routes is a separate increment.
+        # sub-pages (orders list / credits / downloads) still query those
+        # plugins directly; migrating whole pages to plugin-owned routes is a
+        # separate increment.
         src = _ACCOUNT_PY.read_text(encoding='utf-8')
         start = src.index('def _account_summary')
         end = src.index('\ndef ', start + 1)
         body = src[start:end]
-        self.assertNotIn(
-            'installed.gift_cards',
-            body,
-            '_account_summary still imports gift_cards — it belongs in the plugin hook',
-        )
-        self.assertNotIn(
-            'installed.digital_products',
-            body,
-            '_account_summary still hardcodes digital_products — it belongs in the plugin hook',
-        )
+        for plugin in ('gift_cards', 'digital_products', 'orders'):
+            self.assertNotIn(
+                f'installed.{plugin}',
+                body,
+                f'_account_summary still imports {plugin} — it belongs in the plugin hook',
+            )
 
     def test_fresh_user_has_no_plugin_tile_keys(self):
         # The keys appear ONLY when a plugin finds data — never defaulted by storefront.
@@ -80,6 +77,23 @@ class AccountSummaryModularityTests(TestCase):
         self.assertTrue(
             any('DigitalProductsPlugin' in q for q in quals), 'digital_products not subscribed'
         )
+        self.assertTrue(any('OrdersPlugin' in q for q in quals), 'orders not subscribed')
+
+    def test_orders_fields_contributed_end_to_end(self):
+        # The orders subscriber folds count / returns / store credit in.
+        from plugins.installed.orders.models import Order
+        from plugins.installed.storefront.views.account import _account_summary
+
+        user = get_user_model().objects.create_user(username='buyer', password='x')
+        Order.objects.create(
+            customer=user,
+            email='buyer@example.com',
+            subtotal=Money(Decimal('10.00'), 'USD'),
+            total=Money(Decimal('10.00'), 'USD'),
+        )
+        s = _account_summary(user)
+        self.assertEqual(s.get('orders_count'), 1)
+        self.assertEqual(s.get('pending_returns'), 0)
 
     def test_downloads_route_is_owned_by_digital_products(self):
         # The /account/downloads/ route is registered BY the plugin, so disabling

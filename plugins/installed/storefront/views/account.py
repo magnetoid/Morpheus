@@ -24,51 +24,16 @@ def _login_required(request, target):
 
 
 def _account_summary(user) -> dict:
-    """Cheap counts + balances for the account home dashboard.
-    Fail-soft per plugin — a missing plugin shouldn't break the page.
+    """Counts + balances for the account home dashboard.
 
-    Plugin-owned fields are contributed through the
-    ``ACCOUNT_SUMMARY_FIELDS`` filter (see core/hooks.py) — a plugin folds
-    its own field into the dict and a disabled plugin's tile vanishes
-    automatically. loyalty_points is migrated to that path (it subscribes
-    in plugins/installed/loyalty_points/plugin.py).
-
-    gift_cards + digital_products now contribute their own fields via that hook
-    (each plugin's ``on_account_summary``), so a disabled plugin's tile vanishes —
-    storefront no longer imports their models here.
-
-    TODO(modular-os): migrate the remaining orders/returns/store_credit fields
-    the same way (orders is foundational, so this is lower priority).
+    Assembled entirely through the ``ACCOUNT_SUMMARY_FIELDS`` filter (see
+    core/hooks.py): each enabled plugin folds its own field(s) into the
+    dict — orders (order count / open returns / store credit), loyalty,
+    gift_cards, digital_products all subscribe — so a disabled plugin's
+    tile vanishes automatically and this view imports no plugin models.
+    Fail-soft: the hook bus isolates a broken subscriber.
     """
-    s: dict = {
-        'orders_count': 0,
-        'pending_returns': 0,
-        'store_credit_balance': None,
-    }
-    try:
-        from plugins.installed.orders.models import Order
-
-        s['orders_count'] = Order.objects.filter(customer=user).count()
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_summary.orders_count failed: %s', e, exc_info=True)
-    try:
-        from plugins.installed.orders.refunds import ReturnRequest
-
-        s['pending_returns'] = ReturnRequest.objects.filter(
-            order__customer=user,
-            state__in=('requested', 'approved', 'received'),
-        ).count()
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_summary.pending_returns failed: %s', e, exc_info=True)
-    try:
-        from plugins.installed.orders import store_credit as _sc
-
-        s['store_credit_balance'] = _sc.balance(user)
-    except Exception as e:  # noqa: BLE001
-        logger.warning('account_summary.store_credit failed: %s', e, exc_info=True)
-    # Let enabled plugins fold their own fields into the summary. Each
-    # subscriber receives the dict as `value`, mutates/extends it, returns
-    # it. A disabled plugin contributes nothing, so its tile never renders.
+    s: dict = {}
     try:
         from core.hooks import MorpheusEvents, hook_registry
 

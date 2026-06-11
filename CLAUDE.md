@@ -82,9 +82,11 @@ plugin link is added unguarded. (loyalty's `/account/points/` and the
 payments settings panel — the old known debt — are now properly contributed.)
 
 **Known debt to repay (still fails the disable test):**
-`storefront/views/account.py` still hardcodes orders/returns/store-credit
-fields (loyalty, gift_cards and digital_products already migrated to
-`ACCOUNT_SUMMARY_FIELDS`). The dashboard home *activity feed* is fixed —
+the storefront account *summary* is fixed — `_account_summary` is now
+assembled entirely by `ACCOUNT_SUMMARY_FIELDS` subscribers (orders,
+loyalty, gift_cards, digital_products) — but the dedicated account
+sub-pages (orders list, credits, downloads) still query plugin models
+directly. The dashboard home *activity feed* is fixed —
 assembled via the `ACTIVITY_FEED` filter with orders / agent_core /
 reviews / loyalty_points / crm subscribing (guarded by
 `admin_dashboard/tests/test_activity_feed_modular.py`) — but the KPI /
