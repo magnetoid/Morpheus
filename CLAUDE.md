@@ -86,12 +86,15 @@ the storefront account *summary* is fixed — `_account_summary` is now
 assembled entirely by `ACCOUNT_SUMMARY_FIELDS` subscribers (orders,
 loyalty, gift_cards, digital_products) — but the dedicated account
 sub-pages (orders list, credits, downloads) still query plugin models
-directly. The dashboard home *activity feed* is fixed —
-assembled via the `ACTIVITY_FEED` filter with orders / agent_core /
-reviews / loyalty_points / crm subscribing (guarded by
-`admin_dashboard/tests/test_activity_feed_modular.py`) — but the KPI /
-setup / pulse tiles in `admin_dashboard/views_split/home.py` still import
-orders / catalog / ai_assistant / agent_core / inventory models directly.
+directly. The dashboard *home page* is fixed — KPIs, panels and the
+setup checklist are assembled via the `DASHBOARD_KPIS` /
+`DASHBOARD_HOME_PANELS` / `DASHBOARD_SETUP_STEPS` filters and the
+activity feed via `ACTIVITY_FEED` (guarded by
+`admin_dashboard/tests/test_home_modular.py` +
+`test_activity_feed_modular.py`; design in
+`docs/plans/dashboard-home-modular.md`) — but the `pulse_refresh` /
+`pulse_dismiss` routes still import ai_assistant; they're whole routes
+that belong in that plugin via `register_urls`.
 
 **Core → plugin imports (wrong direction; core should never import
 `plugins.installed.*`):** `core/emails` is fixed (cms's EmailTemplate now

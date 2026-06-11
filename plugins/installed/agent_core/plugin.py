@@ -55,9 +55,39 @@ class AgentCorePlugin(Plugin):
             prefix='dashboard/agents/',
             namespace='agent_core_dash',
         )
-        # Contribute recent agent runs to the dashboard home feed.
+        # Contribute recent agent runs to the dashboard home feed, and the
+        # run-count half of the home page's ai_summary box.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=30)
+        self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=40)
         self._register_beat_schedule()
+
+    def on_dashboard_panels(self, value, date_range=None, **kwargs):
+        """Fold active-agent and recent-run counts into ai_summary."""
+        from datetime import timedelta  # noqa: PLC0415
+
+        from django.utils import timezone  # noqa: PLC0415
+
+        from core.agents import agent_registry  # noqa: PLC0415
+        from plugins.installed.agent_core.models import AgentRun  # noqa: PLC0415
+
+        summary = value.setdefault(
+            'ai_summary',
+            {
+                'agent_count': 0,
+                'recent_runs': 0,
+                'unread_insights': 0,
+                'provider': '',
+                'has_keys': False,
+            },
+        )
+        # The old dashboard code imported a nonexistent Agent model and the
+        # fail-soft block hid it — this count was silently 0 forever. The
+        # registered runtime agents are the real population.
+        summary['agent_count'] = len(agent_registry.all_agents())
+        summary['recent_runs'] = AgentRun.objects.filter(
+            started_at__gte=timezone.now() - timedelta(days=7),
+        ).count()
+        return value
 
     def on_activity_feed(self, value, limit=20, **kwargs):
         """Fold recent agent runs into the dashboard home feed

@@ -1,4 +1,4 @@
-from morpheus import Plugin
+from morpheus import Plugin, events
 
 
 class InventoryPlugin(Plugin):
@@ -18,6 +18,8 @@ class InventoryPlugin(Plugin):
         self.register_graphql_extension('plugins.installed.inventory.graphql.queries')
         self.register_graphql_extension('plugins.installed.inventory.graphql.mutations')
         self.register_hook('order.placed', self.on_order_placed, priority=5)
+        # Dashboard-home low-stock tile.
+        self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=50)
         self.register_hook('order.paid', self.on_order_paid, priority=5)
         self.register_hook('order.cancelled', self.on_order_cancelled, priority=5)
         self.register_hook('return.refunded', self.on_return_refunded, priority=5)
@@ -48,6 +50,29 @@ class InventoryPlugin(Plugin):
                 'schedule': 60 * 5,
             },
         )
+
+    def on_dashboard_panels(self, value, date_range=None, **kwargs):
+        """Fold the low-stock list (+ threshold) into the home context.
+
+        available_quantity is a Python property, so pull a small page and
+        filter in-memory rather than denormalising a column for one tile.
+        """
+        from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
+        from plugins.registry import plugin_registry  # noqa: PLC0415
+
+        ae_plugin = plugin_registry.get('advanced_ecommerce')
+        threshold = int(ae_plugin.get_config_value('low_stock_threshold', 5)) if ae_plugin else 5
+        candidates = list(
+            StockLevel.objects.select_related('variant', 'variant__product', 'warehouse').filter(
+                quantity__lte=threshold + 50
+            )[:200]
+        )
+        value['low_stock'] = sorted(
+            (sl for sl in candidates if sl.available_quantity <= threshold),
+            key=lambda sl: sl.available_quantity,
+        )[:6]
+        value['low_stock_threshold'] = threshold
+        return value
 
     def on_order_placed(self, order, **kwargs):
         # Reserve stock when the order is created (before payment).
