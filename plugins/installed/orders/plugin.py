@@ -25,6 +25,12 @@ class OrdersPlugin(Plugin):
         # Contribute order count / open returns / store credit to the
         # storefront account-home summary.
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=10)
+        # Dashboard-home tiles: KPI row, recent-orders panel, setup step.
+        from plugins.installed.orders import dashboard  # noqa: PLC0415
+
+        self.register_hook(events.DASHBOARD_KPIS, dashboard.on_dashboard_kpis, priority=10)
+        self.register_hook(events.DASHBOARD_HOME_PANELS, dashboard.on_dashboard_panels, priority=10)
+        self.register_hook(events.DASHBOARD_SETUP_STEPS, dashboard.on_setup_steps, priority=20)
         # Register signals on import.
         from plugins.installed.orders import signals  # noqa: F401, PLC0415
 

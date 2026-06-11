@@ -1,4 +1,4 @@
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, events
 
 
 class CatalogPlugin(Plugin):
@@ -11,7 +11,52 @@ class CatalogPlugin(Plugin):
     def ready(self):
         self.register_graphql_extension('plugins.installed.catalog.graphql.queries')
         self.register_graphql_extension('plugins.installed.catalog.graphql.mutations')
+        # Dashboard-home tiles: active-products KPI, top-products panel,
+        # first-product setup step.
+        self.register_hook(events.DASHBOARD_KPIS, self.on_dashboard_kpis, priority=20)
+        self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=20)
+        self.register_hook(events.DASHBOARD_SETUP_STEPS, self.on_setup_steps, priority=10)
         from plugins.installed.catalog import signals  # noqa - register signals
+
+    def on_dashboard_kpis(self, value, date_range=None, **kwargs):
+        """Append the active-products KPI tile."""
+        from plugins.installed.catalog.models import Product  # noqa: PLC0415
+
+        value.append(
+            {
+                'label': 'Active products',
+                'value': f'{Product.objects.filter(status="active").count():,}',
+                'delta': '',
+                'trend': 'flat',
+                'icon': 'package',
+                'series': None,
+            }
+        )
+        return value
+
+    def on_dashboard_panels(self, value, date_range=None, **kwargs):
+        """Fold the top-products panel into the home context."""
+        from plugins.installed.catalog.models import Product  # noqa: PLC0415
+
+        value['top_products'] = list(
+            Product.objects.filter(status='active').order_by('-created_at')[:5]
+        )
+        return value
+
+    def on_setup_steps(self, value, **kwargs):
+        """Append the 'add your first product' first-run step."""
+        from plugins.installed.catalog.models import Product  # noqa: PLC0415
+
+        value.append(
+            {
+                'key': 'product',
+                'label': 'Add your first product',
+                'hint': 'Create a product to put on the shelf.',
+                'url': '/dashboard/products/new/',
+                'done': Product.objects.exists(),
+            }
+        )
+        return value
 
     def get_config_schema(self):
         """Store-wide image defaults — apply to every uploaded product

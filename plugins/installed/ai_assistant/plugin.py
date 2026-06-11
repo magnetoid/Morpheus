@@ -61,6 +61,10 @@ class AIAssistantPlugin(Plugin):
         self.register_hook(events.PRODUCT_LOW_STOCK, self._pulse_event_nudge, priority=70)
         self.register_hook('return.requested', self._pulse_event_nudge, priority=70)
         self.register_hook(events.CART_ABANDONED, self._pulse_event_nudge, priority=70)
+        # Dashboard-home tiles: insights + pulse panels, the provider half
+        # of ai_summary, and the connect-a-provider setup step.
+        self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=30)
+        self.register_hook(events.DASHBOARD_SETUP_STEPS, self.on_setup_steps, priority=30)
 
     def _register_pulse_schedule(self) -> None:
         from django.conf import settings
@@ -86,6 +90,66 @@ class AIAssistantPlugin(Plugin):
                 'schedule': crontab(minute=0),  # hourly
             },
         )
+
+    def on_dashboard_panels(self, value, date_range=None, **kwargs):
+        """Fold unread insights, the Pulse top-5, and the provider half of
+        ai_summary into the dashboard-home context."""
+        from plugins.installed.ai_assistant.models import MerchantInsight  # noqa: PLC0415
+
+        rows = list(MerchantInsight.objects.filter(is_read=False).order_by('-created_at'))
+        value['insights'] = rows[:4]
+
+        prio = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+        ranked = sorted(rows, key=lambda r: (prio.get(r.priority, 9), -r.created_at.timestamp()))
+        value['pulse'] = ranked[:5]
+
+        summary = value.setdefault(
+            'ai_summary',
+            {
+                'agent_count': 0,
+                'recent_runs': 0,
+                'unread_insights': 0,
+                'provider': '',
+                'has_keys': False,
+            },
+        )
+        summary['unread_insights'] = len(rows)
+        cfg = self.get_config()
+        summary['provider'] = cfg.get('ai_provider') or 'openai'
+        summary['has_keys'] = any(
+            cfg.get(k)
+            for k in (
+                'openai_api_key',
+                'anthropic_api_key',
+                'gemini_api_key',
+                'openrouter_api_key',
+                'grok_api_key',
+                'packy_api_key',
+                'ollama_api_key',
+            )
+        )
+        return value
+
+    def on_setup_steps(self, value, **kwargs):
+        """Append the connect-an-AI-provider first-run step."""
+        from plugins.installed.ai_assistant.services.config import (  # noqa: PLC0415
+            get_provider_config,
+        )
+
+        try:
+            done = bool(get_provider_config().api_key)
+        except Exception:  # noqa: BLE001 — config table may not exist yet
+            done = False
+        value.append(
+            {
+                'key': 'ai',
+                'label': 'Connect an AI provider',
+                'hint': 'OpenAI / Anthropic / Gemini / OpenRouter / Ollama.',
+                'url': '/dashboard/settings/ai/',
+                'done': done,
+            }
+        )
+        return value
 
     def _pulse_event_nudge(self, **_kwargs) -> None:
         """Trigger a Pulse refresh on key events so the dashboard panel

@@ -422,6 +422,26 @@ class MorpheusEvents:
     #   for its reviews / loyalty / newsletter tiles. Fail-soft: the hook
     #   bus isolates a broken handler so one bad source can't break home.
     ACTIVITY_FEED = 'dashboard.activity_feed'  # filter
+    # DASHBOARD_KPIS — filter, value=list[dict] ({label, value, delta,
+    #   trend, icon, series}), kwargs: date_range (duck-typed: .start,
+    #   .end, .prev_start, .prev_end). The dashboard-home KPI row. Each
+    #   plugin appends ITS OWN metric dicts; subscriber priority orders
+    #   the tiles. orders (sales/orders/AOV) and catalog (active
+    #   products) subscribe.
+    DASHBOARD_KPIS = 'dashboard.kpis'  # filter
+    # DASHBOARD_HOME_PANELS — filter, value=dict of home-template context
+    #   keys, kwargs: date_range. Each plugin folds ITS OWN panel data —
+    #   orders: recent_orders; catalog: top_products; ai_assistant:
+    #   insights/pulse + the provider half of ai_summary; agent_core: the
+    #   run-count half of ai_summary; inventory: low_stock(+threshold).
+    #   ai_summary is merged via setdefault so either AI plugin can be
+    #   disabled independently. A missing key renders an empty panel.
+    DASHBOARD_HOME_PANELS = 'dashboard.home_panels'  # filter
+    # DASHBOARD_SETUP_STEPS — filter, value=list[dict] ({key, label,
+    #   hint, url, done}). The first-run merchant checklist; catalog,
+    #   orders and ai_assistant contribute their step (the email step
+    #   stays in home.py — it reads core settings, no plugin owns it).
+    DASHBOARD_SETUP_STEPS = 'dashboard.setup_steps'  # filter
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

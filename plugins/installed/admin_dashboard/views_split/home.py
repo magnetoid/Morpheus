@@ -7,11 +7,6 @@
 from __future__ import annotations
 
 import contextlib
-from decimal import Decimal
-from typing import Any
-
-from django.db.models import Sum
-from django.utils import timezone
 
 from morpheus.views import (
     HttpRequest,
@@ -23,11 +18,7 @@ from morpheus.views import (
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
     DATE_PRESETS,
-    Metric,
-    _pct_delta,
     _resolve_date_range,
-    _since,
-    _trend,
     logger,
 )
 
@@ -45,222 +36,64 @@ def _safe_block(label: str):
 
 
 @staff_member_required
-def dashboard_home(request: HttpRequest) -> HttpResponse:  # noqa: PLR0915 — one statement per tile
+def dashboard_home(request: HttpRequest) -> HttpResponse:
+    """Dashboard home. Every tile's data is contributed by its owning
+    plugin through filters (see core/hooks.py + docs/plans/
+    dashboard-home-modular.md): DASHBOARD_KPIS (metric row),
+    DASHBOARD_HOME_PANELS (recent orders / top products / insights /
+    pulse / ai_summary / low stock) and DASHBOARD_SETUP_STEPS — so a
+    disabled plugin's tile simply never renders and this view imports
+    no plugin models. ACTIVITY_FEED feeds the activity column the same
+    way.
+    """
+    from core.hooks import MorpheusEvents, hook_registry
+
     date_range = _resolve_date_range(request)
     period = date_range.preset or 'custom'
 
-    metrics: list[Metric] = []
-    recent_orders: list[Any] = []
-    top_products: list[Any] = []
-    insights: list[Any] = []
-
-    try:
-        from django.db.models import Count
-        from django.db.models.functions import TruncDate
-
-        from plugins.installed.orders.models import Order
-
-        orders_qs = Order.objects.filter(
-            placed_at__gte=date_range.start,
-            placed_at__lt=date_range.end,
-        )
-        order_count = orders_qs.count()
-        revenue = orders_qs.aggregate(total=Sum('total'))['total'] or Decimal('0')
-        avg_order = (revenue / order_count) if order_count else Decimal('0')
-
-        prev_orders = Order.objects.filter(
-            placed_at__gte=date_range.prev_start,
-            placed_at__lt=date_range.prev_end,
-        )
-        prev_count = prev_orders.count()
-        prev_revenue = prev_orders.aggregate(total=Sum('total'))['total'] or Decimal('0')
-
-        # 14-day daily series for the sparklines on each KPI tile. One
-        # aggregate query each — cheap. We fill in zero for missing days
-        # so the visual stays comparable across stores at any volume.
-        spark_since = _since(14)
-        from datetime import timedelta as _td
-
-        today = timezone.now().date()
-        keys = [(today - _td(days=i)) for i in range(13, -1, -1)]
-        rev_by_day = {
-            row['day']: row['v']
-            for row in (
-                Order.objects.filter(placed_at__gte=spark_since)
-                .annotate(day=TruncDate('placed_at'))
-                .values('day')
-                .annotate(v=Sum('total'))
-            )
-        }
-        cnt_by_day = {
-            row['day']: row['v']
-            for row in (
-                Order.objects.filter(placed_at__gte=spark_since)
-                .annotate(day=TruncDate('placed_at'))
-                .values('day')
-                .annotate(v=Count('id'))
-            )
-        }
-        rev_series = [float(rev_by_day.get(k, 0) or 0) for k in keys]
-        cnt_series = [float(cnt_by_day.get(k, 0) or 0) for k in keys]
-        aov_series = [
-            (rev_series[i] / cnt_series[i]) if cnt_series[i] else 0 for i in range(len(keys))
-        ]
-
-        metrics.extend(
-            [
-                Metric(
-                    label='Total sales',
-                    value=f'${revenue:,.2f}',
-                    delta=_pct_delta(revenue, prev_revenue),
-                    trend=_trend(revenue, prev_revenue),
-                    icon='dollar-sign',
-                    series=rev_series,
-                ),
-                Metric(
-                    label='Orders',
-                    value=f'{order_count:,}',
-                    delta=_pct_delta(order_count, prev_count),
-                    trend=_trend(order_count, prev_count),
-                    icon='shopping-bag',
-                    series=cnt_series,
-                ),
-                Metric(
-                    label='Average order',
-                    value=f'${avg_order:,.2f}' if order_count else '—',
-                    icon='trending-up',
-                    series=aov_series,
-                ),
-            ]
+    metrics: list = []
+    with _safe_block('home.kpis'):
+        metrics = hook_registry.filter(
+            MorpheusEvents.DASHBOARD_KPIS, value=metrics, date_range=date_range
         )
 
-        recent_orders = list(
-            Order.objects.select_related('customer', 'channel').order_by('-placed_at')[:6]
+    panels: dict = {}
+    with _safe_block('home.panels'):
+        panels = hook_registry.filter(
+            MorpheusEvents.DASHBOARD_HOME_PANELS, value=panels, date_range=date_range
         )
-    except Exception as e:  # noqa: BLE001 — plugin optional / fail soft
-        logger.warning('admin_dashboard: orders panel error: %s', e, exc_info=True)
-
-    try:
-        from plugins.installed.catalog.models import Product
-
-        active_count = Product.objects.filter(status='active').count()
-        metrics.append(
-            Metric(
-                label='Active products',
-                value=f'{active_count:,}',
-                icon='package',
-            )
-        )
-        top_products = list(Product.objects.filter(status='active').order_by('-created_at')[:5])
-    except Exception as e:  # noqa: BLE001
-        logger.warning('admin_dashboard: catalog panel error: %s', e, exc_info=True)
-
-    try:
-        from plugins.installed.ai_assistant.models import MerchantInsight
-
-        insights = list(MerchantInsight.objects.filter(is_read=False).order_by('-created_at')[:4])
-    except Exception as e:  # noqa: BLE001
-        logger.debug('admin_dashboard: insights panel skipped: %s', e)
-
-    # AI summary block: counts of active agents + recent runs + provider in
-    # use. Fail-soft if agent_core / ai_assistant aren't installed.
-    ai_summary: dict[str, Any] = {
+    ai_summary = panels.get('ai_summary') or {
         'agent_count': 0,
         'recent_runs': 0,
-        'unread_insights': len(insights),
+        'unread_insights': 0,
         'provider': '',
         'has_keys': False,
     }
-    with _safe_block('ai_summary.provider'):
-        from plugins.registry import plugin_registry
 
-        ai_plugin = plugin_registry.get('ai_assistant')
-        if ai_plugin is not None:
-            cfg = ai_plugin.get_config()
-            ai_summary['provider'] = cfg.get('ai_provider') or 'openai'
-            ai_summary['has_keys'] = any(
-                cfg.get(k)
-                for k in (
-                    'openai_api_key',
-                    'anthropic_api_key',
-                    'gemini_api_key',
-                    'openrouter_api_key',
-                    'grok_api_key',
-                    'packy_api_key',
-                    'ollama_api_key',
-                )
-            )
-    with _safe_block('ai_summary.agent_runs'):
-        from plugins.installed.agent_core.models import Agent, AgentRun
-
-        ai_summary['agent_count'] = Agent.objects.filter(is_active=True).count()
-        ai_summary['recent_runs'] = AgentRun.objects.filter(
-            created_at__gte=_since(7),
-        ).count()
-
-    # Stock alerts — surface on home only when at least one variant is
-    # below threshold. Inventory + advanced_ecommerce both optional.
-    low_stock: list[Any] = []
-    low_stock_threshold = 0
-    with _safe_block('low_stock_tile'):
-        from plugins.installed.inventory.models import StockLevel
-        from plugins.registry import plugin_registry
-
-        ae_plugin = plugin_registry.get('advanced_ecommerce')
-        low_stock_threshold = (
-            int(ae_plugin.get_config_value('low_stock_threshold', 5)) if ae_plugin else 5
-        )
-        # available_quantity is a Python property; pull a small page and
-        # filter in-memory so we don't need a denormalised column.
-        candidates = list(
-            StockLevel.objects.select_related('variant', 'variant__product', 'warehouse').filter(
-                quantity__lte=low_stock_threshold + 50
-            )[:200]
-        )
-        low_stock = sorted(
-            (sl for sl in candidates if sl.available_quantity <= low_stock_threshold),
-            key=lambda sl: sl.available_quantity,
-        )[:6]
-
-    # First-run checklist — only shown for empty/very-new stores so it
-    # doesn't get in the way once the merchant is rolling. We compute
-    # each step on the fly; cheap counts only. When everything's done
-    # the template hides the whole card.
     setup_steps = _compute_setup_steps()
     setup_done = sum(1 for s in setup_steps if s['done'])
     setup_total = len(setup_steps)
     setup_all_done = setup_total > 0 and setup_done == setup_total
 
-    # Activity feed — what happened lately, across all event sources.
     activity = _compute_activity_feed(limit=20)
-
-    # Linda's Pulse — top-5 ranked unread insight cards.
-    pulse: list = []
-    with _safe_block('pulse_tile'):
-        from plugins.installed.ai_assistant.models import MerchantInsight
-
-        _PRIO = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
-        rows = list(MerchantInsight.objects.filter(is_read=False))
-        rows.sort(key=lambda r: (_PRIO.get(r.priority, 9), -r.created_at.timestamp()))
-        pulse = rows[:5]
 
     return render(
         request,
         'admin_dashboard/home.html',
         {
             'metrics': metrics,
-            'recent_orders': recent_orders,
-            'top_products': top_products,
-            'insights': insights,
+            'recent_orders': panels.get('recent_orders', []),
+            'top_products': panels.get('top_products', []),
+            'insights': panels.get('insights', []),
             'ai_summary': ai_summary,
-            'low_stock': low_stock,
-            'low_stock_threshold': low_stock_threshold,
+            'low_stock': panels.get('low_stock', []),
+            'low_stock_threshold': panels.get('low_stock_threshold', 0),
             'setup_steps': setup_steps,
             'setup_done': setup_done,
             'setup_total': setup_total,
             'setup_all_done': setup_all_done,
             'activity': activity,
-            'pulse': pulse,
+            'pulse': panels.get('pulse', []),
             'active_nav': 'home',
             'period': period,
             'date_range': date_range,
@@ -320,67 +153,26 @@ def _compute_activity_feed(limit: int = 20) -> list:
 def _compute_setup_steps() -> list:
     """Build the first-time merchant setup checklist.
 
-    Returns a list of dicts (key, label, hint, url, done). Skipped from
-    the home page entirely when every step is done — see template
-    guard. Cheap: 4 small COUNT queries; runs only on the home view.
+    Steps are contributed through the ``DASHBOARD_SETUP_STEPS`` filter
+    (catalog → first product, orders → first order, ai_assistant →
+    provider key), so a disabled plugin's step disappears. The sending-
+    email step reads core settings — no plugin owns it — and is
+    appended here so it always lands last.
     """
-    steps = []
-    # 1) at least one product
-    has_product = False
-    with _safe_block('setup.has_product'):
-        from plugins.installed.catalog.models import Product
-
-        has_product = Product.objects.exists()
-    steps.append(
-        {
-            'key': 'product',
-            'label': 'Add your first product',
-            'hint': 'Create a product to put on the shelf.',
-            'url': '/dashboard/products/new/',
-            'done': has_product,
-        }
-    )
-    # 2) at least one order (test or real)
-    has_order = False
-    with _safe_block('setup.has_order'):
-        from plugins.installed.orders.models import Order
-
-        has_order = Order.objects.exists()
-    steps.append(
-        {
-            'key': 'order',
-            'label': 'Receive a test order',
-            'hint': 'Place an order through the storefront, or use Draft orders.',
-            'url': '/dashboard/orders/',
-            'done': has_order,
-        }
-    )
-    # 3) AI provider configured
-    ai_done = False
-    with _safe_block('setup.ai_provider'):
-        from plugins.installed.ai_assistant.services.config import get_provider_config
-
-        ai_done = bool(get_provider_config().api_key)
-    steps.append(
-        {
-            'key': 'ai',
-            'label': 'Connect an AI provider',
-            'hint': 'OpenAI / Anthropic / Gemini / OpenRouter / Ollama.',
-            'url': '/dashboard/settings/ai/',
-            'done': ai_done,
-        }
-    )
-    # 4) email sender configured (DEFAULT_FROM_EMAIL)
     from django.conf import settings as dj_settings
 
-    email_done = bool(getattr(dj_settings, 'DEFAULT_FROM_EMAIL', '') or '')
+    from core.hooks import MorpheusEvents, hook_registry
+
+    steps: list = []
+    with _safe_block('setup.steps'):
+        steps = hook_registry.filter(MorpheusEvents.DASHBOARD_SETUP_STEPS, value=steps)
     steps.append(
         {
             'key': 'email',
             'label': 'Set a sending email',
             'hint': 'So order confirmations and receipts can go out.',
             'url': '/dashboard/settings/general/',
-            'done': email_done,
+            'done': bool(getattr(dj_settings, 'DEFAULT_FROM_EMAIL', '') or ''),
         }
     )
     return steps
