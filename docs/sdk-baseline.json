@@ -8,6 +8,8 @@
     "__version__"
   ],
   "morpheus.events": [
+    "ACCOUNT_SUMMARY_FIELDS",
+    "ACTIVITY_FEED",
     "ADD_TO_CART",
     "AGENT_INTENT_AUTHORIZED",
     "AGENT_INTENT_COMPLETED",
@@ -24,8 +26,11 @@
     "CART_UPDATED",
     "CATEGORY_UPDATED",
     "CMS_FORM_SUBMITTED",
+    "CSP_VIOLATION_REPORTED",
+    "CUSTOMER_DETAIL_PANELS",
     "CUSTOMER_LOGIN",
     "CUSTOMER_REGISTERED",
+    "EMAIL_TEMPLATE_OVERRIDE",
     "ORDER_CANCELLED",
     "ORDER_CONFIRMED",
     "ORDER_FULFILLED",
@@ -36,13 +41,14 @@
     "PAYMENT_REFUNDED",
     "PRODUCT_CALCULATE_PRICE",
     "PRODUCT_CREATED",
+    "PRODUCT_FORM_CARDS",
+    "PRODUCT_FORM_SAVED",
     "PRODUCT_LOW_STOCK",
     "PRODUCT_OUT_OF_STOCK",
     "PRODUCT_UPDATED",
     "PRODUCT_VIEWED",
     "REMOVE_FROM_CART",
-    "SEARCH_PERFORMED",
-    "annotations"
+    "SEARCH_PERFORMED"
   ],
   "morpheus.forms": [
     "ALL_FIELDS",
@@ -116,7 +122,6 @@
     "ValidationError",
     "Widget",
     "all_valid",
-    "annotations",
     "fields_for_model",
     "formset_factory",
     "inlineformset_factory",
@@ -232,7 +237,6 @@
     "Window",
     "WindowFrame",
     "WindowFrameExclusion",
-    "annotations",
     "aprefetch_related_objects",
     "prefetch_related_objects"
   ],

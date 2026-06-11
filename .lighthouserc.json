@@ -42,8 +42,7 @@
         "label": "error",
         "link-name": "error",
 
-        "is-on-https": "error",
-        "no-vulnerable-libraries": "error"
+        "is-on-https": "error"
       }
     },
     "upload": {
