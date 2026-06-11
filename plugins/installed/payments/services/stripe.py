@@ -2,6 +2,7 @@ import logging
 
 import stripe
 from django.conf import settings
+
 from plugins.installed.payments.models import PaymentTransaction
 from plugins.registry import plugin_registry
 
@@ -194,9 +195,11 @@ class PaymentService:
         retried deliveries into an ``IntegrityError`` we treat as
         "already processed, return success".
         """
-        from django.db import IntegrityError
-        from django.utils import timezone
-        from plugins.installed.payments.models import StripeWebhookEvent
+        from django.db import IntegrityError  # noqa: PLC0415
+        from django.db import transaction as db_tx  # noqa: PLC0415
+        from django.utils import timezone  # noqa: PLC0415
+
+        from plugins.installed.payments.models import StripeWebhookEvent  # noqa: PLC0415
 
         plugin = plugin_registry.get('payments')
         webhook_secret = plugin.get_config_value(
@@ -212,11 +215,15 @@ class PaymentService:
             raise Exception('Invalid signature') from e
 
         try:
-            event_row = StripeWebhookEvent.objects.create(
-                stripe_event_id=event.id,
-                event_type=event.type,
-                payload=event.to_dict() if hasattr(event, 'to_dict') else dict(event),
-            )
+            # The savepoint matters: without it, the failed INSERT poisons
+            # any enclosing transaction (tests, ATOMIC_REQUESTS) and every
+            # later query raises TransactionManagementError.
+            with db_tx.atomic():
+                event_row = StripeWebhookEvent.objects.create(
+                    stripe_event_id=event.id,
+                    event_type=event.type,
+                    payload=event.to_dict() if hasattr(event, 'to_dict') else dict(event),
+                )
         except IntegrityError:
             # Duplicate event id — Stripe retried while the first
             # delivery was still in flight (or completed). The original
@@ -246,8 +253,9 @@ class PaymentService:
         """Idempotent — the `select_for_update` + status check guarantees
         ORDER_PAID fires exactly once per payment, even if Stripe retries
         the webhook concurrently (it does, aggressively)."""
-        from django.db import transaction as db_tx
-        from core.hooks import hook_registry, MorpheusEvents
+        from django.db import transaction as db_tx  # noqa: PLC0415
+
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
 
         with db_tx.atomic():
             tx = (
@@ -265,10 +273,13 @@ class PaymentService:
             # 'pending' so the dashboard kept showing paid orders as
             # unpaid; flip to 'confirmed' so the order list, fulfillment
             # queue, and analytics all see the correct state.
+            # Order.status is a protected FSMField — direct assignment
+            # raises AttributeError — so go through the confirm()
+            # transition, which also logs the ORDER_CONFIRMED event.
             order = tx.order
             order.payment_status = 'paid'
-            if order.status in ('pending', 'draft'):
-                order.status = 'confirmed'
+            if order.status == 'pending':
+                order.confirm()
                 order.save(update_fields=['payment_status', 'status'])
             else:
                 order.save(update_fields=['payment_status'])
@@ -294,7 +305,7 @@ class PaymentService:
         terminal state so a re-delivery doesn't overwrite a later
         success-then-refund history.
         """
-        from django.db import transaction as db_tx
+        from django.db import transaction as db_tx  # noqa: PLC0415
 
         with db_tx.atomic():
             tx = (

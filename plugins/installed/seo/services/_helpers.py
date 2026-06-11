@@ -18,7 +18,8 @@ import logging
 import re as _re
 from dataclasses import dataclass
 
-from django.conf import settings
+
+from core.utils.site import site_base_url
 from django.utils.html import escape, strip_tags
 
 logger = logging.getLogger('morpheus.seo')
@@ -115,11 +116,7 @@ class ResolvedMeta:
 
 
 def _site_base_url() -> str:
-    base = getattr(settings, 'SITE_BASE_URL', '').rstrip('/')
-    if base:
-        return base + '/'
-    hosts = getattr(settings, 'ALLOWED_HOSTS', []) or ['localhost']
-    return f'https://{hosts[0]}/'
+    return site_base_url()
 
 
 def site_settings():

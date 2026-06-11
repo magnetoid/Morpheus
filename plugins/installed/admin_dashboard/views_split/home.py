@@ -1,35 +1,32 @@
 """Auto-split from the legacy admin_dashboard/views.py monolith."""
 
+# Lazy imports inside the fail-soft tile blocks are intentional: a broken
+# or missing optional plugin must not 500 the dashboard home page.
+# ruff: noqa: PLC0415
+
 from __future__ import annotations
 
 import contextlib
 from decimal import Decimal
 from typing import Any
 
-from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
-from morpheus.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 
-from plugins.installed.admin_dashboard.forms import (
-    AddressForm,
-    CouponForm,
-    CustomerForm,
-    DraftOrderForm,
-    FulfillmentForm,
-    ProductForm,
-    RefundForm,
-    VariantForm,
+from morpheus.views import (
+    HttpRequest,
+    HttpResponse,
+    messages,
+    redirect,
+    render,
+    staff_member_required,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
     DATE_PRESETS,
     Metric,
-    _bulk_ids,
-    _period,
     _pct_delta,
     _resolve_date_range,
     _since,
-    _sparkline_points,
     _trend,
     logger,
 )
@@ -48,11 +45,9 @@ def _safe_block(label: str):
 
 
 @staff_member_required
-def dashboard_home(request: HttpRequest) -> HttpResponse:
+def dashboard_home(request: HttpRequest) -> HttpResponse:  # noqa: PLR0915 — one statement per tile
     date_range = _resolve_date_range(request)
     period = date_range.preset or 'custom'
-    days = date_range.days
-    since = date_range.start
 
     metrics: list[Metric] = []
     recent_orders: list[Any] = []
@@ -62,6 +57,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     try:
         from django.db.models import Count
         from django.db.models.functions import TruncDate
+
         from plugins.installed.orders.models import Order
 
         orders_qs = Order.objects.filter(
@@ -83,7 +79,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         # aggregate query each — cheap. We fill in zero for missing days
         # so the visual stays comparable across stores at any volume.
         spark_since = _since(14)
-        from datetime import date as _date, timedelta as _td
+        from datetime import timedelta as _td
 
         today = timezone.now().date()
         keys = [(today - _td(days=i)) for i in range(13, -1, -1)]
@@ -304,123 +300,19 @@ def pulse_dismiss(request: HttpRequest, insight_id: str) -> HttpResponse:
 def _compute_activity_feed(limit: int = 20) -> list:
     """Recent platform events as a single chronological list.
 
-    Pulls from three sources without coupling them together — each is
-    a separate fail-soft try block:
-
-      * orders.OrderEvent          (placed, paid, fulfilled, cancelled)
-      * orders.ReturnRequest       (state transitions)
-      * agent_core.AgentRun        (recent agent runs)
-
-    Each entry is a uniform dict — kind, label, hint, url, icon, when —
-    so the template renders them with one component. Sorted newest first.
+    Assembled through the ``ACTIVITY_FEED`` filter (see core/hooks.py):
+    each enabled plugin appends its own recent-event dicts — kind, label,
+    hint, url, icon, when — so this view knows nothing about sibling
+    plugins' models, and a disabled plugin's entries simply never appear.
+    orders, agent_core, reviews, loyalty_points and crm all subscribe.
+    Sorted newest first, capped at `limit`.
     """
+    from core.hooks import MorpheusEvents, hook_registry
+
     items: list[dict] = []
+    with _safe_block('activity.feed'):
+        items = hook_registry.filter(MorpheusEvents.ACTIVITY_FEED, value=items, limit=limit)
 
-    with _safe_block('activity.order_events'):
-        from plugins.installed.orders.models import OrderEvent
-
-        for ev in OrderEvent.objects.select_related('order').order_by('-created_at')[: limit * 2]:
-            verb = (ev.event_type or 'updated').replace('_', ' ').replace('.', ' ')
-            items.append(
-                {
-                    'kind': 'order',
-                    'icon': 'shopping-bag',
-                    'label': f'Order #{ev.order.order_number} — {verb}',
-                    'hint': ev.message or '',
-                    'url': f'/dashboard/orders/{ev.order.order_number}/',
-                    'when': ev.created_at,
-                }
-            )
-
-    with _safe_block('activity.returns'):
-        from plugins.installed.orders.refunds import ReturnRequest
-
-        for rr in ReturnRequest.objects.select_related('order').order_by('-updated_at')[:limit]:
-            items.append(
-                {
-                    'kind': 'return',
-                    'icon': 'undo-2',
-                    'label': f'RMA {rr.rma_number} — {rr.get_state_display()}',
-                    'hint': f'Order #{rr.order.order_number}',
-                    'url': f'/dashboard/returns/{rr.id}/',
-                    'when': rr.updated_at,
-                }
-            )
-
-    with _safe_block('activity.agent_runs'):
-        from plugins.installed.agent_core.models import AgentRun
-
-        for run in AgentRun.objects.order_by('-started_at')[:limit]:
-            label = f'Agent: {run.agent_name}'
-            if run.state == 'failed':
-                label += ' — failed'
-            elif run.state == 'awaiting_approval':
-                label += ' — needs approval'
-            items.append(
-                {
-                    'kind': 'agent',
-                    'icon': 'bot',
-                    'label': label,
-                    'hint': (run.user_message or '')[:80],
-                    'url': f'/dashboard/agents/runs/{run.id}/',
-                    'when': run.started_at,
-                }
-            )
-
-    with _safe_block('activity.reviews'):
-        from plugins.installed.catalog.models import Review
-
-        for r in Review.objects.select_related('product', 'customer').order_by('-created_at')[
-            :limit
-        ]:
-            who = r.customer.email if r.customer else 'a reader'
-            items.append(
-                {
-                    'kind': 'review',
-                    'icon': 'star',
-                    'label': f'New review on {r.product.name} ({r.rating}/5)',
-                    'hint': f'by {who}',
-                    'url': f'/admin/catalog/review/{r.id}/change/',
-                    'when': r.created_at,
-                }
-            )
-
-    with _safe_block('activity.loyalty'):
-        from plugins.installed.loyalty_points.models import PointsTransaction
-
-        for tx in (
-            PointsTransaction.objects.select_related('customer')
-            .filter(reason='earn_order')
-            .order_by('-created_at')[:limit]
-        ):
-            who = tx.customer.email if tx.customer else 'a reader'
-            items.append(
-                {
-                    'kind': 'loyalty',
-                    'icon': 'award',
-                    'label': f'+{tx.points} reader points to {who}',
-                    'hint': tx.note or f'Order #{tx.order_number}',
-                    'url': f'/dashboard/customers/?q={who}',
-                    'when': tx.created_at,
-                }
-            )
-
-    with _safe_block('activity.newsletter'):
-        from plugins.installed.crm.models import Lead
-
-        for lead in Lead.objects.filter(source='newsletter').order_by('-created_at')[:limit]:
-            items.append(
-                {
-                    'kind': 'newsletter',
-                    'icon': 'mail',
-                    'label': f'Newsletter signup: {lead.email}',
-                    'hint': '',
-                    'url': f'/dashboard/crm/leads/{lead.id}/',
-                    'when': lead.created_at,
-                }
-            )
-
-    # Sort newest first, drop the trailing items past the cap.
     items.sort(key=lambda it: it['when'], reverse=True)
     return items[:limit]
 

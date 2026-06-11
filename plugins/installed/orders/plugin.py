@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import events
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, events
 
 logger = logging.getLogger('morpheus.orders')
 
@@ -21,23 +20,26 @@ class OrdersPlugin(Plugin):
         self.register_graphql_extension('plugins.installed.orders.graphql.mutations')
         self.register_hook('payment.captured', self.on_payment_captured, priority=10)
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=15)
-        from plugins.installed.orders import signals  # noqa: F401 — register signals on import
+        # Contribute order + return activity to the dashboard home feed.
+        self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=10)
+        # Register signals on import.
+        from plugins.installed.orders import signals  # noqa: F401, PLC0415
 
     def get_config_schema(self):
         return {
-            "type": "object",
-            "properties": {
-                "skip_shipping_for_digital_carts": {
-                    "type": "boolean",
-                    "default": True,
-                    "title": "Skip shipping step for digital/virtual carts",
-                    "description": (
-                        "When every cart item is flagged "
-                        "requires_shipping=False (digital downloads, "
-                        "virtual services, gift cards), the checkout "
-                        "flow skips the shipping-address form and "
-                        "shipping-method picker. Customer only enters "
-                        "their email."
+            'type': 'object',
+            'properties': {
+                'skip_shipping_for_digital_carts': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Skip shipping step for digital/virtual carts',
+                    'description': (
+                        'When every cart item is flagged '
+                        'requires_shipping=False (digital downloads, '
+                        'virtual services, gift cards), the checkout '
+                        'flow skips the shipping-address form and '
+                        'shipping-method picker. Customer only enters '
+                        'their email.'
                     ),
                 },
             },
@@ -52,19 +54,62 @@ class OrdersPlugin(Plugin):
         )
 
     def on_payment_captured(self, payment, **kwargs):
-        from plugins.installed.orders.services import OrderService
+        from plugins.installed.orders.services import OrderService  # noqa: PLC0415
+
         OrderService.confirm_order(payment.order)
 
     def on_order_placed(self, order, **kwargs):
         """Send the customer their order-confirmation email."""
         try:
-            from plugins.installed.orders.email import send_order_confirmation
+            from plugins.installed.orders.email import send_order_confirmation  # noqa: PLC0415
+
             send_order_confirmation(order)
         except Exception as e:  # noqa: BLE001 — email never blocks order placement
-            logger.warning('orders: confirmation email failed for %s: %s', getattr(order, 'order_number', '?'), e, exc_info=True)
+            logger.warning(
+                'orders: confirmation email failed for %s: %s',
+                getattr(order, 'order_number', '?'),
+                e,
+                exc_info=True,
+            )
+
+    def on_activity_feed(self, value, limit=20, **kwargs):
+        """Fold recent order events + return-request activity into the
+        dashboard home feed (``ACTIVITY_FEED`` filter). Append own items,
+        return the list; the hook bus isolates failures.
+        """
+        from plugins.installed.orders.models import OrderEvent  # noqa: PLC0415
+        from plugins.installed.orders.refunds import ReturnRequest  # noqa: PLC0415
+
+        for ev in OrderEvent.objects.select_related('order').order_by('-created_at')[: limit * 2]:
+            verb = (ev.event_type or 'updated').replace('_', ' ').replace('.', ' ')
+            value.append(
+                {
+                    'kind': 'order',
+                    'icon': 'shopping-bag',
+                    'label': f'Order #{ev.order.order_number} — {verb}',
+                    'hint': ev.message or '',
+                    'url': f'/dashboard/orders/{ev.order.order_number}/',
+                    'when': ev.created_at,
+                }
+            )
+        for rr in ReturnRequest.objects.select_related('order').order_by('-updated_at')[:limit]:
+            value.append(
+                {
+                    'kind': 'return',
+                    'icon': 'undo-2',
+                    'label': f'RMA {rr.rma_number} — {rr.get_state_display()}',
+                    'hint': f'Order #{rr.order.order_number}',
+                    'url': f'/dashboard/returns/{rr.id}/',
+                    'when': rr.updated_at,
+                }
+            )
+        return value
 
     def contribute_agent_tools(self) -> list:
-        from plugins.installed.orders.agent_tools import (
-            approve_return_tool, list_returns_tool, refund_order_tool,
+        from plugins.installed.orders.agent_tools import (  # noqa: PLC0415
+            approve_return_tool,
+            list_returns_tool,
+            refund_order_tool,
         )
+
         return [refund_order_tool, list_returns_tool, approve_return_tool]

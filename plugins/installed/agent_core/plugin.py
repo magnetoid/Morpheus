@@ -15,12 +15,12 @@ Other plugins extend the agent layer through:
 …which `agent_core` does not need to know about — the registry collects
 contributions from every active plugin.
 """
+
 from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin
-from morpheus import DashboardPage, SettingsPanel, StorefrontBlock
+from morpheus import DashboardPage, Plugin, StorefrontBlock, events
 
 logger = logging.getLogger('morpheus.agent_core')
 
@@ -55,11 +55,38 @@ class AgentCorePlugin(Plugin):
             prefix='dashboard/agents/',
             namespace='agent_core_dash',
         )
+        # Contribute recent agent runs to the dashboard home feed.
+        self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=30)
         self._register_beat_schedule()
 
+    def on_activity_feed(self, value, limit=20, **kwargs):
+        """Fold recent agent runs into the dashboard home feed
+        (``ACTIVITY_FEED`` filter). Append own items, return the list.
+        """
+        from plugins.installed.agent_core.models import AgentRun  # noqa: PLC0415
+
+        for run in AgentRun.objects.order_by('-started_at')[:limit]:
+            label = f'Agent: {run.agent_name}'
+            if run.state == 'failed':
+                label += ' — failed'
+            elif run.state == 'awaiting_approval':
+                label += ' — needs approval'
+            value.append(
+                {
+                    'kind': 'agent',
+                    'icon': 'bot',
+                    'label': label,
+                    'hint': (run.user_message or '')[:80],
+                    'url': f'/dashboard/agents/runs/{run.id}/',
+                    'when': run.started_at,
+                }
+            )
+        return value
+
     def _register_beat_schedule(self) -> None:
-        from django.conf import settings
-        from celery.schedules import crontab
+        from celery.schedules import crontab  # noqa: PLC0415
+        from django.conf import settings  # noqa: PLC0415
+
         schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
         if schedule is None:
             return
@@ -90,11 +117,13 @@ class AgentCorePlugin(Plugin):
     # ── Contribution surfaces ─────────────────────────────────────────────────
 
     def contribute_agent_tools(self) -> list:
-        from plugins.installed.agent_core.tools import all_builtin_tools
+        from plugins.installed.agent_core.tools import all_builtin_tools  # noqa: PLC0415
+
         return all_builtin_tools()
 
     def contribute_agents(self) -> list:
-        from plugins.installed.agent_core.agents import all_builtin_agents
+        from plugins.installed.agent_core.agents import all_builtin_agents  # noqa: PLC0415
+
         return all_builtin_agents()
 
     def contribute_storefront_blocks(self) -> list:
@@ -172,16 +201,18 @@ class AgentCorePlugin(Plugin):
             'type': 'object',
             'properties': {
                 'enable_concierge_widget': {
-                    'type': 'boolean', 'default': True,
+                    'type': 'boolean',
+                    'default': True,
                     'title': 'Show storefront concierge widget',
                 },
                 'concierge_greeting': {
                     'type': 'string',
-                    'default': 'Hi — I\'m the concierge. What kind of book are you in the mood for?',
+                    'default': "Hi — I'm the concierge. What kind of book are you in the mood for?",
                     'title': 'Concierge greeting',
                 },
                 'merchant_ops_enabled': {
-                    'type': 'boolean', 'default': True,
+                    'type': 'boolean',
+                    'default': True,
                     'title': 'Enable Merchant Ops console',
                 },
             },
