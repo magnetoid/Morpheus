@@ -22,6 +22,9 @@ class OrdersPlugin(Plugin):
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=15)
         # Contribute order + return activity to the dashboard home feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=10)
+        # Contribute order count / open returns / store credit to the
+        # storefront account-home summary.
+        self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=10)
         # Register signals on import.
         from plugins.installed.orders import signals  # noqa: F401, PLC0415
 
@@ -71,6 +74,23 @@ class OrdersPlugin(Plugin):
                 e,
                 exc_info=True,
             )
+
+    def on_account_summary(self, value, user=None, **kwargs):
+        """Fold this customer's order count, open returns and store-credit
+        balance into the account-home summary (``ACCOUNT_SUMMARY_FIELDS``
+        filter). Mutate the dict, return it; the hook bus isolates failures.
+        """
+        from plugins.installed.orders import store_credit  # noqa: PLC0415
+        from plugins.installed.orders.models import Order  # noqa: PLC0415
+        from plugins.installed.orders.refunds import ReturnRequest  # noqa: PLC0415
+
+        value['orders_count'] = Order.objects.filter(customer=user).count()
+        value['pending_returns'] = ReturnRequest.objects.filter(
+            order__customer=user,
+            state__in=('requested', 'approved', 'received'),
+        ).count()
+        value['store_credit_balance'] = store_credit.balance(user)
+        return value
 
     def on_activity_feed(self, value, limit=20, **kwargs):
         """Fold recent order events + return-request activity into the
