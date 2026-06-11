@@ -1,4 +1,5 @@
 """Catalog tools — read-only product/category access for agents."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -19,6 +20,7 @@ from core.agents import ToolError, ToolResult, tool
 )
 def find_products_tool(*, query: str, limit: int = 8) -> ToolResult:
     from django.db.models import Q
+
     from plugins.installed.catalog.models import Product
 
     q = (query or '').strip()
@@ -71,18 +73,22 @@ def get_product_tool(*, slug: str = '', sku: str = '') -> ToolResult:
     p = qs.first()
     if not p:
         return ToolResult(output={'product': None}, display='Not found')
-    return ToolResult(output={'product': {
-        'id': str(p.id),
-        'slug': p.slug,
-        'name': p.name,
-        'sku': p.sku,
-        'description': p.description or '',
-        'short_description': p.short_description or '',
-        'price': str(getattr(p.price, 'amount', '')),
-        'currency': str(getattr(p.price, 'currency', '')),
-        'category': p.category.name if p.category_id else '',
-        'is_on_sale': bool(getattr(p, 'is_on_sale', False)),
-    }})
+    return ToolResult(
+        output={
+            'product': {
+                'id': str(p.id),
+                'slug': p.slug,
+                'name': p.name,
+                'sku': p.sku,
+                'description': p.description or '',
+                'short_description': p.short_description or '',
+                'price': str(getattr(p.price, 'amount', '')),
+                'currency': str(getattr(p.price, 'currency', '')),
+                'category': p.category.name if p.category_id else '',
+                'is_on_sale': bool(getattr(p, 'is_on_sale', False)),
+            }
+        }
+    )
 
 
 @tool(
@@ -95,9 +101,11 @@ def list_categories_tool() -> ToolResult:
     from plugins.installed.catalog.models import Category
 
     cats = Category.objects.filter(parent__isnull=True).order_by('name')[:50]
-    return ToolResult(output={
-        'categories': [{'slug': c.slug, 'name': c.name} for c in cats],
-    })
+    return ToolResult(
+        output={
+            'categories': [{'slug': c.slug, 'name': c.name} for c in cats],
+        }
+    )
 
 
 @tool(
@@ -113,8 +121,11 @@ def list_categories_tool() -> ToolResult:
     schema={
         'type': 'object',
         'properties': {
-            'slugs': {'type': 'array', 'items': {'type': 'string'},
-                      'description': 'Optional list of product slugs to restrict to.'},
+            'slugs': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Optional list of product slugs to restrict to.',
+            },
             'force': {'type': 'boolean', 'default': False},
         },
     },
@@ -123,7 +134,9 @@ def list_categories_tool() -> ToolResult:
 def backfill_alt_text_tool(*, slugs: list[str] | None = None, force: bool = False) -> ToolResult:
     import re as _re
     from io import StringIO
+
     from django.core.management import call_command
+
     buf = StringIO()
     kwargs = {'force': bool(force), 'stdout': buf, 'stderr': buf}
     if slugs:
@@ -159,14 +172,33 @@ def backfill_alt_text_tool(*, slugs: list[str] | None = None, force: bool = Fals
             'pdf_url': {'type': 'string', 'description': 'HTTPS URL of the PDF (max 50 MB).'},
             'price_amount': {'type': 'string', 'description': 'Decimal price, e.g. "9.99".'},
             'price_currency': {'type': 'string', 'default': 'USD'},
-            'description': {'type': 'string', 'description': 'Long product description (Markdown ok).'},
+            'description': {
+                'type': 'string',
+                'description': 'Long product description (Markdown ok).',
+            },
             'short_description': {'type': 'string'},
-            'author': {'type': 'string', 'description': 'Author name; prepended to description if absent.'},
-            'cover_image_url': {'type': 'string', 'description': 'Optional HTTPS URL of cover (jpg/png/webp, max 8 MB).'},
+            'author': {
+                'type': 'string',
+                'description': 'Author name; prepended to description if absent.',
+            },
+            'cover_image_url': {
+                'type': 'string',
+                'description': 'Optional HTTPS URL of cover (jpg/png/webp, max 8 MB).',
+            },
             'category_slug': {'type': 'string'},
-            'sku': {'type': 'string', 'description': 'Optional; auto-generated from title if blank.'},
-            'slug': {'type': 'string', 'description': 'Optional; auto-generated from title if blank.'},
-            'status': {'type': 'string', 'enum': ['draft', 'active', 'archived'], 'default': 'active'},
+            'sku': {
+                'type': 'string',
+                'description': 'Optional; auto-generated from title if blank.',
+            },
+            'slug': {
+                'type': 'string',
+                'description': 'Optional; auto-generated from title if blank.',
+            },
+            'status': {
+                'type': 'string',
+                'enum': ['draft', 'active', 'archived'],
+                'default': 'active',
+            },
         },
         'required': ['title', 'pdf_url', 'price_amount'],
     },
@@ -187,13 +219,21 @@ def publish_digital_product_tool(
     status: str = 'active',
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, publish_digital_product
+
     try:
         result = publish_digital_product(
-            title=title, pdf_url=pdf_url, price_amount=price_amount,
-            price_currency=price_currency, description=description,
-            short_description=short_description, author=author,
-            cover_image_url=cover_image_url, category_slug=category_slug,
-            sku=sku, slug=slug, status=status,
+            title=title,
+            pdf_url=pdf_url,
+            price_amount=price_amount,
+            price_currency=price_currency,
+            description=description,
+            short_description=short_description,
+            author=author,
+            cover_image_url=cover_image_url,
+            category_slug=category_slug,
+            sku=sku,
+            slug=slug,
+            status=status,
         )
     except PublishError as e:
         raise ToolError(str(e)) from None
@@ -217,6 +257,7 @@ def publish_digital_product_tool(
 )
 def catalog_stats_tool() -> ToolResult:
     from django.db.models import Count, Q
+
     from plugins.installed.catalog.models import Category, Product, ProductImage
 
     by_status = dict(
@@ -239,9 +280,7 @@ def catalog_stats_tool() -> ToolResult:
         ProductImage.objects.filter(is_primary=True).values_list('product_id', flat=True).distinct()
     )
     missing_primary_image = (
-        Product.objects.filter(status='active')
-        .exclude(id__in=products_with_image_ids)
-        .count()
+        Product.objects.filter(status='active').exclude(id__in=products_with_image_ids).count()
     )
 
     return ToolResult(
@@ -279,14 +318,25 @@ def catalog_stats_tool() -> ToolResult:
             'name': {'type': 'string'},
             'price_amount': {'type': 'string', 'description': 'Decimal price, e.g. "9.99".'},
             'price_currency': {'type': 'string', 'default': 'USD'},
-            'product_type': {'type': 'string', 'enum': ['simple', 'variable', 'digital', 'bundle'], 'default': 'simple'},
-            'status': {'type': 'string', 'enum': ['draft', 'active', 'archived'], 'default': 'draft'},
+            'product_type': {
+                'type': 'string',
+                'enum': ['simple', 'variable', 'digital', 'bundle'],
+                'default': 'simple',
+            },
+            'status': {
+                'type': 'string',
+                'enum': ['draft', 'active', 'archived'],
+                'default': 'draft',
+            },
             'sku': {'type': 'string', 'description': 'Auto-generated if blank.'},
             'slug': {'type': 'string', 'description': 'Auto-generated from name if blank.'},
             'short_description': {'type': 'string'},
             'description': {'type': 'string'},
             'category_slug': {'type': 'string'},
-            'cover_image_url': {'type': 'string', 'description': 'Optional HTTPS URL for the primary image.'},
+            'cover_image_url': {
+                'type': 'string',
+                'description': 'Optional HTTPS URL for the primary image.',
+            },
             'weight': {'type': 'string'},
             'weight_unit': {'type': 'string'},
             'requires_shipping': {'type': 'boolean'},
@@ -313,13 +363,16 @@ def create_product_tool(
     **extra,
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, create_product
+
     # Drop Nones / empties so the service applies its own defaults.
     kwargs = {k: v for k, v in extra.items() if v not in (None, '')}
     try:
         r = create_product(
-            name=name, price_amount=price_amount,
+            name=name,
+            price_amount=price_amount,
             price_currency=price_currency,
-            product_type=product_type, status=status,
+            product_type=product_type,
+            status=status,
             **kwargs,
         )
     except PublishError as e:
@@ -373,6 +426,7 @@ def create_product_tool(
 )
 def update_product_tool(*, slug: str, **fields) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_product
+
     try:
         r = update_product(slug=slug, **fields)
     except PublishError as e:
@@ -395,6 +449,7 @@ def update_product_tool(*, slug: str, **fields) -> ToolResult:
 )
 def archive_product_tool(*, slug: str) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, archive_product
+
     try:
         r = archive_product(slug=slug)
     except PublishError as e:
@@ -417,6 +472,7 @@ def archive_product_tool(*, slug: str) -> ToolResult:
 )
 def restore_product_tool(*, slug: str, status: str = 'active') -> ToolResult:
     from plugins.installed.catalog.services import PublishError, restore_product
+
     try:
         r = restore_product(slug=slug, status=status)
     except PublishError as e:
@@ -440,6 +496,7 @@ def restore_product_tool(*, slug: str, status: str = 'active') -> ToolResult:
 )
 def delete_product_tool(*, slug: str) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, delete_product
+
     try:
         r = delete_product(slug=slug)
     except PublishError as e:
@@ -467,6 +524,7 @@ def delete_product_tool(*, slug: str) -> ToolResult:
 )
 def update_digital_pdf_tool(*, slug: str, pdf_url: str) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_digital_pdf
+
     try:
         r = update_digital_pdf(slug=slug, pdf_url=pdf_url)
     except PublishError as e:
@@ -495,14 +553,22 @@ def update_digital_pdf_tool(*, slug: str, pdf_url: str) -> ToolResult:
     },
 )
 def add_product_image_tool(
-    *, slug: str, image_url: str, alt_text: str = '',
-    is_primary: bool = False, sort_order: int = 0,
+    *,
+    slug: str,
+    image_url: str,
+    alt_text: str = '',
+    is_primary: bool = False,
+    sort_order: int = 0,
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, add_product_image
+
     try:
         r = add_product_image(
-            slug=slug, image_url=image_url, alt_text=alt_text,
-            is_primary=is_primary, sort_order=sort_order,
+            slug=slug,
+            image_url=image_url,
+            alt_text=alt_text,
+            is_primary=is_primary,
+            sort_order=sort_order,
         )
     except PublishError as e:
         raise ToolError(str(e)) from None
@@ -524,6 +590,7 @@ def add_product_image_tool(
 )
 def remove_product_image_tool(*, image_id: str) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, remove_product_image
+
     try:
         r = remove_product_image(image_id=image_id)
     except PublishError as e:
@@ -543,6 +610,7 @@ def remove_product_image_tool(*, image_id: str) -> ToolResult:
 )
 def set_primary_image_tool(*, image_id: str) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, set_primary_image
+
     try:
         r = set_primary_image(image_id=image_id)
     except PublishError as e:
@@ -566,9 +634,14 @@ def set_primary_image_tool(*, image_id: str) -> ToolResult:
     },
 )
 def create_category_tool(
-    *, name: str, slug: str = '', parent_slug: str = '', description: str = '',
+    *,
+    name: str,
+    slug: str = '',
+    parent_slug: str = '',
+    description: str = '',
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, create_category
+
     try:
         r = create_category(name=name, slug=slug, parent_slug=parent_slug, description=description)
     except PublishError as e:
@@ -593,14 +666,22 @@ def create_category_tool(
     },
 )
 def update_category_tool(
-    *, slug: str, name: str = '', new_slug: str = '',
-    parent_slug: str | None = None, description: str | None = None,
+    *,
+    slug: str,
+    name: str = '',
+    new_slug: str = '',
+    parent_slug: str | None = None,
+    description: str | None = None,
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_category
+
     try:
         r = update_category(
-            slug=slug, name=name, new_slug=new_slug,
-            parent_slug=parent_slug, description=description,
+            slug=slug,
+            name=name,
+            new_slug=new_slug,
+            parent_slug=parent_slug,
+            description=description,
         )
     except PublishError as e:
         raise ToolError(str(e)) from None
@@ -620,13 +701,23 @@ def update_category_tool(
         'type': 'object',
         'properties': {
             'product_slug': {'type': 'string'},
-            'name': {'type': 'string', 'description': 'Human label, e.g. "Paperback" / "PDF" / "Audiobook MP3".'},
+            'name': {
+                'type': 'string',
+                'description': 'Human label, e.g. "Paperback" / "PDF" / "Audiobook MP3".',
+            },
             'sku': {'type': 'string'},
             'price_amount': {'type': 'string'},
             'price_currency': {'type': 'string'},
             'compare_at_amount': {'type': 'string'},
-            'variant_type': {'type': 'string', 'enum': ['physical', 'digital', 'virtual'], 'default': 'physical'},
-            'requires_shipping': {'type': 'boolean', 'description': 'Auto-defaults from variant_type when omitted.'},
+            'variant_type': {
+                'type': 'string',
+                'enum': ['physical', 'digital', 'virtual'],
+                'default': 'physical',
+            },
+            'requires_shipping': {
+                'type': 'boolean',
+                'description': 'Auto-defaults from variant_type when omitted.',
+            },
             'is_taxable': {'type': 'boolean'},
             'inventory_policy': {'type': 'string', 'enum': ['deny', 'continue'], 'default': 'deny'},
             'barcode': {'type': 'string'},
@@ -637,9 +728,14 @@ def update_category_tool(
     },
 )
 def create_variant_tool(
-    *, product_slug: str, name: str, sku: str, **fields,
+    *,
+    product_slug: str,
+    name: str,
+    sku: str,
+    **fields,
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, create_variant
+
     kwargs = {k: v for k, v in fields.items() if v not in (None, '')}
     try:
         r = create_variant(product_slug=product_slug, name=name, sku=sku, **kwargs)
@@ -680,6 +776,7 @@ def create_variant_tool(
 )
 def update_variant_tool(*, sku: str, **fields) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_variant
+
     kwargs = {k: v for k, v in fields.items() if v not in (None, '')}
     try:
         r = update_variant(sku=sku, **kwargs)
@@ -704,6 +801,7 @@ def update_variant_tool(*, sku: str, **fields) -> ToolResult:
 )
 def archive_category_tool(*, slug: str) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, archive_category
+
     try:
         r = archive_category(slug=slug)
     except PublishError as e:

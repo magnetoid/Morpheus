@@ -12,12 +12,13 @@
 When the limit is exceeded `RateLimitExceeded` is raised. View decorators
 catch it and return HTTP 429.
 """
+
 from __future__ import annotations
 
 import functools
 import logging
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from django.core.cache import cache
 from django.http import HttpResponse
@@ -55,6 +56,7 @@ def check_and_consume(*, key: str, max_per_window: int, window_seconds: int) -> 
 
 def rate_limited(*, key_fn: Callable, max_per_window: int, window_seconds: int = 60):
     """Decorator. `key_fn(request)` returns a string key (e.g. user id)."""
+
     def decorator(view):
         @functools.wraps(view)
         def wrapper(request, *args, **kwargs):
@@ -73,5 +75,7 @@ def rate_limited(*, key_fn: Callable, max_per_window: int, window_seconds: int =
                 resp['Retry-After'] = str(e.retry_after)
                 return resp
             return view(request, *args, **kwargs)
+
         return wrapper
+
     return decorator

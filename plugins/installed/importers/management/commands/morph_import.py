@@ -2,6 +2,7 @@
 manage.py morph_import shopify --shop foo --token abc...
 manage.py morph_import woocommerce --base-url https://shop.example --consumer-key ck_... --consumer-secret cs_...
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,9 @@ class Command(BaseCommand):
         parser.add_argument('--base-url', default='')
         parser.add_argument('--consumer-key', default='')
         parser.add_argument('--consumer-secret', default='')
-        parser.add_argument('--from-file', default='', help='Path to JSON fixture for offline imports.')
+        parser.add_argument(
+            '--from-file', default='', help='Path to JSON fixture for offline imports.'
+        )
 
     def handle(self, *args, **options) -> None:
         source = options['source']
@@ -30,6 +33,7 @@ class Command(BaseCommand):
 
         if source == 'shopify':
             from plugins.installed.importers.adapters.shopify import ShopifyImporter
+
             importer = ShopifyImporter(
                 shop=options['shop'],
                 token=options['token'],
@@ -37,6 +41,7 @@ class Command(BaseCommand):
             )
         else:
             from plugins.installed.importers.adapters.woocommerce import WooImporter
+
             importer = WooImporter(
                 base_url=options['base_url'],
                 consumer_key=options['consumer_key'],

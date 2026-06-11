@@ -1,4 +1,5 @@
 """Order-side forms: refunds, fulfillments, draft orders."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -13,13 +14,16 @@ class RefundForm(forms.Form):
     """Issue a refund against an existing order."""
 
     amount = forms.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0.01'))
-    reason = forms.ChoiceField(choices=[
-        ('customer_request', 'Customer request'),
-        ('defective', 'Defective product'),
-        ('not_as_described', 'Not as described'),
-        ('wrong_item', 'Wrong item sent'),
-        ('other', 'Other'),
-    ], initial='customer_request')
+    reason = forms.ChoiceField(
+        choices=[
+            ('customer_request', 'Customer request'),
+            ('defective', 'Defective product'),
+            ('not_as_described', 'Not as described'),
+            ('wrong_item', 'Wrong item sent'),
+            ('other', 'Other'),
+        ],
+        initial='customer_request',
+    )
     notes = forms.CharField(widget=forms.Textarea, required=False)
 
     def __init__(self, *args, order=None, **kwargs):
@@ -42,6 +46,7 @@ class RefundForm(forms.Form):
 
     def save(self) -> Any:
         from plugins.installed.orders.models import Refund
+
         if self.order is None:
             raise ValueError('RefundForm.save() requires an order.')
 
@@ -62,8 +67,9 @@ class RefundForm(forms.Form):
         # timeline; the local Refund record stays in place either way.
         try:
             from morpheus import hooks
+
             hooks.fire('refund.requested', refund=refund)
-        except Exception:  # noqa: BLE001 — never block the dashboard save
+        except Exception:  # noqa: BLE001, S110
             pass
         return refund
 
@@ -76,19 +82,23 @@ class FulfillmentForm(forms.Form):
     can record tracking + carrier without leaving the dashboard.
     """
 
-    status = forms.ChoiceField(choices=[
-        ('pending', 'Pending'),
-        ('in_transit', 'In transit'),
-        ('delivered', 'Delivered'),
-        ('failed', 'Failed'),
-        ('returned', 'Returned'),
-    ], initial='in_transit')
+    status = forms.ChoiceField(
+        choices=[
+            ('pending', 'Pending'),
+            ('in_transit', 'In transit'),
+            ('delivered', 'Delivered'),
+            ('failed', 'Failed'),
+            ('returned', 'Returned'),
+        ],
+        initial='in_transit',
+    )
     tracking_number = forms.CharField(max_length=200, required=False)
     tracking_url = forms.URLField(required=False)
     carrier = forms.CharField(max_length=100, required=False)
     notes = forms.CharField(widget=forms.Textarea, required=False)
     mark_shipped = forms.BooleanField(
-        required=False, initial=True,
+        required=False,
+        initial=True,
         help_text="Also transition the order to 'shipped'.",
     )
 
@@ -98,7 +108,9 @@ class FulfillmentForm(forms.Form):
 
     def save(self):
         from django.utils import timezone
+
         from plugins.installed.orders.models import Fulfillment, FulfillmentItem
+
         if self.order is None:
             raise ValueError('FulfillmentForm.save() requires an order.')
         cd = self.cleaned_data
@@ -117,7 +129,9 @@ class FulfillmentForm(forms.Form):
             if remaining <= 0:
                 continue
             FulfillmentItem.objects.create(
-                fulfillment=f, order_item=item, quantity=remaining,
+                fulfillment=f,
+                order_item=item,
+                quantity=remaining,
             )
             item.fulfilled_quantity = item.quantity
             item.save(update_fields=['fulfilled_quantity'])
@@ -144,8 +158,10 @@ class DraftOrderForm(forms.Form):
         return cd
 
     def save(self) -> Any:
-        from plugins.installed.draft_orders.models import DraftOrder
         from django.contrib.auth import get_user_model
+
+        from plugins.installed.draft_orders.models import DraftOrder
+
         User = get_user_model()
 
         cd = self.cleaned_data
@@ -155,9 +171,7 @@ class DraftOrderForm(forms.Form):
 
         draft = DraftOrder.objects.create(
             customer=customer,
-            customer_email=(
-                cd.get('customer_email') or (customer.email if customer else '')
-            ),
+            customer_email=(cd.get('customer_email') or (customer.email if customer else '')),
             note=cd.get('note') or '',
         )
         return draft

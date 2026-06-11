@@ -1,4 +1,5 @@
 """Marketing forms: coupon create/edit."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -15,18 +16,26 @@ class CouponForm(forms.Form):
     code = forms.CharField(max_length=50)
     name = forms.CharField(max_length=200)
     description = forms.CharField(widget=forms.Textarea, required=False)
-    discount_type = forms.ChoiceField(choices=[
-        ('percentage', 'Percentage'),
-        ('fixed_amount', 'Fixed amount'),
-        ('free_shipping', 'Free shipping'),
-        ('buy_x_get_y', 'Buy X get Y'),
-    ])
+    discount_type = forms.ChoiceField(
+        choices=[
+            ('percentage', 'Percentage'),
+            ('fixed_amount', 'Fixed amount'),
+            ('free_shipping', 'Free shipping'),
+            ('buy_x_get_y', 'Buy X get Y'),
+        ]
+    )
     discount_value = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0'))
     minimum_order_amount = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
     )
     maximum_discount_amount = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False,
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
     )
     usage_limit = forms.IntegerField(min_value=0, required=False)
     usage_limit_per_customer = forms.IntegerField(min_value=0, required=False)
@@ -47,7 +56,9 @@ class CouponForm(forms.Form):
                     instance.minimum_order_amount.amount if instance.minimum_order_amount else None
                 ),
                 'maximum_discount_amount': (
-                    instance.maximum_discount_amount.amount if instance.maximum_discount_amount else None
+                    instance.maximum_discount_amount.amount
+                    if instance.maximum_discount_amount
+                    else None
                 ),
                 'usage_limit': instance.usage_limit,
                 'usage_limit_per_customer': instance.usage_limit_per_customer,
@@ -62,6 +73,7 @@ class CouponForm(forms.Form):
         if not code:
             raise forms.ValidationError('Code is required.')
         from plugins.installed.marketing.models import Coupon
+
         qs = Coupon.objects.filter(code=code)
         if self.instance is not None:
             qs = qs.exclude(pk=self.instance.pk)

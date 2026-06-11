@@ -10,9 +10,10 @@ and FAQPage JSON-LD.
 Idempotent: skips products whose metafield was refreshed in the
 last 14 days unless --force is set.
 """
+
 from __future__ import annotations
 
-from core.llm_parsing import parse_llm_json
+import json
 import logging
 from datetime import timedelta
 
@@ -20,18 +21,20 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from core.llm_parsing import parse_llm_json
+
 logger = logging.getLogger('morpheus.seo.faq')
 
 NAMESPACE = 'seo'
 KEY = 'pdp_faqs'
 SYSTEM_PROMPT = (
-    "You extract frequently-asked questions a prospective buyer would ask "
-    "about a book, grounded in the customer review excerpts provided. "
-    "Return STRICT JSON only — no commentary, no markdown fences. "
-    "Output an array of at most 5 objects each shaped {\"q\":\"...\",\"a\":\"...\"}. "
-    "Answers are 1–2 sentences, drawn from the consensus across reviews. "
+    'You extract frequently-asked questions a prospective buyer would ask '
+    'about a book, grounded in the customer review excerpts provided. '
+    'Return STRICT JSON only — no commentary, no markdown fences. '
+    'Output an array of at most 5 objects each shaped {"q":"...","a":"..."}. '
+    'Answers are 1–2 sentences, drawn from the consensus across reviews. '
     "If a fact isn't supported by the reviews, omit the Q. If no Qs are well "
-    "supported, return [] (empty array)."
+    'supported, return [] (empty array).'
 )
 
 
@@ -40,24 +43,32 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--slugs', nargs='*', default=None,
+            '--slugs',
+            nargs='*',
+            default=None,
             help='Only process these product slugs (default: all eligible).',
         )
         parser.add_argument(
-            '--min-reviews', type=int, default=3,
+            '--min-reviews',
+            type=int,
+            default=3,
             help='Minimum approved reviews required to attempt generation.',
         )
         parser.add_argument(
-            '--force', action='store_true',
+            '--force',
+            action='store_true',
             help='Regenerate even if a recent metafield exists.',
         )
         parser.add_argument(
-            '--limit', type=int, default=200,
+            '--limit',
+            type=int,
+            default=200,
             help='Hard cap on products processed in one run.',
         )
         parser.add_argument(
-            '--dry-run', action='store_true',
-            help='Print what would be saved, don\'t persist.',
+            '--dry-run',
+            action='store_true',
+            help="Print what would be saved, don't persist.",
         )
 
     def handle(self, *args, **opts):
@@ -83,15 +94,18 @@ class Command(BaseCommand):
         for product in qs:
             processed += 1
             reviews = list(
-                Review.objects.filter(product=product, is_approved=True)
-                .order_by('-helpful_votes', '-created_at')[:25]
+                Review.objects.filter(product=product, is_approved=True).order_by(
+                    '-helpful_votes', '-created_at'
+                )[:25]
             )
             if len(reviews) < min_reviews:
                 continue
 
             existing = Metafield.objects.filter(
-                content_type=ct, object_id=str(product.pk),
-                namespace=NAMESPACE, key=KEY,
+                content_type=ct,
+                object_id=str(product.pk),
+                namespace=NAMESPACE,
+                key=KEY,
             ).first()
             if existing and not force and existing.updated_at >= fresh_cutoff:
                 skipped += 1
@@ -99,6 +113,7 @@ class Command(BaseCommand):
 
             if gateway is None:
                 from plugins.installed.ai_assistant.services.llm import get_llm
+
                 gateway = get_llm()
 
             review_chunks = []
@@ -107,9 +122,7 @@ class Command(BaseCommand):
                 body = (r.body or '').strip()
                 if not body:
                     continue
-                review_chunks.append(
-                    f'- ({r.rating}★) {title + ". " if title else ""}{body[:600]}'
-                )
+                review_chunks.append(f'- ({r.rating}★) {title + ". " if title else ""}{body[:600]}')
             if not review_chunks:
                 continue
 
@@ -120,7 +133,9 @@ class Command(BaseCommand):
             )
             try:
                 raw = gateway.complete(
-                    prompt=prompt, system=SYSTEM_PROMPT, temperature=0.4,
+                    prompt=prompt,
+                    system=SYSTEM_PROMPT,
+                    temperature=0.4,
                 )
             except Exception as e:  # noqa: BLE001
                 logger.warning('faq-gen: %s for product %s', e, product.slug)
@@ -131,14 +146,14 @@ class Command(BaseCommand):
                 continue
 
             if dry_run:
-                self.stdout.write(self.style.NOTICE(
-                    f'[dry-run] {product.slug} → {len(faqs)} FAQs'
-                ))
+                self.stdout.write(self.style.NOTICE(f'[dry-run] {product.slug} → {len(faqs)} FAQs'))
                 continue
 
             Metafield.objects.update_or_create(
-                content_type=ct, object_id=str(product.pk),
-                namespace=NAMESPACE, key=KEY,
+                content_type=ct,
+                object_id=str(product.pk),
+                namespace=NAMESPACE,
+                key=KEY,
                 defaults={
                     'value': json.dumps(faqs, ensure_ascii=False),
                     'value_type': 'json',
@@ -146,14 +161,9 @@ class Command(BaseCommand):
                 },
             )
             saved += 1
-            self.stdout.write(self.style.SUCCESS(
-                f'{product.slug} → {len(faqs)} FAQs'
-            ))
+            self.stdout.write(self.style.SUCCESS(f'{product.slug} → {len(faqs)} FAQs'))
 
-        self.stdout.write(
-            f'\nDone. processed={processed} saved={saved} '
-            f'skipped_fresh={skipped}'
-        )
+        self.stdout.write(f'\nDone. processed={processed} saved={saved} skipped_fresh={skipped}')
 
 
 def _parse_faq_payload(raw: str) -> list[dict]:

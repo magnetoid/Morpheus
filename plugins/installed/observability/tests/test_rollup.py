@@ -1,7 +1,6 @@
 """Rollup correctness tests."""
-from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
 
 from django.test import TestCase
 
@@ -11,7 +10,6 @@ from plugins.installed.observability.services import rollup, supported_metrics
 
 
 class RollupTests(TestCase):
-
     def test_supported_metrics_is_non_empty(self):
         self.assertTrue(supported_metrics())
 

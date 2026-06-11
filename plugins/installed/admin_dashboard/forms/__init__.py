@@ -15,27 +15,28 @@ below.
   * marketing.py   — CouponForm.
   * settings.py    — StoreGeneralForm, StoreNotificationsForm.
 """
+
 from __future__ import annotations
 
 # Helpers that callers (or future plugins) may reuse.
-from ._helpers import (
+from ._helpers import (  # noqa: F401 — re-exported for dashboard views
     DashboardFormMixin,
     _ensure_html,
     _md_to_html,
     _money,
 )
 
-# Products + variants.
-from .products import ProductForm, VariantForm
-
 # Customers + addresses.
 from .customers import AddressForm, CustomerForm
+
+# Marketing.
+from .marketing import CouponForm
 
 # Orders (refunds, fulfillments, drafts).
 from .orders import DraftOrderForm, FulfillmentForm, RefundForm
 
-# Marketing.
-from .marketing import CouponForm
+# Products + variants.
+from .products import ProductForm, VariantForm
 
 # Store settings.
 from .settings import StoreGeneralForm, StoreNotificationsForm

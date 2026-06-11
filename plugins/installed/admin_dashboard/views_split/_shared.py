@@ -1,17 +1,21 @@
 """Shared helpers used across the dashboard view modules."""
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any
 
-from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
-from morpheus.views import get_object_or_404, redirect, render
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import JsonResponse, QueryDict
 from django.utils import timezone
+
+from morpheus.views import (
+    HttpRequest,
+    HttpResponse,
+    redirect,
+)
 
 
 def _is_ajax(request: HttpRequest) -> bool:
@@ -48,22 +52,23 @@ def ajax_or_redirect(
         return JsonResponse(body)
     return redirect(*redirect_args, **redirect_kwargs)
 
+
 logger = logging.getLogger('morpheus.admin')
 
 # Display label + day-window for each preset. Order matters — it drives
 # the order in the dashboard date-range picker dropdown.
 DATE_PRESETS: list[tuple[str, str, int]] = [
-    ('today',       'Today',          1),
-    ('yesterday',   'Yesterday',      1),
-    ('last5',       'Last 5 days',    5),
-    ('7d',          'Last 7 days',    7),
-    ('last14',      'Last 14 days',  14),
-    ('30d',         'Last 30 days',  30),
-    ('90d',         'Last 90 days',  90),
-    ('this_month',  'This month',     0),  # computed
-    ('last_month',  'Last month',     0),
-    ('this_year',   'This year',      0),
-    ('all_time',    'All time',       0),
+    ('today', 'Today', 1),
+    ('yesterday', 'Yesterday', 1),
+    ('last5', 'Last 5 days', 5),
+    ('7d', 'Last 7 days', 7),
+    ('last14', 'Last 14 days', 14),
+    ('30d', 'Last 30 days', 30),
+    ('90d', 'Last 90 days', 90),
+    ('this_month', 'This month', 0),  # computed
+    ('last_month', 'Last month', 0),
+    ('this_year', 'This year', 0),
+    ('all_time', 'All time', 0),
 ]
 _PRESET_LABELS = {key: label for key, label, _ in DATE_PRESETS}
 _PRESET_DAYS = {key: days for key, _, days in DATE_PRESETS}
@@ -82,6 +87,7 @@ class DateRange:
     `preset` is the key the UI passed in (or '' for a custom range).
     `label` is what the trigger button should show.
     """
+
     start: datetime
     end: datetime
     prev_start: datetime
@@ -336,19 +342,24 @@ def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str,
     """
     try:
         from plugins.installed.ai_content.services import with_brand_voice
+
         system = with_brand_voice(system)
     except Exception as e:  # noqa: BLE001 — ai_content plugin optional
         import logging
+
         logging.getLogger(__name__).debug('brand voice unavailable: %s', e)
     try:
         from plugins.installed.ai_assistant.services.llm import get_llm
+
         gateway = get_llm()
     except Exception as e:  # noqa: BLE001 — provider not wired
         return ('', f'AI provider not configured: {e}')
     try:
         text = gateway.complete(
-            prompt=prompt, system=system,
-            temperature=0.6, max_tokens=max_tokens,
+            prompt=prompt,
+            system=system,
+            temperature=0.6,
+            max_tokens=max_tokens,
         )
     except Exception as e:  # noqa: BLE001
         return ('', f'AI provider error: {e}')

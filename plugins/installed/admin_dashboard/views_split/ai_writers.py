@@ -11,14 +11,15 @@ Both reuse the LLM gateway already configured in
 ai_assistant plugin's provider config — OpenAI / Anthropic / Gemini /
 OpenRouter / Ollama).
 """
+
 from __future__ import annotations
 
 import json
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
-from morpheus.views import staff_member_required
 
+from morpheus.views import staff_member_required
 from plugins.installed.admin_dashboard.views_split._shared import call_llm, logger
 
 
@@ -104,8 +105,8 @@ def ai_rewrite_email(request: HttpRequest) -> HttpResponse:
     body_idx = text.upper().find('BODY:')
     if body_idx >= 0:
         if sub_idx >= 0 and sub_idx < body_idx:
-            new_subject = text[sub_idx + len('SUBJECT:'):body_idx].strip()
-        new_body = text[body_idx + len('BODY:'):].strip()
+            new_subject = text[sub_idx + len('SUBJECT:') : body_idx].strip()
+        new_body = text[body_idx + len('BODY:') :].strip()
     else:
         # No structured response — treat the whole thing as the body.
         new_body = text.strip()

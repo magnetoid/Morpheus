@@ -3,6 +3,7 @@
 Scheduled from [`morph/celery.py`](../../morph/celery.py) — kept in this
 module so autodiscover_tasks finds it without extra wiring.
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,6 +31,8 @@ def prune_errors_task(keep_days: int = 30) -> int:
     deleted, _ = qs.delete()
     logger.info(
         'prune_errors_task: deleted=%s cutoff=%s keep_days=%s',
-        deleted, cutoff.isoformat(), keep_days,
+        deleted,
+        cutoff.isoformat(),
+        keep_days,
     )
     return deleted

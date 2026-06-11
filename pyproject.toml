@@ -30,6 +30,10 @@ ignore = [
     "PLR2004",  # magic numbers
     "S105",     # hardcoded password False positive on cls vars
     "S106",
+    # Lazy in-function imports are the documented house style (CLAUDE.md):
+    # fail-soft dashboard tiles, plugin load-order isolation, and cycle
+    # avoidance all depend on them. 1000+ deliberate sites — not a defect.
+    "PLC0415",
 ]
 
 [tool.ruff.lint.per-file-ignores]

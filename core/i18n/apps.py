@@ -13,9 +13,11 @@ class I18nConfig(AppConfig):
         try:
             from core.agents import agent_registry
             from core.i18n.agent_tools import (
-                list_translations_tool, translate_product_tool,
+                list_translations_tool,
+                translate_product_tool,
             )
+
             agent_registry.register_tool(translate_product_tool, plugin='core.i18n')
             agent_registry.register_tool(list_translations_tool, plugin='core.i18n')
-        except Exception:  # noqa: BLE001 — agent kernel may not be loaded yet
+        except Exception:  # noqa: BLE001, S110
             pass

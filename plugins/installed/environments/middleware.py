@@ -1,4 +1,5 @@
 """Resolve `request.environment` from the request — domain or X-Morph-Environment header."""
+
 from __future__ import annotations
 
 import logging

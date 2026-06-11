@@ -1,4 +1,5 @@
 """Draft-order services — recalc + convert-to-order."""
+
 from __future__ import annotations
 
 import logging
@@ -13,12 +14,13 @@ logger = logging.getLogger('morpheus.draft_orders')
 def recalc(draft) -> None:
     """Recompute subtotal/total from the draft's lines."""
     from djmoney.money import Money
+
     currency = str(getattr(draft.subtotal, 'currency', 'USD'))
     subtotal = Decimal('0')
     for line in draft.lines.all():
         try:
             subtotal += Decimal(str(line.unit_price.amount)) * Decimal(line.quantity)
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S112
             continue
     draft.subtotal = Money(subtotal, currency)
     draft.total = Money(

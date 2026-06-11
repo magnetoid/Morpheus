@@ -3,9 +3,8 @@
 These cover the agent intent lifecycle and are the canonical surface for any
 external AI agent (LLM, browser-use, MCP, A2A) to act against the platform.
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 import strawberry
 from djmoney.money import Money
@@ -38,30 +37,40 @@ class AgentIntentType:
 class ProposeIntentInput:
     kind: str
     summary: str = ''
-    payload_json: Optional[str] = None
-    estimated_amount: Optional[float] = None
+    payload_json: str | None = None
+    estimated_amount: float | None = None
     estimated_currency: str = 'USD'
     correlation_id: str = ''
     expires_in_seconds: int = 600
 
 
-def _resolve_agent(info) -> 'AgentRegistration':  # noqa: F821
+def _resolve_agent(info) -> AgentRegistration:  # noqa: F821
     """Pull the AgentRegistration for the current request, or raise."""
-    request = info.context.get('request') if isinstance(info.context, dict) else getattr(info.context, 'request', None)
+    request = (
+        info.context.get('request')
+        if isinstance(info.context, dict)
+        else getattr(info.context, 'request', None)
+    )
     ai_ctx = getattr(request, 'ai_context', None)
     if not ai_ctx or not ai_ctx.agent_capabilities.get('agent_pk'):
         raise PermissionDenied('Agent token required')
     from plugins.installed.ai_assistant.models import AgentRegistration
+
     try:
         return AgentRegistration.objects.get(pk=ai_ctx.agent_capabilities['agent_pk'])
     except AgentRegistration.DoesNotExist as e:
         raise PermissionDenied('Agent not found') from e
 
 
-def _load_intent(info, intent_id: str) -> 'AgentIntent':  # noqa: F821
+def _load_intent(info, intent_id: str) -> AgentIntent:  # noqa: F821
     from plugins.installed.ai_assistant.models import AgentIntent
+
     intent = AgentIntent.objects.select_related('agent', 'customer').get(pk=intent_id)
-    request = info.context.get('request') if isinstance(info.context, dict) else getattr(info.context, 'request', None)
+    request = (
+        info.context.get('request')
+        if isinstance(info.context, dict)
+        else getattr(info.context, 'request', None)
+    )
     ai_ctx = getattr(request, 'ai_context', None)
     if ai_ctx and ai_ctx.agent_capabilities.get('agent_pk'):
         if str(intent.agent_id) != ai_ctx.agent_capabilities['agent_pk']:
@@ -75,7 +84,6 @@ def _load_intent(info, intent_id: str) -> 'AgentIntent':  # noqa: F821
 
 @strawberry.type
 class AIAssistantMutationExtension:
-
     @strawberry.mutation(description='Propose a new agent intent (requires agent token)')
     def propose_agent_intent(
         self,

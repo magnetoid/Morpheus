@@ -15,6 +15,7 @@ Usage:
     python manage.py populate_descriptions --dry-run
     python manage.py populate_descriptions --no-short    # long only
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,16 +46,16 @@ _PROMPT_TEMPLATE = (
     'reader. No spoilers. Plain text (no markdown).\n\n'
     '"long" — 600–800 words of Markdown, structured exactly as:\n'
     '  <50-word vivid opener paragraph (no heading)>\n'
-    '  ## What it\'s about\n'
+    "  ## What it's about\n"
     '  <120–150 words: plot or contents tour, spoiler-free>\n'
     '  ## Themes\n'
     '  <120–150 words: 2–3 main themes the book explores>\n'
     '  ## Why it still matters\n'
     '  <120–150 words: current relevance / lasting influence>\n'
-    '  ## Who it\'s for\n'
+    "  ## Who it's for\n"
     '  <80–100 words: reader profile — mood, taste, adjacent reads>\n'
     '  ## On reading it now\n'
-    '  <80–100 words: a short reflection from a 2026 reader\'s vantage>\n'
+    "  <80–100 words: a short reflection from a 2026 reader's vantage>\n"
     'Plain prose per section, no bullet lists, no nested headings.'
 )
 
@@ -66,15 +67,19 @@ def _book_meta(product) -> tuple[str, str, str]:
     author = ''
     try:
         from django.contrib.contenttypes.models import ContentType
+
         from plugins.installed.metafields.models import Metafield
+
         ct = ContentType.objects.get_for_model(type(product))
         m = Metafield.objects.filter(
-            content_type=ct, object_id=product.pk,
-            namespace='book', key='author',
+            content_type=ct,
+            object_id=product.pk,
+            namespace='book',
+            key='author',
         ).first()
         if m and m.value:
             author = str(m.value)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     return title, author or 'an anonymous author', short
 
@@ -87,10 +92,11 @@ def _extract_related_reading(body: str) -> str:
     if not body:
         return ''
     import re as _re
+
     # HTML form first — TipTap-stored descriptions.
     m = _re.search(r'<h2[^>]*>\s*Related reading\s*</h2>', body, flags=_re.I)
     if m:
-        return body[m.start():].rstrip() + '\n'
+        return body[m.start() :].rstrip() + '\n'
     # Markdown form (legacy / LLM Markdown).
     idx = body.find('## Related reading')
     if idx >= 0:
@@ -99,23 +105,34 @@ def _extract_related_reading(body: str) -> str:
 
 
 class Command(BaseCommand):
-    help = 'Generate rich Product.short_description + Product.description via the active AI provider.'
+    help = (
+        'Generate rich Product.short_description + Product.description via the active AI provider.'
+    )
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument('--slugs', default='',
-                            help='Comma-separated product slugs (default: all active).')
-        parser.add_argument('--min-length', type=int, default=800,
-                            help='Skip products whose long description is already this many chars or more. Default 800.')
-        parser.add_argument('--force', action='store_true',
-                            help='Overwrite even if min-length is met.')
-        parser.add_argument('--dry-run', action='store_true',
-                            help='Show what would change; do not write.')
-        parser.add_argument('--limit', type=int, default=0,
-                            help='Stop after this many writes (0 = no limit).')
-        parser.add_argument('--no-short', action='store_true',
-                            help='Skip writing short_description (long only).')
+        parser.add_argument(
+            '--slugs', default='', help='Comma-separated product slugs (default: all active).'
+        )
+        parser.add_argument(
+            '--min-length',
+            type=int,
+            default=800,
+            help='Skip products whose long description is already this many chars or more. Default 800.',
+        )
+        parser.add_argument(
+            '--force', action='store_true', help='Overwrite even if min-length is met.'
+        )
+        parser.add_argument(
+            '--dry-run', action='store_true', help='Show what would change; do not write.'
+        )
+        parser.add_argument(
+            '--limit', type=int, default=0, help='Stop after this many writes (0 = no limit).'
+        )
+        parser.add_argument(
+            '--no-short', action='store_true', help='Skip writing short_description (long only).'
+        )
 
-    def handle(self, *args, **opts) -> None:
+    def handle(self, *args, **opts) -> None:  # noqa: PLR0915
         from plugins.installed.catalog.models import Product
 
         slugs = [s.strip() for s in (opts.get('slugs') or '').split(',') if s.strip()]
@@ -131,12 +148,15 @@ class Command(BaseCommand):
 
         try:
             from plugins.installed.ai_assistant.services.llm import get_llm
+
             llm = get_llm()
         except Exception as exc:  # noqa: BLE001
-            self.stderr.write(self.style.ERROR(
-                f'No AI provider available: {exc}. Configure one in '
-                f'/dashboard/settings/ai/ and retry.'
-            ))
+            self.stderr.write(
+                self.style.ERROR(
+                    f'No AI provider available: {exc}. Configure one in '
+                    f'/dashboard/settings/ai/ and retry.'
+                )
+            )
             return
 
         written = skipped = errored = 0
@@ -148,7 +168,9 @@ class Command(BaseCommand):
 
             title, author, short = _book_meta(product)
             prompt = _PROMPT_TEMPLATE.format(
-                title=title, author=author, short=short or '(none)',
+                title=title,
+                author=author,
+                short=short or '(none)',
             )
             self.stdout.write(f'→ {product.slug} ({existing_len} chars → generating…)')
             if dry:
@@ -156,8 +178,10 @@ class Command(BaseCommand):
 
             try:
                 raw = llm.complete(
-                    prompt, system=_SYSTEM_PROMPT,
-                    temperature=0.6, max_tokens=1800,
+                    prompt,
+                    system=_SYSTEM_PROMPT,
+                    temperature=0.6,
+                    max_tokens=1800,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning('llm error for %s: %s', product.slug, exc)
@@ -173,7 +197,8 @@ class Command(BaseCommand):
             if len(long_desc) < 1500:
                 logger.warning(
                     'long description too short for %s (%d chars) — skipping',
-                    product.slug, len(long_desc),
+                    product.slug,
+                    len(long_desc),
                 )
                 errored += 1
                 continue
@@ -187,8 +212,7 @@ class Command(BaseCommand):
 
             update_fields = ['description']
             product.description = (
-                f'{long_desc}\n{existing_related}'
-                if existing_related else long_desc
+                f'{long_desc}\n{existing_related}' if existing_related else long_desc
             )
             if not skip_short and len(short_desc) >= 25:
                 product.short_description = short_desc[:500]
@@ -196,13 +220,15 @@ class Command(BaseCommand):
 
             product.save(update_fields=update_fields)
             written += 1
-            self.stdout.write(self.style.SUCCESS(
-                f'  saved {product.slug}: short={len(short_desc)} long={len(long_desc)}'
-            ))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'  saved {product.slug}: short={len(short_desc)} long={len(long_desc)}'
+                )
+            )
             if limit and written >= limit:
                 self.stdout.write(self.style.WARNING(f'stopped at --limit {limit}'))
                 break
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — written={written} skipped={skipped} errored={errored}'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(f'done — written={written} skipped={skipped} errored={errored}')
+        )

@@ -11,6 +11,7 @@ Errors: a failed run is recorded on the BackgroundAgent row; after
 `max_failures_before_pause` consecutive failures the agent is auto-paused
 so a broken job doesn't burn through tokens.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,8 +39,11 @@ def fire(bg) -> dict[str, Any]:
         result = run_agent(
             agent_name=bg.agent_name,
             user_message=bg.prompt,
-            context={'source': 'background', 'background_agent_id': str(bg.id),
-                     **(bg.context_overrides or {})},
+            context={
+                'source': 'background',
+                'background_agent_id': str(bg.id),
+                **(bg.context_overrides or {}),
+            },
         )
     except Exception as e:  # noqa: BLE001
         logger.warning('background_agent: fire failed for %s: %s', bg.id, e)
@@ -50,8 +54,11 @@ def fire(bg) -> dict[str, Any]:
                 bg.last_run_at = started
                 if bg.consecutive_failures >= max(1, int(bg.max_failures_before_pause)):
                     bg.state = BackgroundAgent.STATE_PAUSED
-                    logger.warning('background_agent: %s auto-paused after %d failures',
-                                   bg.id, bg.consecutive_failures)
+                    logger.warning(
+                        'background_agent: %s auto-paused after %d failures',
+                        bg.id,
+                        bg.consecutive_failures,
+                    )
                 schedule_next(bg)
         except DatabaseError:
             pass
@@ -62,11 +69,17 @@ def fire(bg) -> dict[str, Any]:
             bg.last_run_at = started
             bg.last_run_id = getattr(getattr(result, 'trace', None), 'run_id', '') or ''
             bg.last_error = (result.error or '')[:5_000]
-            bg.consecutive_failures = 0 if result.state == 'completed' else (bg.consecutive_failures or 0) + 1
+            bg.consecutive_failures = (
+                0 if result.state == 'completed' else (bg.consecutive_failures or 0) + 1
+            )
             schedule_next(bg)
     except DatabaseError:
         pass
-    return {'ok': True, 'state': result.state, 'tokens': result.trace.prompt_tokens + result.trace.completion_tokens}
+    return {
+        'ok': True,
+        'state': result.state,
+        'tokens': result.trace.prompt_tokens + result.trace.completion_tokens,
+    }
 
 
 def tick() -> int:
@@ -80,8 +93,7 @@ def tick() -> int:
     fired = 0
     try:
         due = list(
-            BackgroundAgent.objects
-            .filter(state=BackgroundAgent.STATE_ACTIVE)
+            BackgroundAgent.objects.filter(state=BackgroundAgent.STATE_ACTIVE)
             .filter(next_run_at__isnull=False, next_run_at__lte=now)
             .order_by('next_run_at')[:25]
         )
@@ -96,5 +108,7 @@ def tick() -> int:
             fire(bg)
             fired += 1
         except Exception as e:  # noqa: BLE001
-            logger.error('background_agent: unexpected tick failure for %s: %s', bg.id, e, exc_info=True)
+            logger.error(
+                'background_agent: unexpected tick failure for %s: %s', bg.id, e, exc_info=True
+            )
     return fired

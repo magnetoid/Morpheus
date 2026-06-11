@@ -5,15 +5,17 @@ JSON encoding of the receipt payload. The SDK consumer (the agent owner)
 holds the agent's signing secret and can verify locally — *without* trusting
 the platform's claim that an intent succeeded.
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 
 def _canonical_json(payload: Mapping[str, Any]) -> bytes:
@@ -21,11 +23,14 @@ def _canonical_json(payload: Mapping[str, Any]) -> bytes:
         if isinstance(o, Decimal):
             return str(o)
         if isinstance(o, datetime):
-            return o.astimezone(timezone.utc).isoformat()
+            return o.astimezone(UTC).isoformat()
         raise TypeError(f'Cannot serialize {type(o).__name__}')
 
     return json.dumps(
-        payload, sort_keys=True, separators=(',', ':'), default=_default,
+        payload,
+        sort_keys=True,
+        separators=(',', ':'),
+        default=_default,
     ).encode('utf-8')
 
 
@@ -38,6 +43,7 @@ def verify_receipt(payload: Mapping[str, Any], signature: str, secret: str) -> b
 @dataclass(slots=True)
 class AgentReceipt:
     """A receipt as returned by the Morpheus platform."""
+
     payload: Mapping[str, Any]
     signature: str
     secret: str = field(repr=False, default='')

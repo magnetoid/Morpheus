@@ -1,4 +1,5 @@
 """Helpers for resolving the active Market and applying price overrides."""
+
 from __future__ import annotations
 
 import logging
@@ -26,7 +27,7 @@ def _country_from_request(request) -> str:
     return ''
 
 
-def resolve_market(request) -> 'Market | None':  # noqa: F821
+def resolve_market(request) -> Market | None:  # noqa: F821
     """Pick the active market for the request. ``None`` if markets
     isn't configured yet."""
     try:
@@ -51,7 +52,7 @@ def resolve_market(request) -> 'Market | None':  # noqa: F821
     return Market.objects.filter(is_active=True, is_default=True).first()
 
 
-def price_for(*, product, market) -> Any:
+def price_for(*, product, market) -> Any:  # noqa: PLR0911
     """Return the Money price of `product` in `market`.
 
     Resolution order:
@@ -63,9 +64,13 @@ def price_for(*, product, market) -> Any:
         return getattr(product, 'price', None)
     try:
         from djmoney.money import Money
+
         from plugins.installed.markets.models import ProductMarketPrice
+
         override = ProductMarketPrice.objects.filter(
-            product=product, market=market, is_visible=True,
+            product=product,
+            market=market,
+            is_visible=True,
         ).first()
         if override is not None:
             return override.price
@@ -115,7 +120,8 @@ def market_context(request) -> dict:
 # helpers degrade to "all rows" so call sites are forward-compatible with
 # the future schema change.
 
-def current_channel(request) -> 'Market | None':  # noqa: F821
+
+def current_channel(request) -> Market | None:  # noqa: F821
     """Return the channel (Market) resolved for this request, or None.
 
     Equivalent to `request.market` but safe to call when the middleware

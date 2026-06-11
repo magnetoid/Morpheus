@@ -1,4 +1,5 @@
 """digital_products plugin smoke test."""
+
 from __future__ import annotations
 
 from django.test import TestCase
@@ -7,4 +8,5 @@ from django.test import TestCase
 class DigitalProductsSmokeTests(TestCase):
     def test_plugin_class_imports(self):
         from plugins.installed.digital_products.plugin import DigitalProductsPlugin
-        self.assertEqual(DigitalProductsPlugin.name, "digital_products")
+
+        self.assertEqual(DigitalProductsPlugin.name, 'digital_products')

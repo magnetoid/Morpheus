@@ -1,4 +1,5 @@
 """Theme engine tests: base validation + scaffolder."""
+
 from __future__ import annotations
 
 import shutil
@@ -13,16 +14,17 @@ from themes.base import MorpheusTheme, ThemeConfigurationError
 
 
 class ThemeMetadataValidationTests(SimpleTestCase):
-
     def test_valid_subclass(self):
         class Good(MorpheusTheme):
             name = 'good_theme'
             label = 'Good Theme'
             version = '1.2.3'
+
         self.assertEqual(Good.name, 'good_theme')
 
     def test_invalid_name_camel(self):
         with self.assertRaises(ThemeConfigurationError):
+
             class Bad(MorpheusTheme):
                 name = 'BadTheme'
                 label = 'X'
@@ -30,6 +32,7 @@ class ThemeMetadataValidationTests(SimpleTestCase):
 
     def test_missing_label(self):
         with self.assertRaises(ThemeConfigurationError):
+
             class NoLabel(MorpheusTheme):
                 name = 'no_label_theme'
                 label = ''
@@ -37,6 +40,7 @@ class ThemeMetadataValidationTests(SimpleTestCase):
 
     def test_invalid_version(self):
         with self.assertRaises(ThemeConfigurationError):
+
             class BadVer(MorpheusTheme):
                 name = 'bad_ver_theme'
                 label = 'Bad Ver'
@@ -44,6 +48,7 @@ class ThemeMetadataValidationTests(SimpleTestCase):
 
     def test_supports_plugins_must_be_list_of_strings(self):
         with self.assertRaises(ThemeConfigurationError):
+
             class BadSupports(MorpheusTheme):
                 name = 'bad_supports_theme'
                 label = 'Bad Supports'
@@ -52,7 +57,6 @@ class ThemeMetadataValidationTests(SimpleTestCase):
 
 
 class MorphCreateThemeTests(SimpleTestCase):
-
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix='morph-theme-'))
 
@@ -94,18 +98,18 @@ class MorphCreateThemeTests(SimpleTestCase):
 
 
 class RegistryValidationTests(SimpleTestCase):
-
     def test_validate_returns_error_when_no_active(self):
         from themes.registry import ThemeRegistry
+
         r = ThemeRegistry()
         errors = r.validate_active_theme()
         self.assertTrue(errors)
 
 
 class DotBooksThemeTests(SimpleTestCase):
-
     def test_dot_books_passes_validation(self):
         from themes.library.dot_books.theme import DotBooksTheme
+
         # Re-import + instantiate; should not raise.
         theme = DotBooksTheme()
         self.assertEqual(theme.name, 'dot_books')

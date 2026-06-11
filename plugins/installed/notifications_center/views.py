@@ -1,4 +1,5 @@
 """Notification list + JSON API for the topbar bell."""
+
 from __future__ import annotations
 
 import logging
@@ -24,8 +25,10 @@ def notifications_list(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(read_at__isnull=True)
     try:
         from plugins.installed.admin_dashboard.views_split._shared import paginate_and_sort
+
         page_obj, paging_ctx = paginate_and_sort(
-            request, qs,
+            request,
+            qs,
             default_sort='-created_at',
             allowed_sorts=('created_at', 'kind'),
             default_per_page=50,
@@ -36,15 +39,20 @@ def notifications_list(request: HttpRequest) -> HttpResponse:
         rows = list(qs[:200])
 
     unread_total = Notification.objects.filter(
-        user=request.user, read_at__isnull=True,
+        user=request.user,
+        read_at__isnull=True,
     ).count()
-    return render(request, 'notifications_center/list.html', {
-        'notifications': rows,
-        'unread_total': unread_total,
-        'show': show,
-        'active_nav': 'notifications',
-        **paging_ctx,
-    })
+    return render(
+        request,
+        'notifications_center/list.html',
+        {
+            'notifications': rows,
+            'unread_total': unread_total,
+            'show': show,
+            'active_nav': 'notifications',
+            **paging_ctx,
+        },
+    )
 
 
 @staff_member_required
@@ -64,7 +72,8 @@ def mark_read(request: HttpRequest, notification_id) -> HttpResponse:
 @require_http_methods(['POST'])
 def mark_all_read(request: HttpRequest) -> HttpResponse:
     Notification.objects.filter(
-        user=request.user, read_at__isnull=True,
+        user=request.user,
+        read_at__isnull=True,
     ).update(read_at=timezone.now())
     messages.success(request, 'All notifications marked read.')
     return redirect('notifications_center:list')
@@ -83,29 +92,31 @@ def api_latest(request: HttpRequest) -> JsonResponse:
         nid = (request.POST.get('id') or '').strip()
         if nid:
             Notification.objects.filter(
-                pk=nid, user=request.user, read_at__isnull=True,
+                pk=nid,
+                user=request.user,
+                read_at__isnull=True,
             ).update(read_at=timezone.now())
         return JsonResponse({'ok': True})
-    rows = list(
-        Notification.objects.filter(user=request.user)
-        .order_by('-created_at')[:10]
-    )
+    rows = list(Notification.objects.filter(user=request.user).order_by('-created_at')[:10])
     unread = Notification.objects.filter(
-        user=request.user, read_at__isnull=True,
+        user=request.user,
+        read_at__isnull=True,
     ).count()
-    return JsonResponse({
-        'unread': unread,
-        'notifications': [
-            {
-                'id': str(n.id),
-                'kind': n.kind,
-                'title': n.title,
-                'body': n.body[:240],
-                'action_url': n.action_url,
-                'icon': n.icon or 'bell',
-                'read': n.read_at is not None,
-                'created_at': n.created_at.isoformat(),
-            }
-            for n in rows
-        ],
-    })
+    return JsonResponse(
+        {
+            'unread': unread,
+            'notifications': [
+                {
+                    'id': str(n.id),
+                    'kind': n.kind,
+                    'title': n.title,
+                    'body': n.body[:240],
+                    'action_url': n.action_url,
+                    'icon': n.icon or 'bell',
+                    'read': n.read_at is not None,
+                    'created_at': n.created_at.isoformat(),
+                }
+                for n in rows
+            ],
+        }
+    )

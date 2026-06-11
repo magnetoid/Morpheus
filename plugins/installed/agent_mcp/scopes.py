@@ -15,9 +15,11 @@ permissions sub-page exposes as checkboxes. New scopes must be added
 here AND wired into the matching @tool decorator (MCP) or mutation
 guard (GraphQL).
 """
+
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 # Wildcard "everything" scope. Stored as a string so JSON serialisation
 # round-trips cleanly. Tokens that hold this scope bypass every
@@ -95,13 +97,19 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
 # Default scope set granted to a freshly created token (UI default).
 # Lean toward "useful but not destructive" — wildcards on the destructive
 # scopes opt them out by default.
-DEFAULT_SCOPES: frozenset[str] = frozenset({
-    'catalog.read', 'catalog.write',
-    'inventory.read', 'inventory.write',
-    'orders.read', 'orders.write',
-    'cart.read', 'analytics.read',
-    'content.write',
-})
+DEFAULT_SCOPES: frozenset[str] = frozenset(
+    {
+        'catalog.read',
+        'catalog.write',
+        'inventory.read',
+        'inventory.write',
+        'orders.read',
+        'orders.write',
+        'cart.read',
+        'analytics.read',
+        'content.write',
+    }
+)
 
 
 def token_scopes(entry: Any, surface: str) -> set[str]:
@@ -150,6 +158,7 @@ def find_entry_for_token(token: str) -> dict | None:
         return None
     try:
         from plugins.models import PluginConfig
+
         cfg = PluginConfig.objects.filter(plugin_name='agent_mcp').first()
         if cfg is None:
             return None

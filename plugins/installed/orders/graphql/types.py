@@ -1,8 +1,8 @@
 import strawberry
 import strawberry_django
-from typing import List, Optional
-from plugins.installed.orders import models
+
 from core.graphql.types import MoneyType
+from plugins.installed.orders import models
 
 
 def _money(value, currency_fallback='USD') -> MoneyType:
@@ -25,10 +25,11 @@ class CartProductRef:
     create a circular import between orders and catalog. Shape mirrors
     the catalog ProductType (`primaryImage { url altText }`) so the
     storefront's CART_QUERY works without changes."""
+
     id: strawberry.ID
     name: str
     slug: str
-    primary_image: Optional[CartImageRef] = None
+    primary_image: CartImageRef | None = None
 
 
 @strawberry.type
@@ -82,10 +83,12 @@ class OrderItemType:
 
 @strawberry_django.type(models.Order)
 class OrderType:
-    id: strawberry.ID = strawberry.field(description="Unique order identifier")
-    order_number: str = strawberry.field(description="Human readable order number")
-    email: str = strawberry.field(description="Customer email")
-    status: str = strawberry.field(description="Order status: pending, confirmed, processing, shipped, etc.")
+    id: strawberry.ID = strawberry.field(description='Unique order identifier')
+    order_number: str = strawberry.field(description='Human readable order number')
+    email: str = strawberry.field(description='Customer email')
+    status: str = strawberry.field(
+        description='Order status: pending, confirmed, processing, shipped, etc.'
+    )
 
     @strawberry.field
     def subtotal(self) -> MoneyType:
@@ -95,7 +98,7 @@ class OrderType:
     def total(self) -> MoneyType:
         return _money(self.total)
 
-    items: List[OrderItemType] = strawberry.field(description="Items purchased in this order")
+    items: list[OrderItemType] = strawberry.field(description='Items purchased in this order')
 
 
 @strawberry_django.type(models.CartItem)
@@ -112,7 +115,7 @@ class CartItemType:
         return _money(self.total_price)
 
     @strawberry.field
-    def product(self) -> Optional[CartProductRef]:
+    def product(self) -> CartProductRef | None:
         p = self.product
         if p is None:
             return None
@@ -126,7 +129,7 @@ class CartItemType:
         return CartProductRef(id=str(p.id), name=p.name, slug=p.slug, primary_image=img)
 
     @strawberry.field
-    def variant(self) -> Optional[CartVariantRef]:
+    def variant(self) -> CartVariantRef | None:
         v = self.variant
         if v is None:
             return None
@@ -135,9 +138,9 @@ class CartItemType:
 
 @strawberry_django.type(models.Cart)
 class CartType:
-    id: strawberry.ID = strawberry.field(description="Cart identifier")
-    session_key: str = strawberry.field(description="Session key for anonymous carts")
-    items: List[CartItemType] = strawberry.field(description="Items in the cart")
+    id: strawberry.ID = strawberry.field(description='Cart identifier')
+    session_key: str = strawberry.field(description='Session key for anonymous carts')
+    items: list[CartItemType] = strawberry.field(description='Items in the cart')
 
     @strawberry.field
     def item_count(self) -> int:
@@ -148,6 +151,7 @@ class CartType:
         # Cart.subtotal is a Decimal property (sums line items in Python).
         # Currency comes from the first item; default to USD on empty cart.
         from decimal import Decimal
+
         currency = 'USD'
         first = self.items.first()
         if first is not None and hasattr(first.unit_price, 'currency'):
@@ -155,7 +159,7 @@ class CartType:
         return MoneyType(amount=str(self.subtotal or Decimal('0')), currency=currency)
 
     @strawberry.field
-    def coupon(self) -> Optional[CartCouponRef]:
+    def coupon(self) -> CartCouponRef | None:
         c = self.coupon
         if c is None:
             return None
@@ -166,7 +170,7 @@ class CartType:
         )
 
     @strawberry.field
-    def gift_card(self) -> Optional[CartGiftCardRef]:
+    def gift_card(self) -> CartGiftCardRef | None:
         gc = getattr(self, 'gift_card', None)
         if gc is None:
             return None

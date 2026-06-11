@@ -22,6 +22,7 @@ ones a public AI agent should be able to call to drive a shopper
 toward checkout. Write tools and admin-only reads (settings.list,
 fs.*, logs.*, plugins.*) are NEVER reachable here.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,12 +50,18 @@ _E_TOOL_FAIL = -32002  # custom: tool errored
 # Only the read tools that are safe for an external public AI agent to
 # call go here. Admin/system reads + writes are excluded entirely.
 _PUBLIC_TOOL_NAMES = {
-    'orders.search', 'orders.get',
-    'products.search', 'products.get',
-    'customers.search', 'customers.get',
-    'analytics.summary', 'analytics.top_products',
+    'orders.search',
+    'orders.get',
+    'products.search',
+    'products.get',
+    'customers.search',
+    'customers.get',
+    'analytics.summary',
+    'analytics.top_products',
     'cms.pages',
-    'db.describe_model', 'db.count_rows', 'db.list_models',
+    'db.describe_model',
+    'db.count_rows',
+    'db.list_models',
     # Linda's memory layer is read-safe — external agents can recall the
     # store's stable preferences (e.g. "ships from EU"). Writes
     # (memory.remember / memory.forget) stay internal to Linda.
@@ -80,13 +87,14 @@ def _public_tools() -> list:
     all_tools = get_default_tools()
     try:
         from plugins.installed.agent_mcp.servers import active_cluster
+
         cluster = active_cluster()
         if cluster is not None:
             names = cluster.get('names')
             if names is None:  # admin — all tools
                 return all_tools
             return [t for t in all_tools if t.name in names]
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     return [t for t in all_tools if t.name in _PUBLIC_TOOL_NAMES]
 
@@ -101,13 +109,14 @@ def _api_keys() -> set[str]:
     """
     try:
         from plugins.models import PluginConfig
+
         cfg = PluginConfig.objects.filter(plugin_name='agent_mcp').first()
         if cfg is None:
             return set()
         keys = (cfg.config or {}).get('public_keys') or []
         out: set[str] = set()
         for k in keys:
-            if isinstance(k, dict):
+            if isinstance(k, dict):  # noqa: SIM108
                 tok = (k.get('token') or '').strip()
             else:
                 tok = str(k).strip()
@@ -189,6 +198,7 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
     # always pass. Tools without declared scopes are treated as public
     # (anyone authed can call them — e.g. read-only diagnostics).
     from plugins.installed.agent_mcp.scopes import has_any
+
     granted = _active_token_scopes()
     required = list(getattr(tool, 'scopes', None) or [])
     if not has_any(granted, required):
@@ -203,6 +213,7 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
     # surface stays working in plain installs.
     try:
         from opentelemetry import trace
+
         tracer = trace.get_tracer('morpheus.mcp')
         _span_ctx = tracer.start_as_current_span(
             f'mcp.tools.call.{name}',
@@ -214,6 +225,7 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
         )
     except Exception:  # noqa: BLE001 — OTel optional
         from contextlib import nullcontext
+
         _span_ctx = nullcontext()
 
     with _span_ctx:
@@ -280,8 +292,9 @@ def _handle_resources_read(params: dict, authed: bool) -> dict:
             t = tools.get('products.search')
             if t is None:
                 raise _RpcError(_E_INTERNAL, 'products.search unavailable')
-            data = t.invoke({'status': 'active', 'limit': 20},
-                            agent=None, context={'source': 'mcp'}).output
+            data = t.invoke(
+                {'status': 'active', 'limit': 20}, agent=None, context={'source': 'mcp'}
+            ).output
         elif uri == 'morpheus://catalog/recent':
             t = tools.get('products.search')
             data = t.invoke({'limit': 20}, agent=None, context={'source': 'mcp'}).output
@@ -327,7 +340,8 @@ class _RpcError(Exception):
 # ── HTTP entry point ───────────────────────────────────────────────────
 
 
-import threading
+import threading  # noqa: E402 — deliberate late import
+
 _request_state = threading.local()
 
 
@@ -336,6 +350,7 @@ def _active_token_scopes() -> set[str]:
     rpc_endpoint() before dispatch. Falls back to the wildcard so
     sessions-authed staff (no token) keep working."""
     from plugins.installed.agent_mcp.scopes import WILDCARD
+
     return getattr(_request_state, 'scopes', {WILDCARD})
 
 
@@ -366,25 +381,24 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
     # Doing this here covers callers that hit rpc_endpoint directly
     # (legacy /mcp/v1/) without going through the cluster wrappers.
     from plugins.installed.agent_mcp.auth import apply_bearer_user
+
     apply_bearer_user(request)
     from plugins.installed.agent_mcp.scopes import WILDCARD
+
     _request_state.scopes = getattr(
-        request, '_morph_token_scopes_mcp', {WILDCARD},
+        request,
+        '_morph_token_scopes_mcp',
+        {WILDCARD},
     )
     try:
         if isinstance(body, list):
             payload: Any = [_dispatch(m, authed) for m in body]
-            had_init = any(
-                isinstance(m, dict) and m.get('method') == 'initialize'
-                for m in body
-            )
+            had_init = any(isinstance(m, dict) and m.get('method') == 'initialize' for m in body)
         else:
             payload = _dispatch(body, authed)
             had_init = isinstance(body, dict) and body.get('method') == 'initialize'
 
-        session_id = request.headers.get('Mcp-Session-Id') or (
-            uuid.uuid4().hex if had_init else ''
-        )
+        session_id = request.headers.get('Mcp-Session-Id') or (uuid.uuid4().hex if had_init else '')
 
         if 'text/event-stream' in request.headers.get('Accept', '').lower():
             sse = f'data: {json.dumps(payload, default=str)}\n\n'
@@ -435,12 +449,14 @@ def _error_envelope(msg_id: Any, code: int, message: str, data: Any = None) -> d
 def health(request: HttpRequest) -> HttpResponse:
     """Liveness probe — useful for AI clients that want to verify the
     server is reachable before negotiating a JSON-RPC session."""
-    return JsonResponse({
-        'status': 'ok',
-        'name': 'morpheus-mcp',
-        'version': '0.1.0',
-        'tools_exposed': len(_public_tools()),
-    })
+    return JsonResponse(
+        {
+            'status': 'ok',
+            'name': 'morpheus-mcp',
+            'version': '0.1.0',
+            'tools_exposed': len(_public_tools()),
+        }
+    )
 
 
 @require_http_methods(['GET'])
@@ -450,29 +466,31 @@ def manifest(request: HttpRequest) -> HttpResponse:
     without speaking JSON-RPC first.
     """
     base = request.build_absolute_uri('/').rstrip('/')
-    return JsonResponse({
-        'schema_version': 'v1',
-        'name_for_human': 'Morpheus storefront',
-        'name_for_model': 'morpheus_storefront',
-        'description_for_human': (
-            'Search this store, look up products, fetch order status, '
-            'and read recent analytics through a Morpheus-powered '
-            'commerce backend.'
-        ),
-        'description_for_model': (
-            'Use this API to answer shopper questions about products, '
-            'pricing, stock, and order status. All responses are '
-            'authoritative — never hallucinate inventory or prices.'
-        ),
-        'auth': {
-            'type': 'user_http',
-            'authorization_type': 'bearer',
-        },
-        'api': {
-            'type': 'jsonrpc',
-            'url': f'{base}/mcp/v1/',
-        },
-        'logo_url': f'{base}/static/admin_dashboard/morpheus-logo.png',
-        'contact_email': 'support@morpheus.local',
-        'legal_info_url': f'{base}/pages/terms/',
-    })
+    return JsonResponse(
+        {
+            'schema_version': 'v1',
+            'name_for_human': 'Morpheus storefront',
+            'name_for_model': 'morpheus_storefront',
+            'description_for_human': (
+                'Search this store, look up products, fetch order status, '
+                'and read recent analytics through a Morpheus-powered '
+                'commerce backend.'
+            ),
+            'description_for_model': (
+                'Use this API to answer shopper questions about products, '
+                'pricing, stock, and order status. All responses are '
+                'authoritative — never hallucinate inventory or prices.'
+            ),
+            'auth': {
+                'type': 'user_http',
+                'authorization_type': 'bearer',
+            },
+            'api': {
+                'type': 'jsonrpc',
+                'url': f'{base}/mcp/v1/',
+            },
+            'logo_url': f'{base}/static/admin_dashboard/morpheus-logo.png',
+            'contact_email': 'support@morpheus.local',
+            'legal_info_url': f'{base}/pages/terms/',
+        }
+    )

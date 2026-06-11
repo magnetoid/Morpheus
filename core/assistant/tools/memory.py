@@ -8,13 +8,13 @@ Reads happen automatically at the top of every Linda turn (see
 runtime._inject_memory) — these tools are mostly for explicit writes
 and merchant-driven recall.
 """
+
 from __future__ import annotations
 
 # Reuse the @tool decorator + ToolResult shape from filesystem.py — same
 # fallback path Linda's other tools take so a kernel-import failure doesn't
 # break tool registration.
 from core.assistant.tools.filesystem import ToolError, ToolResult, tool
-
 
 _VALID_SCOPES = ('merchant', 'customer-segment', 'seasonal')
 
@@ -42,8 +42,9 @@ _VALID_SCOPES = ('merchant', 'customer-segment', 'seasonal')
         'required': ['key', 'value'],
     },
 )
-def memory_remember_tool(*, key: str, value: str,
-                          scope: str = 'merchant', source: str = 'user-told') -> ToolResult:
+def memory_remember_tool(
+    *, key: str, value: str, scope: str = 'merchant', source: str = 'user-told'
+) -> ToolResult:
     if scope not in _VALID_SCOPES:
         raise ToolError(f'invalid scope: {scope}')
     key = (key or '').strip()
@@ -51,14 +52,21 @@ def memory_remember_tool(*, key: str, value: str,
     if not key or not value:
         raise ToolError('key and value are both required')
     from core.assistant.models import LindaMemory
+
     obj, created = LindaMemory.objects.update_or_create(
-        scope=scope, key=key,
+        scope=scope,
+        key=key,
         defaults={'value': value[:5000], 'source': source[:40]},
     )
-    return ToolResult(output={
-        'remembered': True, 'created': created,
-        'scope': obj.scope, 'key': obj.key, 'value': obj.value,
-    })
+    return ToolResult(
+        output={
+            'remembered': True,
+            'created': created,
+            'scope': obj.scope,
+            'key': obj.key,
+            'value': obj.value,
+        }
+    )
 
 
 @tool(
@@ -77,10 +85,11 @@ def memory_remember_tool(*, key: str, value: str,
         },
     },
 )
-def memory_recall_tool(*, query: str = '', scope: str = '',
-                       limit: int = 50) -> ToolResult:
+def memory_recall_tool(*, query: str = '', scope: str = '', limit: int = 50) -> ToolResult:
     from django.db.models import Q
+
     from core.assistant.models import LindaMemory
+
     qs = LindaMemory.objects.all()
     if scope:
         if scope not in _VALID_SCOPES:
@@ -89,9 +98,14 @@ def memory_recall_tool(*, query: str = '', scope: str = '',
     if query:
         qs = qs.filter(Q(key__icontains=query) | Q(value__icontains=query))
     rows = [
-        {'scope': r.scope, 'key': r.key, 'value': r.value,
-         'source': r.source, 'updated_at': r.updated_at.isoformat()}
-        for r in qs[:max(1, min(100, int(limit or 50)))]
+        {
+            'scope': r.scope,
+            'key': r.key,
+            'value': r.value,
+            'source': r.source,
+            'updated_at': r.updated_at.isoformat(),
+        }
+        for r in qs[: max(1, min(100, int(limit or 50)))]
     ]
     return ToolResult(output={'memories': rows, 'count': len(rows)})
 
@@ -113,6 +127,7 @@ def memory_forget_tool(*, key: str, scope: str = 'merchant') -> ToolResult:
     if scope not in _VALID_SCOPES:
         raise ToolError(f'invalid scope: {scope}')
     from core.assistant.models import LindaMemory
+
     deleted, _ = LindaMemory.objects.filter(scope=scope, key=(key or '').strip()).delete()
     return ToolResult(output={'forgot': deleted > 0, 'scope': scope, 'key': key})
 
@@ -129,13 +144,11 @@ def get_recent_memories(limit: int = 50) -> list[dict]:
     """
     try:
         from core.assistant.models import LindaMemory
+
         # Cap the query at 4× the desired output so the in-Python sort stays
         # bounded even on databases with thousands of rows.
         candidates = list(LindaMemory.objects.all()[: max(limit * 4, 200)])
         candidates.sort(key=lambda r: r.relevance_score(), reverse=True)
-        return [
-            {'scope': r.scope, 'key': r.key, 'value': r.value}
-            for r in candidates[:limit]
-        ]
+        return [{'scope': r.scope, 'key': r.key, 'value': r.value} for r in candidates[:limit]]
     except Exception:  # noqa: BLE001
         return []

@@ -1,4 +1,5 @@
 """Analytics background tasks."""
+
 from __future__ import annotations
 
 import logging
@@ -25,14 +26,15 @@ def log_analytics_event(payload):
         order = payload.get('order')
         revenue = getattr(order, 'total', None)
     record_event(
-        name=name, kind=_kind_for(name),
+        name=name,
+        kind=_kind_for(name),
         agent_name=payload.get('agent_name', '') or '',
         revenue=revenue,
         payload={k: str(v)[:300] for k, v in payload.items() if k != 'event'},
     )
 
 
-def _kind_for(name: str) -> str:
+def _kind_for(name: str) -> str:  # noqa: PLR0911
     if name in ('order.placed', 'payment.captured'):
         return 'purchase'
     if name == 'product.viewed':
@@ -53,6 +55,7 @@ def _kind_for(name: str) -> str:
 @app.task(name='analytics.roll_daily', ignore_result=True, time_limit=300, soft_time_limit=180)
 def roll_daily_task() -> int:
     from plugins.installed.analytics.services import roll_daily
+
     written = roll_daily()
     logger.info('analytics: rolled %d daily metric rows', written)
     return written
@@ -61,6 +64,7 @@ def roll_daily_task() -> int:
 @app.task(name='analytics.trim_old_events', ignore_result=True, time_limit=120, soft_time_limit=60)
 def trim_old_events_task(keep_days: int = 90) -> int:
     from plugins.installed.analytics.services import trim_old_events
+
     n = trim_old_events(keep_days=keep_days)
     logger.info('analytics: trimmed %d old events (keep_days=%d)', n, keep_days)
     return n

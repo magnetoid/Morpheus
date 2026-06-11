@@ -1,4 +1,5 @@
 """Shopify importer tests using offline records (no network)."""
+
 from __future__ import annotations
 
 from django.test import TestCase
@@ -6,7 +7,6 @@ from django.test import TestCase
 from plugins.installed.catalog.models import Product
 from plugins.installed.importers.adapters.shopify import ShopifyImporter
 from plugins.installed.importers.models import SourceMapping
-
 
 _PRODUCTS = [
     {
@@ -23,7 +23,6 @@ _PRODUCTS = [
 
 
 class ShopifyImporterTests(TestCase):
-
     def test_offline_import_creates_product_and_mapping(self):
         importer = ShopifyImporter(records={'products': _PRODUCTS})
         summary = importer.run(started_by='test')
@@ -31,7 +30,9 @@ class ShopifyImporterTests(TestCase):
         self.assertTrue(Product.objects.filter(slug='test-blender').exists())
         self.assertTrue(
             SourceMapping.objects.filter(
-                source='shopify', source_id='1001', dest_model='Product',
+                source='shopify',
+                source_id='1001',
+                dest_model='Product',
             ).exists()
         )
 
@@ -40,5 +41,6 @@ class ShopifyImporterTests(TestCase):
         ShopifyImporter(records={'products': _PRODUCTS}).run(started_by='test')
         self.assertEqual(Product.objects.filter(slug='test-blender').count(), 1)
         self.assertEqual(
-            SourceMapping.objects.filter(source='shopify', source_id='1001').count(), 1,
+            SourceMapping.objects.filter(source='shopify', source_id='1001').count(),
+            1,
         )

@@ -1,4 +1,5 @@
 """workflows plugin manifest."""
+
 from __future__ import annotations
 
 import logging
@@ -15,7 +16,7 @@ class WorkflowsPlugin(Plugin):
     description = (
         'Visual no-code automation. Pick a trigger event, set a condition, '
         'fire one or more actions — including "invoke an agent skill" '
-        'for AI-powered workflows Shopify Flow can\'t do.'
+        "for AI-powered workflows Shopify Flow can't do."
     )
     has_models = True
 
@@ -28,6 +29,7 @@ class WorkflowsPlugin(Plugin):
         # Subscribe to every supported trigger event so the engine fires.
         try:
             from plugins.installed.workflows.engine import register_hook_listeners
+
             register_hook_listeners(self)
         except Exception as e:  # noqa: BLE001
             logger.warning('workflows: hook listener registration failed: %s', e)

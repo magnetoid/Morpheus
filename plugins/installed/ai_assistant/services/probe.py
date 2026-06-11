@@ -16,6 +16,7 @@ Each ``probe_<provider>`` returns a uniform shape::
 Network calls have a hard 8s timeout so a misconfigured/unreachable
 provider can't hang the dashboard.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,9 +31,9 @@ _TIMEOUT = 8
 
 
 def _http_get(url: str, headers: dict[str, str]) -> dict[str, Any]:
-    req = urlrequest.Request(url, headers=headers, method='GET')
+    req = urlrequest.Request(url, headers=headers, method='GET')  # noqa: S310
     try:
-        with urlrequest.urlopen(req, timeout=_TIMEOUT) as resp:
+        with urlrequest.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310  # nosec B310
             body = resp.read().decode('utf-8', errors='replace')
             if resp.status >= 400:
                 return {'_error': f'HTTP {resp.status}: {body[:200]}'}
@@ -42,9 +43,9 @@ def _http_get(url: str, headers: dict[str, str]) -> dict[str, Any]:
                 return {'_error': f'non-JSON response: {body[:200]}'}
     except urlerror.HTTPError as e:
         body = ''
-        try:
+        try:  # noqa: SIM105
             body = e.read().decode('utf-8', errors='replace')[:200]
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
         return {'_error': f'HTTP {e.code}: {body or e.reason}'}
     except urlerror.URLError as e:
@@ -72,10 +73,7 @@ def probe_openai(*, api_key: str, base_url: str = '') -> dict:
     if '_error' in data:
         return _fail(str(data['_error']))
     items = data.get('data') or []
-    models = [
-        {'id': m.get('id'), 'label': m.get('id')}
-        for m in items if m.get('id')
-    ]
+    models = [{'id': m.get('id'), 'label': m.get('id')} for m in items if m.get('id')]
     models.sort(key=lambda m: m['id'])
     return _ok(models)
 
@@ -99,7 +97,8 @@ def probe_anthropic(*, api_key: str, base_url: str = '') -> dict:
     items = data.get('data') or []
     models = [
         {'id': m.get('id'), 'label': m.get('display_name') or m.get('id')}
-        for m in items if m.get('id')
+        for m in items
+        if m.get('id')
     ]
     models.sort(key=lambda m: m['id'])
     return _ok(models)
@@ -148,8 +147,7 @@ def probe_openrouter(*, api_key: str, base_url: str = '') -> dict:
         return _fail(str(data['_error']))
     items = data.get('data') or []
     models = [
-        {'id': m.get('id'), 'label': m.get('name') or m.get('id')}
-        for m in items if m.get('id')
+        {'id': m.get('id'), 'label': m.get('name') or m.get('id')} for m in items if m.get('id')
     ]
     models.sort(key=lambda m: m['id'])
     return _ok(models)
@@ -169,10 +167,7 @@ def probe_grok(*, api_key: str, base_url: str = '') -> dict:
     if '_error' in data:
         return _fail(str(data['_error']))
     items = data.get('data') or []
-    models = [
-        {'id': m.get('id'), 'label': m.get('id')}
-        for m in items if m.get('id')
-    ]
+    models = [{'id': m.get('id'), 'label': m.get('id')} for m in items if m.get('id')]
     models.sort(key=lambda m: m['id'])
     return _ok(models)
 
@@ -191,10 +186,7 @@ def probe_packy(*, api_key: str, base_url: str = '') -> dict:
     if '_error' in data:
         return _fail(str(data['_error']))
     items = data.get('data') or []
-    models = [
-        {'id': m.get('id'), 'label': m.get('id')}
-        for m in items if m.get('id')
-    ]
+    models = [{'id': m.get('id'), 'label': m.get('id')} for m in items if m.get('id')]
     models.sort(key=lambda m: m['id'])
     return _ok(models)
 
@@ -211,10 +203,7 @@ def probe_ollama(*, api_key: str = '', base_url: str = '') -> dict:
     if '_error' in data:
         return _fail(str(data['_error']))
     items = data.get('models') or []
-    models = [
-        {'id': m.get('name'), 'label': m.get('name')}
-        for m in items if m.get('name')
-    ]
+    models = [{'id': m.get('name'), 'label': m.get('name')} for m in items if m.get('name')]
     models.sort(key=lambda m: m['id'])
     return _ok(models)
 

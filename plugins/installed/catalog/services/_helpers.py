@@ -286,11 +286,12 @@ def _serialize_variant(v) -> dict:
 # ── Variant field applier ─────────────────────────────────────────────
 
 
-def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: bool = True) -> None:
+def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: bool = True) -> None:  # noqa: PLR0912, PLR0915
     """Mutate `variant` in place with whatever fields are present. Skips
     unspecified keys so partial updates work. Raises PublishError on
     invalid input."""
     from djmoney.money import Money
+
     from plugins.installed.catalog.models import ProductVariant
 
     if 'name' in fields:

@@ -24,6 +24,7 @@ Enable by setting ``INVENTORY_REDIS_FAST_PATH=True`` on a per-store
 basis (PluginConfig['inventory']) once a real flash-sale is on the
 calendar — not by default.
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,6 +46,7 @@ def _conn():
     """Get a Redis client. Returns None when Redis is unconfigured."""
     try:
         from django.core.cache import cache
+
         return cache.client.get_client(write=True)
     except Exception as e:  # noqa: BLE001
         logger.debug('inventory.redis: cache client unavailable: %s', e)
@@ -66,10 +68,15 @@ def prime_from_postgres(variant_id: str) -> int | None:
         return None
     try:
         from django.db.models import F, Sum
+
         from plugins.installed.inventory.models import StockLevel
-        total = StockLevel.objects.filter(variant_id=variant_id).aggregate(
-            avail=Sum(F('quantity') - F('reserved_quantity'))
-        )['avail'] or 0
+
+        total = (
+            StockLevel.objects.filter(variant_id=variant_id).aggregate(
+                avail=Sum(F('quantity') - F('reserved_quantity'))
+            )['avail']
+            or 0
+        )
         r.set(_key(variant_id), int(total))
         return int(total)
     except Exception as e:  # noqa: BLE001
@@ -123,16 +130,21 @@ def reconcile_stock(*, drift_threshold_pct: float = 1.0) -> dict:
     out: dict = {'checked': 0, 'in_sync': 0, 'drift': []}
     try:
         from django.db.models import F, Sum
+
         from plugins.installed.inventory.models import StockLevel
+
         keys = r.scan_iter('stock:*')
         for key in keys:
             try:
                 key_s = key.decode() if isinstance(key, bytes) else key
                 variant_id = key_s.split('stock:', 1)[1]
                 redis_val = int(r.get(key) or 0)
-                pg_val = StockLevel.objects.filter(variant_id=variant_id).aggregate(
-                    avail=Sum(F('quantity') - F('reserved_quantity'))
-                )['avail'] or 0
+                pg_val = (
+                    StockLevel.objects.filter(variant_id=variant_id).aggregate(
+                        avail=Sum(F('quantity') - F('reserved_quantity'))
+                    )['avail']
+                    or 0
+                )
                 out['checked'] += 1
                 if redis_val == int(pg_val):
                     out['in_sync'] += 1
@@ -143,7 +155,10 @@ def reconcile_stock(*, drift_threshold_pct: float = 1.0) -> dict:
                     out['drift'].append((variant_id, redis_val, int(pg_val), pct))
                     logger.warning(
                         'inventory.redis: drift on %s — redis=%s postgres=%s (%.1f%%)',
-                        variant_id, redis_val, pg_val, pct,
+                        variant_id,
+                        redis_val,
+                        pg_val,
+                        pct,
                     )
             except Exception as e:  # noqa: BLE001
                 logger.debug('inventory.redis: drift check skipped key %r: %s', key, e)

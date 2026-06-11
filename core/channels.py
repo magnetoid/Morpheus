@@ -10,11 +10,12 @@ Public surface:
 host (falls back to default). `price_for(product, channel)` returns a
 djmoney `Money` — channel listing if present, else product.price.
 """
+
 from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -23,22 +24,24 @@ logger = logging.getLogger('morpheus.channels')
 
 def current_channel(request) -> Any:
     from core.models import StoreChannel
+
     return StoreChannel.resolve_for_request(request)
 
 
-def listing_for(product, channel) -> Optional[Any]:
+def listing_for(product, channel) -> Any | None:
     if product is None or channel is None:
         return None
     from core.models import ProductChannelListing
+
     try:
         ct = ContentType.objects.get_for_model(type(product))
     except Exception:  # noqa: BLE001
         return None
-    return (
-        ProductChannelListing.objects.filter(
-            channel=channel, product_ct=ct, product_id=str(product.pk),
-        ).first()
-    )
+    return ProductChannelListing.objects.filter(
+        channel=channel,
+        product_ct=ct,
+        product_id=str(product.pk),
+    ).first()
 
 
 def price_for(product, channel):
@@ -51,7 +54,12 @@ def price_for(product, channel):
         return base
     try:
         from djmoney.money import Money
-        currency = (channel.currency if channel else (str(getattr(base, 'currency', 'USD')) if base else 'USD'))
+
+        currency = (
+            channel.currency
+            if channel
+            else (str(getattr(base, 'currency', 'USD')) if base else 'USD')
+        )
         return Money(Decimal(str(listing.price_amount)), currency)
     except Exception:  # noqa: BLE001
         return base
@@ -64,11 +72,17 @@ def list_published_in_channel(channel, *, limit: int = 24):
     the actual Product objects.
     """
     from core.models import ProductChannelListing
+
     qs = ProductChannelListing.objects.filter(
-        channel=channel, is_published=True, visible_in_listings=True,
+        channel=channel,
+        is_published=True,
+        visible_in_listings=True,
     ).order_by('-published_at', '-updated_at')[:limit]
     return [
-        {'product_id': r.product_id, 'price_amount': r.price_amount,
-         'available_for_purchase': r.available_for_purchase}
+        {
+            'product_id': r.product_id,
+            'price_amount': r.price_amount,
+            'available_for_purchase': r.available_for_purchase,
+        }
         for r in qs
     ]

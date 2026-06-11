@@ -25,17 +25,19 @@ Failure isolation: a single tool error becomes a tool result the LLM can
 recover from. Only fatal infra errors (LLM provider down, OOB cancel,
 budget exceeded) abort the run.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from core.agents.base import MorpheusAgent
 from core.agents.events import AgentEvents
-from core.agents.llm import LLMMessage, LLMProvider, LLMResponse, LLMToolCall, get_llm_provider
+from core.agents.llm import LLMMessage, LLMProvider, LLMToolCall, get_llm_provider
 from core.agents.policies import ScopeDenied, enforce_policy
 from core.agents.tools import Tool, ToolError, ToolResult
 from core.agents.trace import AgentTrace, TraceStep
@@ -48,7 +50,7 @@ logger = logging.getLogger('morpheus.agents.runtime')
 class RunResult:
     run_id: str
     text: str
-    state: str                # 'completed' | 'failed' | 'cancelled' | 'awaiting_approval'
+    state: str  # 'completed' | 'failed' | 'cancelled' | 'awaiting_approval'
     trace: AgentTrace
     tool_calls: int = 0
     error: str = ''
@@ -105,7 +107,10 @@ class AgentRuntime:
 
         hook_registry.fire(
             AgentEvents.RUN_STARTED,
-            agent=self.agent.name, run_id=run_id, context=context, user_message=user_message,
+            agent=self.agent.name,
+            run_id=run_id,
+            context=context,
+            user_message=user_message,
         )
 
         tools = self.agent.get_tools()
@@ -144,30 +149,46 @@ class AgentRuntime:
                 trace.ended_at = trace.steps[-1].at
                 hook_registry.fire(
                     AgentEvents.RUN_COMPLETED,
-                    agent=self.agent.name, run_id=run_id, text=final_text,
+                    agent=self.agent.name,
+                    run_id=run_id,
+                    text=final_text,
                     tokens=trace.total_tokens(),
                 )
                 result = RunResult(
-                    run_id=run_id, text=final_text, state='completed', trace=trace,
+                    run_id=run_id,
+                    text=final_text,
+                    state='completed',
+                    trace=trace,
                     tool_calls=tool_call_count,
                 )
                 self._on_end(run_id, context, result)
                 return result
 
             # Append the assistant turn (tool-calling), then dispatch each tool.
-            messages.append(LLMMessage(
-                role='assistant', content=response.text or '', tool_calls=response.tool_calls,
-            ))
-            trace.push(TraceStep(
-                kind='assistant', content=response.text or '',
-                metadata={'tool_calls': len(response.tool_calls)},
-            ))
+            messages.append(
+                LLMMessage(
+                    role='assistant',
+                    content=response.text or '',
+                    tool_calls=response.tool_calls,
+                )
+            )
+            trace.push(
+                TraceStep(
+                    kind='assistant',
+                    content=response.text or '',
+                    metadata={'tool_calls': len(response.tool_calls)},
+                )
+            )
 
             for tc in response.tool_calls:
                 tool_call_count += 1
                 self._dispatch_tool(
-                    tc=tc, tools_by_name=tools_by_name, trace=trace,
-                    messages=messages, context=context, run_id=run_id,
+                    tc=tc,
+                    tools_by_name=tools_by_name,
+                    trace=trace,
+                    messages=messages,
+                    context=context,
+                    run_id=run_id,
                 )
 
         return self._fail(trace, run_id, context, 'max_steps_exceeded')
@@ -198,8 +219,11 @@ class AgentRuntime:
         # Filter hook — handlers can transform arguments or veto by raising.
         try:
             args = hook_registry.filter(
-                AgentEvents.TOOL_CALLING, value=dict(tc.arguments or {}),
-                agent=self.agent.name, tool=tc.name, run_id=run_id,
+                AgentEvents.TOOL_CALLING,
+                value=dict(tc.arguments or {}),
+                agent=self.agent.name,
+                tool=tc.name,
+                run_id=run_id,
             )
         except Exception as e:  # noqa: BLE001
             self._tool_back(trace, messages, tc, error=f'tool_call_vetoed: {e}')
@@ -213,14 +237,21 @@ class AgentRuntime:
                 self._tool_back(trace, messages, tc, error=f'approval_check_failed: {e}')
                 return
             if not approved:
-                trace.push(TraceStep(
-                    kind='tool_call', name=tc.name, arguments=args,
-                    metadata={'rejected': True},
-                ))
+                trace.push(
+                    TraceStep(
+                        kind='tool_call',
+                        name=tc.name,
+                        arguments=args,
+                        metadata={'rejected': True},
+                    )
+                )
                 self._tool_back(trace, messages, tc, error='not_approved_by_user')
                 hook_registry.fire(
-                    AgentEvents.STEP_REJECTED, agent=self.agent.name,
-                    tool=tc.name, run_id=run_id, arguments=args,
+                    AgentEvents.STEP_REJECTED,
+                    agent=self.agent.name,
+                    tool=tc.name,
+                    run_id=run_id,
+                    arguments=args,
                 )
                 return
 
@@ -229,28 +260,47 @@ class AgentRuntime:
         try:
             result: ToolResult = tool.invoke(
                 args,
-                agent=self.agent, context=context,
-                request=context.get('request'), customer=context.get('customer'),
+                agent=self.agent,
+                context=context,
+                request=context.get('request'),
+                customer=context.get('customer'),
             )
         except ToolError as e:
             self._tool_back(trace, messages, tc, error=str(e))
             hook_registry.fire(
-                AgentEvents.TOOL_FAILED, agent=self.agent.name,
-                tool=tc.name, run_id=run_id, error=str(e),
+                AgentEvents.TOOL_FAILED,
+                agent=self.agent.name,
+                tool=tc.name,
+                run_id=run_id,
+                error=str(e),
             )
             return
 
         payload = _to_json_for_llm(result.output)
-        messages.append(LLMMessage(
-            role='tool', tool_call_id=tc.id, name=tc.name, content=payload,
-        ))
-        trace.push(TraceStep(
-            kind='tool_result', name=tc.name, output=result.output,
-            content=result.display, metadata=result.metadata,
-        ))
+        messages.append(
+            LLMMessage(
+                role='tool',
+                tool_call_id=tc.id,
+                name=tc.name,
+                content=payload,
+            )
+        )
+        trace.push(
+            TraceStep(
+                kind='tool_result',
+                name=tc.name,
+                output=result.output,
+                content=result.display,
+                metadata=result.metadata,
+            )
+        )
         hook_registry.fire(
-            AgentEvents.TOOL_CALLED, agent=self.agent.name,
-            tool=tc.name, run_id=run_id, arguments=args, output=result.output,
+            AgentEvents.TOOL_CALLED,
+            agent=self.agent.name,
+            tool=tc.name,
+            run_id=run_id,
+            arguments=args,
+            output=result.output,
         )
 
     def _tool_back(
@@ -263,13 +313,23 @@ class AgentRuntime:
     ) -> None:
         """Send an error back to the LLM as a tool result so it can recover."""
         body = json.dumps({'error': error})
-        messages.append(LLMMessage(
-            role='tool', tool_call_id=tc.id, name=tc.name, content=body,
-        ))
-        trace.push(TraceStep(
-            kind='tool_result', name=tc.name, output={'error': error},
-            content=error, metadata={'failed': True},
-        ))
+        messages.append(
+            LLMMessage(
+                role='tool',
+                tool_call_id=tc.id,
+                name=tc.name,
+                content=body,
+            )
+        )
+        trace.push(
+            TraceStep(
+                kind='tool_result',
+                name=tc.name,
+                output={'error': error},
+                content=error,
+                metadata={'failed': True},
+            )
+        )
 
     def _fail(
         self,
@@ -282,11 +342,17 @@ class AgentRuntime:
         if not trace.ended_at and trace.steps:
             trace.ended_at = trace.steps[-1].at
         hook_registry.fire(
-            AgentEvents.RUN_FAILED, agent=self.agent.name,
-            run_id=run_id, error=error,
+            AgentEvents.RUN_FAILED,
+            agent=self.agent.name,
+            run_id=run_id,
+            error=error,
         )
         result = RunResult(
-            run_id=run_id, text='', state='failed', trace=trace, error=error,
+            run_id=run_id,
+            text='',
+            state='failed',
+            trace=trace,
+            error=error,
         )
         self._on_end(run_id, context, result)
         return result

@@ -1,11 +1,10 @@
 """Dashboard views contributed by advanced_ecommerce."""
+
 from __future__ import annotations
 
 import logging
 
-from morpheus.views import staff_member_required
-from morpheus.views import HttpRequest, HttpResponse
-from morpheus.views import render
+from morpheus.views import HttpRequest, HttpResponse, render, staff_member_required
 
 logger = logging.getLogger('morpheus.advanced_ecommerce')
 
@@ -26,8 +25,12 @@ def low_stock_view(request: HttpRequest) -> HttpResponse:
             rows.append(sl)
     rows.sort(key=lambda sl: sl.available_quantity)
 
-    return render(request, 'advanced_ecommerce/dashboard/low_stock.html', {
-        'active_nav': 'apps',
-        'rows': rows,
-        'threshold': threshold,
-    })
+    return render(
+        request,
+        'advanced_ecommerce/dashboard/low_stock.html',
+        {
+            'active_nav': 'apps',
+            'rows': rows,
+            'threshold': threshold,
+        },
+    )

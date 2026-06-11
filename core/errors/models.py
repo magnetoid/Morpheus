@@ -4,6 +4,7 @@ The fingerprint column groups duplicates: same exception class +
 short trace prefix → same fingerprint → one row in the grouped view
 with a `seen` count, rather than N near-identical rows.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -31,7 +32,9 @@ class ErrorEvent(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=KIND_SERVER, db_index=True)
-    level = models.CharField(max_length=10, choices=LEVEL_CHOICES, default=LEVEL_ERROR, db_index=True)
+    level = models.CharField(
+        max_length=10, choices=LEVEL_CHOICES, default=LEVEL_ERROR, db_index=True
+    )
 
     # fingerprint = stable hash of (class, first ~3 trace frames or JS file:line).
     # Same fingerprint = same error; the list view groups by it.
@@ -47,8 +50,11 @@ class ErrorEvent(models.Model):
     method = models.CharField(max_length=10, blank=True)
     status_code = models.PositiveSmallIntegerField(null=True, blank=True)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='+',
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
     )
     request_id = models.CharField(max_length=64, blank=True, db_index=True)
     user_agent = models.CharField(max_length=400, blank=True)

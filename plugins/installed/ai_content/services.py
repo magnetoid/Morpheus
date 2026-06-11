@@ -6,6 +6,7 @@ the previous ``ContentGenerationService`` here was a stub that logged
 "success" without writing to the DB. Deleted in favour of a single
 canonical path.
 """
+
 import logging
 
 from plugins.registry import plugin_registry
@@ -62,4 +63,3 @@ def with_brand_voice(system_prompt: str) -> str:
     if not voice:
         return system_prompt
     return f'{voice}\n\n{system_prompt}' if system_prompt else voice
-

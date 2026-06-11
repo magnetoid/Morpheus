@@ -26,13 +26,13 @@ The tool returns the URL it was asked to surface so Linda can also
 mention it in her text reply. The widget reads the same fields from
 the tool_call_finished event payload and renders the chip.
 """
+
 from __future__ import annotations
 
 import re
 from urllib.parse import urlparse
 
 from core.assistant.tools.filesystem import ToolError, ToolResult, tool
-
 
 _SAFE_PATH_RE = re.compile(r'^/dashboard/[a-zA-Z0-9/_\-\.]*(?:\?[a-zA-Z0-9=&%_\-\.\,/+]*)?$')
 
@@ -80,9 +80,7 @@ def dashboard_navigate_tool(*, path: str, reason: str, agent=None, context=None)
     # confused agent can't surface a phishing link.
     parsed = urlparse(path)
     if parsed.scheme or parsed.netloc:
-        raise ToolError(
-            'Absolute URLs are not allowed; pass a path starting with /dashboard/.'
-        )
+        raise ToolError('Absolute URLs are not allowed; pass a path starting with /dashboard/.')
     if not path.startswith('/dashboard/'):
         raise ToolError('path must start with /dashboard/')
     if not _SAFE_PATH_RE.match(path):

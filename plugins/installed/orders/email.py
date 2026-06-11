@@ -1,4 +1,5 @@
 """Transactional emails for the orders plugin (best-effort, fail-soft)."""
+
 from __future__ import annotations
 
 import logging

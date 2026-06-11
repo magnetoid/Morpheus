@@ -1,4 +1,5 @@
 """Wishlist services — get-or-create per customer/session, add/remove items."""
+
 from __future__ import annotations
 
 import logging
@@ -12,23 +13,27 @@ def get_or_create_wishlist(*, customer=None, session_key: str = '', name: str = 
 
     if customer is not None and getattr(customer, 'is_authenticated', False):
         wl, _ = Wishlist.objects.get_or_create(
-            customer=customer, defaults={'name': name},
+            customer=customer,
+            defaults={'name': name},
         )
         return wl
     if session_key:
         wl, _ = Wishlist.objects.get_or_create(
-            session_key=session_key, customer__isnull=True,
+            session_key=session_key,
+            customer__isnull=True,
             defaults={'name': name},
         )
         return wl
     return None
 
 
-def add_item(*, wishlist, product, variant=None, note: str = '') -> 'WishlistItem':  # noqa: F821
+def add_item(*, wishlist, product, variant=None, note: str = '') -> WishlistItem:  # noqa: F821
     from plugins.installed.wishlist.models import WishlistItem
 
     item, _ = WishlistItem.objects.get_or_create(
-        wishlist=wishlist, product=product, variant=variant,
+        wishlist=wishlist,
+        product=product,
+        variant=variant,
         defaults={'note': note[:240]},
     )
     return item
@@ -38,7 +43,9 @@ def remove_item(*, wishlist, product, variant=None) -> int:
     from plugins.installed.wishlist.models import WishlistItem
 
     deleted, _ = WishlistItem.objects.filter(
-        wishlist=wishlist, product=product, variant=variant,
+        wishlist=wishlist,
+        product=product,
+        variant=variant,
     ).delete()
     return deleted
 

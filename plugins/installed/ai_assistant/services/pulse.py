@@ -21,6 +21,7 @@ Idempotency: each insight has a stable ``signature`` written to
 insights with the same signature that are still unread, so the panel
 doesn't accumulate duplicates between refreshes.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -44,12 +45,16 @@ def generate_pulse_insights(*, humanize: bool = True) -> list:
     voice. Failures are silent — falls back to rule-written copy so
     Pulse still works without an AI provider configured.
     """
-    from plugins.installed.ai_assistant.models import MerchantInsight
 
     out = []
-    for fn in (_low_stock_signal, _abandoned_cart_signal, _new_rma_signal,
-               _revenue_delta_signal, _expiring_promo_signal,
-               _poor_review_signal):
+    for fn in (
+        _low_stock_signal,
+        _abandoned_cart_signal,
+        _new_rma_signal,
+        _revenue_delta_signal,
+        _expiring_promo_signal,
+        _poor_review_signal,
+    ):
         try:
             insight = fn()
         except Exception as e:  # noqa: BLE001
@@ -75,22 +80,23 @@ def _humanize_signal(payload: dict) -> None:
     except Exception:  # noqa: BLE001
         return
     facts = {
-        'priority':   payload.get('priority', 'medium'),
-        'kind':       payload.get('insight_type', ''),
+        'priority': payload.get('priority', 'medium'),
+        'kind': payload.get('insight_type', ''),
         'rule_title': payload.get('title', ''),
-        'rule_body':  payload.get('body', ''),
-        'impact':     payload.get('estimated_impact', ''),
+        'rule_body': payload.get('body', ''),
+        'impact': payload.get('estimated_impact', ''),
     }
     system = (
         "You are Linda, the operator's staff AI. Rewrite a single Pulse "
-        "insight card so it sounds like a sharp ops manager, not a rules "
-        "engine. Output STRICT JSON only — no prose around it. Schema:\n"
+        'insight card so it sounds like a sharp ops manager, not a rules '
+        'engine. Output STRICT JSON only — no prose around it. Schema:\n'
         '{"title": "<≤80 chars>", "body": "<≤220 chars>", '
         '"estimated_impact": "<≤120 chars or empty>"}\n'
         'Rules: keep every numeric fact. Be specific. No "great news" / '
         '"unfortunately". Body should start with one concrete next-step verb.'
     )
     import json as _json
+
     text, err = call_llm(_json.dumps(facts), system=system, max_tokens=400)
     if err or not text:
         return
@@ -112,10 +118,12 @@ def _humanize_signal(payload: dict) -> None:
 def _upsert(payload: dict):
     """Idempotent write: keep one row per (signature) until it's read."""
     from plugins.installed.ai_assistant.models import MerchantInsight
+
     sig = payload['suggested_action'].get('signature') or _sig(payload)
     payload['suggested_action']['signature'] = sig
     existing = MerchantInsight.objects.filter(
-        suggested_action__signature=sig, is_read=False,
+        suggested_action__signature=sig,
+        is_read=False,
     ).first()
     if existing is not None:
         # Refresh body + estimated_impact; keep created_at so card order stays sensible.
@@ -124,9 +132,15 @@ def _upsert(payload: dict):
         existing.estimated_impact = payload.get('estimated_impact', '')
         existing.priority = payload['priority']
         existing.suggested_action = payload['suggested_action']
-        existing.save(update_fields=[
-            'title', 'body', 'estimated_impact', 'priority', 'suggested_action',
-        ])
+        existing.save(
+            update_fields=[
+                'title',
+                'body',
+                'estimated_impact',
+                'priority',
+                'suggested_action',
+            ]
+        )
         return existing
     return MerchantInsight.objects.create(**payload)
 
@@ -141,22 +155,22 @@ def _sig(payload: dict) -> str:
 
 def _low_stock_signal() -> dict | None:
     from plugins.installed.inventory.models import StockLevel
+
     rows = list(
-        StockLevel.objects.select_related('variant', 'variant__product')
-        .filter(quantity__lte=5)[:50]
+        StockLevel.objects.select_related('variant', 'variant__product').filter(quantity__lte=5)[
+            :50
+        ]
     )
     rows = [s for s in rows if s.available_quantity <= 5]
     if not rows:
         return None
-    examples = ', '.join(
-        f'{s.variant.product.name} ({s.available_quantity})' for s in rows[:3]
-    )
+    examples = ', '.join(f'{s.variant.product.name} ({s.available_quantity})' for s in rows[:3])
     return {
         'insight_type': 'risk',
         'priority': 'high' if len(rows) >= 3 else 'medium',
         'title': f'{len(rows)} SKU(s) low or out of stock',
         'body': f'On the shelf with ≤5 units: {examples}'
-                + (f' and {len(rows) - 3} more.' if len(rows) > 3 else '.'),
+        + (f' and {len(rows) - 3} more.' if len(rows) > 3 else '.'),
         'estimated_impact': 'Restock to avoid lost orders this week.',
         'suggested_action': {
             'kind': 'open_view',
@@ -168,9 +182,9 @@ def _low_stock_signal() -> dict | None:
 
 def _abandoned_cart_signal() -> dict | None:
     from plugins.installed.orders.models import Cart
+
     cutoff = timezone.now() - timedelta(hours=3)
-    rows = (Cart.objects.filter(updated_at__lt=cutoff)
-            .exclude(items__isnull=True).distinct()[:200])
+    rows = Cart.objects.filter(updated_at__lt=cutoff).exclude(items__isnull=True).distinct()[:200]
     n = sum(1 for c in rows if c.items.exists())
     if n == 0:
         return None
@@ -179,7 +193,7 @@ def _abandoned_cart_signal() -> dict | None:
         'priority': 'medium' if n < 10 else 'high',
         'title': f'{n} abandoned cart(s) older than 3h',
         'body': 'Recovery emails go out automatically; a one-off coupon often '
-                'reactivates the higher-value ones.',
+        'reactivates the higher-value ones.',
         'estimated_impact': 'Cart-abandonment recovery typically returns 8-15% of value.',
         'suggested_action': {
             'kind': 'open_view',
@@ -191,6 +205,7 @@ def _abandoned_cart_signal() -> dict | None:
 
 def _new_rma_signal() -> dict | None:
     from plugins.installed.orders.refunds import ReturnRequest
+
     rows = ReturnRequest.objects.filter(state='requested')
     n = rows.count()
     if n == 0:
@@ -200,7 +215,7 @@ def _new_rma_signal() -> dict | None:
         'priority': 'high' if n >= 3 else 'medium',
         'title': f'{n} return request(s) waiting for review',
         'body': 'Customers who get an RMA decision within 24h are 30% more '
-                'likely to reorder. Approve or reject in the returns console.',
+        'likely to reorder. Approve or reject in the returns console.',
         'estimated_impact': '',
         'suggested_action': {
             'kind': 'open_view',
@@ -212,14 +227,17 @@ def _new_rma_signal() -> dict | None:
 
 def _revenue_delta_signal() -> dict | None:
     from django.db.models import Sum
+
     from plugins.installed.orders.models import Order
+
     today = timezone.now().date()
     yesterday = today - timedelta(days=1)
     day_before = today - timedelta(days=2)
 
     def rev(d):
         return Order.objects.filter(
-            placed_at__date=d, status__in=('paid', 'fulfilled', 'shipped', 'delivered'),
+            placed_at__date=d,
+            status__in=('paid', 'fulfilled', 'shipped', 'delivered'),
         ).aggregate(t=Sum('total'))['t'] or Decimal('0')
 
     y = Decimal(str(rev(yesterday) or 0))
@@ -236,8 +254,11 @@ def _revenue_delta_signal() -> dict | None:
         'priority': 'medium' if abs(pct) < 50 else 'high',
         'title': f'Revenue {direction} {sign}{pct:.0f}% day-on-day',
         'body': f'Yesterday: ${y:.2f}. Day before: ${d:.2f}. '
-                + ('Worth a look at the source mix.' if pct > 0 else
-                   'Check what changed — promos, traffic, or stockouts.'),
+        + (
+            'Worth a look at the source mix.'
+            if pct > 0
+            else 'Check what changed — promos, traffic, or stockouts.'
+        ),
         'estimated_impact': '',
         'suggested_action': {
             'kind': 'open_view',
@@ -249,10 +270,15 @@ def _revenue_delta_signal() -> dict | None:
 
 def _expiring_promo_signal() -> dict | None:
     from plugins.installed.promotions.models import Promotion
+
     cutoff = timezone.now() + timedelta(hours=72)
-    rows = list(Promotion.objects.filter(
-        is_active=True, ends_at__lte=cutoff, ends_at__gte=timezone.now(),
-    )[:5])
+    rows = list(
+        Promotion.objects.filter(
+            is_active=True,
+            ends_at__lte=cutoff,
+            ends_at__gte=timezone.now(),
+        )[:5]
+    )
     if not rows:
         return None
     names = ', '.join(p.name for p in rows[:3])
@@ -261,11 +287,12 @@ def _expiring_promo_signal() -> dict | None:
         'priority': 'medium',
         'title': f'{len(rows)} promotion(s) ending in <72h',
         'body': f'Ending soon: {names}.'
-                + (f' (+{len(rows) - 3} more)' if len(rows) > 3 else '')
-                + '  Decide whether to extend or let lapse.',
+        + (f' (+{len(rows) - 3} more)' if len(rows) > 3 else '')
+        + '  Decide whether to extend or let lapse.',
         'estimated_impact': '',
         'suggested_action': {
-            'kind': 'open_view', 'url': '/dashboard/promotions/',
+            'kind': 'open_view',
+            'url': '/dashboard/promotions/',
             'label': 'Open promotions',
         },
     }
@@ -273,10 +300,15 @@ def _expiring_promo_signal() -> dict | None:
 
 def _poor_review_signal() -> dict | None:
     from plugins.installed.catalog.models import Review
+
     cutoff = timezone.now() - timedelta(days=7)
-    rows = list(Review.objects.filter(
-        rating__lte=2, created_at__gte=cutoff, is_approved=True,
-    ).select_related('product')[:20])
+    rows = list(
+        Review.objects.filter(
+            rating__lte=2,
+            created_at__gte=cutoff,
+            is_approved=True,
+        ).select_related('product')[:20]
+    )
     if not rows:
         return None
     examples = ', '.join(f'{r.product.name} ({r.rating}★)' for r in rows[:3])
@@ -285,7 +317,7 @@ def _poor_review_signal() -> dict | None:
         'priority': 'high' if len(rows) >= 3 else 'medium',
         'title': f'{len(rows)} low-star review(s) in the last week',
         'body': f'Recent: {examples}. Reading them often surfaces a fixable '
-                'product description or a fulfillment problem.',
+        'product description or a fulfillment problem.',
         'estimated_impact': '',
         'suggested_action': {
             'kind': 'open_view',

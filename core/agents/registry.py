@@ -5,10 +5,10 @@ Populated by `plugins.registry.PluginRegistry._collect_contributions` after
 each plugin's `ready()`. The registry is process-wide and read-only at
 runtime (it's only mutated during plugin activation/deactivation).
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from core.agents.base import MorpheusAgent
 from core.agents.tools import Tool
@@ -17,7 +17,6 @@ logger = logging.getLogger('morpheus.agents.registry')
 
 
 class AgentRegistry:
-
     def __init__(self) -> None:
         self._agents: dict[str, MorpheusAgent] = {}
         self._tools: dict[str, Tool] = {}
@@ -31,8 +30,12 @@ class AgentRegistry:
             logger.warning('agent_registry: refusing nameless agent from plugin=%s', plugin)
             return
         if agent.name in self._agents:
-            logger.debug('agent_registry: replacing agent %s (was from %s, now %s)',
-                         agent.name, self._agent_owners.get(agent.name, '?'), plugin)
+            logger.debug(
+                'agent_registry: replacing agent %s (was from %s, now %s)',
+                agent.name,
+                self._agent_owners.get(agent.name, '?'),
+                plugin,
+            )
         self._agents[agent.name] = agent
         if plugin:
             self._agent_owners[agent.name] = plugin
@@ -42,8 +45,12 @@ class AgentRegistry:
             logger.warning('agent_registry: refusing nameless tool from plugin=%s', plugin)
             return
         if tool.name in self._tools:
-            logger.debug('agent_registry: replacing tool %s (was from %s, now %s)',
-                         tool.name, self._tool_owners.get(tool.name, '?'), plugin)
+            logger.debug(
+                'agent_registry: replacing tool %s (was from %s, now %s)',
+                tool.name,
+                self._tool_owners.get(tool.name, '?'),
+                plugin,
+            )
         if plugin and not tool.plugin:
             tool.plugin = plugin
         self._tools[tool.name] = tool
@@ -61,10 +68,10 @@ class AgentRegistry:
 
     # ── Read accessors ─────────────────────────────────────────────────────────
 
-    def get_agent(self, name: str) -> Optional[MorpheusAgent]:
+    def get_agent(self, name: str) -> MorpheusAgent | None:
         return self._agents.get(name)
 
-    def get_tool(self, name: str) -> Optional[Tool]:
+    def get_tool(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
     def all_agents(self) -> list[MorpheusAgent]:
@@ -79,8 +86,7 @@ class AgentRegistry:
     def tools_for_scopes(self, scopes: list[str]) -> list[Tool]:
         scope_set = set(scopes)
         return [
-            t for t in self._tools.values()
-            if not t.scopes or set(t.scopes).issubset(scope_set)
+            t for t in self._tools.values() if not t.scopes or set(t.scopes).issubset(scope_set)
         ]
 
     def __repr__(self) -> str:

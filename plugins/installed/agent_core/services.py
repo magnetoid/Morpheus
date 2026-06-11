@@ -10,12 +10,14 @@ wraps a run with two responsibilities:
 It also provides helpers for the chat surface: persisting conversations,
 loading message history, dispatching runs to Celery for proactive agents.
 """
+
 from __future__ import annotations
 
 import logging
 import threading
 import time
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from django.db import DatabaseError, transaction
 from django.utils import timezone
@@ -32,10 +34,13 @@ def _run_with_timeout(*, runtime, user_message, history, context, run_id, timeou
     threads and we don't need real wall-clock enforcement.
     """
     import sys as _sys
+
     if 'test' in _sys.argv or _sys.argv[0].endswith('pytest'):
         return runtime.run(
-            user_message=user_message, history=history,
-            context=context, run_id=run_id,
+            user_message=user_message,
+            history=history,
+            context=context,
+            run_id=run_id,
         )
 
     box: dict[str, Any] = {}
@@ -43,8 +48,10 @@ def _run_with_timeout(*, runtime, user_message, history, context, run_id, timeou
     def _wrap():
         try:
             box['result'] = runtime.run(
-                user_message=user_message, history=history,
-                context=context, run_id=run_id,
+                user_message=user_message,
+                history=history,
+                context=context,
+                run_id=run_id,
             )
         except BaseException as e:  # noqa: BLE001 — capture for the main thread
             box['error'] = e
@@ -58,9 +65,9 @@ def _run_with_timeout(*, runtime, user_message, history, context, run_id, timeou
         raise box['error']
     return box['result']
 
-from core.agents import (
+
+from core.agents import (  # noqa: E402 — deliberate late import
     AgentRuntime,
-    AgentTrace,
     LLMMessage,
     MorpheusAgent,
     RunResult,
@@ -85,18 +92,23 @@ def _persist_step(*, run, seq: int, step: TraceStep) -> None:
         name=step.name,
         content=step.content[:20_000] if step.content else '',
         arguments=step.arguments or {},
-        output={'value': output} if output is not None and not isinstance(output, dict) else (output or {}),
+        output={'value': output}
+        if output is not None and not isinstance(output, dict)
+        else (output or {}),
         metadata=step.metadata or {},
     )
 
     if step.kind == 'tool_call':
         from core.audit.services import record_ai_decision
+
         record_ai_decision(
             agent=getattr(run, 'agent_name', '') or '',
             tool=step.name or '',
             run_id=str(run.pk),
             args=step.arguments or {},
-            output=output if isinstance(output, (dict, list, str, int, float, bool)) else str(output),
+            output=output
+            if isinstance(output, (dict, list, str, int, float, bool))
+            else str(output),
             duration_ms=(step.metadata or {}).get('duration_ms'),
             model=(step.metadata or {}).get('model', ''),
             provider=(step.metadata or {}).get('provider', ''),
@@ -105,7 +117,7 @@ def _persist_step(*, run, seq: int, step: TraceStep) -> None:
         )
 
 
-def run_agent(
+def run_agent(  # noqa: PLR0915
     *,
     agent_name: str,
     user_message: str,
@@ -126,10 +138,16 @@ def run_agent(
         raise LookupError(f'Unknown agent: {agent_name}')
 
     from plugins.installed.agent_core.models import (
-        AgentConversation, AgentMessage, AgentRun,
+        AgentConversation,
+        AgentMessage,
+        AgentRun,
     )
 
-    customer_obj = customer if (customer is not None and getattr(customer, 'is_authenticated', False)) else None
+    customer_obj = (
+        customer
+        if (customer is not None and getattr(customer, 'is_authenticated', False))
+        else None
+    )
 
     try:
         run = AgentRun.objects.create(
@@ -150,6 +168,7 @@ def run_agent(
     audit_incomplete = {'value': False}
     db_subscriber = None
     if run is not None:
+
         def _mirror(step: TraceStep) -> None:
             seq_counter['i'] += 1
             try:
@@ -158,10 +177,11 @@ def run_agent(
                 audit_incomplete['value'] = True
                 logger.warning('agent_core: persist step failed: %s', e)
             if on_step is not None:
-                try:
+                try:  # noqa: SIM105
                     on_step(step)
-                except Exception:  # noqa: BLE001
+                except Exception:  # noqa: BLE001, S110
                     pass
+
         db_subscriber = _mirror
 
     provider = get_llm_provider(agent.provider, model=agent.model or None)
@@ -216,22 +236,38 @@ def run_agent(
             md = dict(run.metadata or {})
             md['audit_incomplete'] = True
             run.metadata = md
-        run.save(update_fields=[
-            'state', 'final_text', 'error', 'tool_call_count',
-            'prompt_tokens', 'completion_tokens', 'duration_ms',
-            'provider', 'model', 'ended_at', 'metadata',
-        ])
+        run.save(
+            update_fields=[
+                'state',
+                'final_text',
+                'error',
+                'tool_call_count',
+                'prompt_tokens',
+                'completion_tokens',
+                'duration_ms',
+                'provider',
+                'model',
+                'ended_at',
+                'metadata',
+            ]
+        )
 
     if conversation_id and run is not None:
         try:
             with transaction.atomic():
                 conv = AgentConversation.objects.get(id=conversation_id)
                 AgentMessage.objects.create(
-                    conversation=conv, run=run, role='user', content=user_message[:20_000],
+                    conversation=conv,
+                    run=run,
+                    role='user',
+                    content=user_message[:20_000],
                 )
                 if result.text:
                     AgentMessage.objects.create(
-                        conversation=conv, run=run, role='assistant', content=result.text[:20_000],
+                        conversation=conv,
+                        run=run,
+                        role='assistant',
+                        content=result.text[:20_000],
                     )
                 conv.last_message_at = timezone.now()
                 conv.save(update_fields=['last_message_at'])
@@ -241,7 +277,7 @@ def run_agent(
     return result
 
 
-from core.utils.safe_db import safe_db
+from core.utils.safe_db import safe_db  # noqa: E402 — deliberate late import
 
 
 @safe_db(default=[])
@@ -250,9 +286,7 @@ def history_for_conversation(conversation_id: str, *, limit: int = 20) -> list[L
     from plugins.installed.agent_core.models import AgentMessage
 
     rows = list(
-        AgentMessage.objects
-        .filter(conversation_id=conversation_id)
-        .order_by('-created_at')[:limit]
+        AgentMessage.objects.filter(conversation_id=conversation_id).order_by('-created_at')[:limit]
     )
     rows.reverse()
     return [LLMMessage(role=r.role, content=r.content) for r in rows]

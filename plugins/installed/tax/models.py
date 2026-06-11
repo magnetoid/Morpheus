@@ -11,6 +11,7 @@ Designed to handle three common cases:
 A future Stripe Tax adapter can replace the local lookup by setting
 `TaxConfiguration.provider='stripe'` and reading rates from the API.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -25,6 +26,7 @@ class TaxCategory(models.Model):
     Products link via `Product.tax_category_code` (string match) so we don't
     introduce an FK from the catalog plugin into tax. Loose coupling.
     """
+
     code = models.SlugField(primary_key=True, max_length=64)
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True)
@@ -42,6 +44,7 @@ class TaxRegion(models.Model):
     `region` is empty for whole-country rules, set for sub-national
     (US states, Canadian provinces, etc.).
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
     country = models.CharField(max_length=2, help_text='ISO-3166 alpha-2 code, e.g. US')
@@ -63,11 +66,16 @@ class TaxRate(models.Model):
     name = models.CharField(max_length=120, help_text='Display name (e.g. "VAT 20%")')
     region = models.ForeignKey(TaxRegion, on_delete=models.CASCADE, related_name='rates')
     category = models.ForeignKey(
-        TaxCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='rates',
+        TaxCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rates',
         help_text='Leave blank for the default rate in this region.',
     )
     rate_percent = models.DecimalField(
-        max_digits=6, decimal_places=3,
+        max_digits=6,
+        decimal_places=3,
         help_text='Percent — 8.875 means 8.875%',
     )
     is_compound = models.BooleanField(default=False)
@@ -103,7 +111,10 @@ class TaxConfiguration(models.Model):
         help_text='If True, product prices already include tax (EU pattern).',
     )
     default_region = models.ForeignKey(
-        TaxRegion, on_delete=models.SET_NULL, null=True, blank=True,
+        TaxRegion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         help_text='Used when no shipping address is available.',
     )
     updated_at = models.DateTimeField(auto_now=True)

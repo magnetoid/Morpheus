@@ -1,4 +1,5 @@
 """Cart tools — agent-driven cart manipulation for the Concierge."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -21,7 +22,8 @@ def _resolve_cart(context: dict) -> object | None:
         if not request.session.session_key:
             request.session.save()
         cart, _ = Cart.objects.get_or_create(
-            session_key=request.session.session_key, status='active',
+            session_key=request.session.session_key,
+            status='active',
         )
         return cart
     return None
@@ -52,14 +54,18 @@ def add_to_cart_tool(*, slug: str, quantity: int = 1, context: dict | None = Non
     except Product.DoesNotExist as e:
         raise ToolError(f'Unknown product: {slug}') from e
     item, created = CartItem.objects.get_or_create(
-        cart=cart, product=product,
+        cart=cart,
+        product=product,
         defaults={'quantity': quantity, 'unit_price': product.price},
     )
     if not created:
         item.quantity = min(20, item.quantity + max(1, int(quantity)))
         item.save(update_fields=['quantity'])
     return ToolResult(
-        output={'cart_id': str(cart.id), 'item': {'product': product.name, 'quantity': item.quantity}},
+        output={
+            'cart_id': str(cart.id),
+            'item': {'product': product.name, 'quantity': item.quantity},
+        },
         display=f'Added {item.quantity}× {product.name}',
     )
 
@@ -83,8 +89,10 @@ def get_cart_summary_tool(*, context: dict | None = None) -> ToolResult:
         }
         for i in cart.items.select_related('product')
     ]
-    return ToolResult(output={
-        'cart_id': str(cart.id),
-        'items': items,
-        'item_count': sum(i['quantity'] for i in items),
-    })
+    return ToolResult(
+        output={
+            'cart_id': str(cart.id),
+            'items': items,
+            'item_count': sum(i['quantity'] for i in items),
+        }
+    )

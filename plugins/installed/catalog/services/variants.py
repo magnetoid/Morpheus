@@ -6,6 +6,7 @@ inventory policy, barcode, and free-text size. Most of the heavy
 lifting lives in :func:`_apply_variant_fields` (in ``_helpers``) which
 both create + update share.
 """
+
 from __future__ import annotations
 
 from django.db import transaction
@@ -36,8 +37,12 @@ def create_variant(*, product_slug: str, **fields) -> dict:
         raise PublishError('sku is required')
     _apply_variant_fields(variant, fields)
     variant.save()
-    logger.info('catalog.create_variant slug=%s sku=%s type=%s',
-                product.slug, variant.sku, variant.variant_type)
+    logger.info(
+        'catalog.create_variant slug=%s sku=%s type=%s',
+        product.slug,
+        variant.sku,
+        variant.variant_type,
+    )
     return _serialize_variant(variant)
 
 

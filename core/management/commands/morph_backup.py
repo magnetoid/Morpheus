@@ -12,6 +12,7 @@ for the registration pattern. We don't auto-register here so merchants
 opt in by adding the entry — backups are storage-heavy and we don't
 want them silently consuming disk on day one.
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,8 +34,13 @@ class Command(BaseCommand):
     help = 'Dump database + media to MORPHEUS_BACKUP_DIR (default /tmp/morpheus-backups).'
 
     def add_arguments(self, parser):
-        parser.add_argument('--dest', default=os.environ.get('MORPHEUS_BACKUP_DIR', '/tmp/morpheus-backups'))
-        parser.add_argument('--keep', type=int, default=int(os.environ.get('MORPHEUS_BACKUP_KEEP', '7')))
+        parser.add_argument(
+            '--dest',
+            default=os.environ.get('MORPHEUS_BACKUP_DIR', '/tmp/morpheus-backups'),  # noqa: S108  # nosec B108
+        )  # noqa: S108
+        parser.add_argument(
+            '--keep', type=int, default=int(os.environ.get('MORPHEUS_BACKUP_KEEP', '7'))
+        )
         parser.add_argument('--no-media', action='store_true', help='Skip media files.')
 
     def handle(self, *args, **options):
@@ -46,7 +52,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE(f'Backing up to {archive_path}'))
 
         with tempfile.TemporaryDirectory(prefix='morph-bk-') as workdir:
-            workdir = Path(workdir)
+            workdir = Path(workdir)  # noqa: PLW2901
             self._dump_database(workdir)
             if not options['no_media']:
                 self._snapshot_media(workdir)
@@ -61,24 +67,31 @@ class Command(BaseCommand):
 
     def _dump_database(self, workdir: Path) -> None:
         db = settings.DATABASES.get('default') or {}
-        engine = (db.get('ENGINE') or '')
+        engine = db.get('ENGINE') or ''
         out = workdir / 'db.dump'
 
         if 'postgres' in engine or 'psycopg' in engine:
             cmd = ['pg_dump', '--no-owner', '--no-acl', '-Fc', '-f', str(out)]
             env = os.environ.copy()
-            if db.get('HOST'): cmd.extend(['-h', db['HOST']])
-            if db.get('PORT'): cmd.extend(['-p', str(db['PORT'])])
-            if db.get('USER'): cmd.extend(['-U', db['USER']])
-            if db.get('NAME'): cmd.append(db['NAME'])
-            if db.get('PASSWORD'): env['PGPASSWORD'] = db['PASSWORD']
+            if db.get('HOST'):
+                cmd.extend(['-h', db['HOST']])
+            if db.get('PORT'):
+                cmd.extend(['-p', str(db['PORT'])])
+            if db.get('USER'):
+                cmd.extend(['-U', db['USER']])
+            if db.get('NAME'):
+                cmd.append(db['NAME'])
+            if db.get('PASSWORD'):
+                env['PGPASSWORD'] = db['PASSWORD']
             self.stdout.write(f'  pg_dump → {out.name}')
-            subprocess.run(cmd, check=True, env=env)
+            subprocess.run(cmd, check=True, env=env)  # noqa: S603
         elif 'sqlite' in engine:
             shutil.copy2(db['NAME'], out)
             self.stdout.write(f'  copied sqlite db → {out.name}')
         else:
-            self.stdout.write(self.style.WARNING(f'Unsupported engine: {engine} — skipping db dump'))
+            self.stdout.write(
+                self.style.WARNING(f'Unsupported engine: {engine} — skipping db dump')
+            )
 
     def _snapshot_media(self, workdir: Path) -> None:
         media_root = getattr(settings, 'MEDIA_ROOT', None)

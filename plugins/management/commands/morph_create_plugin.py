@@ -12,6 +12,7 @@ manage.py morph_create_plugin <name>
 Generates a working Morpheus plugin scaffold and prints instructions to wire
 it into settings.MORPHEUS_DEFAULT_PLUGINS (if not already there).
 """
+
 from __future__ import annotations
 
 import re
@@ -28,7 +29,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser) -> None:
         parser.add_argument('name', help='snake_case plugin name (must match directory).')
-        parser.add_argument('--label', default='', help='Human-readable name. Defaults to Title Case of name.')
+        parser.add_argument(
+            '--label', default='', help='Human-readable name. Defaults to Title Case of name.'
+        )
         parser.add_argument('--description', default='', help='One-line description.')
         parser.add_argument('--plugin-version', default='0.1.0', dest='plugin_version')
         parser.add_argument('--with-models', action='store_true')
@@ -90,8 +93,16 @@ class Command(BaseCommand):
     # ── Templates ─────────────────────────────────────────────────────────────
 
     def _build_files(
-        self, *, name: str, label: str, version: str, description: str,
-        with_models: bool, with_graphql: bool, with_urls: bool, with_tasks: bool,
+        self,
+        *,
+        name: str,
+        label: str,
+        version: str,
+        description: str,
+        with_models: bool,
+        with_graphql: bool,
+        with_urls: bool,
+        with_tasks: bool,
     ) -> dict[str, str]:
         cls_prefix = ''.join(part.capitalize() for part in name.split('_'))
         out: dict[str, str] = {}
@@ -100,7 +111,7 @@ class Command(BaseCommand):
             f"default_app_config = 'plugins.installed.{name}.apps.{cls_prefix}Config'\n"
         )
 
-        out['apps.py'] = dedent(f'''
+        out['apps.py'] = dedent(f"""
             from django.apps import AppConfig
 
 
@@ -108,12 +119,18 @@ class Command(BaseCommand):
                 name = 'plugins.installed.{name}'
                 label = '{name}'
                 default_auto_field = 'django.db.models.BigAutoField'
-        ''').lstrip()
+        """).lstrip()
 
         plugin_body = self._plugin_py(
-            cls_prefix=cls_prefix, name=name, label=label, version=version,
-            description=description, with_models=with_models, with_graphql=with_graphql,
-            with_urls=with_urls, with_tasks=with_tasks,
+            cls_prefix=cls_prefix,
+            name=name,
+            label=label,
+            version=version,
+            description=description,
+            with_models=with_models,
+            with_graphql=with_graphql,
+            with_urls=with_urls,
+            with_tasks=with_tasks,
         )
         out['plugin.py'] = plugin_body
 
@@ -138,8 +155,18 @@ class Command(BaseCommand):
         return out
 
     @staticmethod
-    def _plugin_py(*, cls_prefix, name, label, version, description,
-                   with_models, with_graphql, with_urls, with_tasks) -> str:
+    def _plugin_py(
+        *,
+        cls_prefix,
+        name,
+        label,
+        version,
+        description,
+        with_models,
+        with_graphql,
+        with_urls,
+        with_tasks,
+    ) -> str:
         ready_lines: list[str] = []
         if with_graphql:
             ready_lines.append(
@@ -250,13 +277,13 @@ class Command(BaseCommand):
 
     @staticmethod
     def _views_py() -> str:
-        return dedent('''
+        return dedent("""
             from morpheus.views import HttpResponse, render
 
 
             def index(request):
                 return HttpResponse("Hello from a Morpheus plugin.")
-        ''').lstrip()
+        """).lstrip()
 
     @staticmethod
     def _tasks_py(*, name) -> str:

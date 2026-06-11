@@ -1,4 +1,5 @@
 """Webhook delivery log."""
+
 from __future__ import annotations
 
 import uuid
@@ -20,12 +21,16 @@ class WebhookDelivery(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     endpoint = models.ForeignKey(
-        'core.WebhookEndpoint', on_delete=models.CASCADE, related_name='deliveries',
+        'core.WebhookEndpoint',
+        on_delete=models.CASCADE,
+        related_name='deliveries',
     )
     event_name = models.CharField(max_length=120, db_index=True)
     payload = models.JSONField(default=dict)
 
-    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='queued', db_index=True)
+    status = models.CharField(
+        max_length=12, choices=STATUS_CHOICES, default='queued', db_index=True
+    )
     attempts = models.PositiveSmallIntegerField(default=0)
     response_status = models.PositiveSmallIntegerField(null=True, blank=True)
     response_body = models.TextField(blank=True)

@@ -11,6 +11,7 @@ The `agent_core` plugin provides DB-backed implementations
 (`AgentMemoryRecord`); this kernel module gives an in-memory fallback so
 the runtime works in tests and without DB access.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict

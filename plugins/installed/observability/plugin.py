@@ -1,4 +1,5 @@
 """Observability plugin manifest."""
+
 from __future__ import annotations
 
 from celery.schedules import crontab
@@ -21,6 +22,7 @@ class ObservabilityPlugin(Plugin):
 
     def _register_beat_schedule(self) -> None:
         from django.conf import settings
+
         schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
         if schedule is None:
             return

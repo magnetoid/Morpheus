@@ -18,6 +18,7 @@ Storage: one model `EmailOTP` with hashed code, expiry, and
 single-use flag. Codes are 6 digits, expire after 10 minutes,
 and self-clean on consume.
 """
+
 from django.apps import AppConfig
 
 

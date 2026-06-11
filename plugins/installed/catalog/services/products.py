@@ -11,6 +11,7 @@ used by the MCP tool layer and GraphQL mutations.
 corresponding lifecycle hooks. ``update_digital_pdf`` swaps the
 digital_file on an existing digital product.
 """
+
 from __future__ import annotations
 
 import mimetypes
@@ -32,15 +33,15 @@ from ._helpers import (
     _coerce_price,
     _download,
     _serialize_product,
-    _unique_slug,
     _unique_sku,
+    _unique_slug,
     _validate_https_url,
     logger,
 )
 
 
 @transaction.atomic
-def publish_digital_product(
+def publish_digital_product(  # noqa: PLR0912
     *,
     title: str,
     pdf_url: str,
@@ -61,6 +62,7 @@ def publish_digital_product(
     ``PublishError`` for any caller-fixable problem.
     """
     from djmoney.money import Money
+
     from plugins.installed.catalog.models import Category, Product, ProductImage
 
     title = (title or '').strip()
@@ -78,7 +80,7 @@ def publish_digital_product(
     # Fetch assets BEFORE creating the product so a failed download
     # doesn't leave a half-built row in the DB.
     pdf_bytes, pdf_ct, pdf_name = _download(pdf_url, max_bytes=_MAX_PDF_BYTES, field='pdf_url')
-    if pdf_ct and 'pdf' not in pdf_ct:
+    if pdf_ct and 'pdf' not in pdf_ct:  # noqa: SIM102
         # Some CDNs return application/octet-stream — be forgiving — but
         # block obvious HTML / image fallbacks.
         if pdf_ct.startswith(('text/', 'image/')):
@@ -89,7 +91,9 @@ def publish_digital_product(
     cover_blob: tuple[bytes, str, str] | None = None
     if cover_image_url:
         body, ct, fname = _download(
-            cover_image_url, max_bytes=_MAX_IMAGE_BYTES, field='cover_image_url',
+            cover_image_url,
+            max_bytes=_MAX_IMAGE_BYTES,
+            field='cover_image_url',
         )
         if ct and ct not in _ALLOWED_IMAGE_TYPES:
             raise PublishError(
@@ -142,7 +146,9 @@ def publish_digital_product(
 
     logger.info(
         'catalog.publish_digital_product slug=%s sku=%s pdf=%dKB cover=%s',
-        product.slug, product.sku, len(pdf_bytes) // 1024,
+        product.slug,
+        product.sku,
+        len(pdf_bytes) // 1024,
         bool(cover_blob),
     )
     return {
@@ -155,7 +161,7 @@ def publish_digital_product(
 
 
 @transaction.atomic
-def create_product(
+def create_product(  # noqa: PLR0912, PLR0915
     *,
     name: str,
     price_amount: Any,
@@ -183,6 +189,7 @@ def create_product(
     price_currency, url}``.
     """
     from djmoney.money import Money
+
     from plugins.installed.catalog.models import Category, Product, ProductImage
 
     name = (name or '').strip()
@@ -206,7 +213,9 @@ def create_product(
     cover_blob: tuple[bytes, str, str] | None = None
     if cover_image_url:
         body, ct, fname = _download(
-            cover_image_url, max_bytes=_MAX_IMAGE_BYTES, field='cover_image_url',
+            cover_image_url,
+            max_bytes=_MAX_IMAGE_BYTES,
+            field='cover_image_url',
         )
         if ct and ct not in _ALLOWED_IMAGE_TYPES:
             raise PublishError(
@@ -241,19 +250,23 @@ def create_product(
     for k, v in extra.items():
         if k == 'weight':
             if v in (None, '', 'null'):
-                v = None
+                v = None  # noqa: PLW2901
             else:
                 try:
-                    v = Decimal(str(v))
+                    v = Decimal(str(v))  # noqa: PLW2901
                 except (InvalidOperation, TypeError, ValueError):
                     raise PublishError('weight must be a number') from None
         elif k in {
-            'is_featured', 'is_taxable', 'track_inventory',
-            'requires_shipping', 'noindex', 'nofollow',
+            'is_featured',
+            'is_taxable',
+            'track_inventory',
+            'requires_shipping',
+            'noindex',
+            'nofollow',
         }:
-            v = bool(v) if isinstance(v, bool) else str(v).lower() in {'1', 'true', 'yes', 'on'}
+            v = bool(v) if isinstance(v, bool) else str(v).lower() in {'1', 'true', 'yes', 'on'}  # noqa: PLW2901
         else:
-            v = '' if v is None else str(v)
+            v = '' if v is None else str(v)  # noqa: PLW2901
         setattr(product, k, v)
     product.save()
 
@@ -269,14 +282,17 @@ def create_product(
 
     logger.info(
         'catalog.create_product slug=%s sku=%s type=%s status=%s cover=%s',
-        product.slug, product.sku, product.product_type, product.status,
+        product.slug,
+        product.sku,
+        product.product_type,
+        product.status,
         bool(cover_blob),
     )
     return _serialize_product(product)
 
 
 @transaction.atomic
-def update_product(*, slug: str, **fields) -> dict[str, str]:
+def update_product(*, slug: str, **fields) -> dict[str, str]:  # noqa: PLR0912, PLR0915
     """Update an existing product by slug. Only fields present in `fields`
     are touched. Unknown fields raise PublishError to catch typos early.
 
@@ -293,17 +309,27 @@ def update_product(*, slug: str, **fields) -> dict[str, str]:
     fixable problem (unknown slug, invalid status, malformed price).
     """
     from djmoney.money import Money
+
     from plugins.installed.catalog.models import Category, Product
 
     product = Product.objects.filter(slug=slug).first()
     if product is None:
         raise PublishError(f'product slug {slug!r} not found')
 
-    unknown = set(fields.keys()) - _PRODUCT_SCALAR_FIELDS - {
-        'status', 'product_type', 'price_amount', 'price_currency',
-        'compare_at_amount', 'cost_amount', 'category_slug',
-        'structured_data',
-    }
+    unknown = (
+        set(fields.keys())
+        - _PRODUCT_SCALAR_FIELDS
+        - {
+            'status',
+            'product_type',
+            'price_amount',
+            'price_currency',
+            'compare_at_amount',
+            'cost_amount',
+            'category_slug',
+            'structured_data',
+        }
+    )
     if unknown:
         raise PublishError(f'unknown field(s): {sorted(unknown)}')
 
@@ -321,7 +347,9 @@ def update_product(*, slug: str, **fields) -> dict[str, str]:
 
     if 'price_amount' in fields:
         amt = _coerce_price(fields['price_amount'])
-        currency = (fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))).upper()
+        currency = (
+            fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))
+        ).upper()
         product.price = Money(amt, currency)
 
     if 'compare_at_amount' in fields:
@@ -331,7 +359,9 @@ def update_product(*, slug: str, **fields) -> dict[str, str]:
         else:
             product.compare_at_price = Money(
                 _coerce_price(v),
-                (fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))).upper(),
+                (
+                    fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))
+                ).upper(),
             )
 
     if 'cost_amount' in fields:
@@ -341,7 +371,9 @@ def update_product(*, slug: str, **fields) -> dict[str, str]:
         else:
             product.cost_price = Money(
                 _coerce_price(v),
-                (fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))).upper(),
+                (
+                    fields.get('price_currency') or str(getattr(product.price, 'currency', 'USD'))
+                ).upper(),
             )
 
     if 'category_slug' in fields:
@@ -377,8 +409,12 @@ def update_product(*, slug: str, **fields) -> dict[str, str]:
                 except (InvalidOperation, TypeError, ValueError):
                     raise PublishError('weight must be a number') from None
         elif k in {
-            'is_featured', 'is_taxable', 'track_inventory',
-            'requires_shipping', 'noindex', 'nofollow',
+            'is_featured',
+            'is_taxable',
+            'track_inventory',
+            'requires_shipping',
+            'noindex',
+            'nofollow',
         }:
             v = bool(v) if isinstance(v, bool) else str(v).lower() in {'1', 'true', 'yes', 'on'}
         else:
@@ -393,6 +429,7 @@ def update_product(*, slug: str, **fields) -> dict[str, str]:
 @transaction.atomic
 def archive_product(*, slug: str) -> dict[str, str]:
     from plugins.installed.catalog.models import Product
+
     product = Product.objects.filter(slug=slug).first()
     if product is None:
         raise PublishError(f'product slug {slug!r} not found')
@@ -406,6 +443,7 @@ def restore_product(*, slug: str, status: str = 'active') -> dict[str, str]:
     if status not in {'draft', 'active'}:
         raise PublishError("status must be 'draft' or 'active'")
     from plugins.installed.catalog.models import Product
+
     product = Product.objects.filter(slug=slug).first()
     if product is None:
         raise PublishError(f'product slug {slug!r} not found')
@@ -419,6 +457,7 @@ def delete_product(*, slug: str) -> dict[str, str]:
     """Hard-delete a product. Use archive_product unless you really need
     the row gone — analytics + audit lose history on delete."""
     from plugins.installed.catalog.models import Product
+
     product = Product.objects.filter(slug=slug).first()
     if product is None:
         raise PublishError(f'product slug {slug!r} not found')
@@ -452,6 +491,7 @@ def update_digital_pdf(*, slug: str, pdf_url: str) -> dict[str, str]:
     product.digital_file.save(pdf_name, ContentFile(pdf_bytes), save=True)
     logger.info(
         'catalog.update_digital_pdf slug=%s pdf=%dKB',
-        product.slug, len(pdf_bytes) // 1024,
+        product.slug,
+        len(pdf_bytes) // 1024,
     )
     return {**_serialize_product(product), 'digital_file': product.digital_file.url or ''}

@@ -4,6 +4,7 @@ All writes go through here so the denormalised balance row stays in
 sync with the immutable ``StoreCreditTxn`` ledger. Concurrency is
 handled with ``select_for_update`` inside an atomic transaction.
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,6 +18,7 @@ logger = logging.getLogger('morpheus.orders.store_credit')
 
 def _balance_row(customer):
     from plugins.installed.orders.models import StoreCredit
+
     sc, _ = StoreCredit.objects.select_for_update().get_or_create(
         customer=customer,
         defaults={'balance': Money(Decimal('0'), 'USD')},
@@ -28,6 +30,7 @@ def issue(customer, *, amount: Money, reference: str = '', note: str = '', creat
     """Add credit to the customer's account. Returns the new balance."""
     from core.money import add, is_positive, money
     from plugins.installed.orders.models import StoreCreditTxn
+
     if not is_positive(amount):
         raise ValueError('store credit amount must be positive')
     with transaction.atomic():
@@ -44,8 +47,11 @@ def issue(customer, *, amount: Money, reference: str = '', note: str = '', creat
         row.balance = add(row.balance, amount)
         row.save(update_fields=['balance', 'updated_at'])
         StoreCreditTxn.objects.create(
-            customer=customer, kind='credit',
-            amount=amount, reference=reference[:64], note=note[:300],
+            customer=customer,
+            kind='credit',
+            amount=amount,
+            reference=reference[:64],
+            note=note[:300],
             created_by=created_by if (created_by and getattr(created_by, 'pk', None)) else None,
         )
     return row.balance
@@ -55,6 +61,7 @@ def redeem(customer, *, amount: Money, reference: str = '', note: str = ''):
     """Deduct from the customer's balance. Raises ValueError if insufficient."""
     from core.money import is_positive, sub
     from plugins.installed.orders.models import StoreCreditTxn
+
     if not is_positive(amount):
         raise ValueError('redeem amount must be positive')
     with transaction.atomic():
@@ -64,8 +71,11 @@ def redeem(customer, *, amount: Money, reference: str = '', note: str = ''):
         row.balance = sub(row.balance, amount)
         row.save(update_fields=['balance', 'updated_at'])
         StoreCreditTxn.objects.create(
-            customer=customer, kind='debit',
-            amount=amount, reference=reference[:64], note=note[:300],
+            customer=customer,
+            kind='debit',
+            amount=amount,
+            reference=reference[:64],
+            note=note[:300],
         )
     return row.balance
 
@@ -73,6 +83,7 @@ def redeem(customer, *, amount: Money, reference: str = '', note: str = ''):
 def balance(customer) -> Money:
     """Read the current balance. Returns Money(0, USD) when no row exists yet."""
     from plugins.installed.orders.models import StoreCredit
+
     sc = StoreCredit.objects.filter(customer=customer).first()
     if sc is None:
         return Money(Decimal('0'), 'USD')

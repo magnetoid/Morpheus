@@ -1,8 +1,8 @@
 """Per-merchant observability GraphQL queries."""
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import UTC, datetime, timedelta
 
 import strawberry
 
@@ -20,12 +20,11 @@ class MetricPoint:
 class MetricSeries:
     metric: str
     granularity: str
-    points: List[MetricPoint]
+    points: list[MetricPoint]
 
 
 @strawberry.type
 class ObservabilityQueryExtension:
-
     @strawberry.field(description='Per-channel metric series. Requires read:metrics scope.')
     def metric_series(
         self,
@@ -33,7 +32,7 @@ class ObservabilityQueryExtension:
         metric: str,
         granularity: str = 'hour',
         hours: int = 24,
-        channel_id: Optional[strawberry.ID] = None,
+        channel_id: strawberry.ID | None = None,
     ) -> MetricSeries:
         from plugins.installed.observability.models import MerchantMetric
 
@@ -41,7 +40,7 @@ class ObservabilityQueryExtension:
         if not has_scope(info, 'read:metrics'):
             return MetricSeries(metric=metric, granularity=granularity, points=[])
 
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, min(hours, 24 * 30)))
+        cutoff = datetime.now(UTC) - timedelta(hours=max(1, min(hours, 24 * 30)))
         qs = MerchantMetric.objects.filter(
             metric=metric,
             granularity=granularity,
@@ -66,6 +65,7 @@ class ObservabilityQueryExtension:
         )
 
     @strawberry.field(description='List metric names this server tracks.')
-    def supported_metrics(self, info: strawberry.Info) -> List[str]:
+    def supported_metrics(self, info: strawberry.Info) -> list[str]:
         from plugins.installed.observability.services import supported_metrics
+
         return list(supported_metrics())

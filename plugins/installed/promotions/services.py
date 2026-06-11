@@ -9,12 +9,13 @@ Each AppliedPromotion carries the matched Promotion, the rule, the
 discount amount, and a free_shipping flag. Callers (cart-total hook,
 checkout, draft orders) decide how to apply.
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from django.utils import timezone
 
@@ -25,10 +26,10 @@ logger = logging.getLogger('morpheus.promotions')
 class AppliedPromotion:
     promotion_id: str
     promotion_name: str
-    rule_id: Optional[str]
+    rule_id: str | None
     discount_amount: Decimal = Decimal('0')
     free_shipping: bool = False
-    gift_product_id: Optional[str] = None
+    gift_product_id: str | None = None
     note: str = ''
 
 
@@ -43,17 +44,17 @@ def _cart_subtotal(cart) -> Decimal:
         amount = getattr(v, 'amount', v)
         try:
             return Decimal(str(amount))
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S112
             continue
     items = cart.get('items', []) if isinstance(cart, dict) else getattr(cart, 'items', None)
     total = Decimal('0')
-    for it in (items or []):
-        price = (it.get('price') if isinstance(it, dict) else getattr(it, 'price', None))
-        qty = (it.get('quantity', 1) if isinstance(it, dict) else getattr(it, 'quantity', 1))
+    for it in items or []:
+        price = it.get('price') if isinstance(it, dict) else getattr(it, 'price', None)
+        qty = it.get('quantity', 1) if isinstance(it, dict) else getattr(it, 'quantity', 1)
         amount = getattr(price, 'amount', price) if price is not None else 0
         try:
             total += Decimal(str(amount)) * Decimal(str(qty or 1))
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S112
             continue
     return total
 
@@ -71,7 +72,7 @@ def _cart_currency(cart, default: str = 'USD') -> str:
 def _cart_product_ids(cart) -> list[str]:
     items = cart.get('items', []) if isinstance(cart, dict) else getattr(cart, 'items', None)
     out: list[str] = []
-    for it in (items or []):
+    for it in items or []:
         if isinstance(it, dict):
             pid = it.get('product_id')
         else:
@@ -83,7 +84,7 @@ def _cart_product_ids(cart) -> list[str]:
     return out
 
 
-def _matches(predicates: dict, *, cart, channel, customer, country, coupon) -> bool:
+def _matches(predicates: dict, *, cart, channel, customer, country, coupon) -> bool:  # noqa: PLR0911
     if not predicates:
         return True
     subtotal = _cart_subtotal(cart)
@@ -95,7 +96,9 @@ def _matches(predicates: dict, *, cart, channel, customer, country, coupon) -> b
         return False
     if 'currencies' in predicates and currency not in predicates['currencies']:
         return False
-    if 'countries' in predicates and (country or '').upper() not in [c.upper() for c in predicates['countries']]:
+    if 'countries' in predicates and (country or '').upper() not in [
+        c.upper() for c in predicates['countries']
+    ]:
         return False
     if 'customer_groups' in predicates:
         groups = list(getattr(customer, 'groups', []) or [])
@@ -107,14 +110,17 @@ def _matches(predicates: dict, *, cart, channel, customer, country, coupon) -> b
         cart_pids = set(_cart_product_ids(cart))
         if not cart_pids.intersection(set(str(x) for x in predicates['product_ids'])):
             return False
-    if predicates.get('first_order') and getattr(customer, 'order_count', 0) > 0:
+    if predicates.get('first_order') and getattr(customer, 'order_count', 0) > 0:  # noqa: SIM103
         return False
     return True
 
 
-def _apply_action(
-    action: dict, *, subtotal: Decimal, cart: Any = None,
-) -> tuple[Decimal, bool, Optional[str]]:
+def _apply_action(  # noqa: PLR0911
+    action: dict,
+    *,
+    subtotal: Decimal,
+    cart: Any = None,
+) -> tuple[Decimal, bool, str | None]:
     """Compute the discount amount + flags for one rule action.
 
     Returns ``(discount, free_shipping, gift_product_id)`` where the
@@ -213,7 +219,7 @@ def _apply_tiered(action: dict, *, subtotal: Decimal, cart: Any) -> Decimal:
         return Decimal('0')
     total_qty = 0
     try:
-        for it in (cart.items.all() if cart and hasattr(cart, 'items') else []):
+        for it in cart.items.all() if cart and hasattr(cart, 'items') else []:
             total_qty += int(it.quantity)
     except Exception:  # noqa: BLE001
         total_qty = 0
@@ -233,8 +239,8 @@ def evaluate(
     *,
     channel: Any = None,
     customer: Any = None,
-    country: Optional[str] = None,
-    coupon: Optional[str] = None,
+    country: str | None = None,
+    coupon: str | None = None,
 ) -> list[AppliedPromotion]:
     from plugins.installed.promotions.models import Promotion
 
@@ -249,26 +255,38 @@ def evaluate(
     for promo in qs.order_by('priority'):
         if promo.channels and channel_slug and channel_slug not in promo.channels:
             continue
-        if promo.requires_coupon and (not coupon or coupon.lower() != promo.requires_coupon.lower()):
+        if promo.requires_coupon and (
+            not coupon or coupon.lower() != promo.requires_coupon.lower()
+        ):
             continue
         if promo.usage_limit and promo.times_used >= promo.usage_limit:
             continue
         for rule in promo.rules.all():
-            if not _matches(rule.predicates or {}, cart=cart, channel=channel,
-                            customer=customer, country=country, coupon=coupon):
+            if not _matches(
+                rule.predicates or {},
+                cart=cart,
+                channel=channel,
+                customer=customer,
+                country=country,
+                coupon=coupon,
+            ):
                 continue
             amount, free_ship, gift_pid = _apply_action(
-                rule.action or {}, subtotal=subtotal, cart=cart,
+                rule.action or {},
+                subtotal=subtotal,
+                cart=cart,
             )
-            out.append(AppliedPromotion(
-                promotion_id=str(promo.id),
-                promotion_name=promo.name,
-                rule_id=str(rule.id),
-                discount_amount=amount,
-                free_shipping=free_ship,
-                gift_product_id=gift_pid,
-                note=rule.label or '',
-            ))
+            out.append(
+                AppliedPromotion(
+                    promotion_id=str(promo.id),
+                    promotion_name=promo.name,
+                    rule_id=str(rule.id),
+                    discount_amount=amount,
+                    free_shipping=free_ship,
+                    gift_product_id=gift_pid,
+                    note=rule.label or '',
+                )
+            )
             break  # one rule per promo
     return out
 
@@ -276,11 +294,15 @@ def evaluate(
 def models_q_active(now):
     """Promotions where (starts_at is null or starts_at <= now) AND (ends_at is null or ends_at > now)."""
     from django.db.models import Q
-    return (Q(starts_at__isnull=True) | Q(starts_at__lte=now)) & \
-           (Q(ends_at__isnull=True) | Q(ends_at__gt=now))
+
+    return (Q(starts_at__isnull=True) | Q(starts_at__lte=now)) & (
+        Q(ends_at__isnull=True) | Q(ends_at__gt=now)
+    )
 
 
-def record_application(applied: AppliedPromotion, *, order_id: str = '', customer_id: str = '', currency: str = 'USD') -> None:
+def record_application(
+    applied: AppliedPromotion, *, order_id: str = '', customer_id: str = '', currency: str = 'USD'
+) -> None:
     """Persist a PromotionApplication + bump times_used atomically.
 
     Lock the Promotion row inside an atomic block so two concurrent
@@ -292,15 +314,12 @@ def record_application(applied: AppliedPromotion, *, order_id: str = '', custome
     limit matters.
     """
     from django.db import transaction as db_tx
-    from plugins.installed.promotions.models import PromotionApplication, Promotion
+
+    from plugins.installed.promotions.models import Promotion, PromotionApplication
+
     try:
         with db_tx.atomic():
-            promo = (
-                Promotion.objects
-                .select_for_update()
-                .filter(id=applied.promotion_id)
-                .first()
-            )
+            promo = Promotion.objects.select_for_update().filter(id=applied.promotion_id).first()
             if promo is None:
                 return
             if promo.usage_limit and promo.times_used >= promo.usage_limit:
@@ -309,7 +328,9 @@ def record_application(applied: AppliedPromotion, *, order_id: str = '', custome
                 # can surface why this customer didn't get the discount.
                 logger.info(
                     'promotions: usage_limit reached for %s under concurrency; '
-                    'discount NOT applied to order=%s', applied.promotion_id, order_id,
+                    'discount NOT applied to order=%s',
+                    applied.promotion_id,
+                    order_id,
                 )
                 return
             PromotionApplication.objects.create(
@@ -328,4 +349,5 @@ def record_application(applied: AppliedPromotion, *, order_id: str = '', custome
 
 def models_f_inc(field_name):
     from django.db.models import F
+
     return F(field_name) + 1

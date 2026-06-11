@@ -1,15 +1,17 @@
 from django.apps import AppConfig
 
+
 class InventoryConfig(AppConfig):
     name = 'plugins.installed.inventory'
     label = 'inventory'
     verbose_name = 'Inventory'
 
     def ready(self):
-        from plugins.registry import plugin_registry
         from plugins.installed.inventory.plugin import InventoryPlugin
-        import plugins.installed.inventory.signals
+        from plugins.registry import plugin_registry
+
         if 'inventory' not in plugin_registry._classes:
             plugin_registry._classes['inventory'] = InventoryPlugin
+
 
 default_app_config = 'plugins.installed.inventory.apps.InventoryConfig'

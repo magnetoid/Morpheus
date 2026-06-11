@@ -1,4 +1,5 @@
 """agent_mcp plugin manifest."""
+
 from __future__ import annotations
 
 import logging

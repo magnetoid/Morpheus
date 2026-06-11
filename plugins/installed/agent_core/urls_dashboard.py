@@ -1,4 +1,5 @@
 """Admin dashboard routes mounted under `/dashboard/agents/`."""
+
 from __future__ import annotations
 
 from django.urls import path
@@ -12,6 +13,10 @@ urlpatterns = [
     path('console/', views.merchant_ops_chat_view, name='console'),
     path('observability/', views.observability_view, name='observability'),
     path('background/', views.background_agents_view, name='background'),
-    path('background/<uuid:bg_id>/<str:action>/', views.background_agent_action_view, name='background_action'),
+    path(
+        'background/<uuid:bg_id>/<str:action>/',
+        views.background_agent_action_view,
+        name='background_action',
+    ),
     path('<uuid:run_id>/', views.run_detail_view, name='run_detail'),
 ]

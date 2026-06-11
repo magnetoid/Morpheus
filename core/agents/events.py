@@ -3,6 +3,7 @@
 These ride the same `core.hooks.hook_registry` bus as the rest of the
 platform, so any plugin can observe / veto / transform agent activity.
 """
+
 from __future__ import annotations
 
 
@@ -15,7 +16,7 @@ class AgentEvents:
     RUN_CANCELLED = 'agent.run.cancelled'
 
     # Tools
-    TOOL_CALLING = 'agent.tool.calling'        # filter — handlers may veto
+    TOOL_CALLING = 'agent.tool.calling'  # filter — handlers may veto
     TOOL_CALLED = 'agent.tool.called'
     TOOL_FAILED = 'agent.tool.failed'
 

@@ -1,4 +1,5 @@
 """Content tools — drafting product copy via the LLM gateway."""
+
 from __future__ import annotations
 
 import logging
@@ -17,7 +18,11 @@ logger = logging.getLogger('morpheus.agents.content')
         'type': 'object',
         'properties': {
             'slug': {'type': 'string'},
-            'tone': {'type': 'string', 'enum': ['neutral', 'literary', 'witty', 'minimal'], 'default': 'literary'},
+            'tone': {
+                'type': 'string',
+                'enum': ['neutral', 'literary', 'witty', 'minimal'],
+                'default': 'literary',
+            },
         },
         'required': ['slug'],
     },
@@ -33,16 +38,22 @@ def draft_product_description_tool(*, slug: str, tone: str = 'literary') -> Tool
 
     provider = get_llm_provider()
     msgs = [
-        LLMMessage(role='system', content=(
-            f'You are a {tone} bookshop copywriter. Write a 60–120 word product '
-            'description. Avoid spoilers, hype, and generic adjectives.'
-        )),
-        LLMMessage(role='user', content=(
-            f'Product: {p.name}\n'
-            f'Category: {p.category.name if p.category_id else ""}\n'
-            f'Existing short: {p.short_description or ""}\n'
-            f'Existing long: {(p.description or "")[:1200]}'
-        )),
+        LLMMessage(
+            role='system',
+            content=(
+                f'You are a {tone} bookshop copywriter. Write a 60–120 word product '
+                'description. Avoid spoilers, hype, and generic adjectives.'
+            ),
+        ),
+        LLMMessage(
+            role='user',
+            content=(
+                f'Product: {p.name}\n'
+                f'Category: {p.category.name if p.category_id else ""}\n'
+                f'Existing short: {p.short_description or ""}\n'
+                f'Existing long: {(p.description or "")[:1200]}'
+            ),
+        ),
     ]
     resp = provider.respond(messages=msgs, tools=None, temperature=0.6, max_tokens=400)
     return ToolResult(
@@ -72,7 +83,9 @@ def draft_product_description_tool(*, slug: str, tone: str = 'literary') -> Tool
             },
             'limit': {
                 'type': 'integer',
-                'minimum': 1, 'maximum': 50, 'default': 10,
+                'minimum': 1,
+                'maximum': 50,
+                'default': 10,
                 'description': 'Max products to process in this call when slug is not provided.',
             },
             'tone': {
@@ -84,8 +97,11 @@ def draft_product_description_tool(*, slug: str, tone: str = 'literary') -> Tool
     },
     requires_approval=True,
 )
-def fill_missing_content_tool(*, slug: str = '', limit: int = 10, tone: str = 'literary') -> ToolResult:
+def fill_missing_content_tool(  # noqa: PLR0912
+    *, slug: str = '', limit: int = 10, tone: str = 'literary'
+) -> ToolResult:  # noqa: PLR0912
     from django.db.models import Q
+
     from plugins.installed.catalog.models import Category, Product
 
     limit = max(1, min(int(limit or 10), 50))
@@ -94,9 +110,13 @@ def fill_missing_content_tool(*, slug: str = '', limit: int = 10, tone: str = 'l
     if slug:
         qs = Product.objects.filter(slug=slug)
     else:
-        qs = Product.objects.filter(
-            Q(short_description='') | Q(description='') | Q(category__isnull=True),
-        ).select_related('category').order_by('status', 'name')[:limit]
+        qs = (
+            Product.objects.filter(
+                Q(short_description='') | Q(description='') | Q(category__isnull=True),
+            )
+            .select_related('category')
+            .order_by('status', 'name')[:limit]
+        )
 
     cat_names = list(Category.objects.values_list('name', flat=True)[:200])
 
@@ -109,17 +129,25 @@ def fill_missing_content_tool(*, slug: str = '', limit: int = 10, tone: str = 'l
             try:
                 resp = provider.respond(
                     messages=[
-                        LLMMessage(role='system', content=(
-                            f'You are a {tone} bookstore copywriter. Write a '
-                            'single sentence (12–25 words) summarising the book. '
-                            'No hype, no spoilers, no marketing adjectives.'
-                        )),
-                        LLMMessage(role='user', content=(
-                            f'Title: {p.name}\n'
-                            f'Existing long description: {(p.description or "")[:600]}'
-                        )),
+                        LLMMessage(
+                            role='system',
+                            content=(
+                                f'You are a {tone} bookstore copywriter. Write a '
+                                'single sentence (12–25 words) summarising the book. '
+                                'No hype, no spoilers, no marketing adjectives.'
+                            ),
+                        ),
+                        LLMMessage(
+                            role='user',
+                            content=(
+                                f'Title: {p.name}\n'
+                                f'Existing long description: {(p.description or "")[:600]}'
+                            ),
+                        ),
                     ],
-                    tools=None, temperature=0.5, max_tokens=120,
+                    tools=None,
+                    temperature=0.5,
+                    max_tokens=120,
                 )
                 short = (resp.text or '').strip().strip('"').strip()
                 if short:
@@ -133,18 +161,26 @@ def fill_missing_content_tool(*, slug: str = '', limit: int = 10, tone: str = 'l
             try:
                 resp = provider.respond(
                     messages=[
-                        LLMMessage(role='system', content=(
-                            f'You are a {tone} bookstore copywriter. Write an '
-                            '80–140 word product description. Plain prose, short '
-                            'sentences. No spoilers, no hype, no generic adjectives.'
-                        )),
-                        LLMMessage(role='user', content=(
-                            f'Title: {p.name}\n'
-                            f'Category: {p.category.name if p.category_id else "—"}\n'
-                            f'Existing short: {p.short_description or ""}'
-                        )),
+                        LLMMessage(
+                            role='system',
+                            content=(
+                                f'You are a {tone} bookstore copywriter. Write an '
+                                '80–140 word product description. Plain prose, short '
+                                'sentences. No spoilers, no hype, no generic adjectives.'
+                            ),
+                        ),
+                        LLMMessage(
+                            role='user',
+                            content=(
+                                f'Title: {p.name}\n'
+                                f'Category: {p.category.name if p.category_id else "—"}\n'
+                                f'Existing short: {p.short_description or ""}'
+                            ),
+                        ),
                     ],
-                    tools=None, temperature=0.6, max_tokens=400,
+                    tools=None,
+                    temperature=0.6,
+                    max_tokens=400,
                 )
                 long_desc = (resp.text or '').strip()
                 if long_desc:
@@ -158,18 +194,26 @@ def fill_missing_content_tool(*, slug: str = '', limit: int = 10, tone: str = 'l
             try:
                 resp = provider.respond(
                     messages=[
-                        LLMMessage(role='system', content=(
-                            'Pick the SINGLE best-fit category for this book '
-                            'from the list. Reply with EXACTLY the category name. '
-                            'If none fit well, reply NONE.'
-                        )),
-                        LLMMessage(role='user', content=(
-                            f'Title: {p.name}\n'
-                            f'Description: {(p.description or p.short_description or "")[:600]}\n\n'
-                            f'Categories:\n- ' + '\n- '.join(cat_names)
-                        )),
+                        LLMMessage(
+                            role='system',
+                            content=(
+                                'Pick the SINGLE best-fit category for this book '
+                                'from the list. Reply with EXACTLY the category name. '
+                                'If none fit well, reply NONE.'
+                            ),
+                        ),
+                        LLMMessage(
+                            role='user',
+                            content=(
+                                f'Title: {p.name}\n'
+                                f'Description: {(p.description or p.short_description or "")[:600]}\n\n'
+                                f'Categories:\n- ' + '\n- '.join(cat_names)
+                            ),
+                        ),
                     ],
-                    tools=None, temperature=0.1, max_tokens=40,
+                    tools=None,
+                    temperature=0.1,
+                    max_tokens=40,
                 )
                 guess = (resp.text or '').strip().strip('"').strip()
                 if guess and guess.upper() != 'NONE':
@@ -185,11 +229,13 @@ def fill_missing_content_tool(*, slug: str = '', limit: int = 10, tone: str = 'l
             save_fields.append('updated_at')
             p.save(update_fields=save_fields)
 
-        processed.append({
-            'slug': p.slug,
-            'name': p.name,
-            'updated': updated_fields,
-        })
+        processed.append(
+            {
+                'slug': p.slug,
+                'name': p.name,
+                'updated': updated_fields,
+            }
+        )
 
     filled = sum(1 for r in processed if r['updated'])
     return ToolResult(

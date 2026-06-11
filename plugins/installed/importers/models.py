@@ -5,6 +5,7 @@ Importer plugin — models.
 Magento, BigCommerce, …) and the Morpheus row it produced. Importers MUST
 upsert through this table so re-running an import is idempotent.
 """
+
 from __future__ import annotations
 
 import uuid

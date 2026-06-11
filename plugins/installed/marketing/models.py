@@ -2,10 +2,13 @@
 Morpheus CMS - Marketing Models
 Coupons, Discounts, Email Campaigns, SEO Redirects
 """
+
 import uuid
-from morpheus import models
+
 from django.utils import timezone
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class Coupon(models.Model):
@@ -52,7 +55,7 @@ class Coupon(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.code} ({self.discount_type})"
+        return f'{self.code} ({self.discount_type})'
 
     @property
     def is_valid(self):
@@ -63,7 +66,7 @@ class Coupon(models.Model):
             return False
         if self.expires_at and now > self.expires_at:
             return False
-        if self.usage_limit and self.times_used >= self.usage_limit:
+        if self.usage_limit and self.times_used >= self.usage_limit:  # noqa: SIM103
             return False
         return True
 
@@ -81,6 +84,7 @@ class CouponUsage(models.Model):
 
 class Redirect(models.Model):
     """301/302 URL redirects for SEO migrations."""
+
     REDIRECT_TYPES = [('301', '301 Permanent'), ('302', '302 Temporary')]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -95,7 +99,7 @@ class Redirect(models.Model):
         ordering = ['from_path']
 
     def __str__(self):
-        return f"{self.from_path} → {self.to_path}"
+        return f'{self.from_path} → {self.to_path}'
 
 
 class EmailCampaign(models.Model):

@@ -1,5 +1,7 @@
 """Theme-aware Django template loader."""
+
 import os
+
 from django.template.loaders.filesystem import Loader as FilesystemLoader
 
 
@@ -8,6 +10,7 @@ class ThemeLoader(FilesystemLoader):
 
     def get_dirs(self):
         from themes.registry import theme_registry
+
         dirs = []
         theme = theme_registry.active
         if theme:

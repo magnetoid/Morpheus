@@ -11,6 +11,7 @@ Public API: ``parse_llm_json(raw)`` — returns ``dict | list | None``.
 Returns ``None`` only when no JSON object/array can be recovered
 even after repair. Empty dicts / lists return as-is.
 """
+
 from __future__ import annotations
 
 import json
@@ -66,9 +67,9 @@ def parse_llm_json(raw: str) -> Any:
         return json.loads(repaired)
     except json.JSONDecodeError as e:
         logger.warning(
-            'parse_llm_json: JSON parse failed after repair: %s. '
-            'First 200 of candidate: %s',
-            e, candidate[:200],
+            'parse_llm_json: JSON parse failed after repair: %s. First 200 of candidate: %s',
+            e,
+            candidate[:200],
         )
         return None
 
@@ -79,15 +80,15 @@ def _outermost_block(txt: str) -> str | None:
     if obj_start == -1 and arr_start == -1:
         return None
     if obj_start == -1:
-        start, opener, closer = arr_start, '[', ']'
+        start, closer = arr_start, ']'
     elif arr_start == -1 or obj_start < arr_start:
-        start, opener, closer = obj_start, '{', '}'
+        start, closer = obj_start, '}'
     else:
-        start, opener, closer = arr_start, '[', ']'
+        start, closer = arr_start, ']'
     end = txt.rfind(closer)
     if end <= start:
         return None
-    return txt[start:end + 1]
+    return txt[start : end + 1]
 
 
 def _escape_literal_whitespace_in_strings(s: str) -> str:

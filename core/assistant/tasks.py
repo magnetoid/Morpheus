@@ -4,6 +4,7 @@ Beat-scheduled jobs are registered by `morph/celery.py` via the
 plugin `_register_beat_schedule()` pattern — this module only
 defines the task callables.
 """
+
 from __future__ import annotations
 
 import logging

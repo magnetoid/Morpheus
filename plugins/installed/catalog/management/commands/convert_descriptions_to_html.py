@@ -12,6 +12,7 @@ Usage:
     python manage.py convert_descriptions_to_html --slugs pinocchio,hamlet
     python manage.py convert_descriptions_to_html --force --dry-run
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,14 +46,19 @@ class Command(BaseCommand):
     help = 'Convert Product.description from markdown to HTML (TipTap-ready).'
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument('--slugs', default='', help='Comma-separated slugs (default: all active).')
-        parser.add_argument('--force', action='store_true',
-                            help='Convert even rows that already look like HTML.')
-        parser.add_argument('--dry-run', action='store_true', help='Show what would change; do not write.')
+        parser.add_argument(
+            '--slugs', default='', help='Comma-separated slugs (default: all active).'
+        )
+        parser.add_argument(
+            '--force', action='store_true', help='Convert even rows that already look like HTML.'
+        )
+        parser.add_argument(
+            '--dry-run', action='store_true', help='Show what would change; do not write.'
+        )
 
     def handle(self, *args, **opts) -> None:
-        from plugins.installed.catalog.models import Product
         from core.templatetags.morph import markdown_to_html
+        from plugins.installed.catalog.models import Product
 
         slugs = [s.strip() for s in (opts.get('slugs') or '').split(',') if s.strip()]
         force = bool(opts['force'])
@@ -88,6 +94,6 @@ class Command(BaseCommand):
             product.save(update_fields=['description'])
             converted += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — converted={converted} skipped={skipped} empty={empty}'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(f'done — converted={converted} skipped={skipped} empty={empty}')
+        )

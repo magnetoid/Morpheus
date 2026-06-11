@@ -35,15 +35,17 @@ The storefront then renders any `PageSection` row by looking up its
 `section_id` here, merging defaults with the row's `settings`, and
 rendering the section's template with that context.
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable
 
 
 @dataclass
 class Section:
     """Subclass and override class attributes (or use as-is)."""
+
     id: str = ''
     label: str = ''
     description: str = ''

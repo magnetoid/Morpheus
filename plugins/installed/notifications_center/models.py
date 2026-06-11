@@ -1,4 +1,5 @@
 """Notification — one row per fan-out event, per staff user."""
+
 from __future__ import annotations
 
 import uuid
@@ -19,17 +20,23 @@ class Notification(models.Model):
     attachments. Add fields here when a real use case demands them
     rather than upfront.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
         related_name='notifications',
     )
     kind = models.CharField(max_length=80, db_index=True)
     title = models.CharField(max_length=200)
     body = models.TextField(blank=True)
     action_url = models.CharField(max_length=500, blank=True)
-    icon = models.CharField(max_length=40, blank=True, default='bell',
-                            help_text='Lucide icon name; falls back to "bell".')
+    icon = models.CharField(
+        max_length=40,
+        blank=True,
+        default='bell',
+        help_text='Lucide icon name; falls back to "bell".',
+    )
     read_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 

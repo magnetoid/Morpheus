@@ -11,11 +11,13 @@ Three concerns:
   multiple runs, steps belong to one run.
 * `AgentMemoryRecord` is the DB-backed semantic / episodic memory tier.
 """
+
 from __future__ import annotations
 
 import uuid
 
 from django.conf import settings
+
 from morpheus import models
 
 
@@ -43,7 +45,9 @@ class AgentRun(models.Model):
 
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='agent_runs',
     )
     session_key = models.CharField(max_length=64, blank=True, db_index=True)
@@ -115,7 +119,9 @@ class AgentConversation(models.Model):
     agent_name = models.CharField(max_length=100, db_index=True)
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='agent_conversations',
     )
     session_key = models.CharField(max_length=64, blank=True, db_index=True)
@@ -144,10 +150,16 @@ class AgentMessage(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
-        AgentConversation, on_delete=models.CASCADE, related_name='messages',
+        AgentConversation,
+        on_delete=models.CASCADE,
+        related_name='messages',
     )
     run = models.ForeignKey(
-        AgentRun, on_delete=models.SET_NULL, null=True, blank=True, related_name='messages',
+        AgentRun,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='messages',
     )
     role = models.CharField(max_length=12, choices=ROLE_CHOICES)
     content = models.TextField()
@@ -202,12 +214,16 @@ class BackgroundAgent(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120, help_text='Human label for this background job.')
-    agent_name = models.CharField(max_length=100, db_index=True, help_text='Slug of the registered agent to run.')
+    agent_name = models.CharField(
+        max_length=100, db_index=True, help_text='Slug of the registered agent to run.'
+    )
     prompt = models.TextField(help_text='User-message text passed to the agent on each tick.')
     context_overrides = models.JSONField(default=dict, blank=True)
 
     interval_seconds = models.PositiveIntegerField(default=3600)
-    state = models.CharField(max_length=12, choices=STATE_CHOICES, default=STATE_ACTIVE, db_index=True)
+    state = models.CharField(
+        max_length=12, choices=STATE_CHOICES, default=STATE_ACTIVE, db_index=True
+    )
 
     last_run_at = models.DateTimeField(null=True, blank=True)
     next_run_at = models.DateTimeField(null=True, blank=True, db_index=True)
@@ -218,8 +234,11 @@ class BackgroundAgent(models.Model):
     max_failures_before_pause = models.PositiveIntegerField(default=5)
 
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='background_agents',
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='background_agents',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -250,7 +269,9 @@ class AgentApprovalRequest(models.Model):
     state = models.CharField(max_length=12, choices=STATE_CHOICES, default='pending', db_index=True)
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -11,6 +11,7 @@ raw JSON in a textarea per row. v2 will surface field-level controls
 from the section's `schema`. Shipping the model + composer first so
 merchants can already build pages today.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,20 +50,26 @@ def _serialize_row(row) -> dict:
 
 @staff_member_required
 def builder(request: HttpRequest, page_id) -> HttpResponse:
-    from plugins.installed.cms.models import Page, PageSection
+    from plugins.installed.cms.models import Page
     from themes.sections import section_registry
 
     page = get_object_or_404(Page, pk=page_id)
     rows = list(page.sections.all().order_by('sort_order', 'created_at'))
-    return render(request, 'admin_dashboard/theme_builder.html', {
-        'page': page,
-        'rows': [_serialize_row(r) for r in rows],
-        'available_sections': [_serialize_section_def(s) for s in section_registry.all()],
-        'available_sections_json': json.dumps([_serialize_section_def(s) for s in section_registry.all()]),
-        'rows_json': json.dumps([_serialize_row(r) for r in rows]),
-        'preview_url': f'/p/{page.slug}/?preview=1',
-        'active_nav': 'cms',
-    })
+    return render(
+        request,
+        'admin_dashboard/theme_builder.html',
+        {
+            'page': page,
+            'rows': [_serialize_row(r) for r in rows],
+            'available_sections': [_serialize_section_def(s) for s in section_registry.all()],
+            'available_sections_json': json.dumps(
+                [_serialize_section_def(s) for s in section_registry.all()]
+            ),
+            'rows_json': json.dumps([_serialize_row(r) for r in rows]),
+            'preview_url': f'/p/{page.slug}/?preview=1',
+            'active_nav': 'cms',
+        },
+    )
 
 
 @staff_member_required
@@ -106,9 +113,7 @@ def api_reorder(request: HttpRequest, page_id) -> JsonResponse:
     ids = request.POST.getlist('ids[]') or request.POST.getlist('ids')
     if not ids:
         return JsonResponse({'error': 'no ids'}, status=400)
-    rows_by_id = {
-        str(r.id): r for r in PageSection.objects.filter(page_id=page_id, id__in=ids)
-    }
+    rows_by_id = {str(r.id): r for r in PageSection.objects.filter(page_id=page_id, id__in=ids)}
     for index, rid in enumerate(ids):
         row = rows_by_id.get(str(rid))
         if row is None:
@@ -125,6 +130,7 @@ def api_reorder(request: HttpRequest, page_id) -> JsonResponse:
 def api_update(request: HttpRequest, page_id, row_id) -> JsonResponse:
     """Update a row's settings or visibility."""
     from plugins.installed.cms.models import PageSection
+
     row = get_object_or_404(PageSection, pk=row_id, page_id=page_id)
 
     settings_raw = request.POST.get('settings')
@@ -146,6 +152,7 @@ def api_update(request: HttpRequest, page_id, row_id) -> JsonResponse:
 @require_http_methods(['POST'])
 def api_delete(request: HttpRequest, page_id, row_id) -> JsonResponse:
     from plugins.installed.cms.models import PageSection
+
     row = get_object_or_404(PageSection, pk=row_id, page_id=page_id)
     row.delete()
     return JsonResponse({'ok': True})

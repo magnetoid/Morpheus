@@ -1,4 +1,5 @@
 """Sandbox runtime tests."""
+
 from __future__ import annotations
 
 from django.test import TestCase
@@ -11,7 +12,6 @@ from plugins.installed.functions.runtime import (
 
 
 class FunctionsRuntimeTests(TestCase):
-
     def test_simple_function(self):
         result = execute(
             source='def run(input): return input["x"] * 2',
@@ -64,6 +64,7 @@ class FunctionsDispatchTests(TestCase):
 
     def test_dispatch_filter_with_no_rows_returns_value_unchanged(self):
         from plugins.installed.functions.services import dispatch_filter
+
         out = dispatch_filter(target='cart.calculate_total', value=100, input={'value': '100'})
         self.assertEqual(out, 100)
 
@@ -76,10 +77,7 @@ class FunctionsDispatchTests(TestCase):
         Function.objects.create(
             target='cart.calculate_total',
             name='ten-percent-off',
-            source=(
-                'def run(input):\n'
-                '    return float(input["value"]) * 0.9\n'
-            ),
+            source=('def run(input):\n    return float(input["value"]) * 0.9\n'),
             capabilities=[],
             is_enabled=True,
         )

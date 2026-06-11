@@ -1,4 +1,5 @@
 """Gift cards dashboard forms."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -10,11 +11,14 @@ class IssueGiftCardForm(forms.Form):
     """Issue a new gift card from the dashboard."""
 
     amount = forms.DecimalField(
-        max_digits=14, decimal_places=2, min_value=Decimal('0.01'),
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
         help_text='Initial balance in store currency.',
     )
     currency = forms.CharField(
-        max_length=3, initial='USD',
+        max_length=3,
+        initial='USD',
         help_text='ISO currency code (USD, EUR, GBP…).',
     )
     issued_to_email = forms.EmailField(
@@ -22,7 +26,9 @@ class IssueGiftCardForm(forms.Form):
         help_text='Recipient address — optional.',
     )
     note = forms.CharField(
-        max_length=240, required=False, widget=forms.Textarea(attrs={'rows': 2}),
+        max_length=240,
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 2}),
         help_text='Internal note. Not shown to the recipient.',
     )
     expires_at = forms.DateTimeField(

@@ -43,15 +43,17 @@ core/assistant/tools/) that lists the current state of every named breaker so
 the merchant can ask "what's broken right now?" and get a real answer instead
 of a stack trace.
 """
+
 from __future__ import annotations
 
 import functools
 import logging
 import threading
 import time
+from collections.abc import Callable
 from contextlib import ContextDecorator
-from dataclasses import dataclass, field
-from typing import Any, Callable, ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 logger = logging.getLogger('morpheus.circuit_breaker')
 
@@ -63,7 +65,7 @@ class CircuitOpenError(RuntimeError):
 @dataclass
 class _BreakerState:
     consecutive_failures: int = 0
-    opened_at: float = 0.0           # unix-ts when last tripped
+    opened_at: float = 0.0  # unix-ts when last tripped
     half_open_probe_in_flight: bool = False
 
 
@@ -110,17 +112,18 @@ class CircuitBreaker(ContextDecorator):
         out: list[dict] = []
         for name, br in sorted(cls._registry.items()):
             s = br.state_label()
-            out.append({
-                'name': name,
-                'state': s,
-                'consecutive_failures': br._state.consecutive_failures,
-                'opened_seconds_ago': (
-                    int(time.time() - br._state.opened_at)
-                    if br._state.opened_at else None
-                ),
-                'failure_threshold': br.failure_threshold,
-                'cooldown_seconds': br.cooldown_seconds,
-            })
+            out.append(
+                {
+                    'name': name,
+                    'state': s,
+                    'consecutive_failures': br._state.consecutive_failures,
+                    'opened_seconds_ago': (
+                        int(time.time() - br._state.opened_at) if br._state.opened_at else None
+                    ),
+                    'failure_threshold': br.failure_threshold,
+                    'cooldown_seconds': br.cooldown_seconds,
+                }
+            )
         return out
 
     def state_label(self) -> str:
@@ -157,6 +160,7 @@ class CircuitBreaker(ContextDecorator):
         def wrapped(*args, **kwargs):
             with self:
                 return fn(*args, **kwargs)
+
         return wrapped
 
     # ── State transitions ─────────────────────────────────────────────────
@@ -166,7 +170,8 @@ class CircuitBreaker(ContextDecorator):
             if self._state.consecutive_failures or self._state.opened_at:
                 logger.info(
                     'circuit_breaker[%s]: recovered after %d failures',
-                    self.name, self._state.consecutive_failures,
+                    self.name,
+                    self._state.consecutive_failures,
                 )
             self._state.consecutive_failures = 0
             self._state.opened_at = 0.0
@@ -183,8 +188,10 @@ class CircuitBreaker(ContextDecorator):
                 logger.warning(
                     'circuit_breaker[%s]: TRIPPED OPEN after %d failures; '
                     'last error: %s. Cooldown %ss.',
-                    self.name, self._state.consecutive_failures,
-                    str(exc)[:200], self.cooldown_seconds,
+                    self.name,
+                    self._state.consecutive_failures,
+                    str(exc)[:200],
+                    self.cooldown_seconds,
                 )
 
     def reset(self) -> None:

@@ -1,6 +1,7 @@
 """Smoke test the account views after the split — auth gates still
 enforce, view functions are still importable as views.account_home etc.
 """
+
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
@@ -19,11 +20,20 @@ class AccountViewsSplitTests(TestCase):
     def test_views_module_still_imports(self):
         """URL conf imports `from . import views`; that has to work."""
         from plugins.installed.storefront import views
+
         # Sample re-exports — if these break, urls.py breaks.
         for name in (
-            'home', 'product_list', 'product_detail', 'cart', 'cart_add',
-            'checkout', 'account_home', 'account_orders', 'vendors_directory',
-            'quick_search', 'newsletter_subscribe',
+            'home',
+            'product_list',
+            'product_detail',
+            'cart',
+            'cart_add',
+            'checkout',
+            'account_home',
+            'account_orders',
+            'vendors_directory',
+            'quick_search',
+            'newsletter_subscribe',
         ):
             self.assertTrue(
                 hasattr(views, name),
@@ -52,7 +62,9 @@ class AccountViewsSplitTests(TestCase):
 
     def test_account_home_authed_200(self):
         user = get_user_model().objects.create_user(
-            username='acc@example.com', email='acc@example.com', password='pw',
+            username='acc@example.com',
+            email='acc@example.com',
+            password='pw',
         )
         self.client.force_login(user)
         resp = self.client.get('/account/')

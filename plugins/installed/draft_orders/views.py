@@ -1,12 +1,10 @@
 """Dashboard views for draft orders."""
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from morpheus.views import messages
-from morpheus.views import login_required
-from morpheus.views import get_object_or_404, redirect, render
-
+from morpheus.views import get_object_or_404, login_required, messages, redirect, render
 from plugins.installed.draft_orders import services
 from plugins.installed.draft_orders.models import DraftOrder, DraftOrderLine
 
@@ -29,19 +27,23 @@ def detail(request, number: str):
     variants: list = []
     try:
         from plugins.installed.catalog.models import ProductVariant
+
         variants = list(
-            ProductVariant.objects
-            .select_related('product')
+            ProductVariant.objects.select_related('product')
             .filter(is_active=True, product__status='active')
             .order_by('product__name', 'name')[:500]
         )
     except Exception:  # noqa: BLE001 — catalog is a plugin too
         variants = []
-    return render(request, 'draft_orders/detail.html', {
-        'draft': draft,
-        'variants': variants,
-        'editable': _editable(draft),
-    })
+    return render(
+        request,
+        'draft_orders/detail.html',
+        {
+            'draft': draft,
+            'variants': variants,
+            'editable': _editable(draft),
+        },
+    )
 
 
 @login_required
@@ -60,6 +62,7 @@ def line_add(request, number: str):
     if variant_id:
         try:
             from plugins.installed.catalog.models import ProductVariant
+
             variant = ProductVariant.objects.select_related('product').get(pk=variant_id)
         except Exception:  # noqa: BLE001 — bad UUID, missing variant, plugin off
             variant = None

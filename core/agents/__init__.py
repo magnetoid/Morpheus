@@ -21,6 +21,7 @@ Public surface:
         AgentEvents,
     )
 """
+
 from __future__ import annotations
 
 from core.agents.base import MorpheusAgent

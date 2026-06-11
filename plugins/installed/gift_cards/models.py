@@ -1,12 +1,14 @@
 """Gift card models — issue, balance, redeem."""
+
 from __future__ import annotations
 
 import secrets
 import uuid
 
 from django.conf import settings
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 def _gen_code() -> str:
@@ -33,11 +35,17 @@ class GiftCard(models.Model):
     issued_to_email = models.EmailField(blank=True)
     issued_to_customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True, related_name='gift_cards',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gift_cards',
     )
     issued_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True, related_name='issued_gift_cards',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='issued_gift_cards',
     )
     note = models.CharField(max_length=240, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
@@ -73,7 +81,9 @@ class GiftCardLedger(models.Model):
     reference = models.CharField(max_length=100, blank=True, db_index=True)
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

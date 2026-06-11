@@ -6,13 +6,15 @@ Schema (header row, in any order):
 
 Rows are upserted by SKU when present, else by slug. Idempotent.
 """
+
 from __future__ import annotations
 
 import csv
 import io
 import logging
+from collections.abc import Iterable
 from decimal import Decimal, InvalidOperation
-from typing import IO, Iterable
+from typing import IO
 
 from django.utils.text import slugify
 from djmoney.money import Money
@@ -23,8 +25,18 @@ logger = logging.getLogger('morpheus.importers.csv')
 
 
 CSV_FIELDS = [
-    'sku', 'name', 'slug', 'price', 'currency', 'status', 'short_description',
-    'description', 'weight', 'category_slug', 'is_featured', 'compare_at_price',
+    'sku',
+    'name',
+    'slug',
+    'price',
+    'currency',
+    'status',
+    'short_description',
+    'description',
+    'weight',
+    'category_slug',
+    'is_featured',
+    'compare_at_price',
 ]
 
 
@@ -42,6 +54,7 @@ class CsvProductImporter(BaseImporter):
 
     def _run(self) -> None:
         from plugins.installed.catalog.models import Category, Product
+
         for row in self._rows:
             try:
                 self._upsert_row(row, Product=Product, Category=Category)
@@ -59,7 +72,9 @@ class CsvProductImporter(BaseImporter):
             raise ValueError('row missing name/slug')
 
         price = _money(row.get('price'), row.get('currency') or 'USD')
-        compare = _money(row.get('compare_at_price'), row.get('currency') or 'USD', allow_blank=True)
+        compare = _money(
+            row.get('compare_at_price'), row.get('currency') or 'USD', allow_blank=True
+        )
 
         defaults = {
             'name': name[:300],
@@ -74,17 +89,21 @@ class CsvProductImporter(BaseImporter):
             defaults['compare_at_price'] = compare
         weight = row.get('weight')
         if weight:
-            try:
+            try:  # noqa: SIM105
                 defaults['weight'] = Decimal(str(weight))
             except (InvalidOperation, TypeError):
                 pass
         cat_slug = (row.get('category_slug') or '').strip()
         if cat_slug:
-            cat, _ = Category.objects.get_or_create(slug=cat_slug, defaults={'name': cat_slug.replace('-', ' ').title()})
+            cat, _ = Category.objects.get_or_create(
+                slug=cat_slug, defaults={'name': cat_slug.replace('-', ' ').title()}
+            )
             defaults['category'] = cat
 
         if sku:
-            obj, created = Product.objects.update_or_create(sku=sku, defaults={'slug': slug, **defaults})
+            obj, created = Product.objects.update_or_create(
+                sku=sku, defaults={'slug': slug, **defaults}
+            )
         else:
             obj, created = Product.objects.update_or_create(slug=slug, defaults=defaults)
         self.upsert(source_id=sku or slug, dest_obj=obj)
@@ -108,23 +127,26 @@ def _bool(value) -> bool:
 def export_products_csv(*, queryset=None) -> str:
     """Render a queryset of Product to a CSV string."""
     from plugins.installed.catalog.models import Product
+
     qs = queryset if queryset is not None else Product.objects.all()
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=CSV_FIELDS)
     writer.writeheader()
     for p in qs.iterator():
-        writer.writerow({
-            'sku': p.sku or '',
-            'name': p.name,
-            'slug': p.slug,
-            'price': str(p.price.amount) if p.price else '',
-            'currency': str(p.price.currency) if p.price else 'USD',
-            'status': p.status,
-            'short_description': p.short_description or '',
-            'description': p.description or '',
-            'weight': str(p.weight) if p.weight else '',
-            'category_slug': p.category.slug if p.category_id else '',
-            'is_featured': '1' if p.is_featured else '0',
-            'compare_at_price': str(p.compare_at_price.amount) if p.compare_at_price else '',
-        })
+        writer.writerow(
+            {
+                'sku': p.sku or '',
+                'name': p.name,
+                'slug': p.slug,
+                'price': str(p.price.amount) if p.price else '',
+                'currency': str(p.price.currency) if p.price else 'USD',
+                'status': p.status,
+                'short_description': p.short_description or '',
+                'description': p.description or '',
+                'weight': str(p.weight) if p.weight else '',
+                'category_slug': p.category.slug if p.category_id else '',
+                'is_featured': '1' if p.is_featured else '0',
+                'compare_at_price': str(p.compare_at_price.amount) if p.compare_at_price else '',
+            }
+        )
     return out.getvalue()

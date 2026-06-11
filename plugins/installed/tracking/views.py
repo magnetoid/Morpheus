@@ -403,7 +403,7 @@ def connection_check(request):  # noqa: ARG001 — staff-required GET
             },
             method='POST',
         )
-        with urllib.request.urlopen(req, timeout=6) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=6) as resp:  # noqa: S310  # nosec B310
             status_code = resp.status
             raw = (resp.read() or b'').decode('utf-8', errors='ignore')
     except urllib.error.HTTPError as exc:

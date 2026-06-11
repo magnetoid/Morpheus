@@ -6,6 +6,7 @@ Per-merchant observability — metrics rollups & error logs.
 rollup task collapses raw OutboxEvent rows into these buckets so the
 dashboard can serve a fast time-series chart.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -15,6 +16,7 @@ from morpheus import models
 
 class MerchantMetric(models.Model):
     """A single metric value for a (channel, metric, bucket) triple."""
+
     GRANULARITY_CHOICES = [
         ('minute', 'Minute'),
         ('hour', 'Hour'),
@@ -25,7 +27,8 @@ class MerchantMetric(models.Model):
     channel = models.ForeignKey(
         'core.StoreChannel',
         on_delete=models.CASCADE,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name='metrics',
     )
     metric = models.CharField(max_length=80, db_index=True)
@@ -48,11 +51,13 @@ class MerchantMetric(models.Model):
 
 class ErrorEvent(models.Model):
     """Captured exceptions / agent failures, indexed by channel for filtering."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     channel = models.ForeignKey(
         'core.StoreChannel',
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
     )
     source = models.CharField(max_length=40, db_index=True)
     message = models.TextField()

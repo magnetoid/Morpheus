@@ -26,6 +26,7 @@ This is the framework's user-facing entry point. Subcommands::
 The dispatcher delegates to the legacy ``morph_create_*`` commands so
 both spellings keep working.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,11 +35,7 @@ import sys
 from django.core.management import call_command, get_commands
 from django.core.management.base import BaseCommand, CommandError
 
-
-_HELP_BLURB = (
-    'Morpheus framework CLI. Run `manage.py morpheus help` for the '
-    'list of subcommands.'
-)
+_HELP_BLURB = 'Morpheus framework CLI. Run `manage.py morpheus help` for the list of subcommands.'
 
 
 class Command(BaseCommand):
@@ -78,7 +75,9 @@ class Command(BaseCommand):
         self.stdout.write('')
         self.stdout.write('  morpheus version')
         self.stdout.write('  morpheus list')
-        self.stdout.write('  morpheus new-plugin <name> [--with-models] [--with-urls] [--with-graphql] [--with-tasks]')
+        self.stdout.write(
+            '  morpheus new-plugin <name> [--with-models] [--with-urls] [--with-graphql] [--with-tasks]'
+        )
         self.stdout.write('  morpheus new-theme <slug> [--label "..."]')
         self.stdout.write('  morpheus enable <plugin>')
         self.stdout.write('  morpheus disable <plugin>')
@@ -87,6 +86,7 @@ class Command(BaseCommand):
     def _version(self, _rest: list[str]) -> None:
         try:
             import morpheus  # type: ignore
+
             ver = getattr(morpheus, '__version__', '?')
         except Exception:  # noqa: BLE001
             ver = '?'
@@ -145,13 +145,10 @@ class Command(BaseCommand):
 
         # 2. Plugin metadata sanity.
         from plugins.registry import plugin_registry
+
         all_count = len(plugin_registry._classes)
-        active_count = sum(
-            1 for n in plugin_registry._classes if plugin_registry.is_active(n)
-        )
-        self.stdout.write(self.style.SUCCESS(
-            f'✓ Plugins: {active_count}/{all_count} active'
-        ))
+        active_count = sum(1 for n in plugin_registry._classes if plugin_registry.is_active(n))
+        self.stdout.write(self.style.SUCCESS(f'✓ Plugins: {active_count}/{all_count} active'))
 
         # 3. Leaked-import scan: every plugin.py should import from
         #    `morpheus`, not directly from the registry/contrib internals.
@@ -159,28 +156,30 @@ class Command(BaseCommand):
         installed = Path(__file__).resolve().parents[3] / 'plugins' / 'installed'
         for manifest in sorted(installed.glob('*/plugin.py')):
             text = manifest.read_text()
-            if 'from plugins.base import' in text or \
-               'from plugins.contributions import' in text or \
-               'from core.hooks import MorpheusEvents' in text:
+            if (
+                'from plugins.base import' in text
+                or 'from plugins.contributions import' in text
+                or 'from core.hooks import MorpheusEvents' in text
+            ):
                 leaks.append(str(manifest.relative_to(installed.parent.parent)))
         if leaks:
-            self.stdout.write(self.style.WARNING(
-                f'⚠ {len(leaks)} plugin.py files still import from internals:'
-            ))
+            self.stdout.write(
+                self.style.WARNING(f'⚠ {len(leaks)} plugin.py files still import from internals:')
+            )
             for path in leaks:
                 self.stdout.write(f'    {path}')
             self.stdout.write('  (run `morpheus check` after migrating to silence.)')
         else:
-            self.stdout.write(self.style.SUCCESS(
-                '✓ Plugin manifests: all using `morpheus.*` imports'
-            ))
+            self.stdout.write(
+                self.style.SUCCESS('✓ Plugin manifests: all using `morpheus.*` imports')
+            )
 
     def _toggle(self, rest: list[str], *, enabled: bool) -> None:
         if not rest:
             raise CommandError('usage: morpheus enable|disable <plugin>')
         name = rest[0]
-        from plugins.registry import plugin_registry
         from plugins.models import PluginConfig
+        from plugins.registry import plugin_registry
 
         if name not in plugin_registry._classes:
             raise CommandError(f'No such plugin: {name!r}')

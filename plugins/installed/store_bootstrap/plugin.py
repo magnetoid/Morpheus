@@ -10,6 +10,7 @@ Surfaces:
   - Linked from the dashboard home command bar's "Bootstrap a store"
     chip (admin_dashboard/templates/admin_dashboard/home.html)
 """
+
 from __future__ import annotations
 
 import logging

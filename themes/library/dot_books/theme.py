@@ -11,6 +11,7 @@ Design notes
 - Built on the Morpheus storefront views, so all data flows through
   GraphQL (`api.client.internal_graphql`) — see LAW 3.
 """
+
 from __future__ import annotations
 
 from themes.base import MorpheusTheme

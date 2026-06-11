@@ -1,4 +1,5 @@
 """Workflows dashboard — list, edit, view runs, dry-run."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from morpheus.views import staff_member_required
 from plugins.installed.workflows.engine import run_workflow
 from plugins.installed.workflows.models import (
-    ACTION_KINDS, TRIGGER_CHOICES, Workflow, WorkflowRun,
+    ACTION_KINDS,
+    TRIGGER_CHOICES,
+    Workflow,
+    WorkflowRun,
 )
 
 logger = logging.getLogger('morpheus.workflows.views')
@@ -20,10 +24,14 @@ logger = logging.getLogger('morpheus.workflows.views')
 @staff_member_required
 def index(request: HttpRequest) -> HttpResponse:
     workflows = list(Workflow.objects.all())
-    return render(request, 'workflows/list.html', {
-        'workflows': workflows,
-        'active_nav': 'workflows',
-    })
+    return render(
+        request,
+        'workflows/list.html',
+        {
+            'workflows': workflows,
+            'active_nav': 'workflows',
+        },
+    )
 
 
 @staff_member_required
@@ -42,7 +50,11 @@ def workflow_form(request: HttpRequest, workflow_id=None) -> HttpResponse:
             condition = json.loads(condition_raw) if condition_raw else {}
         except json.JSONDecodeError as e:
             messages.error(request, f'Condition JSON invalid: {e}')
-            return redirect('workflows:edit', workflow_id=workflow_id) if wf else redirect('workflows:create')
+            return (
+                redirect('workflows:edit', workflow_id=workflow_id)
+                if wf
+                else redirect('workflows:create')
+            )
 
         try:
             actions = json.loads(actions_raw) if actions_raw else []
@@ -50,15 +62,22 @@ def workflow_form(request: HttpRequest, workflow_id=None) -> HttpResponse:
                 raise ValueError('actions must be a JSON list')
         except (json.JSONDecodeError, ValueError) as e:
             messages.error(request, f'Actions JSON invalid: {e}')
-            return redirect('workflows:edit', workflow_id=workflow_id) if wf else redirect('workflows:create')
+            return (
+                redirect('workflows:edit', workflow_id=workflow_id)
+                if wf
+                else redirect('workflows:create')
+            )
 
         if not (name and trigger):
             messages.error(request, 'Name and trigger are required.')
         else:
             data = {
-                'name': name, 'description': description,
-                'trigger': trigger, 'condition': condition,
-                'actions': actions, 'is_active': is_active,
+                'name': name,
+                'description': description,
+                'trigger': trigger,
+                'condition': condition,
+                'actions': actions,
+                'is_active': is_active,
             }
             try:
                 if wf is None:
@@ -73,25 +92,33 @@ def workflow_form(request: HttpRequest, workflow_id=None) -> HttpResponse:
                 logger.warning('workflow save failed: %s', e, exc_info=True)
                 messages.error(request, f'Save failed: {e}')
 
-    return render(request, 'workflows/edit.html', {
-        'workflow': wf,
-        'triggers': TRIGGER_CHOICES,
-        'action_kinds': ACTION_KINDS,
-        'condition_str': json.dumps(wf.condition, indent=2) if wf and wf.condition else '',
-        'actions_str': json.dumps(wf.actions, indent=2) if wf and wf.actions else '[]',
-        'active_nav': 'workflows',
-    })
+    return render(
+        request,
+        'workflows/edit.html',
+        {
+            'workflow': wf,
+            'triggers': TRIGGER_CHOICES,
+            'action_kinds': ACTION_KINDS,
+            'condition_str': json.dumps(wf.condition, indent=2) if wf and wf.condition else '',
+            'actions_str': json.dumps(wf.actions, indent=2) if wf and wf.actions else '[]',
+            'active_nav': 'workflows',
+        },
+    )
 
 
 @staff_member_required
 def runs(request: HttpRequest, workflow_id) -> HttpResponse:
     wf = get_object_or_404(Workflow, pk=workflow_id)
     rows = list(WorkflowRun.objects.filter(workflow=wf).order_by('-created_at')[:100])
-    return render(request, 'workflows/runs.html', {
-        'workflow': wf,
-        'runs': rows,
-        'active_nav': 'workflows',
-    })
+    return render(
+        request,
+        'workflows/runs.html',
+        {
+            'workflow': wf,
+            'runs': rows,
+            'active_nav': 'workflows',
+        },
+    )
 
 
 @staff_member_required
@@ -119,12 +146,17 @@ def dry_run_view(request: HttpRequest, workflow_id) -> HttpResponse:
             messages.error(request, f'Payload JSON invalid: {e}')
         except Exception as e:  # noqa: BLE001
             messages.error(request, f'Dry-run failed: {e}')
-    return render(request, 'workflows/test.html', {
-        'workflow': wf,
-        'payload_str': payload_str or '{\n  "order": {"total": 100, "payment_status": "paid"}\n}',
-        'result': result,
-        'active_nav': 'workflows',
-    })
+    return render(
+        request,
+        'workflows/test.html',
+        {
+            'workflow': wf,
+            'payload_str': payload_str
+            or '{\n  "order": {"total": 100, "payment_status": "paid"}\n}',
+            'result': result,
+            'active_nav': 'workflows',
+        },
+    )
 
 
 @staff_member_required

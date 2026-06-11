@@ -1,4 +1,5 @@
 """Shipping agent tools."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -12,21 +13,25 @@ from core.agents import ToolError, ToolResult, tool
 )
 def list_zones_tool() -> ToolResult:
     from plugins.installed.shipping.models import ShippingZone
+
     out = []
     for zone in ShippingZone.objects.prefetch_related('rates').all()[:50]:
-        out.append({
-            'name': zone.name,
-            'countries': zone.countries,
-            'regions': zone.regions,
-            'rates': [
-                {
-                    'name': r.name, 'computation': r.computation,
-                    'flat': str(r.flat_amount.amount) if r.flat_amount else None,
-                    'is_active': r.is_active,
-                }
-                for r in zone.rates.all()
-            ],
-        })
+        out.append(
+            {
+                'name': zone.name,
+                'countries': zone.countries,
+                'regions': zone.regions,
+                'rates': [
+                    {
+                        'name': r.name,
+                        'computation': r.computation,
+                        'flat': str(r.flat_amount.amount) if r.flat_amount else None,
+                        'is_active': r.is_active,
+                    }
+                    for r in zone.rates.all()
+                ],
+            }
+        )
     return ToolResult(output={'zones': out})
 
 
@@ -46,8 +51,11 @@ def list_zones_tool() -> ToolResult:
     },
     requires_approval=True,
 )
-def add_flat_rate_tool(*, zone_name: str, name: str, amount: float, currency: str = 'USD') -> ToolResult:
+def add_flat_rate_tool(
+    *, zone_name: str, name: str, amount: float, currency: str = 'USD'
+) -> ToolResult:
     from decimal import Decimal
+
     from djmoney.money import Money
 
     from plugins.installed.shipping.models import ShippingRate, ShippingZone
@@ -56,7 +64,9 @@ def add_flat_rate_tool(*, zone_name: str, name: str, amount: float, currency: st
     if zone is None:
         raise ToolError(f'Unknown shipping zone: {zone_name}')
     rate = ShippingRate.objects.create(
-        zone=zone, name=name[:120], computation='flat',
+        zone=zone,
+        name=name[:120],
+        computation='flat',
         flat_amount=Money(Decimal(str(amount)), currency),
     )
     return ToolResult(

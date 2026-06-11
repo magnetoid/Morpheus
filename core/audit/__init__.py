@@ -14,6 +14,7 @@ when" — distinct from `AgentStep` (per-step LLM trace) and from
 ordinary application logs (transient operational noise). Reads cheap;
 writes are deliberately small.
 """
+
 from __future__ import annotations
 
 from core.audit.services import record

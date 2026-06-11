@@ -31,12 +31,14 @@ Decorator usage::
 The decorator returns a `Tool` instance ready to be returned from
 `MorpheusPlugin.contribute_agent_tools()`.
 """
+
 from __future__ import annotations
 
 import inspect
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger('morpheus.agents.tools')
 
@@ -53,6 +55,7 @@ class ToolResult:
     optional human-readable summary (used in dashboards / chat UI).
     `metadata` is internal — never sent to the LLM.
     """
+
     output: Any
     display: str = ''
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -66,6 +69,7 @@ class Tool:
     call this tool. The runtime checks scopes before invocation; the
     LLM never sees a tool it cannot call.
     """
+
     name: str
     description: str
     handler: Callable[..., Any]
@@ -126,6 +130,7 @@ def tool(
     requires_approval: bool = False,
 ) -> Callable[[Callable[..., Any]], Tool]:
     """Decorator that turns a plain function into a `Tool`."""
+
     def _wrap(fn: Callable[..., Any]) -> Tool:
         return Tool(
             name=name,
@@ -135,4 +140,5 @@ def tool(
             scopes=list(scopes or []),
             requires_approval=requires_approval,
         )
+
     return _wrap

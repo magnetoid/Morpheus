@@ -15,6 +15,7 @@ worker — so it was never actually installable — and pointed at icon
 files that 404'd). Reads the store name + theme color from
 core.StoreSettings, never from another plugin's models.
 """
+
 from __future__ import annotations
 
 import logging
@@ -75,17 +76,20 @@ class PwaPlugin(Plugin):
             'type': 'object',
             'properties': {
                 'enabled': {
-                    'type': 'boolean', 'default': True,
+                    'type': 'boolean',
+                    'default': True,
                     'title': 'Enable service worker',
                     'description': 'Master switch. Off = manifest still served (installable) but no offline caching / SW registration.',
                 },
                 'offline_enabled': {
-                    'type': 'boolean', 'default': True,
+                    'type': 'boolean',
+                    'default': True,
                     'title': 'Offline fallback page',
                     'description': 'Serve /offline/ when a navigation request fails with no cached copy.',
                 },
                 'theme_color': {
-                    'type': 'string', 'default': '#f6f1e7',
+                    'type': 'string',
+                    'default': '#f6f1e7',
                     'title': 'Theme color',
                     'description': 'Browser UI tint when installed. Defaults to the warm-paper storefront background.',
                 },

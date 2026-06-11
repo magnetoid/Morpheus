@@ -5,6 +5,7 @@ System prompts live as versioned `Prompt` objects so we can A/B them and
 roll forward without code changes. Render uses str.format-style `{var}`
 placeholders — keep prompts simple, no Jinja.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,7 +26,6 @@ class Prompt:
 
 
 class PromptRegistry:
-
     def __init__(self) -> None:
         self._prompts: dict[tuple[str, int], Prompt] = {}
         self._latest: dict[str, int] = {}

@@ -17,6 +17,7 @@ Mounted at /mcp/ by the plugin loader:
 External discovery files live under /.well-known/ (mounted in
 ``plugins.installed.agent_mcp.urls_well_known``).
 """
+
 from __future__ import annotations
 
 from django.urls import path
@@ -30,10 +31,9 @@ urlpatterns = [
     path('v1/', views.rpc_endpoint, name='rpc'),
     path('v1/health/', views.health, name='health'),
     path('v1/manifest.json', views.manifest, name='manifest'),
-
     # Cluster servers.
     path('storefront/v1/', servers.storefront_endpoint, name='storefront_rpc'),
-    path('cart/v1/',       servers.cart_endpoint,       name='cart_rpc'),
-    path('checkout/v1/',   servers.checkout_endpoint,   name='checkout_rpc'),
-    path('admin/v1/',      servers.admin_endpoint,      name='admin_rpc'),
+    path('cart/v1/', servers.cart_endpoint, name='cart_rpc'),
+    path('checkout/v1/', servers.checkout_endpoint, name='checkout_rpc'),
+    path('admin/v1/', servers.admin_endpoint, name='admin_rpc'),
 ]

@@ -1,4 +1,5 @@
 """Order tools — read access for support + merchant agents."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -12,7 +13,10 @@ from core.agents import ToolError, ToolResult, tool
         'type': 'object',
         'properties': {
             'limit': {'type': 'integer', 'minimum': 1, 'maximum': 25, 'default': 10},
-            'state': {'type': 'string', 'description': 'Filter by order state (e.g. pending, paid, shipped).'},
+            'state': {
+                'type': 'string',
+                'description': 'Filter by order state (e.g. pending, paid, shipped).',
+            },
         },
     },
 )
@@ -25,14 +29,16 @@ def list_recent_orders_tool(*, limit: int = 10, state: str = '') -> ToolResult:
         qs = qs.filter(state=state)
     rows = []
     for o in qs[:limit]:
-        rows.append({
-            'order_number': o.order_number,
-            'state': o.state,
-            'total': str(getattr(o.total, 'amount', '')),
-            'currency': str(getattr(o.total, 'currency', '')),
-            'created_at': o.created_at.isoformat(),
-            'customer_email': getattr(o.customer, 'email', '') if o.customer_id else o.email,
-        })
+        rows.append(
+            {
+                'order_number': o.order_number,
+                'state': o.state,
+                'total': str(getattr(o.total, 'amount', '')),
+                'currency': str(getattr(o.total, 'currency', '')),
+                'created_at': o.created_at.isoformat(),
+                'customer_email': getattr(o.customer, 'email', '') if o.customer_id else o.email,
+            }
+        )
     return ToolResult(output={'orders': rows}, display=f'{len(rows)} order(s)')
 
 
@@ -61,14 +67,16 @@ def summarise_order_tool(*, order_number: str) -> ToolResult:
         }
         for i in order.items.all()
     ]
-    return ToolResult(output={
-        'order_number': order.order_number,
-        'state': order.state,
-        'total': str(getattr(order.total, 'amount', '')),
-        'currency': str(getattr(order.total, 'currency', '')),
-        'items': items,
-        'created_at': order.created_at.isoformat(),
-    })
+    return ToolResult(
+        output={
+            'order_number': order.order_number,
+            'state': order.state,
+            'total': str(getattr(order.total, 'amount', '')),
+            'currency': str(getattr(order.total, 'currency', '')),
+            'items': items,
+            'created_at': order.created_at.isoformat(),
+        }
+    )
 
 
 # ─── Admin write tools — fulfill / ship / cancel / mark refunded ──────────────
@@ -95,7 +103,9 @@ def _serialize_admin(order) -> dict:
 )
 def mark_order_fulfilled_tool(*, order_number: str) -> ToolResult:
     from django_fsm import TransitionNotAllowed
+
     from plugins.installed.orders.models import Order
+
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
         raise ToolError(f'order {order_number!r} not found')
@@ -104,7 +114,9 @@ def mark_order_fulfilled_tool(*, order_number: str) -> ToolResult:
         order.save()
     except TransitionNotAllowed as e:
         raise ToolError(f'cannot fulfill from status={order.status}: {e}') from None
-    return ToolResult(output=_serialize_admin(order), display=f'#{order.order_number} → {order.status}')
+    return ToolResult(
+        output=_serialize_admin(order), display=f'#{order.order_number} → {order.status}'
+    )
 
 
 @tool(
@@ -122,7 +134,9 @@ def mark_order_fulfilled_tool(*, order_number: str) -> ToolResult:
 )
 def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> ToolResult:
     from django_fsm import TransitionNotAllowed
+
     from plugins.installed.orders.models import Order
+
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
         raise ToolError(f'order {order_number!r} not found')
@@ -133,7 +147,8 @@ def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> 
         raise ToolError(f'cannot ship from status={order.status}: {e}') from None
     return ToolResult(
         output=_serialize_admin(order),
-        display=f'#{order.order_number} shipped' + (f' ({tracking_number})' if tracking_number else ''),
+        display=f'#{order.order_number} shipped'
+        + (f' ({tracking_number})' if tracking_number else ''),
     )
 
 
@@ -153,7 +168,9 @@ def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> 
 )
 def cancel_order_tool(*, order_number: str, reason: str = '') -> ToolResult:
     from django_fsm import TransitionNotAllowed
+
     from plugins.installed.orders.models import Order
+
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
         raise ToolError(f'order {order_number!r} not found')
@@ -186,11 +203,13 @@ def cancel_order_tool(*, order_number: str, reason: str = '') -> ToolResult:
 )
 def mark_order_refunded_tool(*, order_number: str, reason: str = '') -> ToolResult:
     from plugins.installed.orders.models import Order
+
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
         raise ToolError(f'order {order_number!r} not found')
     Order.objects.filter(pk=order.pk).update(
-        status='refunded', payment_status='refunded',
+        status='refunded',
+        payment_status='refunded',
     )
     order.refresh_from_db()
     order.log_event('ORDER_REFUNDED', message=reason)

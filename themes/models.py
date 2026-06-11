@@ -1,7 +1,9 @@
 """
 Morpheus CMS — Theme Models
 """
+
 import uuid
+
 from django.db import models
 
 
@@ -17,7 +19,7 @@ class ThemeConfig(models.Model):
         verbose_name_plural = 'Theme Configs'
 
     def __str__(self):
-        return f"{self.theme_name} ({'active' if self.is_active else 'inactive'})"
+        return f'{self.theme_name} ({"active" if self.is_active else "inactive"})'
 
     def save(self, *args, **kwargs):
         if self.is_active:

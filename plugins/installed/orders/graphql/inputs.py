@@ -14,4 +14,3 @@ class AddressInput:
     postal_code: str = ''
     country: str = ''
     phone: str = ''
-

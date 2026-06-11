@@ -4,6 +4,7 @@ Most of the time you should use ``self.register_hook(...)`` from inside
 your plugin's ``ready()``. This module is the escape hatch when you
 need to ``fire`` or ``filter`` an event from a service, view, or task.
 """
+
 from __future__ import annotations
 
 from core.hooks import hook_registry

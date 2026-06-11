@@ -2,9 +2,10 @@
 Morpheus CMS — API Key Authentication & RBAC
 Enforces scopes for external headless clients and Remote Plugins.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from django.utils.translation import gettext_lazy as _
 from rest_framework import authentication, exceptions, permissions
@@ -21,9 +22,10 @@ class MorpheusAPIKeyAuthentication(authentication.BaseAuthentication):
     Validates `Authorization: Bearer <key>` against the APIKey table.
     Returns (None, APIKey) — request.user stays anonymous, request.auth carries the key.
     """
+
     keyword = 'Bearer'
 
-    def authenticate(self, request: 'Request') -> Optional[Tuple[None, APIKey]]:
+    def authenticate(self, request: Request) -> tuple[None, APIKey] | None:
         auth = authentication.get_authorization_header(request).split()
         if not auth or auth[0].lower() != self.keyword.lower().encode():
             return None
@@ -44,8 +46,8 @@ class MorpheusAPIKeyAuthentication(authentication.BaseAuthentication):
         return self.authenticate_credentials(token, request)
 
     def authenticate_credentials(
-        self, key: str, request: Optional['Request'] = None
-    ) -> Tuple[None, APIKey]:
+        self, key: str, request: Request | None = None
+    ) -> tuple[None, APIKey]:
         try:
             api_key = APIKey.objects.select_related('channel').get(key=key, is_active=True)
         except APIKey.DoesNotExist as e:
@@ -63,17 +65,18 @@ class HasScopePermission(permissions.BasePermission):
     Usage:
         permission_classes = [HasScopePermission.for_scope('read:products')]
     """
-    required_scope: Optional[str] = None
+
+    required_scope: str | None = None
 
     @classmethod
-    def for_scope(cls, scope: str) -> type['HasScopePermission']:
+    def for_scope(cls, scope: str) -> type[HasScopePermission]:
         return type(
             f'HasScope_{scope.replace(":", "_")}',
             (cls,),
             {'required_scope': scope},
         )
 
-    def has_permission(self, request: 'Request', view: 'APIView') -> bool:
+    def has_permission(self, request: Request, view: APIView) -> bool:
         api_key = getattr(request, '_morpheus_api_key', None)
         if api_key is not None and self.required_scope is not None:
             return api_key.has_scope(self.required_scope)

@@ -23,19 +23,20 @@ Public surface:
         get_default_provider, get_default_tools,
     )
 """
+
 from __future__ import annotations
 
+from core.assistant.persistence import (
+    AssistantStore,
+    get_default_store,
+)
+from core.assistant.providers import get_default_provider
 from core.assistant.runtime import (
     Assistant,
     AssistantMessage,
     AssistantRunResult,
     run_assistant,
 )
-from core.assistant.persistence import (
-    AssistantStore,
-    get_default_store,
-)
-from core.assistant.providers import get_default_provider
 from core.assistant.tools import get_default_tools
 
 __all__ = [

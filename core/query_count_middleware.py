@@ -19,6 +19,7 @@ Tune by setting ``MORPHEUS_N_PLUS_ONE_THRESHOLD`` in settings or
 ``.env``. Set to 0 to log every request's query count (useful when
 profiling a specific endpoint).
 """
+
 from __future__ import annotations
 
 import logging
@@ -56,12 +57,16 @@ class QueryCountMiddleware:
             logger.log(
                 level,
                 'query_count: %s %s → %d queries in %.0f ms',
-                request.method, request.path, n, elapsed_ms,
+                request.method,
+                request.path,
+                n,
+                elapsed_ms,
             )
             # Log the top 5 most-duplicated SQL statements at DEBUG so
             # devs can drill in without re-running the page.
             if n >= self.threshold and logger.isEnabledFor(logging.DEBUG):
                 from collections import Counter
+
                 counts = Counter(q['sql'][:80] for q in connection.queries)
                 for sql, count in counts.most_common(5):
                     if count > 1:

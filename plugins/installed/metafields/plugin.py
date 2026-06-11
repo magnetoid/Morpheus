@@ -1,4 +1,5 @@
 """metafields plugin manifest."""
+
 from __future__ import annotations
 
 import logging
@@ -15,7 +16,7 @@ class MetafieldsPlugin(Plugin):
     description = (
         'Schema-less custom fields on any record — products, customers, '
         'orders, pages, anything. Same idea as Shopify metafields but '
-        'works on every Morpheus model out of the box via Django\'s '
+        "works on every Morpheus model out of the box via Django's "
         'GenericForeignKey.'
     )
     has_models = True

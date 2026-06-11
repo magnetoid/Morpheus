@@ -9,29 +9,31 @@ database tables and streams it to subscribers via SSE.
 Trace lives only in memory while the run is active — persistence is the
 plugin's job.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import UTC, datetime
+from typing import Any
 
 
 @dataclass(slots=True)
 class TraceStep:
-    kind: str                # 'system' | 'user' | 'assistant' | 'tool_call' | 'tool_result' | 'final' | 'error'
+    kind: str  # 'system' | 'user' | 'assistant' | 'tool_call' | 'tool_result' | 'final' | 'error'
     content: str = ''
-    name: str = ''           # tool name (when applicable)
+    name: str = ''  # tool name (when applicable)
     arguments: dict[str, Any] = field(default_factory=dict)
     output: Any = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(slots=True)
 class AgentTrace:
     run_id: str = ''
     steps: list[TraceStep] = field(default_factory=list)
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     ended_at: datetime | None = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -42,9 +44,9 @@ class AgentTrace:
     def push(self, step: TraceStep) -> None:
         self.steps.append(step)
         if self.subscriber:
-            try:
+            try:  # noqa: SIM105
                 self.subscriber(step)
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 # Subscriber failure must not break the run.
                 pass
 

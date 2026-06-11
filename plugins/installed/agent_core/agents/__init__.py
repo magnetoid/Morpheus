@@ -8,6 +8,7 @@ hierarchy. The specialist files have been deleted; their durable
 behaviour lives on as registered Skills in the respective domain
 plugins (`crm`, `seo`, `inventory`).
 """
+
 from __future__ import annotations
 
 from core.agents.builtin import Worker

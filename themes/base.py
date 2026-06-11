@@ -13,6 +13,7 @@ class:
 For a developer guide see `docs/THEME_DEVELOPMENT.md`.
 For step-by-step skills see `SKILLS.md` (theming section).
 """
+
 from __future__ import annotations
 
 import logging
@@ -72,17 +73,17 @@ class MorpheusTheme:
     """
 
     # ── Required metadata ──────────────────────────────────────────────────────
-    name: str = ''               # snake_case — must equal directory name
-    label: str = ''              # human-readable
-    version: str = '1.0.0'       # PEP 440-style
+    name: str = ''  # snake_case — must equal directory name
+    label: str = ''  # human-readable
+    version: str = '1.0.0'  # PEP 440-style
     description: str = ''
     author: str = 'Morph Team'
-    url: str = ''                # homepage / docs
+    url: str = ''  # homepage / docs
 
     # ── Capabilities ──────────────────────────────────────────────────────────
-    preview_image: str = ''                # relative path inside static/<name>/
-    supports_plugins: list[str] = []       # plugin names this theme styles
-    requires_plugins: list[str] = []       # plugins that MUST be active
+    preview_image: str = ''  # relative path inside static/<name>/
+    supports_plugins: list[str] = []  # plugin names this theme styles
+    requires_plugins: list[str] = []  # plugins that MUST be active
 
     # Topic for the demo_data random product generator. Built-ins:
     # 'bookstore' | 'apparel' | 'general'. Empty falls back to 'general'.
@@ -138,9 +139,11 @@ class MorpheusTheme:
 
     def get_config(self) -> dict:
         from django.db import DatabaseError
+
         if self._config_cache is None:
             try:
                 from themes.models import ThemeConfig
+
                 row = ThemeConfig.objects.get(theme_name=self.name)
                 self._config_cache = row.config or {}
             except (DatabaseError, ImportError, LookupError):
@@ -164,11 +167,13 @@ class MorpheusTheme:
     @property
     def templates_dir(self) -> str:
         from django.conf import settings
+
         return str(settings.MORPHEUS_THEMES_DIR / self.name / 'templates')
 
     @property
     def static_dir(self) -> str:
         from django.conf import settings
+
         return str(settings.MORPHEUS_THEMES_DIR / self.name / 'static')
 
     @property
@@ -177,6 +182,7 @@ class MorpheusTheme:
         if not self.preview_image:
             return ''
         from django.templatetags.static import static
+
         return static(f'{self.name}/{self.preview_image.lstrip("/")}')
 
     # ── Info ──────────────────────────────────────────────────────────────────

@@ -4,13 +4,15 @@ Stripe-integration is left as a separate adapter module so the plugin
 runs end-to-end with `provider='manual'` (admin-managed billing) on day
 one. Switch `Plan.provider='stripe'` when ready.
 """
+
 from __future__ import annotations
 
 import uuid
 
 from django.conf import settings
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class Plan(models.Model):
@@ -63,10 +65,14 @@ class Subscription(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscriptions',
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='subscriptions',
     )
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='subscriptions')
-    state = models.CharField(max_length=10, choices=STATE_CHOICES, default='trialing', db_index=True)
+    state = models.CharField(
+        max_length=10, choices=STATE_CHOICES, default='trialing', db_index=True
+    )
 
     started_at = models.DateTimeField(auto_now_add=True)
     current_period_start = models.DateTimeField(null=True, blank=True)
@@ -97,7 +103,9 @@ class SubscriptionInvoice(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='invoices')
+    subscription = models.ForeignKey(
+        Subscription, on_delete=models.CASCADE, related_name='invoices'
+    )
     period_start = models.DateTimeField()
     period_end = models.DateTimeField()
     amount = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')

@@ -1,6 +1,6 @@
+from django.conf import settings
 from django.core.mail.backends.console import EmailBackend as ConsoleBackend
 from django.core.mail.backends.smtp import EmailBackend as SmtpBackend
-from django.conf import settings
 
 from core.models import StoreSettings
 
@@ -29,13 +29,18 @@ class MorpheusEmailBackend:
                 password = store_settings.smtp_password
             if store_settings and store_settings.default_from_email:
                 settings.DEFAULT_FROM_EMAIL = store_settings.default_from_email
-        except Exception:  # noqa: BLE001 — DB may not be ready at startup
+        except Exception:  # noqa: BLE001, S110
             pass
 
         if host:
             self._backend = SmtpBackend(
-                host=host, port=port, username=username, password=password,
-                use_tls=use_tls, fail_silently=fail_silently, **kwargs,
+                host=host,
+                port=port,
+                username=username,
+                password=password,
+                use_tls=use_tls,
+                fail_silently=fail_silently,
+                **kwargs,
             )
         else:
             # No SMTP configured — log every outbound email to stdout so

@@ -1,4 +1,5 @@
 """Subscriptions plugin manifest."""
+
 from __future__ import annotations
 
 from morpheus import DashboardPage, Plugin

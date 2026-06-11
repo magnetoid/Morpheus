@@ -1,4 +1,5 @@
 """HTTP endpoints: client error ingest + dashboard list/detail."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.core.cache import cache
 from django.db.models import Count, OuterRef, Subquery
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -23,8 +24,8 @@ _MAX_BODY = 64 * 1024  # 64 KB — generous for a stack trace.
 # Per-IP write rate limit on /api/errors/client/. The browser already has a
 # 25-event cap + 5s dedup; the server cap defends against an attacker
 # ignoring the JS and POSTing in a tight loop to fill the table.
-_RL_MAX = 50            # requests
-_RL_WINDOW = 60         # seconds
+_RL_MAX = 50  # requests
+_RL_WINDOW = 60  # seconds
 
 
 def _rate_limited(request) -> bool:
@@ -45,7 +46,7 @@ def _rate_limited(request) -> bool:
 
 @csrf_exempt
 @require_POST
-def client_error_ingest(request: HttpRequest) -> HttpResponse:
+def client_error_ingest(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
     """Receive JS errors from the browser.
 
     Payload (all optional except `message`)::
@@ -92,8 +93,10 @@ def client_error_ingest(request: HttpRequest) -> HttpResponse:
 
 def _origin_allowed(origin: str) -> bool:
     from django.conf import settings
+
     try:
         from urllib.parse import urlparse
+
         host = (urlparse(origin).hostname or '').lower()
     except Exception:  # noqa: BLE001
         return False
@@ -102,15 +105,19 @@ def _origin_allowed(origin: str) -> bool:
     allowed = {h.lower() for h in (getattr(settings, 'ALLOWED_HOSTS', []) or [])}
     if '*' in allowed:
         return True
-    return host in allowed or any(host.endswith('.' + a) for a in allowed if a and not a.startswith('.'))
+    return host in allowed or any(
+        host.endswith('.' + a) for a in allowed if a and not a.startswith('.')
+    )
 
 
 # ── Dashboard views ──────────────────────────────────────────────────────────
+
 
 @staff_member_required
 def errors_list(request: HttpRequest) -> HttpResponse:
     """Grouped list of recent errors — one row per fingerprint."""
     from datetime import timedelta
+
     from django.db.models.functions import TruncHour
     from django.utils import timezone
 
@@ -158,8 +165,9 @@ def errors_list(request: HttpRequest) -> HttpResponse:
     by_hour = {
         row['hour']: row['c']
         for row in qs.filter(created_at__gte=last_24h)
-                     .annotate(hour=TruncHour('created_at'))
-                     .values('hour').annotate(c=Count('id'))
+        .annotate(hour=TruncHour('created_at'))
+        .values('hour')
+        .annotate(c=Count('id'))
     }
     raw = []
     for i in range(24, 0, -1):
@@ -174,18 +182,22 @@ def errors_list(request: HttpRequest) -> HttpResponse:
         y = 56 - h
         spark_bars.append({'x': x, 'y': y, 'h': h, 'v': v})
 
-    return render(request, 'admin_dashboard/errors_list.html', {
-        'rows': list(grouped),
-        'kind_filter': kind,
-        'search': search,
-        'counts': counts,
-        'spark_bars': spark_bars,
-        'spark_max': spark_max,
-        # Legacy keys (still used by the template for back-compat):
-        'total_server': counts['server'],
-        'total_client': counts['client'],
-        'active_nav': 'errors',
-    })
+    return render(
+        request,
+        'admin_dashboard/errors_list.html',
+        {
+            'rows': list(grouped),
+            'kind_filter': kind,
+            'search': search,
+            'counts': counts,
+            'spark_bars': spark_bars,
+            'spark_max': spark_max,
+            # Legacy keys (still used by the template for back-compat):
+            'total_server': counts['server'],
+            'total_client': counts['client'],
+            'active_nav': 'errors',
+        },
+    )
 
 
 @staff_member_required
@@ -195,10 +207,15 @@ def errors_detail(request: HttpRequest, fingerprint: str) -> HttpResponse:
     rows = list(qs)
     if not rows:
         from django.http import Http404
+
         raise Http404('Unknown fingerprint')
-    return render(request, 'admin_dashboard/errors_detail.html', {
-        'rows': rows,
-        'head': rows[0],
-        'count': qs.count() if hasattr(qs, 'count') else len(rows),
-        'active_nav': 'errors',
-    })
+    return render(
+        request,
+        'admin_dashboard/errors_detail.html',
+        {
+            'rows': rows,
+            'head': rows[0],
+            'count': qs.count() if hasattr(qs, 'count') else len(rows),
+            'active_nav': 'errors',
+        },
+    )

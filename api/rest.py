@@ -2,6 +2,7 @@
 Morpheus CMS — REST API v1
 Versioned, filterable, channel-scoped storefront REST layer.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -12,8 +13,8 @@ from rest_framework import filters, permissions, serializers, viewsets
 from plugins.installed.catalog.models import Category, Product
 from plugins.installed.orders.models import Order
 
-
 # ── Serializers ───────────────────────────────────────────────────────────────
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,8 +29,15 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'slug', 'short_description', 'price', 'category',
-            'status', 'is_featured', 'created_at',
+            'id',
+            'name',
+            'slug',
+            'short_description',
+            'price',
+            'category',
+            'status',
+            'is_featured',
+            'created_at',
         ]
 
     def get_price(self, obj: Product) -> dict[str, str]:
@@ -46,8 +54,10 @@ class OrderSerializer(serializers.ModelSerializer):
 
 # ── ViewSets ─────────────────────────────────────────────────────────────────
 
+
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     """Public storefront: anyone can list/read active products."""
+
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -75,6 +85,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Public storefront: anyone can list/read active categories."""
+
     queryset = Category.objects.filter(is_active=True).select_related('parent')
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
@@ -87,6 +98,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     Authenticated customers see only their own orders.
     API keys with the `read:orders` scope (admin) see everything within their channel.
     """
+
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 

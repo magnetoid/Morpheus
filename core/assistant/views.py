@@ -3,6 +3,7 @@
 Mounted in the project URLconf at `/dashboard/assistant/` so it's reachable
 even if the entire plugin layer fails to load.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,37 +48,42 @@ def assistant_page(request):
     memories: list = []
     try:
         from core.assistant.models import LindaMemory
+
         memories = list(LindaMemory.objects.all()[:20])
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
 
     # Suggested first prompts — same set used by the floating widget. After
     # the first turn, the JS swaps in context-aware follow-ups.
     starters = [
-        "Show me a snapshot of the store right now",
-        "Which products are low on stock?",
-        "Top 5 customers by lifetime spend",
-        "Pending returns I need to look at",
-        "Summarise this week vs last week",
+        'Show me a snapshot of the store right now',
+        'Which products are low on stock?',
+        'Top 5 customers by lifetime spend',
+        'Pending returns I need to look at',
+        'Summarise this week vs last week',
     ]
 
     # Tool-palette modes shown as chips at the top of the page. The
     # JS picks one (default 'general'), threads it into every stream
     # POST, and Linda's tool catalogue is filtered server-side.
-    from core.assistant.modes import MODES, DEFAULT_MODE
-    return render(request, 'assistant/page.html', {
-        # Intentionally empty — the redesigned page starts clean.
-        'history': [],
-        'memories': memories,
-        'starters': starters,
-        'assistant_modes': [
-            {'slug': m.slug, 'label': m.label,
-             'description': m.description, 'icon': m.icon}
-            for m in MODES
-        ],
-        'default_mode': DEFAULT_MODE,
-        'active_nav': 'assistant',
-    })
+    from core.assistant.modes import DEFAULT_MODE, MODES
+
+    return render(
+        request,
+        'assistant/page.html',
+        {
+            # Intentionally empty — the redesigned page starts clean.
+            'history': [],
+            'memories': memories,
+            'starters': starters,
+            'assistant_modes': [
+                {'slug': m.slug, 'label': m.label, 'description': m.description, 'icon': m.icon}
+                for m in MODES
+            ],
+            'default_mode': DEFAULT_MODE,
+            'active_nav': 'assistant',
+        },
+    )
 
 
 @staff_member_required
@@ -86,8 +92,11 @@ def assistant_page(request):
 def assistant_invoke(request):
     """POST {message: str} → JSON RunResult. Always responds — never 500s."""
     try:
-        body = json.loads(request.body or b'{}') if request.content_type == 'application/json' \
+        body = (
+            json.loads(request.body or b'{}')
+            if request.content_type == 'application/json'
             else dict(request.POST.items())
+        )
     except json.JSONDecodeError:
         return HttpResponseBadRequest('Invalid JSON.')
     message = (body.get('message') or '').strip()
@@ -117,20 +126,29 @@ def assistant_invoke(request):
         )
     except Exception as e:  # noqa: BLE001 — last-resort safety net
         logger.error('assistant: run crashed: %s', e, exc_info=True)
-        return JsonResponse({
-            'state': 'failed', 'text': '', 'error': str(e), 'tool_calls': 0,
-        }, status=200)
+        return JsonResponse(
+            {
+                'state': 'failed',
+                'text': '',
+                'error': str(e),
+                'tool_calls': 0,
+            },
+            status=200,
+        )
 
-    return JsonResponse({
-        'state': result.state,
-        'text': result.text,
-        'error': result.error,
-        'tool_calls': result.tool_call_count,
-        'duration_ms': result.duration_ms,
-        'tokens': {
-            'prompt': result.prompt_tokens, 'completion': result.completion_tokens,
-        },
-    })
+    return JsonResponse(
+        {
+            'state': result.state,
+            'text': result.text,
+            'error': result.error,
+            'tool_calls': result.tool_call_count,
+            'duration_ms': result.duration_ms,
+            'tokens': {
+                'prompt': result.prompt_tokens,
+                'completion': result.completion_tokens,
+            },
+        }
+    )
 
 
 @staff_member_required
@@ -150,8 +168,11 @@ def assistant_stream(request):
     SSE — same Linda runtime under the hood.
     """
     try:
-        body = json.loads(request.body or b'{}') if request.content_type == 'application/json' \
+        body = (
+            json.loads(request.body or b'{}')
+            if request.content_type == 'application/json'
             else dict(request.POST.items())
+        )
     except json.JSONDecodeError:
         return HttpResponseBadRequest('Invalid JSON.')
     message = (body.get('message') or '').strip()
@@ -188,7 +209,9 @@ def assistant_stream(request):
                     r = ev['result']
                     payload = {
                         'type': ev['type'],
-                        'text': r.text, 'state': r.state, 'error': r.error,
+                        'text': r.text,
+                        'state': r.state,
+                        'error': r.error,
                         'tool_calls': r.tool_call_count,
                         'duration_ms': r.duration_ms,
                     }
@@ -210,10 +233,11 @@ def assistant_history(request):
     """JSON history of the current conversation — used by the floating widget."""
     store = get_default_store()
     history = store.history(conversation_key=_conversation_key(request), limit=30)
-    return JsonResponse({
-        'messages': [
-            {'role': m.role, 'content': m.content,
-             'tool_name': m.tool_name, 'at': m.at}
-            for m in history
-        ],
-    })
+    return JsonResponse(
+        {
+            'messages': [
+                {'role': m.role, 'content': m.content, 'tool_name': m.tool_name, 'at': m.at}
+                for m in history
+            ],
+        }
+    )

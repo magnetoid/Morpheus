@@ -1,7 +1,6 @@
 """GraphQL queries for the marketplace plugin."""
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 import strawberry
 
@@ -34,20 +33,19 @@ class VendorPayoutType:
 
 @strawberry.type
 class MarketplaceQueryExtension:
-
-    @strawberry.field(description="A vendor's orders. Requires vendor:self or admin:marketplace scope.")
-    def my_vendor_orders(self, info: strawberry.Info, first: int = 25) -> List[VendorOrderType]:
+    @strawberry.field(
+        description="A vendor's orders. Requires vendor:self or admin:marketplace scope."
+    )
+    def my_vendor_orders(self, info: strawberry.Info, first: int = 25) -> list[VendorOrderType]:
         from plugins.installed.marketplace.models import VendorOrder
 
         require_authenticated(info)
         if not (has_scope(info, 'vendor:self') or has_scope(info, 'admin:marketplace')):
             return []
         first = max(1, min(int(first), 100))
-        qs = (
-            VendorOrder.objects
-            .select_related('parent_order', 'vendor')
-            .order_by('-created_at')[:first]
-        )
+        qs = VendorOrder.objects.select_related('parent_order', 'vendor').order_by('-created_at')[
+            :first
+        ]
         return [
             VendorOrderType(
                 id=str(v.id),
@@ -63,7 +61,7 @@ class MarketplaceQueryExtension:
         ]
 
     @strawberry.field(description="A vendor's payout history.")
-    def my_vendor_payouts(self, info: strawberry.Info, first: int = 25) -> List[VendorPayoutType]:
+    def my_vendor_payouts(self, info: strawberry.Info, first: int = 25) -> list[VendorPayoutType]:
         from plugins.installed.marketplace.models import VendorPayout
 
         require_authenticated(info)

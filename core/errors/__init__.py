@@ -17,6 +17,7 @@ Usage from code:
         record_error(e, request=request, kind='server')
         raise
 """
+
 from __future__ import annotations
 
 from core.errors.services import record_error

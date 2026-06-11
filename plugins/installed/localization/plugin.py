@@ -19,6 +19,7 @@ This is intentionally THIN — all the heavy lifting (DB schema, fallback
 chain, agent-driven auto-translation) lives in core.i18n. The plugin is
 purely the merchant-facing surface.
 """
+
 from __future__ import annotations
 
 import logging

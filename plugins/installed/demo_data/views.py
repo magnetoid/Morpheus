@@ -1,9 +1,8 @@
 """demo_data dashboard view — rendered as the plugin's settings page."""
+
 from __future__ import annotations
 
-from morpheus.views import staff_member_required
-from morpheus.views import messages
-from morpheus.views import redirect, render
+from morpheus.views import messages, render, staff_member_required
 
 
 @staff_member_required
@@ -15,7 +14,10 @@ def demo_data_index(request):
     products are themed by the active storefront theme.
     """
     from plugins.installed.demo_data.services import (
-        SeedSummary, _detect_topic, seed_all, seed_random_products,
+        SeedSummary,
+        _detect_topic,
+        seed_all,
+        seed_random_products,
     )
 
     last_summary: SeedSummary | None = None
@@ -36,8 +38,12 @@ def demo_data_index(request):
         except Exception as e:  # noqa: BLE001
             messages.error(request, f'Seed failed: {e}')
 
-    return render(request, 'demo_data/settings.html', {
-        'detected_topic': _detect_topic(),
-        'last_summary': last_summary,
-        'active_nav': 'settings',
-    })
+    return render(
+        request,
+        'demo_data/settings.html',
+        {
+            'detected_topic': _detect_topic(),
+            'last_summary': last_summary,
+            'active_nav': 'settings',
+        },
+    )

@@ -5,14 +5,14 @@ Self-contained: doesn't import from `plugins.*` or any plugin code at
 module-load time. Tools are looked up lazily so a broken plugin tool
 doesn't break the Assistant's import.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import time
-import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from core.assistant.persistence import StoredMessage, get_default_store
 from core.assistant.prompts import build_system_prompt
@@ -21,9 +21,19 @@ from core.assistant.providers import get_default_provider
 logger = logging.getLogger('morpheus.assistant')
 
 
-_RETRIABLE_NEEDLES = ('429', 'rate limit', 'rate-limit', 'overloaded',
-                      'temporarily', '502', '503', '504', 'timeout',
-                      'timed out', 'connection reset')
+_RETRIABLE_NEEDLES = (
+    '429',
+    'rate limit',
+    'rate-limit',
+    'overloaded',
+    'temporarily',
+    '502',
+    '503',
+    '504',
+    'timeout',
+    'timed out',
+    'connection reset',
+)
 
 
 def _is_retriable(msg: str) -> bool:
@@ -31,7 +41,7 @@ def _is_retriable(msg: str) -> bool:
     return any(n in m for n in _RETRIABLE_NEEDLES)
 
 
-def _friendly_provider_error(raw: str) -> str:
+def _friendly_provider_error(raw: str) -> str:  # noqa: PLR0911
     """Translate a raw provider exception into a user-readable line.
 
     The dashboard surfaces the assistant's text directly, so a stack
@@ -40,34 +50,43 @@ def _friendly_provider_error(raw: str) -> str:
     """
     text = (raw or '').lower()
     if not text:
-        return ('Sorry — I couldn\'t reach the AI provider just now. '
-                'Try again in a moment.')
+        return "Sorry — I couldn't reach the AI provider just now. Try again in a moment."
     if '429' in text or 'rate' in text:
-        return ('I hit the provider\'s rate limit (the free model is '
-                'busy). Try again in ~30s, switch the provider/model in '
-                '/dashboard/settings/ai/, or paste your own API key '
-                'there to lift the limit.')
+        return (
+            "I hit the provider's rate limit (the free model is "
+            'busy). Try again in ~30s, switch the provider/model in '
+            '/dashboard/settings/ai/, or paste your own API key '
+            'there to lift the limit.'
+        )
     if 'invalid_api_key' in text or 'unauthorized' in text or '401' in text:
-        return ('The configured AI key was rejected. Open '
-                '/dashboard/settings/ai/ and check the active provider\'s '
-                'key.')
+        return (
+            'The configured AI key was rejected. Open '
+            "/dashboard/settings/ai/ and check the active provider's "
+            'key.'
+        )
     if '402' in text or 'quota' in text or 'insufficient' in text:
-        return ('The AI provider says quota / billing is exhausted. '
-                'Top it up or switch providers in '
-                '/dashboard/settings/ai/.')
+        return (
+            'The AI provider says quota / billing is exhausted. '
+            'Top it up or switch providers in '
+            '/dashboard/settings/ai/.'
+        )
     if 'no provider' in text or 'not configured' in text:
-        return ('No AI provider is configured yet. Add a key in '
-                '/dashboard/settings/ai/ and I\'ll be online.')
+        return (
+            'No AI provider is configured yet. Add a key in '
+            "/dashboard/settings/ai/ and I'll be online."
+        )
     if any(n in text for n in ('502', '503', '504', 'timeout', 'overloaded')):
-        return ('The AI provider returned a transient error. Try again '
-                'in a moment; if it persists, switch model in '
-                '/dashboard/settings/ai/.')
+        return (
+            'The AI provider returned a transient error. Try again '
+            'in a moment; if it persists, switch model in '
+            '/dashboard/settings/ai/.'
+        )
     return f'AI provider error — please try again. ({raw[:140]})'
 
 
 @dataclass(slots=True)
 class AssistantMessage:
-    role: str            # 'user' | 'assistant' | 'system' | 'tool'
+    role: str  # 'user' | 'assistant' | 'system' | 'tool'
     content: str = ''
     tool_call_id: str = ''
     tool_calls: list = field(default_factory=list)
@@ -77,7 +96,7 @@ class AssistantMessage:
 @dataclass(slots=True)
 class AssistantRunResult:
     text: str
-    state: str               # 'completed' | 'failed'
+    state: str  # 'completed' | 'failed'
     tool_call_count: int = 0
     error: str = ''
     prompt_tokens: int = 0
@@ -90,6 +109,7 @@ def _format_recent_memories() -> str:
     Empty string when nothing's remembered (or the model isn't migrated yet)."""
     try:
         from core.assistant.tools.memory import get_recent_memories
+
         rows = get_recent_memories(limit=50)
     except Exception:  # noqa: BLE001
         return ''
@@ -143,6 +163,7 @@ def _to_llm_messages(
     try:
         from core.agents.llm import LLMMessage
     except Exception:  # noqa: BLE001
+
         @dataclass
         class LLMMessage:
             role: str
@@ -164,10 +185,13 @@ def _to_llm_messages(
         msgs.append(LLMMessage(role='system', content=page_ctx))
     for h in history:
         if h.role == 'tool':
-            msgs.append(LLMMessage(
-                role='tool', content=json.dumps(h.tool_output, default=str)[:8000],
-                name=h.tool_name or '',
-            ))
+            msgs.append(
+                LLMMessage(
+                    role='tool',
+                    content=json.dumps(h.tool_output, default=str)[:8000],
+                    name=h.tool_name or '',
+                )
+            )
         else:
             msgs.append(LLMMessage(role=h.role, content=h.content))
     msgs.append(LLMMessage(role='user', content=user_message))
@@ -184,8 +208,9 @@ class Assistant:
     label = 'Linda AI Assistant'
     max_steps = 8
 
-    def __init__(self, *, provider=None, tools=None, store=None,
-                 max_steps: int | None = None) -> None:
+    def __init__(
+        self, *, provider=None, tools=None, store=None, max_steps: int | None = None
+    ) -> None:
         self.provider = provider or get_default_provider()
         # Lazy-resolve tools the first time they're needed so a broken
         # tool import doesn't take the Assistant down at construct time.
@@ -198,6 +223,7 @@ class Assistant:
     def tools(self) -> list:
         if self._tools is None:
             from core.assistant.tools import get_default_tools
+
             try:
                 self._tools = get_default_tools()
             except Exception as e:  # noqa: BLE001
@@ -218,16 +244,15 @@ class Assistant:
         endpoint keeps working without duplicating loop logic.
         """
         result = AssistantRunResult(text='', state='failed', error='no_events')
-        for event in self.stream(message=message,
-                                 conversation_key=conversation_key, context=context):
+        for event in self.stream(
+            message=message, conversation_key=conversation_key, context=context
+        ):
             kind = event.get('type')
-            if kind == 'final':
-                result = event['result']
-            elif kind == 'error':
+            if kind == 'final' or kind == 'error':  # noqa: PLR1714
                 result = event['result']
         return result
 
-    def stream(
+    def stream(  # noqa: PLR0915
         self,
         *,
         message: str,
@@ -259,6 +284,7 @@ class Assistant:
         # so she can't pick a refund tool during a "sales" convo.
         # Unknown / missing mode → general (wildcard) — full access.
         from core.assistant.modes import filter_tools_by_mode, get_mode
+
         mode_slug = ''
         if context and isinstance(context, dict):
             mode_slug = str(context.get('mode') or '').strip().lower()
@@ -267,7 +293,10 @@ class Assistant:
         tools_by_name = {t.name: t for t in tools}
         logger.info(
             'assistant: mode=%s tool_count=%d/%d conversation=%s',
-            active_mode.slug, len(tools), len(self.tools), conversation_key,
+            active_mode.slug,
+            len(tools),
+            len(self.tools),
+            conversation_key,
         )
 
         prompt_tokens = 0
@@ -280,8 +309,10 @@ class Assistant:
             for attempt in (0, 1):  # one retry for transient errors
                 try:
                     resp = self.provider.respond(
-                        messages=msgs, tools=tools or None,
-                        temperature=0.2, max_tokens=1500,
+                        messages=msgs,
+                        tools=tools or None,
+                        temperature=0.2,
+                        max_tokens=1500,
                     )
                     err = ''
                     break
@@ -289,7 +320,8 @@ class Assistant:
                     err = str(e)
                     logger.warning(
                         'assistant: provider attempt %d failed: %s',
-                        attempt + 1, err,
+                        attempt + 1,
+                        err,
                     )
                     if attempt == 0 and _is_retriable(err):
                         time.sleep(1.0)
@@ -302,12 +334,18 @@ class Assistant:
                     conversation_key=conversation_key,
                     message=StoredMessage(role='assistant', content=friendly),
                 )
-                yield {'type': 'error', 'result': AssistantRunResult(
-                    text=friendly, state='failed', error=err,
-                    prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
-                    tool_call_count=tool_calls,
-                    duration_ms=int((time.monotonic() - started) * 1000),
-                )}
+                yield {
+                    'type': 'error',
+                    'result': AssistantRunResult(
+                        text=friendly,
+                        state='failed',
+                        error=err,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        tool_call_count=tool_calls,
+                        duration_ms=int((time.monotonic() - started) * 1000),
+                    ),
+                }
                 return
 
             prompt_tokens += getattr(resp, 'prompt_tokens', 0) or 0
@@ -319,12 +357,17 @@ class Assistant:
                     conversation_key=conversation_key,
                     message=StoredMessage(role='assistant', content=final[:50_000]),
                 )
-                yield {'type': 'final', 'result': AssistantRunResult(
-                    text=final, state='completed',
-                    prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
-                    tool_call_count=tool_calls,
-                    duration_ms=int((time.monotonic() - started) * 1000),
-                )}
+                yield {
+                    'type': 'final',
+                    'result': AssistantRunResult(
+                        text=final,
+                        state='completed',
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        tool_call_count=tool_calls,
+                        duration_ms=int((time.monotonic() - started) * 1000),
+                    ),
+                }
                 return
 
             # Interim assistant text (when a model says something before its
@@ -337,10 +380,13 @@ class Assistant:
                 from core.agents.llm import LLMMessage
             except Exception:  # noqa: BLE001 — already handled above
                 LLMMessage = type(msgs[0])
-            msgs.append(LLMMessage(
-                role='assistant', content=resp.text or '',
-                tool_calls=resp.tool_calls,
-            ))
+            msgs.append(
+                LLMMessage(
+                    role='assistant',
+                    content=resp.text or '',
+                    tool_calls=resp.tool_calls,
+                )
+            )
             for tc in resp.tool_calls:
                 tool_calls += 1
                 tc_name = getattr(tc, 'name', '') or (
@@ -351,11 +397,15 @@ class Assistant:
                 )
                 yield {
                     'type': 'tool_call_started',
-                    'name': tc_name, 'arguments': tc_args or {},
+                    'name': tc_name,
+                    'arguments': tc_args or {},
                 }
                 tool_output, tool_error = self._dispatch_tool(
-                    tc=tc, tools_by_name=tools_by_name, msgs=msgs,
-                    conversation_key=conversation_key, context=context,
+                    tc=tc,
+                    tools_by_name=tools_by_name,
+                    msgs=msgs,
+                    conversation_key=conversation_key,
+                    context=context,
                 )
                 yield {
                     'type': 'tool_call_finished',
@@ -369,12 +419,18 @@ class Assistant:
             conversation_key=conversation_key,
             message=StoredMessage(role='assistant', content='(stopped: max steps)'),
         )
-        yield {'type': 'error', 'result': AssistantRunResult(
-            text='', state='failed', error='max_steps_exceeded',
-            prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
-            tool_call_count=tool_calls,
-            duration_ms=int((time.monotonic() - started) * 1000),
-        )}
+        yield {
+            'type': 'error',
+            'result': AssistantRunResult(
+                text='',
+                state='failed',
+                error='max_steps_exceeded',
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tool_call_count=tool_calls,
+                duration_ms=int((time.monotonic() - started) * 1000),
+            ),
+        }
 
     def _dispatch_tool(self, *, tc, tools_by_name, msgs, conversation_key, context):
         """Invoke a single tool call, persist the result, append to LLM context.
@@ -391,12 +447,19 @@ class Assistant:
 
         if tool is None:
             payload = {'error': f'unknown tool: {tool_name}'}
-            msgs.append(LLMMessage(role='tool', tool_call_id=getattr(tc, 'id', ''),
-                                   name=tool_name, content=json.dumps(payload)))
+            msgs.append(
+                LLMMessage(
+                    role='tool',
+                    tool_call_id=getattr(tc, 'id', ''),
+                    name=tool_name,
+                    content=json.dumps(payload),
+                )
+            )
             self.store.append(
                 conversation_key=conversation_key,
-                message=StoredMessage(role='tool', tool_name=tool_name,
-                                      tool_args=args, tool_output=payload),
+                message=StoredMessage(
+                    role='tool', tool_name=tool_name, tool_args=args, tool_output=payload
+                ),
             )
             return payload, payload['error']
 
@@ -408,21 +471,29 @@ class Assistant:
             output = {'error': f'{type(e).__name__}: {e}'}
             error_msg = output['error']
         payload = output if isinstance(output, (dict, list, str, int, float, bool)) else str(output)
-        msgs.append(LLMMessage(
-            role='tool', tool_call_id=getattr(tc, 'id', ''),
-            name=tool_name, content=json.dumps(payload, default=str)[:8000],
-        ))
+        msgs.append(
+            LLMMessage(
+                role='tool',
+                tool_call_id=getattr(tc, 'id', ''),
+                name=tool_name,
+                content=json.dumps(payload, default=str)[:8000],
+            )
+        )
         self.store.append(
             conversation_key=conversation_key,
-            message=StoredMessage(role='tool', tool_name=tool_name,
-                                  tool_args=args, tool_output=payload),
+            message=StoredMessage(
+                role='tool', tool_name=tool_name, tool_args=args, tool_output=payload
+            ),
         )
         return payload, error_msg
 
 
-def run_assistant(*, message: str, conversation_key: str = 'default',
-                  context: dict[str, Any] | None = None) -> AssistantRunResult:
+def run_assistant(
+    *, message: str, conversation_key: str = 'default', context: dict[str, Any] | None = None
+) -> AssistantRunResult:
     """Module-level convenience: run a single turn against the default Assistant."""
     return Assistant().run(
-        message=message, conversation_key=conversation_key, context=context,
+        message=message,
+        conversation_key=conversation_key,
+        context=context,
     )

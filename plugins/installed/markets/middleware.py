@@ -5,6 +5,7 @@ market's `default_locale`. This is the SEO signal search engines use
 to match the page to a regional SERP — without it Google falls back
 to URL/IP guessing.
 """
+
 from __future__ import annotations
 
 
@@ -16,6 +17,7 @@ class MarketMiddleware:
         market = None
         try:
             from plugins.installed.markets.services import resolve_market
+
             market = resolve_market(request)
         except Exception:  # noqa: BLE001
             market = None
@@ -27,6 +29,7 @@ class MarketMiddleware:
             locale = (getattr(market, 'default_locale', '') if market else '') or ''
             if not locale:
                 from django.conf import settings
+
                 locale = getattr(settings, 'LANGUAGE_CODE', '') or ''
             locale = locale.strip()
             if locale:

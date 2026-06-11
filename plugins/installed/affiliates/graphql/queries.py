@@ -1,7 +1,6 @@
 """Affiliate GraphQL queries and mutations."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import strawberry
 
@@ -35,17 +34,19 @@ class AffiliateAccountType:
 
 @strawberry.type
 class AffiliatesQueryExtension:
-
     @strawberry.field(description="The current user's affiliate accounts.")
-    def my_affiliate_accounts(self, info: strawberry.Info) -> List[AffiliateAccountType]:
+    def my_affiliate_accounts(self, info: strawberry.Info) -> list[AffiliateAccountType]:
         require_authenticated(info)
         customer = current_customer(info)
         if customer is None:
             return []
         from plugins.installed.affiliates.models import Affiliate
+
         return [
             AffiliateAccountType(
-                id=str(a.id), handle=a.handle, status=a.status,
+                id=str(a.id),
+                handle=a.handle,
+                status=a.status,
                 accrued_amount=str(a.accrued_balance.amount),
                 accrued_currency=str(a.accrued_balance.currency),
             )
@@ -54,8 +55,10 @@ class AffiliatesQueryExtension:
 
     @strawberry.field(description="An affiliate's links (must own the account).")
     def affiliate_links(
-        self, info: strawberry.Info, affiliate_id: strawberry.ID,
-    ) -> List[AffiliateLinkType]:
+        self,
+        info: strawberry.Info,
+        affiliate_id: strawberry.ID,
+    ) -> list[AffiliateLinkType]:
         require_authenticated(info)
         customer = current_customer(info)
         from plugins.installed.affiliates.models import Affiliate, AffiliateLink
@@ -68,9 +71,13 @@ class AffiliatesQueryExtension:
             raise PermissionDenied('Cannot read links for an affiliate you do not own')
         return [
             AffiliateLinkType(
-                id=str(link.id), code=link.code, landing_url=link.landing_url,
-                label=link.label, is_active=link.is_active,
-                click_count=link.click_count, conversion_count=link.conversion_count,
+                id=str(link.id),
+                code=link.code,
+                landing_url=link.landing_url,
+                label=link.label,
+                is_active=link.is_active,
+                click_count=link.click_count,
+                conversion_count=link.conversion_count,
             )
             for link in AffiliateLink.objects.filter(affiliate=affiliate)
         ]
@@ -85,10 +92,11 @@ class CreateAffiliateLinkInput:
 
 @strawberry.type
 class AffiliatesMutationExtension:
-
     @strawberry.mutation(description='Create a tracked link for one of your affiliate accounts.')
     def create_affiliate_link(
-        self, info: strawberry.Info, input: CreateAffiliateLinkInput,
+        self,
+        info: strawberry.Info,
+        input: CreateAffiliateLinkInput,
     ) -> AffiliateLinkType:
         require_authenticated(info)
         customer = current_customer(info)
@@ -107,9 +115,13 @@ class AffiliatesMutationExtension:
             label=input.label[:100],
         )
         return AffiliateLinkType(
-            id=str(link.id), code=link.code, landing_url=link.landing_url,
-            label=link.label, is_active=link.is_active,
-            click_count=link.click_count, conversion_count=link.conversion_count,
+            id=str(link.id),
+            code=link.code,
+            landing_url=link.landing_url,
+            label=link.label,
+            is_active=link.is_active,
+            click_count=link.click_count,
+            conversion_count=link.conversion_count,
         )
 
     # NOTE: a previous version of this file shipped an `apply_as_affiliate`

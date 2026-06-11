@@ -7,6 +7,7 @@ POST /dashboard/apps/store_bootstrap/start/  → run the bootstrap
 The LLM call is synchronous; we accept the 10-30 s wait because that's
 the demo (anyone watching sees the magic finish).
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,10 +20,10 @@ logger = logging.getLogger('morpheus.store_bootstrap')
 
 
 _SAMPLE_PROMPTS = [
-    "An independent bookshop specialising in queer literary fiction and translated essays.",
-    "A modern Japanese tea shop selling single-estate matcha, sencha, and hand-thrown ceramics.",
-    "A direct-to-consumer brand of small-batch, low-acid cold-brew coffee.",
-    "A studio shop for hand-bound notebooks, archival pens, and printable stationery sets.",
+    'An independent bookshop specialising in queer literary fiction and translated essays.',
+    'A modern Japanese tea shop selling single-estate matcha, sencha, and hand-thrown ceramics.',
+    'A direct-to-consumer brand of small-batch, low-acid cold-brew coffee.',
+    'A studio shop for hand-bound notebooks, archival pens, and printable stationery sets.',
 ]
 
 
@@ -38,18 +39,27 @@ def bootstrap_view(request):
 
     prompt = (request.POST.get('prompt') or '').strip()
     if not prompt:
-        return render(request, 'store_bootstrap/start.html', {
-            **ctx_base,
-            'error': 'Tell me what kind of store you want to build.',
-        })
+        return render(
+            request,
+            'store_bootstrap/start.html',
+            {
+                **ctx_base,
+                'error': 'Tell me what kind of store you want to build.',
+            },
+        )
 
     from plugins.installed.store_bootstrap.services import (
         bootstrap_store_from_prompt,
     )
+
     result = bootstrap_store_from_prompt(prompt)
 
-    return render(request, 'store_bootstrap/start.html', {
-        **ctx_base,
-        'result': result,
-        'prompt': prompt,
-    })
+    return render(
+        request,
+        'store_bootstrap/start.html',
+        {
+            **ctx_base,
+            'result': result,
+            'prompt': prompt,
+        },
+    )

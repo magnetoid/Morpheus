@@ -9,15 +9,17 @@ Both spellings of the staff decorator are exported:
 * ``staff_required`` — preferred public name.
 * ``staff_member_required`` — kept as an alias for transition.
 """
+
 from __future__ import annotations
+
+# Flash-message framework ────────────────────────────────────────────────────
+from django.contrib import messages
 
 # Decorators ─────────────────────────────────────────────────────────────────
 from django.contrib.admin.views.decorators import (
     staff_member_required,
 )
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt, csrf_protect
-from django.views.decorators.http import require_http_methods, require_POST, require_GET
 
 # Response objects + request type ────────────────────────────────────────────
 from django.http import (
@@ -40,9 +42,8 @@ from django.shortcuts import (
     redirect,
     render,
 )
-
-# Flash-message framework ────────────────────────────────────────────────────
-from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 # Preferred public name for the staff decorator.
 staff_required = staff_member_required

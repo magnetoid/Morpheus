@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import OrderedDict
 
-
 # Section display order in the admin sidebar — Shopify-style top-to-bottom.
 # Sections not in this list fall through to alphabetical order at the bottom.
 _SECTION_ORDER = [
@@ -193,7 +192,7 @@ def plugin_context(request):
     if path.startswith('/dashboard/settings/'):
         rest = path[len('/dashboard/settings/') :].strip('/').split('/', 1)
         head = rest[0] if rest and rest[0] else ''
-        if head == 'email-templates':
+        if head == 'email-templates':  # noqa: SIM108
             active_settings_category = 'notifications'
         else:
             active_settings_category = head
@@ -237,22 +236,22 @@ def _compute_nav_badges(request) -> dict:
         from plugins.installed.orders.refunds import ReturnRequest
 
         badges['returns'] = ReturnRequest.objects.filter(state='requested').count()
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     try:
         from plugins.installed.ai_assistant.models import MerchantInsight
 
         badges['insights'] = MerchantInsight.objects.filter(is_read=False).count()
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     try:
         from plugins.installed.notifications_center.services import unread_count_for
 
         badges['notifications'] = unread_count_for(getattr(request, 'user', None))
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
-    try:
+    try:  # noqa: SIM105
         request._morph_nav_badges = badges
-    except Exception:  # noqa: BLE001 — request might not allow attr set in tests
+    except Exception:  # noqa: BLE001, S110
         pass
     return badges

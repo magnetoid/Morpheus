@@ -1,4 +1,5 @@
 """Agent tools for draft orders."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -12,12 +13,15 @@ from core.agents import ToolError, ToolResult, tool
 )
 def list_drafts_tool(*, limit: int = 50) -> ToolResult:
     from plugins.installed.draft_orders.models import DraftOrder
-    qs = DraftOrder.objects.order_by('-created_at')[:max(1, min(limit, 200))]
+
+    qs = DraftOrder.objects.order_by('-created_at')[: max(1, min(limit, 200))]
     rows = [
         {
-            'number': d.number, 'status': d.status,
+            'number': d.number,
+            'status': d.status,
             'customer_email': d.customer_email,
-            'total': str(d.total.amount), 'currency': str(d.total.currency),
+            'total': str(d.total.amount),
+            'currency': str(d.total.currency),
             'created_at': d.created_at.isoformat(),
         }
         for d in qs
@@ -35,6 +39,7 @@ def list_drafts_tool(*, limit: int = 50) -> ToolResult:
 def convert_draft_tool(*, number: str) -> ToolResult:
     from plugins.installed.draft_orders import services
     from plugins.installed.draft_orders.models import DraftOrder
+
     try:
         draft = DraftOrder.objects.get(number=number)
     except DraftOrder.DoesNotExist as e:

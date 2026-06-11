@@ -18,6 +18,7 @@ Ships three templates the theme can use:
 
 Native CSS scroll-snap. No JS framework, no model.
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,12 +29,12 @@ logger = logging.getLogger('morpheus.product_gallery')
 
 
 class ProductGalleryPlugin(Plugin):
-    name = "product_gallery"
-    label = "Product Gallery"
-    version = "1.1.0"
+    name = 'product_gallery'
+    label = 'Product Gallery'
+    version = '1.1.0'
     description = (
-        "Main cover (primary image) + square slider (non-primary images) "
-        "for PDPs. Native scroll-snap, no JS dep."
+        'Main cover (primary image) + square slider (non-primary images) '
+        'for PDPs. Native scroll-snap, no JS dep.'
     )
     has_models = False
     requires = ['catalog']

@@ -5,12 +5,12 @@ so the view does NOT require auth — the token IS the auth. We still
 log every access (IP + timestamp) and refuse after expiry, the
 download-count limit, or explicit revocation.
 """
+
 from __future__ import annotations
 
 import logging
 import os
 
-from django.conf import settings as dj_settings
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -63,9 +63,13 @@ def download(request, token: str) -> HttpResponse:
     tok.downloads_used += 1
     tok.last_downloaded_at = timezone.now()
     tok.last_downloaded_ip = _client_ip(request)
-    tok.save(update_fields=[
-        'downloads_used', 'last_downloaded_at', 'last_downloaded_ip',
-    ])
+    tok.save(
+        update_fields=[
+            'downloads_used',
+            'last_downloaded_at',
+            'last_downloaded_ip',
+        ]
+    )
 
     # Streaming serve. For S3 / external storage, prefer redirect to
     # the storage's signed URL — but the FileField API gives us .url.
@@ -73,6 +77,7 @@ def download(request, token: str) -> HttpResponse:
     if storage_url and not storage_url.startswith('/'):
         # Remote storage (S3 / CDN) — redirect to its signed URL.
         from django.shortcuts import redirect
+
         return redirect(storage_url)
 
     # Local filesystem — stream the bytes directly.
@@ -82,7 +87,7 @@ def download(request, token: str) -> HttpResponse:
         raise Http404('File missing')
 
     filename = os.path.basename(abs_path)
-    response = FileResponse(open(abs_path, 'rb'), as_attachment=True, filename=filename)
+    response = FileResponse(open(abs_path, 'rb'), as_attachment=True, filename=filename)  # noqa: SIM115
     return response
 
 

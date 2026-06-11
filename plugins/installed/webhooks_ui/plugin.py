@@ -1,4 +1,5 @@
 """Webhooks UI plugin manifest."""
+
 from __future__ import annotations
 
 import logging
@@ -49,8 +50,10 @@ def _flatten(value):
 
 def _make_fanout(event_name: str):
     """Build a named handler closure — hook registry needs `__qualname__`."""
+
     def handler(**payload):
         WebhooksUiPlugin._fanout(event_name, **payload)
+
     safe = event_name.replace('.', '_')
     handler.__name__ = f'fanout_{safe}'
     handler.__qualname__ = f'WebhooksUiPlugin.fanout_{safe}'
@@ -99,7 +102,8 @@ class WebhooksUiPlugin(Plugin):
             return
         try:
             endpoints = WebhookEndpoint.objects.filter(
-                is_active=True, events__contains=[event_name],
+                is_active=True,
+                events__contains=[event_name],
             )
         except Exception as e:  # noqa: BLE001
             logger.debug('webhooks_ui fanout query failed: %s', e)
@@ -110,21 +114,26 @@ class WebhooksUiPlugin(Plugin):
             try:
                 enqueue_delivery(endpoint=ep, event_name=event_name, payload=flat)
             except Exception as e:  # noqa: BLE001
-                logger.warning('webhooks_ui: enqueue %s for %s failed: %s',
-                               event_name, ep.id, e)
+                logger.warning('webhooks_ui: enqueue %s for %s failed: %s', event_name, ep.id, e)
 
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Webhooks', slug='endpoints',
+                label='Webhooks',
+                slug='endpoints',
                 view='plugins.installed.webhooks_ui.views.endpoints_list',
-                icon='webhook', section='developer', order=10,
+                icon='webhook',
+                section='developer',
+                order=10,
                 nav='settings',
             ),
             DashboardPage(
-                label='Deliveries', slug='deliveries',
+                label='Deliveries',
+                slug='deliveries',
                 view='plugins.installed.webhooks_ui.views.deliveries_list',
-                icon='list', section='developer', order=20,
+                icon='list',
+                section='developer',
+                order=20,
                 nav='settings',
             ),
         ]

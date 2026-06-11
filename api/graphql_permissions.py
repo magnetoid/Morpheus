@@ -10,10 +10,11 @@ that resolvers call early. They look at:
 
 A request is considered "anonymous" if none of these grant the requested scope.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import strawberry
 
@@ -24,7 +25,7 @@ class PermissionDenied(Exception):
     """Raised when a resolver detects an unauthorized caller."""
 
 
-def get_request(info: strawberry.Info) -> Optional[Any]:
+def get_request(info: strawberry.Info) -> Any | None:
     if not info or not info.context:
         return None
     if isinstance(info.context, dict):
@@ -42,7 +43,7 @@ def is_authenticated(info: strawberry.Info) -> bool:
         return True
     if getattr(request, '_morpheus_api_key', None) is not None:
         return True
-    if getattr(request, 'agent_capabilities', None) is not None:
+    if getattr(request, 'agent_capabilities', None) is not None:  # noqa: SIM103
         return True
     return False
 
@@ -62,7 +63,7 @@ def has_scope(info: strawberry.Info, scope: str) -> bool:
         return True
 
     user = getattr(request, 'user', None)
-    if user is not None and getattr(user, 'is_authenticated', False):
+    if user is not None and getattr(user, 'is_authenticated', False):  # noqa: SIM102
         if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
             return True
     return False
@@ -71,12 +72,12 @@ def has_scope(info: strawberry.Info, scope: str) -> bool:
 def require_scope(info: strawberry.Info, scope: str) -> None:
     """Raise PermissionDenied unless the caller has the scope."""
     if not has_scope(info, scope):
-        raise PermissionDenied(f"Missing required scope: {scope}")
+        raise PermissionDenied(f'Missing required scope: {scope}')
 
 
 def require_authenticated(info: strawberry.Info) -> None:
     if not is_authenticated(info):
-        raise PermissionDenied("Authentication required")
+        raise PermissionDenied('Authentication required')
 
 
 def current_customer(info: strawberry.Info):

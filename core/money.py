@@ -24,16 +24,17 @@ This module collects those into one place. Three rules:
 Every helper returns a ``Money``. Use it as a drop-in for the bare
 ``Money(...)`` constructor when the value comes from arithmetic.
 """
+
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Union
 
 from djmoney.money import Money
 
 # Type alias — anywhere in the codebase that says "I'll take a Money
 # but a Decimal is fine too" can use this.
-MoneyLike = Union[Money, Decimal, int, float, str]
+MoneyLike = Union[Money, Decimal, int, float, str]  # noqa: UP007
 
 # Standard cent precision. Single source of truth — change here and
 # every helper updates.
@@ -91,9 +92,7 @@ def same_currency(a: Money, b: Money) -> bool:
 def assert_same_currency(a: Money, b: Money) -> None:
     """Raise ``CurrencyMismatch`` if the two Money values disagree."""
     if not same_currency(a, b):
-        raise CurrencyMismatch(
-            f'currency mismatch: {a.currency} vs {b.currency}'
-        )
+        raise CurrencyMismatch(f'currency mismatch: {a.currency} vs {b.currency}')
 
 
 def add(a: Money, b: Money) -> Money:

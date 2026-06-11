@@ -8,12 +8,14 @@ Carrier integrations (Shippo / EasyPost) plug in via
 `ShippingRate.computation = 'carrier_<name>'`; the rate runs the adapter
 at quote time. Adapters live in `plugins.installed.shipping.carriers`.
 """
+
 from __future__ import annotations
 
 import uuid
 
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class ShippingZone(models.Model):
@@ -26,7 +28,8 @@ class ShippingZone(models.Model):
         help_text='List of ISO-3166 alpha-2 country codes. ["*"] = catch-all.',
     )
     regions = models.JSONField(
-        default=list, blank=True,
+        default=list,
+        blank=True,
         help_text='Optional sub-national filter; e.g. ["CA","NY"] for US states.',
     )
     is_default = models.BooleanField(default=False, db_index=True)
@@ -75,16 +78,23 @@ class ShippingRate(models.Model):
     computation = models.CharField(max_length=20, choices=COMPUTATION_CHOICES, default='flat')
 
     flat_amount = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
     )
     free_threshold = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
         help_text='If subtotal ≥ this, the rate is free (used by free_over).',
     )
     tiers = models.JSONField(
-        default=list, blank=True,
+        default=list,
+        blank=True,
         help_text='List of {threshold, amount} for tiered modes (sorted ascending).',
     )
     estimated_days_min = models.PositiveSmallIntegerField(null=True, blank=True)

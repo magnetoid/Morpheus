@@ -12,11 +12,11 @@ Strategies:
   * `descending_stock` (default): drain warehouses by descending
     available_quantity until the order is filled.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Iterable, Optional
 
 from plugins.installed.inventory.models import StockLevel
 
@@ -34,15 +34,15 @@ def plan_allocation(
     qty: int,
     *,
     strategy: str = 'descending_stock',
-    prefer_warehouse_code: Optional[str] = None,
+    prefer_warehouse_code: str | None = None,
 ) -> list[Allocation]:
     """Return an allocation plan that totals `qty` (or fewer if short)."""
     if qty <= 0:
         return []
     levels = list(
-        StockLevel.objects
-        .select_related('warehouse')
-        .filter(variant_id=variant_id, warehouse__is_active=True)
+        StockLevel.objects.select_related('warehouse').filter(
+            variant_id=variant_id, warehouse__is_active=True
+        )
     )
     if not levels:
         return []
@@ -51,8 +51,9 @@ def plan_allocation(
         return []
 
     if prefer_warehouse_code:
-        levels.sort(key=lambda sl: (sl.warehouse.code != prefer_warehouse_code,
-                                    -sl.available_quantity))
+        levels.sort(
+            key=lambda sl: (sl.warehouse.code != prefer_warehouse_code, -sl.available_quantity)
+        )
     elif strategy == 'single_warehouse':
         single = sorted(
             (sl for sl in levels if sl.available_quantity >= qty),
@@ -79,6 +80,8 @@ def plan_allocation(
     if remaining > 0:
         logger.warning(
             'allocator: short by %d for variant=%s (asked %d)',
-            remaining, variant_id, qty,
+            remaining,
+            variant_id,
+            qty,
         )
     return plan

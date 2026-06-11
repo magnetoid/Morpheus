@@ -14,6 +14,7 @@ future change can't silently re-break them:
   4. GraphQL ProductVariantType.price falls back to the parent product
      price when the variant has none.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -24,6 +25,7 @@ from djmoney.money import Money
 
 def _make_product(**overrides):
     from plugins.installed.catalog.models import Product
+
     defaults = {
         'name': 'A Book',
         'slug': 'a-book',
@@ -40,6 +42,7 @@ def _make_product(**overrides):
 
 def _make_variant(product, **overrides):
     from plugins.installed.catalog.models import ProductVariant
+
     defaults = {
         'product': product,
         'name': 'V1',
@@ -58,8 +61,10 @@ class DisplayPriceTests(TestCase):
 
     def test_variable_returns_min_variant_price(self):
         p = _make_product(
-            slug='var-book', sku='BK-V',
-            product_type='variable', price=Money(Decimal('0.00'), 'USD'),
+            slug='var-book',
+            sku='BK-V',
+            product_type='variable',
+            price=Money(Decimal('0.00'), 'USD'),
         )
         _make_variant(p, sku='BK-V-A', price=Money(Decimal('30.00'), 'USD'))
         _make_variant(p, sku='BK-V-B', name='V2', price=Money(Decimal('12.00'), 'USD'))
@@ -70,8 +75,10 @@ class DisplayPriceTests(TestCase):
 
     def test_variable_single_variant_no_from_prefix(self):
         p = _make_product(
-            slug='var-book-single', sku='BK-VS',
-            product_type='variable', price=Money(Decimal('0.00'), 'USD'),
+            slug='var-book-single',
+            sku='BK-VS',
+            product_type='variable',
+            price=Money(Decimal('0.00'), 'USD'),
         )
         _make_variant(p, sku='BK-VS-A', price=Money(Decimal('18.00'), 'USD'))
         self.assertEqual(p.display_price.amount, Decimal('18.00'))
@@ -80,12 +87,15 @@ class DisplayPriceTests(TestCase):
 
     def test_variable_inactive_variants_excluded(self):
         p = _make_product(
-            slug='var-inactive', sku='BK-VI',
-            product_type='variable', price=Money(Decimal('0.00'), 'USD'),
+            slug='var-inactive',
+            sku='BK-VI',
+            product_type='variable',
+            price=Money(Decimal('0.00'), 'USD'),
         )
         _make_variant(p, sku='BK-VI-A', price=Money(Decimal('99.00'), 'USD'))
-        _make_variant(p, sku='BK-VI-B', name='V2',
-                      price=Money(Decimal('5.00'), 'USD'), is_active=False)
+        _make_variant(
+            p, sku='BK-VI-B', name='V2', price=Money(Decimal('5.00'), 'USD'), is_active=False
+        )
         # The $5 variant is inactive so the min should be $99, not $5.
         self.assertEqual(p.display_price.amount, Decimal('99.00'))
 
@@ -99,6 +109,7 @@ class VariantCopyFallbackTests(TestCase):
 
     def _get_resolver(self, attr):
         from plugins.installed.catalog.graphql.types import ProductVariantType
+
         # Methods are decorated @strawberry.field; the underlying callable
         # lives on the class. Resolve via __dict__ rather than getattr to
         # bypass strawberry's wrapping.
@@ -114,14 +125,15 @@ class VariantCopyFallbackTests(TestCase):
 
     def test_short_description_falls_back_to_parent(self):
         p = _make_product(
-            slug='copy-fb', sku='CFB',
+            slug='copy-fb',
+            sku='CFB',
             short_description='Parent short.',
             description='Parent long.',
         )
         v = _make_variant(p, sku='CFB-V1', short_description='', description='')
 
         resolver = self._get_resolver('short_description')
-        result = resolver(v) if hasattr(resolver, '__call__') else resolver.fget(v)
+        result = resolver(v) if callable(resolver) else resolver.fget(v)
         self.assertEqual(result, 'Parent short.')
 
     def test_description_keeps_variant_value_when_set(self):
@@ -129,7 +141,7 @@ class VariantCopyFallbackTests(TestCase):
         v = _make_variant(p, sku='CK-V1', description='Variant long.')
 
         resolver = self._get_resolver('description')
-        result = resolver(v) if hasattr(resolver, '__call__') else resolver.fget(v)
+        result = resolver(v) if callable(resolver) else resolver.fget(v)
         self.assertEqual(result, 'Variant long.')
 
 
@@ -141,6 +153,7 @@ class VariantSalePriceTests(TestCase):
 
     def _get_resolver(self, attr):
         from plugins.installed.catalog.graphql.types import ProductVariantType
+
         for source_attr in (attr, f'_{attr}'):
             cls_attr = ProductVariantType.__dict__.get(source_attr)
             if cls_attr is None:
@@ -151,7 +164,8 @@ class VariantSalePriceTests(TestCase):
     def test_is_on_sale_when_variant_has_compare_above_price(self):
         p = _make_product(slug='sale-1', sku='S1')
         v = _make_variant(
-            p, sku='S1-V1',
+            p,
+            sku='S1-V1',
             price=Money(Decimal('12.00'), 'USD'),
             compare_at_price=Money(Decimal('20.00'), 'USD'),
         )
@@ -166,7 +180,8 @@ class VariantSalePriceTests(TestCase):
         # render a fake sale pill (would otherwise show "−(negative)%").
         p = _make_product(slug='sale-2', sku='S2')
         v = _make_variant(
-            p, sku='S2-V1',
+            p,
+            sku='S2-V1',
             price=Money(Decimal('25.00'), 'USD'),
             compare_at_price=Money(Decimal('15.00'), 'USD'),
         )
@@ -178,7 +193,8 @@ class VariantSalePriceTests(TestCase):
         # resolver should return the parent's value so the strikethrough
         # renders on per-product sales even when the variant is plain.
         p = _make_product(
-            slug='sale-3', sku='S3',
+            slug='sale-3',
+            sku='S3',
             price=Money(Decimal('10.00'), 'USD'),
             compare_at_price=Money(Decimal('18.00'), 'USD'),
         )
@@ -198,11 +214,13 @@ class VariantSalePriceTests(TestCase):
 class FlipbookViewTests(TestCase):
     def test_404_when_product_missing(self):
         from django.test import Client
+
         resp = Client().get('/p/does-not-exist/flipbook/')
         self.assertEqual(resp.status_code, 404)
 
     def test_404_when_product_has_no_pdf(self):
         from django.test import Client
+
         _make_product(slug='no-pdf-book', sku='NPB', product_type='digital')
         resp = Client().get('/p/no-pdf-book/flipbook/')
         self.assertEqual(resp.status_code, 404)

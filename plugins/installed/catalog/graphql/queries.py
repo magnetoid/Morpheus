@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import strawberry
 from django.db.models import Avg, Count, Prefetch, Q
 
@@ -56,7 +54,7 @@ def _apply_fts(qs, term: str):
                 .order_by('-_rank', '-created_at')
                 .distinct()
             )
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
     return qs.filter(
         Q(name__icontains=term)
@@ -76,7 +74,7 @@ def _scope_to_channel(qs, info):
 @strawberry.type
 class CatalogQueryExtension:
     @strawberry.field(description='Get a single product by its slug')
-    def product(self, info: strawberry.Info, slug: str) -> Optional[ProductType]:
+    def product(self, info: strawberry.Info, slug: str) -> ProductType | None:
         qs = (
             Product.objects.filter(status='active', slug=slug)
             .select_related(*_PRODUCT_RELATED)
@@ -90,10 +88,10 @@ class CatalogQueryExtension:
         self,
         info: strawberry.Info,
         first: int = 50,
-        featured: Optional[bool] = None,
-        search: Optional[str] = None,
-        category: Optional[str] = None,
-    ) -> List[ProductType]:
+        featured: bool | None = None,
+        search: str | None = None,
+        category: str | None = None,
+    ) -> list[ProductType]:
         first = _clamp_first(first)
 
         qs = (
@@ -120,8 +118,8 @@ class CatalogQueryExtension:
         self,
         info: strawberry.Info,
         first: int = 50,
-        featured: Optional[bool] = None,
-    ) -> List[CollectionType]:
+        featured: bool | None = None,
+    ) -> list[CollectionType]:
         first = _clamp_first(first)
         qs = Collection.objects.filter(is_active=True)
         if featured is not None:
@@ -133,8 +131,8 @@ class CatalogQueryExtension:
         self,
         info: strawberry.Info,
         first: int = 50,
-        top_level: Optional[bool] = None,
-    ) -> List[CategoryType]:
+        top_level: bool | None = None,
+    ) -> list[CategoryType]:
         first = _clamp_first(first)
         qs = Category.objects.filter(is_active=True).select_related('parent')
         if top_level:

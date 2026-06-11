@@ -6,6 +6,7 @@ specific extension points (cart total, product price, order validation, etc).
 A Function is identified by `(channel, target, name)` and ships with a list
 of granted capabilities — the runtime refuses to expose anything else.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -33,7 +34,8 @@ class Function(models.Model):
     channel = models.ForeignKey(
         'core.StoreChannel',
         on_delete=models.CASCADE,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name='functions',
         help_text='Channel this function applies to. Null = applies to all channels.',
     )
@@ -76,9 +78,12 @@ class Function(models.Model):
 
 class FunctionInvocation(models.Model):
     """Audit record for every Function execution."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     function = models.ForeignKey(
-        Function, on_delete=models.CASCADE, related_name='invocations',
+        Function,
+        on_delete=models.CASCADE,
+        related_name='invocations',
     )
     duration_ms = models.PositiveIntegerField()
     success = models.BooleanField(default=True)

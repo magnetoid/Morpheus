@@ -183,7 +183,7 @@ def _seed_book_cover(product, slug: str) -> None:
         from plugins.installed.catalog.models import ProductImage
 
         req = urllib.request.Request(url, headers={'User-Agent': 'Morpheus-DemoSeed/1.0'})
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310
             data = resp.read()
         if not data or len(data) < 1024:  # small/empty = Gutenberg returned a miss
             return

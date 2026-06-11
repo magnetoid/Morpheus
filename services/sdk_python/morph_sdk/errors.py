@@ -1,4 +1,5 @@
 """Exception hierarchy used by the Morph SDK."""
+
 from __future__ import annotations
 
 

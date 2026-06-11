@@ -1,4 +1,5 @@
 """Gift cards dashboard views — list / issue / detail."""
+
 from __future__ import annotations
 
 import logging
@@ -6,7 +7,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from djmoney.money import Money
 
@@ -27,12 +28,16 @@ def gift_cards_list(request: HttpRequest) -> HttpResponse:
     if search:
         qs = qs.filter(code__icontains=search.upper())
     cards = list(qs[:200])
-    return render(request, 'gift_cards/list.html', {
-        'cards': cards,
-        'state': state,
-        'search': search,
-        'active_nav': 'marketing',
-    })
+    return render(
+        request,
+        'gift_cards/list.html',
+        {
+            'cards': cards,
+            'state': state,
+            'search': search,
+            'active_nav': 'marketing',
+        },
+    )
 
 
 @staff_member_required
@@ -61,10 +66,14 @@ def gift_card_new(request: HttpRequest) -> HttpResponse:
                 messages.error(request, f'Could not issue card: {e}')
     else:
         form = IssueGiftCardForm()
-    return render(request, 'gift_cards/new.html', {
-        'form': form,
-        'active_nav': 'marketing',
-    })
+    return render(
+        request,
+        'gift_cards/new.html',
+        {
+            'form': form,
+            'active_nav': 'marketing',
+        },
+    )
 
 
 @staff_member_required
@@ -86,8 +95,12 @@ def gift_card_detail(request: HttpRequest, card_id) -> HttpResponse:
         return redirect('gift_cards:detail', card_id=card.id)
 
     ledger = list(GiftCardLedger.objects.filter(card=card).order_by('-created_at')[:200])
-    return render(request, 'gift_cards/detail.html', {
-        'card': card,
-        'ledger': ledger,
-        'active_nav': 'marketing',
-    })
+    return render(
+        request,
+        'gift_cards/detail.html',
+        {
+            'card': card,
+            'ledger': ledger,
+            'active_nav': 'marketing',
+        },
+    )

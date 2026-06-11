@@ -10,21 +10,23 @@ Configuration is read from env (consumed by the underlying command):
     MORPHEUS_BACKUP_DIR  — default ``/tmp/morpheus-backups``
     MORPHEUS_BACKUP_KEEP — default ``7``
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel
 
 try:
     from celery.schedules import crontab
+
     _DAILY = crontab(hour=3, minute=30)  # 03:30 UTC
 except Exception:  # noqa: BLE001 — celery missing in management commands
     _DAILY = 60 * 60 * 24
 
 
 class BackupsPlugin(Plugin):
-    name = "backups"
-    label = "Backups"
-    version = "0.1.0"
+    name = 'backups'
+    label = 'Backups'
+    version = '0.1.0'
     description = (
         'Daily database + media backup via the morph_backup management '
         'command, scheduled through Celery beat.'
@@ -62,7 +64,7 @@ class BackupsPlugin(Plugin):
                 'backup_dir': {
                     'type': 'string',
                     'title': 'Backup directory',
-                    'default': '/tmp/morpheus-backups',
+                    'default': '/tmp/morpheus-backups',  # noqa: S108  # nosec B108
                     'description': 'Where dumps land. Reads MORPHEUS_BACKUP_DIR env var if this is blank.',
                 },
                 'retention_count': {

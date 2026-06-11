@@ -5,6 +5,7 @@ We don't reimplement backup logic here; the command in
 also runs from the CLI. This task lets celery beat invoke it on the
 configured schedule.
 """
+
 from __future__ import annotations
 
 import io
@@ -13,17 +14,18 @@ import logging
 from celery import shared_task
 from django.core.management import call_command
 
-logger = logging.getLogger("morpheus.backups")
+logger = logging.getLogger('morpheus.backups')
 
 
 def _config() -> dict:
     """Read plugin config; default to including media."""
     try:
         from plugins.registry import plugin_registry
+
         plugin = plugin_registry.get('backups')
         if plugin is not None:
             return {'include_media': bool(plugin.get_config_value('include_media', True))}
-    except Exception:  # noqa: BLE001 — DB may not be ready
+    except Exception:  # noqa: BLE001, S110
         pass
     return {'include_media': True}
 

@@ -1,4 +1,5 @@
 """SEO GraphQL mutations."""
+
 from __future__ import annotations
 
 import strawberry
@@ -39,12 +40,14 @@ class SeoMutationResult:
 
 @strawberry.type
 class SeoMutationExtension:
-
     @strawberry.mutation(description='Create or update SEO meta for an object (admin:seo).')
     def upsert_seo_meta(
-        self, info: strawberry.Info, input: UpsertSeoMetaInput,
+        self,
+        info: strawberry.Info,
+        input: UpsertSeoMetaInput,
     ) -> SeoMutationResult:
         from django.contrib.contenttypes.models import ContentType
+
         from plugins.installed.seo.models import SeoMeta
 
         require_authenticated(info)
@@ -52,12 +55,15 @@ class SeoMutationExtension:
             raise PermissionDenied('admin:seo scope required')
 
         try:
-            ct = ContentType.objects.get(app_label=input.target_app, model=input.target_model.lower())
+            ct = ContentType.objects.get(
+                app_label=input.target_app, model=input.target_model.lower()
+            )
         except ContentType.DoesNotExist:
             return SeoMutationResult(success=False, message='Unknown target_app/target_model.')
 
         meta, _ = SeoMeta.objects.update_or_create(
-            content_type=ct, object_id=str(input.target_id),
+            content_type=ct,
+            object_id=str(input.target_id),
             defaults={
                 'title': input.title[:200],
                 'description': input.description[:320],
@@ -71,7 +77,9 @@ class SeoMutationExtension:
 
     @strawberry.mutation(description='Create a redirect rule (admin:seo).')
     def create_seo_redirect(
-        self, info: strawberry.Info, input: CreateRedirectInput,
+        self,
+        info: strawberry.Info,
+        input: CreateRedirectInput,
     ) -> SeoMutationResult:
         from plugins.installed.seo.models import Redirect
 
@@ -81,7 +89,8 @@ class SeoMutationExtension:
 
         if not input.from_path.startswith('/') or not input.to_path.startswith('/'):
             return SeoMutationResult(
-                success=False, message='from_path and to_path must start with /',
+                success=False,
+                message='from_path and to_path must start with /',
             )
         status = input.status_code if input.status_code in (301, 302) else 301
         row, _ = Redirect.objects.update_or_create(

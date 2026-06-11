@@ -17,6 +17,7 @@ In templates:
     {% load morph_i18n %}
     <h1>{{ product|trans:'name' }}</h1>      ← uses request.LANGUAGE_CODE
 """
+
 from __future__ import annotations
 
 from core.i18n.services import (

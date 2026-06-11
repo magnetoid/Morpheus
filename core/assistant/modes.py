@@ -19,17 +19,19 @@ Design:
 Wildcard `*` in a mode's scope list means "every tool", regardless
 of what scopes the tool declares.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(slots=True)
 class AssistantMode:
     """One row in the mode catalogue."""
+
     slug: str
-    label: str            # short, capitalised — shown in the picker chip
-    description: str      # one-line summary for the tooltip
+    label: str  # short, capitalised — shown in the picker chip
+    description: str  # one-line summary for the tooltip
     scopes: tuple[str, ...]
     # Lucide icon name; the picker chip displays this in front of the
     # label so each mode has a visual signature.
@@ -54,7 +56,8 @@ MODES: tuple[AssistantMode, ...] = (
         scopes=(
             'catalog.read',
             'analytics.read',
-            'cart.read', 'cart.write',
+            'cart.read',
+            'cart.write',
             'orders.read',
             'customers.read',
         ),
@@ -65,7 +68,9 @@ MODES: tuple[AssistantMode, ...] = (
         label='Support',
         description='Order lifecycle for customer service — fulfill, ship, cancel, refund. Cannot touch the catalog or inventory.',
         scopes=(
-            'orders.read', 'orders.write', 'orders.cancel',
+            'orders.read',
+            'orders.write',
+            'orders.cancel',
             'customers.read',
             'catalog.read',
         ),
@@ -76,9 +81,12 @@ MODES: tuple[AssistantMode, ...] = (
         label='Operations',
         description='Day-to-day store operations — edit products, manage inventory, draft copy. No destructive deletes.',
         scopes=(
-            'catalog.read', 'catalog.write',
-            'inventory.read', 'inventory.write',
-            'orders.read', 'orders.write',
+            'catalog.read',
+            'catalog.write',
+            'inventory.read',
+            'inventory.write',
+            'orders.read',
+            'orders.write',
             'analytics.read',
             'content.write',
         ),

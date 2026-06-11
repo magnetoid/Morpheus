@@ -1,8 +1,8 @@
 """Wishlist plugin manifest."""
+
 from __future__ import annotations
 
-from morpheus import Plugin
-from morpheus import StorefrontBlock
+from morpheus import Plugin, StorefrontBlock
 
 
 class WishlistPlugin(Plugin):
@@ -18,7 +18,9 @@ class WishlistPlugin(Plugin):
 
     def ready(self) -> None:
         self.register_urls(
-            'plugins.installed.wishlist.urls', prefix='wishlist/', namespace='wishlist',
+            'plugins.installed.wishlist.urls',
+            prefix='wishlist/',
+            namespace='wishlist',
         )
 
     def contribute_storefront_blocks(self) -> list:
@@ -32,6 +34,8 @@ class WishlistPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.wishlist.agent_tools import (
-            add_to_wishlist_tool, wishlist_summary_tool,
+            add_to_wishlist_tool,
+            wishlist_summary_tool,
         )
+
         return [add_to_wishlist_tool, wishlist_summary_tool]

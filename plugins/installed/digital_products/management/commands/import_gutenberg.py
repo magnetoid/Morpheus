@@ -14,6 +14,7 @@ Usage:
     python manage.py import_gutenberg --slugs pinocchio,anna-karenina
     python manage.py import_gutenberg --force
 """
+
 from __future__ import annotations
 
 import logging
@@ -46,9 +47,9 @@ def strip_gutenberg_boilerplate(raw: str) -> str:
     start_match = _START_RE.search(raw)
     end_match = _END_RE.search(raw)
     if start_match and end_match and end_match.start() > start_match.end():
-        body = raw[start_match.end():end_match.start()]
+        body = raw[start_match.end() : end_match.start()]
     elif start_match:
-        body = raw[start_match.end():]
+        body = raw[start_match.end() :]
     else:
         body = raw
     return body.strip() + '\n'
@@ -66,20 +67,24 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
-            '--slugs', default='',
+            '--slugs',
+            default='',
             help='Comma-separated product slugs (default: all gutenberg-tagged products).',
         )
         parser.add_argument(
-            '--force', action='store_true',
+            '--force',
+            action='store_true',
             help='Re-download even when digital_file is already set.',
         )
         parser.add_argument(
-            '--dry-run', action='store_true',
+            '--dry-run',
+            action='store_true',
             help='Show what would happen; do not write any files or save products.',
         )
 
     def handle(self, *args, **opts) -> None:
         import urllib.request
+
         from plugins.installed.catalog.models import Product
 
         slugs = [s.strip() for s in (opts.get('slugs') or '').split(',') if s.strip()]
@@ -97,15 +102,20 @@ class Command(BaseCommand):
 
         for product in qs:
             total += 1
-            primary = next(
-                (i for i in product.images.all() if getattr(i, 'is_primary', False)),
-                None,
-            ) or product.images.first()
+            primary = (
+                next(
+                    (i for i in product.images.all() if getattr(i, 'is_primary', False)),
+                    None,
+                )
+                or product.images.first()
+            )
             image_name = ''
             if primary and getattr(primary, 'image', None):
                 image_name = primary.image.name or ''
 
-            gid = _gutenberg_id_from_image_name(image_name) or _gutenberg_id_from_image_name(product.slug)
+            gid = _gutenberg_id_from_image_name(image_name) or _gutenberg_id_from_image_name(
+                product.slug
+            )
             if gid is None:
                 continue  # not a Gutenberg-imported title
 
@@ -121,8 +131,8 @@ class Command(BaseCommand):
                 continue
 
             try:
-                req = urllib.request.Request(url, headers={'User-Agent': 'morpheus-import/1.0'})
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                req = urllib.request.Request(url, headers={'User-Agent': 'morpheus-import/1.0'})  # noqa: S310
+                with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310  # nosec B310
                     raw = resp.read().decode('utf-8', errors='replace')
             except Exception as exc:  # noqa: BLE001
                 logger.warning('gutenberg fetch failed for %s (gid=%s): %s', product.slug, gid, exc)
@@ -137,6 +147,8 @@ class Command(BaseCommand):
             product.save(update_fields=['digital_file', 'product_type'])
             attached += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — checked={total} attached={attached} skipped={skipped} missing={missing}'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'done — checked={total} attached={attached} skipped={skipped} missing={missing}'
+            )
+        )

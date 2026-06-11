@@ -3,7 +3,9 @@ Morpheus CMS - Customer (Auth User) Model
 """
 
 import uuid
+
 from django.contrib.auth.models import AbstractUser
+
 from morpheus import models
 
 

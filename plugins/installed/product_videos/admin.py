@@ -11,12 +11,18 @@ class ProductVideoAdmin(admin.ModelAdmin):
     raw_id_fields = ('product',)
     ordering = ('product', 'sort_order')
     fieldsets = (
-        (None, {
-            'fields': ('product', 'title', 'sort_order', 'is_active'),
-        }),
-        ('Source', {
-            'fields': ('url', 'embed_html', 'poster_url'),
-            'description': "Set <em>url</em> (YouTube/Vimeo auto-detected) "
-                          "OR paste raw iframe markup into <em>embed_html</em>.",
-        }),
+        (
+            None,
+            {
+                'fields': ('product', 'title', 'sort_order', 'is_active'),
+            },
+        ),
+        (
+            'Source',
+            {
+                'fields': ('url', 'embed_html', 'poster_url'),
+                'description': 'Set <em>url</em> (YouTube/Vimeo auto-detected) '
+                'OR paste raw iframe markup into <em>embed_html</em>.',
+            },
+        ),
     )

@@ -1,4 +1,5 @@
 """Audit log — security-grade event trail."""
+
 from __future__ import annotations
 
 import uuid
@@ -28,13 +29,20 @@ class AuditEvent(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event_type = models.CharField(max_length=120, db_index=True)
-    severity = models.CharField(max_length=12, choices=SEVERITY_CHOICES, default=SEVERITY_INFO, db_index=True)
+    severity = models.CharField(
+        max_length=12, choices=SEVERITY_CHOICES, default=SEVERITY_INFO, db_index=True
+    )
 
     actor = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='audit_events',
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_events',
     )
-    actor_label = models.CharField(max_length=200, blank=True, help_text='Cached actor identifier (email/agent name).')
+    actor_label = models.CharField(
+        max_length=200, blank=True, help_text='Cached actor identifier (email/agent name).'
+    )
     target = models.CharField(max_length=200, blank=True, db_index=True)
     metadata = models.JSONField(default=dict, blank=True)
 

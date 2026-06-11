@@ -1,6 +1,7 @@
 """
 Morpheus CMS — API URLs (versioned).
 """
+
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
@@ -16,6 +17,7 @@ router.register(r'orders', OrderViewSet, basename='order')
 
 def graphql_view(agent_only: bool = False):
     from api.graphql_view import morpheus_graphql_view
+
     return morpheus_graphql_view(agent_only=agent_only)
 
 

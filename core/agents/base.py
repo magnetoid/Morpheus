@@ -12,6 +12,7 @@ blocked by the pre-commit hook in `.githooks/pre-commit` (override
 with `SKIP_HOOK=1` only if you have a strong reason and have read
 docs/plans/agent-core-into-core.md).
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,7 +41,7 @@ class MorpheusAgent:
     icon: str = 'sparkles'
 
     # Visibility — where the agent can be invoked from.
-    audience: str = 'merchant'   # 'storefront' | 'merchant' | 'system' | 'any'
+    audience: str = 'merchant'  # 'storefront' | 'merchant' | 'system' | 'any'
 
     # The capability scopes this agent's tools may declare.
     scopes: list[str] = []
@@ -50,7 +51,7 @@ class MorpheusAgent:
     prompt_version: int | None = None
 
     # LLM configuration.
-    provider: str = ''           # '' = use platform default
+    provider: str = ''  # '' = use platform default
     model: str = ''
     temperature: float = 0.3
     max_tokens: int = 1024
@@ -102,6 +103,7 @@ class MorpheusAgent:
         agent's writing matches the store's tone.
         """
         from core.agents.skills import skill_registry
+
         skills = skill_registry.resolve(self.uses_skills or ())
         preludes = [s.system_prompt_prelude for s in skills if s.system_prompt_prelude]
 
@@ -109,6 +111,7 @@ class MorpheusAgent:
             base = self.description or f'You are the {self.label} agent.'
         else:
             from core.agents.prompts import prompt_registry
+
             try:
                 prompt = prompt_registry.get(self.prompt_name, self.prompt_version)
                 base = prompt.render(**(context or {}))
@@ -120,6 +123,7 @@ class MorpheusAgent:
         brand: str = ''
         try:
             from plugins.installed.ai_content.services import get_brand_voice
+
             brand = get_brand_voice()
         except Exception:  # noqa: BLE001
             brand = ''

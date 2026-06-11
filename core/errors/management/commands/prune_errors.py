@@ -9,6 +9,7 @@ Usage:
     python manage.py prune_errors --keep-days 90
     python manage.py prune_errors --dry-run
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -22,11 +23,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
-            '--keep-days', type=int, default=30,
+            '--keep-days',
+            type=int,
+            default=30,
             help='Rows older than this many days are deleted (default: 30).',
         )
         parser.add_argument(
-            '--dry-run', action='store_true',
+            '--dry-run',
+            action='store_true',
             help='Count what would be deleted; do not actually delete.',
         )
 

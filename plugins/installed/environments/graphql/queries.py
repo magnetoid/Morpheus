@@ -1,7 +1,6 @@
 """GraphQL surface for the Environments plugin."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import strawberry
 
@@ -26,25 +25,33 @@ class DeploymentType:
     status: str
     note: str
     started_at: str
-    finished_at: Optional[str]
+    finished_at: str | None
 
 
 @strawberry.type
 class EnvironmentsQueryExtension:
-
     @strawberry.field(description='Resolve the environment for the current request.')
-    def current_environment(self, info: strawberry.Info) -> Optional[EnvironmentType]:
-        request = info.context.get('request') if isinstance(info.context, dict) else getattr(info.context, 'request', None)
+    def current_environment(self, info: strawberry.Info) -> EnvironmentType | None:
+        request = (
+            info.context.get('request')
+            if isinstance(info.context, dict)
+            else getattr(info.context, 'request', None)
+        )
         env = getattr(request, 'environment', None)
         if env is None:
             return None
         return EnvironmentType(
-            id=str(env.id), name=env.name, slug=env.slug, kind=env.kind,
-            is_protected=env.is_protected, is_active=env.is_active, domain=env.domain,
+            id=str(env.id),
+            name=env.name,
+            slug=env.slug,
+            kind=env.kind,
+            is_protected=env.is_protected,
+            is_active=env.is_active,
+            domain=env.domain,
         )
 
     @strawberry.field(description='List environments visible to the caller.')
-    def environments(self, info: strawberry.Info) -> List[EnvironmentType]:
+    def environments(self, info: strawberry.Info) -> list[EnvironmentType]:
         from plugins.installed.environments.models import Environment
 
         require_authenticated(info)
@@ -52,16 +59,24 @@ class EnvironmentsQueryExtension:
             return []
         return [
             EnvironmentType(
-                id=str(e.id), name=e.name, slug=e.slug, kind=e.kind,
-                is_protected=e.is_protected, is_active=e.is_active, domain=e.domain,
+                id=str(e.id),
+                name=e.name,
+                slug=e.slug,
+                kind=e.kind,
+                is_protected=e.is_protected,
+                is_active=e.is_active,
+                domain=e.domain,
             )
             for e in Environment.objects.all()
         ]
 
     @strawberry.field(description='Recent deployments to a given environment.')
     def deployments(
-        self, info: strawberry.Info, environment_slug: str, first: int = 25,
-    ) -> List[DeploymentType]:
+        self,
+        info: strawberry.Info,
+        environment_slug: str,
+        first: int = 25,
+    ) -> list[DeploymentType]:
         from plugins.installed.environments.models import Deployment
 
         require_authenticated(info)
@@ -69,8 +84,7 @@ class EnvironmentsQueryExtension:
             return []
         first = max(1, min(int(first), 100))
         qs = (
-            Deployment.objects
-            .filter(target__slug=environment_slug)
+            Deployment.objects.filter(target__slug=environment_slug)
             .select_related('target')
             .order_by('-started_at')[:first]
         )

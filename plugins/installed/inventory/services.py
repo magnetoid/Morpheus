@@ -14,11 +14,11 @@ Public surface
 * `release_reservation(order)` — undoes reservations on cancel.
 * `available(variant)` — sum across warehouses of `quantity - reserved`.
 """
+
 from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Iterable
 
 from django.db import DatabaseError, transaction
 
@@ -32,14 +32,10 @@ class InsufficientStockError(RuntimeError):
 
 
 class InventoryService:
-
     @classmethod
     def available(cls, variant) -> int:
         """Total reservable units across all warehouses for one variant."""
-        return sum(
-            sl.available_quantity
-            for sl in StockLevel.objects.filter(variant=variant)
-        )
+        return sum(sl.available_quantity for sl in StockLevel.objects.filter(variant=variant))
 
     @classmethod
     def is_in_stock(cls, variant, qty: int = 1) -> bool:
@@ -58,7 +54,8 @@ class InventoryService:
             return 0
         # Idempotency check.
         if StockMovement.objects.filter(
-            movement_type='reserve', reference=order.order_number,
+            movement_type='reserve',
+            reference=order.order_number,
         ).exists():
             return 0
 
@@ -72,7 +69,8 @@ class InventoryService:
             if not plan:
                 logger.warning(
                     'inventory: no StockLevel for variant %s on order %s',
-                    item.variant_id, order.order_number,
+                    item.variant_id,
+                    order.order_number,
                 )
                 continue
             allocated = sum(a.qty for a in plan)
@@ -84,11 +82,7 @@ class InventoryService:
             for alloc in plan:
                 try:
                     with transaction.atomic():
-                        sl = (
-                            StockLevel.objects
-                            .select_for_update()
-                            .get(pk=alloc.stock_level.pk)
-                        )
+                        sl = StockLevel.objects.select_for_update().get(pk=alloc.stock_level.pk)
                         if sl.available_quantity < alloc.qty:
                             raise InsufficientStockError(
                                 f'Lost race on level {sl.pk}: wanted {alloc.qty}, '
@@ -109,7 +103,10 @@ class InventoryService:
                 except DatabaseError as e:
                     logger.error(
                         'inventory: reserve failed for order=%s variant=%s level=%s: %s',
-                        order.order_number, item.variant_id, alloc.stock_level.pk, e,
+                        order.order_number,
+                        item.variant_id,
+                        alloc.stock_level.pk,
+                        e,
                         exc_info=True,
                     )
         return movements
@@ -119,7 +116,8 @@ class InventoryService:
         """Undo the reservations made by `reserve_for_order`."""
         movements = 0
         reservations = StockMovement.objects.filter(
-            movement_type='reserve', reference=order.order_number,
+            movement_type='reserve',
+            reference=order.order_number,
         )
         if not reservations.exists():
             return 0
@@ -148,7 +146,10 @@ class InventoryService:
             except DatabaseError as e:
                 logger.error(
                     'inventory: release failed for order=%s level=%s: %s',
-                    order.order_number, level_id, e, exc_info=True,
+                    order.order_number,
+                    level_id,
+                    e,
+                    exc_info=True,
                 )
         return movements
 
@@ -160,15 +161,14 @@ class InventoryService:
         written once.
         """
         if StockMovement.objects.filter(
-            movement_type='sale', reference=order.order_number,
+            movement_type='sale',
+            reference=order.order_number,
         ).exists():
             return 0
         # Find the levels we previously reserved on.
-        reservation_levels = (
-            StockMovement.objects
-            .filter(movement_type='reserve', reference=order.order_number)
-            .select_related('stock_level')
-        )
+        reservation_levels = StockMovement.objects.filter(
+            movement_type='reserve', reference=order.order_number
+        ).select_related('stock_level')
         movements = 0
         seen: set[str] = set()
         for mv in reservation_levels:
@@ -198,10 +198,12 @@ class InventoryService:
             except DatabaseError as e:
                 logger.error(
                     'inventory: commit failed for order=%s level=%s: %s',
-                    order.order_number, mv.stock_level_id, e, exc_info=True,
+                    order.order_number,
+                    mv.stock_level_id,
+                    e,
+                    exc_info=True,
                 )
         return movements
-
 
     @classmethod
     def restock_for_return(cls, return_request) -> int:
@@ -211,7 +213,8 @@ class InventoryService:
         """
         rma = getattr(return_request, 'rma_number', '') or str(return_request.id)
         if StockMovement.objects.filter(
-            movement_type='return', reference=rma,
+            movement_type='return',
+            reference=rma,
         ).exists():
             return 0
         try:
@@ -219,11 +222,10 @@ class InventoryService:
         except Exception:  # noqa: BLE001
             return 0
         items_by_id = {
-            str(oi.id): oi
-            for oi in OrderItem.objects.filter(order=return_request.order)
+            str(oi.id): oi for oi in OrderItem.objects.filter(order=return_request.order)
         }
         movements = 0
-        for entry in (return_request.items or []):
+        for entry in return_request.items or []:
             oi = items_by_id.get(str(entry.get('order_item_id', '')))
             if not oi or not getattr(oi, 'variant_id', None):
                 continue
@@ -231,8 +233,7 @@ class InventoryService:
             if qty <= 0:
                 continue
             sl = (
-                StockLevel.objects
-                .filter(variant_id=oi.variant_id, warehouse__is_active=True)
+                StockLevel.objects.filter(variant_id=oi.variant_id, warehouse__is_active=True)
                 .order_by('-quantity')
                 .first()
             )
@@ -257,7 +258,10 @@ class InventoryService:
             except DatabaseError as e:
                 logger.warning(
                     'inventory: restock failed rma=%s level=%s: %s',
-                    rma, sl.pk, e, exc_info=True,
+                    rma,
+                    sl.pk,
+                    e,
+                    exc_info=True,
                 )
         return movements
 

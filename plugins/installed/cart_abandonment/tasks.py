@@ -10,6 +10,7 @@ Runs on a celery beat schedule. For each cart that:
 we fire ``events.CART_ABANDONED`` and stamp the cart so subsequent runs
 skip it. Email + remarketing plugins subscribe to the event.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,13 +19,14 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
-logger = logging.getLogger("morpheus.cart_abandonment")
+logger = logging.getLogger('morpheus.cart_abandonment')
 
 
 def _config() -> dict:
     """Read plugin config with sensible defaults if the DB row is absent."""
     try:
         from plugins.registry import plugin_registry
+
         plugin = plugin_registry.get('cart_abandonment')
         if plugin is not None:
             cfg = plugin.get_config()
@@ -32,7 +34,7 @@ def _config() -> dict:
                 'abandon_after_minutes': int(cfg.get('abandon_after_minutes', 60)),
                 'require_email': bool(cfg.get('require_email', True)),
             }
-    except Exception:  # noqa: BLE001 — DB may not be ready
+    except Exception:  # noqa: BLE001, S110
         pass
     return {'abandon_after_minutes': 60, 'require_email': True}
 
@@ -60,11 +62,7 @@ def scan_abandoned_carts(self) -> dict:
         logger.warning('cart_abandonment: imports unavailable: %s', e)
         return {'scanned': 0, 'fired': 0}
 
-    qs = (
-        Cart.objects
-        .filter(updated_at__lt=cutoff, items__isnull=False)
-        .distinct()
-    )
+    qs = Cart.objects.filter(updated_at__lt=cutoff, items__isnull=False).distinct()
 
     fired = 0
     scanned = 0

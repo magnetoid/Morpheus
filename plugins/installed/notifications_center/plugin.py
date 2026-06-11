@@ -1,4 +1,5 @@
 """notifications_center plugin manifest."""
+
 from __future__ import annotations
 
 import logging
@@ -31,12 +32,14 @@ class NotificationsCenterPlugin(Plugin):
         # all the fan-out shaping in one place.
         try:
             from morpheus import events
+
             self.register_hook(events.PRODUCT_LOW_STOCK, self._on_low_stock, priority=80)
             self.register_hook(events.PRODUCT_OUT_OF_STOCK, self._on_out_of_stock, priority=80)
         except Exception as e:  # noqa: BLE001
             logger.debug('notifications_center: inventory events unavailable: %s', e)
         try:
             from core.agents.events import AgentEvents
+
             self.register_hook(AgentEvents.RUN_FAILED, self._on_agent_failed, priority=80)
         except Exception as e:  # noqa: BLE001
             logger.debug('notifications_center: agent events unavailable: %s', e)
@@ -47,6 +50,7 @@ class NotificationsCenterPlugin(Plugin):
             return
         try:
             from plugins.installed.notifications_center.services import notify_all_staff
+
             variant = getattr(stock_level, 'variant', None)
             product = getattr(variant, 'product', None) if variant else None
             name = getattr(product, 'name', '') or getattr(variant, 'sku', '') or 'item'
@@ -58,7 +62,7 @@ class NotificationsCenterPlugin(Plugin):
                 action_url='/dashboard/products/?status=active',
                 icon='alert-triangle',
             )
-        except Exception:  # noqa: BLE001 — best-effort
+        except Exception:  # noqa: BLE001, S110
             pass
 
     @staticmethod
@@ -67,6 +71,7 @@ class NotificationsCenterPlugin(Plugin):
             return
         try:
             from plugins.installed.notifications_center.services import notify_all_staff
+
             variant = getattr(stock_level, 'variant', None)
             product = getattr(variant, 'product', None) if variant else None
             name = getattr(product, 'name', '') or getattr(variant, 'sku', '') or 'item'
@@ -77,13 +82,14 @@ class NotificationsCenterPlugin(Plugin):
                 action_url='/dashboard/products/?status=active',
                 icon='x-octagon',
             )
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
 
     @staticmethod
     def _on_agent_failed(agent=None, run_id=None, error=None, **kwargs):
         try:
             from plugins.installed.notifications_center.services import notify_all_staff
+
             notify_all_staff(
                 kind='agents.run_failed',
                 title=f'Agent run failed — {agent or "unknown"}',
@@ -91,7 +97,7 @@ class NotificationsCenterPlugin(Plugin):
                 action_url=f'/dashboard/agents/{run_id}/' if run_id else '/dashboard/agents/',
                 icon='alert-octagon',
             )
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
 
     def contribute_dashboard_pages(self) -> list:

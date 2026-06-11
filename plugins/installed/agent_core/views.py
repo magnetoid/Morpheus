@@ -6,6 +6,7 @@ agent_core HTTP views.
 * `/dashboard/agents/` — list runs.
 * `/dashboard/agents/<run_id>/` — single run trace.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,13 +15,17 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any
 
-from morpheus.views import staff_member_required
-from morpheus.views import HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
-from morpheus.views import get_object_or_404, render
-from morpheus.views import csrf_exempt
-from morpheus.views import require_http_methods
-
 from core.agents import agent_registry
+from morpheus.views import (
+    HttpResponseBadRequest,
+    JsonResponse,
+    StreamingHttpResponse,
+    csrf_exempt,
+    get_object_or_404,
+    render,
+    require_http_methods,
+    staff_member_required,
+)
 from plugins.installed.agent_core.services import (
     history_for_conversation,
     run_agent,
@@ -62,7 +67,7 @@ def _agent_rate_key(request):
     user = getattr(request, 'user', None)
     if user is not None and getattr(user, 'is_authenticated', False):
         return f'agent:user:{user.pk}'
-    return f'agent:ip:{request.META.get("REMOTE_ADDR", "0.0.0.0")}'
+    return f'agent:ip:{request.META.get("REMOTE_ADDR", "0.0.0.0")}'  # noqa: S104  # nosec B104
 
 
 @csrf_exempt
@@ -70,6 +75,7 @@ def _agent_rate_key(request):
 def invoke_agent_view(request, agent_name: str):
     from core.utils.rate_limit import RateLimitExceeded, check_and_consume
     from morpheus.views import HttpResponse
+
     try:
         check_and_consume(key=_agent_rate_key(request), max_per_window=20, window_seconds=60)
     except RateLimitExceeded as e:
@@ -101,17 +107,19 @@ def invoke_agent_view(request, agent_name: str):
     except LookupError as e:
         return JsonResponse({'error': str(e)}, status=404)
 
-    return JsonResponse({
-        'run_id': result.run_id,
-        'state': result.state,
-        'text': result.text,
-        'tool_calls': result.tool_calls,
-        'tokens': {
-            'prompt': result.trace.prompt_tokens,
-            'completion': result.trace.completion_tokens,
-        },
-        'error': result.error or '',
-    })
+    return JsonResponse(
+        {
+            'run_id': result.run_id,
+            'state': result.state,
+            'text': result.text,
+            'tool_calls': result.tool_calls,
+            'tokens': {
+                'prompt': result.trace.prompt_tokens,
+                'completion': result.trace.completion_tokens,
+            },
+            'error': result.error or '',
+        }
+    )
 
 
 @csrf_exempt
@@ -137,14 +145,16 @@ def stream_agent_view(request, agent_name: str):
     final_box: dict[str, Any] = {}
 
     def _on_step(step):
-        try:
-            queue.put({
-                'kind': step.kind,
-                'name': step.name,
-                'content': step.content,
-                'arguments': step.arguments,
-            })
-        except Exception:  # noqa: BLE001
+        try:  # noqa: SIM105
+            queue.put(
+                {
+                    'kind': step.kind,
+                    'name': step.name,
+                    'content': step.content,
+                    'arguments': step.arguments,
+                }
+            )
+        except Exception:  # noqa: BLE001, S110
             pass
 
     def _runner():
@@ -176,11 +186,13 @@ def stream_agent_view(request, agent_name: str):
                 continue
             if event.get('__done__'):
                 if 'result' in final_box:
-                    payload = json.dumps({
-                        'state': final_box['result'].state,
-                        'text': final_box['result'].text,
-                        'run_id': final_box['result'].run_id,
-                    })
+                    payload = json.dumps(
+                        {
+                            'state': final_box['result'].state,
+                            'text': final_box['result'].text,
+                            'run_id': final_box['result'].run_id,
+                        }
+                    )
                     yield f'event: final\ndata: {payload}\n\n'
                 else:
                     yield f'event: error\ndata: {json.dumps({"error": final_box.get("error", "")})}\n\n'
@@ -198,14 +210,16 @@ def list_agents_view(request):
     """Public catalog: which agents are registered, their audience + description."""
     out = []
     for a in agent_registry.all_agents():
-        out.append({
-            'name': a.name,
-            'label': a.label,
-            'description': a.description,
-            'audience': a.audience,
-            'icon': a.icon,
-            'scopes': list(a.scopes),
-        })
+        out.append(
+            {
+                'name': a.name,
+                'label': a.label,
+                'description': a.description,
+                'audience': a.audience,
+                'icon': a.icon,
+                'scopes': list(a.scopes),
+            }
+        )
     return JsonResponse({'agents': out})
 
 
@@ -214,16 +228,20 @@ def runs_dashboard_view(request):
     from plugins.installed.agent_core.models import AgentRun
 
     runs = AgentRun.objects.all().order_by('-started_at')[:100]
-    return render(request, 'agent_core/dashboard/runs.html', {
-        'runs': runs,
-        'agents': agent_registry.all_agents(),
-        'active_nav': 'agents',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Linda',     'url': '/dashboard/assistant/'},
-            {'label': 'Activity'},
-        ],
-    })
+    return render(
+        request,
+        'agent_core/dashboard/runs.html',
+        {
+            'runs': runs,
+            'agents': agent_registry.all_agents(),
+            'active_nav': 'agents',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Linda', 'url': '/dashboard/assistant/'},
+                {'label': 'Activity'},
+            ],
+        },
+    )
 
 
 @staff_member_required
@@ -231,11 +249,15 @@ def run_detail_view(request, run_id: str):
     from plugins.installed.agent_core.models import AgentRun
 
     run = get_object_or_404(AgentRun, id=run_id)
-    return render(request, 'agent_core/dashboard/run_detail.html', {
-        'run': run,
-        'steps': run.steps.all().order_by('seq'),
-        'active_nav': 'agents',
-    })
+    return render(
+        request,
+        'agent_core/dashboard/run_detail.html',
+        {
+            'run': run,
+            'steps': run.steps.all().order_by('seq'),
+            'active_nav': 'agents',
+        },
+    )
 
 
 @staff_member_required
@@ -245,25 +267,32 @@ def merchant_ops_chat_view(request):
     active_model = ''
     try:
         from plugins.installed.ai_assistant.services.config import get_provider_config
+
         cfg = get_provider_config()
         active_provider = cfg.provider
         active_model = cfg.model
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
-    return render(request, 'agent_core/dashboard/console.html', {
-        'agent_name': 'worker',
-        'active_provider': active_provider,
-        'active_model': active_model,
-        'active_nav': 'agents',
-    })
+    return render(
+        request,
+        'agent_core/dashboard/console.html',
+        {
+            'agent_name': 'worker',
+            'active_provider': active_provider,
+            'active_model': active_model,
+            'active_nav': 'agents',
+        },
+    )
 
 
 @staff_member_required
 def observability_view(request):
     """Aggregate per-agent stats over the last N days."""
     from datetime import timedelta
+
     from django.db.models import Avg, Count, Sum
     from django.utils import timezone
+
     from plugins.installed.agent_core.models import AgentRun, AgentStep
 
     try:
@@ -274,50 +303,57 @@ def observability_view(request):
 
     runs = AgentRun.objects.filter(started_at__gte=since)
     by_agent = list(
-        runs.values('agent_name').annotate(
+        runs.values('agent_name')
+        .annotate(
             n=Count('id'),
             avg_ms=Avg('duration_ms'),
             tokens=Sum('prompt_tokens') + Sum('completion_tokens'),
             tools=Sum('tool_call_count'),
-        ).order_by('-n')[:50]
+        )
+        .order_by('-n')[:50]
     )
-    by_state = list(
-        runs.values('state').annotate(n=Count('id')).order_by('-n')
-    )
+    by_state = list(runs.values('state').annotate(n=Count('id')).order_by('-n'))
     top_tools = list(
         AgentStep.objects.filter(
-            run__started_at__gte=since, kind='tool_call',
-        ).values('name').annotate(n=Count('id')).order_by('-n')[:25]
+            run__started_at__gte=since,
+            kind='tool_call',
+        )
+        .values('name')
+        .annotate(n=Count('id'))
+        .order_by('-n')[:25]
     )
-    failures = list(
-        runs.filter(state='failed').order_by('-started_at')[:25]
-    )
+    failures = list(runs.filter(state='failed').order_by('-started_at')[:25])
     totals = runs.aggregate(
         n=Count('id'),
         tokens=Sum('prompt_tokens') + Sum('completion_tokens'),
         tools=Sum('tool_call_count'),
         avg_ms=Avg('duration_ms'),
     )
-    return render(request, 'agent_core/dashboard/observability.html', {
-        'days': days,
-        'totals': totals,
-        'by_agent': by_agent,
-        'by_state': by_state,
-        'top_tools': top_tools,
-        'failures': failures,
-        'active_nav': 'agents',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Linda',     'url': '/dashboard/assistant/'},
-            {'label': 'Insights'},
-        ],
-    })
+    return render(
+        request,
+        'agent_core/dashboard/observability.html',
+        {
+            'days': days,
+            'totals': totals,
+            'by_agent': by_agent,
+            'by_state': by_state,
+            'top_tools': top_tools,
+            'failures': failures,
+            'active_nav': 'agents',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Linda', 'url': '/dashboard/assistant/'},
+                {'label': 'Insights'},
+            ],
+        },
+    )
 
 
 @staff_member_required
 def background_agents_view(request):
-    from morpheus.views import redirect
     from django.utils import timezone
+
+    from morpheus.views import redirect
     from plugins.installed.agent_core.models import BackgroundAgent
 
     if request.method == 'POST':
@@ -330,30 +366,37 @@ def background_agents_view(request):
             interval = 3600
         if name and agent_name and prompt:
             BackgroundAgent.objects.create(
-                name=name[:120], agent_name=agent_name[:100],
-                prompt=prompt[:50_000], interval_seconds=interval,
+                name=name[:120],
+                agent_name=agent_name[:100],
+                prompt=prompt[:50_000],
+                interval_seconds=interval,
                 next_run_at=timezone.now(),
                 created_by=request.user if request.user.is_authenticated else None,
             )
         return redirect('/dashboard/agents/background/')
 
     rows = BackgroundAgent.objects.all().order_by('-updated_at')[:200]
-    return render(request, 'agent_core/dashboard/background.html', {
-        'background_agents': rows,
-        'agents': agent_registry.all_agents(),
-        'active_nav': 'agents',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Linda',     'url': '/dashboard/assistant/'},
-            {'label': 'Automations'},
-        ],
-    })
+    return render(
+        request,
+        'agent_core/dashboard/background.html',
+        {
+            'background_agents': rows,
+            'agents': agent_registry.all_agents(),
+            'active_nav': 'agents',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Linda', 'url': '/dashboard/assistant/'},
+                {'label': 'Automations'},
+            ],
+        },
+    )
 
 
 @staff_member_required
 def background_agent_action_view(request, bg_id: str, action: str):
-    from morpheus.views import redirect
     from django.utils import timezone
+
+    from morpheus.views import redirect
     from plugins.installed.agent_core.models import BackgroundAgent
     from plugins.installed.agent_core.scheduler import fire
 

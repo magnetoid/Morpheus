@@ -1,11 +1,16 @@
 """CMS storefront views — page resolver + form submission."""
+
 from __future__ import annotations
 
-from morpheus.views import messages
-from morpheus.views import Http404
-from morpheus.views import get_object_or_404, redirect, render
-from morpheus.views import csrf_protect
-from morpheus.views import require_http_methods
+from morpheus.views import (
+    Http404,
+    csrf_protect,
+    get_object_or_404,
+    messages,
+    redirect,
+    render,
+    require_http_methods,
+)
 
 
 def page_view(request, slug: str):

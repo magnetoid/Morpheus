@@ -13,6 +13,7 @@ This module keeps:
     worker and waits for it. Old callers (and Linda's pre-pivot system
     prompt) keep working.
 """
+
 from __future__ import annotations
 
 from core.assistant.tools.filesystem import ToolError, ToolResult, tool
@@ -30,8 +31,7 @@ def list_available_agents_tool() -> ToolResult:
     except Exception as e:  # noqa: BLE001
         return ToolResult(output={'agents': [], 'note': f'agent kernel unavailable: {e}'})
     rows = [
-        {'name': a.name, 'label': a.label, 'audience': a.audience,
-         'description': a.description}
+        {'name': a.name, 'label': a.label, 'audience': a.audience, 'description': a.description}
         for a in agent_registry.all_agents()
     ]
     rows.sort(key=lambda r: r['name'])

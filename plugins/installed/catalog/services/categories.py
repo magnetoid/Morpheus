@@ -1,4 +1,5 @@
 """Category-level write operations."""
+
 from __future__ import annotations
 
 from django.db import transaction
@@ -13,7 +14,11 @@ from ._helpers import (
 
 @transaction.atomic
 def create_category(
-    *, name: str, slug: str = '', parent_slug: str = '', description: str = '',
+    *,
+    name: str,
+    slug: str = '',
+    parent_slug: str = '',
+    description: str = '',
 ) -> dict[str, str]:
     from plugins.installed.catalog.models import Category
 
@@ -32,7 +37,9 @@ def create_category(
         raise PublishError(f'slug {chosen!r} already taken')
 
     cat = Category.objects.create(
-        name=name, slug=chosen, parent=parent,
+        name=name,
+        slug=chosen,
+        parent=parent,
         description=(description or '').strip(),
     )
     logger.info('catalog.create_category slug=%s', cat.slug)
@@ -41,8 +48,12 @@ def create_category(
 
 @transaction.atomic
 def update_category(
-    *, slug: str, name: str = '', new_slug: str = '',
-    parent_slug: str | None = None, description: str | None = None,
+    *,
+    slug: str,
+    name: str = '',
+    new_slug: str = '',
+    parent_slug: str | None = None,
+    description: str | None = None,
 ) -> dict[str, str]:
     from plugins.installed.catalog.models import Category
 

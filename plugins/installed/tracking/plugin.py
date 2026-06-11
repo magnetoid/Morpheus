@@ -7,12 +7,12 @@
 * Backend control center at `/dashboard/tracking/` with tabs for
   Connection / Event firing / Consent / Identity / Filters / Tests.
 """
+
 from __future__ import annotations
 
 import logging
 
-from morpheus import events
-from morpheus import DashboardPage, Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, events
 
 logger = logging.getLogger('morpheus.tracking')
 
@@ -55,18 +55,28 @@ class TrackingPlugin(Plugin):
     def on_order_paid(self, order=None, **_):
         if order is None:
             return
-        self._fire('purchase', order=order, transaction_id=str(getattr(order, 'order_number', '') or order.pk))
+        self._fire(
+            'purchase',
+            order=order,
+            transaction_id=str(getattr(order, 'order_number', '') or order.pk),
+        )
 
     def on_refund(self, order=None, amount=None, **_):
         if order is None:
             return
-        self._fire('refund', order=order, amount=amount,
-                   transaction_id=str(getattr(order, 'order_number', '') or order.pk))
+        self._fire(
+            'refund',
+            order=order,
+            amount=amount,
+            transaction_id=str(getattr(order, 'order_number', '') or order.pk),
+        )
 
     def on_add_to_cart(self, cart=None, item=None, product=None, variant=None, quantity=1, **_):
         if product is None:
             return
-        self._fire('add_to_cart', cart=cart, item=item, product=product, variant=variant, quantity=quantity)
+        self._fire(
+            'add_to_cart', cart=cart, item=item, product=product, variant=variant, quantity=quantity
+        )
 
     def on_remove_from_cart(self, cart=None, item=None, product=None, quantity=1, **_):
         if product is None:
@@ -92,7 +102,7 @@ class TrackingPlugin(Plugin):
     def on_search(self, search_term='', **_):
         self._fire('search', search_term=search_term)
 
-    def _fire(self, event_kind: str, **ctx) -> None:
+    def _fire(self, event_kind: str, **ctx) -> None:  # noqa: PLR0912
         """Build the GA4 payload and POST via Measurement Protocol.
 
         Wrapped in a broad try so tracking failures never block the
@@ -112,20 +122,25 @@ class TrackingPlugin(Plugin):
                 event_name, params = event_mapping.purchase(ctx['order'])
             elif event_kind == 'refund':
                 event_name, params = event_mapping.refund(
-                    order=ctx['order'], amount=ctx.get('amount'),
+                    order=ctx['order'],
+                    amount=ctx.get('amount'),
                 )
             elif event_kind == 'view_item':
                 event_name, params = event_mapping.view_item(ctx['product'])
             elif event_kind == 'add_to_cart':
                 event_name, params = event_mapping.add_to_cart(
-                    cart=ctx.get('cart'), item=ctx.get('item'),
-                    product=ctx['product'], variant=ctx.get('variant'),
+                    cart=ctx.get('cart'),
+                    item=ctx.get('item'),
+                    product=ctx['product'],
+                    variant=ctx.get('variant'),
                     quantity=ctx.get('quantity', 1),
                 )
             elif event_kind == 'remove_from_cart':
                 event_name, params = event_mapping.remove_from_cart(
-                    cart=ctx.get('cart'), item=ctx.get('item'),
-                    product=ctx['product'], quantity=ctx.get('quantity', 1),
+                    cart=ctx.get('cart'),
+                    item=ctx.get('item'),
+                    product=ctx['product'],
+                    quantity=ctx.get('quantity', 1),
                 )
             elif event_kind == 'begin_checkout':
                 event_name, params = event_mapping.begin_checkout(ctx['cart'])
@@ -143,8 +158,7 @@ class TrackingPlugin(Plugin):
             return
 
         try:
-            send_event(event_name=event_name, params=params,
-                       transaction_id=transaction_id)
+            send_event(event_name=event_name, params=params, transaction_id=transaction_id)
         except Exception as exc:  # noqa: BLE001
             logger.warning('tracking: send_event(%s) failed: %s', event_name, exc)
 
@@ -176,7 +190,6 @@ class TrackingPlugin(Plugin):
                 # back-compat. The model is the source of truth.
                 'measurement_id': {'type': 'string', 'title': 'GA4 Measurement ID (mirror)'},
                 'gtm_container_id': {'type': 'string', 'title': 'GTM Container ID (mirror)'},
-
                 # Google Ads — live ONLY in PluginConfig (no model migration
                 # needed). Read by the conversion-pixel template tag below.
                 'google_ads_conversion_id': {

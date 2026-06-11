@@ -6,6 +6,7 @@ there is just one generic Worker, and this shim hands work to it.
 External callers (proactive_agent_worker, scheduled jobs) keep working
 unchanged. Prefer ``delegate.spawn_workers`` in new code.
 """
+
 from __future__ import annotations
 
 import logging

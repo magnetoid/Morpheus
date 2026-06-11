@@ -1,4 +1,5 @@
 """Product image management — attach, remove, set primary."""
+
 from __future__ import annotations
 
 import mimetypes
@@ -38,12 +39,12 @@ def add_product_image(
     _validate_https_url(image_url, field='image_url')
 
     body, ct, fname = _download(
-        image_url, max_bytes=_MAX_IMAGE_BYTES, field='image_url',
+        image_url,
+        max_bytes=_MAX_IMAGE_BYTES,
+        field='image_url',
     )
     if ct and ct not in _ALLOWED_IMAGE_TYPES:
-        raise PublishError(
-            f'image_url returned {ct!r}; allowed: {sorted(_ALLOWED_IMAGE_TYPES)}'
-        )
+        raise PublishError(f'image_url returned {ct!r}; allowed: {sorted(_ALLOWED_IMAGE_TYPES)}')
     if '.' not in fname:
         ext = (mimetypes.guess_extension(ct) or '.jpg').lstrip('.')
         fname = f'{slugify(product.name) or "image"}.{ext}'
@@ -60,7 +61,9 @@ def add_product_image(
     img.image.save(fname, ContentFile(body), save=True)
     logger.info(
         'catalog.add_product_image slug=%s img=%s primary=%s',
-        product.slug, img.id, is_primary,
+        product.slug,
+        img.id,
+        is_primary,
     )
     return _serialize_image(img)
 
@@ -87,7 +90,8 @@ def set_primary_image(*, image_id: str) -> dict[str, str]:
     if img is None:
         raise PublishError(f'image_id {image_id!r} not found')
     ProductImage.objects.filter(
-        product=img.product, is_primary=True,
+        product=img.product,
+        is_primary=True,
     ).exclude(pk=img.pk).update(is_primary=False)
     img.is_primary = True
     img.save(update_fields=['is_primary'])

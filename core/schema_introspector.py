@@ -4,7 +4,9 @@ Single source of truth for walking the Strawberry GraphQL schema.
 Eliminates the DRY violation where manifest.py, mcp_server.py, and operator.py
 all independently duplicated this logic.
 """
+
 from __future__ import annotations
+
 import logging
 from typing import Literal
 
@@ -69,6 +71,7 @@ class SchemaIntrospector:
 
     def __init__(self):
         from api.schema import get_schema
+
         self._schema = get_schema()
 
     def _iter_fields(self, type_name: Literal['Query', 'Mutation']):
@@ -94,17 +97,22 @@ class SchemaIntrospector:
     def as_openai_tools(self) -> list[dict]:
         """Return a list of OpenAI function-calling tool definitions."""
         tools = []
-        for prefix, iter_fn in [('query', self.iter_query_fields),
-                                 ('mutate', self.iter_mutation_fields)]:
+        for prefix, iter_fn in [
+            ('query', self.iter_query_fields),
+            ('mutate', self.iter_mutation_fields),
+        ]:
             for field in iter_fn():
-                tools.append({
-                    'type': 'function',
-                    'function': {
-                        'name': f'{prefix}_{field.name}',
-                        'description': getattr(field, 'description', '') or f'{prefix.capitalize()} {field.name}',
-                        'parameters': build_field_schema(field),
+                tools.append(
+                    {
+                        'type': 'function',
+                        'function': {
+                            'name': f'{prefix}_{field.name}',
+                            'description': getattr(field, 'description', '')
+                            or f'{prefix.capitalize()} {field.name}',
+                            'parameters': build_field_schema(field),
+                        },
                     }
-                })
+                )
         return tools
 
     def as_anthropic_tools(self) -> list[dict]:
@@ -121,14 +129,19 @@ class SchemaIntrospector:
     def as_mcp_tools(self) -> list[dict]:
         """Return a list of MCP-spec tool definitions."""
         tools = []
-        for prefix, iter_fn in [('query', self.iter_query_fields),
-                                 ('mutate', self.iter_mutation_fields)]:
+        for prefix, iter_fn in [
+            ('query', self.iter_query_fields),
+            ('mutate', self.iter_mutation_fields),
+        ]:
             for field in iter_fn():
-                tools.append({
-                    'name': f'{prefix}_{field.name}',
-                    'description': getattr(field, 'description', '') or f'{prefix.capitalize()} {field.name}',
-                    'inputSchema': build_field_schema(field),
-                })
+                tools.append(
+                    {
+                        'name': f'{prefix}_{field.name}',
+                        'description': getattr(field, 'description', '')
+                        or f'{prefix.capitalize()} {field.name}',
+                        'inputSchema': build_field_schema(field),
+                    }
+                )
         return tools
 
     def as_agent_tool_map(self) -> dict:

@@ -1,4 +1,5 @@
 """markets plugin manifest."""
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,7 @@ class MarketsPlugin(Plugin):
     version = '0.1.0'
     description = (
         'Per-country pricing, currency, and locale. Resolves a market '
-        'from the visitor\'s country (Cloudflare CF-IPCountry header by '
+        "from the visitor's country (Cloudflare CF-IPCountry header by "
         'default) and applies optional per-product price overrides.'
     )
     has_models = True

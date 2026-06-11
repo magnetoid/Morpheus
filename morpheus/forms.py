@@ -10,6 +10,7 @@ way you'd use ``django.forms``::
         code = forms.CharField(max_length=32)
         amount = forms.DecimalField(max_digits=12, decimal_places=2)
 """
+
 from __future__ import annotations
 
 from django.forms import *  # noqa: F401, F403

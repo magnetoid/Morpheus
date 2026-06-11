@@ -1,4 +1,5 @@
 """Draft Orders plugin manifest."""
+
 from __future__ import annotations
 
 import logging
@@ -34,8 +35,10 @@ class DraftOrdersPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.draft_orders.agent_tools import (
-            convert_draft_tool, list_drafts_tool,
+            convert_draft_tool,
+            list_drafts_tool,
         )
+
         return [list_drafts_tool, convert_draft_tool]
 
     # No contribute_dashboard_pages — drafts live inside the Orders page.

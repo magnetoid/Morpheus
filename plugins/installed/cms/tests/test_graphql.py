@@ -7,7 +7,11 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
 from api.graphql_permissions import PermissionDenied
-from plugins.installed.cms.graphql.queries import CmsMutationExtension, CmsPageInput, CmsQueryExtension
+from plugins.installed.cms.graphql.queries import (
+    CmsMutationExtension,
+    CmsPageInput,
+    CmsQueryExtension,
+)
 from plugins.installed.cms.models import Page
 
 

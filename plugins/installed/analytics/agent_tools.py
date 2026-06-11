@@ -5,9 +5,10 @@ These are richer, multi-dimensional. The old `analytics.revenue_summary` and
 The new ones below query the analytics rollups so they're cheap and cover
 funnels / sources / agent activity that orders can't see.
 """
+
 from __future__ import annotations
 
-from core.agents import ToolError, ToolResult, tool
+from core.agents import ToolResult, tool
 
 
 @tool(
@@ -23,11 +24,14 @@ from core.agents import ToolError, ToolResult, tool
 )
 def analytics_summary_tool(*, days: int = 7) -> ToolResult:
     from plugins.installed.analytics.services import summary_for
+
     s = summary_for(days=int(days or 7))
     if s.get('revenue') is not None:
-        s['revenue'] = {'amount': str(s['revenue'].amount),
-                        'currency': str(s['revenue'].currency)}
-    return ToolResult(output=s, display=f'{s["sessions"]} sessions, {s["orders"]} orders, last {s["window_days"]}d')
+        s['revenue'] = {'amount': str(s['revenue'].amount), 'currency': str(s['revenue'].currency)}
+    return ToolResult(
+        output=s,
+        display=f'{s["sessions"]} sessions, {s["orders"]} orders, last {s["window_days"]}d',
+    )
 
 
 @tool(
@@ -37,14 +41,18 @@ def analytics_summary_tool(*, days: int = 7) -> ToolResult:
     schema={
         'type': 'object',
         'properties': {
-            'steps': {'type': 'array', 'items': {'type': 'string'},
-                      'description': 'Ordered list of event names (default: pageview → product.viewed → cart.add → order.placed)'},
+            'steps': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Ordered list of event names (default: pageview → product.viewed → cart.add → order.placed)',
+            },
             'days': {'type': 'integer', 'minimum': 1, 'maximum': 365, 'default': 30},
         },
     },
 )
 def analytics_funnel_tool(*, steps: list[str] | None = None, days: int = 30) -> ToolResult:
     from plugins.installed.analytics.services import funnel_for
+
     steps = steps or ['pageview', 'product.viewed', 'cart.add', 'order.placed']
     rows = funnel_for(steps=steps, days=int(days or 30))
     base = rows[0]['sessions'] if rows else 0
@@ -67,9 +75,13 @@ def analytics_funnel_tool(*, steps: list[str] | None = None, days: int = 30) -> 
 )
 def analytics_search_trends_tool(*, days: int = 30, limit: int = 20) -> ToolResult:
     from plugins.installed.analytics.services import top_searches
-    return ToolResult(output={
-        'days': days, 'searches': top_searches(days=int(days or 30), limit=int(limit or 20)),
-    })
+
+    return ToolResult(
+        output={
+            'days': days,
+            'searches': top_searches(days=int(days or 30), limit=int(limit or 20)),
+        }
+    )
 
 
 @tool(
@@ -85,11 +97,18 @@ def analytics_search_trends_tool(*, days: int = 30, limit: int = 20) -> ToolResu
 )
 def analytics_realtime_tool(*, minutes: int = 30) -> ToolResult:
     from plugins.installed.analytics.services import real_time
+
     data = real_time(minutes=int(minutes or 30))
     for r in data['recent']:
-        r['created_at'] = r['created_at'].isoformat() if hasattr(r['created_at'], 'isoformat') else r['created_at']
-    return ToolResult(output=data,
-                      display=f'{data["sessions"]} sessions, {data["events"]} events in last {minutes} min')
+        r['created_at'] = (
+            r['created_at'].isoformat()
+            if hasattr(r['created_at'], 'isoformat')
+            else r['created_at']
+        )
+    return ToolResult(
+        output=data,
+        display=f'{data["sessions"]} sessions, {data["events"]} events in last {minutes} min',
+    )
 
 
 @tool(
@@ -105,6 +124,7 @@ def analytics_realtime_tool(*, minutes: int = 30) -> ToolResult:
 )
 def analytics_agent_costs_tool(*, days: int = 30) -> ToolResult:
     from plugins.installed.analytics.services import agent_activity
+
     return ToolResult(output={'days': days, 'agents': agent_activity(days=int(days or 30))})
 
 
@@ -122,7 +142,10 @@ def analytics_agent_costs_tool(*, days: int = 30) -> ToolResult:
 )
 def analytics_top_products_tool(*, days: int = 30, limit: int = 10) -> ToolResult:
     from plugins.installed.analytics.services import top_products
-    return ToolResult(output={
-        'days': days,
-        'products': top_products(days=int(days or 30), limit=int(limit or 10)),
-    })
+
+    return ToolResult(
+        output={
+            'days': days,
+            'products': top_products(days=int(days or 30), limit=int(limit or 10)),
+        }
+    )

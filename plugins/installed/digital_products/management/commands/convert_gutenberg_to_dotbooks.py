@@ -21,6 +21,7 @@ whose ``book.gutenberg_id`` metafield is set), this command:
 
 Idempotent — re-running overwrites the bundle + replaces the variants.
 """
+
 from __future__ import annotations
 
 import io
@@ -50,9 +51,9 @@ def _strip_gutenberg(raw: str) -> str:
     start = _START_RE.search(raw)
     end = _END_RE.search(raw)
     if start and end and end.start() > start.end():
-        body = raw[start.end():end.start()]
+        body = raw[start.end() : end.start()]
     elif start:
-        body = raw[start.end():]
+        body = raw[start.end() :]
     else:
         body = raw
     return body.strip() + '\n'
@@ -67,15 +68,19 @@ def _gutenberg_id_for(product) -> int | None:
             return int(m.group(1))
     try:
         from django.contrib.contenttypes.models import ContentType
+
         from plugins.installed.metafields.models import Metafield
+
         ct = ContentType.objects.get_for_model(type(product))
         m = Metafield.objects.filter(
-            content_type=ct, object_id=product.pk,
-            namespace='book', key='gutenberg_id',
+            content_type=ct,
+            object_id=product.pk,
+            namespace='book',
+            key='gutenberg_id',
         ).first()
         if m and str(m.value).isdigit():
             return int(m.value)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     return None
 
@@ -91,9 +96,7 @@ def _build_epub(*, title: str, author: str, body_text: str) -> bytes:
         OEBPS/content.xhtml     — the book body
     """
     paragraphs = [p.strip() for p in re.split(r'\n\s*\n', body_text) if p.strip()]
-    body_html = '\n'.join(
-        f'<p>{html_escape(p.replace(chr(10), " "))}</p>' for p in paragraphs
-    )
+    body_html = '\n'.join(f'<p>{html_escape(p.replace(chr(10), " "))}</p>' for p in paragraphs)
 
     container_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
@@ -145,16 +148,13 @@ def _build_epub(*, title: str, author: str, body_text: str) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w') as zf:
         # mimetype MUST be first entry and uncompressed per EPUB spec.
-        zf.writestr(zipfile.ZipInfo('mimetype'), 'application/epub+zip',
-                    compress_type=zipfile.ZIP_STORED)
-        zf.writestr('META-INF/container.xml', container_xml,
-                    compress_type=zipfile.ZIP_DEFLATED)
-        zf.writestr('OEBPS/package.opf', package_opf,
-                    compress_type=zipfile.ZIP_DEFLATED)
-        zf.writestr('OEBPS/nav.xhtml', nav_xhtml,
-                    compress_type=zipfile.ZIP_DEFLATED)
-        zf.writestr('OEBPS/content.xhtml', content_xhtml,
-                    compress_type=zipfile.ZIP_DEFLATED)
+        zf.writestr(
+            zipfile.ZipInfo('mimetype'), 'application/epub+zip', compress_type=zipfile.ZIP_STORED
+        )
+        zf.writestr('META-INF/container.xml', container_xml, compress_type=zipfile.ZIP_DEFLATED)
+        zf.writestr('OEBPS/package.opf', package_opf, compress_type=zipfile.ZIP_DEFLATED)
+        zf.writestr('OEBPS/nav.xhtml', nav_xhtml, compress_type=zipfile.ZIP_DEFLATED)
+        zf.writestr('OEBPS/content.xhtml', content_xhtml, compress_type=zipfile.ZIP_DEFLATED)
     return buf.getvalue()
 
 
@@ -165,30 +165,47 @@ def _build_pdf(*, title: str, author: str, body_text: str) -> bytes:
     page. Output is ~2-5 MB per novel — readable + reasonable size.
     """
     from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=letter,
-        leftMargin=0.85 * inch, rightMargin=0.85 * inch,
-        topMargin=1 * inch, bottomMargin=1 * inch,
-        title=title, author=author or 'Unknown',
+        buf,
+        pagesize=letter,
+        leftMargin=0.85 * inch,
+        rightMargin=0.85 * inch,
+        topMargin=1 * inch,
+        bottomMargin=1 * inch,
+        title=title,
+        author=author or 'Unknown',
     )
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
-        'TitleStyle', parent=styles['Title'],
-        fontName='Times-Bold', fontSize=22, leading=26, spaceAfter=12,
+        'TitleStyle',
+        parent=styles['Title'],
+        fontName='Times-Bold',
+        fontSize=22,
+        leading=26,
+        spaceAfter=12,
     )
     by_style = ParagraphStyle(
-        'ByStyle', parent=styles['Normal'],
-        fontName='Times-Italic', fontSize=11, leading=14, spaceAfter=24,
-        alignment=1, textColor=(0.4, 0.4, 0.4),
+        'ByStyle',
+        parent=styles['Normal'],
+        fontName='Times-Italic',
+        fontSize=11,
+        leading=14,
+        spaceAfter=24,
+        alignment=1,
+        textColor=(0.4, 0.4, 0.4),
     )
     body_style = ParagraphStyle(
-        'Body', parent=styles['Normal'],
-        fontName='Times-Roman', fontSize=10.5, leading=14, firstLineIndent=14,
+        'Body',
+        parent=styles['Normal'],
+        fontName='Times-Roman',
+        fontSize=10.5,
+        leading=14,
+        firstLineIndent=14,
         spaceAfter=4,
     )
 
@@ -201,7 +218,7 @@ def _build_pdf(*, title: str, author: str, body_text: str) -> bytes:
         cleaned = html_escape(p.replace('\n', ' '))
         try:
             story.append(Paragraph(cleaned, body_style))
-        except Exception:  # noqa: BLE001 — skip paragraphs reportlab rejects
+        except Exception:  # noqa: BLE001, S112
             continue
     story.append(Spacer(1, 24))
     doc.build(story)
@@ -214,26 +231,34 @@ def _book_meta(product) -> tuple[str, str]:
     author = ''
     try:
         from django.contrib.contenttypes.models import ContentType
+
         from plugins.installed.metafields.models import Metafield
+
         ct = ContentType.objects.get_for_model(type(product))
         m = Metafield.objects.filter(
-            content_type=ct, object_id=product.pk,
-            namespace='book', key='author',
+            content_type=ct,
+            object_id=product.pk,
+            namespace='book',
+            key='author',
         ).first()
         if m and m.value:
             author = str(m.value)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     return title, author
 
 
 def _set_metafield(product, *, namespace: str, key: str, value: str) -> None:
     from django.contrib.contenttypes.models import ContentType
+
     from plugins.installed.metafields.models import Metafield
+
     ct = ContentType.objects.get_for_model(type(product))
     Metafield.objects.update_or_create(
-        content_type=ct, object_id=product.pk,
-        namespace=namespace, key=key,
+        content_type=ct,
+        object_id=product.pk,
+        namespace=namespace,
+        key=key,
         defaults={'value': value},
     )
 
@@ -242,17 +267,25 @@ class Command(BaseCommand):
     help = 'Re-publish Gutenberg books as DotBooks variable products (Digital + Print).'
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument('--slugs', default='',
-                            help='Comma-separated slugs (default: all archived gutenberg products).')
-        parser.add_argument('--digital-price', default='5.00',
-                            help='Price of the Digital variant in the product currency. Default 5.00')
-        parser.add_argument('--print-price', default='15.00',
-                            help='Price of the Print variant. Default 15.00')
+        parser.add_argument(
+            '--slugs',
+            default='',
+            help='Comma-separated slugs (default: all archived gutenberg products).',
+        )
+        parser.add_argument(
+            '--digital-price',
+            default='5.00',
+            help='Price of the Digital variant in the product currency. Default 5.00',
+        )
+        parser.add_argument(
+            '--print-price', default='15.00', help='Price of the Print variant. Default 15.00'
+        )
         parser.add_argument('--dry-run', action='store_true')
 
-    def handle(self, *args, **opts) -> None:
+    def handle(self, *args, **opts) -> None:  # noqa: PLR0915
         import urllib.request
         from decimal import Decimal
+
         from plugins.installed.catalog.models import Product, ProductVariant
 
         slugs = [s.strip() for s in (opts.get('slugs') or '').split(',') if s.strip()]
@@ -282,8 +315,8 @@ class Command(BaseCommand):
             # 1. Fetch + strip source text.
             url = f'https://www.gutenberg.org/cache/epub/{gid}/pg{gid}.txt'
             try:
-                req = urllib.request.Request(url, headers={'User-Agent': 'morpheus-import/1.0'})
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                req = urllib.request.Request(url, headers={'User-Agent': 'morpheus-import/1.0'})  # noqa: S310
+                with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310  # nosec B310
                     raw = resp.read().decode('utf-8', errors='replace')
             except Exception as exc:  # noqa: BLE001
                 logger.warning('gutenberg fetch failed for %s (gid=%s): %s', product.slug, gid, exc)
@@ -311,9 +344,10 @@ class Command(BaseCommand):
                     zf.writestr(f'{product.slug}.epub', epub_bytes)
                 if pdf_bytes:
                     zf.writestr(f'{product.slug}.pdf', pdf_bytes)
-                zf.writestr('README.txt',
-                            f'{title} — DotBooks edition.\n'
-                            f'Includes EPUB + PDF + plain text.\n')
+                zf.writestr(
+                    'README.txt',
+                    f'{title} — DotBooks edition.\nIncludes EPUB + PDF + plain text.\n',
+                )
             bundle = buf.getvalue()
             product.digital_file.save(
                 f'{product.slug}.zip',
@@ -329,14 +363,20 @@ class Command(BaseCommand):
             # Drop any prior variants, then create Digital + Print.
             ProductVariant.objects.filter(product=product).delete()
             ProductVariant.objects.create(
-                product=product, name='Digital',
+                product=product,
+                name='Digital',
                 sku=f'{product.slug}-digital',
-                price=digital_price, is_active=True, sort_order=0,
+                price=digital_price,
+                is_active=True,
+                sort_order=0,
             )
             ProductVariant.objects.create(
-                product=product, name='Print',
+                product=product,
+                name='Print',
                 sku=f'{product.slug}-print',
-                price=print_price, is_active=True, sort_order=10,
+                price=print_price,
+                is_active=True,
+                sort_order=10,
             )
 
             # 5. Publisher → DotBooks.
@@ -349,6 +389,4 @@ class Command(BaseCommand):
 
             attached += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — attached={attached} skipped={skipped}'
-        ))
+        self.stdout.write(self.style.SUCCESS(f'done — attached={attached} skipped={skipped}'))

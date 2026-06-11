@@ -23,6 +23,7 @@ Security:
   - Each form POST validates the CSRF token via the standard Django
     middleware (csrf_protect implicit on staff_member_required forms).
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -44,32 +45,38 @@ _TOKEN_BYTES = 32
 def _load_entries() -> list[dict]:
     """Return the stored entries, normalised to dict shape."""
     from plugins.models import PluginConfig
+
     cfg = PluginConfig.objects.filter(plugin_name='agent_mcp').first()
     entries = []
     raw = (cfg.config if cfg else {}) or {}
-    for k in (raw.get('public_keys') or []):
+    for k in raw.get('public_keys') or []:
         if isinstance(k, dict):
-            entries.append({
-                'id': str(k.get('id') or ''),
-                'label': str(k.get('label') or ''),
-                'token': str(k.get('token') or ''),
-                'created_at': str(k.get('created_at') or ''),
-                'last_used_at': str(k.get('last_used_at') or ''),
-            })
+            entries.append(
+                {
+                    'id': str(k.get('id') or ''),
+                    'label': str(k.get('label') or ''),
+                    'token': str(k.get('token') or ''),
+                    'created_at': str(k.get('created_at') or ''),
+                    'last_used_at': str(k.get('last_used_at') or ''),
+                }
+            )
         else:
             # Legacy raw-string entry.
-            entries.append({
-                'id': '',
-                'label': '(legacy)',
-                'token': str(k or ''),
-                'created_at': '',
-                'last_used_at': '',
-            })
+            entries.append(
+                {
+                    'id': '',
+                    'label': '(legacy)',
+                    'token': str(k or ''),
+                    'created_at': '',
+                    'last_used_at': '',
+                }
+            )
     return entries
 
 
 def _save_entries(entries: list[dict]) -> None:
     from plugins.models import PluginConfig
+
     cfg, _ = PluginConfig.objects.get_or_create(plugin_name='agent_mcp')
     config = dict(cfg.config or {})
     config['public_keys'] = entries
@@ -102,6 +109,7 @@ def _scope_list_from_form(post, prefix: str) -> list[str]:
     POST. Used by the permissions form which puts MCP + GraphQL
     scopes on the same submit."""
     from plugins.installed.agent_mcp.scopes import AVAILABLE_SCOPES
+
     out: list[str] = []
     for scope in AVAILABLE_SCOPES:
         if post.get(f'{prefix}_{scope}') == 'on':
@@ -111,7 +119,7 @@ def _scope_list_from_form(post, prefix: str) -> list[str]:
 
 @staff_member_required
 @require_http_methods(['GET', 'POST'])
-def tokens_view(request):
+def tokens_view(request):  # noqa: PLR0912, PLR0915
     """List + create + revoke MCP admin tokens."""
     just_created_token = ''
     just_created_label = ''
@@ -141,7 +149,8 @@ def tokens_view(request):
             target_token = (request.POST.get('token') or '').strip()
             entries = _load_entries()
             kept = [
-                e for e in entries
+                e
+                for e in entries
                 if (target_id and e.get('id') != target_id)
                 or (not target_id and e.get('token') != target_token)
             ]
@@ -169,7 +178,9 @@ def tokens_view(request):
                 else:
                     entry['graphql_scopes'] = _scope_list_from_form(request.POST, 'graphql')
                 _save_entries(entries)
-                messages.success(request, f'Permissions updated for {entry.get("label") or "(unlabelled)"}.')
+                messages.success(
+                    request, f'Permissions updated for {entry.get("label") or "(unlabelled)"}.'
+                )
             return redirect(request.path)
         else:
             messages.error(request, f'Unknown action {action!r}.')
@@ -184,19 +195,21 @@ def tokens_view(request):
     for e in entries:
         mcp_scopes = list(e.get('mcp_scopes')) if e.get('mcp_scopes') is not None else None
         gql_scopes = list(e.get('graphql_scopes')) if e.get('graphql_scopes') is not None else None
-        rows.append({
-            'id': e.get('id'),
-            'label': e.get('label') or '(unlabelled)',
-            'token_masked': _mask(e.get('token', '')),
-            'token_full': e.get('token', ''),
-            'created_at': e.get('created_at'),
-            'last_used_at': e.get('last_used_at'),
-            'is_legacy': not e.get('id'),
-            'mcp_scopes': mcp_scopes,    # None → wildcard inherited
-            'graphql_scopes': gql_scopes,
-            'mcp_summary': _scope_summary(mcp_scopes),
-            'graphql_summary': _scope_summary(gql_scopes),
-        })
+        rows.append(
+            {
+                'id': e.get('id'),
+                'label': e.get('label') or '(unlabelled)',
+                'token_masked': _mask(e.get('token', '')),
+                'token_full': e.get('token', ''),
+                'created_at': e.get('created_at'),
+                'last_used_at': e.get('last_used_at'),
+                'is_legacy': not e.get('id'),
+                'mcp_scopes': mcp_scopes,  # None → wildcard inherited
+                'graphql_scopes': gql_scopes,
+                'mcp_summary': _scope_summary(mcp_scopes),
+                'graphql_summary': _scope_summary(gql_scopes),
+            }
+        )
 
     # If ?edit=<token_id> is in the query, render the permissions form
     # inline at the top of the page instead of just the table.
@@ -206,6 +219,7 @@ def tokens_view(request):
         edit_entry = _find_entry(entries, edit_id)
 
     from plugins.installed.agent_mcp.scopes import AVAILABLE_SCOPES
+
     scope_catalog = [
         {'id': sid, 'label': label, 'description': desc}
         for sid, (label, desc) in AVAILABLE_SCOPES.items()
@@ -224,16 +238,20 @@ def tokens_view(request):
             'graphql_active': set(gql_current or []),
         }
 
-    return render(request, 'agent_mcp/tokens.html', {
-        'rows': rows,
-        'just_created_token': just_created_token,
-        'just_created_label': just_created_label,
-        'admin_rpc_url': '/mcp/admin/v1/',
-        'graphql_url': '/graphql/',
-        'scope_catalog': scope_catalog,
-        'edit': edit_ctx,
-        'active_nav': 'apps',
-    })
+    return render(
+        request,
+        'agent_mcp/tokens.html',
+        {
+            'rows': rows,
+            'just_created_token': just_created_token,
+            'just_created_label': just_created_label,
+            'admin_rpc_url': '/mcp/admin/v1/',
+            'graphql_url': '/graphql/',
+            'scope_catalog': scope_catalog,
+            'edit': edit_ctx,
+            'active_nav': 'apps',
+        },
+    )
 
 
 def _scope_summary(scopes: list[str] | None) -> str:

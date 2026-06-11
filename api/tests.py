@@ -17,7 +17,9 @@ class GraphQLAgentAuthTests(TestCase):
 
         channel = StoreChannel.objects.create(name='Default', domain='example.test')
         api_key = APIKey.objects.create(
-            name='Test Agent', scopes=['read:products'], channel=channel,
+            name='Test Agent',
+            scopes=['read:products'],
+            channel=channel,
         )
 
         resp = self.client.post(
@@ -34,7 +36,7 @@ class WebhookSignatureTests(TestCase):
     """The HMAC helper must produce stable, verifiable signatures."""
 
     def test_signature_round_trips(self):
-        from core.tasks import compute_hmac_signature, verify_hmac_signature, _canonical_payload
+        from core.tasks import _canonical_payload, compute_hmac_signature, verify_hmac_signature
 
         secret = 's3cret'
         payload = {'b': 2, 'a': 1, 'list': [1, 2, 3]}
@@ -42,14 +44,14 @@ class WebhookSignatureTests(TestCase):
         self.assertTrue(verify_hmac_signature(secret, _canonical_payload(payload), sig))
 
     def test_signature_rejects_tampered_payload(self):
-        from core.tasks import compute_hmac_signature, verify_hmac_signature, _canonical_payload
+        from core.tasks import _canonical_payload, compute_hmac_signature, verify_hmac_signature
 
         secret = 's3cret'
         sig = compute_hmac_signature(secret, {'a': 1})
         self.assertFalse(verify_hmac_signature(secret, _canonical_payload({'a': 2}), sig))
 
     def test_signature_rejects_wrong_secret(self):
-        from core.tasks import compute_hmac_signature, verify_hmac_signature, _canonical_payload
+        from core.tasks import _canonical_payload, compute_hmac_signature, verify_hmac_signature
 
         sig = compute_hmac_signature('right', {'a': 1})
         self.assertFalse(verify_hmac_signature('wrong', _canonical_payload({'a': 1}), sig))
@@ -103,18 +105,25 @@ class RequestIdMiddlewareTests(TestCase):
 
 class JsonFormatterTests(TestCase):
     def test_json_formatter_emits_required_fields(self):
-        import logging
         import json as _json
+        import logging
+
         from core.log_formatters import JsonFormatter
         from core.request_id import _request_id_ctx
 
         token = _request_id_ctx.set('rid-test-1')
         try:
             rec = logging.LogRecord(
-                name='morph.test', level=logging.INFO, pathname='', lineno=1,
-                msg='hello %s', args=('world',), exc_info=None,
+                name='morph.test',
+                level=logging.INFO,
+                pathname='',
+                lineno=1,
+                msg='hello %s',
+                args=('world',),
+                exc_info=None,
             )
             from core.request_id import RequestIdFilter
+
             RequestIdFilter().filter(rec)
             payload = _json.loads(JsonFormatter().format(rec))
             self.assertEqual(payload['msg'], 'hello world')
@@ -127,6 +136,7 @@ class JsonFormatterTests(TestCase):
 class SentryScrubberTests(TestCase):
     def test_before_send_scrubs_auth_headers_and_password(self):
         from core.sentry import _before_send
+
         event = {
             'request': {
                 'headers': {
@@ -153,7 +163,9 @@ class SentryScrubberTests(TestCase):
 class DRFExceptionHandlerTests(TestCase):
     def test_unhandled_drf_exception_returns_envelope(self):
         from unittest.mock import MagicMock
+
         from rest_framework.exceptions import NotAuthenticated
+
         from api.exception_handler import morpheus_exception_handler
 
         # NotAuthenticated -> DRF default handler returns a 401, our wrapper repackages it.

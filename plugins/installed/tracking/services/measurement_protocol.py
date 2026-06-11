@@ -187,7 +187,7 @@ def send_event(
             },
             method='POST',
         )
-        with _urlrequest.urlopen(req, timeout=6) as resp:
+        with _urlrequest.urlopen(req, timeout=6) as resp:  # nosec B310
             status_code = resp.status
             response_body = (resp.read() or b'').decode('utf-8', errors='ignore')[:2000]
     except Exception as exc:  # noqa: BLE001 — never propagate

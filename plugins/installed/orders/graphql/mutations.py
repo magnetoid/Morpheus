@@ -1,15 +1,13 @@
 """Cart + checkout mutations exposed by the orders plugin."""
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 import strawberry
 
 from core.graphql.types import ErrorType
+from plugins.installed.orders.graphql.inputs import AddressInput
 from plugins.installed.orders.graphql.types import CartType
 from plugins.installed.orders.services import CartService
-from plugins.installed.orders.graphql.inputs import AddressInput
-
 
 # ── Inputs ─────────────────────────────────────────────────────────────────────
 
@@ -18,7 +16,9 @@ from plugins.installed.orders.graphql.inputs import AddressInput
 class AddToCartInput:
     product_id: str = strawberry.field(description='UUID of the product')
     quantity: int = strawberry.field(description='Quantity to add')
-    variant_id: Optional[str] = strawberry.field(default=None, description='UUID of variant (optional)')
+    variant_id: str | None = strawberry.field(
+        default=None, description='UUID of variant (optional)'
+    )
     session_key: str = strawberry.field(default='', description='Anonymous session key')
 
 
@@ -50,12 +50,12 @@ class CompleteOrderInput:
     cart_id: str
     email: str
     shipping_address: AddressInput
-    billing_address: Optional[AddressInput] = None
-    shipping_rate_id: Optional[str] = None
+    billing_address: AddressInput | None = None
+    shipping_rate_id: str | None = None
     # Registry slug of the chosen payment gateway (stripe / manual / cod /
     # test). Optional + validated server-side: empty/unknown/disabled →
     # the default gateway (stripe). The client never picks a disabled one.
-    payment_gateway: Optional[str] = None
+    payment_gateway: str | None = None
 
 
 @strawberry.input
@@ -69,7 +69,7 @@ class SetShippingRateInput:
 
 @strawberry.type
 class CartPayload:
-    cart: Optional[CartType]
+    cart: CartType | None
     errors: list[ErrorType]
 
 
@@ -85,14 +85,16 @@ class OrderPayload:
 
 @strawberry.type
 class OrdersMutationExtension:
-
     @strawberry.mutation(description='Select a shipping rate for a cart (stores it on the cart).')
     def set_shipping_rate(self, input: SetShippingRateInput) -> CartPayload:
         from plugins.installed.orders.models import Cart
+
         try:
             cart = Cart.objects.get(pk=input.cart_id)
         except Cart.DoesNotExist:
-            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
+            )
 
         cart.metadata = dict(cart.metadata or {})
         cart.metadata['shipping_rate_id'] = (input.shipping_rate_id or '').strip()
@@ -102,7 +104,11 @@ class OrdersMutationExtension:
     @strawberry.mutation(description='Add an item to a cart (creates the cart if needed).')
     def add_to_cart(self, info: strawberry.Info, input: AddToCartInput) -> CartPayload:
         try:
-            request = info.context.get('request') if isinstance(info.context, dict) else getattr(info.context, 'request', None)
+            request = (
+                info.context.get('request')
+                if isinstance(info.context, dict)
+                else getattr(info.context, 'request', None)
+            )
             customer = getattr(request, 'user', None) if request else None
             customer = customer if (customer and customer.is_authenticated) else None
             session_key = input.session_key or (
@@ -120,11 +126,17 @@ class OrdersMutationExtension:
                 variant_id=input.variant_id,
                 currency=currency or None,
             )
-            if request is not None and hasattr(request, 'session') and not request.session.get('cart_id'):
+            if (
+                request is not None
+                and hasattr(request, 'session')
+                and not request.session.get('cart_id')
+            ):
                 request.session['cart_id'] = str(cart.id)
             return CartPayload(cart=cart, errors=[])
         except Exception as e:  # noqa: BLE001 — surface domain failure as ErrorType
-            return CartPayload(cart=None, errors=[ErrorType(code='ADD_TO_CART_ERROR', message=str(e))])
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='ADD_TO_CART_ERROR', message=str(e))]
+            )
 
     @strawberry.mutation(description='Update the quantity of a single line item.')
     def update_cart_item(self, input: UpdateCartItemInput) -> CartPayload:
@@ -142,7 +154,9 @@ class OrdersMutationExtension:
                 cart = item.cart
             return CartPayload(cart=cart, errors=[])
         except CartItem.DoesNotExist:
-            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart item not found.')])
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart item not found.')]
+            )
         except Exception as e:  # noqa: BLE001
             return CartPayload(cart=None, errors=[ErrorType(code='UPDATE_ERROR', message=str(e))])
 
@@ -156,7 +170,9 @@ class OrdersMutationExtension:
             item.delete()
             return CartPayload(cart=cart, errors=[])
         except CartItem.DoesNotExist:
-            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart item not found.')])
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart item not found.')]
+            )
 
     @strawberry.mutation(description='Apply a coupon code to a cart.')
     def apply_coupon(self, input: ApplyCouponInput) -> CartPayload:
@@ -165,50 +181,92 @@ class OrdersMutationExtension:
         try:
             cart = Cart.objects.get(pk=input.cart_id)
         except Cart.DoesNotExist:
-            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
+            )
 
         try:
             from plugins.installed.marketing.models import Coupon
+
             coupon = Coupon.objects.filter(code__iexact=input.code, is_active=True).first()
             if coupon is None:
-                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_COUPON', message='Coupon not found or expired.')])
+                return CartPayload(
+                    cart=cart,
+                    errors=[
+                        ErrorType(code='INVALID_COUPON', message='Coupon not found or expired.')
+                    ],
+                )
             cart.coupon = coupon
             cart.save(update_fields=['coupon', 'updated_at'])
         except ImportError:
             pass  # marketing optional
-        except Exception as e:  # noqa: BLE001 — coupon model not yet migrated
-            import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+        except Exception:  # noqa: BLE001 — coupon model not yet migrated
+            import logging
+
+            logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
         return CartPayload(cart=cart, errors=[])
 
-    @strawberry.mutation(description='Apply a gift card to a cart. Discount is applied at order time.')
-    def apply_gift_card(self, input: ApplyGiftCardInput) -> CartPayload:
+    @strawberry.mutation(
+        description='Apply a gift card to a cart. Discount is applied at order time.'
+    )
+    def apply_gift_card(self, input: ApplyGiftCardInput) -> CartPayload:  # noqa: PLR0911
         from plugins.installed.orders.models import Cart
 
         try:
             cart = Cart.objects.get(pk=input.cart_id)
         except Cart.DoesNotExist:
-            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
+            )
 
         code = (input.code or '').strip().upper()
         if not code:
-            return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Enter a gift card code.')])
+            return CartPayload(
+                cart=cart,
+                errors=[ErrorType(code='INVALID_GIFT_CARD', message='Enter a gift card code.')],
+            )
 
         try:
-            from plugins.installed.gift_cards.services import lookup
             from django.utils import timezone
+
+            from plugins.installed.gift_cards.services import lookup
+
             card = lookup(code)
             if card is None:
-                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card not found.')])
+                return CartPayload(
+                    cart=cart,
+                    errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card not found.')],
+                )
             if card.state != 'active':
-                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card is not active.')])
+                return CartPayload(
+                    cart=cart,
+                    errors=[
+                        ErrorType(code='INVALID_GIFT_CARD', message='Gift card is not active.')
+                    ],
+                )
             if card.expires_at and card.expires_at < timezone.now():
-                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card has expired.')])
+                return CartPayload(
+                    cart=cart,
+                    errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card has expired.')],
+                )
             if card.balance.amount <= 0:
-                return CartPayload(cart=cart, errors=[ErrorType(code='INVALID_GIFT_CARD', message='Gift card has no balance left.')])
+                return CartPayload(
+                    cart=cart,
+                    errors=[
+                        ErrorType(
+                            code='INVALID_GIFT_CARD', message='Gift card has no balance left.'
+                        )
+                    ],
+                )
             cart.gift_card = card
             cart.save(update_fields=['gift_card', 'updated_at'])
         except ImportError:
-            return CartPayload(cart=cart, errors=[ErrorType(code='UNAVAILABLE', message='Gift cards plugin is not installed.')])
+            return CartPayload(
+                cart=cart,
+                errors=[
+                    ErrorType(code='UNAVAILABLE', message='Gift cards plugin is not installed.')
+                ],
+            )
         except Exception as e:  # noqa: BLE001
             return CartPayload(cart=cart, errors=[ErrorType(code='APPLY_FAILED', message=str(e))])
         return CartPayload(cart=cart, errors=[])
@@ -217,23 +275,31 @@ class OrdersMutationExtension:
     def remove_gift_card(self, input: ApplyGiftCardInput) -> CartPayload:
         # `input.code` is ignored; we just need the cart_id.
         from plugins.installed.orders.models import Cart
+
         try:
             cart = Cart.objects.get(pk=input.cart_id)
         except Cart.DoesNotExist:
-            return CartPayload(cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
+            )
         cart.gift_card = None
         cart.save(update_fields=['gift_card', 'updated_at'])
         return CartPayload(cart=cart, errors=[])
 
-    @strawberry.mutation(description='Complete checkout: create the order, fire order.placed, return the Stripe client_secret.')
+    @strawberry.mutation(
+        description='Complete checkout: create the order, fire order.placed, return the Stripe client_secret.'
+    )
     def complete_order(self, info: strawberry.Info, input: CompleteOrderInput) -> OrderPayload:
         from django.db import transaction
+
         from plugins.installed.orders.models import Cart
         from plugins.installed.orders.services import OrderService
 
         try:
             cart = Cart.objects.prefetch_related(
-                'items', 'items__product', 'items__variant',
+                'items',
+                'items__product',
+                'items__variant',
             ).get(pk=input.cart_id)
         except Cart.DoesNotExist:
             return OrderPayload(errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
@@ -242,9 +308,15 @@ class OrdersMutationExtension:
             return OrderPayload(errors=[ErrorType(code='EMPTY_CART', message='Cart is empty.')])
 
         if not input.email or '@' not in input.email:
-            return OrderPayload(errors=[ErrorType(code='INVALID_EMAIL', message='A valid email is required.')])
+            return OrderPayload(
+                errors=[ErrorType(code='INVALID_EMAIL', message='A valid email is required.')]
+            )
 
-        request = info.context.get('request') if isinstance(info.context, dict) else getattr(info.context, 'request', None)
+        request = (
+            info.context.get('request')
+            if isinstance(info.context, dict)
+            else getattr(info.context, 'request', None)
+        )
         ship = _address_dict(input.shipping_address)
         bill = _address_dict(input.billing_address) if input.billing_address else ship
 
@@ -255,7 +327,9 @@ class OrdersMutationExtension:
             if affiliate_code:
                 ship['affiliate_code'] = affiliate_code
         except Exception:
-            import logging; logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+            import logging
+
+            logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
 
         if input.shipping_rate_id:
             cart.metadata = dict(cart.metadata or {})
@@ -275,10 +349,13 @@ class OrdersMutationExtension:
             from plugins.installed.payments.services.routing import (
                 create_payment_intent_for,
             )
+
             with transaction.atomic():
                 order = OrderService.create_from_cart(
-                    cart=cart, email=input.email,
-                    shipping_address=ship, billing_address=bill,
+                    cart=cart,
+                    email=input.email,
+                    shipping_address=ship,
+                    billing_address=bill,
                 )
                 # Route to the shopper-selected gateway. Empty / unknown /
                 # disabled slug → default (stripe), so the live Stripe path
@@ -330,6 +407,7 @@ def _check_scope(info, required: list[str]) -> str:
     if granted is None:
         return ''
     from plugins.installed.agent_mcp.scopes import has_any
+
     if not has_any(granted, required):
         return f'token missing scope: needs one of {sorted(required)}'
     return ''
@@ -337,16 +415,21 @@ def _check_scope(info, required: list[str]) -> str:
 
 def _serialize_order_admin(order, *, error: str = '') -> OrderAdminResult:
     return OrderAdminResult(
-        order_number=order.order_number, status=order.status,
+        order_number=order.order_number,
+        status=order.status,
         payment_status=order.payment_status,
-        tracking_number=order.tracking_number or '', error=error,
+        tracking_number=order.tracking_number or '',
+        error=error,
     )
 
 
 def _err_admin(msg: str) -> OrderAdminResult:
     return OrderAdminResult(
-        order_number='', status='', payment_status='',
-        tracking_number='', error=msg,
+        order_number='',
+        status='',
+        payment_status='',
+        tracking_number='',
+        error=msg,
     )
 
 
@@ -384,13 +467,17 @@ class OrdersAdminMutationExtension:
         description='Mark a paid/processing order as fulfilled. Staff-only.',
     )
     def mark_order_fulfilled(
-        self, info: strawberry.Info, input: MarkFulfilledInput,
+        self,
+        info: strawberry.Info,
+        input: MarkFulfilledInput,
     ) -> OrderAdminResult:
         err = _check_scope(info, ['orders.write'])
         if err:
             return _err_admin(err)
         from django_fsm import TransitionNotAllowed
+
         from plugins.installed.orders.models import Order
+
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
@@ -405,13 +492,17 @@ class OrdersAdminMutationExtension:
         description='Mark a fulfilled order as shipped (optionally with tracking number). Staff-only.',
     )
     def mark_order_shipped(
-        self, info: strawberry.Info, input: MarkShippedInput,
+        self,
+        info: strawberry.Info,
+        input: MarkShippedInput,
     ) -> OrderAdminResult:
         err = _check_scope(info, ['orders.write'])
         if err:
             return _err_admin(err)
         from django_fsm import TransitionNotAllowed
+
         from plugins.installed.orders.models import Order
+
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
@@ -424,13 +515,17 @@ class OrdersAdminMutationExtension:
 
     @strawberry.mutation(description='Cancel an order from any status. Staff-only.')
     def cancel_order(
-        self, info: strawberry.Info, input: CancelOrderInput,
+        self,
+        info: strawberry.Info,
+        input: CancelOrderInput,
     ) -> OrderAdminResult:
         err = _check_scope(info, ['orders.cancel'])
         if err:
             return _err_admin(err)
         from django_fsm import TransitionNotAllowed
+
         from plugins.installed.orders.models import Order
+
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
@@ -445,18 +540,22 @@ class OrdersAdminMutationExtension:
         description='Flag an order as refunded — manual, for refunds processed outside Morpheus. Staff-only.',
     )
     def mark_order_refunded(
-        self, info: strawberry.Info, input: MarkRefundedInput,
+        self,
+        info: strawberry.Info,
+        input: MarkRefundedInput,
     ) -> OrderAdminResult:
         err = _check_scope(info, ['orders.cancel'])
         if err:
             return _err_admin(err)
         from plugins.installed.orders.models import Order
+
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
         # Bypass FSM protection — manual flag, not a real transition.
         Order.objects.filter(pk=order.pk).update(
-            status='refunded', payment_status='refunded',
+            status='refunded',
+            payment_status='refunded',
         )
         order.refresh_from_db()
         order.log_event('ORDER_REFUNDED', message=input.reason)
@@ -466,12 +565,12 @@ class OrdersAdminMutationExtension:
 def _address_dict(addr: AddressInput) -> dict:
     return {
         'first_name': addr.first_name or '',
-        'last_name':  addr.last_name or '',
-        'line1':       addr.line1 or '',
-        'line2':       addr.line2 or '',
-        'city':        addr.city or '',
-        'state':       addr.state or '',
+        'last_name': addr.last_name or '',
+        'line1': addr.line1 or '',
+        'line2': addr.line2 or '',
+        'city': addr.city or '',
+        'state': addr.state or '',
         'postal_code': addr.postal_code or '',
-        'country':     addr.country or '',
-        'phone':       addr.phone or '',
+        'country': addr.country or '',
+        'phone': addr.phone or '',
     }

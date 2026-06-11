@@ -14,4 +14,5 @@ Once every internal caller is migrated to ``from … import views_split``
 (or we rename ``views_split`` → ``views`` as a follow-up), this file
 will be deleted.
 """
+
 from plugins.installed.admin_dashboard.views_split import *  # noqa: F401, F403

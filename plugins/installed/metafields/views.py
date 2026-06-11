@@ -9,6 +9,7 @@ The inline editor partial (templates/metafields/_inline_editor.html)
 is the per-record UX dropped into product/customer/order edit pages;
 it talks to the JSON API at the bottom of this file.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,8 +50,10 @@ def index(request: HttpRequest) -> HttpResponse:
 
     try:
         from plugins.installed.admin_dashboard.views_split._shared import paginate_and_sort
+
         page_obj, paging_ctx = paginate_and_sort(
-            request, qs,
+            request,
+            qs,
             default_sort='-updated_at',
             allowed_sorts=('namespace', 'key', 'updated_at'),
             default_per_page=50,
@@ -61,30 +64,37 @@ def index(request: HttpRequest) -> HttpResponse:
         rows = list(qs[:200])
 
     namespaces = list(
-        Metafield.objects.values_list('namespace', flat=True)
-        .distinct().order_by('namespace')
+        Metafield.objects.values_list('namespace', flat=True).distinct().order_by('namespace')
     )
-    return render(request, 'metafields/index.html', {
-        'metafields': rows,
-        'namespace': namespace,
-        'key': key,
-        'model_label': model_label,
-        'namespaces': [n for n in namespaces if n],
-        'active_nav': 'metafields',
-        **paging_ctx,
-    })
+    return render(
+        request,
+        'metafields/index.html',
+        {
+            'metafields': rows,
+            'namespace': namespace,
+            'key': key,
+            'model_label': model_label,
+            'namespaces': [n for n in namespaces if n],
+            'active_nav': 'metafields',
+            **paging_ctx,
+        },
+    )
 
 
 @staff_member_required
 def create_form(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         return _save_from_form(request, metafield=None)
-    return render(request, 'metafields/edit.html', {
-        'metafield': None,
-        'value_types': Metafield.VALUE_TYPES,
-        'content_types': _content_type_choices(),
-        'active_nav': 'metafields',
-    })
+    return render(
+        request,
+        'metafields/edit.html',
+        {
+            'metafield': None,
+            'value_types': Metafield.VALUE_TYPES,
+            'content_types': _content_type_choices(),
+            'active_nav': 'metafields',
+        },
+    )
 
 
 @staff_member_required
@@ -92,12 +102,16 @@ def edit_form(request: HttpRequest, metafield_id) -> HttpResponse:
     m = get_object_or_404(Metafield, pk=metafield_id)
     if request.method == 'POST':
         return _save_from_form(request, metafield=m)
-    return render(request, 'metafields/edit.html', {
-        'metafield': m,
-        'value_types': Metafield.VALUE_TYPES,
-        'content_types': _content_type_choices(),
-        'active_nav': 'metafields',
-    })
+    return render(
+        request,
+        'metafields/edit.html',
+        {
+            'metafield': m,
+            'value_types': Metafield.VALUE_TYPES,
+            'content_types': _content_type_choices(),
+            'active_nav': 'metafields',
+        },
+    )
 
 
 @staff_member_required
@@ -166,7 +180,7 @@ def _resolve_target(request: HttpRequest):
         app_label, model_name = model.split('.', 1)
         m = apps.get_model(app_label, model_name)
     except (ValueError, LookupError):
-        raise ValueError(f'unknown model: {model}')
+        raise ValueError(f'unknown model: {model}')  # noqa: B904
     instance = m.objects.filter(pk=object_id).first()
     if instance is None:
         raise ValueError(f'{model} not found: {object_id}')
@@ -182,18 +196,22 @@ def api_list(request: HttpRequest) -> JsonResponse:
     except ValueError as e:
         return JsonResponse({'error': str(e)}, status=400)
     rows = list(Metafield.objects.filter(content_type=ct, object_id=str(instance.pk)))
-    return JsonResponse({'metafields': [
+    return JsonResponse(
         {
-            'id': str(m.id),
-            'namespace': m.namespace,
-            'key': m.key,
-            'full_key': m.full_key,
-            'value': m.value,
-            'value_type': m.value_type,
-            'description': m.description,
+            'metafields': [
+                {
+                    'id': str(m.id),
+                    'namespace': m.namespace,
+                    'key': m.key,
+                    'full_key': m.full_key,
+                    'value': m.value,
+                    'value_type': m.value_type,
+                    'description': m.description,
+                }
+                for m in rows
+            ]
         }
-        for m in rows
-    ]})
+    )
 
 
 @staff_member_required
@@ -212,21 +230,26 @@ def api_set(request: HttpRequest) -> JsonResponse:
     if not key:
         return JsonResponse({'error': 'key required'}, status=400)
     obj = Metafield.objects.set(
-        instance, namespace=namespace, key=key,
-        value=value, value_type=value_type,
+        instance,
+        namespace=namespace,
+        key=key,
+        value=value,
+        value_type=value_type,
     )
     if description and obj.description != description:
         obj.description = description
         obj.save(update_fields=['description', 'updated_at'])
-    return JsonResponse({
-        'id': str(obj.id),
-        'namespace': obj.namespace,
-        'key': obj.key,
-        'full_key': obj.full_key,
-        'value': obj.value,
-        'value_type': obj.value_type,
-        'description': obj.description,
-    })
+    return JsonResponse(
+        {
+            'id': str(obj.id),
+            'namespace': obj.namespace,
+            'key': obj.key,
+            'full_key': obj.full_key,
+            'value': obj.value,
+            'value_type': obj.value_type,
+            'description': obj.description,
+        }
+    )
 
 
 @staff_member_required
@@ -248,11 +271,15 @@ def _content_type_choices():
     to. Hand-pick the surfaces that make sense.
     """
     targets = [
-        ('catalog', 'product'), ('catalog', 'productvariant'),
-        ('catalog', 'category'), ('catalog', 'collection'),
-        ('orders', 'order'), ('orders', 'orderitem'),
+        ('catalog', 'product'),
+        ('catalog', 'productvariant'),
+        ('catalog', 'category'),
+        ('catalog', 'collection'),
+        ('orders', 'order'),
+        ('orders', 'orderitem'),
         ('customers', 'customer'),
-        ('cms', 'page'), ('cms', 'block'),
+        ('cms', 'page'),
+        ('cms', 'block'),
     ]
     choices = []
     for app, model in targets:
@@ -305,16 +332,14 @@ def panel_save(request: HttpRequest) -> HttpResponse:
         else:
             new_val = request.POST.get(field_name)
             if new_val is None:
-                continue   # field absent — don't touch
+                continue  # field absent — don't touch
             new_val = new_val.strip()
             if vt == 'json':
                 try:
                     # Validate but preserve canonical form
                     json.loads(new_val)
                 except ValueError:
-                    messages.warning(
-                        request, f'{mf.namespace}.{mf.key}: invalid JSON — skipped.'
-                    )
+                    messages.warning(request, f'{mf.namespace}.{mf.key}: invalid JSON — skipped.')
                     continue
         if mf.value != new_val:
             mf.value = new_val

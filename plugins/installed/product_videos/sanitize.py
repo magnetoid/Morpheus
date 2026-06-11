@@ -9,12 +9,12 @@ The PDP block template ([`pdp_videos.html`](../templates/product_videos/blocks/p
 falls back to the auto-embed path (`url` field) when `embed_html` is
 empty, so rejecting a paste degrades gracefully.
 """
+
 from __future__ import annotations
 
 import re
 from html import escape
 from urllib.parse import urlparse
-
 
 # Hosts we accept iframe `src=` from. Subdomain match is anchored to the
 # end so `evilyoutube.com` doesn't slip through.
@@ -28,11 +28,19 @@ _ALLOWED_HOSTS: tuple[str, ...] = (
 
 # Attributes we'll keep on the iframe. Anything else (incl. on* event
 # handlers) is dropped. width/height come through as numerics only.
-_ALLOWED_ATTRS: frozenset[str] = frozenset({
-    'src', 'width', 'height', 'frameborder',
-    'allow', 'allowfullscreen', 'loading',
-    'referrerpolicy', 'title',
-})
+_ALLOWED_ATTRS: frozenset[str] = frozenset(
+    {
+        'src',
+        'width',
+        'height',
+        'frameborder',
+        'allow',
+        'allowfullscreen',
+        'loading',
+        'referrerpolicy',
+        'title',
+    }
+)
 
 # Numeric-only attributes (drop the attribute if value isn't all digits).
 _NUMERIC_ATTRS: frozenset[str] = frozenset({'width', 'height', 'frameborder'})
@@ -40,7 +48,7 @@ _NUMERIC_ATTRS: frozenset[str] = frozenset({'width', 'height', 'frameborder'})
 # Crude but tight extractor — we don't try to parse arbitrary HTML, only
 # pull the FIRST <iframe ...> tag. Anything outside it is discarded.
 _IFRAME_RE = re.compile(r'<\s*iframe\b([^>]*?)(?:/\s*>|>\s*</\s*iframe\s*>|>)', re.I | re.S)
-_ATTR_RE = re.compile(r'''([a-zA-Z\-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))''')
+_ATTR_RE = re.compile(r"""([a-zA-Z\-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
 
 
 def _host_allowed(src: str) -> bool:
@@ -80,7 +88,7 @@ def sanitize_embed_html(raw: str) -> str:
         if name == 'src':
             if not (_scheme_safe(value) and _host_allowed(value)):
                 return ''  # bad src → reject the whole iframe
-        elif name in _NUMERIC_ATTRS:
+        elif name in _NUMERIC_ATTRS:  # noqa: SIM102
             if not re.fullmatch(r'\d+', value):
                 continue
         # Strip newlines / quotes that would let an attacker break out

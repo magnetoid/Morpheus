@@ -2,32 +2,15 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any
-
-from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
-from morpheus.views import get_object_or_404, redirect, render
-from django.db.models import Sum
-from django.utils import timezone
-
-from plugins.installed.admin_dashboard.forms import (
-    AddressForm,
-    CouponForm,
-    CustomerForm,
-    DraftOrderForm,
-    FulfillmentForm,
-    ProductForm,
-    RefundForm,
-    VariantForm,
+from morpheus.views import (
+    HttpRequest,
+    HttpResponse,
+    messages,
+    redirect,
+    render,
+    staff_member_required,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
-    Metric,
-    _bulk_ids,
-    _period,
-    _pct_delta,
-    _since,
-    _sparkline_points,
-    _trend,
     logger,
 )
 
@@ -51,7 +34,7 @@ def apps_view(request: HttpRequest) -> HttpResponse:
         from plugins.models import PluginConfig
 
         db_enabled = dict(PluginConfig.objects.values_list('plugin_name', 'is_enabled'))
-    except Exception:  # noqa: BLE001 — table may not be migrated yet
+    except Exception:  # noqa: BLE001, S110
         pass
 
     plugins = []
@@ -109,6 +92,7 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
     """
     import json
     import os
+
     from plugins.registry import plugin_registry
 
     registry_path = os.path.join(
@@ -227,9 +211,6 @@ def _toggle_plugin(request: HttpRequest):
     UI lives in admin_dashboard, so disabling it would lock the
     merchant out of every dashboard page (including this one).
     """
-    from django.contrib import messages
-    from morpheus.views import redirect
-
     name = request.POST.get('plugin', '').strip()
     desired = request.POST.get('enabled') == '1'
     if not desired and name in PROTECTED_PLUGINS:
