@@ -92,9 +92,9 @@ setup checklist are assembled via the `DASHBOARD_KPIS` /
 activity feed via `ACTIVITY_FEED` (guarded by
 `admin_dashboard/tests/test_home_modular.py` +
 `test_activity_feed_modular.py`; design in
-`docs/plans/dashboard-home-modular.md`) — but the `pulse_refresh` /
-`pulse_dismiss` routes still import ai_assistant; they're whole routes
-that belong in that plugin via `register_urls`.
+`docs/plans/dashboard-home-modular.md`), and the pulse routes now live
+in ai_assistant via `register_urls` — `home.py` imports no sibling
+plugin at all.
 
 **Core → plugin imports (wrong direction; core should never import
 `plugins.installed.*`):** `core/emails` is fixed (cms's EmailTemplate now
