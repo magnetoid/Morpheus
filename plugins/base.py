@@ -14,11 +14,13 @@ class:
 For a full developer guide see `docs/PLUGIN_DEVELOPMENT.md`.
 For a step-by-step skill, see `SKILLS.md` → "Add a new plugin".
 """
+
 from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from plugins.registry import PluginRegistry
@@ -78,22 +80,22 @@ class MorpheusPlugin:
     """
 
     # ── Required metadata ──────────────────────────────────────────────────────
-    name: str = ''               # unique snake_case — must match directory name
-    label: str = ''              # human-readable name
+    name: str = ''  # unique snake_case — must match directory name
+    label: str = ''  # human-readable name
     version: str = '1.0.0'
     description: str = ''
     author: str = 'Morph Team'
-    url: str = ''                # plugin homepage / docs
+    url: str = ''  # plugin homepage / docs
 
     # ── Dependency graph ───────────────────────────────────────────────────────
-    requires: list[str] = []     # plugin names this depends on
-    conflicts: list[str] = []    # plugins this cannot coexist with
+    requires: list[str] = []  # plugin names this depends on
+    conflicts: list[str] = []  # plugins this cannot coexist with
 
     # ── Capabilities ──────────────────────────────────────────────────────────
-    has_models: bool = False     # True if plugin defines Django models
+    has_models: bool = False  # True if plugin defines Django models
 
     # ── Internal ──────────────────────────────────────────────────────────────
-    _registry: 'PluginRegistry | None' = None
+    _registry: PluginRegistry | None = None
     _config_cache: dict | None = None
 
     # ── Class-time validation ──────────────────────────────────────────────────
@@ -124,14 +126,14 @@ class MorpheusPlugin:
             raise PluginConfigurationError(
                 f'{cls.__name__}.requires must be a list of plugin name strings.'
             )
-        if not isinstance(cls.conflicts, list) or any(not isinstance(x, str) for x in cls.conflicts):
+        if not isinstance(cls.conflicts, list) or any(
+            not isinstance(x, str) for x in cls.conflicts
+        ):
             raise PluginConfigurationError(
                 f'{cls.__name__}.conflicts must be a list of plugin name strings.'
             )
         if not isinstance(cls.has_models, bool):
-            raise PluginConfigurationError(
-                f'{cls.__name__}.has_models must be True or False.'
-            )
+            raise PluginConfigurationError(f'{cls.__name__}.has_models must be True or False.')
 
     # ── Lifecycle (override these) ─────────────────────────────────────────────
 
@@ -144,18 +146,22 @@ class MorpheusPlugin:
     # ── Registration helpers ───────────────────────────────────────────────────
 
     def register_urls(
-        self, urlconf: str, prefix: str = '', namespace: str | None = None,
+        self,
+        urlconf: str,
+        prefix: str = '',
+        namespace: str | None = None,
     ) -> None:
         """Mount a URLconf module under `prefix` with the given `namespace`."""
         if not isinstance(urlconf, str) or not urlconf:
             raise ValueError('register_urls: urlconf must be a non-empty module path.')
         if self._registry is None:
             raise RuntimeError(
-                'register_urls called before plugin was activated. '
-                'Move the call inside ready().'
+                'register_urls called before plugin was activated. Move the call inside ready().'
             )
         self._registry.add_plugin_urls(
-            urlconf, prefix=prefix, namespace=namespace or self.name,
+            urlconf,
+            prefix=prefix,
+            namespace=namespace or self.name,
         )
 
     def register_graphql_extension(self, module: str) -> None:
@@ -175,12 +181,14 @@ class MorpheusPlugin:
         if not isinstance(priority, int):
             raise TypeError('register_hook: priority must be an int.')
         from core.hooks import hook_registry
+
         hook_registry.register(event, handler, priority=priority)
 
     def register_admin(self, model: Any, admin_class: Any) -> None:
         """Register a Django admin entry. Idempotent; ignores AlreadyRegistered."""
         from django.contrib import admin as django_admin
-        try:
+
+        try:  # noqa: SIM105
             django_admin.site.register(model, admin_class)
         except django_admin.sites.AlreadyRegistered:
             pass
@@ -202,6 +210,7 @@ class MorpheusPlugin:
     def register_celery_beat(self, name: str, entry: dict) -> None:
         """Add a Celery beat schedule entry. Existing entries are not overwritten."""
         from django.conf import settings
+
         schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
         if schedule is None:
             return
@@ -219,6 +228,7 @@ class MorpheusPlugin:
 
         if self._config_cache is None:
             from plugins.models import PluginConfig
+
             try:
                 row = PluginConfig.objects.get(plugin_name=self.name)
                 self._config_cache = row.config or {}
@@ -237,6 +247,7 @@ class MorpheusPlugin:
     def set_config(self, key: str, value: Any) -> None:
         """Persist one config value (and invalidate the cache)."""
         from plugins.models import PluginConfig
+
         row, _ = PluginConfig.objects.get_or_create(plugin_name=self.name)
         row.config[key] = value
         row.save(update_fields=['config', 'updated_at'])

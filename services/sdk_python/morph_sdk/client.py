@@ -4,6 +4,7 @@ The SDK keeps a tiny GraphQL surface (no codegen, no schema bundling) so it
 works against any current or future server schema. Each method maps 1-to-1 to
 a documented GraphQL field on the platform.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,6 @@ from morph_sdk.errors import (
     TransportError,
 )
 from morph_sdk.receipts import AgentReceipt
-
 
 _GRAPHQL_PATH = '/graphql/agent/'
 

@@ -5,6 +5,7 @@ Every agent declares the scopes it requires. Every tool declares the
 scopes a caller must hold. The runtime intersects them before invocation
 so an under-scoped agent never even sees an over-scoped tool.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal

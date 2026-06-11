@@ -1,7 +1,6 @@
 """Cloudflare plugin — GraphQL queries."""
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 import strawberry
 
@@ -31,9 +30,8 @@ class CacheInvalidationType:
 
 @strawberry.type
 class CloudflareQueryExtension:
-
     @strawberry.field(description='Cloudflare zones registered to this Morpheus instance.')
-    def cloudflare_zones(self, info: strawberry.Info) -> List[CloudflareZoneType]:
+    def cloudflare_zones(self, info: strawberry.Info) -> list[CloudflareZoneType]:
         from plugins.installed.cloudflare.models import CloudflareZone
 
         require_authenticated(info)
@@ -53,8 +51,10 @@ class CloudflareQueryExtension:
 
     @strawberry.field(description='Recent cache purge audit log.')
     def cloudflare_invalidations(
-        self, info: strawberry.Info, first: int = 25,
-    ) -> List[CacheInvalidationType]:
+        self,
+        info: strawberry.Info,
+        first: int = 25,
+    ) -> list[CacheInvalidationType]:
         from plugins.installed.cloudflare.models import CacheInvalidation
 
         require_authenticated(info)

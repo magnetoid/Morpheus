@@ -17,6 +17,7 @@ Design decisions:
   it's forward-looking (something to do) rather than backward-looking
   (something that happened).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -24,8 +25,9 @@ import uuid
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class Lead(models.Model):
@@ -56,16 +58,22 @@ class Lead(models.Model):
     company = models.CharField(max_length=200, blank=True)
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='other')
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='new', db_index=True)
-    score = models.PositiveSmallIntegerField(default=0, help_text='0–100 lead score (higher = hotter).')
+    score = models.PositiveSmallIntegerField(
+        default=0, help_text='0–100 lead score (higher = hotter).'
+    )
 
     converted_customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='source_lead',
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='owned_leads',
     )
 
@@ -98,17 +106,25 @@ class Account(models.Model):
     domain = models.CharField(max_length=200, blank=True, db_index=True)
     industry = models.CharField(max_length=120, blank=True)
     annual_revenue = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
     )
     employee_count = models.PositiveIntegerField(null=True, blank=True)
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='owned_accounts',
     )
     customers = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name='crm_accounts',
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='crm_accounts',
     )
 
     metadata = models.JSONField(default=dict, blank=True)
@@ -165,16 +181,24 @@ class Deal(models.Model):
     pipeline = models.ForeignKey(Pipeline, on_delete=models.PROTECT, related_name='deals')
     stage = models.ForeignKey(PipelineStage, on_delete=models.PROTECT, related_name='deals')
     account = models.ForeignKey(
-        Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='deals',
+        Account,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deals',
     )
     primary_contact = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='primary_deals',
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='owned_deals',
     )
     value = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
@@ -224,19 +248,24 @@ class Interaction(models.Model):
 
     kind = models.CharField(max_length=15, choices=KIND_CHOICES, default='note', db_index=True)
     direction = models.CharField(
-        max_length=10, choices=DIRECTION_CHOICES, default='internal',
+        max_length=10,
+        choices=DIRECTION_CHOICES,
+        default='internal',
     )
     summary = models.CharField(max_length=240, blank=True)
     body = models.TextField(blank=True)
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='crm_interactions',
         help_text='Who logged this — None for system / agent events.',
     )
     actor_name = models.CharField(
-        max_length=120, blank=True,
+        max_length=120,
+        blank=True,
         help_text='Free-text actor when not a Customer (e.g. "Concierge agent").',
     )
 
@@ -270,20 +299,27 @@ class CrmTask(models.Model):
 
     # Generic subject — same shape as Interaction.
     subject_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, null=True, blank=True,
+        ContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     subject_id = models.CharField(max_length=64, blank=True)
     subject = GenericForeignKey('subject_type', 'subject_id')
 
     assignee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='assigned_crm_tasks',
     )
     completed_at = models.DateTimeField(null=True, blank=True)
     completed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='completed_crm_tasks',
     )
 
@@ -304,6 +340,7 @@ class CrmTask(models.Model):
     @property
     def is_overdue(self) -> bool:
         from django.utils import timezone
+
         return self.is_open and self.due_at < timezone.now()
 
 
@@ -328,7 +365,8 @@ class MailAccount(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     label = models.CharField(max_length=120, help_text='How merchants refer to this mailbox.')
     email_address = models.EmailField(
-        unique=True, help_text='The full address — used as the From header on outbound mail.',
+        unique=True,
+        help_text='The full address — used as the From header on outbound mail.',
     )
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='imap')
 
@@ -378,12 +416,16 @@ class MailMessage(models.Model):
     direction = models.CharField(max_length=3, choices=DIRECTION_CHOICES, db_index=True)
 
     message_id = models.CharField(
-        max_length=255, blank=True, db_index=True,
+        max_length=255,
+        blank=True,
+        db_index=True,
         help_text='RFC822 Message-ID — used to dedupe inbound messages.',
     )
     in_reply_to = models.CharField(max_length=255, blank=True, db_index=True)
     thread_key = models.CharField(
-        max_length=255, blank=True, db_index=True,
+        max_length=255,
+        blank=True,
+        db_index=True,
         help_text='Normalised subject + counterparty — groups a thread.',
     )
 
@@ -396,7 +438,9 @@ class MailMessage(models.Model):
 
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='crm_mail_messages',
     )
 
@@ -428,13 +472,16 @@ class CustomerNote(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE, related_name='crm_notes',
+        on_delete=models.CASCADE,
+        related_name='crm_notes',
     )
     body = models.TextField()
     is_pinned = models.BooleanField(default=False)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='authored_crm_notes',
     )
     created_at = models.DateTimeField(auto_now_add=True)

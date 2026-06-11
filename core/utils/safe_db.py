@@ -5,11 +5,13 @@ is to log + degrade gracefully (audit logging, telemetry mirroring,
 hook handlers). Never wrap a path where silently swallowing a DB error
 would corrupt state (ledger writes, payment captures, order placement).
 """
+
 from __future__ import annotations
 
 import functools
 import logging
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from django.db import DatabaseError
 
@@ -28,10 +30,14 @@ def safe_db(default: Any = None, *, log_level: int = logging.WARNING):
                 return fn(*args, **kwargs)
             except DatabaseError as e:
                 logger.log(
-                    log_level, 'safe_db: %s.%s failed: %s',
-                    fn.__module__, fn.__qualname__, e,
+                    log_level,
+                    'safe_db: %s.%s failed: %s',
+                    fn.__module__,
+                    fn.__qualname__,
+                    e,
                 )
                 return default
+
         return wrapper
 
     return decorator

@@ -1,4 +1,5 @@
 """Auto-track storefront pageviews. Cheap, never blocks the response."""
+
 from __future__ import annotations
 
 import logging
@@ -8,8 +9,13 @@ logger = logging.getLogger('morpheus.analytics')
 # Paths that should NOT generate pageview events. Admin, API, healthchecks,
 # webhooks, static, etc.
 _EXCLUDED_PREFIXES = (
-    '/admin/', '/api/', '/graphql', '/healthz',
-    '/static/', '/media/', '/dashboard/',
+    '/admin/',
+    '/api/',
+    '/graphql',
+    '/healthz',
+    '/static/',
+    '/media/',
+    '/dashboard/',
     '/auth/',
 )
 
@@ -29,12 +35,16 @@ class AnalyticsMiddleware:
             return response
         try:
             from plugins.installed.analytics.services import (
-                get_or_create_session, record_event,
+                get_or_create_session,
+                record_event,
             )
+
             session = get_or_create_session(request, response=response)
             record_event(
-                name='pageview', kind='pageview',
-                session=session, request=request,
+                name='pageview',
+                kind='pageview',
+                session=session,
+                request=request,
                 url=path[:500],
             )
         except Exception as e:  # noqa: BLE001 — never break a response

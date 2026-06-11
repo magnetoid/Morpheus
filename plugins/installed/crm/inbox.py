@@ -12,6 +12,7 @@ Design notes:
   in either the From (inbound) or To (outbound) header. Misses leave
   the row unlinked — the dashboard renders the address verbatim.
 """
+
 from __future__ import annotations
 
 import email
@@ -19,11 +20,11 @@ import imaplib
 import logging
 import re
 import smtplib
-from datetime import datetime, timezone as dt_timezone
+from collections.abc import Iterable
+from datetime import UTC
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parseaddr, parsedate_to_datetime
-from typing import Iterable
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -38,7 +39,7 @@ def _normalise_subject(subj: str) -> str:
         m = re.match(r'^(re|fwd|fw)\s*:\s*', s, flags=re.I)
         if not m:
             break
-        s = s[m.end():]
+        s = s[m.end() :]
     return re.sub(r'\s+', ' ', s).lower()
 
 
@@ -89,7 +90,7 @@ def _extract_bodies(msg: email.message.Message) -> tuple[str, str]:
     return text, html
 
 
-def fetch_account(account, *, max_messages: int = 200) -> int:
+def fetch_account(account, *, max_messages: int = 200) -> int:  # noqa: PLR0912, PLR0915
     """Pull new messages for one MailAccount via IMAP. Returns count imported."""
     from plugins.installed.crm.models import MailMessage
 
@@ -149,7 +150,7 @@ def fetch_account(account, *, max_messages: int = 200) -> int:
                 if msg.get('Date'):
                     received_at = parsedate_to_datetime(msg['Date'])
                     if received_at and received_at.tzinfo is None:
-                        received_at = received_at.replace(tzinfo=dt_timezone.utc)
+                        received_at = received_at.replace(tzinfo=UTC)
             except Exception:  # noqa: BLE001
                 received_at = timezone.now()
             received_at = received_at or timezone.now()
@@ -179,9 +180,9 @@ def fetch_account(account, *, max_messages: int = 200) -> int:
     else:
         account.last_error = ''
 
-    try:
+    try:  # noqa: SIM105
         conn.logout()
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
 
     account.last_polled_at = timezone.now()
@@ -192,7 +193,8 @@ def fetch_account(account, *, max_messages: int = 200) -> int:
 
 
 def send_message(
-    account, *,
+    account,
+    *,
     to: Iterable[str],
     subject: str,
     body_text: str,

@@ -18,6 +18,7 @@ Tokens stay valid until the merchant revokes them from
 the current timestamp back to the matching token entry's
 ``last_used_at`` (best-effort; never raises).
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -46,6 +47,7 @@ def _present_token(request: HttpRequest) -> str:
 def _service_user():
     """Get or lazily create the synthetic Bearer-auth service user."""
     from plugins.installed.customers.models import Customer
+
     user, created = Customer.objects.get_or_create(
         username=_SERVICE_USERNAME,
         defaults={
@@ -59,11 +61,14 @@ def _service_user():
     # request even though the token is valid.
     changed: list[str] = []
     if not user.is_staff:
-        user.is_staff = True; changed.append('is_staff')
+        user.is_staff = True
+        changed.append('is_staff')
     if not user.is_active:
-        user.is_active = True; changed.append('is_active')
+        user.is_active = True
+        changed.append('is_active')
     if not user.has_usable_password():
-        user.set_unusable_password(); changed.append('password')
+        user.set_unusable_password()
+        changed.append('password')
     if changed:
         user.save(update_fields=changed)
     return user
@@ -73,6 +78,7 @@ def _touch_last_used(token: str) -> None:
     """Best-effort update of the token's last_used_at timestamp."""
     try:
         from plugins.models import PluginConfig
+
         cfg = PluginConfig.objects.filter(plugin_name='agent_mcp').first()
         if cfg is None:
             return
@@ -116,6 +122,7 @@ def apply_bearer_user(request: HttpRequest) -> bool:
         return False
     # Re-use the same source-of-truth reader as the MCP server.
     from plugins.installed.agent_mcp.views import _api_keys
+
     if token not in _api_keys():
         return False
     try:
@@ -126,6 +133,7 @@ def apply_bearer_user(request: HttpRequest) -> bool:
     # Attach per-surface scope sets. Legacy entries (raw strings) get
     # the wildcard automatically via token_scopes().
     from plugins.installed.agent_mcp.scopes import find_entry_for_token, token_scopes
+
     entry = find_entry_for_token(token)
     request._morph_token_scopes_mcp = token_scopes(entry, 'mcp')
     request._morph_token_scopes_graphql = token_scopes(entry, 'graphql')

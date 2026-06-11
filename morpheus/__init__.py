@@ -37,6 +37,7 @@ Submodules
 * ``morpheus.hooks``      — direct access to the global hook registry
   for plugins that need to fire events from outside ``ready()``.
 """
+
 from __future__ import annotations
 
 # Re-export the plugin base under a clean public name.

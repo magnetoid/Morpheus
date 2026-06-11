@@ -1,5 +1,4 @@
 """Plugin middleware — injects active plugin URL patterns."""
-from django.urls import set_urlconf
 
 
 class PluginMiddleware:

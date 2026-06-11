@@ -7,6 +7,7 @@ for export — emails, phone numbers, and IPv4 addresses in span
 attributes are replaced with stable SHA-256 hashes so traces never
 leak customer data downstream (Datadog/Honeycomb/etc).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -56,7 +57,7 @@ def init_observability() -> None:
         from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
     except ImportError as e:
-        logger.warning("OpenTelemetry not fully installed; tracing disabled: %s", e)
+        logger.warning('OpenTelemetry not fully installed; tracing disabled: %s', e)
         return
 
     class _PIIScrubberProcessor(SpanProcessor):
@@ -73,7 +74,7 @@ def init_observability() -> None:
                         cleaned = scrub_pii(value)
                         if cleaned != value:
                             span.set_attribute(key, cleaned)
-            except Exception:  # noqa: BLE001 — never break the export pipeline
+            except Exception:  # noqa: BLE001, S110
                 pass
 
         def shutdown(self) -> None:
@@ -88,7 +89,7 @@ def init_observability() -> None:
 
         provider = TracerProvider(resource=resource)
         provider.add_span_processor(_PIIScrubberProcessor())
-        exporter = OTLPSpanExporter(endpoint=f"{endpoint.rstrip('/')}/v1/traces")
+        exporter = OTLPSpanExporter(endpoint=f'{endpoint.rstrip("/")}/v1/traces')
         provider.add_span_processor(BatchSpanProcessor(exporter))
         trace.set_tracer_provider(provider)
 
@@ -105,6 +106,6 @@ def init_observability() -> None:
             ),
         )
         CeleryInstrumentor().instrument()
-        logger.info("OpenTelemetry initialized: %s", endpoint)
+        logger.info('OpenTelemetry initialized: %s', endpoint)
     except Exception as e:  # noqa: BLE001 — observability must never break the app
-        logger.error("OpenTelemetry initialization failed: %s", e, exc_info=True)
+        logger.error('OpenTelemetry initialization failed: %s', e, exc_info=True)

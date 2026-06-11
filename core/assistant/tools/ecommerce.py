@@ -18,6 +18,7 @@ The tools are organised by domain:
 Every tool uses lazy plugin imports so a missing plugin returns a clean
 "plugin unavailable" message instead of breaking the Assistant.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -69,11 +70,17 @@ def _money_amount(value: Any) -> Decimal:
         },
     },
 )
-def orders_search_tool(*, status: str = '', days_back: int = 0,
-                      email: str = '', order_number: str = '',
-                      limit: int = 20) -> ToolResult:
+def orders_search_tool(
+    *,
+    status: str = '',
+    days_back: int = 0,
+    email: str = '',
+    order_number: str = '',
+    limit: int = 20,
+) -> ToolResult:
     try:
         from django.utils import timezone
+
         from plugins.installed.orders.models import Order
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'orders plugin unavailable: {e}') from e
@@ -99,8 +106,7 @@ def orders_search_tool(*, status: str = '', days_back: int = 0,
         }
         for o in qs
     ]
-    return ToolResult(output={'orders': rows, 'count': len(rows)},
-                      display=f'{len(rows)} order(s)')
+    return ToolResult(output={'orders': rows, 'count': len(rows)}, display=f'{len(rows)} order(s)')
 
 
 @tool(
@@ -123,13 +129,12 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
         raise ToolError(f'orders plugin unavailable: {e}') from e
     try:
         o = (
-            Order.objects
-            .select_related('customer')
+            Order.objects.select_related('customer')
             .prefetch_related('items', 'refunds', 'fulfillments')
             .get(order_number=order_number)
         )
     except Order.DoesNotExist:
-        raise ToolError(f'order not found: {order_number}')
+        raise ToolError(f'order not found: {order_number}')  # noqa: B904
     items = [
         {
             'name': i.product_name,
@@ -158,24 +163,26 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
         }
         for f in (getattr(o, 'fulfillments', None).all() if hasattr(o, 'fulfillments') else [])
     ]
-    return ToolResult(output={
-        'order_number': o.order_number,
-        'status': o.status,
-        'payment_status': getattr(o, 'payment_status', ''),
-        'total': _money_str(getattr(o, 'total', None)),
-        'subtotal': _money_str(getattr(o, 'subtotal', None)),
-        'tax': _money_str(getattr(o, 'tax', None)),
-        'shipping': _money_str(getattr(o, 'shipping', None)),
-        'discount': _money_str(getattr(o, 'discount', None)),
-        'currency': str(getattr(getattr(o, 'total', None), 'currency', '')),
-        'email': o.email or (o.customer.email if o.customer_id else ''),
-        'customer_id': str(o.customer_id) if o.customer_id else '',
-        'placed_at': o.placed_at.isoformat() if o.placed_at else '',
-        'notes': getattr(o, 'notes', '') or '',
-        'items': items,
-        'refunds': refunds,
-        'fulfillments': fulfillments,
-    })
+    return ToolResult(
+        output={
+            'order_number': o.order_number,
+            'status': o.status,
+            'payment_status': getattr(o, 'payment_status', ''),
+            'total': _money_str(getattr(o, 'total', None)),
+            'subtotal': _money_str(getattr(o, 'subtotal', None)),
+            'tax': _money_str(getattr(o, 'tax', None)),
+            'shipping': _money_str(getattr(o, 'shipping', None)),
+            'discount': _money_str(getattr(o, 'discount', None)),
+            'currency': str(getattr(getattr(o, 'total', None), 'currency', '')),
+            'email': o.email or (o.customer.email if o.customer_id else ''),
+            'customer_id': str(o.customer_id) if o.customer_id else '',
+            'placed_at': o.placed_at.isoformat() if o.placed_at else '',
+            'notes': getattr(o, 'notes', '') or '',
+            'items': items,
+            'refunds': refunds,
+            'fulfillments': fulfillments,
+        }
+    )
 
 
 # ── Products ────────────────────────────────────────────────────────────
@@ -201,9 +208,15 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
         },
     },
 )
-def products_search_tool(*, status: str = '', name: str = '', sku: str = '',
-                        category: str = '', vendor: str = '',
-                        limit: int = 20) -> ToolResult:
+def products_search_tool(
+    *,
+    status: str = '',
+    name: str = '',
+    sku: str = '',
+    category: str = '',
+    vendor: str = '',
+    limit: int = 20,
+) -> ToolResult:
     try:
         from plugins.installed.catalog.models import Product
     except Exception as e:  # noqa: BLE001
@@ -216,7 +229,9 @@ def products_search_tool(*, status: str = '', name: str = '', sku: str = '',
     if sku:
         qs = qs.filter(sku__icontains=sku)
     if category:
-        qs = qs.filter(category__slug__iexact=category) | qs.filter(category__name__icontains=category)
+        qs = qs.filter(category__slug__iexact=category) | qs.filter(
+            category__name__icontains=category
+        )
     if vendor:
         qs = qs.filter(vendor__slug__iexact=vendor) | qs.filter(vendor__name__icontains=vendor)
     qs = qs.order_by('-created_at')[: max(1, min(int(limit or 20), 50))]
@@ -235,8 +250,9 @@ def products_search_tool(*, status: str = '', name: str = '', sku: str = '',
         }
         for p in qs
     ]
-    return ToolResult(output={'products': rows, 'count': len(rows)},
-                      display=f'{len(rows)} product(s)')
+    return ToolResult(
+        output={'products': rows, 'count': len(rows)}, display=f'{len(rows)} product(s)'
+    )
 
 
 @tool(
@@ -287,7 +303,9 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
     images = [
         {
             'id': str(img.id),
-            'url': getattr(getattr(img, 'image', None), 'url', '') if getattr(img, 'image', None) else '',
+            'url': getattr(getattr(img, 'image', None), 'url', '')
+            if getattr(img, 'image', None)
+            else '',
             'alt': getattr(img, 'alt', ''),
             'is_primary': getattr(img, 'is_primary', False),
         }
@@ -298,35 +316,42 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
     stock_levels: list[dict] = []
     try:
         from plugins.installed.inventory.models import StockLevel
-        for sl in StockLevel.objects.filter(variant__product=p).select_related('variant', 'warehouse'):
-            stock_levels.append({
-                'variant_sku': getattr(sl.variant, 'sku', ''),
-                'warehouse': getattr(sl.warehouse, 'name', '') if sl.warehouse_id else '',
-                'on_hand': sl.quantity,
-                'available': sl.available_quantity,
-            })
-    except Exception:  # noqa: BLE001
+
+        for sl in StockLevel.objects.filter(variant__product=p).select_related(
+            'variant', 'warehouse'
+        ):
+            stock_levels.append(
+                {
+                    'variant_sku': getattr(sl.variant, 'sku', ''),
+                    'warehouse': getattr(sl.warehouse, 'name', '') if sl.warehouse_id else '',
+                    'on_hand': sl.quantity,
+                    'available': sl.available_quantity,
+                }
+            )
+    except Exception:  # noqa: BLE001, S110
         pass
 
-    return ToolResult(output={
-        'id': str(p.id),
-        'name': p.name,
-        'sku': p.sku or '',
-        'slug': getattr(p, 'slug', ''),
-        'status': p.status,
-        'price': _money_str(getattr(p, 'price', None)),
-        'currency': str(getattr(getattr(p, 'price', None), 'currency', '')),
-        'category': getattr(p.category, 'name', '') if p.category_id else '',
-        'vendor': getattr(p.vendor, 'name', '') if p.vendor_id else '',
-        'product_type': getattr(p, 'product_type', ''),
-        'short_description': getattr(p, 'short_description', '')[:500],
-        'description': getattr(p, 'description', '')[:2000],
-        'meta_title': getattr(p, 'meta_title', ''),
-        'meta_description': getattr(p, 'meta_description', ''),
-        'variants': variants,
-        'images': images,
-        'stock_levels': stock_levels,
-    })
+    return ToolResult(
+        output={
+            'id': str(p.id),
+            'name': p.name,
+            'sku': p.sku or '',
+            'slug': getattr(p, 'slug', ''),
+            'status': p.status,
+            'price': _money_str(getattr(p, 'price', None)),
+            'currency': str(getattr(getattr(p, 'price', None), 'currency', '')),
+            'category': getattr(p.category, 'name', '') if p.category_id else '',
+            'vendor': getattr(p.vendor, 'name', '') if p.vendor_id else '',
+            'product_type': getattr(p, 'product_type', ''),
+            'short_description': getattr(p, 'short_description', '')[:500],
+            'description': getattr(p, 'description', '')[:2000],
+            'meta_title': getattr(p, 'meta_title', ''),
+            'meta_description': getattr(p, 'meta_description', ''),
+            'variants': variants,
+            'images': images,
+            'stock_levels': stock_levels,
+        }
+    )
 
 
 # ── Customers ──────────────────────────────────────────────────────────
@@ -349,8 +374,9 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
         },
     },
 )
-def customers_search_tool(*, email: str = '', name: str = '',
-                         source: str = '', limit: int = 20) -> ToolResult:
+def customers_search_tool(
+    *, email: str = '', name: str = '', source: str = '', limit: int = 20
+) -> ToolResult:
     try:
         from django.contrib.auth import get_user_model
         from django.db.models import Q
@@ -372,15 +398,17 @@ def customers_search_tool(*, email: str = '', name: str = '',
             'name': (f'{u.first_name} {u.last_name}'.strip() or '—'),
             'source': getattr(u, 'source', '') or '',
             'date_joined': u.date_joined.isoformat() if u.date_joined else '',
-            'last_order_at': (u.last_order_at.isoformat()
-                              if getattr(u, 'last_order_at', None) else ''),
+            'last_order_at': (
+                u.last_order_at.isoformat() if getattr(u, 'last_order_at', None) else ''
+            ),
             'purchase_count': getattr(u, 'purchase_count', 0) or 0,
             'lifetime_value': _money_str(getattr(u, 'lifetime_value', None)),
         }
         for u in qs
     ]
-    return ToolResult(output={'customers': rows, 'count': len(rows)},
-                      display=f'{len(rows)} customer(s)')
+    return ToolResult(
+        output={'customers': rows, 'count': len(rows)}, display=f'{len(rows)} customer(s)'
+    )
 
 
 @tool(
@@ -415,47 +443,55 @@ def customers_get_tool(*, id: str = '', email: str = '') -> ToolResult:
     addresses: list[dict] = []
     try:
         for a in u.addresses.all():
-            addresses.append({
-                'type': getattr(a, 'address_type', '') or getattr(a, 'type', ''),
-                'line1': getattr(a, 'line1', '') or getattr(a, 'address1', ''),
-                'line2': getattr(a, 'line2', '') or getattr(a, 'address2', ''),
-                'city': getattr(a, 'city', ''),
-                'country': getattr(a, 'country', ''),
-                'postal_code': getattr(a, 'postal_code', '') or getattr(a, 'zip', ''),
-                'is_default': getattr(a, 'is_default', False),
-            })
-    except Exception:  # noqa: BLE001
+            addresses.append(
+                {
+                    'type': getattr(a, 'address_type', '') or getattr(a, 'type', ''),
+                    'line1': getattr(a, 'line1', '') or getattr(a, 'address1', ''),
+                    'line2': getattr(a, 'line2', '') or getattr(a, 'address2', ''),
+                    'city': getattr(a, 'city', ''),
+                    'country': getattr(a, 'country', ''),
+                    'postal_code': getattr(a, 'postal_code', '') or getattr(a, 'zip', ''),
+                    'is_default': getattr(a, 'is_default', False),
+                }
+            )
+    except Exception:  # noqa: BLE001, S110
         pass
 
     recent_orders: list[dict] = []
     try:
         from plugins.installed.orders.models import Order
+
         for o in Order.objects.filter(customer=u).order_by('-placed_at')[:10]:
-            recent_orders.append({
-                'order_number': o.order_number,
-                'status': o.status,
-                'total': _money_str(getattr(o, 'total', None)),
-                'placed_at': o.placed_at.isoformat() if o.placed_at else '',
-            })
-    except Exception:  # noqa: BLE001
+            recent_orders.append(
+                {
+                    'order_number': o.order_number,
+                    'status': o.status,
+                    'total': _money_str(getattr(o, 'total', None)),
+                    'placed_at': o.placed_at.isoformat() if o.placed_at else '',
+                }
+            )
+    except Exception:  # noqa: BLE001, S110
         pass
 
-    return ToolResult(output={
-        'id': str(u.pk),
-        'email': u.email,
-        'first_name': getattr(u, 'first_name', ''),
-        'last_name': getattr(u, 'last_name', ''),
-        'is_staff': bool(getattr(u, 'is_staff', False)),
-        'source': getattr(u, 'source', '') or '',
-        'date_joined': u.date_joined.isoformat() if u.date_joined else '',
-        'last_login': u.last_login.isoformat() if u.last_login else '',
-        'last_order_at': (u.last_order_at.isoformat()
-                          if getattr(u, 'last_order_at', None) else ''),
-        'purchase_count': getattr(u, 'purchase_count', 0) or 0,
-        'lifetime_value': _money_str(getattr(u, 'lifetime_value', None)),
-        'addresses': addresses,
-        'recent_orders': recent_orders,
-    })
+    return ToolResult(
+        output={
+            'id': str(u.pk),
+            'email': u.email,
+            'first_name': getattr(u, 'first_name', ''),
+            'last_name': getattr(u, 'last_name', ''),
+            'is_staff': bool(getattr(u, 'is_staff', False)),
+            'source': getattr(u, 'source', '') or '',
+            'date_joined': u.date_joined.isoformat() if u.date_joined else '',
+            'last_login': u.last_login.isoformat() if u.last_login else '',
+            'last_order_at': (
+                u.last_order_at.isoformat() if getattr(u, 'last_order_at', None) else ''
+            ),
+            'purchase_count': getattr(u, 'purchase_count', 0) or 0,
+            'lifetime_value': _money_str(getattr(u, 'lifetime_value', None)),
+            'addresses': addresses,
+            'recent_orders': recent_orders,
+        }
+    )
 
 
 # ── Analytics ───────────────────────────────────────────────────────────
@@ -479,8 +515,9 @@ def customers_get_tool(*, id: str = '', email: str = '') -> ToolResult:
 def analytics_summary_tool(*, days_back: int = 7) -> ToolResult:
     try:
         from django.contrib.auth import get_user_model
-        from django.db.models import Sum, Count
+        from django.db.models import Sum
         from django.utils import timezone
+
         from plugins.installed.orders.models import Order
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'orders/auth unavailable: {e}') from e
@@ -500,19 +537,25 @@ def analytics_summary_tool(*, days_back: int = 7) -> ToolResult:
     def pct(now, before):
         if not before:
             return None
-        return float(((Decimal(now) - Decimal(before)) / Decimal(before) * Decimal('100')).quantize(Decimal('0.01')))
+        return float(
+            ((Decimal(now) - Decimal(before)) / Decimal(before) * Decimal('100')).quantize(
+                Decimal('0.01')
+            )
+        )
 
-    return ToolResult(output={
-        'window_days': days,
-        'orders': cur_count,
-        'orders_prev': prev_count,
-        'orders_pct_change': pct(cur_count, prev_count),
-        'revenue': str(cur_rev),
-        'revenue_prev': str(prev_rev),
-        'revenue_pct_change': pct(cur_rev, prev_rev),
-        'avg_order_value': str(aov),
-        'new_customers': new_customers,
-    })
+    return ToolResult(
+        output={
+            'window_days': days,
+            'orders': cur_count,
+            'orders_prev': prev_count,
+            'orders_pct_change': pct(cur_count, prev_count),
+            'revenue': str(cur_rev),
+            'revenue_prev': str(prev_rev),
+            'revenue_pct_change': pct(cur_rev, prev_rev),
+            'avg_order_value': str(aov),
+            'new_customers': new_customers,
+        }
+    )
 
 
 @tool(
@@ -531,19 +574,20 @@ def analytics_summary_tool(*, days_back: int = 7) -> ToolResult:
         },
     },
 )
-def analytics_top_products_tool(*, days_back: int = 30, by: str = 'revenue',
-                               limit: int = 10) -> ToolResult:
+def analytics_top_products_tool(
+    *, days_back: int = 30, by: str = 'revenue', limit: int = 10
+) -> ToolResult:
     try:
         from django.db.models import Sum
         from django.utils import timezone
+
         from plugins.installed.orders.models import OrderItem
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'orders unavailable: {e}') from e
     days = max(1, min(int(days_back or 30), 365))
     since = timezone.now() - timedelta(days=days)
     qs = (
-        OrderItem.objects
-        .filter(order__placed_at__gte=since)
+        OrderItem.objects.filter(order__placed_at__gte=since)
         .values('product_id', 'product_name')
         .annotate(units=Sum('quantity'), revenue=Sum('total_price'))
     )
@@ -558,8 +602,10 @@ def analytics_top_products_tool(*, days_back: int = 30, by: str = 'revenue',
         }
         for r in qs
     ]
-    return ToolResult(output={'window_days': days, 'sort': by, 'products': rows},
-                      display=f'top {len(rows)} by {by}')
+    return ToolResult(
+        output={'window_days': days, 'sort': by, 'products': rows},
+        display=f'top {len(rows)} by {by}',
+    )
 
 
 # ── Content (CMS + email templates) ─────────────────────────────────────
@@ -593,13 +639,13 @@ def cms_pages_tool(*, state: str = '', limit: int = 50) -> ToolResult:
             'slug': getattr(p, 'slug', ''),
             'state': getattr(p, 'state', ''),
             'updated_at': p.updated_at.isoformat() if getattr(p, 'updated_at', None) else '',
-            'published_at': (p.published_at.isoformat()
-                             if getattr(p, 'published_at', None) else ''),
+            'published_at': (
+                p.published_at.isoformat() if getattr(p, 'published_at', None) else ''
+            ),
         }
         for p in qs
     ]
-    return ToolResult(output={'pages': rows, 'count': len(rows)},
-                      display=f'{len(rows)} page(s)')
+    return ToolResult(output={'pages': rows, 'count': len(rows)}, display=f'{len(rows)} page(s)')
 
 
 @tool(
@@ -636,8 +682,8 @@ def email_templates_tool() -> ToolResult:
 @tool(
     name='settings.list',
     description=(
-        'List every plugin\'s stored config (read-only). Returns a flat '
-        'dict keyed by plugin name. Useful for confirming what\'s '
+        "List every plugin's stored config (read-only). Returns a flat "
+        "dict keyed by plugin name. Useful for confirming what's "
         'enabled, what API keys are stored (redacted), and which '
         'feature flags are set.'
     ),
@@ -666,8 +712,9 @@ def settings_list_tool() -> ToolResult:
             'is_enabled': cfg.is_enabled,
             'config': data,
         }
-    return ToolResult(output={'plugins': out, 'count': len(out)},
-                      display=f'{len(out)} plugin config(s)')
+    return ToolResult(
+        output={'plugins': out, 'count': len(out)}, display=f'{len(out)} plugin config(s)'
+    )
 
 
 # ── Media library ───────────────────────────────────────────────────────
@@ -691,8 +738,13 @@ def settings_list_tool() -> ToolResult:
         },
     },
 )
-def media_search_tool(*, kind: str = '', filename: str = '', tag: str = '',  # noqa: PLR0913
-                     limit: int = 20) -> ToolResult:
+def media_search_tool(
+    *,
+    kind: str = '',
+    filename: str = '',
+    tag: str = '',  # noqa: PLR0913
+    limit: int = 20,
+) -> ToolResult:
     try:
         from plugins.installed.media.models import MediaAsset
     except Exception as e:  # noqa: BLE001
@@ -720,8 +772,7 @@ def media_search_tool(*, kind: str = '', filename: str = '', tag: str = '',  # n
         }
         for a in qs
     ]
-    return ToolResult(output={'assets': rows, 'count': len(rows)},
-                      display=f'{len(rows)} asset(s)')
+    return ToolResult(output={'assets': rows, 'count': len(rows)}, display=f'{len(rows)} asset(s)')
 
 
 # ── Metafields ──────────────────────────────────────────────────────────
@@ -747,6 +798,7 @@ def media_search_tool(*, kind: str = '', filename: str = '', tag: str = '',  # n
 def metafields_list_for_tool(*, model: str, object_id: str) -> ToolResult:
     from django.apps import apps
     from django.contrib.contenttypes.models import ContentType
+
     try:
         from plugins.installed.metafields.models import Metafield
     except Exception as e:  # noqa: BLE001
@@ -758,21 +810,24 @@ def metafields_list_for_tool(*, model: str, object_id: str) -> ToolResult:
         raise ToolError(f'unknown model: {model}') from e
     ct = ContentType.objects.get_for_model(m)
     rows = list(Metafield.objects.filter(content_type=ct, object_id=str(object_id)))
-    return ToolResult(output={
-        'model': f'{app_label}.{model_name}',
-        'object_id': str(object_id),
-        'metafields': [
-            {
-                'namespace': mf.namespace,
-                'key': mf.key,
-                'full_key': mf.full_key,
-                'value': mf.value,
-                'value_type': mf.value_type,
-                'description': mf.description,
-            }
-            for mf in rows
-        ],
-    }, display=f'{len(rows)} metafield(s)')
+    return ToolResult(
+        output={
+            'model': f'{app_label}.{model_name}',
+            'object_id': str(object_id),
+            'metafields': [
+                {
+                    'namespace': mf.namespace,
+                    'key': mf.key,
+                    'full_key': mf.full_key,
+                    'value': mf.value,
+                    'value_type': mf.value_type,
+                    'description': mf.description,
+                }
+                for mf in rows
+            ],
+        },
+        display=f'{len(rows)} metafield(s)',
+    )
 
 
 # ── Markets ─────────────────────────────────────────────────────────────
@@ -806,8 +861,9 @@ def markets_list_tool() -> ToolResult:
         }
         for m in Market.objects.all()
     ]
-    return ToolResult(output={'markets': rows, 'count': len(rows)},
-                      display=f'{len(rows)} market(s)')
+    return ToolResult(
+        output={'markets': rows, 'count': len(rows)}, display=f'{len(rows)} market(s)'
+    )
 
 
 # ── Schema introspection ────────────────────────────────────────────────
@@ -829,6 +885,7 @@ def markets_list_tool() -> ToolResult:
 )
 def db_describe_model_tool(*, model: str) -> ToolResult:
     from django.apps import apps
+
     try:
         app_label, model_name = model.split('.', 1)
         m = apps.get_model(app_label, model_name)
@@ -839,16 +896,21 @@ def db_describe_model_tool(*, model: str) -> ToolResult:
         if f.auto_created and not getattr(f, 'concrete', False):
             # Skip reverse relations for brevity.
             continue
-        fields.append({
-            'name': f.name,
-            'type': f.__class__.__name__,
-            'null': getattr(f, 'null', False),
-            'unique': getattr(f, 'unique', False),
-            'help_text': str(getattr(f, 'help_text', '') or '')[:120],
-        })
-    return ToolResult(output={
-        'model': f'{m._meta.app_label}.{m.__name__}',
-        'verbose_name': str(m._meta.verbose_name),
-        'table': m._meta.db_table,
-        'fields': fields,
-    }, display=f'{len(fields)} field(s)')
+        fields.append(
+            {
+                'name': f.name,
+                'type': f.__class__.__name__,
+                'null': getattr(f, 'null', False),
+                'unique': getattr(f, 'unique', False),
+                'help_text': str(getattr(f, 'help_text', '') or '')[:120],
+            }
+        )
+    return ToolResult(
+        output={
+            'model': f'{m._meta.app_label}.{m.__name__}',
+            'verbose_name': str(m._meta.verbose_name),
+            'table': m._meta.db_table,
+            'fields': fields,
+        },
+        display=f'{len(fields)} field(s)',
+    )

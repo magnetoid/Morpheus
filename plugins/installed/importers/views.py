@@ -1,12 +1,11 @@
 """Importer dashboard views — CSV products import/export + Shopify migration."""
+
 from __future__ import annotations
 
 import io
 import logging
 
-from morpheus.views import staff_member_required
-from morpheus.views import HttpResponse
-from morpheus.views import redirect, render
+from morpheus.views import HttpResponse, render, staff_member_required
 
 logger = logging.getLogger('morpheus.importers.views')
 
@@ -15,10 +14,13 @@ logger = logging.getLogger('morpheus.importers.views')
 def csv_index(request):
     if request.method == 'POST' and request.FILES.get('csv'):
         from plugins.installed.importers.adapters.csv_products import CsvProductImporter
+
         text = io.TextIOWrapper(request.FILES['csv'].file, encoding='utf-8', errors='ignore')
         importer = CsvProductImporter(file=text)
         try:
-            summary = importer.run(started_by=request.user.email if request.user.is_authenticated else '')
+            summary = importer.run(
+                started_by=request.user.email if request.user.is_authenticated else ''
+            )
         except Exception as e:  # noqa: BLE001
             return render(request, 'importers/csv.html', {'error': str(e), 'summary': None})
         return render(request, 'importers/csv.html', {'summary': summary, 'error': None})
@@ -28,6 +30,7 @@ def csv_index(request):
 @staff_member_required
 def csv_export(request):
     from plugins.installed.importers.adapters.csv_products import export_products_csv
+
     body = export_products_csv()
     resp = HttpResponse(body, content_type='text/csv')
     resp['Content-Disposition'] = 'attachment; filename="morpheus-products.csv"'
@@ -55,17 +58,20 @@ def shopify_index(request):
     }
     if request.method == 'POST':
         from plugins.installed.importers.adapters.shopify import ShopifyImporter
+
         shop = (request.POST.get('shop') or '').strip()
         token = (request.POST.get('token') or '').strip()
         what_products = request.POST.get('import_products') == 'on'
         what_customers = request.POST.get('import_customers') == 'on'
         what_orders = request.POST.get('import_orders') == 'on'
-        form_data.update({
-            'shop': shop,
-            'import_products': what_products,
-            'import_customers': what_customers,
-            'import_orders': what_orders,
-        })
+        form_data.update(
+            {
+                'shop': shop,
+                'import_products': what_products,
+                'import_customers': what_customers,
+                'import_orders': what_orders,
+            }
+        )
 
         if not shop or not token:
             error = 'Shop name and admin API token are required.'
@@ -85,14 +91,19 @@ def shopify_index(request):
                 if not what_orders:
                     importer.iter_orders = lambda: iter([])
                 summary = importer.run(
-                    started_by=(request.user.email
-                                if request.user.is_authenticated else 'shopify-import'),
+                    started_by=(
+                        request.user.email if request.user.is_authenticated else 'shopify-import'
+                    ),
                 )
             except Exception as e:  # noqa: BLE001 — surface everything in the UI
                 logger.warning('shopify import failed: %s', e, exc_info=True)
                 error = str(e)
-    return render(request, 'importers/shopify.html', {
-        'summary': summary,
-        'error': error,
-        'form_data': form_data,
-    })
+    return render(
+        request,
+        'importers/shopify.html',
+        {
+            'summary': summary,
+            'error': error,
+            'form_data': form_data,
+        },
+    )

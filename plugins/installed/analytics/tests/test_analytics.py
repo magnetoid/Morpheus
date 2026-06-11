@@ -1,4 +1,5 @@
 """Analytics tests."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -11,19 +12,21 @@ from djmoney.money import Money
 
 from core.agents import agent_registry
 from plugins.installed.analytics.models import (
-    AnalyticsEvent, AnalyticsSession, DailyMetric,
+    AnalyticsEvent,
+    DailyMetric,
 )
 from plugins.installed.analytics.services import (
-    funnel_for, get_or_create_session, real_time, record_event,
-    roll_daily, summary_for, top_products, top_searches, trim_old_events,
+    funnel_for,
+    get_or_create_session,
+    record_event,
+    roll_daily,
+    trim_old_events,
 )
-
 
 User = get_user_model()
 
 
 class SessionTests(TestCase):
-
     def test_creates_session_with_cookie(self):
         rf = RequestFactory()
         req = rf.get('/?utm_source=newsletter')
@@ -43,13 +46,13 @@ class SessionTests(TestCase):
 
 
 class RecordEventTests(TestCase):
-
     def test_record_event_writes_row_and_bumps_session(self):
         rf = RequestFactory()
         req = rf.get('/')
         sess = get_or_create_session(req)
-        evt = record_event(name='product.viewed', kind='product_view',
-                           session=sess, product_slug='the-quiet-hour')
+        evt = record_event(
+            name='product.viewed', kind='product_view', session=sess, product_slug='the-quiet-hour'
+        )
         self.assertIsNotNone(evt)
         sess.refresh_from_db()
         self.assertEqual(sess.event_count, 1)
@@ -57,7 +60,6 @@ class RecordEventTests(TestCase):
 
 
 class RollupTests(TestCase):
-
     def setUp(self):
         rf = RequestFactory()
         self.req = rf.get('/')
@@ -69,11 +71,16 @@ class RollupTests(TestCase):
         ts = timezone.now() - timedelta(days=1)
         # bypass auto_now_add by writing directly:
         AnalyticsEvent.objects.create(
-            name='pageview', kind='pageview', session=self.sess, url='/',
+            name='pageview',
+            kind='pageview',
+            session=self.sess,
+            url='/',
         )
         AnalyticsEvent.objects.filter(name='pageview').update(created_at=ts)
         AnalyticsEvent.objects.create(
-            name='order.placed', kind='purchase', session=self.sess,
+            name='order.placed',
+            kind='purchase',
+            session=self.sess,
             revenue=Money(Decimal('25'), 'USD'),
         )
         AnalyticsEvent.objects.filter(name='order.placed').update(created_at=ts)
@@ -92,7 +99,6 @@ class RollupTests(TestCase):
 
 
 class FunnelTests(TestCase):
-
     def test_funnel_walks_steps(self):
         rf = RequestFactory()
         s1 = get_or_create_session(rf.get('/'))
@@ -114,17 +120,20 @@ class FunnelTests(TestCase):
 
 
 class AgentToolTests(TestCase):
-
     def test_tools_registered(self):
         names = {t.name for t in agent_registry.platform_tools()}
-        for required in ('analytics.summary', 'analytics.funnel', 'analytics.realtime',
-                         'analytics.search_trends', 'analytics.agent_costs',
-                         'analytics.top_products'):
+        for required in (
+            'analytics.summary',
+            'analytics.funnel',
+            'analytics.realtime',
+            'analytics.search_trends',
+            'analytics.agent_costs',
+            'analytics.top_products',
+        ):
             self.assertIn(required, names)
 
 
 class TrimTests(TestCase):
-
     def test_trim_old_events(self):
         rf = RequestFactory()
         sess = get_or_create_session(rf.get('/'))

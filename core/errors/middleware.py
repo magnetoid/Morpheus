@@ -6,6 +6,7 @@ Catches any unhandled exception raised by a view, records it via
 is fail-soft — a bug in the capture path never breaks the original
 request.
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,6 +28,7 @@ class ErrorCaptureMiddleware:
     def process_exception(self, request, exception):
         # Suppress: 404 isn't an "error" worth storing.
         from django.http import Http404
+
         if isinstance(exception, Http404):
             return None
         try:

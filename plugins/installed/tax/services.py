@@ -1,16 +1,17 @@
 """Tax services — compute tax for a cart given an address."""
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from decimal import Decimal
-from typing import Iterable
 
 from djmoney.money import Money
 
 logger = logging.getLogger('morpheus.tax')
 
 
-def _resolve_region(country: str, region: str) -> 'TaxRegion | None':  # noqa: F821
+def _resolve_region(country: str, region: str) -> TaxRegion | None:  # noqa: F821
     """Find the most specific matching region, falling back to country-only."""
     from plugins.installed.tax.models import TaxConfiguration, TaxRegion
 
@@ -27,7 +28,7 @@ def _resolve_region(country: str, region: str) -> 'TaxRegion | None':  # noqa: F
     return TaxRegion.objects.filter(country=country, region='').first()
 
 
-def _resolve_rate(region, category_code: str) -> 'TaxRate | None':  # noqa: F821
+def _resolve_rate(region, category_code: str) -> TaxRate | None:  # noqa: F821
     from plugins.installed.tax.models import TaxRate
 
     qs = TaxRate.objects.filter(region=region)
@@ -78,10 +79,14 @@ def compute_tax(*, line_items: Iterable[dict], country: str = '', region: str = 
         if rate is None or amount <= 0:
             continue
         tax_amt = (amount * rate.fraction).quantize(Decimal('0.01'))
-        existing = by_rate.setdefault(str(rate.id), {
-            'rate_name': rate.name, 'rate_percent': str(rate.rate_percent),
-            'amount': Decimal('0'),
-        })
+        existing = by_rate.setdefault(
+            str(rate.id),
+            {
+                'rate_name': rate.name,
+                'rate_percent': str(rate.rate_percent),
+                'amount': Decimal('0'),
+            },
+        )
         existing['amount'] += tax_amt
 
     lines = []
@@ -89,11 +94,13 @@ def compute_tax(*, line_items: Iterable[dict], country: str = '', region: str = 
     for v in by_rate.values():
         amt = v['amount'].quantize(Decimal('0.01'))
         total += amt
-        lines.append({
-            'rate_name': v['rate_name'],
-            'rate_percent': v['rate_percent'],
-            'amount': Money(amt, currency or 'USD'),
-        })
+        lines.append(
+            {
+                'rate_name': v['rate_name'],
+                'rate_percent': v['rate_percent'],
+                'amount': Money(amt, currency or 'USD'),
+            }
+        )
     # Always return a Money — never None. The previous code returned
     # None when no tax lines matched, which forced every caller to
     # special-case it; a caller that forgot the None-check silently
@@ -114,9 +121,11 @@ def compute_tax_for_cart(cart, *, country: str = '', region: str = '') -> dict:
         if hasattr(product, 'tax_category_code'):
             category_code = getattr(product, 'tax_category_code', '') or ''
         amount = Decimal(item.unit_price.amount) * item.quantity
-        items.append({
-            'amount': amount,
-            'currency': str(item.unit_price.currency),
-            'category_code': category_code,
-        })
+        items.append(
+            {
+                'amount': amount,
+                'currency': str(item.unit_price.currency),
+                'category_code': category_code,
+            }
+        )
     return compute_tax(line_items=items, country=country, region=region)

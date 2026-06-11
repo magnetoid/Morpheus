@@ -13,6 +13,7 @@ Tags:
   {% caching_preload_lcp url %}       — <link rel="preload" as="image"> for the LCP image
   {% caching_script_defer_attr %}     — returns "defer" or "" based on defer_non_critical_js toggle
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -27,6 +28,7 @@ register = template.Library()
 def _storefront_config() -> dict[str, Any]:
     try:
         from plugins.registry import plugin_registry
+
         p = plugin_registry.get('storefront')
         if p is None:
             return {}
@@ -49,7 +51,7 @@ def caching_resource_hints() -> str:
         out.append(f'<link rel="preconnect" href="{escape(origin)}" crossorigin>')
     for origin in _split_lines(cfg.get('dns_prefetch_origins') or '')[:10]:
         out.append(f'<link rel="dns-prefetch" href="{escape(origin)}">')
-    return mark_safe('\n'.join(out))
+    return mark_safe('\n'.join(out))  # noqa: S308
 
 
 @register.simple_tag
@@ -71,11 +73,8 @@ def caching_preload_fonts() -> str:
             fmt = 'font/ttf'
         else:
             fmt = 'font/woff2'
-        out.append(
-            f'<link rel="preload" href="{escape(url)}" as="font" '
-            f'type="{fmt}" crossorigin>'
-        )
-    return mark_safe('\n'.join(out))
+        out.append(f'<link rel="preload" href="{escape(url)}" as="font" type="{fmt}" crossorigin>')
+    return mark_safe('\n'.join(out))  # noqa: S308
 
 
 @register.simple_tag
@@ -91,10 +90,8 @@ def caching_font_display() -> str:
     fd = (cfg.get('font_display') or 'swap').strip().lower()
     if fd not in ('swap', 'optional', 'fallback', 'block', 'auto'):
         fd = 'swap'
-    return mark_safe(
-        '<style id="caching-font-display">'
-        f'@font-face {{ font-display: {fd}; }}'
-        '</style>'
+    return mark_safe(  # noqa: S308
+        f'<style id="caching-font-display">@font-face {{ font-display: {fd}; }}</style>'
     )
 
 
@@ -113,7 +110,7 @@ def caching_service_worker_register() -> str:
     if not cfg.get('service_worker_enabled'):
         return ''
     offline = escape((cfg.get('offline_page_path') or '/offline/').strip())
-    return mark_safe(
+    return mark_safe(  # noqa: S308
         '<script>'
         'if ("serviceWorker" in navigator) {'
         '  window.addEventListener("load", function () {'
@@ -166,7 +163,7 @@ def caching_preload_lcp(url: str, sizes: str = '', srcset: str = '') -> str:
     if sizes:
         parts.append(f'imagesizes="{escape(sizes)}"')
     parts.append('>')
-    return mark_safe(' '.join(parts))
+    return mark_safe(' '.join(parts))  # noqa: S308
 
 
 @register.simple_tag

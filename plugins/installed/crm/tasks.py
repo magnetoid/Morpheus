@@ -1,4 +1,5 @@
 """Background tasks for the CRM inbox."""
+
 from __future__ import annotations
 
 import logging
@@ -17,6 +18,7 @@ def poll_mailboxes() -> dict:
     """
     try:
         from plugins.installed.crm.inbox import fetch_all_active
+
         return fetch_all_active()
     except Exception as e:  # noqa: BLE001 — beat must keep running
         logger.warning('crm.tasks.poll_mailboxes failed: %s', e, exc_info=True)

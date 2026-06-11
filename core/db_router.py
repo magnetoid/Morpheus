@@ -1,18 +1,17 @@
-import random
-
 class PrimaryReplicaRouter:
     """
     Database router for Enterprise scale Morpheus.
     Routes all read operations (SELECT) to read replicas,
     and all write operations (INSERT/UPDATE/DELETE) to the primary default DB.
     """
-    
+
     def db_for_read(self, model, **hints):
         """
         Reads go to a randomly selected replica, if available.
         If 'replica' is not configured, it safely falls back to 'default'.
         """
         from django.conf import settings
+
         if 'replica' in settings.DATABASES:
             return 'replica'
         return 'default'

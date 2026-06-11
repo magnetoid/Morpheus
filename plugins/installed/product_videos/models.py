@@ -5,6 +5,7 @@ long description; the merchant edits them via the Django admin (no full
 dashboard surface yet — adding videos one-at-a-time per product is rare
 enough that the admin is fine).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -23,7 +24,9 @@ class ProductVideo(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(
-        'catalog.Product', on_delete=models.CASCADE, related_name='videos',
+        'catalog.Product',
+        on_delete=models.CASCADE,
+        related_name='videos',
     )
     title = models.CharField(max_length=200, blank=True)
     url = models.URLField(
@@ -57,6 +60,7 @@ class ProductVideo(models.Model):
         # write through the iframe allow-list so a compromised staff account
         # or a future importer/API path can't seed stored XSS on the PDP.
         from plugins.installed.product_videos.sanitize import sanitize_embed_html
+
         if self.embed_html:
             self.embed_html = sanitize_embed_html(self.embed_html)
         super().save(*args, **kwargs)

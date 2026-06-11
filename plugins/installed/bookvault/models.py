@@ -16,12 +16,12 @@ Credentials (Token, StoreID, Authenticated) live in
 settings panel as every other plugin — no separate model for a single
 credential row.
 """
+
 from __future__ import annotations
 
 import uuid
 
 from django.db import models
-
 
 # BV uses small integer location IDs in their API. Keeping them as
 # constants here so views/templates don't repeat literal IDs.
@@ -47,15 +47,19 @@ class BookvaultProductLink(models.Model):
     location list + linked flag once the merchant maps the product
     SKU to a BV title.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(
-        'catalog.Product', on_delete=models.CASCADE,
+        'catalog.Product',
+        on_delete=models.CASCADE,
         related_name='bookvault_links',
     )
     variant = models.ForeignKey(
-        'catalog.ProductVariant', on_delete=models.CASCADE,
+        'catalog.ProductVariant',
+        on_delete=models.CASCADE,
         related_name='bookvault_links',
-        null=True, blank=True,
+        null=True,
+        blank=True,
     )
     # JSON list of BV location IDs (e.g. [1, 3] = UK + US fulfilment).
     # Empty means "not yet configured at BV"; a non-empty list with
@@ -91,9 +95,11 @@ class BookvaultOrderLink(models.Model):
     number — used for the "View on BookVault" portal link and to make
     a resend idempotent (the row's mere presence tells us BV already
     saw this order)."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.OneToOneField(
-        'orders.Order', on_delete=models.CASCADE,
+        'orders.Order',
+        on_delete=models.CASCADE,
         related_name='bookvault_link',
     )
     bv_ref = models.CharField(max_length=64, blank=True, default='')

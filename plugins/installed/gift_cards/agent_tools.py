@@ -1,4 +1,5 @@
 """Gift card agent tools."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -24,16 +25,22 @@ from core.agents import ToolError, ToolResult, tool
     },
     requires_approval=True,
 )
-def issue_gift_card_tool(*, amount: float, currency: str = 'USD',
-                         email: str = '', note: str = '') -> ToolResult:
+def issue_gift_card_tool(
+    *, amount: float, currency: str = 'USD', email: str = '', note: str = ''
+) -> ToolResult:
     from plugins.installed.gift_cards.services import issue
+
     card = issue(
         amount=Money(Decimal(str(amount)), currency),
-        email=email, note=note,
+        email=email,
+        note=note,
     )
     return ToolResult(
-        output={'code': card.code, 'balance': str(card.balance.amount),
-                'currency': str(card.balance.currency)},
+        output={
+            'code': card.code,
+            'balance': str(card.balance.amount),
+            'currency': str(card.balance.currency),
+        },
         display=f'Issued {card.balance} → code {card.code}',
     )
 
@@ -50,13 +57,17 @@ def issue_gift_card_tool(*, amount: float, currency: str = 'USD',
 )
 def lookup_gift_card_tool(*, code: str) -> ToolResult:
     from plugins.installed.gift_cards.services import lookup
+
     card = lookup(code)
     if card is None:
         raise ToolError(f'No gift card with code {code}')
-    return ToolResult(output={
-        'code': card.code, 'state': card.state,
-        'initial': str(card.initial_value.amount),
-        'balance': str(card.balance.amount),
-        'currency': str(card.balance.currency),
-        'issued_to': card.issued_to_email or '',
-    })
+    return ToolResult(
+        output={
+            'code': card.code,
+            'state': card.state,
+            'initial': str(card.initial_value.amount),
+            'balance': str(card.balance.amount),
+            'currency': str(card.balance.currency),
+            'issued_to': card.issued_to_email or '',
+        }
+    )

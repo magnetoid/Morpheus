@@ -5,10 +5,11 @@ fan-in stays centralised. Future extensions (per-user preferences,
 digest emails, push notifications) plug in here without per-call-site
 changes.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from django.contrib.auth import get_user_model
 
@@ -17,8 +18,9 @@ from plugins.installed.notifications_center.models import Notification
 logger = logging.getLogger('morpheus.notifications_center')
 
 
-def notify(*, user, kind: str, title: str, body: str = '',
-           action_url: str = '', icon: str = 'bell') -> Notification | None:
+def notify(
+    *, user, kind: str, title: str, body: str = '', action_url: str = '', icon: str = 'bell'
+) -> Notification | None:
     """Create a notification for a single staff user.
 
     Returns the row on success, ``None`` on bad input. Never raises —
@@ -29,8 +31,11 @@ def notify(*, user, kind: str, title: str, body: str = '',
         return None
     try:
         return Notification.objects.create(
-            user=user, kind=kind[:80], title=title[:200],
-            body=body or '', action_url=action_url[:500] if action_url else '',
+            user=user,
+            kind=kind[:80],
+            title=title[:200],
+            body=body or '',
+            action_url=action_url[:500] if action_url else '',
             icon=icon[:40] if icon else 'bell',
         )
     except Exception as e:  # noqa: BLE001
@@ -38,8 +43,9 @@ def notify(*, user, kind: str, title: str, body: str = '',
         return None
 
 
-def notify_all_staff(*, kind: str, title: str, body: str = '',
-                     action_url: str = '', icon: str = 'bell') -> int:
+def notify_all_staff(
+    *, kind: str, title: str, body: str = '', action_url: str = '', icon: str = 'bell'
+) -> int:
     """Fan out to every staff user. Returns the count actually written.
 
     Use this for events that don't have a single owner (e.g. "low stock
@@ -51,8 +57,10 @@ def notify_all_staff(*, kind: str, title: str, body: str = '',
     staff = User.objects.filter(is_staff=True, is_active=True)
     written = 0
     for u in staff:
-        if notify(user=u, kind=kind, title=title, body=body,
-                  action_url=action_url, icon=icon) is not None:
+        if (
+            notify(user=u, kind=kind, title=title, body=body, action_url=action_url, icon=icon)
+            is not None
+        ):
             written += 1
     return written
 
@@ -74,8 +82,9 @@ def latest_for(user, *, limit: int = 10) -> Iterable[Notification]:
         return []
     try:
         return list(
-            Notification.objects.filter(user=user)
-            .order_by('-created_at')[: max(1, min(int(limit), 50))]
+            Notification.objects.filter(user=user).order_by('-created_at')[
+                : max(1, min(int(limit), 50))
+            ]
         )
     except Exception as e:  # noqa: BLE001
         logger.debug('latest_for failed: %s', e)

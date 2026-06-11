@@ -6,6 +6,7 @@ A `CloudflareZone` represents a zone (domain) the merchant manages and the
 operations Morpheus can run against it (cache purge, DNS update).
 A `CacheInvalidation` audit row records every purge for the dashboard.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -35,11 +36,15 @@ class CloudflareAccount(models.Model):
 class CloudflareZone(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     account = models.ForeignKey(
-        CloudflareAccount, on_delete=models.CASCADE, related_name='zones',
+        CloudflareAccount,
+        on_delete=models.CASCADE,
+        related_name='zones',
     )
     channel = models.ForeignKey(
         'core.StoreChannel',
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='cloudflare_zones',
         help_text='Optional StoreChannel scope. Null = applies to all channels.',
     )
@@ -78,7 +83,9 @@ class CacheInvalidation(models.Model):
     zone = models.ForeignKey(CloudflareZone, on_delete=models.CASCADE, related_name='invalidations')
     scope = models.CharField(max_length=20, choices=SCOPE_CHOICES)
     targets = models.JSONField(default=list, help_text='URLs / tags / hosts purged.')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', db_index=True)
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='pending', db_index=True
+    )
     triggered_by = models.CharField(max_length=120, blank=True)
     response = models.JSONField(default=dict)
     error_message = models.TextField(blank=True)

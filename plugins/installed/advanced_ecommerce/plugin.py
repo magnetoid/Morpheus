@@ -31,9 +31,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import events
-from morpheus import Plugin
-from morpheus import DashboardPage, SettingsPanel, StorefrontBlock
+from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 
 logger = logging.getLogger('morpheus.advanced_ecommerce')
 

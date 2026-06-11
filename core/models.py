@@ -2,12 +2,15 @@
 Core models — StoreSettings only.
 Vendor moved to catalog plugin to avoid circular migration dependency.
 """
+
 import uuid
+
 from django.db import models
 
 
 class StoreSettings(models.Model):
     """Global store configuration singleton."""
+
     store_name = models.CharField(max_length=200, default='Morpheus Store')
     store_description = models.TextField(blank=True)
     logo = models.ImageField(upload_to='store/', blank=True, null=True)
@@ -22,13 +25,15 @@ class StoreSettings(models.Model):
     social_links = models.JSONField(default=dict)
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)
-    
+
     # Custom SMTP Overrides
-    smtp_host = models.CharField(max_length=200, blank=True, help_text="e.g. smtp.resend.com")
+    smtp_host = models.CharField(max_length=200, blank=True, help_text='e.g. smtp.resend.com')
     smtp_port = models.IntegerField(default=587)
     smtp_user = models.CharField(max_length=200, blank=True)
     smtp_password = models.CharField(max_length=200, blank=True)
-    default_from_email = models.CharField(max_length=200, blank=True, help_text="e.g. noreply@dotbooks.shop")
+    default_from_email = models.CharField(
+        max_length=200, blank=True, help_text='e.g. noreply@dotbooks.shop'
+    )
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -42,6 +47,7 @@ class StoreSettings(models.Model):
     @classmethod
     def get(cls, key: str, default=None):
         from django.db import DatabaseError
+
         try:
             obj = cls.objects.first()
         except DatabaseError:
@@ -49,22 +55,27 @@ class StoreSettings(models.Model):
             return default
         return getattr(obj, key, default) if obj else default
 
+
 class StoreChannel(models.Model):
     """
     A storefront channel. One Morpheus backend serves N channels — different
     domains, currencies, default countries, allowed payment methods, and
     per-channel product pricing/availability via `ProductChannelListing`.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(max_length=80, unique=True, db_index=True, default='default')
     name = models.CharField(max_length=100)
     domain = models.CharField(max_length=200, unique=True)
-    currency = models.CharField(max_length=3, default='USD',
-                                help_text='ISO 4217 currency code; prices use this.')
-    default_country = models.CharField(max_length=2, default='US',
-                                       help_text='ISO 3166-1 alpha-2; used for tax/shipping defaults.')
+    currency = models.CharField(
+        max_length=3, default='USD', help_text='ISO 4217 currency code; prices use this.'
+    )
+    default_country = models.CharField(
+        max_length=2, default='US', help_text='ISO 3166-1 alpha-2; used for tax/shipping defaults.'
+    )
     country_codes = models.JSONField(
-        default=list, blank=True,
+        default=list,
+        blank=True,
         help_text='Optional list of ISO countries this channel serves (empty = global).',
     )
     is_default = models.BooleanField(default=False, db_index=True)
@@ -96,11 +107,15 @@ class ProductChannelListing(models.Model):
     Falls back to `Product.price` when no listing exists for that channel.
     Generic FK so we don't introduce a hard dep from core onto catalog.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    channel = models.ForeignKey(StoreChannel, on_delete=models.CASCADE, related_name='product_listings')
+    channel = models.ForeignKey(
+        StoreChannel, on_delete=models.CASCADE, related_name='product_listings'
+    )
     # We don't import catalog.Product here — keep core decoupled.
     product_ct = models.ForeignKey(
-        'contenttypes.ContentType', on_delete=models.CASCADE,
+        'contenttypes.ContentType',
+        on_delete=models.CASCADE,
         limit_choices_to={'app_label': 'catalog', 'model': 'product'},
     )
     product_id = models.CharField(max_length=64, db_index=True)
@@ -123,44 +138,58 @@ class ProductChannelListing(models.Model):
     def __str__(self) -> str:
         return f'{self.channel.slug}/{self.product_id} {self.price_amount}'
 
+
 class APIKey(models.Model):
     """
     Law 2: Secure Core. Granular RBAC for headless clients and Remote Plugins.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     key = models.CharField(max_length=64, unique=True, editable=False)
-    scopes = models.JSONField(default=list, help_text="List of permitted scopes, e.g. ['read:products', 'write:orders']")
-    channel = models.ForeignKey(StoreChannel, on_delete=models.CASCADE, null=True, blank=True, related_name='api_keys')
+    scopes = models.JSONField(
+        default=list, help_text="List of permitted scopes, e.g. ['read:products', 'write:orders']"
+    )
+    channel = models.ForeignKey(
+        StoreChannel, on_delete=models.CASCADE, null=True, blank=True, related_name='api_keys'
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"API Key: {self.name}"
+        return f'API Key: {self.name}'
 
     def has_scope(self, scope: str) -> bool:
         return 'admin' in self.scopes or scope in self.scopes
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs):  # noqa: DJ012
         if not self.key:
             import secrets
+
             self.key = secrets.token_urlsafe(48)
         super().save(*args, **kwargs)
+
 
 class WebhookEndpoint(models.Model):
     """
     Subscribes external services (Remote Plugins) to Morpheus Events.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
-    url = models.URLField(help_text="The destination URL to POST event payloads")
-    secret = models.CharField(max_length=255, blank=True, help_text="Used for HMAC signature verification")
-    events = models.JSONField(default=list, help_text="List of event strings to subscribe to, e.g. ['order.placed']")
+    url = models.URLField(help_text='The destination URL to POST event payloads')
+    secret = models.CharField(
+        max_length=255, blank=True, help_text='Used for HMAC signature verification'
+    )
+    events = models.JSONField(
+        default=list, help_text="List of event strings to subscribe to, e.g. ['order.placed']"
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.url})"
+        return f'{self.name} ({self.url})'
+
 
 class OutboxEvent(models.Model):
     """
@@ -168,23 +197,25 @@ class OutboxEvent(models.Model):
     Events are written here in the same DB transaction as domain mutations.
     A separate worker reads these and publishes to NATS/Kafka.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event_type = models.CharField(max_length=255, db_index=True)
     payload = models.JSONField()
-    status = models.CharField(max_length=20, default='PENDING', choices=[
-        ('PENDING', 'Pending'),
-        ('PUBLISHED', 'Published'),
-        ('FAILED', 'Failed')
-    ], db_index=True)
+    status = models.CharField(
+        max_length=20,
+        default='PENDING',
+        choices=[('PENDING', 'Pending'), ('PUBLISHED', 'Published'), ('FAILED', 'Failed')],
+        db_index=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     published_at = models.DateTimeField(null=True, blank=True)
-    error_message = models.TextField(blank=True, null=True)
+    error_message = models.TextField(blank=True, null=True)  # noqa: DJ001
 
     class Meta:
         ordering = ['created_at']
 
     def __str__(self):
-        return f"{self.event_type} - {self.status}"
+        return f'{self.event_type} - {self.status}'
 
 
 class ExchangeRate(models.Model):

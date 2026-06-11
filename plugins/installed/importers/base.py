@@ -12,13 +12,15 @@ Usage:
     importer = ShopifyImporter(shop='my-shop', token='...')
     summary = importer.run()
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any
 
-from django.db import DatabaseError, transaction
+from django.db import DatabaseError
 from django.utils import timezone
 
 logger = logging.getLogger('morpheus.importers')
@@ -36,7 +38,7 @@ class ImportSummary:
 class BaseImporter:
     """Subclass and implement `iter_*` methods + `run`."""
 
-    source: str = ''   # 'shopify' | 'woocommerce' | ...
+    source: str = ''  # 'shopify' | 'woocommerce' | ...
 
     def __init__(self) -> None:
         if not self.source:
@@ -107,7 +109,9 @@ class BaseImporter:
 
         try:
             mapping = SourceMapping.objects.get(
-                source=self.source, source_id=str(source_id), dest_model=dest_model,
+                source=self.source,
+                source_id=str(source_id),
+                dest_model=dest_model,
             )
         except SourceMapping.DoesNotExist:
             return None

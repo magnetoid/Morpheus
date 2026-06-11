@@ -1,9 +1,10 @@
 import logging
 from decimal import Decimal
-from djmoney.money import Money
+
 from plugins.installed.ai_assistant.models import DynamicPriceRule
 
 logger = logging.getLogger('morpheus.ai.pricing')
+
 
 class DynamicPricingService:
     """
@@ -20,7 +21,7 @@ class DynamicPricingService:
         """
         if not product:
             return base_money
-            
+
         try:
             # Extremely fast DB read (often cached by Django query cache)
             rule = DynamicPriceRule.objects.get(product=product)
@@ -68,13 +69,13 @@ class DynamicPricingService:
 
             if inventory_level > 100:
                 new_multiplier = Decimal('0.9500')
-                reasoning = "High inventory — discount to clear stock."
+                reasoning = 'High inventory — discount to clear stock.'
             elif inventory_level < 10:
                 new_multiplier = Decimal('1.1500')
-                reasoning = "Low inventory — scarcity premium."
+                reasoning = 'Low inventory — scarcity premium.'
             else:
                 new_multiplier = Decimal('1.0000')
-                reasoning = "Normal stock — standard pricing."
+                reasoning = 'Normal stock — standard pricing.'
 
             DynamicPriceRule.objects.update_or_create(
                 product=product,
@@ -82,7 +83,9 @@ class DynamicPricingService:
             )
             logger.info(
                 'pricing.evaluate_product_price: %s → x%s (%s)',
-                product.slug, new_multiplier, reasoning,
+                product.slug,
+                new_multiplier,
+                reasoning,
             )
         except Exception as e:  # noqa: BLE001 — hourly cron must not stop on one bad row
             logger.warning('pricing.evaluate_product_price failed for %s: %s', product.slug, e)

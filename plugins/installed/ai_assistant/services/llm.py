@@ -8,9 +8,9 @@ ai_assistant plugin config (dashboard) via
 ``plugins.installed.ai_assistant.services.config.get_provider_config``.
 Env vars remain a fallback for local dev.
 """
-import json
-import time
+
 import logging
+import time
 from abc import ABC, abstractmethod
 
 import requests
@@ -30,8 +30,14 @@ class LLMGateway(ABC):
     model: str = ''
 
     @abstractmethod
-    def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
-                 max_tokens: int = 1000, **kwargs) -> str: ...
+    def complete(
+        self,
+        prompt: str,
+        system: str = '',
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        **kwargs,
+    ) -> str: ...
 
     @abstractmethod
     def embed(self, text: str) -> list[float]: ...
@@ -40,13 +46,23 @@ class LLMGateway(ABC):
         """Default: non-streaming fallback."""
         yield self.complete(prompt, system=system, **kwargs)
 
-    def _log(self, interaction_type: str, prompt: str, result: str,
-             prompt_tokens: int, completion_tokens: int, cost_usd: float,
-             latency_ms: int, success: bool = True, error: str = '',
-             **context):
+    def _log(
+        self,
+        interaction_type: str,
+        prompt: str,
+        result: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        cost_usd: float,
+        latency_ms: int,
+        success: bool = True,
+        error: str = '',
+        **context,
+    ):
         """Log every AI call to AIInteraction. Never raises."""
         try:
             from plugins.installed.ai_assistant.models import AIInteraction
+
             AIInteraction.objects.create(
                 interaction_type=interaction_type,
                 model_used=self.model,
@@ -59,10 +75,14 @@ class LLMGateway(ABC):
                 output_data={'result': result[:2000]},
                 success=success,
                 error_message=error,
-                **{k: v for k, v in context.items() if k in ('customer', 'product', 'order', 'agent_id')},
+                **{
+                    k: v
+                    for k, v in context.items()
+                    if k in ('customer', 'product', 'order', 'agent_id')
+                },
             )
         except Exception as e:
-            logger.error(f"Failed to log AIInteraction: {e}")
+            logger.error(f'Failed to log AIInteraction: {e}')
 
 
 class OpenAIGateway(LLMGateway):
@@ -72,15 +92,22 @@ class OpenAIGateway(LLMGateway):
     def __init__(self, cfg: ProviderConfig | None = None):
         # Shared timeout policy with core.agents.llm — keep a single
         # source of truth.
-        from core.agents.llm import LLM_HTTP_TIMEOUT_SECS, _openai_client
+        from core.agents.llm import _openai_client
+
         cfg = cfg or get_provider_config('openai')
         base = cfg.base_url if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1' else ''
         self.client = _openai_client(api_key=cfg.api_key, base_url=base)
         self.model = cfg.model or 'gpt-4o-mini'
         self.embed_model = cfg.embedding_model
 
-    def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
-                 max_tokens: int = 1000, **kwargs) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system: str = '',
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        **kwargs,
+    ) -> str:
         messages = []
         if system:
             messages.append({'role': 'system', 'content': system})
@@ -101,15 +128,20 @@ class OpenAIGateway(LLMGateway):
                 getattr(usage, 'prompt_tokens', 0) or 0,
                 getattr(usage, 'completion_tokens', 0) or 0,
             )
-            self._log('completion', prompt, result,
-                      getattr(usage, 'prompt_tokens', 0) or 0,
-                      getattr(usage, 'completion_tokens', 0) or 0,
-                      cost, elapsed)
+            self._log(
+                'completion',
+                prompt,
+                result,
+                getattr(usage, 'prompt_tokens', 0) or 0,
+                getattr(usage, 'completion_tokens', 0) or 0,
+                cost,
+                elapsed,
+            )
             return result
         except Exception as e:
             elapsed = int((time.monotonic() - start) * 1000)
             self._log('completion', prompt, '', 0, 0, 0, elapsed, success=False, error=str(e))
-            logger.error(f"OpenAI completion error: {e}")
+            logger.error(f'OpenAI completion error: {e}')
             raise
 
     def embed(self, text: str) -> list[float]:
@@ -129,12 +161,21 @@ class OpenAIGateway(LLMGateway):
 class AnthropicGateway(LLMGateway):
     def __init__(self, cfg: ProviderConfig | None = None):
         import anthropic
+
         cfg = cfg or get_provider_config('anthropic')
-        self.client = anthropic.Anthropic(api_key=cfg.api_key) if cfg.api_key else anthropic.Anthropic()
+        self.client = (
+            anthropic.Anthropic(api_key=cfg.api_key) if cfg.api_key else anthropic.Anthropic()
+        )
         self.model = cfg.model or 'claude-3-5-sonnet-latest'
 
-    def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
-                 max_tokens: int = 1000, **kwargs) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system: str = '',
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        **kwargs,
+    ) -> str:
         start = time.monotonic()
         try:
             response = self.client.messages.create(
@@ -146,8 +187,15 @@ class AnthropicGateway(LLMGateway):
             )
             result = response.content[0].text
             elapsed = int((time.monotonic() - start) * 1000)
-            self._log('completion', prompt, result,
-                      response.usage.input_tokens, response.usage.output_tokens, 0.0, elapsed)
+            self._log(
+                'completion',
+                prompt,
+                result,
+                response.usage.input_tokens,
+                response.usage.output_tokens,
+                0.0,
+                elapsed,
+            )
             return result
         except Exception as e:
             elapsed = int((time.monotonic() - start) * 1000)
@@ -171,11 +219,19 @@ class GeminiGateway(LLMGateway):
     def __init__(self, cfg: ProviderConfig | None = None):
         cfg = cfg or get_provider_config('gemini')
         self.api_key = cfg.api_key
-        self.base_url = (cfg.base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip('/')
+        self.base_url = (cfg.base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip(
+            '/'
+        )
         self.model = cfg.model or 'gemini-2.0-flash'
 
-    def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
-                 max_tokens: int = 1000, **kwargs) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system: str = '',
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        **kwargs,
+    ) -> str:
         if not self.api_key:
             raise RuntimeError('Gemini API key not configured.')
         start = time.monotonic()
@@ -202,10 +258,13 @@ class GeminiGateway(LLMGateway):
             elapsed = int((time.monotonic() - start) * 1000)
             usage = data.get('usageMetadata', {}) or {}
             self._log(
-                'completion', prompt, result,
+                'completion',
+                prompt,
+                result,
                 int(usage.get('promptTokenCount', 0) or 0),
                 int(usage.get('candidatesTokenCount', 0) or 0),
-                0.0, elapsed,
+                0.0,
+                elapsed,
             )
             return result
         except Exception as e:
@@ -218,9 +277,13 @@ class GeminiGateway(LLMGateway):
             raise RuntimeError('Gemini API key not configured.')
         embed_model = 'text-embedding-004'
         url = f'{self.base_url}/models/{embed_model}:embedContent?key={self.api_key}'
-        resp = requests.post(url, json={
-            'content': {'parts': [{'text': text}]},
-        }, timeout=30)
+        resp = requests.post(
+            url,
+            json={
+                'content': {'parts': [{'text': text}]},
+            },
+            timeout=30,
+        )
         resp.raise_for_status()
         return list((resp.json().get('embedding') or {}).get('values') or [])
 
@@ -302,8 +365,14 @@ class OllamaGateway(LLMGateway):
             h['Authorization'] = f'Bearer {self.api_key}'
         return h
 
-    def complete(self, prompt: str, system: str = '', temperature: float = 0.7,
-                 max_tokens: int = 1000, **kwargs) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system: str = '',
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        **kwargs,
+    ) -> str:
         start = time.monotonic()
         try:
             resp = requests.post(
@@ -311,7 +380,7 @@ class OllamaGateway(LLMGateway):
                 headers=self._headers(),
                 json={
                     'model': self.model,
-                    'prompt': f"{system}\n\n{prompt}" if system else prompt,
+                    'prompt': f'{system}\n\n{prompt}' if system else prompt,
                     'stream': False,
                     'options': {'temperature': temperature, 'num_predict': max_tokens},
                 },
@@ -323,7 +392,7 @@ class OllamaGateway(LLMGateway):
             self._log('completion', prompt, result, 0, 0, 0.0, elapsed)
             return result
         except Exception as e:
-            logger.error(f"Ollama error: {e}")
+            logger.error(f'Ollama error: {e}')
             raise
 
     def embed(self, text: str) -> list[float]:
@@ -354,7 +423,5 @@ def get_llm() -> LLMGateway:
     provider = get_active_provider_name()
     cls = _GATEWAYS.get(provider)
     if not cls:
-        raise ValueError(
-            f"Unknown AI provider: {provider!r}. Choose: {list(_GATEWAYS.keys())}"
-        )
+        raise ValueError(f'Unknown AI provider: {provider!r}. Choose: {list(_GATEWAYS.keys())}')
     return cls()

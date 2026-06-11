@@ -11,6 +11,7 @@ templatetag is invoked without args:
 
     {% morph_ask %}      ← auto-derives context from request.path
 """
+
 from __future__ import annotations
 
 import re
@@ -21,17 +22,23 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
-def _auto_prefill(request) -> tuple[str, str]:
+def _auto_prefill(request) -> tuple[str, str]:  # noqa: PLR0911
     """Best-effort context label + suggested prefill from `request.path`."""
     path = (request.path or '').rstrip('/')
     if not path or path == '/dashboard':
         return ('the dashboard', 'show me a snapshot of the store right now')
     m = re.match(r'/dashboard/orders/([\w-]+)', path)
     if m:
-        return (f'order #{m.group(1)}', f'investigate order #{m.group(1)} and tell me what stands out')
+        return (
+            f'order #{m.group(1)}',
+            f'investigate order #{m.group(1)} and tell me what stands out',
+        )
     m = re.match(r'/dashboard/products/?$', path)
     if m:
-        return ('the products list', 'show me low-stock products and which ones to refresh copy for')
+        return (
+            'the products list',
+            'show me low-stock products and which ones to refresh copy for',
+        )
     m = re.match(r'/dashboard/customers/?$', path)
     if m:
         return ('customers', 'who are my top 5 customers by lifetime spend?')
@@ -60,10 +67,10 @@ def morph_ask(context, context_label: str = '', prefill: str = '', label: str = 
     label = label or 'Ask Linda'
 
     # The button posts a custom event the floating widget listens for.
-    return mark_safe(
+    return mark_safe(  # noqa: S308
         '<button type="button" class="morph-ask-btn" '
         f'data-prefill="{prefill}" data-label="{context_label}" '
-        'onclick="window.dispatchEvent(new CustomEvent(\'morph:ask\', '
+        "onclick=\"window.dispatchEvent(new CustomEvent('morph:ask', "
         '{detail:{prefill: this.dataset.prefill, label: this.dataset.label}}))" '
         'style="display:inline-flex;align-items:center;gap:.4rem;'
         'padding:.35rem .7rem;border:1px solid var(--border);border-radius:999px;'

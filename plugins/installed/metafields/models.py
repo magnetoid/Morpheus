@@ -1,4 +1,5 @@
 """Metafield model — `(content_type, object_id, namespace, key) → value`."""
+
 from __future__ import annotations
 
 import json
@@ -36,8 +37,9 @@ class MetafieldManager(models.Manager):
             out[full_key] = m.typed_value
         return out
 
-    def set(self, instance, *, namespace: str = '', key: str,
-            value: Any, value_type: str = '') -> 'Metafield':
+    def set(
+        self, instance, *, namespace: str = '', key: str, value: Any, value_type: str = ''
+    ) -> Metafield:
         """Idempotent upsert. `value` is JSON-serialised on the way in."""
         ct = ContentType.objects.get_for_model(type(instance))
         if not value_type:
@@ -55,8 +57,10 @@ class MetafieldManager(models.Manager):
     def delete_for(self, instance, *, namespace: str = '', key: str) -> int:
         ct = ContentType.objects.get_for_model(type(instance))
         deleted, _ = self.filter(
-            content_type=ct, object_id=str(instance.pk),
-            namespace=namespace or '', key=key,
+            content_type=ct,
+            object_id=str(instance.pk),
+            namespace=namespace or '',
+            key=key,
         ).delete()
         return deleted
 
@@ -92,6 +96,7 @@ class Metafield(models.Model):
         file picker / JSON),
       * how downstream consumers (storefront, GraphQL) expose the value.
     """
+
     VALUE_TYPES = [
         ('string', 'String'),
         ('text', 'Long text'),
@@ -110,18 +115,26 @@ class Metafield(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.CharField(max_length=64, db_index=True,
-                                 help_text='Stringified primary key — works for ints + UUIDs.')
+    object_id = models.CharField(
+        max_length=64, db_index=True, help_text='Stringified primary key — works for ints + UUIDs.'
+    )
     target = GenericForeignKey('content_type', 'object_id')
 
-    namespace = models.CharField(max_length=80, blank=True, default='',
-                                 help_text='Convention: `<plugin>.<feature>` for plugin-owned, blank for merchant-defined.')
-    key = models.CharField(max_length=120,
-                           help_text='Snake-case identifier within the namespace.')
+    namespace = models.CharField(
+        max_length=80,
+        blank=True,
+        default='',
+        help_text='Convention: `<plugin>.<feature>` for plugin-owned, blank for merchant-defined.',
+    )
+    key = models.CharField(max_length=120, help_text='Snake-case identifier within the namespace.')
     value = models.TextField(blank=True, default='')
     value_type = models.CharField(max_length=20, choices=VALUE_TYPES, default='string')
-    description = models.CharField(max_length=300, blank=True, default='',
-                                   help_text='Optional — shown in the dashboard editor.')
+    description = models.CharField(
+        max_length=300,
+        blank=True,
+        default='',
+        help_text='Optional — shown in the dashboard editor.',
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -158,6 +171,6 @@ class Metafield(models.Model):
                 return v.lower() in ('1', 'true', 'yes', 'on')
             if t in ('json', 'list', 'object'):
                 return json.loads(v) if v else None
-        except Exception:  # noqa: BLE001 — fall through to raw string
+        except Exception:  # noqa: BLE001, S110
             pass
         return v

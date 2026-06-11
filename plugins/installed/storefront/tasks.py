@@ -1,4 +1,5 @@
 """Storefront async tasks."""
+
 from __future__ import annotations
 
 import logging
@@ -6,7 +7,6 @@ import logging
 from celery import shared_task
 
 from morph.celery import app  # noqa: F401 — registers app on import
-
 
 logger = logging.getLogger('morpheus.storefront.tasks')
 
@@ -20,10 +20,10 @@ def send_order_confirmation(order_id: str) -> bool:
     order is gone (race) or the email helper isn't installed.
     """
     try:
-        from plugins.installed.orders.models import Order
         from plugins.installed.orders.email import (
             send_order_confirmation as _send,
         )
+        from plugins.installed.orders.models import Order
     except Exception as e:  # noqa: BLE001
         logger.warning('storefront.send_order_confirmation: deps missing: %s', e)
         return False

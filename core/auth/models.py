@@ -1,4 +1,5 @@
 """EmailOTP — a single-use 6-digit code bound to an email + expiry."""
+
 from __future__ import annotations
 
 import uuid
@@ -22,6 +23,7 @@ class EmailOTP(models.Model):
     nothing can verify against it). Keeps the inbox sane and the DB
     clear of stale rows.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(db_index=True)
     code_hash = models.CharField(max_length=128)

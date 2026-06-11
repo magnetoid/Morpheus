@@ -29,13 +29,14 @@ jobs:
           cache: pip
       - run: |
           python -m pip install --upgrade pip
-          pip install ruff==0.7.4 mypy==1.13.0 bandit==1.8.0
+          pip install ruff==0.15.8 mypy==1.13.0 bandit==1.8.0
       - name: ruff
         run: ruff check .
       - name: ruff format check
         run: ruff format --check .
       - name: bandit (security)
-        run: bandit -q -r . -x ./venv,./tests,./.venv,./db.sqlite3 -ll
+        # B308/B703 (mark_safe) are covered per-site by ruff S308 noqa review.
+        run: bandit -q -r . -x ./venv,./tests,./.venv,./db.sqlite3 -ll -s B308,B703
 
   test:
     runs-on: ubuntu-latest

@@ -1,6 +1,8 @@
 import strawberry
-from plugins.installed.payments.services.routing import create_payment_intent_for
+
 from plugins.installed.orders.models import Order
+from plugins.installed.payments.services.routing import create_payment_intent_for
+
 
 @strawberry.type
 class PaymentResult:
@@ -9,9 +11,10 @@ class PaymentResult:
     transaction_id: str | None = None
     error: str | None = None
 
+
 @strawberry.type
 class PaymentsMutationExtension:
-    @strawberry.mutation(description="Create a payment intent for an order")
+    @strawberry.mutation(description='Create a payment intent for an order')
     def create_payment_intent(self, order_id: str, gateway: str | None = None) -> PaymentResult:
         try:
             order = Order.objects.get(id=order_id)
@@ -21,8 +24,10 @@ class PaymentsMutationExtension:
             return PaymentResult(
                 success=result.get('success', False),
                 client_secret=result.get('client_secret'),
-                transaction_id=str(result.get('transaction_id')) if result.get('transaction_id') else None,
-                error=result.get('error')
+                transaction_id=str(result.get('transaction_id'))
+                if result.get('transaction_id')
+                else None,
+                error=result.get('error'),
             )
         except Order.DoesNotExist:
-            return PaymentResult(success=False, error="Order not found")
+            return PaymentResult(success=False, error='Order not found')

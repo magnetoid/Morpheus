@@ -12,12 +12,12 @@ Flow:
    Stripe refund call → state moves to `refunded`. Fires
    `refund.processed` + `return.refunded` events.
 """
+
 from __future__ import annotations
 
 import logging
 import uuid
 from decimal import Decimal
-from typing import Iterable
 
 from django.conf import settings
 from django.db import models, transaction
@@ -52,10 +52,14 @@ class ReturnRequest(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey(
-        'orders.Order', on_delete=models.CASCADE, related_name='return_requests',
+        'orders.Order',
+        on_delete=models.CASCADE,
+        related_name='return_requests',
     )
     rma_number = models.CharField(max_length=32, unique=True, blank=True)
-    state = models.CharField(max_length=12, choices=STATE_CHOICES, default='requested', db_index=True)
+    state = models.CharField(
+        max_length=12, choices=STATE_CHOICES, default='requested', db_index=True
+    )
     reason = models.CharField(max_length=25, choices=REASON_CHOICES, default='other')
     customer_note = models.TextField(blank=True)
     staff_note = models.TextField(blank=True)
@@ -64,21 +68,32 @@ class ReturnRequest(models.Model):
         help_text='List of {order_item_id, quantity} for items being returned.',
     )
     refund_amount = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
         help_text='Computed at approval time; used by RefundService.',
     )
     refund = models.ForeignKey(
-        'orders.Refund', on_delete=models.SET_NULL, null=True, blank=True, related_name='returns',
+        'orders.Refund',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='returns',
     )
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='requested_returns',
     )
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='decided_returns',
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -106,9 +121,14 @@ class RefundService:
     @classmethod
     @transaction.atomic
     def process(
-        cls, *, order, amount: Money, reason: str = 'customer_request',
-        notes: str = '', actor=None,
-    ) -> 'Refund':  # noqa: F821
+        cls,
+        *,
+        order,
+        amount: Money,
+        reason: str = 'customer_request',
+        notes: str = '',
+        actor=None,
+    ) -> Refund:  # noqa: F821
         """Create a Refund row and call the provider. Idempotent on
         ``(order, amount, reason)`` — retries reuse the same Refund row
         (which carries a deterministic Stripe idempotency_key) so the
@@ -119,14 +139,16 @@ class RefundService:
         # crashed mid-flight it'll be a row with `is_processed=False`,
         # and we want to RESUME it, not create a sibling.
         refund = (
-            Refund.objects
-            .select_for_update()
+            Refund.objects.select_for_update()
             .filter(order=order, amount=amount, reason=reason)
             .first()
         )
         if refund is None:
             refund = Refund.objects.create(
-                order=order, amount=amount, reason=reason, notes=notes,
+                order=order,
+                amount=amount,
+                reason=reason,
+                notes=notes,
             )
         elif refund.is_processed:
             return refund
@@ -138,7 +160,10 @@ class RefundService:
             refund.save(update_fields=['is_processed', 'processed_at'])
             hook_registry.fire(
                 'refund.processed',
-                refund=refund, order=order, amount=amount, actor=actor,
+                refund=refund,
+                order=order,
+                amount=amount,
+                actor=actor,
             )
         else:
             logger.warning('orders: refund %s recorded but provider call failed', refund.id)
@@ -152,16 +177,25 @@ class RefundService:
         usable without Stripe configured.
         """
         try:
-            payment = order.payments.filter(
-                status__in=('succeeded', 'completed', 'paid'),
-            ).order_by('-created_at').first() if hasattr(order, 'payments') else None
+            payment = (
+                order.payments.filter(
+                    status__in=('succeeded', 'completed', 'paid'),
+                )
+                .order_by('-created_at')
+                .first()
+                if hasattr(order, 'payments')
+                else None
+            )
             charge_id = (payment.metadata or {}).get('stripe_charge_id') if payment else None
             if not charge_id:
-                logger.info('orders: no stripe charge on order %s; skipping provider call', order.id)
+                logger.info(
+                    'orders: no stripe charge on order %s; skipping provider call', order.id
+                )
                 return True
 
             import stripe  # type: ignore
             from django.conf import settings as dj_settings
+
             stripe.api_key = getattr(dj_settings, 'STRIPE_SECRET_KEY', '') or ''
             if not stripe.api_key:
                 logger.warning('orders: STRIPE_SECRET_KEY missing; skipping refund call')
@@ -183,18 +217,27 @@ class ReturnService:
 
     @classmethod
     def create_request(
-        cls, *, order, items: list[dict], reason: str = 'other',
-        customer_note: str = '', requested_by=None,
+        cls,
+        *,
+        order,
+        items: list[dict],
+        reason: str = 'other',
+        customer_note: str = '',
+        requested_by=None,
     ) -> ReturnRequest:
         rr = ReturnRequest.objects.create(
-            order=order, reason=reason, items=items,
-            customer_note=customer_note, requested_by=requested_by,
+            order=order,
+            reason=reason,
+            items=items,
+            customer_note=customer_note,
+            requested_by=requested_by,
         )
         hook_registry.fire('return.requested', return_request=rr, order=order)
         # Fan-out to the staff notifications center so the dashboard bell
         # shows it on the next page load. Optional plugin — fail-soft.
         try:
             from plugins.installed.notifications_center.services import notify_all_staff
+
             notify_all_staff(
                 kind='returns.requested',
                 title=f'Return requested — {rr.rma_number}',
@@ -202,12 +245,14 @@ class ReturnService:
                 action_url=f'/dashboard/returns/{rr.id}/',
                 icon='undo-2',
             )
-        except Exception:  # noqa: BLE001 — notifications optional
+        except Exception:  # noqa: BLE001, S110
             pass
         return rr
 
     @classmethod
-    def approve(cls, rr: ReturnRequest, *, decided_by=None, refund_amount: Money | None = None) -> ReturnRequest:
+    def approve(
+        cls, rr: ReturnRequest, *, decided_by=None, refund_amount: Money | None = None
+    ) -> ReturnRequest:
         if rr.state != 'requested':
             raise ValueError(f'Cannot approve from state {rr.state}')
         if refund_amount is None:
@@ -254,11 +299,7 @@ class ReturnService:
         # Re-fetch the row with a row-level lock so concurrent staff
         # actions on the same RMA serialise on the database, not on
         # whoever clicks first in the UI.
-        rr = (
-            ReturnRequest.objects
-            .select_for_update()
-            .get(pk=rr.pk)
-        )
+        rr = ReturnRequest.objects.select_for_update().get(pk=rr.pk)
         if rr.state not in ('approved', 'received'):
             raise ValueError(f'Cannot refund from state {rr.state}')
         if rr.state == 'approved':
@@ -270,23 +311,30 @@ class ReturnService:
 
         if as_store_credit:
             from plugins.installed.orders import store_credit
+
             customer = rr.order.customer
             if customer is None:
                 raise ValueError('Cannot issue store credit on a guest order; do a money refund.')
             store_credit.issue(
-                customer, amount=amount,
+                customer,
+                amount=amount,
                 reference=str(rr.id),
                 note=f'Store credit from return {rr.rma_number}',
                 created_by=actor,
             )
             rr.state = 'refunded'
             rr.save(update_fields=['state', 'updated_at'])
-            hook_registry.fire('return.refunded', return_request=rr, refund=None, store_credit=amount)
+            hook_registry.fire(
+                'return.refunded', return_request=rr, refund=None, store_credit=amount
+            )
             return rr
 
         refund = RefundService.process(
-            order=rr.order, amount=amount, reason='customer_request',
-            notes=f'RMA {rr.rma_number}', actor=actor,
+            order=rr.order,
+            amount=amount,
+            reason='customer_request',
+            notes=f'RMA {rr.rma_number}',
+            actor=actor,
         )
         rr.refund = refund
         rr.state = 'refunded'

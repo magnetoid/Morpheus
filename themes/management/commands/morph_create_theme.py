@@ -8,6 +8,7 @@ manage.py morph_create_theme <name>
 
 Generates a working Morpheus theme scaffold and prints next-step instructions.
 """
+
 from __future__ import annotations
 
 import re
@@ -70,19 +71,30 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Theme "{name}" scaffolded.'))
         self.stdout.write('')
         self.stdout.write('Next steps:')
-        self.stdout.write(f'  1. Set MORPHEUS_ACTIVE_THEME={name} in your env, or update settings.py.')
-        self.stdout.write('  2. python manage.py check  (theme should appear in the activation log)')
+        self.stdout.write(
+            f'  1. Set MORPHEUS_ACTIVE_THEME={name} in your env, or update settings.py.'
+        )
+        self.stdout.write(
+            '  2. python manage.py check  (theme should appear in the activation log)'
+        )
         self.stdout.write('  3. python manage.py runserver')
         self.stdout.write('')
         self.stdout.write('Read docs/THEME_DEVELOPMENT.md for the full developer guide.')
 
     # ── Templates ─────────────────────────────────────────────────────────────
 
-    def _build_files(self, *, name: str, label: str, version: str, description: str) -> dict[str, str]:
+    def _build_files(
+        self, *, name: str, label: str, version: str, description: str
+    ) -> dict[str, str]:
         cls_prefix = ''.join(part.capitalize() for part in name.split('_'))
         out: dict[str, str] = {
-            'theme.py': self._theme_py(cls_prefix=cls_prefix, name=name, label=label,
-                                       version=version, description=description),
+            'theme.py': self._theme_py(
+                cls_prefix=cls_prefix,
+                name=name,
+                label=label,
+                version=version,
+                description=description,
+            ),
             'README.md': self._readme(name=name, label=label, description=description),
             'templates/storefront/base.html': self._base_html(label=label),
             'templates/storefront/home.html': self._home_html(),
@@ -135,7 +147,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def _readme(*, name, label, description) -> str:
-        return dedent(f'''
+        return dedent(f"""
             # {label}
 
             {description}
@@ -158,11 +170,12 @@ class Command(BaseCommand):
             Edit `theme.py` → `get_design_tokens()`. The dashboard renders a live editor.
 
             See `docs/THEME_DEVELOPMENT.md` for the full guide.
-        ''').lstrip()
+        """).lstrip()
 
     @staticmethod
     def _base_html(*, label) -> str:
-        return dedent(f'''
+        return (
+            dedent(f"""
             {{% load static %}}<!DOCTYPE html>
             <html lang="en">
             <head>
@@ -186,11 +199,14 @@ class Command(BaseCommand):
               </footer>
             </body>
             </html>
-        ''').lstrip().replace('<<name>>', label.lower().replace(' ', '_'))
+        """)
+            .lstrip()
+            .replace('<<name>>', label.lower().replace(' ', '_'))
+        )
 
     @staticmethod
     def _home_html() -> str:
-        return dedent('''
+        return dedent("""
             {% extends "storefront/base.html" %}
             {% block content %}
             <section class="hero">
@@ -208,11 +224,11 @@ class Command(BaseCommand):
               {% endfor %}
             </section>
             {% endblock %}
-        ''').lstrip()
+        """).lstrip()
 
     @staticmethod
     def _list_html() -> str:
-        return dedent('''
+        return dedent("""
             {% extends "storefront/base.html" %}
             {% block content %}
             <h1>Products</h1>
@@ -228,11 +244,11 @@ class Command(BaseCommand):
               {% endfor %}
             </section>
             {% endblock %}
-        ''').lstrip()
+        """).lstrip()
 
     @staticmethod
     def _detail_html() -> str:
-        return dedent('''
+        return dedent("""
             {% extends "storefront/base.html" %}
             {% block content %}
             <article class="pdp">
@@ -245,11 +261,11 @@ class Command(BaseCommand):
               </form>
             </article>
             {% endblock %}
-        ''').lstrip()
+        """).lstrip()
 
     @staticmethod
     def _cart_html() -> str:
-        return dedent('''
+        return dedent("""
             {% extends "storefront/base.html" %}
             {% block content %}
             <h1>Cart</h1>
@@ -264,21 +280,21 @@ class Command(BaseCommand):
               <p>Your cart is empty.</p>
             {% endif %}
             {% endblock %}
-        ''').lstrip()
+        """).lstrip()
 
     @staticmethod
     def _checkout_html() -> str:
-        return dedent('''
+        return dedent("""
             {% extends "storefront/base.html" %}
             {% block content %}
             <h1>Checkout</h1>
             <form method="post">{% csrf_token %}<button type="submit" class="btn">Place order</button></form>
             {% endblock %}
-        ''').lstrip()
+        """).lstrip()
 
     @staticmethod
     def _stylesheet(*, name) -> str:
-        return dedent(f'''
+        return dedent(f"""
             /* {name} — starter stylesheet. Edit freely. */
             :root {{
               --bg: #ffffff;
@@ -307,15 +323,18 @@ class Command(BaseCommand):
             .card {{ display: block; background: #fafafa; padding: 1rem; border-radius: var(--radius); }}
             .card img {{ width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius); }}
             .price {{ font-weight: 600; }}
-        ''').lstrip()
+        """).lstrip()
 
     # ── Optional: copy from an existing theme ─────────────────────────────────
 
     def _copy_existing(self, source_name: str, target: Path, new_name: str) -> None:
         from django.conf import settings
+
         src = Path(settings.MORPHEUS_THEMES_DIR) / source_name
         if not src.is_dir():
-            self.stdout.write(self.style.WARNING(f'--from theme {source_name!r} not found; skipped copy.'))
+            self.stdout.write(
+                self.style.WARNING(f'--from theme {source_name!r} not found; skipped copy.')
+            )
             return
         # Copy templates and static (overwrite the starter scaffold).
         for sub in ('templates', 'static'):
@@ -326,7 +345,9 @@ class Command(BaseCommand):
                     shutil.rmtree(dst_sub)
                 shutil.copytree(src_sub, dst_sub)
                 self.stdout.write(self.style.SUCCESS(f'  copied {sub}/ from {source_name}'))
-        self.stdout.write(self.style.WARNING(
-            f'  remember to edit theme.py to set name="{new_name}" — copied class still uses '
-            f'{source_name!r}.'
-        ))
+        self.stdout.write(
+            self.style.WARNING(
+                f'  remember to edit theme.py to set name="{new_name}" — copied class still uses '
+                f'{source_name!r}.'
+            )
+        )

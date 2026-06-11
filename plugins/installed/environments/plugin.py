@@ -1,4 +1,5 @@
 """Environments plugin manifest."""
+
 from __future__ import annotations
 
 from morpheus import Plugin

@@ -14,13 +14,13 @@ Five admin entry points:
                            ``BookvaultProductLink`` row. Auth: shared
                            HMAC over the request body (BV signs).
 """
+
 from __future__ import annotations
 
 import hmac
 import json
 import logging
 from hashlib import sha256
-from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -36,37 +36,44 @@ logger = logging.getLogger('morpheus.bookvault')
 def overview(request: HttpRequest) -> HttpResponse:
     """Status card + product-link audit + reauth button."""
     from plugins.installed.bookvault.models import (
-        BookvaultOrderLink, BookvaultProductLink,
+        BookvaultOrderLink,
+        BookvaultProductLink,
     )
     from plugins.installed.bookvault.services import (
-        _config, authorize_url, portal_apps_url, portal_orders_url, store_url,
+        _config,
+        authorize_url,
+        portal_apps_url,
+        portal_orders_url,
+        store_url,
     )
 
     cfg = _config()
     recent_orders = list(
-        BookvaultOrderLink.objects
-        .select_related('order')
-        .order_by('-last_sent_at')[:25]
+        BookvaultOrderLink.objects.select_related('order').order_by('-last_sent_at')[:25]
     )
     link_counts = {
         'linked': BookvaultProductLink.objects.filter(is_linked=True).count(),
         'pending': BookvaultProductLink.objects.filter(is_linked=False).count(),
     }
-    return render(request, 'bookvault/overview.html', {
-        'cfg': cfg,
-        'store_url': store_url(),
-        'recent_orders': recent_orders,
-        'link_counts': link_counts,
-        'portal_apps_url': portal_apps_url(),
-        'portal_orders_url': portal_orders_url(),
-        'register_url': authorize_url(action='register'),
-        'login_url': authorize_url(),
-        'active_nav': 'bookvault',
-        'breadcrumb_trail': [
-            {'label': 'Dashboard', 'url': '/dashboard/'},
-            {'label': 'Bookvault'},
-        ],
-    })
+    return render(
+        request,
+        'bookvault/overview.html',
+        {
+            'cfg': cfg,
+            'store_url': store_url(),
+            'recent_orders': recent_orders,
+            'link_counts': link_counts,
+            'portal_apps_url': portal_apps_url(),
+            'portal_orders_url': portal_orders_url(),
+            'register_url': authorize_url(action='register'),
+            'login_url': authorize_url(),
+            'active_nav': 'bookvault',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Bookvault'},
+            ],
+        },
+    )
 
 
 @staff_member_required
@@ -82,8 +89,7 @@ def disconnect(request: HttpRequest) -> HttpResponseRedirect:
     if 'error' in result:
         messages.warning(
             request,
-            'Local credentials cleared. BV uninstall webhook failed: '
-            + str(result['error']),
+            'Local credentials cleared. BV uninstall webhook failed: ' + str(result['error']),
         )
     else:
         messages.success(request, 'Disconnected from Bookvault.')
@@ -109,8 +115,8 @@ def connect(request: HttpRequest) -> HttpResponseRedirect:
     else:
         messages.warning(
             request,
-            'Bookvault responded but didn\'t return a Token / StoreID — '
-            'check that this store\'s URL matches the one you registered '
+            "Bookvault responded but didn't return a Token / StoreID — "
+            "check that this store's URL matches the one you registered "
             'at bookvault.app.',
         )
     return HttpResponseRedirect('/dashboard/apps/bookvault/')
@@ -121,8 +127,8 @@ def connect(request: HttpRequest) -> HttpResponseRedirect:
 def resend_order(request: HttpRequest, order_id) -> HttpResponseRedirect:
     """Manual "Resend Order To Bookvault" — mirrors the WP plugin's
     per-order admin action."""
-    from plugins.installed.orders.models import Order
     from plugins.installed.bookvault.services import send_order
+    from plugins.installed.orders.models import Order
 
     order = get_object_or_404(Order, pk=order_id)
     result = send_order(order=order)
@@ -174,7 +180,9 @@ def webhook_product_link(request: HttpRequest) -> JsonResponse:
 
     signature = request.headers.get('X-BV-Signature', '')
     expected = hmac.new(
-        token.encode('utf-8'), request.body, sha256,
+        token.encode('utf-8'),
+        request.body,
+        sha256,
     ).hexdigest()
     if not hmac.compare_digest(signature, expected):
         return JsonResponse({'error': 'bad signature'}, status=401)
@@ -202,15 +210,19 @@ def webhook_product_link(request: HttpRequest) -> JsonResponse:
         variant = ProductVariant.objects.filter(pk=variant_id).first()
 
     link, _ = BookvaultProductLink.objects.update_or_create(
-        product=product, variant=variant,
+        product=product,
+        variant=variant,
         defaults={
             'locations': list(locations) if isinstance(locations, list) else [],
             'is_linked': is_linked,
             'bv_title_id': bv_title_id,
         },
     )
-    return JsonResponse({
-        'ok': True, 'id': str(link.id),
-        'is_linked': link.is_linked,
-        'locations': link.locations,
-    })
+    return JsonResponse(
+        {
+            'ok': True,
+            'id': str(link.id),
+            'is_linked': link.is_linked,
+            'locations': link.locations,
+        }
+    )

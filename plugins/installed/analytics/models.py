@@ -14,13 +14,15 @@ Plus:
 * **FunnelDefinition** — merchant-defined ordered list of event names;
   the funnel report walks it.
 """
+
 from __future__ import annotations
 
 import uuid
 
 from django.conf import settings
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class AnalyticsSession(models.Model):
@@ -30,7 +32,9 @@ class AnalyticsSession(models.Model):
     cookie_id = models.CharField(max_length=64, unique=True, db_index=True)
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='analytics_sessions',
     )
     user_agent = models.CharField(max_length=300, blank=True)
@@ -79,12 +83,17 @@ class AnalyticsEvent(models.Model):
     kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='custom', db_index=True)
 
     session = models.ForeignKey(
-        AnalyticsSession, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='events',
+        AnalyticsSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='events',
     )
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='analytics_events',
     )
 
@@ -92,8 +101,11 @@ class AnalyticsEvent(models.Model):
     product_slug = models.CharField(max_length=200, blank=True, db_index=True)
     search_query = models.CharField(max_length=200, blank=True, db_index=True)
     revenue = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
     )
     agent_name = models.CharField(max_length=100, blank=True, db_index=True)
 
@@ -120,8 +132,11 @@ class DailyMetric(models.Model):
     dimension = models.CharField(max_length=120, blank=True, db_index=True)
     value_int = models.BigIntegerField(default=0)
     value_money = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD',
-        null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
     )
 
     class Meta:

@@ -18,36 +18,67 @@ Usage:
     python manage.py seed_publisher_pages
     python manage.py seed_publisher_pages --force   # overwrite existing bodies
 """
+
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
-
 PUBLISH_FORM_FIELDS = [
-    {'name': 'title',        'type': 'text',     'label': 'Manuscript title',     'required': True},
-    {'name': 'author_name',  'type': 'text',     'label': 'Your name',            'required': True},
-    {'name': 'email',        'type': 'email',    'label': 'Email',                'required': True},
-    {'name': 'phone',        'type': 'tel',      'label': 'Phone (optional)',     'required': False},
-    {'name': 'genre',        'type': 'select',   'label': 'Genre / category',     'required': True,
-     'options': [
-         {'value': 'fiction',     'label': 'Fiction'},
-         {'value': 'nonfiction',  'label': 'Non-fiction'},
-         {'value': 'poetry',      'label': 'Poetry'},
-         {'value': 'memoir',      'label': 'Memoir'},
-         {'value': 'children',    'label': "Children's"},
-         {'value': 'academic',    'label': 'Academic'},
-         {'value': 'other',       'label': 'Other'},
-     ]},
-    {'name': 'word_count',   'type': 'number',   'label': 'Approximate word count', 'required': True,
-     'placeholder': 'e.g. 80000'},
-    {'name': 'synopsis',     'type': 'textarea', 'label': 'Synopsis (200–500 words)', 'required': True,
-     'rows': 8, 'placeholder': 'A spoiler-free summary: the premise, the stakes, what makes this book worth reading.'},
-    {'name': 'sample_url',   'type': 'url',      'label': 'Sample chapter — link to PDF / Google Doc', 'required': True,
-     'placeholder': 'https://drive.google.com/...'},
-    {'name': 'bio',          'type': 'textarea', 'label': 'Author bio + previous credits', 'required': False,
-     'rows': 5},
-    {'name': 'comparable_titles', 'type': 'text', 'label': 'Comparable titles (comp titles)', 'required': False,
-     'placeholder': 'e.g. "Convenience Store Woman meets Eileen"'},
+    {'name': 'title', 'type': 'text', 'label': 'Manuscript title', 'required': True},
+    {'name': 'author_name', 'type': 'text', 'label': 'Your name', 'required': True},
+    {'name': 'email', 'type': 'email', 'label': 'Email', 'required': True},
+    {'name': 'phone', 'type': 'tel', 'label': 'Phone (optional)', 'required': False},
+    {
+        'name': 'genre',
+        'type': 'select',
+        'label': 'Genre / category',
+        'required': True,
+        'options': [
+            {'value': 'fiction', 'label': 'Fiction'},
+            {'value': 'nonfiction', 'label': 'Non-fiction'},
+            {'value': 'poetry', 'label': 'Poetry'},
+            {'value': 'memoir', 'label': 'Memoir'},
+            {'value': 'children', 'label': "Children's"},
+            {'value': 'academic', 'label': 'Academic'},
+            {'value': 'other', 'label': 'Other'},
+        ],
+    },
+    {
+        'name': 'word_count',
+        'type': 'number',
+        'label': 'Approximate word count',
+        'required': True,
+        'placeholder': 'e.g. 80000',
+    },
+    {
+        'name': 'synopsis',
+        'type': 'textarea',
+        'label': 'Synopsis (200–500 words)',
+        'required': True,
+        'rows': 8,
+        'placeholder': 'A spoiler-free summary: the premise, the stakes, what makes this book worth reading.',
+    },
+    {
+        'name': 'sample_url',
+        'type': 'url',
+        'label': 'Sample chapter — link to PDF / Google Doc',
+        'required': True,
+        'placeholder': 'https://drive.google.com/...',
+    },
+    {
+        'name': 'bio',
+        'type': 'textarea',
+        'label': 'Author bio + previous credits',
+        'required': False,
+        'rows': 5,
+    },
+    {
+        'name': 'comparable_titles',
+        'type': 'text',
+        'label': 'Comparable titles (comp titles)',
+        'required': False,
+        'placeholder': 'e.g. "Convenience Store Woman meets Eileen"',
+    },
 ]
 
 
@@ -297,12 +328,17 @@ RETURNS_PAGE_BODY = """\
 
 
 PAGES = [
-    ('publish-with-us', 'Publish with us',   'Submissions are open — send us your manuscript.', PUBLISH_PAGE_BODY),
-    ('authors',         'Our authors',       'Voices on our list.',                              AUTHORS_PAGE_BODY),
-    ('imprints',        'Imprints',          'Three lists, one editorial sensibility.',          IMPRINTS_PAGE_BODY),
-    ('faq',             'Frequently asked', 'Everything you need to know.',                      FAQ_PAGE_BODY),
-    ('shipping',        'Shipping',          'How and when your books reach you.',               SHIPPING_PAGE_BODY),
-    ('returns',         'Returns',           'If a book isn’t right.',                           RETURNS_PAGE_BODY),
+    (
+        'publish-with-us',
+        'Publish with us',
+        'Submissions are open — send us your manuscript.',
+        PUBLISH_PAGE_BODY,
+    ),
+    ('authors', 'Our authors', 'Voices on our list.', AUTHORS_PAGE_BODY),
+    ('imprints', 'Imprints', 'Three lists, one editorial sensibility.', IMPRINTS_PAGE_BODY),
+    ('faq', 'Frequently asked', 'Everything you need to know.', FAQ_PAGE_BODY),
+    ('shipping', 'Shipping', 'How and when your books reach you.', SHIPPING_PAGE_BODY),
+    ('returns', 'Returns', 'If a book isn’t right.', RETURNS_PAGE_BODY),
 ]
 
 
@@ -311,7 +347,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
-            '--force', action='store_true',
+            '--force',
+            action='store_true',
             help='Overwrite existing page bodies (otherwise existing slugs are left alone).',
         )
 
@@ -331,9 +368,9 @@ class Command(BaseCommand):
                 'is_active': True,
             },
         )
-        self.stdout.write(self.style.SUCCESS(
-            f'{"Created" if created else "Updated"} form: publish-with-us'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(f'{"Created" if created else "Updated"} form: publish-with-us')
+        )
 
         # ── Pages ────────────────────────────────────────────────────────────
         created_n = updated_n = skipped_n = 0
@@ -363,6 +400,8 @@ class Command(BaseCommand):
                 created_n += 1
                 self.stdout.write(f'  created: /p/{slug}/')
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — created={created_n} updated={updated_n} skipped={skipped_n}'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'done — created={created_n} updated={updated_n} skipped={skipped_n}'
+            )
+        )

@@ -3,6 +3,7 @@
 
 def theme_context(request):
     from themes.registry import theme_registry
+
     theme = theme_registry.active
     if not theme:
         return {}

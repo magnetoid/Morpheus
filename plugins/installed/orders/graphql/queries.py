@@ -1,5 +1,4 @@
 import strawberry
-from typing import List, Optional
 
 from api.graphql_permissions import (
     PermissionDenied,
@@ -7,21 +6,28 @@ from api.graphql_permissions import (
     has_scope,
     require_authenticated,
 )
-from plugins.installed.orders.graphql.types import CartType, OrderType, CartTotalsType
 from plugins.installed.orders.graphql.inputs import AddressInput
+from plugins.installed.orders.graphql.types import CartTotalsType, CartType, OrderType
 from plugins.installed.orders.models import Cart, Order
 
 _ORDER_RELATED = (
-    'customer', 'channel',
+    'customer',
+    'channel',
 )
 _ORDER_PREFETCH = (
-    'items', 'items__product', 'items__variant', 'events',
+    'items',
+    'items__product',
+    'items__variant',
+    'events',
 )
 _CART_RELATED = (
-    'customer', 'coupon',
+    'customer',
+    'coupon',
 )
 _CART_PREFETCH = (
-    'items', 'items__product', 'items__variant',
+    'items',
+    'items__product',
+    'items__variant',
 )
 
 
@@ -29,11 +35,7 @@ def _scoped_orders_qs(info: strawberry.Info):
     """Return an Order queryset scoped to what the caller is allowed to see."""
     require_authenticated(info)
 
-    qs = (
-        Order.objects
-        .select_related(*_ORDER_RELATED)
-        .prefetch_related(*_ORDER_PREFETCH)
-    )
+    qs = Order.objects.select_related(*_ORDER_RELATED).prefetch_related(*_ORDER_PREFETCH)
 
     # Admin / API-key with read:orders sees everything.
     if has_scope(info, 'read:orders'):
@@ -42,38 +44,41 @@ def _scoped_orders_qs(info: strawberry.Info):
     # Otherwise: scope to the logged-in customer.
     customer = current_customer(info)
     if customer is None:
-        raise PermissionDenied("Cannot read orders without a customer context")
+        raise PermissionDenied('Cannot read orders without a customer context')
     return qs.filter(customer=customer)
 
 
 @strawberry.type
 class OrdersQueryExtension:
-
-    @strawberry.field(description="Get an order by its order number")
-    def order(self, info: strawberry.Info, order_number: str) -> Optional[OrderType]:
+    @strawberry.field(description='Get an order by its order number')
+    def order(self, info: strawberry.Info, order_number: str) -> OrderType | None:
         try:
             return _scoped_orders_qs(info).get(order_number=order_number)
         except Order.DoesNotExist:
             return None
 
-    @strawberry.field(description="List orders the caller is allowed to see")
+    @strawberry.field(description='List orders the caller is allowed to see')
     def orders(
         self,
         info: strawberry.Info,
         first: int = 50,
-        order_by: str = "-placed_at",
-    ) -> List[OrderType]:
+        order_by: str = '-placed_at',
+    ) -> list[OrderType]:
         first = max(1, min(first, 100))
         qs = _scoped_orders_qs(info).order_by(order_by)
         return list(qs[:first])
 
-    @strawberry.field(description="Get a cart by its ID or by the current session")
+    @strawberry.field(description='Get a cart by its ID or by the current session')
     def cart(
         self,
         info: strawberry.Info,
-        id: Optional[strawberry.ID] = None,
-    ) -> Optional[CartType]:
-        request = info.context.get('request') if isinstance(info.context, dict) else getattr(info.context, 'request', None)
+        id: strawberry.ID | None = None,
+    ) -> CartType | None:
+        request = (
+            info.context.get('request')
+            if isinstance(info.context, dict)
+            else getattr(info.context, 'request', None)
+        )
         qs = Cart.objects.select_related(*_CART_RELATED).prefetch_related(*_CART_PREFETCH)
 
         if id is not None:
@@ -84,13 +89,17 @@ class OrdersQueryExtension:
             # Carts are session-scoped: only the owning session/user may read them.
             if cart.customer_id is not None:
                 user = getattr(request, 'user', None) if request else None
-                if not user or not getattr(user, 'is_authenticated', False) or user.pk != cart.customer_id:
+                if (  # noqa: SIM102
+                    not user
+                    or not getattr(user, 'is_authenticated', False)
+                    or user.pk != cart.customer_id
+                ):  # noqa: SIM102
                     if not has_scope(info, 'read:carts'):
-                        raise PermissionDenied("Not allowed to read this cart")
+                        raise PermissionDenied('Not allowed to read this cart')
             elif request is not None and getattr(request, 'session', None) is not None:
-                if cart.session_key and cart.session_key != request.session.session_key:
+                if cart.session_key and cart.session_key != request.session.session_key:  # noqa: SIM102
                     if not has_scope(info, 'read:carts'):
-                        raise PermissionDenied("Not allowed to read this cart")
+                        raise PermissionDenied('Not allowed to read this cart')
             return cart
 
         if request is not None and getattr(request, 'session', None) is not None:
@@ -103,16 +112,16 @@ class OrdersQueryExtension:
                     return None
         return None
 
-    @strawberry.field(description="Calculate cart totals (shipping/tax/discount) for an address")
+    @strawberry.field(description='Calculate cart totals (shipping/tax/discount) for an address')
     def cart_totals(
         self,
         info: strawberry.Info,
         cart_id: strawberry.ID,
-        address: Optional[AddressInput] = None,
-        shipping_rate_id: Optional[str] = None,
-    ) -> Optional[CartTotalsType]:
-        from plugins.installed.orders.services import OrderService
+        address: AddressInput | None = None,
+        shipping_rate_id: str | None = None,
+    ) -> CartTotalsType | None:
         from core.graphql.types import MoneyType
+        from plugins.installed.orders.services import OrderService
 
         cart = self.cart(info, id=cart_id)
         if cart is None:
@@ -132,7 +141,9 @@ class OrdersQueryExtension:
                 'phone': address.phone or '',
             }
 
-        rate_id = (shipping_rate_id or '').strip() or str((cart.metadata or {}).get('shipping_rate_id') or '')
+        rate_id = (shipping_rate_id or '').strip() or str(
+            (cart.metadata or {}).get('shipping_rate_id') or ''
+        )
         breakdown = OrderService.calculate_cart_breakdown(
             cart=cart,
             address=addr,

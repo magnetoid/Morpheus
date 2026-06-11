@@ -5,6 +5,7 @@ exactly the kind of surface where a quiet permission leak would be
 expensive. The boundary triplet (anon blocked / wrong-vendor blocked /
 own-vendor allowed) locks in the security contract.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -19,7 +20,9 @@ from plugins.installed.catalog.models import Product, Vendor
 def _make_user(email: str, password: str = 'pw'):
     User = get_user_model()
     return User.objects.create_user(
-        username=email, email=email, password=password,
+        username=email,
+        email=email,
+        password=password,
     )
 
 
@@ -51,14 +54,16 @@ class VendorProductsListPermissionTests(TestCase):
         self.client = Client()
         self.user_vendor = _make_user('owner@example.com')
         self.vendor = _make_vendor('Indie Press', owner=self.user_vendor)
-        self.product = _make_product(self.vendor, name='Pinocchio',
-                                     slug='pinocchio-test', sku='PIN-T-1')
+        self.product = _make_product(
+            self.vendor, name='Pinocchio', slug='pinocchio-test', sku='PIN-T-1'
+        )
 
         # A different vendor + product to assert isolation
         self.user_other = _make_user('other@example.com')
         self.other_vendor = _make_vendor('Other Press', owner=self.user_other)
-        self.other_product = _make_product(self.other_vendor, name='Other Book',
-                                           slug='other-book-test', sku='OB-T-1')
+        self.other_product = _make_product(
+            self.other_vendor, name='Other Book', slug='other-book-test', sku='OB-T-1'
+        )
 
     def test_anon_redirects_to_login(self):
         resp = self.client.get('/vendor/me/products/')
@@ -73,7 +78,7 @@ class VendorProductsListPermissionTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
         # Per template: "not an approved vendor yet" branch
-        self.assertIn("not an approved vendor", body.lower())
+        self.assertIn('not an approved vendor', body.lower())
         # No product names leaked
         self.assertNotIn('Pinocchio', body)
         self.assertNotIn('Other Book', body)
@@ -98,16 +103,15 @@ class VendorProductEditPermissionTests(TestCase):
         self.client = Client()
         self.user_vendor = _make_user('edit-owner@example.com')
         self.vendor = _make_vendor('Edit Press', owner=self.user_vendor)
-        self.product = _make_product(self.vendor, name='Edit Me',
-                                     slug='edit-me-test', sku='EM-T-1')
+        self.product = _make_product(self.vendor, name='Edit Me', slug='edit-me-test', sku='EM-T-1')
 
         self.user_attacker = _make_user('attacker@example.com')
-        self.attacker_vendor = _make_vendor('Attacker Press',
-                                            owner=self.user_attacker)
+        self.attacker_vendor = _make_vendor('Attacker Press', owner=self.user_attacker)
         # Attacker's own product so they ARE an approved vendor (otherwise
         # they get the "not a vendor" 403 path, not the cross-vendor 404)
-        _make_product(self.attacker_vendor, name='Attacker Book',
-                      slug='attacker-book-test', sku='AB-T-1')
+        _make_product(
+            self.attacker_vendor, name='Attacker Book', slug='attacker-book-test', sku='AB-T-1'
+        )
 
     def _url(self, product_id):
         return f'/vendor/me/products/{product_id}/'
@@ -134,13 +138,16 @@ class VendorProductEditPermissionTests(TestCase):
     def test_other_vendor_cannot_post_either(self):
         """The double-check at fetch time means even a POST is blocked."""
         self.client.force_login(self.user_attacker)
-        resp = self.client.post(self._url(self.product.id), {
-            'name': 'HIJACKED',
-            'status': 'archived',
-            'price': '0.01',
-            'short_description': '',
-            'description': '',
-        })
+        resp = self.client.post(
+            self._url(self.product.id),
+            {
+                'name': 'HIJACKED',
+                'status': 'archived',
+                'price': '0.01',
+                'short_description': '',
+                'description': '',
+            },
+        )
         self.assertEqual(resp.status_code, 404)
         # Refresh from DB: nothing should have changed.
         self.product.refresh_from_db()
@@ -156,13 +163,16 @@ class VendorProductEditPermissionTests(TestCase):
 
     def test_owner_can_save_changes(self):
         self.client.force_login(self.user_vendor)
-        resp = self.client.post(self._url(self.product.id), {
-            'name': 'Edit Me — 2nd ed',
-            'status': 'active',
-            'price': '15.50',
-            'short_description': 'A short pitch.',
-            'description': 'A longer description with HTML.',
-        })
+        resp = self.client.post(
+            self._url(self.product.id),
+            {
+                'name': 'Edit Me — 2nd ed',
+                'status': 'active',
+                'price': '15.50',
+                'short_description': 'A short pitch.',
+                'description': 'A longer description with HTML.',
+            },
+        )
         self.assertEqual(resp.status_code, 302)  # redirect to /vendor/me/products/
         self.product.refresh_from_db()
         self.assertEqual(self.product.name, 'Edit Me — 2nd ed')
@@ -172,13 +182,16 @@ class VendorProductEditPermissionTests(TestCase):
     def test_invalid_price_doesnt_save(self):
         self.client.force_login(self.user_vendor)
         original_price = self.product.price.amount
-        resp = self.client.post(self._url(self.product.id), {
-            'name': 'Still Edit Me',
-            'status': 'active',
-            'price': 'not-a-number',
-            'short_description': '',
-            'description': '',
-        })
+        resp = self.client.post(
+            self._url(self.product.id),
+            {
+                'name': 'Still Edit Me',
+                'status': 'active',
+                'price': 'not-a-number',
+                'short_description': '',
+                'description': '',
+            },
+        )
         # Re-renders with an error (200, not 302/4xx)
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode().lower()

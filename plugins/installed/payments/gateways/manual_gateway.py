@@ -1,4 +1,5 @@
 """Manual gateway — offline payments (bank transfer, COD, etc.). Always available."""
+
 from __future__ import annotations
 
 from plugins.installed.payments.gateway import PaymentGateway

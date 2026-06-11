@@ -1,4 +1,5 @@
 """Wishlist tests."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -9,17 +10,17 @@ from djmoney.money import Money
 
 from core.agents import agent_registry
 from plugins.installed.catalog.models import Product
-from plugins.installed.wishlist.models import WishlistItem
 from plugins.installed.wishlist.services import (
-    add_item, get_or_create_wishlist, make_shareable, remove_item,
+    add_item,
+    get_or_create_wishlist,
+    make_shareable,
+    remove_item,
 )
-
 
 User = get_user_model()
 
 
 class WishlistServiceTests(TestCase):
-
     def test_get_or_create_for_customer(self):
         u = User.objects.create_user(username='x', email='x@example.com', password='x')
         wl = get_or_create_wishlist(customer=u)
@@ -30,7 +31,11 @@ class WishlistServiceTests(TestCase):
         u = User.objects.create_user(username='y', email='y@example.com', password='x')
         wl = get_or_create_wishlist(customer=u)
         p = Product.objects.create(
-            name='B', slug='b', sku='B1', price=Money(Decimal('10'), 'USD'), status='active',
+            name='B',
+            slug='b',
+            sku='B1',
+            price=Money(Decimal('10'), 'USD'),
+            status='active',
         )
         add_item(wishlist=wl, product=p)
         self.assertEqual(wl.item_count, 1)

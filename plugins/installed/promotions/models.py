@@ -9,6 +9,7 @@ This is decoupled from `marketing.Coupon` (which is a flat code-based
 coupon). Coupons may unlock specific promotions in the future, but the
 engine itself doesn't require a code.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -35,8 +36,12 @@ class Promotion(models.Model):
     ends_at = models.DateTimeField(null=True, blank=True)
     priority = models.IntegerField(default=100, help_text='Lower runs first.')
 
-    channels = models.JSONField(default=list, blank=True, help_text='Channel slugs; empty = all channels.')
-    requires_coupon = models.CharField(max_length=64, blank=True, help_text='Optional coupon code that unlocks this promotion.')
+    channels = models.JSONField(
+        default=list, blank=True, help_text='Channel slugs; empty = all channels.'
+    )
+    requires_coupon = models.CharField(
+        max_length=64, blank=True, help_text='Optional coupon code that unlocks this promotion.'
+    )
 
     times_used = models.PositiveIntegerField(default=0)
     usage_limit = models.PositiveIntegerField(null=True, blank=True)

@@ -1,4 +1,5 @@
 """Customer + address create/edit forms."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -20,17 +21,21 @@ class CustomerForm(forms.Form):
     last_name = forms.CharField(max_length=100, required=False)
     phone = forms.CharField(max_length=30, required=False)
     company = forms.CharField(max_length=200, required=False)
-    source = forms.ChoiceField(choices=[
-        ('order', 'Order'),
-        ('signup', 'Signup'),
-        ('lead_form', 'Lead form'),
-        ('newsletter', 'Newsletter'),
-        ('import', 'Import'),
-        ('manual', 'Manual entry'),
-        ('agent', 'Agent-captured'),
-        ('referral', 'Referral'),
-        ('other', 'Other'),
-    ], required=False, initial='manual')
+    source = forms.ChoiceField(
+        choices=[
+            ('order', 'Order'),
+            ('signup', 'Signup'),
+            ('lead_form', 'Lead form'),
+            ('newsletter', 'Newsletter'),
+            ('import', 'Import'),
+            ('manual', 'Manual entry'),
+            ('agent', 'Agent-captured'),
+            ('referral', 'Referral'),
+            ('other', 'Other'),
+        ],
+        required=False,
+        initial='manual',
+    )
     accepts_marketing = forms.BooleanField(required=False)
     is_verified = forms.BooleanField(required=False)
     notes = forms.CharField(widget=forms.Textarea, required=False)
@@ -54,6 +59,7 @@ class CustomerForm(forms.Form):
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         qs = User.objects.filter(email__iexact=email)
         if self.instance is not None:
@@ -64,6 +70,7 @@ class CustomerForm(forms.Form):
 
     def save(self) -> Any:
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         cd = self.cleaned_data
@@ -93,10 +100,13 @@ class CustomerForm(forms.Form):
 class AddressForm(forms.Form):
     """Create/edit a `customers.Address` belonging to a given customer."""
 
-    address_type = forms.ChoiceField(choices=[
-        ('shipping', 'Shipping'),
-        ('billing', 'Billing'),
-    ], initial='shipping')
+    address_type = forms.ChoiceField(
+        choices=[
+            ('shipping', 'Shipping'),
+            ('billing', 'Billing'),
+        ],
+        initial='shipping',
+    )
     first_name = forms.CharField(max_length=100)
     last_name = forms.CharField(max_length=100)
     company = forms.CharField(max_length=200, required=False)
@@ -131,15 +141,24 @@ class AddressForm(forms.Form):
 
     def save(self) -> Any:
         from plugins.installed.customers.models import Address
+
         if self.customer is None:
             raise ValueError('AddressForm.save() requires a customer.')
 
         cd = self.cleaned_data
         address = self.instance or Address(customer=self.customer)
         for field in (
-            'address_type', 'first_name', 'last_name', 'company',
-            'address_line1', 'address_line2', 'city', 'state',
-            'postal_code', 'country', 'phone',
+            'address_type',
+            'first_name',
+            'last_name',
+            'company',
+            'address_line1',
+            'address_line2',
+            'city',
+            'state',
+            'postal_code',
+            'country',
+            'phone',
         ):
             setattr(address, field, cd.get(field) or '')
         address.is_default = bool(cd.get('is_default'))

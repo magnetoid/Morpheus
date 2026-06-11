@@ -18,8 +18,9 @@ Quick start:
     receipt = agent.poll_receipt(intent["id"])
     assert receipt.verify()  # HMAC-checked locally
 """
+
 from morph_sdk.client import MorphAgentClient
-from morph_sdk.errors import MorphError, PermissionDeniedError, AgentBudgetError
+from morph_sdk.errors import AgentBudgetError, MorphError, PermissionDeniedError
 from morph_sdk.receipts import AgentReceipt, verify_receipt
 
 __all__ = [

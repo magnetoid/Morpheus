@@ -1,9 +1,11 @@
 """Wishlist models — saved items per customer (or session for guests)."""
+
 from __future__ import annotations
 
 import uuid
 
 from django.conf import settings
+
 from morpheus import models
 
 
@@ -13,7 +15,9 @@ class Wishlist(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE, null=True, blank=True,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='wishlists',
     )
     session_key = models.CharField(max_length=64, blank=True, db_index=True)
@@ -45,11 +49,16 @@ class WishlistItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     wishlist = models.ForeignKey(Wishlist, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(
-        'catalog.Product', on_delete=models.CASCADE, related_name='+',
+        'catalog.Product',
+        on_delete=models.CASCADE,
+        related_name='+',
     )
     variant = models.ForeignKey(
-        'catalog.ProductVariant', on_delete=models.CASCADE,
-        null=True, blank=True, related_name='+',
+        'catalog.ProductVariant',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='+',
     )
     note = models.CharField(max_length=240, blank=True)
     added_at = models.DateTimeField(auto_now_add=True)

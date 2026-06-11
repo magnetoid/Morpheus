@@ -18,14 +18,16 @@ It is signed with the agent's `signing_secret` (HMAC-SHA256 over the canonical
 JSON encoding) and stored on the AgentIntent. Any downstream consumer
 (merchant audit dashboard, fraud worker, customer wallet) can verify.
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
-from datetime import datetime, timezone
+from collections.abc import Mapping
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 from django.utils import timezone as dj_timezone
 
@@ -37,11 +39,14 @@ def _canonical_json(payload: Mapping[str, Any]) -> bytes:
         if isinstance(o, Decimal):
             return str(o)
         if isinstance(o, datetime):
-            return o.astimezone(timezone.utc).isoformat()
+            return o.astimezone(UTC).isoformat()
         raise TypeError(f'Cannot serialize {type(o).__name__}')
 
     return json.dumps(
-        payload, sort_keys=True, separators=(',', ':'), default=_default,
+        payload,
+        sort_keys=True,
+        separators=(',', ':'),
+        default=_default,
     ).encode('utf-8')
 
 
@@ -63,7 +68,7 @@ def build_receipt_payload(intent) -> dict[str, Any]:
         'customer_id': str(intent.customer_id) if intent.customer_id else None,
         'channel_id': str(intent.channel_id) if intent.channel_id else None,
         'correlation_id': intent.correlation_id or '',
-        'issued_at': dj_timezone.now().astimezone(timezone.utc).isoformat(),
+        'issued_at': dj_timezone.now().astimezone(UTC).isoformat(),
     }
 
 
@@ -72,7 +77,9 @@ def sign_receipt(intent, secret: str) -> tuple[dict[str, Any], str]:
     payload = build_receipt_payload(intent)
     body = _canonical_json(payload)
     signature = hmac.new(
-        secret.encode('utf-8'), body, hashlib.sha256,
+        secret.encode('utf-8'),
+        body,
+        hashlib.sha256,
     ).hexdigest()
     return payload, signature
 

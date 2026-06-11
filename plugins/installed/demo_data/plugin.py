@@ -1,8 +1,8 @@
 """Demo data plugin manifest."""
+
 from __future__ import annotations
 
-from morpheus import Plugin
-from morpheus import DashboardPage
+from morpheus import DashboardPage, Plugin
 
 
 class DemoDataPlugin(Plugin):

@@ -1,4 +1,5 @@
 """Lifecycle tests for the agent intent state machine + signed receipts."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -7,7 +8,6 @@ from django.test import TestCase
 from djmoney.money import Money
 
 from plugins.installed.ai_assistant.models import (
-    AgentIntent,
     AgentIntentEvent,
     AgentRegistration,
 )
@@ -33,11 +33,12 @@ def _make_agent(**overrides) -> AgentRegistration:
 
 
 class IntentLifecycleTests(TestCase):
-
     def test_propose_creates_proposed_intent_with_event(self):
         agent = _make_agent()
         intent = intent_service.propose(
-            agent=agent, kind='browse', summary='Find blenders',
+            agent=agent,
+            kind='browse',
+            summary='Find blenders',
         )
         self.assertEqual(intent.state, 'proposed')
         self.assertEqual(
@@ -54,14 +55,17 @@ class IntentLifecycleTests(TestCase):
         agent = _make_agent(budget_limit_amount=Decimal('10'))
         with self.assertRaises(intent_service.BudgetExceeded):
             intent_service.propose(
-                agent=agent, kind='checkout',
+                agent=agent,
+                kind='checkout',
                 estimated_cost=Money(50, 'USD'),
             )
 
     def test_full_lifecycle_emits_signed_receipt(self):
         agent = _make_agent()
         intent = intent_service.propose(
-            agent=agent, kind='checkout', summary='Buy blender',
+            agent=agent,
+            kind='checkout',
+            summary='Buy blender',
             estimated_cost=Money(50, 'USD'),
         )
         intent_service.authorize(intent, actor='customer')
@@ -73,7 +77,9 @@ class IntentLifecycleTests(TestCase):
         self.assertEqual(intent.state, 'executing')
 
         result = intent_service.complete(
-            intent, result={'order_id': 'O-1'}, actual_cost=Money(49, 'USD'),
+            intent,
+            result={'order_id': 'O-1'},
+            actual_cost=Money(49, 'USD'),
         )
         intent.refresh_from_db()
         self.assertEqual(intent.state, 'completed')

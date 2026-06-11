@@ -6,6 +6,7 @@ Request ID middleware + logging filter.
 * A logging filter (`RequestIdFilter`) injects `request_id` into every log
   record so JSON logs come out fully correlated.
 """
+
 from __future__ import annotations
 
 import contextvars
@@ -13,7 +14,8 @@ import logging
 import uuid
 
 _request_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar(
-    'morph_request_id', default='-',
+    'morph_request_id',
+    default='-',
 )
 
 
@@ -43,9 +45,9 @@ class RequestIdMiddleware:
             response = self.get_response(request)
         finally:
             _request_id_ctx.reset(token)
-        try:
+        try:  # noqa: SIM105
             response[self.RESPONSE_HEADER] = rid
-        except Exception:  # noqa: BLE001 — some response types (e.g. streaming) can't set headers
+        except Exception:  # noqa: BLE001, S110
             pass
         return response
 

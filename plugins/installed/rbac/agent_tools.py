@@ -1,4 +1,5 @@
 """RBAC agent tools."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -12,13 +13,21 @@ from core.agents import ToolError, ToolResult, tool
 )
 def list_roles_tool() -> ToolResult:
     from plugins.installed.rbac.models import Role
+
     rows = list(Role.objects.all().order_by('slug'))
-    return ToolResult(output={
-        'roles': [{
-            'slug': r.slug, 'name': r.name,
-            'capabilities': r.capabilities, 'is_system': r.is_system,
-        } for r in rows],
-    })
+    return ToolResult(
+        output={
+            'roles': [
+                {
+                    'slug': r.slug,
+                    'name': r.name,
+                    'capabilities': r.capabilities,
+                    'is_system': r.is_system,
+                }
+                for r in rows
+            ],
+        }
+    )
 
 
 @tool(
@@ -38,7 +47,9 @@ def list_roles_tool() -> ToolResult:
 )
 def grant_role_tool(*, email: str, role_slug: str, channel_slug: str = '') -> ToolResult:
     from django.contrib.auth import get_user_model
+
     from plugins.installed.rbac.services import grant
+
     User = get_user_model()
     user = User.objects.filter(email__iexact=email).first()
     if user is None:
@@ -46,13 +57,17 @@ def grant_role_tool(*, email: str, role_slug: str, channel_slug: str = '') -> To
     channel = None
     if channel_slug:
         from core.models import StoreChannel
+
         channel = StoreChannel.objects.filter(slug=channel_slug).first()
     binding = grant(user, role_slug, channel=channel)
     if binding is None:
         raise ToolError(f'Unknown role: {role_slug}')
     return ToolResult(
-        output={'user': email, 'role': role_slug,
-                'channel': channel_slug if channel_slug else None},
+        output={
+            'user': email,
+            'role': role_slug,
+            'channel': channel_slug if channel_slug else None,
+        },
         display=f'Granted {role_slug} to {email}',
     )
 
@@ -74,7 +89,9 @@ def grant_role_tool(*, email: str, role_slug: str, channel_slug: str = '') -> To
 )
 def revoke_role_tool(*, email: str, role_slug: str, channel_slug: str = '') -> ToolResult:
     from django.contrib.auth import get_user_model
+
     from plugins.installed.rbac.services import revoke
+
     User = get_user_model()
     user = User.objects.filter(email__iexact=email).first()
     if user is None:
@@ -82,6 +99,7 @@ def revoke_role_tool(*, email: str, role_slug: str, channel_slug: str = '') -> T
     channel = None
     if channel_slug:
         from core.models import StoreChannel
+
         channel = StoreChannel.objects.filter(slug=channel_slug).first()
     n = revoke(user, role_slug, channel=channel)
     return ToolResult(output={'revoked': n}, display=f'Revoked {n} binding(s)')

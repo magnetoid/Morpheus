@@ -16,21 +16,11 @@ re-exports below.
   * images.py      — add/remove/set-primary product image.
   * variants.py    — create + update variant.
 """
+
 from __future__ import annotations
 
 # Public exception type.
 from ._helpers import PublishError
-
-# Product CRUD + publishing.
-from .products import (
-    archive_product,
-    create_product,
-    delete_product,
-    publish_digital_product,
-    restore_product,
-    update_digital_pdf,
-    update_product,
-)
 
 # Categories.
 from .categories import (
@@ -44,6 +34,17 @@ from .images import (
     add_product_image,
     remove_product_image,
     set_primary_image,
+)
+
+# Product CRUD + publishing.
+from .products import (
+    archive_product,
+    create_product,
+    delete_product,
+    publish_digital_product,
+    restore_product,
+    update_digital_pdf,
+    update_product,
 )
 
 # Variants.

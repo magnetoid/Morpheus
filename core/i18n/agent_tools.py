@@ -1,4 +1,5 @@
 """Translation agent tools."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -6,7 +7,7 @@ from core.agents import ToolError, ToolResult, tool
 
 @tool(
     name='i18n.translate_product',
-    description='Set translations for a product\'s fields in a language.',
+    description="Set translations for a product's fields in a language.",
     scopes=['catalog.write'],
     schema={
         'type': 'object',
@@ -21,17 +22,24 @@ from core.agents import ToolError, ToolResult, tool
     },
     requires_approval=True,
 )
-def translate_product_tool(*, slug: str, language_code: str,
-                           name: str = '', short_description: str = '',
-                           description: str = '') -> ToolResult:
-    from plugins.installed.catalog.models import Product
+def translate_product_tool(
+    *,
+    slug: str,
+    language_code: str,
+    name: str = '',
+    short_description: str = '',
+    description: str = '',
+) -> ToolResult:
     from core.i18n import bulk_set_translations
+    from plugins.installed.catalog.models import Product
+
     try:
         product = Product.objects.get(slug=slug)
     except Product.DoesNotExist as e:
         raise ToolError(f'Unknown product: {slug}') from e
     n = bulk_set_translations(
-        product, language_code,
+        product,
+        language_code,
         {'name': name, 'short_description': short_description, 'description': description},
     )
     return ToolResult(
@@ -51,8 +59,9 @@ def translate_product_tool(*, slug: str, language_code: str,
     },
 )
 def list_translations_tool(*, slug: str) -> ToolResult:
-    from plugins.installed.catalog.models import Product
     from core.i18n import translations_for
+    from plugins.installed.catalog.models import Product
+
     try:
         product = Product.objects.get(slug=slug)
     except Product.DoesNotExist as e:

@@ -1,7 +1,9 @@
 import uuid
+
 from django.conf import settings
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class AgentIntent(models.Model):
@@ -61,10 +63,14 @@ class AgentIntent(models.Model):
     )
     kind = models.CharField(max_length=15, choices=KIND_CHOICES, db_index=True)
     state = models.CharField(
-        max_length=12, choices=STATE_CHOICES, default='proposed', db_index=True,
+        max_length=12,
+        choices=STATE_CHOICES,
+        default='proposed',
+        db_index=True,
     )
     summary = models.CharField(
-        max_length=300, blank=True,
+        max_length=300,
+        blank=True,
         help_text='Human-readable summary, e.g. "Buy a 32oz blender under $80"',
     )
     payload = models.JSONField(
@@ -76,19 +82,30 @@ class AgentIntent(models.Model):
         help_text='Execution outcome: order id, refund id, cart id, errors.',
     )
     estimated_cost = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
     )
     actual_cost = MoneyField(
-        max_digits=14, decimal_places=2, default_currency='USD', null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        default_currency='USD',
+        null=True,
+        blank=True,
     )
     expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
     receipt_signature = models.CharField(
-        max_length=128, blank=True,
+        max_length=128,
+        blank=True,
         help_text='HMAC over the canonical receipt payload, signed by the agent secret.',
     )
     receipt_signed_at = models.DateTimeField(null=True, blank=True)
     correlation_id = models.CharField(
-        max_length=100, blank=True, db_index=True,
+        max_length=100,
+        blank=True,
+        db_index=True,
         help_text='Caller-supplied id for tracing across systems.',
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -103,7 +120,7 @@ class AgentIntent(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"AgentIntent({self.kind}/{self.state}) by {self.agent_id}"
+        return f'AgentIntent({self.kind}/{self.state}) by {self.agent_id}'
 
 
 class AgentIntentEvent(models.Model):
@@ -111,7 +128,9 @@ class AgentIntentEvent(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     intent = models.ForeignKey(
-        AgentIntent, on_delete=models.CASCADE, related_name='events',
+        AgentIntent,
+        on_delete=models.CASCADE,
+        related_name='events',
     )
     from_state = models.CharField(max_length=12, blank=True)
     to_state = models.CharField(max_length=12)
@@ -193,14 +212,17 @@ class AgentRegistration(models.Model):
     )
     token = models.CharField(max_length=500, unique=True)
     signing_secret = models.CharField(
-        max_length=128, blank=True,
+        max_length=128,
+        blank=True,
         help_text='HMAC secret used to sign agent receipts. Auto-generated.',
     )
     token_expires_at = models.DateTimeField(null=True, blank=True)
     can_browse = models.BooleanField(default=True)
     can_purchase = models.BooleanField(default=False)
     can_manage_inventory = models.BooleanField(default=False)
-    budget_limit_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    budget_limit_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, null=True, blank=True
+    )
     budget_limit_currency = models.CharField(max_length=3, default='USD')
     allowed_categories = models.JSONField(default=list)
     purchase_requires_approval = models.BooleanField(default=True)
@@ -216,6 +238,7 @@ class AgentRegistration(models.Model):
     def save(self, *args, **kwargs):
         if not self.signing_secret:
             import secrets as _secrets
+
             self.signing_secret = _secrets.token_urlsafe(48)
         super().save(*args, **kwargs)
 
@@ -230,6 +253,7 @@ class AgentRegistration(models.Model):
         if self.budget_limit_amount is None:
             return True
         from decimal import Decimal
+
         return Decimal(amount) <= (self.budget_limit_amount - (self.total_spend_amount or 0))
 
 
@@ -269,8 +293,12 @@ class PromptTemplate(models.Model):
 class AIExperiment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200)
-    prompt_a = models.ForeignKey(PromptTemplate, on_delete=models.CASCADE, related_name='experiments_a')
-    prompt_b = models.ForeignKey(PromptTemplate, on_delete=models.CASCADE, related_name='experiments_b')
+    prompt_a = models.ForeignKey(
+        PromptTemplate, on_delete=models.CASCADE, related_name='experiments_a'
+    )
+    prompt_b = models.ForeignKey(
+        PromptTemplate, on_delete=models.CASCADE, related_name='experiments_b'
+    )
     metric = models.CharField(
         max_length=25,
         choices=[
@@ -329,10 +357,14 @@ class AIInteraction(models.Model):
     success = models.BooleanField(default=True)
     error_message = models.TextField(blank=True)
     agent_id = models.CharField(max_length=200, blank=True)
-    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
     product = models.ForeignKey('catalog.Product', on_delete=models.SET_NULL, null=True, blank=True)
     order = models.ForeignKey('orders.Order', on_delete=models.SET_NULL, null=True, blank=True)
-    prompt_template = models.ForeignKey(PromptTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    prompt_template = models.ForeignKey(
+        PromptTemplate, on_delete=models.SET_NULL, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -345,7 +377,9 @@ class AIInteraction(models.Model):
 
 class DemandForecast(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    product_variant = models.ForeignKey('catalog.ProductVariant', on_delete=models.CASCADE, related_name='demand_forecasts')
+    product_variant = models.ForeignKey(
+        'catalog.ProductVariant', on_delete=models.CASCADE, related_name='demand_forecasts'
+    )
     forecast_date = models.DateField()
     predicted_units = models.IntegerField()
     confidence_low = models.IntegerField()
@@ -422,7 +456,9 @@ class ProductEmbedding(models.Model):
 
 class DynamicPriceRule(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    product = models.OneToOneField('catalog.Product', on_delete=models.CASCADE, related_name='dynamic_price_rule')
+    product = models.OneToOneField(
+        'catalog.Product', on_delete=models.CASCADE, related_name='dynamic_price_rule'
+    )
     multiplier = models.DecimalField(max_digits=5, decimal_places=4, default=1.0000)
     reasoning = models.TextField(blank=True)
     last_evaluated_at = models.DateTimeField(auto_now=True)

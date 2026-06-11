@@ -9,6 +9,7 @@ Idempotent on a per-prompt basis via SHA-256 of the prompt — re-running
 the same prompt returns the existing run rather than creating duplicate
 catalogue rows.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -25,13 +26,13 @@ logger = logging.getLogger('morpheus.store_bootstrap')
 
 
 _SYSTEM_PROMPT = (
-    "You are a brand+catalogue architect for a new independent online store. "
-    "Given a one-sentence concept, you return a STRICT JSON payload that the "
-    "platform will use to seed the store. Output ONLY the JSON object, no "
-    "prose, no markdown fence, no comments. The JSON MUST match exactly the "
-    "schema below. Values must be plain strings (no nested HTML, no Markdown). "
-    "Prices are USD decimal strings like \"19.99\". Quantities are 4-6 "
-    "categories and 10-12 products distributed across them."
+    'You are a brand+catalogue architect for a new independent online store. '
+    'Given a one-sentence concept, you return a STRICT JSON payload that the '
+    'platform will use to seed the store. Output ONLY the JSON object, no '
+    'prose, no markdown fence, no comments. The JSON MUST match exactly the '
+    'schema below. Values must be plain strings (no nested HTML, no Markdown). '
+    'Prices are USD decimal strings like "19.99". Quantities are 4-6 '
+    'categories and 10-12 products distributed across them.'
 )
 
 
@@ -89,6 +90,7 @@ def _apply_brand_voice(brand: dict) -> None:
     if not brand:
         return
     from plugins.registry import plugin_registry
+
     plugin = plugin_registry.get('ai_content')
     if plugin is None:
         return
@@ -115,6 +117,7 @@ def _create_categories(spec: list[dict]) -> dict[str, Any]:
     than creating slug-1/-2 duplicates.
     """
     from plugins.installed.catalog.models import Category
+
     out: dict[str, Any] = {}
     for entry in spec:
         name = (entry.get('name') or '').strip()
@@ -145,6 +148,7 @@ def _create_products(spec: list[dict], category_map: dict[str, Any]) -> list[str
     the freshly-generated spec.
     """
     from plugins.installed.catalog.models import Product
+
     created: list[str] = []
     for entry in spec:
         name = (entry.get('name') or '').strip()
@@ -201,6 +205,7 @@ def bootstrap_store_from_prompt(prompt: str) -> BootstrapResult:
 
     try:
         from plugins.installed.ai_assistant.services.llm import get_llm
+
         gateway = get_llm()
     except Exception as e:  # noqa: BLE001
         result.error = f'No LLM provider available: {e}.'
@@ -209,8 +214,10 @@ def bootstrap_store_from_prompt(prompt: str) -> BootstrapResult:
     user = _USER_TEMPLATE.format(concept=prompt)
     try:
         raw = gateway.complete(
-            user, system=_SYSTEM_PROMPT,
-            temperature=0.85, max_tokens=4000,
+            user,
+            system=_SYSTEM_PROMPT,
+            temperature=0.85,
+            max_tokens=4000,
         )
     except Exception as e:  # noqa: BLE001
         result.error = f'LLM call failed: {e}'
@@ -233,7 +240,8 @@ def bootstrap_store_from_prompt(prompt: str) -> BootstrapResult:
     category_map = _create_categories(payload.get('categories') or [])
     result.categories_created = [c.slug for c in category_map.values()]
     result.products_created = _create_products(
-        payload.get('products') or [], category_map,
+        payload.get('products') or [],
+        category_map,
     )
 
     return result

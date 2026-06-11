@@ -1,4 +1,5 @@
 """Inventory background tasks."""
+
 from __future__ import annotations
 
 import logging
@@ -10,11 +11,14 @@ from morph.celery import app
 logger = logging.getLogger('morpheus.inventory')
 
 
-@app.task(name='inventory.notify_back_in_stock', ignore_result=True, time_limit=60, soft_time_limit=30)
+@app.task(
+    name='inventory.notify_back_in_stock', ignore_result=True, time_limit=60, soft_time_limit=30
+)
 def notify_back_in_stock(product_id: str) -> int:
     """Email all open BackInStockSubscription rows for this product."""
-    from django.core.mail import send_mail
     from django.conf import settings as dj_settings
+    from django.core.mail import send_mail
+
     from plugins.installed.catalog.models import Product
     from plugins.installed.inventory.models import BackInStockSubscription
 
@@ -23,9 +27,12 @@ def notify_back_in_stock(product_id: str) -> int:
     except Product.DoesNotExist:
         return 0
 
-    open_subs = list(BackInStockSubscription.objects.filter(
-        product=product, notified_at__isnull=True,
-    ))
+    open_subs = list(
+        BackInStockSubscription.objects.filter(
+            product=product,
+            notified_at__isnull=True,
+        )
+    )
     if not open_subs:
         return 0
 
@@ -49,14 +56,19 @@ def notify_back_in_stock(product_id: str) -> int:
     return sent
 
 
-@app.task(name='inventory.apply_price_schedules', ignore_result=True, time_limit=60, soft_time_limit=30)
+@app.task(
+    name='inventory.apply_price_schedules', ignore_result=True, time_limit=60, soft_time_limit=30
+)
 def apply_price_schedules() -> int:
     """Apply any PriceSchedule rows whose effective_at has passed."""
     from plugins.installed.catalog.models import PriceSchedule
 
-    due = list(PriceSchedule.objects.filter(
-        applied_at__isnull=True, effective_at__lte=timezone.now(),
-    ).select_related('product', 'variant'))
+    due = list(
+        PriceSchedule.objects.filter(
+            applied_at__isnull=True,
+            effective_at__lte=timezone.now(),
+        ).select_related('product', 'variant')
+    )
     if not due:
         return 0
 
@@ -75,8 +87,9 @@ def apply_price_schedules() -> int:
     return applied
 
 
-@app.task(name='inventory.reconcile_redis_stock', ignore_result=True,
-          time_limit=60, soft_time_limit=30)
+@app.task(
+    name='inventory.reconcile_redis_stock', ignore_result=True, time_limit=60, soft_time_limit=30
+)
 def reconcile_redis_stock() -> dict:
     """Compare Redis stock counters to Postgres source of truth.
 
@@ -86,26 +99,34 @@ def reconcile_redis_stock() -> dict:
     """
     try:
         from plugins.installed.inventory.services_redis import reconcile_stock
+
         return reconcile_stock()
     except Exception as e:  # noqa: BLE001
         logger.debug('inventory: redis reconcile skipped: %s', e)
         return {'checked': 0, 'in_sync': 0, 'drift': []}
 
 
-@app.task(name='inventory.find_abandoned_carts', ignore_result=True, time_limit=120, soft_time_limit=60)
+@app.task(
+    name='inventory.find_abandoned_carts', ignore_result=True, time_limit=120, soft_time_limit=60
+)
 def find_abandoned_carts() -> int:
     """Mark carts > 1h old as abandoned and fire the cart.abandoned event."""
     from datetime import timedelta
-    from core.hooks import hook_registry, MorpheusEvents
+
+    from core.hooks import MorpheusEvents, hook_registry
 
     try:
         from plugins.installed.orders.models import Cart
     except ImportError:
         return 0
     threshold = timezone.now() - timedelta(hours=1)
-    candidates = Cart.objects.filter(
-        updated_at__lt=threshold,
-    ).exclude(items__isnull=True).distinct()[:200]
+    candidates = (
+        Cart.objects.filter(
+            updated_at__lt=threshold,
+        )
+        .exclude(items__isnull=True)
+        .distinct()[:200]
+    )
     fired = 0
     for cart in candidates:
         try:
@@ -114,7 +135,9 @@ def find_abandoned_carts() -> int:
             # CRM, AI) can opt to use either without crashing.
             email = getattr(getattr(cart, 'customer', None), 'email', '') or ''
             hook_registry.fire(
-                MorpheusEvents.CART_ABANDONED, cart=cart, email=email or None,
+                MorpheusEvents.CART_ABANDONED,
+                cart=cart,
+                email=email or None,
             )
             fired += 1
         except Exception as e:  # noqa: BLE001

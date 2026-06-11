@@ -12,13 +12,14 @@ The store has two backends and decides per-write which to use:
    replayed into the DB later via a management command (out of scope for
    this PR).
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -26,13 +27,13 @@ logger = logging.getLogger('morpheus.assistant.store')
 
 
 def _fallback_dir() -> Path:
-    base = os.environ.get('MORPHEUS_ASSISTANT_FALLBACK', '/tmp/morpheus-assistant')
+    base = os.environ.get('MORPHEUS_ASSISTANT_FALLBACK', '/tmp/morpheus-assistant')  # noqa: S108  # nosec B108
     p = Path(base)
     try:
         p.mkdir(parents=True, exist_ok=True)
     except OSError:
         # Last-resort: a temp dir that's always writable.
-        p = Path('/tmp/morpheus-assistant-fallback')
+        p = Path('/tmp/morpheus-assistant-fallback')  # noqa: S108  # nosec B108
         p.mkdir(parents=True, exist_ok=True)
     return p
 
@@ -59,7 +60,7 @@ class AssistantStore:
 
     def append(self, *, conversation_key: str, message: StoredMessage) -> str:
         """Append a message. `conversation_key` is e.g. user pk or 'session:abc'."""
-        message.at = message.at or datetime.now(timezone.utc).isoformat()
+        message.at = message.at or datetime.now(UTC).isoformat()
         if self.prefer_db and self._db_append(conversation_key, message):
             return 'db'
         self._file_append(conversation_key, message)
@@ -77,6 +78,7 @@ class AssistantStore:
     def _db_append(self, key: str, m: StoredMessage) -> bool:
         try:
             from django.db import DatabaseError
+
             from core.assistant.models import AssistantConversation, AssistantMessage
         except Exception:  # noqa: BLE001
             return False
@@ -84,11 +86,17 @@ class AssistantStore:
             conv, _ = AssistantConversation.objects.get_or_create(key=key)
             AssistantMessage.objects.create(
                 conversation=conv,
-                role=m.role, content=m.content[:50_000],
+                role=m.role,
+                content=m.content[:50_000],
                 tool_name=m.tool_name[:200],
                 tool_args=m.tool_args or {},
-                tool_output=(m.tool_output if isinstance(m.tool_output, (dict, list))
-                             else {'value': str(m.tool_output)[:5_000]}) if m.tool_output is not None else {},
+                tool_output=(
+                    m.tool_output
+                    if isinstance(m.tool_output, (dict, list))
+                    else {'value': str(m.tool_output)[:5_000]}
+                )
+                if m.tool_output is not None
+                else {},
             )
             return True
         except DatabaseError as e:
@@ -101,6 +109,7 @@ class AssistantStore:
     def _db_history(self, key: str, limit: int) -> list[StoredMessage] | None:
         try:
             from django.db import DatabaseError
+
             from core.assistant.models import AssistantConversation, AssistantMessage
         except Exception:  # noqa: BLE001
             return None
@@ -109,14 +118,13 @@ class AssistantStore:
             if conv is None:
                 return []
             rows = list(
-                AssistantMessage.objects
-                .filter(conversation=conv)
-                .order_by('-created_at')[:limit]
+                AssistantMessage.objects.filter(conversation=conv).order_by('-created_at')[:limit]
             )
             rows.reverse()
             return [
                 StoredMessage(
-                    role=r.role, content=r.content,
+                    role=r.role,
+                    content=r.content,
                     tool_name=r.tool_name,
                     tool_args=r.tool_args or {},
                     tool_output=r.tool_output,
@@ -163,7 +171,7 @@ _DEFAULT_STORE = None
 
 
 def get_default_store() -> AssistantStore:
-    global _DEFAULT_STORE
+    global _DEFAULT_STORE  # noqa: PLW0603
     if _DEFAULT_STORE is None:
         _DEFAULT_STORE = AssistantStore()
     return _DEFAULT_STORE

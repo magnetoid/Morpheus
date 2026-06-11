@@ -1,11 +1,11 @@
 """System info tools — disk, memory, git, env."""
+
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 
-from core.assistant.tools.filesystem import ToolError, ToolResult, tool, _PROJECT_ROOT
+from core.assistant.tools.filesystem import _PROJECT_ROOT, ToolError, ToolResult, tool
 
 
 @tool(
@@ -25,11 +25,13 @@ def server_info_tool() -> ToolResult:
     }
     try:
         import django
+
         info['django'] = django.get_version()
     except Exception:  # noqa: BLE001
         info['django'] = 'unknown'
     try:
         from plugins.registry import plugin_registry
+
         info['plugins_total'] = len(plugin_registry.all_plugins())
         info['plugins_active'] = len(plugin_registry.active_plugins())
     except Exception:  # noqa: BLE001
@@ -45,11 +47,15 @@ def server_info_tool() -> ToolResult:
 )
 def disk_usage_tool() -> ToolResult:
     total, used, free = shutil.disk_usage(str(_PROJECT_ROOT))
-    return ToolResult(output={
-        'total_bytes': total, 'used_bytes': used, 'free_bytes': free,
-        'free_human': f'{free / (1024**3):.1f} GB',
-        'used_human': f'{used / (1024**3):.1f} GB',
-    })
+    return ToolResult(
+        output={
+            'total_bytes': total,
+            'used_bytes': used,
+            'free_bytes': free,
+            'free_human': f'{free / (1024**3):.1f} GB',
+            'used_human': f'{used / (1024**3):.1f} GB',
+        }
+    )
 
 
 @tool(
@@ -64,9 +70,12 @@ def disk_usage_tool() -> ToolResult:
 def git_log_tool(*, limit: int = 10) -> ToolResult:
     n = max(1, min(int(limit or 10), 50))
     try:
-        out = subprocess.run(
-            ['git', '-C', str(_PROJECT_ROOT), 'log', f'-{n}', '--pretty=format:%h %ai %s'],
-            capture_output=True, text=True, timeout=5, check=False,
+        out = subprocess.run(  # noqa: S603
+            ['git', '-C', str(_PROJECT_ROOT), 'log', f'-{n}', '--pretty=format:%h %ai %s'],  # noqa: S607
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         raise ToolError(f'git unavailable: {e}') from e

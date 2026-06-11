@@ -1,4 +1,5 @@
 """Marketing background tasks."""
+
 from __future__ import annotations
 
 import logging
@@ -8,16 +9,20 @@ from morph.celery import app
 logger = logging.getLogger('morpheus.marketing')
 
 
-@app.task(name='marketing.trigger_cart_recovery_sequence', ignore_result=True,
-          time_limit=60, soft_time_limit=30)
+@app.task(
+    name='marketing.trigger_cart_recovery_sequence',
+    ignore_result=True,
+    time_limit=60,
+    soft_time_limit=30,
+)
 def trigger_cart_recovery_sequence(cart_id: str) -> str:
     """Send a single cart-recovery email to a recoverable cart.
 
     Idempotent: stamps `cart.metadata['recovery_sent_at']` so a re-fire
     of `cart.abandoned` doesn't double-send.
     """
-    from django.core.mail import send_mail
     from django.conf import settings as dj_settings
+    from django.core.mail import send_mail
     from django.utils import timezone
 
     try:
@@ -59,8 +64,8 @@ def trigger_cart_recovery_sequence(cart_id: str) -> str:
     md['recovery_sent_at'] = timezone.now().isoformat()
     if hasattr(cart, 'metadata'):
         cart.metadata = md
-        try:
+        try:  # noqa: SIM105
             cart.save(update_fields=['metadata'])
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
     return 'sent'

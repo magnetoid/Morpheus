@@ -1,4 +1,5 @@
 """Stripe gateway — wraps the existing PaymentService into the new abstraction."""
+
 from __future__ import annotations
 
 import logging
@@ -16,6 +17,7 @@ class StripeGateway(PaymentGateway):
 
     def create_payment_intent(self, *, order, **kwargs) -> dict:
         from plugins.installed.payments.services.stripe import PaymentService
+
         return PaymentService.create_payment_intent(order)
 
     def refund(self, *, transaction, amount, **kwargs) -> dict:
@@ -28,7 +30,9 @@ class StripeGateway(PaymentGateway):
         """
         try:
             import stripe
+
             from plugins.installed.payments.services.stripe import PaymentService
+
             stripe.api_key = PaymentService.get_stripe_api_key()
             if not stripe.api_key:
                 return {'success': False, 'error': 'STRIPE_SECRET_KEY missing'}
@@ -46,6 +50,7 @@ class StripeGateway(PaymentGateway):
                 return {'success': False, 'error': 'no charge on intent (uncaptured?)'}
 
             from decimal import Decimal
+
             stripe.Refund.create(
                 charge=charge_id,
                 amount=int(Decimal(str(amount.amount)) * 100),
@@ -59,6 +64,7 @@ class StripeGateway(PaymentGateway):
     def webhook_verify(self, *, body: bytes, signature: str):
         try:
             from plugins.installed.payments.services.stripe import PaymentService
+
             event = PaymentService.verify_webhook(body, signature)
             return {'type': event.type, 'data': event.data.object} if event else None
         except Exception as e:  # noqa: BLE001

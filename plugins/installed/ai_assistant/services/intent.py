@@ -11,12 +11,13 @@ works from GraphQL, REST, the Python SDK, and any internal tooling.
               --(reject)----> rejected
               --(expire)----> expired
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from django.db import transaction
 from django.utils import timezone
@@ -56,8 +57,8 @@ _KIND_TO_CAPABILITY = {
 class IntentResult:
     intent_id: str
     state: str
-    receipt: Optional[dict[str, Any]] = None
-    signature: Optional[str] = None
+    receipt: dict[str, Any] | None = None
+    signature: str | None = None
 
 
 def _enforce_capabilities(agent, kind: str) -> None:
@@ -74,8 +75,8 @@ def _enforce_budget(agent, estimated_cost) -> None:
     amount = estimated_cost.amount if hasattr(estimated_cost, 'amount') else Decimal(estimated_cost)
     if not agent.can_afford(amount):
         raise BudgetExceeded(
-            f"Agent {agent.agent_id} budget cannot cover {amount} "
-            f"(remaining {agent.remaining_budget()})"
+            f'Agent {agent.agent_id} budget cannot cover {amount} '
+            f'(remaining {agent.remaining_budget()})'
         )
 
 
@@ -84,18 +85,18 @@ def propose(
     agent,
     kind: str,
     summary: str = '',
-    payload: Optional[dict[str, Any]] = None,
-    estimated_cost: Optional[Money] = None,
+    payload: dict[str, Any] | None = None,
+    estimated_cost: Money | None = None,
     customer=None,
     channel=None,
     correlation_id: str = '',
-    expires_in_seconds: Optional[int] = 600,
-) -> 'AgentIntent':  # noqa: F821
+    expires_in_seconds: int | None = 600,
+) -> AgentIntent:  # noqa: F821
     """Create a new intent in the `proposed` state."""
     from plugins.installed.ai_assistant.models import AgentIntent, AgentIntentEvent
 
     if kind not in {c[0] for c in AgentIntent.KIND_CHOICES}:
-        raise IntentTransitionError(f"Unknown intent kind: {kind}")
+        raise IntentTransitionError(f'Unknown intent kind: {kind}')
     _enforce_capabilities(agent, kind)
     _enforce_budget(agent, estimated_cost)
 
@@ -133,7 +134,7 @@ def _transition(
     target: str,
     actor: str = 'system',
     note: str = '',
-    metadata: Optional[dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     from plugins.installed.ai_assistant.models import AgentIntentEvent
 
@@ -145,7 +146,7 @@ def _transition(
     allowed = valid.get(intent.state, set())
     if target not in allowed:
         raise IntentTransitionError(
-            f"Cannot move intent {intent.id} from {intent.state} -> {target}"
+            f'Cannot move intent {intent.id} from {intent.state} -> {target}'
         )
     previous = intent.state
     intent.state = target
@@ -164,7 +165,9 @@ def authorize(intent, *, actor: str = 'customer', note: str = '') -> None:
     """Customer or merchant approves an intent for execution."""
     if intent.expires_at and intent.expires_at < timezone.now():
         with transaction.atomic():
-            _transition(intent, target='expired', actor='system', note='Authorization arrived after expiry')
+            _transition(
+                intent, target='expired', actor='system', note='Authorization arrived after expiry'
+            )
         raise IntentTransitionError('Intent expired before authorization')
     with transaction.atomic():
         _transition(intent, target='authorized', actor=actor, note=note)
@@ -185,8 +188,8 @@ def begin_execute(intent) -> None:
 def complete(
     intent,
     *,
-    result: Optional[dict[str, Any]] = None,
-    actual_cost: Optional[Money] = None,
+    result: dict[str, Any] | None = None,
+    actual_cost: Money | None = None,
 ) -> IntentResult:
     """
     Mark an executing intent as completed, charge the agent budget, sign the
@@ -215,11 +218,15 @@ def complete(
         intent.receipt_signed_at = timezone.now()
         intent.save(update_fields=['receipt_signature', 'receipt_signed_at', 'updated_at'])
 
-    hook_registry.fire(MorpheusEvents.AGENT_INTENT_COMPLETED, intent=intent, receipt=payload, signature=signature)
-    return IntentResult(intent_id=str(intent.id), state=intent.state, receipt=payload, signature=signature)
+    hook_registry.fire(
+        MorpheusEvents.AGENT_INTENT_COMPLETED, intent=intent, receipt=payload, signature=signature
+    )
+    return IntentResult(
+        intent_id=str(intent.id), state=intent.state, receipt=payload, signature=signature
+    )
 
 
-def fail(intent, *, error: str, metadata: Optional[dict[str, Any]] = None) -> None:
+def fail(intent, *, error: str, metadata: dict[str, Any] | None = None) -> None:
     with transaction.atomic():
         intent.result = {**(intent.result or {}), 'error': error[:500]}
         intent.save(update_fields=['result', 'updated_at'])
@@ -231,4 +238,5 @@ def models_F_add(field: str, amount):
     """Wrap an F() expression that adds amount to a numeric field, COALESCEing nulls."""
     from django.db.models import F, Value
     from django.db.models.functions import Coalesce
+
     return Coalesce(F(field), Value(0)) + amount

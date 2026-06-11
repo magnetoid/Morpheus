@@ -1,4 +1,5 @@
 """Template filters for parsing YouTube + Vimeo URLs into embed IDs."""
+
 from __future__ import annotations
 
 import re

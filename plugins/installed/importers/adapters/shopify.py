@@ -10,10 +10,12 @@ Maps:
 Network IO is delegated to a small `_HTTPClient` so tests can inject fakes
 without touching the network.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from django.db import transaction
 from djmoney.money import Money
@@ -32,6 +34,7 @@ class _HTTPClient:
 
     def get(self, path: str, params: dict | None = None) -> dict:
         import requests
+
         url = f'{self._base}/{path.lstrip("/")}'
         resp = requests.get(url, headers=self._headers, params=params, timeout=20)
         resp.raise_for_status()
@@ -115,6 +118,7 @@ class ShopifyImporter(BaseImporter):
 
     def _import_product(self, record: dict) -> None:
         from django.utils.text import slugify
+
         from plugins.installed.catalog.models import Product, ProductImage, ProductVariant
 
         source_id = str(record['id'])
@@ -123,7 +127,7 @@ class ShopifyImporter(BaseImporter):
 
         existing_pk = self.find_existing(source_id=source_id, dest_model='Product')
         with transaction.atomic():
-            if existing_pk:
+            if existing_pk:  # noqa: SIM108
                 product = Product.objects.filter(pk=existing_pk).first()
             else:
                 product = None
@@ -161,7 +165,8 @@ class ShopifyImporter(BaseImporter):
                 )
             for i, img in enumerate(record.get('images') or []):
                 ProductImage.objects.update_or_create(
-                    product=product, alt_text=img.get('alt') or '',
+                    product=product,
+                    alt_text=img.get('alt') or '',
                     defaults={
                         'image': img.get('src') or '',
                         'sort_order': i,

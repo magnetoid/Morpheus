@@ -1,4 +1,5 @@
 """Celery tasks for the agent kernel layer."""
+
 from __future__ import annotations
 
 from celery import shared_task
@@ -24,10 +25,13 @@ def generate_daily_digest(self) -> dict:
     logged + ignored so a slow analytics query doesn't kill Celery.
     """
     import logging as _logging
+
     log = _logging.getLogger('morpheus.agent_core.digest')
     try:
         from datetime import timedelta
+
         from django.utils import timezone
+
         from plugins.installed.ai_assistant.models import MerchantInsight
     except Exception as exc:  # noqa: BLE001
         log.warning('daily digest skipped — import failed: %s', exc)
@@ -53,6 +57,7 @@ def generate_daily_digest(self) -> dict:
     # ── Orders + revenue (yesterday). ─────────────────────────────
     try:
         from plugins.installed.orders.models import Order
+
         yday = Order.objects.filter(placed_at__gte=yday_start, placed_at__lt=yday_end)
         order_count = yday.count()
         revenue = sum((o.total.amount for o in yday if getattr(o, 'total', None)), 0)
@@ -65,15 +70,14 @@ def generate_daily_digest(self) -> dict:
     # ── Low stock alerts. ─────────────────────────────────────────
     try:
         from plugins.installed.inventory.models import StockLevel
-        low = list(
-            StockLevel.objects
-            .filter(quantity__lt=5)
-            .select_related('variant__product')[:5]
-        )
+
+        low = list(StockLevel.objects.filter(quantity__lt=5).select_related('variant__product')[:5])
         if low:
             priority = 'high'
             names = ', '.join(
-                f'{s.variant.product.name} ({s.quantity})' for s in low if getattr(s, 'variant', None)
+                f'{s.variant.product.name} ({s.quantity})'
+                for s in low
+                if getattr(s, 'variant', None)
             )
             bullets.append(f'**Low stock:** {names}')
     except Exception as exc:  # noqa: BLE001
@@ -82,6 +86,7 @@ def generate_daily_digest(self) -> dict:
     # ── Catalogue size for context. ───────────────────────────────
     try:
         from plugins.installed.catalog.models import Product
+
         active = Product.objects.filter(status='active').count()
         bullets.append(f'**Catalogue:** {active} active products')
     except Exception as exc:  # noqa: BLE001

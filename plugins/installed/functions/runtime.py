@@ -29,6 +29,7 @@ access in the admin/API layer accordingly.
 For multi-tenant shared-host deployments, swap `_run_in_thread` for a
 sub-process or WASM runner — the rest of the surface is unchanged.
 """
+
 from __future__ import annotations
 
 import ast
@@ -36,9 +37,10 @@ import logging
 import math
 import threading
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 logger = logging.getLogger('morpheus.functions')
 
@@ -116,11 +118,19 @@ _FORBIDDEN_NODES = (
 # Names we never want resolved as identifiers (dunder access is checked separately).
 # These are NOT bound in the sandbox namespace anyway — banning the *name* makes
 # the intent obvious and gives us a single failure mode instead of NameError.
-_FORBIDDEN_NAMES = frozenset({
-    '__import__', '__builtins__',
-    'open', 'exec', 'eval', 'compile',
-    'globals', 'locals', 'vars',
-})
+_FORBIDDEN_NAMES = frozenset(
+    {
+        '__import__',
+        '__builtins__',
+        'open',
+        'exec',
+        'eval',
+        'compile',
+        'globals',
+        'locals',
+        'vars',
+    }
+)
 
 
 def _validate_ast(tree: ast.AST) -> None:
@@ -240,7 +250,7 @@ def execute(
     hard_timeout = max(timeout_ms, 50) * 4 / 1000.0
 
     def _run() -> Any:
-        exec(code, namespace, namespace)  # noqa: S102 — sandboxed namespace
+        exec(code, namespace, namespace)  # noqa: S102 — sandboxed namespace  # nosec B102
         run_fn = namespace.get('run')
         if not callable(run_fn):
             raise FunctionExecutionError('Function source must define `run(input)`')

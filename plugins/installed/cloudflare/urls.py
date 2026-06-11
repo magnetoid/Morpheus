@@ -1,4 +1,5 @@
 """Cloudflare admin URLs — mounted at /dashboard/cloudflare/ via register_urls."""
+
 from __future__ import annotations
 
 from django.urls import path

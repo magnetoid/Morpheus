@@ -1,4 +1,5 @@
 """Tax tools for the agent layer."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -12,18 +13,22 @@ from core.agents import ToolError, ToolResult, tool
 )
 def list_rates_tool() -> ToolResult:
     from plugins.installed.tax.models import TaxRate
+
     rows = list(TaxRate.objects.select_related('region', 'category').all()[:200])
-    return ToolResult(output={
-        'rates': [
-            {
-                'region': str(r.region),
-                'name': r.name,
-                'percent': str(r.rate_percent),
-                'category': r.category_id or '',
-            }
-            for r in rows
-        ],
-    }, display=f'{len(rows)} tax rate(s)')
+    return ToolResult(
+        output={
+            'rates': [
+                {
+                    'region': str(r.region),
+                    'name': r.name,
+                    'percent': str(r.rate_percent),
+                    'category': r.category_id or '',
+                }
+                for r in rows
+            ],
+        },
+        display=f'{len(rows)} tax rate(s)',
+    )
 
 
 @tool(
@@ -44,13 +49,18 @@ def list_rates_tool() -> ToolResult:
     requires_approval=True,
 )
 def set_rate_tool(
-    *, country: str, rate_percent: float, name: str,
-    region: str = '', category_code: str = '',
+    *,
+    country: str,
+    rate_percent: float,
+    name: str,
+    region: str = '',
+    category_code: str = '',
 ) -> ToolResult:
     from plugins.installed.tax.models import TaxCategory, TaxRate, TaxRegion
 
     region_obj, _ = TaxRegion.objects.get_or_create(
-        country=country.upper()[:2], region=(region or '').upper()[:10],
+        country=country.upper()[:2],
+        region=(region or '').upper()[:10],
         defaults={'name': f'{country}{("-" + region) if region else ""}'},
     )
     category = None
@@ -59,7 +69,8 @@ def set_rate_tool(
         if not category:
             raise ToolError(f'Unknown tax category: {category_code}')
     rate, created = TaxRate.objects.update_or_create(
-        region=region_obj, category=category,
+        region=region_obj,
+        category=category,
         defaults={'name': name[:120], 'rate_percent': rate_percent},
     )
     return ToolResult(

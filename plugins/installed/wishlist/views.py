@@ -1,13 +1,19 @@
 """Wishlist storefront views."""
+
 from __future__ import annotations
 
 import json
 
-from morpheus.views import login_required
-from morpheus.views import HttpResponseBadRequest, JsonResponse
-from morpheus.views import get_object_or_404, redirect, render
-from morpheus.views import csrf_protect
-from morpheus.views import require_http_methods
+from morpheus.views import (
+    HttpResponseBadRequest,
+    JsonResponse,
+    csrf_protect,
+    get_object_or_404,
+    login_required,
+    redirect,
+    render,
+    require_http_methods,
+)
 
 
 def _decode_body(request):
@@ -21,6 +27,7 @@ def _decode_body(request):
 
 def _wishlist_for(request):
     from plugins.installed.wishlist.services import get_or_create_wishlist
+
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated:
         return get_or_create_wishlist(customer=user)
@@ -36,12 +43,15 @@ def wishlist_view(request):
     wishlist = _wishlist_for(request)
     items = []
     if wishlist:
-        items = list(
-            wishlist.items.select_related('product', 'variant').all()
-        )
-    return render(request, 'wishlist/wishlist.html', {
-        'wishlist': wishlist, 'items': items,
-    })
+        items = list(wishlist.items.select_related('product', 'variant').all())
+    return render(
+        request,
+        'wishlist/wishlist.html',
+        {
+            'wishlist': wishlist,
+            'items': items,
+        },
+    )
 
 
 @csrf_protect
@@ -58,12 +68,16 @@ def add_to_wishlist_view(request):
     wishlist = _wishlist_for(request)
     if wishlist is None:
         return HttpResponseBadRequest('Could not resolve wishlist.')
-    item = add_item(wishlist=wishlist, product=product, note=body.get('note', ''))
+    add_item(wishlist=wishlist, product=product, note=body.get('note', ''))
     if request.headers.get('X-Requested-With') == 'fetch':
-        return JsonResponse({
-            'ok': True, 'wishlist_id': str(wishlist.id),
-            'product_slug': product.slug, 'count': wishlist.item_count,
-        })
+        return JsonResponse(
+            {
+                'ok': True,
+                'wishlist_id': str(wishlist.id),
+                'product_slug': product.slug,
+                'count': wishlist.item_count,
+            }
+        )
     return redirect('wishlist:home')
 
 
@@ -71,6 +85,7 @@ def add_to_wishlist_view(request):
 @require_http_methods(['POST'])
 def remove_from_wishlist_view(request, item_id):
     from plugins.installed.wishlist.models import WishlistItem
+
     wishlist = _wishlist_for(request)
     if wishlist is None:
         return HttpResponseBadRequest('No wishlist.')
@@ -83,11 +98,17 @@ def remove_from_wishlist_view(request, item_id):
 @require_http_methods(['GET'])
 def shared_wishlist_view(request, token):
     from plugins.installed.wishlist.models import Wishlist
+
     wishlist = get_object_or_404(Wishlist, share_token=token, is_public=True)
     items = list(wishlist.items.select_related('product').all())
-    return render(request, 'wishlist/shared.html', {
-        'wishlist': wishlist, 'items': items,
-    })
+    return render(
+        request,
+        'wishlist/shared.html',
+        {
+            'wishlist': wishlist,
+            'items': items,
+        },
+    )
 
 
 @login_required
@@ -95,6 +116,7 @@ def shared_wishlist_view(request, token):
 @require_http_methods(['POST'])
 def share_wishlist_view(request):
     from plugins.installed.wishlist.services import make_shareable
+
     wishlist = _wishlist_for(request)
     if wishlist is None:
         return HttpResponseBadRequest('No wishlist.')

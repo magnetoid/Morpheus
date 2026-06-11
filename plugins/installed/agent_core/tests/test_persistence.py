@@ -1,4 +1,5 @@
 """Tests for the run/step persistence layer."""
+
 from __future__ import annotations
 
 from django.test import TestCase
@@ -33,7 +34,6 @@ class _PersistAgent(MorpheusAgent):
 
 
 class RunPersistenceTests(TestCase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -45,16 +45,19 @@ class RunPersistenceTests(TestCase):
         super().tearDownClass()
 
     def test_run_and_steps_are_persisted(self):
+        # Inject the mock provider via monkeypatch on get_llm_provider.
+        import plugins.installed.agent_core.services as svc
         from plugins.installed.agent_core.models import AgentRun, AgentStep
         from plugins.installed.agent_core.services import run_agent
 
-        # Inject the mock provider via monkeypatch on get_llm_provider.
-        import plugins.installed.agent_core.services as svc
-
-        provider = MockLLMProvider([
-            LLMResponse(tool_calls=[LLMToolCall(id='1', name='persist_test.ping', arguments={})]),
-            LLMResponse(text='all good'),
-        ])
+        provider = MockLLMProvider(
+            [
+                LLMResponse(
+                    tool_calls=[LLMToolCall(id='1', name='persist_test.ping', arguments={})]
+                ),
+                LLMResponse(text='all good'),
+            ]
+        )
         original = svc.get_llm_provider
         svc.get_llm_provider = lambda *a, **kw: provider
         try:

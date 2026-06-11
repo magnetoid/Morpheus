@@ -6,10 +6,12 @@ Maps:
     customers -> customers.Customer
     orders    -> orders.Order
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from django.db import transaction
 from djmoney.money import Money
@@ -26,6 +28,7 @@ class _HTTPClient:
 
     def get(self, path: str, params: dict | None = None) -> list[dict]:
         import requests
+
         url = f'{self._base}/{path.lstrip("/")}'
         resp = requests.get(url, auth=self._auth, params=params, timeout=20)
         resp.raise_for_status()
@@ -50,7 +53,9 @@ class WooImporter(BaseImporter):
             self._client = client
         elif base_url and consumer_key and consumer_secret:
             self._client = _HTTPClient(
-                base_url=base_url, consumer_key=consumer_key, consumer_secret=consumer_secret,
+                base_url=base_url,
+                consumer_key=consumer_key,
+                consumer_secret=consumer_secret,
             )
         else:
             self._client = None
@@ -99,6 +104,7 @@ class WooImporter(BaseImporter):
 
     def _import_product(self, record: dict) -> None:
         from django.utils.text import slugify
+
         from plugins.installed.catalog.models import Product
 
         source_id = str(record['id'])
@@ -172,6 +178,7 @@ class WooImporter(BaseImporter):
     @staticmethod
     def _unique_slug(seed: str) -> str:
         from plugins.installed.catalog.models import Product
+
         if not Product.objects.filter(slug=seed).exists():
             return seed
         for n in range(2, 1000):

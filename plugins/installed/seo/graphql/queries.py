@@ -1,7 +1,6 @@
 """SEO GraphQL queries."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import strawberry
 
@@ -34,11 +33,12 @@ class RedirectType:
 
 @strawberry.type
 class SeoQueryExtension:
-
     @strawberry.field(description='List recent SEO meta overrides (admin scope).')
     def seo_meta_entries(
-        self, info: strawberry.Info, first: int = 50,
-    ) -> List[SeoMetaType]:
+        self,
+        info: strawberry.Info,
+        first: int = 50,
+    ) -> list[SeoMetaType]:
         from plugins.installed.seo.models import SeoMeta
 
         require_authenticated(info)
@@ -64,8 +64,10 @@ class SeoQueryExtension:
 
     @strawberry.field(description='Active redirect rules (admin scope).')
     def seo_redirects(
-        self, info: strawberry.Info, first: int = 100,
-    ) -> List[RedirectType]:
+        self,
+        info: strawberry.Info,
+        first: int = 100,
+    ) -> list[RedirectType]:
         from plugins.installed.seo.models import Redirect
 
         require_authenticated(info)
@@ -75,8 +77,12 @@ class SeoQueryExtension:
         rows = Redirect.objects.filter(is_active=True).order_by('-updated_at')[:first]
         return [
             RedirectType(
-                id=str(r.id), from_path=r.from_path, to_path=r.to_path,
-                status_code=r.status_code, is_active=r.is_active, hit_count=r.hit_count,
+                id=str(r.id),
+                from_path=r.from_path,
+                to_path=r.to_path,
+                status_code=r.status_code,
+                is_active=r.is_active,
+                hit_count=r.hit_count,
             )
             for r in rows
         ]

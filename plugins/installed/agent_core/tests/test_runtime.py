@@ -1,9 +1,10 @@
 """End-to-end tests for the agent runtime + tool dispatch."""
+
 from __future__ import annotations
 
 import sys
 
-from django.test import RequestFactory, TestCase
+from django.test import TestCase
 
 from core.agents import (
     AgentRuntime,
@@ -11,16 +12,17 @@ from core.agents import (
     LLMToolCall,
     MockLLMProvider,
     MorpheusAgent,
-    Tool,
     ToolError,
     ToolResult,
     agent_registry,
     tool,
 )
 
-
-_IS_SQLITE = 'sqlite' in (sys.modules.get('django.conf').settings.DATABASES['default']['ENGINE']
-                          if 'django.conf' in sys.modules else '')
+_IS_SQLITE = 'sqlite' in (
+    sys.modules.get('django.conf').settings.DATABASES['default']['ENGINE']
+    if 'django.conf' in sys.modules
+    else ''
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -58,7 +60,6 @@ class _DemoAgent(MorpheusAgent):
 
 
 class RuntimeFinalAnswerTests(TestCase):
-
     def test_runtime_returns_final_text_without_tools(self):
         provider = MockLLMProvider([LLMResponse(text='hello world')])
         runtime = AgentRuntime(_DemoAgent(), provider=provider)
@@ -68,10 +69,14 @@ class RuntimeFinalAnswerTests(TestCase):
         self.assertEqual(result.tool_calls, 0)
 
     def test_runtime_dispatches_tool_then_finalises(self):
-        provider = MockLLMProvider([
-            LLMResponse(tool_calls=[LLMToolCall(id='1', name='test.echo', arguments={'text': 'pong'})]),
-            LLMResponse(text='echoed'),
-        ])
+        provider = MockLLMProvider(
+            [
+                LLMResponse(
+                    tool_calls=[LLMToolCall(id='1', name='test.echo', arguments={'text': 'pong'})]
+                ),
+                LLMResponse(text='echoed'),
+            ]
+        )
         runtime = AgentRuntime(_DemoAgent(), provider=provider)
         result = runtime.run(user_message='ping')
         self.assertEqual(result.state, 'completed')
@@ -82,10 +87,12 @@ class RuntimeFinalAnswerTests(TestCase):
         self.assertIn('tool_result', kinds)
 
     def test_tool_error_is_returned_to_llm(self):
-        provider = MockLLMProvider([
-            LLMResponse(tool_calls=[LLMToolCall(id='1', name='test.boom', arguments={})]),
-            LLMResponse(text='recovered'),
-        ])
+        provider = MockLLMProvider(
+            [
+                LLMResponse(tool_calls=[LLMToolCall(id='1', name='test.boom', arguments={})]),
+                LLMResponse(text='recovered'),
+            ]
+        )
         runtime = AgentRuntime(_DemoAgent(), provider=provider)
         result = runtime.run(user_message='hi')
         self.assertEqual(result.state, 'completed')
@@ -96,20 +103,26 @@ class RuntimeFinalAnswerTests(TestCase):
         self.assertEqual(len(failed), 1)
 
     def test_unknown_tool_does_not_crash(self):
-        provider = MockLLMProvider([
-            LLMResponse(tool_calls=[LLMToolCall(id='1', name='test.nope', arguments={})]),
-            LLMResponse(text='moving on'),
-        ])
+        provider = MockLLMProvider(
+            [
+                LLMResponse(tool_calls=[LLMToolCall(id='1', name='test.nope', arguments={})]),
+                LLMResponse(text='moving on'),
+            ]
+        )
         runtime = AgentRuntime(_DemoAgent(), provider=provider)
         result = runtime.run(user_message='hi')
         self.assertEqual(result.state, 'completed')
 
     def test_max_steps_exceeded(self):
         # Loop returning only tool calls until cap fires.
-        provider = MockLLMProvider([
-            LLMResponse(tool_calls=[LLMToolCall(id=str(i), name='test.echo', arguments={'text': 'x'})])
-            for i in range(10)
-        ])
+        provider = MockLLMProvider(
+            [
+                LLMResponse(
+                    tool_calls=[LLMToolCall(id=str(i), name='test.echo', arguments={'text': 'x'})]
+                )
+                for i in range(10)
+            ]
+        )
         agent = _DemoAgent()
         agent.max_steps = 2
         runtime = AgentRuntime(agent, provider=provider)
@@ -119,7 +132,6 @@ class RuntimeFinalAnswerTests(TestCase):
 
 
 class ScopeEnforcementTests(TestCase):
-
     def test_tool_outside_scopes_is_rejected(self):
         @tool(name='test.priv', description='Admin only', scopes=['admin.write'])
         def _priv() -> ToolResult:  # pragma: no cover — should never run
@@ -132,10 +144,12 @@ class ScopeEnforcementTests(TestCase):
             scopes = ['demo.read']
             default_tools = [_priv]
 
-        provider = MockLLMProvider([
-            LLMResponse(tool_calls=[LLMToolCall(id='1', name='test.priv', arguments={})]),
-            LLMResponse(text='done'),
-        ])
+        provider = MockLLMProvider(
+            [
+                LLMResponse(tool_calls=[LLMToolCall(id='1', name='test.priv', arguments={})]),
+                LLMResponse(text='done'),
+            ]
+        )
         runtime = AgentRuntime(_Limited(), provider=provider)
         result = runtime.run(user_message='try')
         self.assertEqual(result.state, 'completed')
@@ -146,7 +160,6 @@ class ScopeEnforcementTests(TestCase):
 
 
 class RegistryTests(TestCase):
-
     def test_register_and_lookup(self):
         agent_registry.register_tool(_echo, plugin='__test')
         try:

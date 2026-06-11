@@ -1,8 +1,8 @@
 """CRM dashboard views."""
+
 from __future__ import annotations
 
-from morpheus.views import staff_member_required
-from morpheus.views import render
+from morpheus.views import render, staff_member_required
 
 
 @staff_member_required
@@ -11,20 +11,26 @@ def crm_home(request):
 
     open_leads = Lead.objects.exclude(status__in=['converted', 'lost']).count()
     open_tasks = CrmTask.objects.filter(completed_at__isnull=True).count()
-    overdue_tasks = sum(1 for t in CrmTask.objects.filter(completed_at__isnull=True) if t.is_overdue)
+    overdue_tasks = sum(
+        1 for t in CrmTask.objects.filter(completed_at__isnull=True) if t.is_overdue
+    )
     open_deals = Deal.objects.filter(closed_at__isnull=True).count()
     recent = Interaction.objects.all().order_by('-occurred_at')[:15]
 
-    return render(request, 'crm/home.html', {
-        'metrics': {
-            'open_leads': open_leads,
-            'open_tasks': open_tasks,
-            'overdue_tasks': overdue_tasks,
-            'open_deals': open_deals,
+    return render(
+        request,
+        'crm/home.html',
+        {
+            'metrics': {
+                'open_leads': open_leads,
+                'open_tasks': open_tasks,
+                'overdue_tasks': overdue_tasks,
+                'open_deals': open_deals,
+            },
+            'recent_interactions': recent,
+            'active_nav': 'crm',
         },
-        'recent_interactions': recent,
-        'active_nav': 'crm',
-    })
+    )
 
 
 @staff_member_required
@@ -49,9 +55,15 @@ def pipeline_board(request):
                 .order_by('-created_at')[:50]
             )
             stages.append({'stage': stage, 'deals': deals})
-    return render(request, 'crm/pipeline.html', {
-        'pipeline': pipeline, 'stages': stages, 'active_nav': 'crm',
-    })
+    return render(
+        request,
+        'crm/pipeline.html',
+        {
+            'pipeline': pipeline,
+            'stages': stages,
+            'active_nav': 'crm',
+        },
+    )
 
 
 @staff_member_required
@@ -69,20 +81,22 @@ def tasks_list(request):
 def inbox_list(request):
     """Latest messages across every connected mail account."""
     from morpheus.views import redirect
-
     from plugins.installed.crm.models import MailAccount, MailMessage
 
     if request.method == 'POST' and request.POST.get('action') == 'sync':
         from plugins.installed.crm.inbox import fetch_all_active
-        try:
+
+        try:  # noqa: SIM105
             fetch_all_active()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
         return redirect('/dashboard/crm/inbox/')
 
     accounts = list(MailAccount.objects.all())
     qs = MailMessage.objects.select_related('account', 'customer').order_by(
-        '-received_at', '-sent_at', '-created_at',
+        '-received_at',
+        '-sent_at',
+        '-created_at',
     )
     direction = (request.GET.get('dir') or '').lower()
     if direction in ('in', 'out'):
@@ -93,6 +107,7 @@ def inbox_list(request):
     search = (request.GET.get('q') or '').strip()
     if search:
         from django.db.models import Q
+
         qs = qs.filter(
             Q(subject__icontains=search)
             | Q(from_address__icontains=search)
@@ -100,21 +115,24 @@ def inbox_list(request):
             | Q(body_text__icontains=search)
         )
     messages = list(qs[:200])
-    return render(request, 'crm/inbox.html', {
-        'accounts': accounts,
-        'messages': messages,
-        'direction': direction,
-        'account_id': account_id,
-        'search': search,
-        'active_nav': 'crm',
-    })
+    return render(
+        request,
+        'crm/inbox.html',
+        {
+            'accounts': accounts,
+            'messages': messages,
+            'direction': direction,
+            'account_id': account_id,
+            'search': search,
+            'active_nav': 'crm',
+        },
+    )
 
 
 @staff_member_required
 def inbox_message(request, message_id):
     """Single-message view + reply form."""
     from morpheus.views import HttpResponseRedirect, get_object_or_404
-
     from plugins.installed.crm.inbox import send_message
     from plugins.installed.crm.models import MailMessage
 
@@ -155,19 +173,22 @@ def inbox_message(request, message_id):
             .select_related('account', 'customer')
             .order_by('received_at', 'sent_at', 'created_at')
         )
-    return render(request, 'crm/inbox_message.html', {
-        'message': msg,
-        'thread': thread,
-        'error': error,
-        'active_nav': 'crm',
-    })
+    return render(
+        request,
+        'crm/inbox_message.html',
+        {
+            'message': msg,
+            'thread': thread,
+            'error': error,
+            'active_nav': 'crm',
+        },
+    )
 
 
 @staff_member_required
 def inbox_compose(request):
     """Compose a new outbound email."""
     from morpheus.views import HttpResponseRedirect
-
     from plugins.installed.crm.inbox import send_message
     from plugins.installed.crm.models import MailAccount
 
@@ -194,18 +215,21 @@ def inbox_compose(request):
                 return HttpResponseRedirect(f'/dashboard/crm/inbox/{sent.pk}/')
             except Exception as e:  # noqa: BLE001
                 error = f'Send failed: {e}'
-    return render(request, 'crm/inbox_compose.html', {
-        'accounts': accounts,
-        'error': error,
-        'active_nav': 'crm',
-    })
+    return render(
+        request,
+        'crm/inbox_compose.html',
+        {
+            'accounts': accounts,
+            'error': error,
+            'active_nav': 'crm',
+        },
+    )
 
 
 @staff_member_required
 def inbox_accounts(request):
     """List + create/edit MailAccount records."""
     from morpheus.views import HttpResponseRedirect
-
     from plugins.installed.crm.models import MailAccount
 
     error = ''
@@ -216,6 +240,7 @@ def inbox_accounts(request):
             return HttpResponseRedirect('/dashboard/crm/inbox/accounts/')
         if action == 'sync':
             from plugins.installed.crm.inbox import fetch_account
+
             try:
                 acc = MailAccount.objects.get(pk=request.POST.get('id'))
                 fetch_account(acc)
@@ -241,17 +266,21 @@ def inbox_accounts(request):
             'smtp_password': request.POST.get('smtp_password') or '',
             'is_active': request.POST.get('is_active') == 'on',
         }
-        if not (data['label'] and data['email_address']
-                and data['imap_host'] and data['smtp_host']):
+        if not (
+            data['label'] and data['email_address'] and data['imap_host'] and data['smtp_host']
+        ):
             error = 'Label, email, IMAP host, and SMTP host are required.'
         else:
             account_id = (request.POST.get('id') or '').strip()
             if account_id:
-                MailAccount.objects.filter(pk=account_id).update(**{
-                    # Don't overwrite passwords if blank.
-                    k: v for k, v in data.items()
-                    if not (k.endswith('_password') and not v)
-                })
+                MailAccount.objects.filter(pk=account_id).update(
+                    **{
+                        # Don't overwrite passwords if blank.
+                        k: v
+                        for k, v in data.items()
+                        if not (k.endswith('_password') and not v)
+                    }
+                )
             else:
                 MailAccount.objects.create(**data)
             return HttpResponseRedirect('/dashboard/crm/inbox/accounts/')
@@ -261,9 +290,13 @@ def inbox_accounts(request):
     edit_account = None
     if edit_id:
         edit_account = next((a for a in accounts if str(a.pk) == edit_id), None)
-    return render(request, 'crm/inbox_accounts.html', {
-        'accounts': accounts,
-        'edit_account': edit_account,
-        'error': error,
-        'active_nav': 'crm',
-    })
+    return render(
+        request,
+        'crm/inbox_accounts.html',
+        {
+            'accounts': accounts,
+            'edit_account': edit_account,
+            'error': error,
+            'active_nav': 'crm',
+        },
+    )

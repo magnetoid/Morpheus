@@ -78,7 +78,7 @@ class DraftToolTests(TestCase):
 
 
 class ShapeEvalTests(SimpleTestCase):
-    _DECL = "from core.assistant.tools.filesystem import ToolResult, tool\n"
+    _DECL = 'from core.assistant.tools.filesystem import ToolResult, tool\n'
 
     def test_signature_schema_mismatch(self):
         src = self._DECL + (

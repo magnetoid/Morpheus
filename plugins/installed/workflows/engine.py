@@ -30,11 +30,13 @@ and returns `(ok, message)`. Spec is the dict from
 `Workflow.actions[i]`; payload is the merged event kwargs + the
 resolved domain object.
 """
+
 from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from django.utils import timezone
 
@@ -47,8 +49,10 @@ logger = logging.getLogger('morpheus.workflows.engine')
 # self.register_hook(...). One subscription per event, fanned out by
 # `_dispatch` to the Workflow rows that match.
 
+
 def register_hook_listeners(plugin) -> None:
     from plugins.installed.workflows.models import TRIGGER_CHOICES
+
     for event_name, _label in TRIGGER_CHOICES:
         plugin.register_hook(event_name, _make_listener(event_name), priority=70)
 
@@ -59,11 +63,13 @@ def _make_listener(event_name: str):
             _dispatch(event_name, kwargs)
         except Exception as e:  # noqa: BLE001 — never let a workflow break the upstream
             logger.warning('workflow dispatch on %s failed: %s', event_name, e, exc_info=True)
+
     return _listener
 
 
 def _dispatch(event_name: str, payload: dict) -> None:
     from plugins.installed.workflows.models import Workflow
+
     workflows = list(Workflow.objects.filter(trigger=event_name, is_active=True))
     if not workflows:
         return
@@ -82,6 +88,7 @@ def run_workflow(workflow, payload: dict, *, dry_run: bool = False):
     merchants can verify a workflow against a sample payload safely.
     """
     from plugins.installed.workflows.models import WorkflowRun
+
     started = time.monotonic()
     snapshot = _serialize_payload(payload)
 
@@ -91,14 +98,17 @@ def run_workflow(workflow, payload: dict, *, dry_run: bool = False):
             matched = _eval(workflow.condition, payload)
         except Exception as e:  # noqa: BLE001
             return WorkflowRun.objects.create(
-                workflow=workflow, state='failed',
-                payload=snapshot, error=f'condition error: {e}',
+                workflow=workflow,
+                state='failed',
+                payload=snapshot,
+                error=f'condition error: {e}',
                 duration_ms=int((time.monotonic() - started) * 1000),
             )
 
     if not matched:
         run = WorkflowRun.objects.create(
-            workflow=workflow, state='skipped',
+            workflow=workflow,
+            state='skipped',
             payload=snapshot,
             duration_ms=int((time.monotonic() - started) * 1000),
         )
@@ -106,11 +116,13 @@ def run_workflow(workflow, payload: dict, *, dry_run: bool = False):
 
     actions_taken = []
     overall_error = ''
-    for spec in (workflow.actions or []):
+    for spec in workflow.actions or []:
         kind = (spec.get('kind') or '').strip()
         handler = ACTION_HANDLERS.get(kind)
         if handler is None:
-            actions_taken.append({'kind': kind, 'ok': False, 'message': f'unknown action kind: {kind}'})
+            actions_taken.append(
+                {'kind': kind, 'ok': False, 'message': f'unknown action kind: {kind}'}
+            )
             continue
         if dry_run:
             actions_taken.append({'kind': kind, 'ok': True, 'message': '(dry run — not executed)'})
@@ -147,7 +159,7 @@ def _resolve_path(payload: Any, path: str):
     for part in (path or '').split('.'):
         if cur is None or not part:
             return cur
-        if isinstance(cur, dict):
+        if isinstance(cur, dict):  # noqa: SIM108
             cur = cur.get(part)
         else:
             cur = getattr(cur, part, None)
@@ -162,7 +174,7 @@ def _resolve(value: Any, payload: Any):
       {"==": ["order.payment_status", "paid"]}
       {">":  ["order.total.amount", 100]}
     """
-    if isinstance(value, str):
+    if isinstance(value, str):  # noqa: SIM102
         # Heuristic: dotted strings resolve as paths; bare strings stay literals.
         # Operands rarely want literal strings WITHOUT dots so this is safe.
         if '.' in value:
@@ -170,7 +182,7 @@ def _resolve(value: Any, payload: Any):
     return value
 
 
-def _eval(node: Any, payload: Any) -> bool:
+def _eval(node: Any, payload: Any) -> bool:  # noqa: PLR0911, PLR0912
     """Recursive condition evaluator. Returns False on malformed input."""
     if not isinstance(node, dict) or not node:
         return True  # empty / non-dict → match-all
@@ -231,6 +243,7 @@ def _serialize_payload(payload: dict) -> dict:
     for k, v in (payload or {}).items():
         try:
             import json
+
             json.dumps({k: v}, default=str)
             out[k] = v
         except Exception:  # noqa: BLE001
@@ -252,8 +265,7 @@ def _action_notify_staff(spec: dict, payload: dict) -> tuple[bool, str]:
     action_url = (spec.get('action_url') or '').strip()
     icon = (spec.get('icon') or 'bell').strip()
     kind_tag = (spec.get('kind_tag') or 'workflows.fired').strip()
-    n = notify_all_staff(kind=kind_tag, title=title, body=body,
-                         action_url=action_url, icon=icon)
+    n = notify_all_staff(kind=kind_tag, title=title, body=body, action_url=action_url, icon=icon)
     return True, f'notified {n} staff'
 
 
@@ -269,8 +281,9 @@ def _action_add_order_note(spec: dict, payload: dict) -> tuple[bool, str]:
         existing = (getattr(order, 'notes', '') or '').strip()
         sep = '\n\n' if existing else ''
         order.notes = f'{existing}{sep}{note}'
-        order.save(update_fields=['notes', 'updated_at']
-                   if hasattr(order, 'updated_at') else ['notes'])
+        order.save(
+            update_fields=['notes', 'updated_at'] if hasattr(order, 'updated_at') else ['notes']
+        )
         return True, 'note appended'
     except Exception as e:  # noqa: BLE001
         return False, str(e)
@@ -286,12 +299,16 @@ def _action_tag_customer(spec: dict, payload: dict) -> tuple[bool, str]:
     tag = (spec.get('tag') or '').strip()
     if not tag:
         return False, 'no tag specified'
-    customer = (payload.get('customer') or _resolve_path(payload, 'order.customer')
-                or _resolve_path(payload, 'customer'))
+    customer = (
+        payload.get('customer')
+        or _resolve_path(payload, 'order.customer')
+        or _resolve_path(payload, 'customer')
+    )
     if customer is None or not getattr(customer, 'pk', None):
         return False, 'no customer in payload'
     try:
         from plugins.installed.metafields.models import Metafield
+
         # Append to existing list rather than overwrite.
         existing = Metafield.objects.for_obj(customer, ns='workflows')
         tags = existing.get('workflows.tags') or []
@@ -299,8 +316,9 @@ def _action_tag_customer(spec: dict, payload: dict) -> tuple[bool, str]:
             tags = []
         if tag not in tags:
             tags.append(tag)
-        Metafield.objects.set(customer, namespace='workflows', key='tags',
-                              value=tags, value_type='json')
+        Metafield.objects.set(
+            customer, namespace='workflows', key='tags', value=tags, value_type='json'
+        )
         return True, f'customer tagged "{tag}"'
     except Exception as e:  # noqa: BLE001
         return False, str(e)
@@ -346,9 +364,12 @@ def _action_agent_skill(spec: dict, payload: dict) -> tuple[bool, str]:
             user_message=message,
             customer=None,
             session_key='workflows-engine',
-            context={**(spec.get('context') or {}), 'workflow_payload': _serialize_payload(payload)},
+            context={
+                **(spec.get('context') or {}),
+                'workflow_payload': _serialize_payload(payload),
+            },
         )
-        ok = (result.state == 'completed')
+        ok = result.state == 'completed'
         return ok, f'{agent_name} → {result.state}'
     except Exception as e:  # noqa: BLE001
         return False, f'{type(e).__name__}: {e}'

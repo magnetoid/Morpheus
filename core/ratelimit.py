@@ -19,6 +19,7 @@ Design notes
 * **Identifier** — first hop of ``X-Forwarded-For`` (Cloudflare /
   Plesk strip-and-set this), falling back to ``REMOTE_ADDR``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,18 +36,21 @@ logger = logging.getLogger('morpheus.ratelimit')
 # /graphql + /api are already covered by api.rate_limit.RateLimitMiddleware
 # with auth-aware limits — we deliberately don't double-count them here.
 _RULES = [
-    (re.compile(r'^/auth/(login|signup|password/reset)/?'), 'auth',     10),
-    (re.compile(r'^/search/?'),                             'search',   30),
+    (re.compile(r'^/auth/(login|signup|password/reset)/?'), 'auth', 10),
+    (re.compile(r'^/search/?'), 'search', 30),
 ]
 _GLOBAL_BUCKET = 'global'
 _DEFAULT_GLOBAL_PER_MINUTE = 120
 
 # Paths that must never be rate-limited.
 _BYPASS = (
-    '/healthz', '/static/', '/media/',
-    '/graphql', '/api/',             # covered by api.rate_limit (auth-aware)
-    '/payments/webhooks/',           # gateway retries are not user traffic
-    '/dashboard/assistant/history/', # internal poller; high frequency by design
+    '/healthz',
+    '/static/',
+    '/media/',
+    '/graphql',
+    '/api/',  # covered by api.rate_limit (auth-aware)
+    '/payments/webhooks/',  # gateway retries are not user traffic
+    '/dashboard/assistant/history/',  # internal poller; high frequency by design
 )
 
 
@@ -61,7 +65,9 @@ def _rule_for(path: str):
     for pattern, bucket, limit in _RULES:
         if pattern.match(path):
             return bucket, limit
-    global_limit = int(getattr(settings, 'MORPHEUS_RATELIMIT_PER_MINUTE', _DEFAULT_GLOBAL_PER_MINUTE))
+    global_limit = int(
+        getattr(settings, 'MORPHEUS_RATELIMIT_PER_MINUTE', _DEFAULT_GLOBAL_PER_MINUTE)
+    )
     return _GLOBAL_BUCKET, global_limit
 
 

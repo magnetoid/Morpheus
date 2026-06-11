@@ -19,6 +19,7 @@ Usage:
     python manage.py apply_internal_links --slugs pinocchio,dorian-gray
     python manage.py apply_internal_links --force --dry-run
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,8 +50,11 @@ def _build_block(suggestions: list[dict], *, as_html: bool) -> str:
         return ''
 
     def link(s):
-        return (f'<a href="/products/{s["slug"]}/">{s["name"]}</a>'
-                if as_html else f'[{s["name"]}](/products/{s["slug"]}/)')
+        return (
+            f'<a href="/products/{s["slug"]}/">{s["name"]}</a>'
+            if as_html
+            else f'[{s["name"]}](/products/{s["slug"]}/)'
+        )
 
     if len(suggestions) == 1:
         sentence = f'If this resonates, you might also reach for {link(suggestions[0])}.'
@@ -75,17 +79,27 @@ class Command(BaseCommand):
     help = 'Append related-reading internal links to product long descriptions.'
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument('--slugs', default='',
-                            help='Comma-separated product slugs (default: all active).')
-        parser.add_argument('--limit-per-product', type=int, default=3,
-                            help='How many internal links to insert per product (default 3).')
-        parser.add_argument('--force', action='store_true',
-                            help='Overwrite existing Related-reading section + re-mark.')
-        parser.add_argument('--dry-run', action='store_true',
-                            help='Show what would change; do not write.')
+        parser.add_argument(
+            '--slugs', default='', help='Comma-separated product slugs (default: all active).'
+        )
+        parser.add_argument(
+            '--limit-per-product',
+            type=int,
+            default=3,
+            help='How many internal links to insert per product (default 3).',
+        )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Overwrite existing Related-reading section + re-mark.',
+        )
+        parser.add_argument(
+            '--dry-run', action='store_true', help='Show what would change; do not write.'
+        )
 
-    def handle(self, *args, **opts) -> None:
+    def handle(self, *args, **opts) -> None:  # noqa: PLR0915
         from django.contrib.contenttypes.models import ContentType
+
         from plugins.installed.catalog.models import Product
         from plugins.installed.metafields.models import Metafield
         from plugins.installed.seo.services import suggest_internal_links_for
@@ -104,8 +118,10 @@ class Command(BaseCommand):
 
         for product in qs:
             existing_flag = Metafield.objects.filter(
-                content_type=ct, object_id=str(product.pk),
-                namespace=NAMESPACE, key=KEY,
+                content_type=ct,
+                object_id=str(product.pk),
+                namespace=NAMESPACE,
+                key=KEY,
             ).first()
             body = product.description or ''
             if existing_flag and not force:
@@ -117,13 +133,12 @@ class Command(BaseCommand):
                 # actually clears.
                 recorded = (existing_flag.value or '').strip()
                 recorded_slugs = [s for s in recorded.split(',') if s and s != 'already-linked']
-                if recorded_slugs and not any(
-                    f'/products/{s}/' in body for s in recorded_slugs
-                ):
+                if recorded_slugs and not any(f'/products/{s}/' in body for s in recorded_slugs):
                     logger.info(
                         'apply_internal_links: %s recorded as applied (%s) but '
                         'description shows no link traces — re-applying',
-                        product.slug, recorded,
+                        product.slug,
+                        recorded,
                     )
                 else:
                     skipped += 1
@@ -134,8 +149,10 @@ class Command(BaseCommand):
                 # the next run doesn't re-evaluate.
                 if not dry:
                     Metafield.objects.update_or_create(
-                        content_type=ct, object_id=str(product.pk),
-                        namespace=NAMESPACE, key=KEY,
+                        content_type=ct,
+                        object_id=str(product.pk),
+                        namespace=NAMESPACE,
+                        key=KEY,
                         defaults={'value': 'already-linked', 'value_type': 'string'},
                     )
                 skipped += 1
@@ -144,9 +161,11 @@ class Command(BaseCommand):
             suggestions = suggest_internal_links_for(product, limit=limit)
             if not suggestions:
                 nolinks += 1
-                self.stdout.write(self.style.WARNING(
-                    f'  {product.slug}: no suggestions available (no embeddings + no category siblings)'
-                ))
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'  {product.slug}: no suggestions available (no embeddings + no category siblings)'
+                    )
+                )
                 continue
 
             # Detect whether the surrounding description is HTML
@@ -164,7 +183,7 @@ class Command(BaseCommand):
                 # HTML form — look for `<h2>Related reading</h2>` onwards.
                 m = re.search(r'<h2[^>]*>\s*Related reading\s*</h2>', stripped, flags=re.I)
                 if m:
-                    stripped = stripped[:m.start()].rstrip()
+                    stripped = stripped[: m.start()].rstrip()
 
             block = _build_block(suggestions, as_html=as_html)
             new_body = stripped.rstrip() + '\n' + block + '\n'
@@ -180,8 +199,10 @@ class Command(BaseCommand):
             product.description = new_body
             product.save(update_fields=['description'])
             Metafield.objects.update_or_create(
-                content_type=ct, object_id=str(product.pk),
-                namespace=NAMESPACE, key=KEY,
+                content_type=ct,
+                object_id=str(product.pk),
+                namespace=NAMESPACE,
+                key=KEY,
                 defaults={
                     'value': ','.join(s['slug'] for s in suggestions),
                     'value_type': 'string',
@@ -190,6 +211,8 @@ class Command(BaseCommand):
             )
             applied += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — applied={applied} skipped={skipped} no_suggestions={nolinks}'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'done — applied={applied} skipped={skipped} no_suggestions={nolinks}'
+            )
+        )

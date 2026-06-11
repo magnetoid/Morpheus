@@ -12,7 +12,7 @@ from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.customers.models import Customer
 from plugins.installed.marketing.models import Coupon, CouponUsage
 from plugins.installed.orders.services import CartService, OrderService
-from plugins.installed.promotions.models import Promotion, PromotionRule, PromotionApplication
+from plugins.installed.promotions.models import Promotion, PromotionApplication, PromotionRule
 
 
 @override_settings(
@@ -35,7 +35,9 @@ class CheckoutTotalsBreakdownTests(TestCase):
         self.variant = ProductVariant.objects.create(
             product=self.product, name='Hardcover', sku='TB2-HC', price=Money(20, 'USD')
         )
-        self.customer = Customer.objects.create_user(email='buyer2@example.com', username='buyer2', password='x')
+        self.customer = Customer.objects.create_user(
+            email='buyer2@example.com', username='buyer2', password='x'
+        )
 
         self.coupon = Coupon.objects.create(
             code='SAVE5',
@@ -95,7 +97,9 @@ class CheckoutTotalsBreakdownTests(TestCase):
 
     def test_breakdown_persists_totals_and_records_coupon_and_promotions(self):
         cart = CartService.get_or_create_cart(session_key='s-breakdown', customer=self.customer)
-        CartService.add_item(cart, str(self.product.id), quantity=2, variant_id=str(self.variant.id))
+        CartService.add_item(
+            cart, str(self.product.id), quantity=2, variant_id=str(self.variant.id)
+        )
         cart.coupon = self.coupon
         cart.metadata = {'shipping_rate_id': 'rate_1'}
         cart.save(update_fields=['coupon', 'metadata', 'updated_at'])
@@ -118,6 +122,16 @@ class CheckoutTotalsBreakdownTests(TestCase):
 
         self.coupon.refresh_from_db()
         self.assertEqual(self.coupon.times_used, 1)
-        self.assertEqual(CouponUsage.objects.filter(coupon=self.coupon, customer=self.customer, order=order).count(), 1)
+        self.assertEqual(
+            CouponUsage.objects.filter(
+                coupon=self.coupon, customer=self.customer, order=order
+            ).count(),
+            1,
+        )
 
-        self.assertEqual(PromotionApplication.objects.filter(order_id=str(order.id), promotion_id=self.promo_id).count(), 1)
+        self.assertEqual(
+            PromotionApplication.objects.filter(
+                order_id=str(order.id), promotion_id=self.promo_id
+            ).count(),
+            1,
+        )

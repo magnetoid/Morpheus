@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import Type
 
 from plugins.base import MorpheusPlugin
 
@@ -29,7 +28,7 @@ class PluginRegistry:
 
     def __init__(self) -> None:
         self._plugins: dict[str, MorpheusPlugin] = {}
-        self._classes: dict[str, Type[MorpheusPlugin]] = {}
+        self._classes: dict[str, type[MorpheusPlugin]] = {}
         self._active: set[str] = set()
         # Plugins whose ready() has run this process. ready() wires hooks +
         # URLs, which disable does NOT unwind, so re-enabling must not run it
@@ -61,7 +60,7 @@ class PluginRegistry:
                 self._classes[plugin_class.name] = plugin_class
                 logger.debug('Discovered plugin: %s (%s)', plugin_class.name, module_path)
 
-    def _find_plugin_class(self, module, module_path: str) -> Type[MorpheusPlugin] | None:
+    def _find_plugin_class(self, module, module_path: str) -> type[MorpheusPlugin] | None:
         for attr_name in dir(module):
             obj = getattr(module, attr_name)
             if (

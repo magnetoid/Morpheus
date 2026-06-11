@@ -14,6 +14,7 @@ Usage:
     python manage.py refresh_embeddings --slugs pinocchio,moby-dick
     python manage.py refresh_embeddings --force      # ignore hash, rebuild all
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,10 +28,12 @@ class Command(BaseCommand):
     help = 'Backfill / refresh ProductEmbedding rows for active products.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--slugs', default='',
-                            help='Comma-separated slugs (default: all active).')
-        parser.add_argument('--force', action='store_true',
-                            help='Rebuild even when source_text_hash matches.')
+        parser.add_argument(
+            '--slugs', default='', help='Comma-separated slugs (default: all active).'
+        )
+        parser.add_argument(
+            '--force', action='store_true', help='Rebuild even when source_text_hash matches.'
+        )
 
     def handle(self, *args, **opts):
         from plugins.installed.ai_assistant.models import ProductEmbedding
@@ -61,6 +64,6 @@ class Command(BaseCommand):
                 logger.warning('refresh_embeddings: %s failed: %s', product.slug, exc)
                 errored += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — written={written} skipped={skipped} errored={errored}'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(f'done — written={written} skipped={skipped} errored={errored}')
+        )

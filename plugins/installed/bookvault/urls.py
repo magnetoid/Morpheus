@@ -1,4 +1,5 @@
 """Dashboard routes for the Bookvault plugin."""
+
 from __future__ import annotations
 
 from django.urls import path

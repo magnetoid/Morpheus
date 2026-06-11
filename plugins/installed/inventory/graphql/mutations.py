@@ -8,6 +8,7 @@ after a manual sale" style updates.
 
 If no warehouse is specified the first warehouse (lowest id) is used.
 """
+
 from __future__ import annotations
 
 import strawberry
@@ -41,6 +42,7 @@ def _check_scope(info, required: list[str]) -> str:
     if granted is None:
         return ''
     from plugins.installed.agent_mcp.scopes import has_any
+
     if not has_any(granted, required):
         return f'token missing scope: needs one of {sorted(required)}'
     return ''
@@ -48,13 +50,18 @@ def _check_scope(info, required: list[str]) -> str:
 
 def _err(msg: str) -> StockMutationResult:
     return StockMutationResult(
-        variant_sku='', warehouse='', quantity=0, reserved_quantity=0,
-        available=0, error=msg,
+        variant_sku='',
+        warehouse='',
+        quantity=0,
+        reserved_quantity=0,
+        available=0,
+        error=msg,
     )
 
 
 def _resolve_variant(variant_sku: str, product_slug: str):
     from plugins.installed.catalog.models import Product, ProductVariant
+
     if variant_sku:
         return ProductVariant.objects.filter(sku=variant_sku).first()
     if product_slug:
@@ -67,6 +74,7 @@ def _resolve_variant(variant_sku: str, product_slug: str):
 
 def _resolve_warehouse(name: str):
     from plugins.installed.inventory.models import Warehouse
+
     if name:
         return Warehouse.objects.filter(name=name).first()
     return Warehouse.objects.order_by('id').first()
@@ -76,7 +84,8 @@ def _serialize_stock(s) -> StockMutationResult:
     return StockMutationResult(
         variant_sku=s.variant.sku or str(s.variant_id),
         warehouse=getattr(s.warehouse, 'name', '') or '',
-        quantity=s.quantity, reserved_quantity=s.reserved_quantity,
+        quantity=s.quantity,
+        reserved_quantity=s.reserved_quantity,
         available=max(0, s.quantity - s.reserved_quantity),
         error='',
     )
@@ -100,7 +109,6 @@ class AdjustStockInput:
 
 @strawberry.type
 class InventoryMutationExtension:
-
     @strawberry.mutation(
         description='Replace the absolute stock quantity for a variant. Staff-only.',
     )
@@ -112,6 +120,7 @@ class InventoryMutationExtension:
             return _err('quantity must be >= 0')
 
         from plugins.installed.inventory.models import StockLevel
+
         variant = _resolve_variant(input.variant_sku, input.product_slug)
         if variant is None:
             return _err('variant not found (provide variant_sku or product_slug)')
@@ -120,7 +129,8 @@ class InventoryMutationExtension:
             return _err('no warehouse configured')
 
         stock, _ = StockLevel.objects.get_or_create(
-            variant=variant, warehouse=warehouse,
+            variant=variant,
+            warehouse=warehouse,
             defaults={'quantity': 0},
         )
         stock.quantity = input.quantity
@@ -136,6 +146,7 @@ class InventoryMutationExtension:
             return _err(err)
 
         from plugins.installed.inventory.models import StockLevel
+
         variant = _resolve_variant(input.variant_sku, input.product_slug)
         if variant is None:
             return _err('variant not found (provide variant_sku or product_slug)')
@@ -144,7 +155,8 @@ class InventoryMutationExtension:
             return _err('no warehouse configured')
 
         stock, _ = StockLevel.objects.get_or_create(
-            variant=variant, warehouse=warehouse,
+            variant=variant,
+            warehouse=warehouse,
             defaults={'quantity': 0},
         )
         new_qty = stock.quantity + input.delta

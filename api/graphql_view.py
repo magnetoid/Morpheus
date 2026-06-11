@@ -4,6 +4,7 @@ Hardened GraphQL view.
 - Pre-validates queries for depth/alias limits to mitigate DoS-style nested queries.
 - Maps PermissionDenied raised from resolvers to a clean GraphQL error code.
 """
+
 from __future__ import annotations
 
 import json
@@ -35,6 +36,7 @@ class MorpheusGraphQLView(GraphQLView):
         # otherwise; session cookies still work.
         try:
             from plugins.installed.agent_mcp.auth import apply_bearer_user
+
             apply_bearer_user(request)
         except Exception as e:  # noqa: BLE001 — never block the request on auth resolver
             logger.warning('agent_mcp: bearer auth resolver failed: %s', e, exc_info=True)
@@ -64,7 +66,9 @@ class MorpheusGraphQLView(GraphQLView):
         return response
 
     def _attach_cache_headers(
-        self, request: HttpRequest, response: HttpResponse,
+        self,
+        request: HttpRequest,
+        response: HttpResponse,
         body: dict[str, Any] | None,
     ) -> None:
         """Emit Cache-Control + Vary on the GraphQL response so a CDN
@@ -92,7 +96,8 @@ class MorpheusGraphQLView(GraphQLView):
 
             is_authenticated = bool(
                 request.META.get('HTTP_AUTHORIZATION')
-                or getattr(request, 'user', None) and request.user.is_authenticated
+                or getattr(request, 'user', None)
+                and request.user.is_authenticated
                 or getattr(request, 'agent_capabilities', None)
             )
 
@@ -100,9 +105,7 @@ class MorpheusGraphQLView(GraphQLView):
             ttl = self._graphql_edge_ttl()
 
             if op_type == 'query' and not is_authenticated and ttl > 0:
-                response['Cache-Control'] = (
-                    f'public, s-maxage={ttl}, max-age=0, must-revalidate'
-                )
+                response['Cache-Control'] = f'public, s-maxage={ttl}, max-age=0, must-revalidate'
                 # Vary on Authorization so CF correctly separates
                 # anonymous from authenticated cached entries even if
                 # the CF rule keys on full URL only.
@@ -174,25 +177,29 @@ class MorpheusGraphQLView(GraphQLView):
         # entity = one row.
         TAG_MAP = {
             # field name              tag prefix       id-arg names (try in order)
-            'product':               ('product',        ('slug', 'id')),
-            'productBySlug':         ('product',        ('slug',)),
-            'productById':           ('product',        ('id',)),
-            'category':              ('category',       ('slug', 'id')),
-            'categoryBySlug':        ('category',       ('slug',)),
-            'collection':            ('collection',     ('slug', 'id')),
-            'collectionBySlug':      ('collection',     ('slug',)),
-            'page':                  ('page',           ('slug', 'id')),
-            'pageBySlug':            ('page',           ('slug',)),
-            'author':                ('author',         ('slug', 'id')),
-            'authorBySlug':          ('author',         ('slug',)),
-            'vendor':                ('vendor',         ('slug', 'id')),
+            'product': ('product', ('slug', 'id')),
+            'productBySlug': ('product', ('slug',)),
+            'productById': ('product', ('id',)),
+            'category': ('category', ('slug', 'id')),
+            'categoryBySlug': ('category', ('slug',)),
+            'collection': ('collection', ('slug', 'id')),
+            'collectionBySlug': ('collection', ('slug',)),
+            'page': ('page', ('slug', 'id')),
+            'pageBySlug': ('page', ('slug',)),
+            'author': ('author', ('slug', 'id')),
+            'authorBySlug': ('author', ('slug',)),
+            'vendor': ('vendor', ('slug', 'id')),
         }
 
         try:
             from graphql import parse
             from graphql.language.ast import (
-                FieldNode, StringValueNode, IntValueNode, VariableNode,
+                FieldNode,
+                IntValueNode,
+                StringValueNode,
+                VariableNode,
             )
+
             document = parse(query_str)
         except Exception:  # noqa: BLE001 — strawberry will surface the canonical error
             return []
@@ -207,7 +214,11 @@ class MorpheusGraphQLView(GraphQLView):
             return None
 
         def visit(node):
-            for selection in (getattr(node.selection_set, 'selections', []) if getattr(node, 'selection_set', None) else []):
+            for selection in (
+                getattr(node.selection_set, 'selections', [])
+                if getattr(node, 'selection_set', None)
+                else []
+            ):
                 if isinstance(selection, FieldNode):
                     fname = selection.name.value
                     mapping = TAG_MAP.get(fname)
@@ -236,6 +247,7 @@ class MorpheusGraphQLView(GraphQLView):
         """
         try:
             from plugins.registry import plugin_registry
+
             p = plugin_registry.get('storefront')
             if p is None:
                 return 0
@@ -269,7 +281,7 @@ class MorpheusGraphQLView(GraphQLView):
         try:
             document = parse(query)
         except Exception as e:  # noqa: BLE001 — let strawberry produce the canonical error
-            logger.debug("Query parse failed in pre-validation: %s", e)
+            logger.debug('Query parse failed in pre-validation: %s', e)
             return
 
         alias_count = 0
@@ -277,7 +289,7 @@ class MorpheusGraphQLView(GraphQLView):
         def visit(node: Any, depth: int) -> None:
             nonlocal alias_count
             if depth > max_depth:
-                raise GraphQLError(f"Query exceeds maximum depth of {max_depth}")
+                raise GraphQLError(f'Query exceeds maximum depth of {max_depth}')
             selection_set = getattr(node, 'selection_set', None)
             if not selection_set:
                 return
@@ -292,7 +304,7 @@ class MorpheusGraphQLView(GraphQLView):
                         alias_count += 1
                         if alias_count > max_aliases:
                             raise GraphQLError(
-                                f"Query exceeds maximum aliases of {max_aliases}",
+                                f'Query exceeds maximum aliases of {max_aliases}',
                             )
                 visit(selection, depth + 1)
 
@@ -308,6 +320,7 @@ def morpheus_graphql_view(agent_only: bool = False):
     block legitimate external clients (Lumina, Claude Desktop, etc.).
     """
     from api.schema import get_schema
+
     view = MorpheusGraphQLView.as_view(schema=get_schema(), agent_only=agent_only)
     if agent_only:
         view = csrf_exempt(view)

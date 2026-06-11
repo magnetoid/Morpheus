@@ -11,6 +11,7 @@ on /mcp/v1/:
   * After an `initialize` call, the response carries Mcp-Session-Id
     that the client can echo on subsequent calls
 """
+
 from __future__ import annotations
 
 import json
@@ -60,22 +61,21 @@ class StreamableHttpTransportTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
-            resp['Content-Type'].split(';')[0], 'text/event-stream',
+            resp['Content-Type'].split(';')[0],
+            'text/event-stream',
         )
         body = resp.content.decode()
-        self.assertTrue(body.startswith('data: '),
-                        f'expected SSE framing, got: {body[:60]!r}')
+        self.assertTrue(body.startswith('data: '), f'expected SSE framing, got: {body[:60]!r}')
         self.assertTrue(body.endswith('\n\n'))
         # Round-trip: strip the framing and the inner JSON must parse.
-        payload = json.loads(body[len('data: '):].rstrip('\n'))
+        payload = json.loads(body[len('data: ') :].rstrip('\n'))
         self.assertEqual(payload['id'], 2)
         self.assertEqual(payload['result'], {})
 
     def test_initialize_mints_session_id(self):
         """initialize → server stamps Mcp-Session-Id so subsequent
         calls can be correlated. Spec says the client echoes it back."""
-        resp = self._post({'jsonrpc': '2.0', 'id': 'init-1',
-                           'method': 'initialize', 'params': {}})
+        resp = self._post({'jsonrpc': '2.0', 'id': 'init-1', 'method': 'initialize', 'params': {}})
         self.assertEqual(resp.status_code, 200)
         sess = resp.get('Mcp-Session-Id', '')
         self.assertTrue(sess, 'initialize response missing Mcp-Session-Id')
@@ -102,5 +102,6 @@ class StreamableHttpTransportTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
-            resp['Mcp-Session-Id'], 'abcdef1234567890abcdef1234567890',
+            resp['Mcp-Session-Id'],
+            'abcdef1234567890abcdef1234567890',
         )

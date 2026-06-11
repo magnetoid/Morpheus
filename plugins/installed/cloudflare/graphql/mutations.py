@@ -1,7 +1,6 @@
 """Cloudflare plugin — GraphQL mutations (manual purge from the admin)."""
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 import strawberry
 
@@ -23,15 +22,16 @@ class PurgeResult:
 @strawberry.input
 class PurgeUrlsInput:
     zone_id: strawberry.ID
-    urls: List[str]
+    urls: list[str]
 
 
 @strawberry.type
 class CloudflareMutationExtension:
-
     @strawberry.mutation(description='Manually purge specific URLs from a zone (admin:cloudflare).')
     def purge_cloudflare_urls(
-        self, info: strawberry.Info, input: PurgeUrlsInput,
+        self,
+        info: strawberry.Info,
+        input: PurgeUrlsInput,
     ) -> PurgeResult:
         from plugins.installed.cloudflare.models import CloudflareZone
         from plugins.installed.cloudflare.services import purge_urls
@@ -48,7 +48,9 @@ class CloudflareMutationExtension:
         urls = [u.strip() for u in input.urls if u.strip()]
         if not urls:
             return PurgeResult(
-                success=False, invalidation_id='', status='failed',
+                success=False,
+                invalidation_id='',
+                status='failed',
                 error='At least one URL required',
             )
 
@@ -62,7 +64,9 @@ class CloudflareMutationExtension:
 
     @strawberry.mutation(description='Manually purge ALL cache for a zone (destructive).')
     def purge_cloudflare_everything(
-        self, info: strawberry.Info, zone_id: strawberry.ID,
+        self,
+        info: strawberry.Info,
+        zone_id: strawberry.ID,
     ) -> PurgeResult:
         from plugins.installed.cloudflare.models import CloudflareZone
         from plugins.installed.cloudflare.services import purge_everything

@@ -13,6 +13,7 @@ party bits we treat as first-class (djmoney). Plugin code should::
 …instead of importing from ``django.db.models`` and ``djmoney``
 separately.
 """
+
 from __future__ import annotations
 
 # Wildcard-import is the natural fit here — `morpheus.models` is a
@@ -21,12 +22,17 @@ from __future__ import annotations
 # come along.
 from django.db.models import *  # noqa: F401, F403
 from django.db.models import (  # noqa: F401 — re-export for convenience
-    Avg, Count, Max, Min, Sum,
-    F, Q,
+    Avg,
+    Count,
+    F,
     Index,
     Manager,
+    Max,
+    Min,
     Model,
+    Q,
     QuerySet,
+    Sum,
 )
 from djmoney.models.fields import MoneyField  # noqa: F401
 from djmoney.money import Money  # noqa: F401

@@ -1,4 +1,5 @@
 """URL routes for the markets dashboard."""
+
 from __future__ import annotations
 
 from django.urls import path

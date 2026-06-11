@@ -6,6 +6,7 @@ into ``measurement_protocol.send_event``.
 Items are always built as a list of objects per the 2026 GA4
 spec — ``items: [{...}]`` not ``items: {...}``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,9 +34,15 @@ def _money_currency(value, default: str = 'USD') -> str:
     return str(cur)
 
 
-def _product_item(product, *, quantity: int = 1, variant=None,
-                  list_id: str = '', list_name: str = '',
-                  index: int = 0) -> dict[str, Any]:
+def _product_item(
+    product,
+    *,
+    quantity: int = 1,
+    variant=None,
+    list_id: str = '',
+    list_name: str = '',
+    index: int = 0,
+) -> dict[str, Any]:
     """Shape a Product (model OR dict) into a GA4 items[] entry."""
     if isinstance(product, dict):
         name = product.get('name') or ''
@@ -61,8 +68,12 @@ def _product_item(product, *, quantity: int = 1, variant=None,
     if cat_name:
         item['item_category'] = cat_name
     if variant is not None:
-        vname = getattr(variant, 'name', None) or (variant.get('name') if isinstance(variant, dict) else '')
-        vsku = getattr(variant, 'sku', None) or (variant.get('sku') if isinstance(variant, dict) else '')
+        vname = getattr(variant, 'name', None) or (
+            variant.get('name') if isinstance(variant, dict) else ''
+        )
+        vsku = getattr(variant, 'sku', None) or (
+            variant.get('sku') if isinstance(variant, dict) else ''
+        )
         if vname:
             item['item_variant'] = vname
         if vsku:
@@ -79,13 +90,19 @@ def _product_item(product, *, quantity: int = 1, variant=None,
 def view_item(product) -> tuple[str, dict[str, Any]]:
     item = _product_item(product)
     return 'view_item', {
-        'currency': _money_currency(getattr(product, 'price', None) if not isinstance(product, dict) else product.get('price')),
+        'currency': _money_currency(
+            getattr(product, 'price', None)
+            if not isinstance(product, dict)
+            else product.get('price')
+        ),
         'value': item['price'],
         'items': [item],
     }
 
 
-def view_item_list(*, items: list, list_id: str = '', list_name: str = '') -> tuple[str, dict[str, Any]]:
+def view_item_list(
+    *, items: list, list_id: str = '', list_name: str = ''
+) -> tuple[str, dict[str, Any]]:
     payload_items = [
         _product_item(p, list_id=list_id, list_name=list_name, index=i + 1)
         for i, p in enumerate(items[:50])
@@ -97,7 +114,9 @@ def view_item_list(*, items: list, list_id: str = '', list_name: str = '') -> tu
     }
 
 
-def add_to_cart(*, cart, item, product, variant=None, quantity: int = 1) -> tuple[str, dict[str, Any]]:
+def add_to_cart(
+    *, cart, item, product, variant=None, quantity: int = 1
+) -> tuple[str, dict[str, Any]]:
     line_item = _product_item(product, quantity=quantity, variant=variant)
     return 'add_to_cart', {
         'currency': _money_currency(getattr(product, 'price', None)),
@@ -121,12 +140,15 @@ def begin_checkout(cart) -> tuple[str, dict[str, Any]]:
     currency = 'USD'
     try:
         for i, ci in enumerate(cart.items.all()):
-            prod = getattr(ci, 'product', None) or (getattr(getattr(ci, 'variant', None), 'product', None))
+            prod = getattr(ci, 'product', None) or (
+                getattr(getattr(ci, 'variant', None), 'product', None)
+            )
             if prod is None:
                 continue
             qty = int(getattr(ci, 'quantity', 1) or 1)
-            line = _product_item(prod, quantity=qty,
-                                 variant=getattr(ci, 'variant', None), index=i + 1)
+            line = _product_item(
+                prod, quantity=qty, variant=getattr(ci, 'variant', None), index=i + 1
+            )
             items.append(line)
             total += Decimal(str(line['price'])) * qty
             currency = _money_currency(getattr(prod, 'price', None), currency)
@@ -143,12 +165,17 @@ def purchase(order) -> tuple[str, dict[str, Any]]:
     items = []
     try:
         for i, line in enumerate(order.items.all()):
-            prod = getattr(line, 'product', None) or getattr(getattr(line, 'variant', None), 'product', None)
+            prod = getattr(line, 'product', None) or getattr(
+                getattr(line, 'variant', None), 'product', None
+            )
             if prod is None:
                 continue
             qty = int(getattr(line, 'quantity', 1) or 1)
-            items.append(_product_item(prod, quantity=qty,
-                                        variant=getattr(line, 'variant', None), index=i + 1))
+            items.append(
+                _product_item(
+                    prod, quantity=qty, variant=getattr(line, 'variant', None), index=i + 1
+                )
+            )
     except Exception as exc:  # noqa: BLE001
         logger.debug('purchase items shape failed: %s', exc)
 

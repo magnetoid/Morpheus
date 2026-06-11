@@ -5,9 +5,9 @@ in the search overlay), must enforce the 2-char minimum to avoid
 returning the whole catalog on a single letter, and must return a
 stable {results: [...]} shape every caller can rely on.
 """
+
 from __future__ import annotations
 
-import json
 from decimal import Decimal
 
 from django.test import Client, TestCase
@@ -22,20 +22,26 @@ class QuickSearchTests(TestCase):
         # Two active products + one draft (draft should NOT appear)
         Product.objects.create(
             name='Confessions of an English Opium-Eater',
-            slug='confessions-test', sku='C-T-1',
-            status='active', price=Money(Decimal('10.00'), 'USD'),
+            slug='confessions-test',
+            sku='C-T-1',
+            status='active',
+            price=Money(Decimal('10.00'), 'USD'),
             product_type='simple',
         )
         Product.objects.create(
             name='Confidence Book',
-            slug='confidence-test', sku='C-T-2',
-            status='active', price=Money(Decimal('12.00'), 'USD'),
+            slug='confidence-test',
+            sku='C-T-2',
+            status='active',
+            price=Money(Decimal('12.00'), 'USD'),
             product_type='simple',
         )
         Product.objects.create(
             name='Confidential Draft',
-            slug='confidential-draft', sku='C-T-3',
-            status='draft', price=Money(Decimal('9.00'), 'USD'),
+            slug='confidential-draft',
+            sku='C-T-3',
+            status='draft',
+            price=Money(Decimal('9.00'), 'USD'),
             product_type='simple',
         )
 

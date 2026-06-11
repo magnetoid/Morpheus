@@ -1,5 +1,7 @@
 import logging
+
 from celery import shared_task
+
 from plugins.installed.ai_assistant.services.operator import AgentOperator
 
 logger = logging.getLogger('morpheus.ai.tasks')
@@ -45,8 +47,8 @@ def generate_product_description(product_id):
 @shared_task(bind=True, time_limit=60, soft_time_limit=45)
 def refresh_product_embedding(self, product_id):
     """Compute and persist the embedding for a product (idempotent on text hash)."""
-    from plugins.installed.catalog.models import Product
     from plugins.installed.ai_assistant.services.search import upsert_product_embedding
+    from plugins.installed.catalog.models import Product
 
     try:
         product = Product.objects.select_related('category').get(pk=product_id)
@@ -72,8 +74,8 @@ def refresh_product_embeddings_bulk(self, product_ids):
         product_ids: list[str|UUID] — up to 200 ids per call. Split
             larger sets across multiple invocations.
     """
-    from plugins.installed.catalog.models import Product
     from plugins.installed.ai_assistant.services.search import upsert_product_embedding
+    from plugins.installed.catalog.models import Product
 
     ids = list(product_ids or [])[:200]
     if not ids:
@@ -204,8 +206,8 @@ def evaluate_all_product_prices():
     except Exception:  # noqa: BLE001
         return
     logger.info('AI Task: Starting global dynamic price evaluation...')
-    from plugins.installed.catalog.models import Product
     from plugins.installed.ai_assistant.services.pricing import DynamicPricingService
+    from plugins.installed.catalog.models import Product
 
     products = Product.objects.filter(status='active')
     for product in products:

@@ -22,6 +22,7 @@ Save handler: POSTs to /dashboard/apps/metafields/save/?ct=<content_type_id>&id=
 with one form field per metafield, encoded by the partial. JSON values
 edit as a multiline textarea.
 """
+
 from __future__ import annotations
 
 from django import template
@@ -36,11 +37,11 @@ register = template.Library()
 _INPUT_BY_TYPE = {
     'string': 'text',
     'integer': 'number',
-    'decimal': 'text',         # use text + step="any" to allow Decimal(...) values
+    'decimal': 'text',  # use text + step="any" to allow Decimal(...) values
     'boolean': 'checkbox',
     'text': 'textarea',
     'json': 'textarea',
-    'file_id': 'text',         # for now — future: media picker
+    'file_id': 'text',  # for now — future: media picker
     'datetime': 'datetime-local',
 }
 
@@ -49,7 +50,7 @@ def _input_for(mf: Metafield, name: str) -> str:
     """Render the appropriate HTML control for one metafield's value_type."""
     from django.utils.html import escape
 
-    raw_value = (mf.value or '')
+    raw_value = mf.value or ''
     vt = (mf.value_type or 'string').lower()
     control = _INPUT_BY_TYPE.get(vt, 'text')
 
@@ -107,6 +108,7 @@ def metafields_panel(context, obj, *, namespace: str = '') -> str:
     csrf_token = ''
     if request is not None:
         from django.middleware.csrf import get_token
+
         csrf_token = get_token(request)
 
     parts: list[str] = []
@@ -135,4 +137,4 @@ def metafields_panel(context, obj, *, namespace: str = '') -> str:
         '<button type="submit" class="btn btn-primary text-xs">Save fields</button>'
         '</div></form>'
     )
-    return mark_safe('\n'.join(parts))
+    return mark_safe('\n'.join(parts))  # noqa: S308

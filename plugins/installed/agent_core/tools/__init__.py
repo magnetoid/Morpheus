@@ -8,10 +8,19 @@ imported from `core.assistant.tools.*` rather than re-implemented — they're
 already agent-kernel compatible. This is what lets Linda delegate
 "what's the disk usage?" to a sub-agent without losing capability.
 """
+
 from __future__ import annotations
 
 import logging
 
+from plugins.installed.agent_core.tools.analytics import (
+    revenue_summary_tool,
+    top_products_tool,
+)
+from plugins.installed.agent_core.tools.cart import (
+    add_to_cart_tool,
+    get_cart_summary_tool,
+)
 from plugins.installed.agent_core.tools.catalog import (
     add_product_image_tool,
     archive_category_tool,
@@ -34,9 +43,9 @@ from plugins.installed.agent_core.tools.catalog import (
     update_product_tool,
     update_variant_tool,
 )
-from plugins.installed.agent_core.tools.cart import (
-    add_to_cart_tool,
-    get_cart_summary_tool,
+from plugins.installed.agent_core.tools.content import (
+    draft_product_description_tool,
+    fill_missing_content_tool,
 )
 from plugins.installed.agent_core.tools.inventory import (
     adjust_stock_tool,
@@ -49,14 +58,6 @@ from plugins.installed.agent_core.tools.orders import (
     mark_order_refunded_tool,
     mark_order_shipped_tool,
     summarise_order_tool,
-)
-from plugins.installed.agent_core.tools.analytics import (
-    revenue_summary_tool,
-    top_products_tool,
-)
-from plugins.installed.agent_core.tools.content import (
-    draft_product_description_tool,
-    fill_missing_content_tool,
 )
 
 logger = logging.getLogger('morpheus.agent_core')
@@ -71,14 +72,16 @@ def _diagnostics_tools() -> list:
     """
     out: list = []
     for module_path, names in (
-        ('core.assistant.tools.filesystem',
-            ['read_file_tool', 'list_dir_tool', 'search_files_tool']),
-        ('core.assistant.tools.logs',
-            ['recent_errors_tool', 'search_logs_tool']),
-        ('core.assistant.tools.system',
-            ['server_info_tool', 'disk_usage_tool', 'git_log_tool']),
-        ('core.assistant.tools.plugins',
-            ['list_plugins_tool', 'enable_plugin_tool', 'disable_plugin_tool']),
+        (
+            'core.assistant.tools.filesystem',
+            ['read_file_tool', 'list_dir_tool', 'search_files_tool'],
+        ),
+        ('core.assistant.tools.logs', ['recent_errors_tool', 'search_logs_tool']),
+        ('core.assistant.tools.system', ['server_info_tool', 'disk_usage_tool', 'git_log_tool']),
+        (
+            'core.assistant.tools.plugins',
+            ['list_plugins_tool', 'enable_plugin_tool', 'disable_plugin_tool'],
+        ),
     ):
         try:
             mod = __import__(module_path, fromlist=names)
@@ -87,8 +90,7 @@ def _diagnostics_tools() -> list:
                 if t is not None:
                     out.append(t)
         except Exception as e:  # noqa: BLE001
-            logger.warning('agent_core: diagnostics import skipped for %s: %s',
-                           module_path, e)
+            logger.warning('agent_core: diagnostics import skipped for %s: %s', module_path, e)
     return out
 
 

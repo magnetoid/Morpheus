@@ -1,4 +1,5 @@
 """Storefront-facing endpoints for reviews — operates on catalog.Review."""
+
 from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
@@ -26,7 +27,8 @@ def add_review(request, product_id):
 
     if body:
         Review.objects.update_or_create(
-            product=product, customer=request.user,
+            product=product,
+            customer=request.user,
             defaults={'rating': rating, 'body': body[:5000], 'is_approved': True},
         )
     return redirect(f'/products/{product.slug}/#reviews')

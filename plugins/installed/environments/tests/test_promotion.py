@@ -1,26 +1,29 @@
 """Environment promotion tests."""
+
 from __future__ import annotations
 
 from django.test import TestCase
 
 from plugins.installed.environments.models import (
-    Deployment,
     Environment,
-    EnvironmentSnapshot,
 )
 from plugins.installed.environments.services import promote, take_snapshot
 
 
 class EnvironmentPromotionTests(TestCase):
-
     def setUp(self) -> None:
         self.dev = Environment.objects.create(
-            name='Development', slug='dev', kind='development',
+            name='Development',
+            slug='dev',
+            kind='development',
             theme_overrides={'theme': 'aurora-draft'},
             settings_overrides={'banner': 'beta'},
         )
         self.prod = Environment.objects.create(
-            name='Production', slug='prod', kind='production', is_protected=True,
+            name='Production',
+            slug='prod',
+            kind='production',
+            is_protected=True,
         )
 
     def test_take_snapshot_captures_overrides(self):

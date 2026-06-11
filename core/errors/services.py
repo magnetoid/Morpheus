@@ -1,4 +1,5 @@
 """Capture helpers — used by middleware and the client API endpoint."""
+
 from __future__ import annotations
 
 import hashlib
@@ -15,6 +16,7 @@ logger = logging.getLogger('morpheus.errors')
 def _scrub(text: str) -> str:
     try:
         from core.observability import scrub_pii
+
         return scrub_pii(text or '')
     except Exception:  # noqa: BLE001
         return text or ''
@@ -80,6 +82,7 @@ def record_error(
     """Write a server-side exception to the error log. Fail-soft."""
     try:
         from core.errors.models import ErrorEvent
+
         traceback_str = _scrub(''.join(_tb.format_exception(type(exc), exc, exc.__traceback__)))
         ErrorEvent.objects.create(
             kind=kind,
@@ -91,9 +94,13 @@ def record_error(
             path=(getattr(request, 'path', '') or '')[:500],
             method=getattr(request, 'method', '') or '',
             status_code=500,
-            user=getattr(request, 'user', None) if getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False) else None,
+            user=getattr(request, 'user', None)
+            if getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False)
+            else None,
             request_id=getattr(request, 'request_id', '') or '',
-            user_agent=(request.META.get('HTTP_USER_AGENT', '') if request is not None else '')[:_USER_AGENT_LIMIT],
+            user_agent=(request.META.get('HTTP_USER_AGENT', '') if request is not None else '')[
+                :_USER_AGENT_LIMIT
+            ],
             ip_hash=_ip_hash(request),
             metadata=extra or {},
         )
@@ -130,9 +137,13 @@ def record_client_error(payload: dict[str, Any], *, request=None) -> None:
         path=page_url,
         method='GET',
         status_code=None,
-        user=getattr(request, 'user', None) if getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False) else None,
+        user=getattr(request, 'user', None)
+        if getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False)
+        else None,
         request_id=getattr(request, 'request_id', '') or '',
-        user_agent=(request.META.get('HTTP_USER_AGENT', '') if request is not None else '')[:_USER_AGENT_LIMIT],
+        user_agent=(request.META.get('HTTP_USER_AGENT', '') if request is not None else '')[
+            :_USER_AGENT_LIMIT
+        ],
         ip_hash=_ip_hash(request),
         metadata={
             'source_url': source_url,

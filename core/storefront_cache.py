@@ -64,7 +64,7 @@ class StorefrontCacheMiddleware:
             logger.debug('storefront_cache: header set failed: %s', e)
         return response
 
-    def _maybe_set_header(self, request, response) -> None:
+    def _maybe_set_header(self, request, response) -> None:  # noqa: PLR0911, PLR0912
         if request.method not in ('GET', 'HEAD'):
             return
         if 200 <= response.status_code < 300:

@@ -2,10 +2,13 @@
 Morpheus CMS - Inventory Models
 Stock tracking, warehouses, stock movements
 """
+
 import uuid
+
 from django.conf import settings
-from morpheus import models
 from django.db import transaction
+
+from morpheus import models
 
 
 class Warehouse(models.Model):
@@ -26,6 +29,7 @@ class Warehouse(models.Model):
 
 class StockLevel(models.Model):
     """Current stock per variant per warehouse."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     variant = models.ForeignKey(
         'catalog.ProductVariant', on_delete=models.CASCADE, related_name='stock_levels'
@@ -41,7 +45,7 @@ class StockLevel(models.Model):
         unique_together = ('variant', 'warehouse')
 
     def __str__(self):
-        return f"{self.variant} @ {self.warehouse}: {self.available_quantity}"
+        return f'{self.variant} @ {self.warehouse}: {self.available_quantity}'
 
     @property
     def available_quantity(self):
@@ -58,6 +62,7 @@ class StockLevel(models.Model):
 
 class StockMovement(models.Model):
     """Audit log of every stock change."""
+
     MOVEMENT_TYPES = [
         ('receive', 'Stock Received'),
         ('sale', 'Sale'),
@@ -75,7 +80,9 @@ class StockMovement(models.Model):
     quantity_change = models.IntegerField()  # positive = in, negative = out
     quantity_before = models.IntegerField()
     quantity_after = models.IntegerField()
-    reference = models.CharField(max_length=200, blank=True, help_text='Order number, PO number, etc.')
+    reference = models.CharField(
+        max_length=200, blank=True, help_text='Order number, PO number, etc.'
+    )
     notes = models.TextField(blank=True)
     created_by = models.ForeignKey(
         'customers.Customer', on_delete=models.SET_NULL, null=True, blank=True
@@ -86,7 +93,7 @@ class StockMovement(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.movement_type}: {self.quantity_change:+d} for {self.stock_level.variant}"
+        return f'{self.movement_type}: {self.quantity_change:+d} for {self.stock_level.variant}'
 
     @classmethod
     def record(cls, stock_level, movement_type, quantity_change, reference='', notes='', user=None):
@@ -113,16 +120,23 @@ class BackInStockSubscription(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(
-        'catalog.Product', on_delete=models.CASCADE, related_name='back_in_stock_subs',
+        'catalog.Product',
+        on_delete=models.CASCADE,
+        related_name='back_in_stock_subs',
     )
     variant = models.ForeignKey(
-        'catalog.ProductVariant', on_delete=models.CASCADE,
-        null=True, blank=True, related_name='back_in_stock_subs',
+        'catalog.ProductVariant',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='back_in_stock_subs',
     )
     email = models.EmailField(db_index=True)
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='back_in_stock_subs',
     )
     notified_at = models.DateTimeField(null=True, blank=True)

@@ -1,4 +1,5 @@
 """Filesystem tools — read-only by default, scoped to the project root."""
+
 from __future__ import annotations
 
 import os
@@ -23,12 +24,18 @@ except Exception:  # pragma: no cover — fallback shape
     def tool(*, name, description, schema=None, scopes=None, requires_approval=False):
         def _wrap(fn):
             from types import SimpleNamespace
+
             return SimpleNamespace(
-                name=name, description=description, handler=fn,
+                name=name,
+                description=description,
+                handler=fn,
                 schema=schema or {'type': 'object', 'properties': {}},
-                scopes=list(scopes or []), requires_approval=requires_approval,
-                plugin='', invoke=lambda args, **kw: ToolResult(output=fn(**args)),
+                scopes=list(scopes or []),
+                requires_approval=requires_approval,
+                plugin='',
+                invoke=lambda args, **kw: ToolResult(output=fn(**args)),
             )
+
         return _wrap
 
 
@@ -67,9 +74,14 @@ def read_file_tool(*, path: str) -> ToolResult:
         text = data.decode('utf-8', errors='replace')
     except OSError as e:
         raise ToolError(f'read failed: {e}') from e
-    return ToolResult(output={'path': str(p.relative_to(_PROJECT_ROOT)),
-                              'size': p.stat().st_size, 'content': text},
-                      display=f'{path} ({len(text)} chars)')
+    return ToolResult(
+        output={
+            'path': str(p.relative_to(_PROJECT_ROOT)),
+            'size': p.stat().st_size,
+            'content': text,
+        },
+        display=f'{path} ({len(text)} chars)',
+    )
 
 
 @tool(
@@ -91,15 +103,18 @@ def list_dir_tool(*, path: str = '.') -> ToolResult:
             continue
         try:
             stat = entry.stat()
-            entries.append({
-                'name': entry.name,
-                'is_dir': entry.is_dir(),
-                'size': stat.st_size if entry.is_file() else None,
-            })
+            entries.append(
+                {
+                    'name': entry.name,
+                    'is_dir': entry.is_dir(),
+                    'size': stat.st_size if entry.is_file() else None,
+                }
+            )
         except OSError:
             continue
-    return ToolResult(output={'path': path, 'entries': entries[:200]},
-                      display=f'{path}: {len(entries)} entries')
+    return ToolResult(
+        output={'path': path, 'entries': entries[:200]}, display=f'{path}: {len(entries)} entries'
+    )
 
 
 @tool(
@@ -121,15 +136,26 @@ def search_files_tool(*, query: str, path: str = '.', limit: int = 30) -> ToolRe
         raise ToolError('query required')
     target = _safe_path(path)
     try:
-        result = subprocess.run(
-            ['grep', '-rln', '--exclude-dir=__pycache__', '--exclude-dir=venv',
-             '--exclude-dir=.git', '--exclude-dir=node_modules', query, str(target)],
-            capture_output=True, text=True, timeout=10, check=False,
+        result = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                'grep',
+                '-rln',
+                '--exclude-dir=__pycache__',
+                '--exclude-dir=venv',  # noqa: S607
+                '--exclude-dir=.git',
+                '--exclude-dir=node_modules',
+                query,
+                str(target),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         raise ToolError(f'search failed: {e}') from e
-    files = [
-        os.path.relpath(line, _PROJECT_ROOT) for line in result.stdout.splitlines()[:limit]
-    ]
-    return ToolResult(output={'query': query, 'matches': files, 'count': len(files)},
-                      display=f'{len(files)} file(s) match {query!r}')
+    files = [os.path.relpath(line, _PROJECT_ROOT) for line in result.stdout.splitlines()[:limit]]
+    return ToolResult(
+        output={'query': query, 'matches': files, 'count': len(files)},
+        display=f'{len(files)} file(s) match {query!r}',
+    )

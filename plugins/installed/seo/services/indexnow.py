@@ -3,6 +3,7 @@
 Two surfaces: key minting (idempotent across workers via PluginConfig)
 and the push endpoint.
 """
+
 from __future__ import annotations
 
 from ._helpers import _site_base_url
@@ -19,8 +20,10 @@ def get_or_create_indexnow_key() -> str:
     key, overwrites A's value, and /<oldkey>.txt returns 404.
     """
     import uuid
+
     try:
         from plugins.models import PluginConfig
+
         row, _ = PluginConfig.objects.get_or_create(plugin_name='seo')
         existing = (row.config or {}).get('indexnow_key', '')
         if existing:
@@ -31,10 +34,11 @@ def get_or_create_indexnow_key() -> str:
         # Best-effort: keep the in-process plugin cache aligned.
         try:
             from plugins.registry import plugin_registry
+
             p = plugin_registry.get('seo')
             if p is not None:
                 p.invalidate_config_cache()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
         return key
     except Exception:  # noqa: BLE001
@@ -48,6 +52,7 @@ def ping_indexnow(urls: list[str]) -> dict:
     """
     import json as _json
     import urllib.request
+
     base = _site_base_url().rstrip('/')
     host = base.replace('https://', '').replace('http://', '').strip('/')
     key = get_or_create_indexnow_key()
@@ -64,7 +69,7 @@ def ping_indexnow(urls: list[str]) -> dict:
             headers={'Content-Type': 'application/json; charset=utf-8'},
             method='POST',
         )
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=8) as resp:  # noqa: S310  # nosec B310
             return {'ok': 200 <= resp.status < 300, 'status': resp.status}
     except Exception as exc:  # noqa: BLE001
         return {'ok': False, 'error': str(exc)}

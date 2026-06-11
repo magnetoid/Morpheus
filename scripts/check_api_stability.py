@@ -30,6 +30,7 @@ Exit codes:
     2  a stable symbol was removed (the gate)
     3  baseline file missing AND --save not passed
 """
+
 from __future__ import annotations
 
 import argparse
@@ -65,7 +66,14 @@ def _public_symbols(module_name: str) -> list[str]:
     explicit = getattr(mod, '__all__', None)
     if explicit is not None:
         return sorted(set(explicit))
-    names = [n for n in dir(mod) if not n.startswith('_')]
+    names = [
+        n
+        for n in dir(mod)
+        if not n.startswith('_')
+        # `from __future__ import annotations` leaks a _Feature object into
+        # dir(); it was never public API — don't snapshot it.
+        and getattr(getattr(mod, n, None), '__module__', None) != '__future__'
+    ]
     # Filter out things imported from elsewhere — keep only symbols that
     # were defined in (or explicitly re-exported through) this module.
     out: list[str] = []
@@ -91,7 +99,9 @@ def snapshot() -> dict[str, list[str]]:
     return {m: _public_symbols(m) for m in SDK_MODULES}
 
 
-def compare(baseline: dict[str, list[str]], current: dict[str, list[str]]) -> tuple[list[str], list[str]]:
+def compare(
+    baseline: dict[str, list[str]], current: dict[str, list[str]]
+) -> tuple[list[str], list[str]]:
     """Return (removals, additions). Empty removals = green."""
     removals: list[str] = []
     additions: list[str] = []
@@ -107,17 +117,34 @@ def compare(baseline: dict[str, list[str]], current: dict[str, list[str]]) -> tu
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--save', action='store_true', help='Write current snapshot as the new baseline (use after an intentional breaking change + major-version bump).')
-    parser.add_argument('--baseline', default=str(DEFAULT_BASELINE), help=f'Baseline JSON path (default {DEFAULT_BASELINE}).')
-    parser.add_argument('--json', dest='emit_json', action='store_true', help='Emit JSON diff to stdout instead of human text.')
+    parser.add_argument(
+        '--save',
+        action='store_true',
+        help='Write current snapshot as the new baseline (use after an intentional breaking change + major-version bump).',
+    )
+    parser.add_argument(
+        '--baseline',
+        default=str(DEFAULT_BASELINE),
+        help=f'Baseline JSON path (default {DEFAULT_BASELINE}).',
+    )
+    parser.add_argument(
+        '--json',
+        dest='emit_json',
+        action='store_true',
+        help='Emit JSON diff to stdout instead of human text.',
+    )
     args = parser.parse_args()
 
-    # Bootstrap Django so morpheus.* importers don't crash.
+    # Bootstrap Django so morpheus.* importers don't crash. When invoked as
+    # `python scripts/check_api_stability.py`, sys.path[0] is scripts/ — put
+    # the repo root first so `morph.settings` resolves.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'morph.settings')
     os.environ.setdefault('SECRET_KEY', 'check-only')
     os.environ.setdefault('ALLOWED_HOSTS', 'localhost')
     try:
         import django  # noqa: E402
+
         django.setup()
     except Exception as exc:  # noqa: BLE001
         print(f'! Django setup failed (probably missing deps): {exc}', file=sys.stderr)
@@ -130,7 +157,9 @@ def main() -> int:
         with open(args.baseline, 'w') as fh:
             json.dump(current, fh, indent=2, sort_keys=True)
             fh.write('\n')
-        print(f'Wrote baseline to {args.baseline} ({sum(len(v) for v in current.values())} symbols across {len(current)} modules).')
+        print(
+            f'Wrote baseline to {args.baseline} ({sum(len(v) for v in current.values())} symbols across {len(current)} modules).'
+        )
         return 0
 
     if not Path(args.baseline).exists():

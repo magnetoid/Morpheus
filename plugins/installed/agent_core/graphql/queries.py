@@ -1,7 +1,6 @@
 """GraphQL queries for the agent layer."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import strawberry
 
@@ -15,7 +14,7 @@ class AgentInfoType:
     description: str
     audience: str
     icon: str
-    scopes: List[str]
+    scopes: list[str]
 
 
 @strawberry.type
@@ -30,7 +29,7 @@ class AgentRunType:
     completion_tokens: int
     duration_ms: int
     started_at: str
-    ended_at: Optional[str]
+    ended_at: str | None
 
 
 @strawberry.type
@@ -45,13 +44,16 @@ class AgentStepType:
 
 @strawberry.type
 class AgentCoreQueryExtension:
-
     @strawberry.field(description='List every agent registered with the platform.')
-    def agents(self) -> List[AgentInfoType]:
+    def agents(self) -> list[AgentInfoType]:
         return [
             AgentInfoType(
-                name=a.name, label=a.label, description=a.description,
-                audience=a.audience, icon=a.icon, scopes=list(a.scopes),
+                name=a.name,
+                label=a.label,
+                description=a.description,
+                audience=a.audience,
+                icon=a.icon,
+                scopes=list(a.scopes),
             )
             for a in agent_registry.all_agents()
         ]
@@ -61,8 +63,8 @@ class AgentCoreQueryExtension:
         self,
         info: strawberry.Info,
         first: int = 25,
-        agent_name: Optional[str] = None,
-    ) -> List[AgentRunType]:
+        agent_name: str | None = None,
+    ) -> list[AgentRunType]:
         request = getattr(info.context, 'request', None) or (
             info.context.get('request') if isinstance(info.context, dict) else None
         )
@@ -97,7 +99,7 @@ class AgentCoreQueryExtension:
         self,
         info: strawberry.Info,
         run_id: strawberry.ID,
-    ) -> List[AgentStepType]:
+    ) -> list[AgentStepType]:
         request = getattr(info.context, 'request', None) or (
             info.context.get('request') if isinstance(info.context, dict) else None
         )
@@ -109,7 +111,9 @@ class AgentCoreQueryExtension:
         steps = AgentStep.objects.filter(run_id=str(run_id)).order_by('seq')
         return [
             AgentStepType(
-                seq=s.seq, kind=s.kind, name=s.name,
+                seq=s.seq,
+                kind=s.kind,
+                name=s.name,
                 content=s.content,
                 arguments=s.arguments or {},
                 output=s.output or {},

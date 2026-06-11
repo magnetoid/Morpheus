@@ -1,9 +1,8 @@
 """Analytics plugin — event tracking, funnels, real-time, AI agent stats."""
+
 from __future__ import annotations
 
-from morpheus import events
-from morpheus import Plugin
-from morpheus import DashboardPage, SettingsPanel, StorefrontBlock
+from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
 
 
 class AnalyticsPlugin(Plugin):
@@ -22,43 +21,56 @@ class AnalyticsPlugin(Plugin):
         self.register_celery_tasks('plugins.installed.analytics.tasks')
         self.register_urls(
             'plugins.installed.analytics.urls_api',
-            prefix='api/', namespace='analytics_api',
+            prefix='api/',
+            namespace='analytics_api',
         )
         self.register_urls(
             'plugins.installed.analytics.urls_dashboard',
-            prefix='dashboard/analytics/v2/', namespace='analytics_dash',
+            prefix='dashboard/analytics/v2/',
+            namespace='analytics_dash',
         )
 
         # Hook fan-out — every domain event becomes an analytics event.
         for event in [
-            events.ORDER_PLACED, events.PAYMENT_CAPTURED,
-            events.PRODUCT_VIEWED, events.SEARCH_PERFORMED,
-            events.CUSTOMER_REGISTERED, events.CART_ABANDONED,
+            events.ORDER_PLACED,
+            events.PAYMENT_CAPTURED,
+            events.PRODUCT_VIEWED,
+            events.SEARCH_PERFORMED,
+            events.CUSTOMER_REGISTERED,
+            events.CART_ABANDONED,
         ]:
             self.register_hook(event, self._on_event(event), priority=99)
 
         # Agent run lifecycle → analytics events.
         try:
             from core.agents import AgentEvents
+
             for evt in (AgentEvents.RUN_COMPLETED, AgentEvents.RUN_FAILED):
                 self.register_hook(evt, self._on_agent_event(evt), priority=99)
-        except Exception:  # noqa: BLE001 — agent kernel may not be available at boot
+        except Exception:  # noqa: BLE001, S110
             pass
 
         # Beat: roll daily metrics + trim old events.
-        self.register_celery_beat('analytics:roll_daily', {
-            'task': 'analytics.roll_daily',
-            'schedule': 60 * 60 * 6,   # every 6 hours
-        })
-        self.register_celery_beat('analytics:trim_old_events', {
-            'task': 'analytics.trim_old_events',
-            'schedule': 60 * 60 * 24,  # daily
-        })
+        self.register_celery_beat(
+            'analytics:roll_daily',
+            {
+                'task': 'analytics.roll_daily',
+                'schedule': 60 * 60 * 6,  # every 6 hours
+            },
+        )
+        self.register_celery_beat(
+            'analytics:trim_old_events',
+            {
+                'task': 'analytics.trim_old_events',
+                'schedule': 60 * 60 * 24,  # daily
+            },
+        )
 
     # ── Hook adapters ────────────────────────────────────────────────────────
 
     def _on_event(self, event_name: str):
         """Build a hook handler that records an analytics event for `event_name`."""
+
         def _handler(**kwargs):
             try:
                 from plugins.installed.analytics.services import record_event
@@ -78,61 +90,83 @@ class AnalyticsPlugin(Plugin):
                     customer = kwargs.get('customer')
 
                 record_event(
-                    name=event_name, kind=_kind_for(event_name),
-                    customer=customer, revenue=revenue,
+                    name=event_name,
+                    kind=_kind_for(event_name),
+                    customer=customer,
+                    revenue=revenue,
                     product_slug=product_slug,
                     payload={'src': 'hook'},
                 )
-            except Exception:  # noqa: BLE001 — analytics never breaks producers
+            except Exception:  # noqa: BLE001, S110
                 pass
+
         return _handler
 
     def _on_agent_event(self, event_name: str):
         def _handler(**kwargs):
             try:
                 from plugins.installed.analytics.services import record_event
+
                 record_event(
-                    name=event_name, kind='agent_run',
+                    name=event_name,
+                    kind='agent_run',
                     agent_name=str(kwargs.get('agent', ''))[:100],
                     payload={
                         'tokens': int(kwargs.get('tokens', 0) or 0),
                         'error': str(kwargs.get('error', ''))[:500] if kwargs.get('error') else '',
                     },
                 )
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 pass
+
         return _handler
 
     # ── Contribution surfaces ────────────────────────────────────────────────
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.analytics.agent_tools import (
-            analytics_agent_costs_tool, analytics_funnel_tool,
-            analytics_realtime_tool, analytics_search_trends_tool,
-            analytics_summary_tool, analytics_top_products_tool,
+            analytics_agent_costs_tool,
+            analytics_funnel_tool,
+            analytics_realtime_tool,
+            analytics_search_trends_tool,
+            analytics_summary_tool,
+            analytics_top_products_tool,
         )
+
         return [
-            analytics_summary_tool, analytics_funnel_tool,
-            analytics_search_trends_tool, analytics_realtime_tool,
-            analytics_agent_costs_tool, analytics_top_products_tool,
+            analytics_summary_tool,
+            analytics_funnel_tool,
+            analytics_search_trends_tool,
+            analytics_realtime_tool,
+            analytics_agent_costs_tool,
+            analytics_top_products_tool,
         ]
 
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Overview', slug='overview',
+                label='Overview',
+                slug='overview',
                 view='plugins.installed.analytics.views.overview',
-                icon='line-chart', section='analytics', order=10,
+                icon='line-chart',
+                section='analytics',
+                order=10,
             ),
             DashboardPage(
-                label='Real-time', slug='realtime',
+                label='Real-time',
+                slug='realtime',
                 view='plugins.installed.analytics.views.realtime',
-                icon='radio', section='analytics', order=20,
+                icon='radio',
+                section='analytics',
+                order=20,
             ),
             DashboardPage(
-                label='Funnel', slug='funnel',
+                label='Funnel',
+                slug='funnel',
                 view='plugins.installed.analytics.views.funnel_view',
-                icon='filter', section='analytics', order=30,
+                icon='filter',
+                section='analytics',
+                order=30,
             ),
         ]
 
@@ -157,9 +191,17 @@ class AnalyticsPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'keep_event_days': {'type': 'integer', 'default': 90, 'minimum': 7,
-                                    'maximum': 730, 'title': 'Days of raw event log to retain'},
-                'enable_pageview_middleware': {'type': 'boolean', 'default': True,
-                                               'title': 'Auto-track storefront pageviews'},
+                'keep_event_days': {
+                    'type': 'integer',
+                    'default': 90,
+                    'minimum': 7,
+                    'maximum': 730,
+                    'title': 'Days of raw event log to retain',
+                },
+                'enable_pageview_middleware': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Auto-track storefront pageviews',
+                },
             },
         }

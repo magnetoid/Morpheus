@@ -5,6 +5,7 @@ Discovers themes from `themes/library/<name>/theme.py`, validates them, and
 chooses one as active (driven by `settings.MORPHEUS_ACTIVE_THEME`, with a
 DB-backed override via `themes.models.ThemeConfig`).
 """
+
 from __future__ import annotations
 
 import importlib
@@ -20,7 +21,7 @@ logger = logging.getLogger('morpheus.themes')
 
 class ThemeRegistry:
     def __init__(self) -> None:
-        self._themes: dict[str, 'MorpheusTheme'] = {}
+        self._themes: dict[str, MorpheusTheme] = {}
         self._active_name: str | None = None
 
     # ── Discovery ──────────────────────────────────────────────────────────────
@@ -47,7 +48,9 @@ class ThemeRegistry:
             try:
                 instance = theme_cls()
             except Exception as e:  # noqa: BLE001 — bad theme should not break boot
-                logger.error('themes: instantiation failed for %s: %s', theme_cls.__name__, e, exc_info=True)
+                logger.error(
+                    'themes: instantiation failed for %s: %s', theme_cls.__name__, e, exc_info=True
+                )
                 continue
             self._themes[instance.name] = instance
             logger.debug('themes: discovered %s', instance.name)
@@ -75,7 +78,9 @@ class ThemeRegistry:
             return
         logger.warning(
             'themes: theme %r not found among %s. Keeping current: %s',
-            name, sorted(self._themes), self._active_name,
+            name,
+            sorted(self._themes),
+            self._active_name,
         )
 
     def set_active_from_db(self) -> None:
@@ -86,6 +91,7 @@ class ThemeRegistry:
         row = None
         try:
             from themes.models import ThemeConfig
+
             row = ThemeConfig.objects.filter(is_active=True).first()
         except (DatabaseError, ImportError, LookupError):
             row = None
@@ -105,6 +111,7 @@ class ThemeRegistry:
         if theme.requires_plugins:
             try:
                 from plugins.registry import plugin_registry
+
                 missing = [p for p in theme.requires_plugins if not plugin_registry.is_active(p)]
                 if missing:
                     errors.append(
@@ -117,7 +124,7 @@ class ThemeRegistry:
     # ── Accessors ──────────────────────────────────────────────────────────────
 
     @property
-    def active(self) -> 'MorpheusTheme | None':
+    def active(self) -> MorpheusTheme | None:
         return self._themes.get(self._active_name) if self._active_name else None
 
     @property
@@ -125,10 +132,10 @@ class ThemeRegistry:
         theme = self.active
         return theme.templates_dir if theme else None
 
-    def all_themes(self) -> list['MorpheusTheme']:
+    def all_themes(self) -> list[MorpheusTheme]:
         return list(self._themes.values())
 
-    def get(self, name: str) -> 'MorpheusTheme | None':
+    def get(self, name: str) -> MorpheusTheme | None:
         return self._themes.get(name)
 
     def __repr__(self) -> str:

@@ -13,11 +13,12 @@ Lives in `core` (not `ai_assistant`) because agent-layer code, semantic
 search, RAG, and recommendations all need it independently of the AI
 Signals plugin being installed.
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Sequence
+from collections.abc import Sequence
 
 from django.conf import settings
 
@@ -43,13 +44,19 @@ def embed(text: str) -> list[float]:
     if provider == 'openai' and getattr(settings, 'OPENAI_API_KEY', ''):
         try:
             from openai import OpenAI
+
             api_key = settings.OPENAI_API_KEY
             try:
                 from plugins.registry import plugin_registry
-                ai_plugin = plugin_registry.get_plugin('ai_assistant') if hasattr(plugin_registry, 'get_plugin') else None
+
+                ai_plugin = (
+                    plugin_registry.get_plugin('ai_assistant')
+                    if hasattr(plugin_registry, 'get_plugin')
+                    else None
+                )
                 if ai_plugin is not None:
                     api_key = ai_plugin.get_config_value('openai_api_key') or api_key
-            except Exception:  # noqa: BLE001 — plugin may not be installed
+            except Exception:  # noqa: BLE001, S110
                 pass
             client = OpenAI(api_key=api_key)
             resp = client.embeddings.create(model=model, input=text)
@@ -62,7 +69,8 @@ def embed(text: str) -> list[float]:
 
 def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
     import math
-    dot = sum(x * y for x, y in zip(a, b))
+
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     if na == 0 or nb == 0:

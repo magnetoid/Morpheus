@@ -25,6 +25,7 @@ Compatibility: a thin ``delegate.invoke_agent(agent_name, objective)``
 shim is exposed by ``core.assistant.tools.delegate`` — it calls
 ``spawn_workers`` + ``wait_for_workers`` so old code paths keep working.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,8 +39,11 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 logger = logging.getLogger('morpheus.assistant.spawn')
 
 
-def _execute_worker_run(
-    *, run_id: str, objective: str, context: dict[str, Any],
+def _execute_worker_run(  # noqa: PLR0915
+    *,
+    run_id: str,
+    objective: str,
+    context: dict[str, Any],
     skills: tuple[str, ...] = (),
 ) -> None:
     """Run the Worker agent for a pre-created AgentRun row.
@@ -57,7 +61,9 @@ def _execute_worker_run(
     from django.utils import timezone
 
     from core.agents import (
-        AgentRuntime, agent_registry, get_llm_provider,
+        AgentRuntime,
+        agent_registry,
+        get_llm_provider,
     )
     from plugins.installed.agent_core.models import AgentRun, AgentStep
 
@@ -90,10 +96,15 @@ def _execute_worker_run(
             if output is not None and not isinstance(output, (dict, list, str, int, float, bool)):
                 output = str(output)
             AgentStep.objects.create(
-                run=run, seq=seq['i'], kind=step.kind, name=step.name,
+                run=run,
+                seq=seq['i'],
+                kind=step.kind,
+                name=step.name,
                 content=(step.content or '')[:20_000],
                 arguments=step.arguments or {},
-                output={'value': output} if output is not None and not isinstance(output, dict) else (output or {}),
+                output={'value': output}
+                if output is not None and not isinstance(output, dict)
+                else (output or {}),
                 metadata=step.metadata or {},
             )
         except DatabaseError as e:  # noqa: BLE001
@@ -129,11 +140,20 @@ def _execute_worker_run(
     run.provider = provider.name
     run.model = provider.model or ''
     run.ended_at = timezone.now()
-    run.save(update_fields=[
-        'state', 'final_text', 'error', 'tool_call_count',
-        'prompt_tokens', 'completion_tokens', 'duration_ms',
-        'provider', 'model', 'ended_at',
-    ])
+    run.save(
+        update_fields=[
+            'state',
+            'final_text',
+            'error',
+            'tool_call_count',
+            'prompt_tokens',
+            'completion_tokens',
+            'duration_ms',
+            'provider',
+            'model',
+            'ended_at',
+        ]
+    )
 
 
 @tool(
@@ -205,22 +225,27 @@ def spawn_workers_tool(*, jobs: list[dict[str, Any]]) -> ToolResult:
             user_message=objective[:50_000],
             state='running',
             metadata={
-                'batch_id': batch_id, 'spawned_by': 'linda',
+                'batch_id': batch_id,
+                'spawned_by': 'linda',
                 'skills': list(skills),
             },
         )
         run_ids.append(str(run.id))
-        started.append({
-            'run_id': str(run.id),
-            'objective': objective[:120],
-            'skills': list(skills),
-        })
+        started.append(
+            {
+                'run_id': str(run.id),
+                'objective': objective[:120],
+                'skills': list(skills),
+            }
+        )
 
         t = threading.Thread(
             target=_execute_worker_run,
             kwargs={
-                'run_id': str(run.id), 'objective': objective,
-                'context': ctx, 'skills': skills,
+                'run_id': str(run.id),
+                'objective': objective,
+                'context': ctx,
+                'skills': skills,
             },
             daemon=True,
             name=f'worker-{run.id}',
@@ -245,7 +270,8 @@ def spawn_workers_tool(*, jobs: list[dict[str, Any]]) -> ToolResult:
         'type': 'object',
         'properties': {
             'run_ids': {
-                'type': 'array', 'items': {'type': 'string'},
+                'type': 'array',
+                'items': {'type': 'string'},
                 'description': 'AgentRun IDs returned by delegate.spawn_workers.',
             },
         },
@@ -261,9 +287,16 @@ def poll_workers_tool(*, run_ids: list[str]) -> ToolResult:
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'agent_run model unavailable: {e}') from e
 
-    rows = list(AgentRun.objects.filter(id__in=run_ids).values(
-        'id', 'state', 'final_text', 'error', 'duration_ms', 'tool_call_count',
-    ))
+    rows = list(
+        AgentRun.objects.filter(id__in=run_ids).values(
+            'id',
+            'state',
+            'final_text',
+            'error',
+            'duration_ms',
+            'tool_call_count',
+        )
+    )
     by_id = {str(r['id']): r for r in rows}
     out = []
     for rid in run_ids:
@@ -271,14 +304,16 @@ def poll_workers_tool(*, run_ids: list[str]) -> ToolResult:
         if r is None:
             out.append({'run_id': rid, 'state': 'unknown', 'final_text': '', 'error': 'not found'})
             continue
-        out.append({
-            'run_id': str(r['id']),
-            'state': r['state'],
-            'final_text': r['final_text'] or '',
-            'error': r['error'] or '',
-            'duration_ms': r['duration_ms'],
-            'tool_call_count': r['tool_call_count'],
-        })
+        out.append(
+            {
+                'run_id': str(r['id']),
+                'state': r['state'],
+                'final_text': r['final_text'] or '',
+                'error': r['error'] or '',
+                'duration_ms': r['duration_ms'],
+                'tool_call_count': r['tool_call_count'],
+            }
+        )
 
     pending = sum(1 for r in out if r['state'] in ('queued', 'running'))
     done = len(out) - pending
@@ -321,9 +356,16 @@ def wait_for_workers_tool(*, run_ids: list[str], timeout_s: float = 120.0) -> To
     terminal = {'completed', 'failed'}
     deadline = time.monotonic() + timeout_s
     while True:
-        rows = list(AgentRun.objects.filter(id__in=run_ids).values(
-            'id', 'state', 'final_text', 'error', 'duration_ms', 'tool_call_count',
-        ))
+        rows = list(
+            AgentRun.objects.filter(id__in=run_ids).values(
+                'id',
+                'state',
+                'final_text',
+                'error',
+                'duration_ms',
+                'tool_call_count',
+            )
+        )
         states = {str(r['id']): r['state'] for r in rows}
         if all(states.get(rid) in terminal for rid in run_ids):
             break
@@ -338,20 +380,23 @@ def wait_for_workers_tool(*, run_ids: list[str], timeout_s: float = 120.0) -> To
         if r is None:
             out.append({'run_id': rid, 'state': 'unknown', 'final_text': '', 'error': 'not found'})
             continue
-        out.append({
-            'run_id': str(r['id']),
-            'state': r['state'],
-            'final_text': r['final_text'] or '',
-            'error': r['error'] or '',
-            'duration_ms': r['duration_ms'],
-            'tool_call_count': r['tool_call_count'],
-        })
+        out.append(
+            {
+                'run_id': str(r['id']),
+                'state': r['state'],
+                'final_text': r['final_text'] or '',
+                'error': r['error'] or '',
+                'duration_ms': r['duration_ms'],
+                'tool_call_count': r['tool_call_count'],
+            }
+        )
 
     timed_out = sum(1 for r in out if r['state'] in ('queued', 'running'))
     return ToolResult(
         output={'runs': out, 'timed_out': timed_out, 'timeout_s': timeout_s},
         display=(
-            f'all {len(out)} done in <={int(timeout_s)}s' if timed_out == 0
+            f'all {len(out)} done in <={int(timeout_s)}s'
+            if timed_out == 0
             else f'{len(out) - timed_out}/{len(out)} done · {timed_out} still running after {int(timeout_s)}s'
         ),
     )

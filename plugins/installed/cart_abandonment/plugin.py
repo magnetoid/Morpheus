@@ -12,15 +12,16 @@ Configuration (set per-plugin in the dashboard or DB):
     require_email          — default True. Skip carts where we have no
         way to reach the customer.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin
 
 
 class CartAbandonmentPlugin(Plugin):
-    name = "cart_abandonment"
-    label = "Cart Abandonment"
-    version = "0.1.0"
+    name = 'cart_abandonment'
+    label = 'Cart Abandonment'
+    version = '0.1.0'
     description = (
         'Fires events.CART_ABANDONED for stale carts so email + '
         'remarketing handlers can pick them up.'

@@ -5,12 +5,12 @@ Schema is composed from CoreQuery/CoreMutation plus every extension module
 registered by an active plugin. Built once at process start (driven from
 `api.apps.ApiConfig.ready()`), then served from a process-local cache.
 """
+
 from __future__ import annotations
 
 import importlib
 import logging
 import threading
-from typing import Optional
 
 import strawberry
 from strawberry.extensions import SchemaExtension
@@ -22,17 +22,18 @@ logger = logging.getLogger('morpheus.api')
 
 @strawberry.type
 class CoreQuery:
-    @strawberry.field(description="Health check")
+    @strawberry.field(description='Health check')
     def ping(self) -> str:
-        return "pong"
+        return 'pong'
 
-    @strawberry.field(description="Morpheus CMS version")
+    @strawberry.field(description='Morpheus CMS version')
     def version(self) -> str:
-        return "1.0.0"
+        return '1.0.0'
 
-    @strawberry.field(description="List active plugins")
+    @strawberry.field(description='List active plugins')
     def active_plugins(self) -> list[str]:
         from plugins.registry import plugin_registry
+
         return [p.name for p in plugin_registry.active_plugins()]
 
 
@@ -40,7 +41,7 @@ class CoreQuery:
 class CoreMutation:
     @strawberry.mutation
     def ping(self) -> str:
-        return "pong"
+        return 'pong'
 
 
 class _PermissionToGraphQLError(SchemaExtension):
@@ -71,6 +72,7 @@ class _MaskUnhandledErrors(SchemaExtension):
 
     def on_executing_end(self) -> None:  # type: ignore[override]
         from graphql import GraphQLError
+
         from core.request_id import current_request_id
 
         result = self.execution_context.result
@@ -85,18 +87,20 @@ class _MaskUnhandledErrors(SchemaExtension):
                 continue
             logger.error(
                 'graphql: unhandled %s in resolver: %s',
-                type(original).__name__, original,
+                type(original).__name__,
+                original,
                 exc_info=(type(original), original, original.__traceback__),
                 extra={'request_id': request_id},
             )
             try:
                 from plugins.installed.observability.services import record_error
+
                 record_error(
                     source='api.graphql',
                     message=str(original)[:5000],
                     metadata={'request_id': request_id, 'type': type(original).__name__},
                 )
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 pass
             err.message = 'Internal server error.'
             if err.extensions is None:
@@ -116,7 +120,7 @@ def build_schema() -> strawberry.Schema:
         try:
             mod = importlib.import_module(module_path)
         except ImportError as e:
-            logger.error("Failed to import GraphQL extension %s: %s", module_path, e, exc_info=True)
+            logger.error('Failed to import GraphQL extension %s: %s', module_path, e, exc_info=True)
             continue
         for attr_name in dir(mod):
             obj = getattr(mod, attr_name)
@@ -143,11 +147,11 @@ def build_schema() -> strawberry.Schema:
 
 
 _schema_lock = threading.Lock()
-_cached_schema: Optional[strawberry.Schema] = None
+_cached_schema: strawberry.Schema | None = None
 
 
 def get_schema() -> strawberry.Schema:
-    global _cached_schema
+    global _cached_schema  # noqa: PLW0603
     if _cached_schema is None:
         with _schema_lock:
             if _cached_schema is None:
@@ -160,4 +164,4 @@ def warm_schema() -> None:
     try:
         get_schema()
     except Exception as e:  # noqa: BLE001 — must not block app startup
-        logger.error("Failed to pre-build GraphQL schema: %s", e, exc_info=True)
+        logger.error('Failed to pre-build GraphQL schema: %s', e, exc_info=True)

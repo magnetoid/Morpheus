@@ -1,4 +1,5 @@
 """Environment services: snapshot, promote, rollback."""
+
 from __future__ import annotations
 
 import logging
@@ -10,7 +11,7 @@ from django.utils import timezone
 logger = logging.getLogger('morpheus.environments')
 
 
-def take_snapshot(environment, *, label: str = '', actor=None) -> 'EnvironmentSnapshot':  # noqa: F821
+def take_snapshot(environment, *, label: str = '', actor=None) -> EnvironmentSnapshot:  # noqa: F821
     """Capture an environment's overrides into a fresh snapshot."""
     from plugins.installed.environments.models import EnvironmentSnapshot
 
@@ -28,7 +29,9 @@ def take_snapshot(environment, *, label: str = '', actor=None) -> 'EnvironmentSn
     )
 
 
-def diff_snapshots(snapshot_a_payload: dict[str, Any], snapshot_b_payload: dict[str, Any]) -> dict[str, Any]:
+def diff_snapshots(
+    snapshot_a_payload: dict[str, Any], snapshot_b_payload: dict[str, Any]
+) -> dict[str, Any]:
     diff: dict[str, Any] = {'changed': {}, 'added': {}, 'removed': {}}
     keys = set(snapshot_a_payload) | set(snapshot_b_payload)
     for k in keys:
@@ -53,7 +56,7 @@ def promote(
     note: str = '',
     confirm: bool = False,
     dry_run: bool = False,
-) -> 'Deployment':  # noqa: F821
+) -> Deployment:  # noqa: F821
     """Apply a snapshot to a target environment, creating a Deployment record."""
     from plugins.installed.environments.models import Deployment
 
@@ -101,7 +104,7 @@ def rollback(deployment) -> None:
     with transaction.atomic():
         for key, change in (diff.get('changed') or {}).items():
             setattr(target, key, change.get('from'))
-        for key in (diff.get('added') or {}):
+        for key in diff.get('added') or {}:
             setattr(target, key, {} if key.endswith('_overrides') else '')
         for key, val in (diff.get('removed') or {}).items():
             setattr(target, key, val)

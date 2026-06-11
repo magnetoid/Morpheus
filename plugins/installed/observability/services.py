@@ -1,10 +1,11 @@
 """Rollup helpers that turn OutboxEvent rows into MerchantMetric buckets."""
+
 from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 
 from django.db import DatabaseError, transaction
 
@@ -46,13 +47,13 @@ def rollup(*, granularity: str = 'hour', lookback_hours: int = 6) -> int:
     from core.models import OutboxEvent
     from plugins.installed.observability.models import MerchantMetric
 
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=lookback_hours)
 
     try:
         events = list(
-            OutboxEvent.objects
-            .filter(created_at__gte=cutoff, event_type__in=list(_EVENT_METRIC_MAP))
-            .values('event_type', 'created_at', 'payload')
+            OutboxEvent.objects.filter(
+                created_at__gte=cutoff, event_type__in=list(_EVENT_METRIC_MAP)
+            ).values('event_type', 'created_at', 'payload')
         )
     except DatabaseError as e:
         logger.warning('observability: rollup db error: %s', e)
@@ -71,7 +72,7 @@ def rollup(*, granularity: str = 'hour', lookback_hours: int = 6) -> int:
             channel_id = str(_uuid.UUID(raw)) if raw else ''
         except (TypeError, ValueError):
             channel_id = ''  # unknown / invalid — bucket as null channel
-        bucket = _truncate(evt['created_at'].astimezone(timezone.utc), granularity)
+        bucket = _truncate(evt['created_at'].astimezone(UTC), granularity)
         key = (channel_id, metric, bucket)
         buckets[key]['value'] += 1
         buckets[key]['sample_count'] += 1

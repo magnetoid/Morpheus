@@ -1,9 +1,11 @@
 """High-level Function services: dispatching, recording invocations."""
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from django.db import DatabaseError, transaction
 
@@ -19,13 +21,13 @@ def dispatch_filter(
     target: str,
     value: Any,
     input: Mapping[str, Any],
-    channel: Optional[Any] = None,
+    channel: Any | None = None,
 ) -> Any:
     """
     Run all enabled functions for `target` and pipe `value` through them.
     Each function returns a new value (or `None` to leave it unchanged).
     """
-    from plugins.installed.functions.models import Function, FunctionInvocation
+    from plugins.installed.functions.models import Function
     from plugins.installed.functions.runtime import (
         FunctionError,
         FunctionExecutionError,
@@ -115,7 +117,8 @@ def _record_invocation(
                 success=success,
                 error_message=error[:1000],
                 input_summary={
-                    k: v for k, v in input.items()
+                    k: v
+                    for k, v in input.items()
                     if k in ('value', 'product_id', 'cart_id', 'customer_id', 'subtotal')
                 },
                 output_summary={'value': output.get('value')} if output else {},

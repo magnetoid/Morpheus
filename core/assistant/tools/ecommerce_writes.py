@@ -17,13 +17,12 @@ when invoked from there.
 Read tools live in `ecommerce.py` next door; nothing in this file
 returns large result sets.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
-from typing import Any
 
 from core.assistant.tools.filesystem import ToolError, ToolResult, tool
-
 
 _NEEDS_CONFIRM = (
     'this is a write operation — re-call with `confirmed=True` once the '
@@ -41,8 +40,7 @@ def _require_confirmed(confirmed: bool) -> None:
         raise ToolError(_NEEDS_CONFIRM)
 
 
-def _require_hard_gate(*, hard_gate_ack: str, target_name: str,
-                       echo: str) -> None:
+def _require_hard_gate(*, hard_gate_ack: str, target_name: str, echo: str) -> None:
     """Enforce the second-tier confirmation for destructive actions.
 
     The LLM must collect both:
@@ -54,16 +52,16 @@ def _require_hard_gate(*, hard_gate_ack: str, target_name: str,
     if (hard_gate_ack or '').strip().upper() != 'YES':
         raise ToolError(_NEEDS_HARD_GATE)
     if (echo or '').strip().lower() != (target_name or '').strip().lower():
-        raise ToolError(
-            f'echo mismatch — user typed {echo!r} but the target is {target_name!r}.'
-        )
+        raise ToolError(f'echo mismatch — user typed {echo!r} but the target is {target_name!r}.')
     try:
         from plugins.installed.agent_core.models import AgentApprovalRequest
+
         AgentApprovalRequest.objects.create(
-            agent_name='assistant', state='approved',
+            agent_name='assistant',
+            state='approved',
             payload={'tool_target': target_name, 'echo': echo},
         )
-    except Exception:  # noqa: BLE001 — audit row is best-effort
+    except Exception:  # noqa: BLE001, S110
         pass
 
 
@@ -90,8 +88,9 @@ def _require_hard_gate(*, hard_gate_ack: str, target_name: str,
     },
     requires_approval=True,
 )
-def orders_update_status_tool(*, order_number: str, status: str,
-                              confirmed: bool = False) -> ToolResult:
+def orders_update_status_tool(
+    *, order_number: str, status: str, confirmed: bool = False
+) -> ToolResult:
     _require_confirmed(confirmed)
     try:
         from plugins.installed.orders.models import Order
@@ -100,18 +99,21 @@ def orders_update_status_tool(*, order_number: str, status: str,
     try:
         o = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
-        raise ToolError(f'order not found: {order_number}')
+        raise ToolError(f'order not found: {order_number}')  # noqa: B904
     prev = o.status
     o.status = status
     try:
         o.save(update_fields=['status', 'updated_at'])
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'save failed: {e}') from e
-    return ToolResult(output={
-        'order_number': order_number,
-        'previous_status': prev,
-        'new_status': status,
-    }, display=f'#{order_number}: {prev} → {status}')
+    return ToolResult(
+        output={
+            'order_number': order_number,
+            'previous_status': prev,
+            'new_status': status,
+        },
+        display=f'#{order_number}: {prev} → {status}',
+    )
 
 
 @tool(
@@ -132,8 +134,9 @@ def orders_update_status_tool(*, order_number: str, status: str,
     },
     requires_approval=True,
 )
-def orders_cancel_tool(*, order_number: str, reason: str = '',
-                       confirmed: bool = False) -> ToolResult:
+def orders_cancel_tool(
+    *, order_number: str, reason: str = '', confirmed: bool = False
+) -> ToolResult:
     _require_confirmed(confirmed)
     try:
         from plugins.installed.orders.models import Order, OrderEvent
@@ -142,32 +145,35 @@ def orders_cancel_tool(*, order_number: str, reason: str = '',
     try:
         o = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
-        raise ToolError(f'order not found: {order_number}')
+        raise ToolError(f'order not found: {order_number}')  # noqa: B904
     if o.status in ('cancelled', 'refunded'):
         raise ToolError(f'already {o.status}')
     prev = o.status
     o.status = 'cancelled'
     o.save(update_fields=['status', 'updated_at'])
-    try:
+    try:  # noqa: SIM105
         OrderEvent.objects.create(
-            order=o, event_type='cancelled',
+            order=o,
+            event_type='cancelled',
             message=f'Cancelled by Assistant. Reason: {reason or "(none)"}',
         )
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
-    return ToolResult(output={
-        'order_number': order_number,
-        'previous_status': prev,
-        'new_status': 'cancelled',
-        'reason': reason,
-    }, display=f'#{order_number} cancelled')
+    return ToolResult(
+        output={
+            'order_number': order_number,
+            'previous_status': prev,
+            'new_status': 'cancelled',
+            'reason': reason,
+        },
+        display=f'#{order_number} cancelled',
+    )
 
 
 @tool(
     name='orders.add_note',
     description=(
-        'Append a note to an order (visible to staff, not the customer). '
-        'Requires `confirmed=True`.'
+        'Append a note to an order (visible to staff, not the customer). Requires `confirmed=True`.'
     ),
     scopes=['orders.write'],
     schema={
@@ -181,8 +187,7 @@ def orders_cancel_tool(*, order_number: str, reason: str = '',
     },
     requires_approval=True,
 )
-def orders_add_note_tool(*, order_number: str, note: str,
-                         confirmed: bool = False) -> ToolResult:
+def orders_add_note_tool(*, order_number: str, note: str, confirmed: bool = False) -> ToolResult:
     _require_confirmed(confirmed)
     try:
         from plugins.installed.orders.models import Order
@@ -193,13 +198,15 @@ def orders_add_note_tool(*, order_number: str, note: str,
     try:
         o = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
-        raise ToolError(f'order not found: {order_number}')
+        raise ToolError(f'order not found: {order_number}')  # noqa: B904
     existing = (getattr(o, 'notes', '') or '').strip()
     sep = '\n\n' if existing else ''
     o.notes = f'{existing}{sep}{note.strip()}'
     o.save(update_fields=['notes', 'updated_at'])
-    return ToolResult(output={'order_number': order_number, 'appended': True},
-                      display=f'note added to #{order_number}')
+    return ToolResult(
+        output={'order_number': order_number, 'appended': True},
+        display=f'note added to #{order_number}',
+    )
 
 
 # ── Products ────────────────────────────────────────────────────────────
@@ -208,7 +215,7 @@ def orders_add_note_tool(*, order_number: str, note: str,
 @tool(
     name='products.update_status',
     description=(
-        'Set a product\'s status: active, draft, or archived. '
+        "Set a product's status: active, draft, or archived. "
         'Pass either `id`, `sku`, or `slug` to identify the product.'
     ),
     scopes=['catalog.write'],
@@ -225,8 +232,9 @@ def orders_add_note_tool(*, order_number: str, note: str,
     },
     requires_approval=True,
 )
-def products_update_status_tool(*, status: str, id: str = '', sku: str = '',
-                                slug: str = '', confirmed: bool = False) -> ToolResult:
+def products_update_status_tool(
+    *, status: str, id: str = '', sku: str = '', slug: str = '', confirmed: bool = False
+) -> ToolResult:
     _require_confirmed(confirmed)
     if status not in ('active', 'draft', 'archived'):
         raise ToolError(f'invalid status: {status}')
@@ -246,18 +254,21 @@ def products_update_status_tool(*, status: str, id: str = '', sku: str = '',
     prev = p.status
     p.status = status
     p.save(update_fields=['status', 'updated_at'])
-    return ToolResult(output={
-        'product_id': str(p.id),
-        'name': p.name,
-        'previous_status': prev,
-        'new_status': status,
-    }, display=f'{p.name}: {prev} → {status}')
+    return ToolResult(
+        output={
+            'product_id': str(p.id),
+            'name': p.name,
+            'previous_status': prev,
+            'new_status': status,
+        },
+        display=f'{p.name}: {prev} → {status}',
+    )
 
 
 @tool(
     name='products.update_price',
     description=(
-        'Update a product\'s price (optionally on a specific variant). '
+        "Update a product's price (optionally on a specific variant). "
         'Pass `id`/`sku`/`slug` to find the product, optional '
         '`variant_id` for a variant-specific change, and the new '
         '`price` as a numeric string ("19.99"). Currency stays the '
@@ -278,9 +289,15 @@ def products_update_status_tool(*, status: str, id: str = '', sku: str = '',
     },
     requires_approval=True,
 )
-def products_update_price_tool(*, price: str, id: str = '', sku: str = '',
-                               slug: str = '', variant_id: str = '',
-                               confirmed: bool = False) -> ToolResult:
+def products_update_price_tool(
+    *,
+    price: str,
+    id: str = '',
+    sku: str = '',
+    slug: str = '',
+    variant_id: str = '',
+    confirmed: bool = False,
+) -> ToolResult:
     _require_confirmed(confirmed)
     try:
         amount = Decimal(str(price))
@@ -303,10 +320,15 @@ def products_update_price_tool(*, price: str, id: str = '', sku: str = '',
         # currency is preserved from the existing value.
         v.price = amount
         v.save(update_fields=['price', 'updated_at'])
-        return ToolResult(output={
-            'variant_id': str(v.id), 'sku': v.sku,
-            'previous_price': prev, 'new_price': str(amount),
-        }, display=f'variant {v.sku}: {prev} → {amount}')
+        return ToolResult(
+            output={
+                'variant_id': str(v.id),
+                'sku': v.sku,
+                'previous_price': prev,
+                'new_price': str(amount),
+            },
+            display=f'variant {v.sku}: {prev} → {amount}',
+        )
 
     p = None
     if id:
@@ -320,10 +342,15 @@ def products_update_price_tool(*, price: str, id: str = '', sku: str = '',
     prev = str(getattr(getattr(p, 'price', None), 'amount', ''))
     p.price = amount
     p.save(update_fields=['price', 'updated_at'])
-    return ToolResult(output={
-        'product_id': str(p.id), 'name': p.name,
-        'previous_price': prev, 'new_price': str(amount),
-    }, display=f'{p.name}: {prev} → {amount}')
+    return ToolResult(
+        output={
+            'product_id': str(p.id),
+            'name': p.name,
+            'previous_price': prev,
+            'new_price': str(amount),
+        },
+        display=f'{p.name}: {prev} → {amount}',
+    )
 
 
 # ── Customers ──────────────────────────────────────────────────────────
@@ -348,8 +375,9 @@ def products_update_price_tool(*, price: str, id: str = '', sku: str = '',
     },
     requires_approval=True,
 )
-def customers_add_note_tool(*, note: str, id: str = '', email: str = '',
-                            confirmed: bool = False) -> ToolResult:
+def customers_add_note_tool(
+    *, note: str, id: str = '', email: str = '', confirmed: bool = False
+) -> ToolResult:
     _require_confirmed(confirmed)
     if not note.strip():
         raise ToolError('note cannot be empty')
@@ -371,9 +399,10 @@ def customers_add_note_tool(*, note: str, id: str = '', email: str = '',
     sep = '\n\n' if existing else ''
     u.notes = f'{existing}{sep}{note.strip()}'
     u.save(update_fields=['notes'])
-    return ToolResult(output={'customer_id': str(u.pk), 'email': u.email,
-                              'appended': True},
-                      display=f'note added to {u.email}')
+    return ToolResult(
+        output={'customer_id': str(u.pk), 'email': u.email, 'appended': True},
+        display=f'note added to {u.email}',
+    )
 
 
 # ── Metafields ─────────────────────────────────────────────────────────
@@ -405,11 +434,19 @@ def customers_add_note_tool(*, note: str, id: str = '', email: str = '',
     },
     requires_approval=True,
 )
-def metafields_set_tool(*, model: str, object_id: str, key: str, value: str,
-                        namespace: str = '', value_type: str = 'string',
-                        confirmed: bool = False) -> ToolResult:
+def metafields_set_tool(
+    *,
+    model: str,
+    object_id: str,
+    key: str,
+    value: str,
+    namespace: str = '',
+    value_type: str = 'string',
+    confirmed: bool = False,
+) -> ToolResult:
     _require_confirmed(confirmed)
     from django.apps import apps
+
     try:
         from plugins.installed.metafields.models import Metafield
     except Exception as e:  # noqa: BLE001
@@ -423,15 +460,21 @@ def metafields_set_tool(*, model: str, object_id: str, key: str, value: str,
     if instance is None:
         raise ToolError(f'{model} not found: {object_id}')
     obj = Metafield.objects.set(
-        instance, namespace=namespace, key=key,
-        value=value, value_type=value_type,
+        instance,
+        namespace=namespace,
+        key=key,
+        value=value,
+        value_type=value_type,
     )
-    return ToolResult(output={
-        'id': str(obj.id),
-        'full_key': obj.full_key,
-        'value': obj.value,
-        'value_type': obj.value_type,
-    }, display=f'set {obj.full_key} on {model}#{object_id}')
+    return ToolResult(
+        output={
+            'id': str(obj.id),
+            'full_key': obj.full_key,
+            'value': obj.value,
+            'value_type': obj.value_type,
+        },
+        display=f'set {obj.full_key} on {model}#{object_id}',
+    )
 
 
 @tool(
@@ -458,12 +501,20 @@ def metafields_set_tool(*, model: str, object_id: str, key: str, value: str,
     },
     requires_approval=True,
 )
-def metafields_delete_tool(*, model: str, object_id: str, key: str,
-                           namespace: str = '', confirmed: bool = False,
-                           hard_gate_ack: str = '', echo: str = '') -> ToolResult:
+def metafields_delete_tool(
+    *,
+    model: str,
+    object_id: str,
+    key: str,
+    namespace: str = '',
+    confirmed: bool = False,
+    hard_gate_ack: str = '',
+    echo: str = '',
+) -> ToolResult:
     _require_confirmed(confirmed)
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=key, echo=echo)
     from django.apps import apps
+
     try:
         from plugins.installed.metafields.models import Metafield
     except Exception as e:  # noqa: BLE001
@@ -477,8 +528,9 @@ def metafields_delete_tool(*, model: str, object_id: str, key: str,
     if instance is None:
         raise ToolError(f'{model} not found: {object_id}')
     n = Metafield.objects.delete_for(instance, namespace=namespace, key=key)
-    return ToolResult(output={'deleted': n},
-                      display=f'deleted {n} metafield(s) on {model}#{object_id}')
+    return ToolResult(
+        output={'deleted': n}, display=f'deleted {n} metafield(s) on {model}#{object_id}'
+    )
 
 
 # ── CMS ────────────────────────────────────────────────────────────────
@@ -487,8 +539,7 @@ def metafields_delete_tool(*, model: str, object_id: str, key: str,
 @tool(
     name='cms.publish_page',
     description=(
-        'Publish a CMS page (sets state=published). Pass `id` or '
-        '`slug`. Requires `confirmed=True`.'
+        'Publish a CMS page (sets state=published). Pass `id` or `slug`. Requires `confirmed=True`.'
     ),
     scopes=['content.write'],
     schema={
@@ -501,11 +552,11 @@ def metafields_delete_tool(*, model: str, object_id: str, key: str,
     },
     requires_approval=True,
 )
-def cms_publish_page_tool(*, id: str = '', slug: str = '',
-                          confirmed: bool = False) -> ToolResult:
+def cms_publish_page_tool(*, id: str = '', slug: str = '', confirmed: bool = False) -> ToolResult:
     _require_confirmed(confirmed)
     try:
         from django.utils import timezone
+
         from plugins.installed.cms.models import Page
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'cms plugin unavailable: {e}') from e
@@ -520,22 +571,28 @@ def cms_publish_page_tool(*, id: str = '', slug: str = '',
     p.state = 'published'
     if hasattr(p, 'published_at') and not getattr(p, 'published_at', None):
         p.published_at = timezone.now()
-        p.save(update_fields=['state', 'published_at', 'updated_at']
-               if hasattr(p, 'updated_at') else ['state', 'published_at'])
+        p.save(
+            update_fields=['state', 'published_at', 'updated_at']
+            if hasattr(p, 'updated_at')
+            else ['state', 'published_at']
+        )
     else:
-        p.save(update_fields=['state', 'updated_at']
-               if hasattr(p, 'updated_at') else ['state'])
-    return ToolResult(output={
-        'page_id': str(p.pk), 'slug': getattr(p, 'slug', ''),
-        'previous_state': prev, 'new_state': 'published',
-    }, display=f'published "{getattr(p, "title", p.pk)}"')
+        p.save(update_fields=['state', 'updated_at'] if hasattr(p, 'updated_at') else ['state'])
+    return ToolResult(
+        output={
+            'page_id': str(p.pk),
+            'slug': getattr(p, 'slug', ''),
+            'previous_state': prev,
+            'new_state': 'published',
+        },
+        display=f'published "{getattr(p, "title", p.pk)}"',
+    )
 
 
 @tool(
     name='cms.unpublish_page',
     description=(
-        'Unpublish a CMS page (sets state=draft). Pass `id` or `slug`. '
-        'Requires `confirmed=True`.'
+        'Unpublish a CMS page (sets state=draft). Pass `id` or `slug`. Requires `confirmed=True`.'
     ),
     scopes=['content.write'],
     schema={
@@ -548,8 +605,7 @@ def cms_publish_page_tool(*, id: str = '', slug: str = '',
     },
     requires_approval=True,
 )
-def cms_unpublish_page_tool(*, id: str = '', slug: str = '',
-                            confirmed: bool = False) -> ToolResult:
+def cms_unpublish_page_tool(*, id: str = '', slug: str = '', confirmed: bool = False) -> ToolResult:
     _require_confirmed(confirmed)
     try:
         from plugins.installed.cms.models import Page
@@ -564,9 +620,13 @@ def cms_unpublish_page_tool(*, id: str = '', slug: str = '',
         raise ToolError('page not found — pass id or slug')
     prev = getattr(p, 'state', '')
     p.state = 'draft'
-    p.save(update_fields=['state', 'updated_at']
-           if hasattr(p, 'updated_at') else ['state'])
-    return ToolResult(output={
-        'page_id': str(p.pk), 'slug': getattr(p, 'slug', ''),
-        'previous_state': prev, 'new_state': 'draft',
-    }, display=f'unpublished "{getattr(p, "title", p.pk)}"')
+    p.save(update_fields=['state', 'updated_at'] if hasattr(p, 'updated_at') else ['state'])
+    return ToolResult(
+        output={
+            'page_id': str(p.pk),
+            'slug': getattr(p, 'slug', ''),
+            'previous_state': prev,
+            'new_state': 'draft',
+        },
+        display=f'unpublished "{getattr(p, "title", p.pk)}"',
+    )

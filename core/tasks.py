@@ -1,6 +1,7 @@
 """
 Morpheus CMS — Async tasks (webhooks, outbox publisher).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -62,34 +63,39 @@ def dispatch_webhook(
         'User-Agent': 'Morpheus-Webhook/1.0',
     }
     if secret:
-        headers['X-Morpheus-Signature'] = 'sha256=' + hmac.new(
-            secret.encode('utf-8'), body, hashlib.sha256
-        ).hexdigest()
+        headers['X-Morpheus-Signature'] = (
+            'sha256=' + hmac.new(secret.encode('utf-8'), body, hashlib.sha256).hexdigest()
+        )
 
     try:
         response = requests.post(url, data=body, headers=headers, timeout=10)
     except SoftTimeLimitExceeded:
-        logger.warning("Webhook soft time limit hit: %s -> %s", event_name, url)
-        raise self.retry(countdown=2 ** self.request.retries)
+        logger.warning('Webhook soft time limit hit: %s -> %s', event_name, url)
+        raise self.retry(countdown=2**self.request.retries)  # noqa: B904
     except requests.exceptions.RequestException as e:
-        logger.warning("Webhook transport error: %s -> %s. %s", event_name, url, e)
-        raise self.retry(exc=e, countdown=2 ** self.request.retries)
+        logger.warning('Webhook transport error: %s -> %s. %s', event_name, url, e)
+        raise self.retry(exc=e, countdown=2**self.request.retries)  # noqa: B904
 
     if 500 <= response.status_code < 600 or response.status_code in (408, 429):
         logger.warning(
-            "Webhook retryable status: %s -> %s [%s]",
-            event_name, url, response.status_code,
+            'Webhook retryable status: %s -> %s [%s]',
+            event_name,
+            url,
+            response.status_code,
         )
-        raise self.retry(countdown=2 ** self.request.retries)
+        raise self.retry(countdown=2**self.request.retries)
 
     if response.status_code >= 400:
         logger.error(
-            "Webhook permanent failure: %s -> %s [%s] %s",
-            event_name, url, response.status_code, response.text[:200],
+            'Webhook permanent failure: %s -> %s [%s] %s',
+            event_name,
+            url,
+            response.status_code,
+            response.text[:200],
         )
         return
 
-    logger.info("Webhook delivered: %s -> %s [%s]", event_name, url, response.status_code)
+    logger.info('Webhook delivered: %s -> %s [%s]', event_name, url, response.status_code)
 
 
 def _publish_to_nats_sync(event_type: str, payload: dict[str, Any]) -> None:
@@ -104,7 +110,7 @@ def _publish_to_nats_sync(event_type: str, payload: dict[str, Any]) -> None:
         # nats-py exposes a sync client at the top level for simple publish flows.
         from nats.aio.client import Client  # noqa: F401  (ensures package is installed)
     except ImportError:  # pragma: no cover
-        raise RuntimeError("nats-py is not installed; cannot publish to NATS")
+        raise RuntimeError('nats-py is not installed; cannot publish to NATS')  # noqa: B904
 
     # nats-py is async-only; run a short-lived loop with asyncio.run is acceptable
     # only because we are inside a synchronous Celery task — but we wrap it so
@@ -114,11 +120,12 @@ def _publish_to_nats_sync(event_type: str, payload: dict[str, Any]) -> None:
     async def _publish() -> None:
         import nats
         import nats.js.errors
+
         nats_url = os.environ.get('NATS_URL', 'nats://localhost:4222')
         nc = await nats.connect(nats_url, connect_timeout=5)
         try:
             js = nc.jetstream()
-            subject = f"morpheus.events.{event_type.replace('.', '_')}"
+            subject = f'morpheus.events.{event_type.replace(".", "_")}'
             try:
                 await js.stream_info('morpheus_events')
             except nats.js.errors.NotFoundError:
@@ -150,12 +157,12 @@ def process_outbox(self) -> None:
     successfully published siblings.
     """
     from django.db import transaction
+
     from core.models import OutboxEvent
 
     with transaction.atomic():
         events = list(
-            OutboxEvent.objects
-            .select_for_update(skip_locked=True)
+            OutboxEvent.objects.select_for_update(skip_locked=True)
             .filter(status='PENDING')
             .order_by('created_at')[:100]
         )
@@ -165,11 +172,11 @@ def process_outbox(self) -> None:
             try:
                 _publish_to_nats_sync(event.event_type, event.payload)
             except SoftTimeLimitExceeded:
-                logger.warning("Outbox publish soft-timeout for %s", event.id)
+                logger.warning('Outbox publish soft-timeout for %s', event.id)
                 event.status = 'FAILED'
                 event.error_message = 'soft time limit exceeded'
             except Exception as e:  # noqa: BLE001 — explicitly logged with traceback
-                logger.error("Failed to publish OutboxEvent %s: %s", event.id, e, exc_info=True)
+                logger.error('Failed to publish OutboxEvent %s: %s', event.id, e, exc_info=True)
                 event.status = 'FAILED'
                 event.error_message = str(e)[:1000]
             else:
@@ -179,6 +186,7 @@ def process_outbox(self) -> None:
 
 
 # ── Async hook handler dispatch ───────────────────────────────────────────────
+
 
 @shared_task(
     name='core.tasks.run_hook_handler_async',
@@ -208,7 +216,13 @@ def run_hook_handler_async(self, event: str, handler_path: str, kwargs: dict) ->
 
     # Walk through dotted attr lookups so `module.Class.method` works.
     try:
-        mod = importlib.import_module(module_path.split('.', 1)[0] if '.' not in module_path else module_path.rsplit('.', 1)[0] if False else module_path)
+        mod = importlib.import_module(
+            module_path.split('.', 1)[0]
+            if '.' not in module_path
+            else module_path.rsplit('.', 1)[0]
+            if False
+            else module_path
+        )
     except Exception as exc:  # noqa: BLE001
         # Handle qualnames like 'pkg.mod.Class.method' — split on the last dot
         # of the module path, treat the remainder as attribute chain.
@@ -232,12 +246,16 @@ def run_hook_handler_async(self, event: str, handler_path: str, kwargs: dict) ->
     except Exception as exc:  # noqa: BLE001 — logged + auto-retry
         logger.warning(
             'async hook handler %s failed (attempt %s): %s',
-            handler_path, self.request.retries + 1, exc, exc_info=True,
+            handler_path,
+            self.request.retries + 1,
+            exc,
+            exc_info=True,
         )
         try:
             raise self.retry(exc=exc)
         except self.MaxRetriesExceededError:
             logger.error(
                 'async hook handler %s exhausted retries; dropping event %s',
-                handler_path, event,
+                handler_path,
+                event,
             )

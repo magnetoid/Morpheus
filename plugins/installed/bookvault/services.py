@@ -24,6 +24,7 @@ WP plugin's ``bvlt_get_shipping_rates``. Failures log + return ``None``
 (or empty list) so the caller can degrade gracefully without breaking
 checkout / order flow.
 """
+
 from __future__ import annotations
 
 import json
@@ -59,6 +60,7 @@ def _config() -> dict[str, Any]:
     treat that as "plugin not configured" and bail."""
     try:
         from plugins.models import PluginConfig
+
         cfg = PluginConfig.objects.filter(plugin_name='bookvault').first()
         return (cfg.config or {}) if cfg else {}
     except Exception as e:  # noqa: BLE001
@@ -68,6 +70,7 @@ def _config() -> dict[str, Any]:
 
 def _save_config(updates: dict[str, Any]) -> None:
     from plugins.models import PluginConfig
+
     cfg, _ = PluginConfig.objects.update_or_create(
         plugin_name='bookvault',
         defaults={'is_enabled': True},
@@ -122,10 +125,13 @@ def authenticate(*, store_url_override: str = '') -> dict:
     sid = (data or {}).get('StoreID') or ''
     authed_flag = bool((data or {}).get('Authenticated'))
     if token and sid:
-        _save_config({
-            'token': token, 'store_id': str(sid),
-            'authenticated': authed_flag,
-        })
+        _save_config(
+            {
+                'token': token,
+                'store_id': str(sid),
+                'authenticated': authed_flag,
+            }
+        )
     return data
 
 
@@ -145,8 +151,9 @@ def _isbn_lines(cart_or_order) -> list[dict]:
     iterator = items.all() if hasattr(items, 'all') else items
     for item in iterator:
         variant = getattr(item, 'variant', None)
-        sku = (getattr(variant, 'sku', '') or
-               getattr(getattr(item, 'product', None), 'sku', '') or '')
+        sku = (
+            getattr(variant, 'sku', '') or getattr(getattr(item, 'product', None), 'sku', '') or ''
+        )
         sku = (sku or '').strip()
         if len(sku) != 13:
             continue
@@ -187,7 +194,10 @@ def get_shipping_rates(
     params = {'storeUrl': store_url(), 'currency': currency()}
     try:
         resp = requests.post(
-            _SHIPPING_URL, params=params, json=payload, timeout=_TIMEOUT,
+            _SHIPPING_URL,
+            params=params,
+            json=payload,
+            timeout=_TIMEOUT,
         )
         resp.raise_for_status()
         data = resp.json() if resp.content else {}
@@ -202,12 +212,14 @@ def get_shipping_rates(
     out = []
     for s in services:
         try:
-            out.append({
-                'id': str(s.get('ServID') or ''),
-                'name': s.get('ServName') or '',
-                'detail': s.get('ServDetail') or '',
-                'amount': Decimal(str(s.get('DelTotal') or '0')),
-            })
+            out.append(
+                {
+                    'id': str(s.get('ServID') or ''),
+                    'name': s.get('ServName') or '',
+                    'detail': s.get('ServDetail') or '',
+                    'amount': Decimal(str(s.get('DelTotal') or '0')),
+                }
+            )
         except (TypeError, ValueError):
             continue
     return out
@@ -227,16 +239,18 @@ def _order_payload(order) -> dict:
     for item in order.items.all().select_related('product', 'variant'):
         variant = item.variant
         product = item.product
-        sku = (getattr(variant, 'sku', '') or getattr(product, 'sku', '') or '')
-        items.append({
-            'product_id': str(getattr(product, 'id', '')),
-            'variation_id': str(getattr(variant, 'id', '') or ''),
-            'sku': sku,
-            'name': getattr(product, 'name', ''),
-            'quantity': int(item.quantity or 1),
-            'price': str(getattr(item.unit_price, 'amount', 0)),
-            'total': str(getattr(item.total_price, 'amount', 0)),
-        })
+        sku = getattr(variant, 'sku', '') or getattr(product, 'sku', '') or ''
+        items.append(
+            {
+                'product_id': str(getattr(product, 'id', '')),
+                'variation_id': str(getattr(variant, 'id', '') or ''),
+                'sku': sku,
+                'name': getattr(product, 'name', ''),
+                'quantity': int(item.quantity or 1),
+                'price': str(getattr(item.unit_price, 'amount', 0)),
+                'total': str(getattr(item.total_price, 'amount', 0)),
+            }
+        )
 
     shipping = (getattr(order, 'shipping_address', None) or {}) or {}
     billing = (getattr(order, 'billing_address', None) or {}) or {}
@@ -246,7 +260,9 @@ def _order_payload(order) -> dict:
         'status': getattr(order, 'status', ''),
         'currency': str(getattr(order.total, 'currency', '') or 'USD'),
         'total': str(getattr(order.total, 'amount', 0)),
-        'shipping': str(getattr(order.shipping_total, 'amount', 0)) if hasattr(order, 'shipping_total') else '',
+        'shipping': str(getattr(order.shipping_total, 'amount', 0))
+        if hasattr(order, 'shipping_total')
+        else '',
         'line_items': items,
         'shipping_address': shipping,
         'billing_address': billing,
@@ -298,10 +314,7 @@ def send_order(*, order) -> dict:
         body = {'raw': (resp.text or '')[:1000]}
 
     bv_ref = (
-        (body or {}).get('BVRef')
-        or (body or {}).get('OrderID')
-        or (body or {}).get('ref')
-        or ''
+        (body or {}).get('BVRef') or (body or {}).get('OrderID') or (body or {}).get('ref') or ''
     )
     BookvaultOrderLink.objects.update_or_create(
         order=order,
@@ -431,7 +444,8 @@ def bulk_link_status_for(product_ids) -> dict:
     has_linked: set = set()
     has_unlinked: set = set()
     rows = BookvaultProductLink.objects.filter(product_id__in=ids).values_list(
-        'product_id', 'is_linked',
+        'product_id',
+        'is_linked',
     )
     for pid, linked in rows:
         (has_linked if linked else has_unlinked).add(pid)

@@ -3,6 +3,7 @@
 Mounted at `/auth/otp/` from morph.urls — sits next to allauth's
 own `/auth/` namespace without touching it.
 """
+
 from __future__ import annotations
 
 from django.urls import path

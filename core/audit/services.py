@@ -5,10 +5,11 @@ provenance trail: every customer-facing personalisation, dynamic-pricing,
 or agent tool call should funnel through it so a merchant can later
 export the full decision history for a customer or a model.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from core.utils.safe_db import safe_db
 
@@ -21,9 +22,9 @@ def record(
     event_type: str,
     actor: Any = None,
     target: str = '',
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
     severity: str = 'info',
-    ip_address: Optional[str] = None,
+    ip_address: str | None = None,
     request_id: str = '',
 ) -> Any:
     """Persist one audit row. Never raises (DB errors are swallowed + logged)."""
@@ -32,13 +33,19 @@ def record(
     actor_obj = actor if (actor is not None and getattr(actor, 'is_authenticated', False)) else None
     actor_label = ''
     if actor_obj is not None:
-        actor_label = getattr(actor_obj, 'email', '') or getattr(actor_obj, 'username', '') or str(actor_obj.pk)
+        actor_label = (
+            getattr(actor_obj, 'email', '')
+            or getattr(actor_obj, 'username', '')
+            or str(actor_obj.pk)
+        )
     elif actor is not None:
         actor_label = str(actor)[:200]
 
     return AuditEvent.objects.create(
         event_type=event_type[:120],
-        severity=severity if severity in dict(AuditEvent.SEVERITY_CHOICES) else AuditEvent.SEVERITY_INFO,
+        severity=severity
+        if severity in dict(AuditEvent.SEVERITY_CHOICES)
+        else AuditEvent.SEVERITY_INFO,
         actor=actor_obj,
         actor_label=actor_label[:200],
         target=str(target)[:200] if target else '',
@@ -54,9 +61,9 @@ def record_ai_decision(
     agent: str,
     tool: str,
     run_id: str = '',
-    args: Optional[dict] = None,
+    args: dict | None = None,
     output: Any = None,
-    duration_ms: Optional[int] = None,
+    duration_ms: int | None = None,
     model: str = '',
     provider: str = '',
     actor: Any = None,
@@ -75,6 +82,7 @@ def record_ai_decision(
     regulator will ask for.
     """
     import os
+
     if os.getenv('MORPH_DISABLE_AI_AUDIT') == '1':
         return None
     metadata = {

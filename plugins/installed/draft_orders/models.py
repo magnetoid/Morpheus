@@ -5,13 +5,15 @@ later converted to a real Order when payment is collected. Lives
 separately from the FSM-managed `orders.Order` so it doesn't have to
 fight the protected state machine.
 """
+
 from __future__ import annotations
 
 import uuid
 
 from django.conf import settings
-from morpheus import models
 from djmoney.models.fields import MoneyField
+
+from morpheus import models
 
 
 class DraftOrder(models.Model):
@@ -29,14 +31,20 @@ class DraftOrder(models.Model):
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default='draft')
 
     customer = models.ForeignKey(
-        'customers.Customer', on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='draft_orders',
+        'customers.Customer',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='draft_orders',
     )
     customer_email = models.EmailField(blank=True)
 
     channel = models.ForeignKey(
-        'core.StoreChannel', on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='draft_orders',
+        'core.StoreChannel',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='draft_orders',
     )
 
     subtotal = MoneyField(max_digits=14, decimal_places=2, default_currency='USD', default=0)
@@ -52,8 +60,11 @@ class DraftOrder(models.Model):
     valid_until = models.DateTimeField(null=True, blank=True)
 
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='draft_orders_created',
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='draft_orders_created',
     )
     converted_order_id = models.CharField(max_length=64, blank=True)
 
@@ -68,8 +79,10 @@ class DraftOrder(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            import random, string
-            self.number = 'DR' + ''.join(random.choices(string.digits, k=8))
+            import random
+            import string
+
+            self.number = 'DR' + ''.join(random.choices(string.digits, k=8))  # noqa: S311
         super().save(*args, **kwargs)
 
 
@@ -77,8 +90,11 @@ class DraftOrderLine(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     draft = models.ForeignKey(DraftOrder, on_delete=models.CASCADE, related_name='lines')
     variant = models.ForeignKey(
-        'catalog.ProductVariant', on_delete=models.PROTECT,
-        null=True, blank=True, related_name='+',
+        'catalog.ProductVariant',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='+',
     )
     product_name = models.CharField(max_length=255)
     sku = models.CharField(max_length=64, blank=True)

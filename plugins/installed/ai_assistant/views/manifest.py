@@ -2,7 +2,9 @@
 Morpheus CMS — Manifest views (OpenAI + Anthropic tool formats)
 Refactored to use the canonical SchemaIntrospector — no more duplicated logic.
 """
+
 from django.http import JsonResponse
+
 from core.schema_introspector import SchemaIntrospector
 
 

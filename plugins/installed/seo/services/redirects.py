@@ -3,6 +3,7 @@
 ``resolve_redirect`` runs on every 404 (in middleware); the rest
 power the dashboard's "broken links" panel.
 """
+
 from __future__ import annotations
 
 import re
@@ -24,7 +25,7 @@ def resolve_redirect(path: str) -> tuple[str, int] | None:
         return None
     if row is None:
         return None
-    try:
+    try:  # noqa: SIM105
         Redirect.objects.filter(pk=row.pk).update(
             hit_count=row.hit_count + 1,
             last_hit_at=timezone.now(),
@@ -35,8 +36,10 @@ def resolve_redirect(path: str) -> tuple[str, int] | None:
 
 
 def record_404(*, path: str, referrer: str = '') -> None:
-    from plugins.installed.seo.models import NotFoundLog
     from django.db.models import F as _F
+
+    from plugins.installed.seo.models import NotFoundLog
+
     if not path or len(path) > 500:
         return
     try:
@@ -45,11 +48,11 @@ def record_404(*, path: str, referrer: str = '') -> None:
             NotFoundLog.objects.filter(pk=existing.pk).update(hit_count=_F('hit_count') + 1)
         else:
             NotFoundLog.objects.create(path=path, referrer=referrer[:500])
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
 
 
-def suggest_redirect(path: str) -> str:
+def suggest_redirect(path: str) -> str:  # noqa: PLR0911, PLR0912
     """Suggest a live URL for a 404 path.
 
     Strategy:
@@ -80,9 +83,7 @@ def suggest_redirect(path: str) -> str:
         return ''
 
     try:
-        product_slugs = list(
-            Product.objects.filter(status='active').values_list('slug', flat=True)
-        )
+        product_slugs = list(Product.objects.filter(status='active').values_list('slug', flat=True))
     except Exception:  # noqa: BLE001
         product_slugs = []
 
@@ -124,7 +125,7 @@ def suggest_redirect(path: str) -> str:
             p = Product.objects.filter(slug__icontains=token, status='active').first()
             if p:
                 return f'/products/{p.slug}/'
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     return ''
 
@@ -132,6 +133,7 @@ def suggest_redirect(path: str) -> str:
 def refresh_404_suggestions(*, limit: int = 50) -> int:
     """Fill in suggested_target on the top unresolved 404s."""
     from plugins.installed.seo.models import NotFoundLog
+
     n = 0
     rows = NotFoundLog.objects.filter(is_resolved=False).order_by('-hit_count')[:limit]
     for row in rows:

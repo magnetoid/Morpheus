@@ -1,7 +1,6 @@
 """CRM GraphQL queries (admin-only)."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import strawberry
 
@@ -48,14 +47,13 @@ def _is_staff(info) -> bool:
 
 @strawberry.type
 class CrmQueryExtension:
-
     @strawberry.field(description='List CRM leads (staff only).')
     def crm_leads(
         self,
         info: strawberry.Info,
         first: int = 25,
-        status: Optional[str] = None,
-    ) -> List[CrmLeadType]:
+        status: str | None = None,
+    ) -> list[CrmLeadType]:
         if not _is_staff(info):
             return []
         from plugins.installed.crm.models import Lead
@@ -66,12 +64,16 @@ class CrmQueryExtension:
             qs = qs.filter(status=status)
         return [
             CrmLeadType(
-                id=strawberry.ID(str(l.id)),
-                email=l.email, name=l.display_name, company=l.company,
-                source=l.source, status=l.status, score=l.score,
-                created_at=l.created_at.isoformat(),
+                id=strawberry.ID(str(lead.id)),
+                email=lead.email,
+                name=lead.display_name,
+                company=lead.company,
+                source=lead.source,
+                status=lead.status,
+                score=lead.score,
+                created_at=lead.created_at.isoformat(),
             )
-            for l in qs[:first]
+            for lead in qs[:first]
         ]
 
     @strawberry.field(description='Customer interaction timeline (staff only).')
@@ -80,10 +82,11 @@ class CrmQueryExtension:
         info: strawberry.Info,
         email: str,
         first: int = 50,
-    ) -> List[CrmInteractionType]:
+    ) -> list[CrmInteractionType]:
         if not _is_staff(info):
             return []
         from django.contrib.auth import get_user_model
+
         from plugins.installed.crm.services import customer_timeline
 
         User = get_user_model()
@@ -94,7 +97,9 @@ class CrmQueryExtension:
         return [
             CrmInteractionType(
                 id=strawberry.ID(str(r.id)),
-                kind=r.kind, direction=r.direction, summary=r.summary,
+                kind=r.kind,
+                direction=r.direction,
+                summary=r.summary,
                 actor=getattr(r.actor, 'email', '') if r.actor_id else r.actor_name,
                 occurred_at=r.occurred_at.isoformat(),
             )
@@ -106,7 +111,7 @@ class CrmQueryExtension:
         self,
         info: strawberry.Info,
         first: int = 50,
-    ) -> List[CrmTaskType]:
+    ) -> list[CrmTaskType]:
         if not _is_staff(info):
             return []
         from plugins.installed.crm.models import CrmTask
@@ -115,8 +120,12 @@ class CrmQueryExtension:
         qs = CrmTask.objects.filter(completed_at__isnull=True).order_by('due_at')[:first]
         return [
             CrmTaskType(
-                id=strawberry.ID(str(t.id)), title=t.title, priority=t.priority,
-                due_at=t.due_at.isoformat(), is_open=t.is_open, is_overdue=t.is_overdue,
+                id=strawberry.ID(str(t.id)),
+                title=t.title,
+                priority=t.priority,
+                due_at=t.due_at.isoformat(),
+                is_open=t.is_open,
+                is_overdue=t.is_overdue,
             )
             for t in qs
         ]

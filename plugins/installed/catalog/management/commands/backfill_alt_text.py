@@ -16,6 +16,7 @@ Usage:
     python manage.py backfill_alt_text
     python manage.py backfill_alt_text --slugs hamlet,dracula --force --dry-run
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,15 +45,19 @@ class Command(BaseCommand):
     help = 'Backfill content-aware ProductImage.alt_text for book covers.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--slugs', default='',
-                            help='Comma-separated product slugs (default: all active).')
-        parser.add_argument('--force', action='store_true',
-                            help='Overwrite even when current alt looks acceptable.')
-        parser.add_argument('--dry-run', action='store_true',
-                            help='Show what would change; do not write.')
+        parser.add_argument(
+            '--slugs', default='', help='Comma-separated product slugs (default: all active).'
+        )
+        parser.add_argument(
+            '--force', action='store_true', help='Overwrite even when current alt looks acceptable.'
+        )
+        parser.add_argument(
+            '--dry-run', action='store_true', help='Show what would change; do not write.'
+        )
 
     def handle(self, *args, **opts):
         from django.contrib.contenttypes.models import ContentType
+
         from plugins.installed.catalog.models import Product
         from plugins.installed.metafields.models import Metafield
 
@@ -68,7 +73,9 @@ class Command(BaseCommand):
         authors = {
             m.object_id: (m.value or '').strip()
             for m in Metafield.objects.filter(
-                content_type=ct, namespace='book', key='author',
+                content_type=ct,
+                namespace='book',
+                key='author',
             )
         }
 
@@ -92,15 +99,11 @@ class Command(BaseCommand):
                 if new_alt == current:
                     skipped += 1
                     continue
-                self.stdout.write(
-                    f'  {product.slug}#{image.sort_order}: {current!r} → {new_alt!r}'
-                )
+                self.stdout.write(f'  {product.slug}#{image.sort_order}: {current!r} → {new_alt!r}')
                 if dry:
                     continue
                 image.alt_text = new_alt
                 image.save(update_fields=['alt_text'])
                 updated += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — updated={updated} skipped={skipped}'
-        ))
+        self.stdout.write(self.style.SUCCESS(f'done — updated={updated} skipped={skipped}'))

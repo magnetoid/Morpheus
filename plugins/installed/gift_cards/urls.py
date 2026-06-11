@@ -1,4 +1,5 @@
 """Gift cards dashboard URLs."""
+
 from django.urls import path
 
 from plugins.installed.gift_cards import views

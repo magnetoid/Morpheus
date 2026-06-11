@@ -1,4 +1,5 @@
 """Wishlist agent tools."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -6,7 +7,7 @@ from core.agents import ToolError, ToolResult, tool
 
 @tool(
     name='wishlist.add',
-    description='Add a product to the active visitor\'s wishlist by slug.',
+    description="Add a product to the active visitor's wishlist by slug.",
     scopes=['wishlist.write'],
     schema={
         'type': 'object',
@@ -32,15 +33,18 @@ def add_to_wishlist_tool(*, slug: str, context: dict | None = None) -> ToolResul
         raise ToolError(f'Unknown product: {slug}') from e
     add_item(wishlist=wishlist, product=product)
     return ToolResult(
-        output={'wishlist_id': str(wishlist.id), 'product': product.name,
-                'item_count': wishlist.item_count},
+        output={
+            'wishlist_id': str(wishlist.id),
+            'product': product.name,
+            'item_count': wishlist.item_count,
+        },
         display=f'Added {product.name} to wishlist',
     )
 
 
 @tool(
     name='wishlist.summary',
-    description='Show items in the active visitor\'s wishlist.',
+    description="Show items in the active visitor's wishlist.",
     scopes=['wishlist.read'],
     schema={'type': 'object', 'properties': {}},
 )
@@ -53,12 +57,17 @@ def wishlist_summary_tool(*, context: dict | None = None) -> ToolResult:
     wishlist = get_or_create_wishlist(customer=customer, session_key=session_key)
     if wishlist is None:
         return ToolResult(output={'wishlist': None})
-    return ToolResult(output={
-        'wishlist_id': str(wishlist.id),
-        'name': wishlist.name,
-        'items': [
-            {'product': i.product.name, 'slug': i.product.slug,
-             'added_at': i.added_at.isoformat()}
-            for i in wishlist.items.select_related('product').all()
-        ],
-    })
+    return ToolResult(
+        output={
+            'wishlist_id': str(wishlist.id),
+            'name': wishlist.name,
+            'items': [
+                {
+                    'product': i.product.name,
+                    'slug': i.product.slug,
+                    'added_at': i.added_at.isoformat(),
+                }
+                for i in wishlist.items.select_related('product').all()
+            ],
+        }
+    )

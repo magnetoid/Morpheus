@@ -1,5 +1,6 @@
 """URLconfs for agent_core. Mounted twice: under `api/` for HTTP API and
 under `dashboard/agents/` for the merchant console."""
+
 from __future__ import annotations
 
 from django.urls import path

@@ -1,4 +1,5 @@
 """Tests for the plugin engine: base class validation + scaffolder."""
+
 from __future__ import annotations
 
 import shutil
@@ -13,16 +14,17 @@ from plugins.base import MorpheusPlugin, PluginConfigurationError
 
 
 class PluginMetadataValidationTests(SimpleTestCase):
-
     def test_valid_plugin_subclass(self):
         class Good(MorpheusPlugin):
             name = 'good_plug'
             label = 'Good Plug'
             version = '1.2.3'
+
         self.assertEqual(Good.name, 'good_plug')
 
     def test_invalid_name_camel_case(self):
         with self.assertRaises(PluginConfigurationError):
+
             class Bad(MorpheusPlugin):
                 name = 'BadName'
                 label = 'Bad'
@@ -30,6 +32,7 @@ class PluginMetadataValidationTests(SimpleTestCase):
 
     def test_missing_label(self):
         with self.assertRaises(PluginConfigurationError):
+
             class NoLabel(MorpheusPlugin):
                 name = 'no_label_plug'
                 label = ''
@@ -37,6 +40,7 @@ class PluginMetadataValidationTests(SimpleTestCase):
 
     def test_invalid_version(self):
         with self.assertRaises(PluginConfigurationError):
+
             class BadVer(MorpheusPlugin):
                 name = 'bad_ver_plug'
                 label = 'Bad Ver'
@@ -44,6 +48,7 @@ class PluginMetadataValidationTests(SimpleTestCase):
 
     def test_requires_must_be_list_of_strings(self):
         with self.assertRaises(PluginConfigurationError):
+
             class BadReq(MorpheusPlugin):
                 name = 'bad_req_plug'
                 label = 'Bad Requires'
@@ -55,6 +60,7 @@ class PluginMetadataValidationTests(SimpleTestCase):
             name = 'register_validator'
             label = 'Register Validator'
             version = '0.1.0'
+
         with self.assertRaises(TypeError):
             P().register_hook('order.placed', 'not callable')
 
@@ -63,12 +69,12 @@ class PluginMetadataValidationTests(SimpleTestCase):
             name = 'urls_validator'
             label = 'URLs Validator'
             version = '0.1.0'
+
         with self.assertRaises(RuntimeError):
             P().register_urls('something.urls')
 
 
 class MorphCreatePluginTests(SimpleTestCase):
-
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix='morph-scaffold-'))
 
@@ -120,7 +126,9 @@ class MorphCreatePluginTests(SimpleTestCase):
 
     def test_plugin_py_compiles(self):
         out = self._scaffold(
-            'compile_scaffold', with_models=True, with_graphql=True,
+            'compile_scaffold',
+            with_models=True,
+            with_graphql=True,
         )
         plugin_py = (out / 'plugin.py').read_text()
         compile(plugin_py, str(out / 'plugin.py'), 'exec')
@@ -180,7 +188,10 @@ class PluginContributionTests(SimpleTestCase):
             version = '0.1.0'
 
             def get_config_schema(self):
-                return {'type': 'object', 'properties': {'enabled': {'type': 'boolean', 'default': True}}}
+                return {
+                    'type': 'object',
+                    'properties': {'enabled': {'type': 'boolean', 'default': True}},
+                }
 
             def contribute_settings_panel(self):
                 return SettingsPanel(label='Settings', schema=self.get_config_schema())
@@ -215,5 +226,6 @@ class StorefrontBlocksTagTests(SimpleTestCase):
 
     def test_tag_renders_nothing_when_no_blocks(self):
         from django.template import Context, Template
+
         out = Template("{% load morph %}{% storefront_blocks 'no_such_slot' %}").render(Context({}))
         self.assertEqual(out.strip(), '')

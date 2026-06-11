@@ -5,6 +5,7 @@ there is just one canonical agent: the generic Worker. Specialization
 is handled at call time via Skills + caller scopes, not via class
 hierarchy.
 """
+
 from __future__ import annotations
 
 from core.agents.builtin.worker import Worker

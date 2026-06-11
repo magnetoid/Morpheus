@@ -1,37 +1,45 @@
 """Translation services — set/get/translated/bulk."""
+
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Optional
 
 logger = logging.getLogger('morpheus.i18n')
 
 
 def _ct(obj):
     from django.contrib.contenttypes.models import ContentType
+
     return ContentType.objects.get_for_model(type(obj))
 
 
-def set_translation(obj, field: str, language_code: str, value: str,
-                    *, machine_translated: bool = False) -> 'Translation':  # noqa: F821
+def set_translation(
+    obj, field: str, language_code: str, value: str, *, machine_translated: bool = False
+) -> Translation:  # noqa: F821
     from core.i18n.models import Translation
+
     ct = _ct(obj)
     tr, _ = Translation.objects.update_or_create(
-        content_type=ct, object_id=str(obj.pk),
-        field=field[:80], language_code=language_code[:10],
+        content_type=ct,
+        object_id=str(obj.pk),
+        field=field[:80],
+        language_code=language_code[:10],
         defaults={'value': value, 'is_machine_translated': machine_translated},
     )
     return tr
 
 
-def get_translation(obj, field: str, language_code: str) -> Optional[str]:
+def get_translation(obj, field: str, language_code: str) -> str | None:
     from core.i18n.models import Translation
+
     if not language_code:
         return None
     ct = _ct(obj)
     row = Translation.objects.filter(
-        content_type=ct, object_id=str(obj.pk),
-        field=field, language_code=language_code,
+        content_type=ct,
+        object_id=str(obj.pk),
+        field=field,
+        language_code=language_code,
     ).first()
     return row.value if row else None
 
@@ -48,6 +56,7 @@ def translated(obj, field: str, language_code: str = '') -> str:
 def translations_for(obj, *, language_code: str = '') -> dict[str, str]:
     """All translations for `obj` (optionally filtered by language)."""
     from core.i18n.models import Translation
+
     ct = _ct(obj)
     qs = Translation.objects.filter(content_type=ct, object_id=str(obj.pk))
     if language_code:
@@ -83,6 +92,7 @@ def list_enabled_languages() -> list[str]:
     """
     try:
         from core.models import StoreSettings
+
         raw = StoreSettings.get(_LANGUAGES_KEY, '') or ''
     except Exception:  # noqa: BLE001 — settings table missing in tests
         return []
@@ -103,7 +113,8 @@ def set_enabled_languages(codes: list[str]) -> list[str]:
             normalised.append(c2)
     try:
         from core.models import StoreSettings
+
         StoreSettings.set(_LANGUAGES_KEY, ','.join(normalised))
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     return normalised

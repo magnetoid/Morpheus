@@ -1,4 +1,5 @@
 """Inventory tools the agent layer can call."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -17,14 +18,14 @@ from core.agents import ToolError, ToolResult, tool
     },
 )
 def low_stock_report_tool(*, threshold: int = 5, limit: int = 25) -> ToolResult:
-    from django.db.models import Sum, F
+    from django.db.models import F, Sum
+
     from plugins.installed.inventory.models import StockLevel
 
     threshold = max(0, int(threshold or 5))
     limit = max(1, min(int(limit or 25), 100))
     rows = (
-        StockLevel.objects
-        .values(
+        StockLevel.objects.values(
             'variant__product__name',
             'variant__product__slug',
             'variant__sku',
@@ -42,8 +43,10 @@ def low_stock_report_tool(*, threshold: int = 5, limit: int = 25) -> ToolResult:
         }
         for r in rows
     ]
-    return ToolResult(output={'threshold': threshold, 'low_stock': out},
-                      display=f'{len(out)} item(s) at or below {threshold}')
+    return ToolResult(
+        output={'threshold': threshold, 'low_stock': out},
+        display=f'{len(out)} item(s) at or below {threshold}',
+    )
 
 
 @tool(
@@ -66,6 +69,7 @@ def adjust_stock_tool(
     *, variant_sku: str, warehouse_code: str, delta: int, reason: str = ''
 ) -> ToolResult:
     from django.db import transaction
+
     from plugins.installed.catalog.models import ProductVariant
     from plugins.installed.inventory.models import StockLevel, Warehouse
 
@@ -81,15 +85,20 @@ def adjust_stock_tool(
     delta = int(delta)
     with transaction.atomic():
         level, _ = StockLevel.objects.select_for_update().get_or_create(
-            variant=variant, warehouse=warehouse,
+            variant=variant,
+            warehouse=warehouse,
             defaults={'quantity': 0, 'reserved_quantity': 0},
         )
         new_qty = max(0, level.quantity + delta)
         level.quantity = new_qty
         level.save(update_fields=['quantity'])
     return ToolResult(
-        output={'variant_sku': variant_sku, 'warehouse': warehouse_code,
-                'new_quantity': new_qty, 'reason': reason},
+        output={
+            'variant_sku': variant_sku,
+            'warehouse': warehouse_code,
+            'new_quantity': new_qty,
+            'reason': reason,
+        },
         display=f'{variant_sku} @ {warehouse_code}: now {new_qty}',
     )
 
@@ -102,18 +111,25 @@ def adjust_stock_tool(
 )
 def list_back_in_stock_tool(*, limit: int = 50) -> ToolResult:
     from plugins.installed.inventory.models import BackInStockSubscription
+
     rows = list(
-        BackInStockSubscription.objects
-        .filter(notified_at__isnull=True)
-        .select_related('product')[: max(1, min(int(limit or 50), 200))]
+        BackInStockSubscription.objects.filter(notified_at__isnull=True).select_related('product')[
+            : max(1, min(int(limit or 50), 200))
+        ]
     )
-    return ToolResult(output={
-        'subscriptions': [
-            {'product': s.product.name, 'slug': s.product.slug, 'email': s.email,
-             'created_at': s.created_at.isoformat()}
-            for s in rows
-        ],
-    })
+    return ToolResult(
+        output={
+            'subscriptions': [
+                {
+                    'product': s.product.name,
+                    'slug': s.product.slug,
+                    'email': s.email,
+                    'created_at': s.created_at.isoformat(),
+                }
+                for s in rows
+            ],
+        }
+    )
 
 
 @tool(
@@ -134,11 +150,16 @@ def list_back_in_stock_tool(*, limit: int = 50) -> ToolResult:
     requires_approval=True,
 )
 def schedule_price_change_tool(
-    *, slug: str, new_price: float, effective_at_iso: str,
-    currency: str = 'USD', note: str = '',
+    *,
+    slug: str,
+    new_price: float,
+    effective_at_iso: str,
+    currency: str = 'USD',
+    note: str = '',
 ) -> ToolResult:
     from datetime import datetime
     from decimal import Decimal
+
     from djmoney.money import Money
 
     from plugins.installed.catalog.models import PriceSchedule, Product
@@ -158,7 +179,11 @@ def schedule_price_change_tool(
         note=note[:240],
     )
     return ToolResult(
-        output={'schedule_id': str(sched.id), 'product': product.name,
-                'new_price': str(new_price), 'effective_at': when.isoformat()},
+        output={
+            'schedule_id': str(sched.id),
+            'product': product.name,
+            'new_price': str(new_price),
+            'effective_at': when.isoformat(),
+        },
         display=f'Price change for {product.name} → {new_price} at {when}',
     )

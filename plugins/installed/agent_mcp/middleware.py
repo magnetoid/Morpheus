@@ -12,6 +12,7 @@ None — the request flows through unchanged. There is no enforcement
 here: gating an endpoint on a verified agent is the responsibility of
 the view, not the middleware.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,7 +21,7 @@ from dataclasses import dataclass
 @dataclass
 class TrustedAgent:
     agent_id: str
-    provider: str       # 'visa' / 'mastercard' / 'cloudflare'
+    provider: str  # 'visa' / 'mastercard' / 'cloudflare'
     signature: str = ''
 
 
@@ -34,10 +35,12 @@ class TrustedAgentMiddleware:
             request.trusted_agent = TrustedAgent(
                 agent_id=agent_id[:120],
                 provider=request.META.get(
-                    'HTTP_X_VERIFIED_AGENT_PROVIDER', 'cloudflare',
+                    'HTTP_X_VERIFIED_AGENT_PROVIDER',
+                    'cloudflare',
                 )[:32],
                 signature=request.META.get(
-                    'HTTP_X_VERIFIED_AGENT_SIGNATURE', '',
+                    'HTTP_X_VERIFIED_AGENT_SIGNATURE',
+                    '',
                 )[:300],
             )
         else:
@@ -58,5 +61,5 @@ def stamp_order_with_agent(order, request) -> None:
         meta['agent_provider'] = agent.provider
         order.metadata = meta
         order.save(update_fields=['metadata', 'updated_at'])
-    except Exception:  # noqa: BLE001 — never block checkout on bookkeeping
+    except Exception:  # noqa: BLE001, S110
         pass

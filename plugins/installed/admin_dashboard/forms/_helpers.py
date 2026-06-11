@@ -4,6 +4,7 @@ Money coercion, the Markdown → HTML rescuer for legacy descriptions,
 and the DashboardFormMixin that auto-attaches the ``.input`` class to
 text-like widgets so ``{{ field }}`` renders without inline styling.
 """
+
 from __future__ import annotations
 
 import re
@@ -15,6 +16,7 @@ from morpheus import forms
 def _money(amount: str | Decimal | None, currency: str = 'USD'):
     """Return a djmoney `Money` from a raw string, or None if blank."""
     from djmoney.money import Money
+
     if amount in (None, ''):
         return None
     try:
@@ -55,21 +57,21 @@ def _md_to_html(value: str) -> str:
         text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', text)
         return text
 
-    norm = re.sub(r"\n(#{2,3} )", r"\n\n\1", str(value))
-    norm = re.sub(r"(#{2,3} [^\n]+)\n(?!#|\n)", r"\1\n\n", norm)
+    norm = re.sub(r'\n(#{2,3} )', r'\n\n\1', str(value))
+    norm = re.sub(r'(#{2,3} [^\n]+)\n(?!#|\n)', r'\1\n\n', norm)
     out = []
-    for block in re.split(r"\n\s*\n", norm.strip()):
+    for block in re.split(r'\n\s*\n', norm.strip()):
         b = block.strip()
         if not b:
             continue
-        if b.startswith("### "):
-            out.append(f"<h3>{_inline(_esc(b[4:].strip()))}</h3>")
-        elif b.startswith("## "):
-            out.append(f"<h2>{_inline(_esc(b[3:].strip()))}</h2>")
+        if b.startswith('### '):
+            out.append(f'<h3>{_inline(_esc(b[4:].strip()))}</h3>')
+        elif b.startswith('## '):
+            out.append(f'<h2>{_inline(_esc(b[3:].strip()))}</h2>')
         else:
-            esc = _esc(b).replace("\n", "<br>")
-            out.append(f"<p>{_inline(esc)}</p>")
-    return "\n".join(out)
+            esc = _esc(b).replace('\n', '<br>')
+            out.append(f'<p>{_inline(esc)}</p>')
+    return '\n'.join(out)
 
 
 def _ensure_html(value: str | None) -> str:
@@ -104,8 +106,9 @@ class DashboardFormMixin:
         for bound in self.visible_fields():
             widget = bound.field.widget
             existing = widget.attrs.get('class', '').split()
-            if isinstance(widget, (forms.CheckboxInput, forms.RadioSelect,
-                                   forms.CheckboxSelectMultiple)):
+            if isinstance(
+                widget, (forms.CheckboxInput, forms.RadioSelect, forms.CheckboxSelectMultiple)
+            ):
                 continue
             if self._DASHBOARD_INPUT_CLASS not in existing:
                 existing.append(self._DASHBOARD_INPUT_CLASS)

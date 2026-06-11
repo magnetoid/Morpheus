@@ -29,7 +29,9 @@ class BookProductBackfillCommandTests(TestCase):
         Metafield.objects.set(self.product, namespace='book', key='author', value='Thomas More')
         Metafield.objects.set(self.product, namespace='book', key='publisher', value='DotBooks')
         Metafield.objects.set(self.product, namespace='book', key='format', value='Hardcover')
-        Metafield.objects.set(self.product, namespace='book', key='paper_type', value='Standard white')
+        Metafield.objects.set(
+            self.product, namespace='book', key='paper_type', value='Standard white'
+        )
         Metafield.objects.set(self.product, namespace='book', key='binding', value='Perfect Bound')
         Metafield.objects.set(self.product, namespace='book', key='pages', value='345')
         Metafield.objects.set(self.product, namespace='book', key='language', value='English')
@@ -60,7 +62,9 @@ class BookProductBackfillCommandTests(TestCase):
         self.assertIn('[DRY-RUN]', out.getvalue())
 
     def test_existing_values_are_not_overwritten_without_flag(self):
-        book = BookProduct.objects.create(product=self.product, author='Existing Author', language='en')
+        book = BookProduct.objects.create(
+            product=self.product, author='Existing Author', language='en'
+        )
         Metafield.objects.set(self.product, namespace='book', key='author', value='Thomas More')
         Metafield.objects.set(self.product, namespace='book', key='language', value='French')
         Metafield.objects.set(self.product, namespace='book', key='publisher', value='DotBooks')

@@ -1,7 +1,7 @@
 """Markets dashboard — list, create, edit, delete."""
+
 from __future__ import annotations
 
-import json
 import logging
 
 from django.contrib import messages
@@ -17,10 +17,14 @@ logger = logging.getLogger('morpheus.markets.views')
 @staff_member_required
 def index(request: HttpRequest) -> HttpResponse:
     markets = list(Market.objects.all())
-    return render(request, 'markets/list.html', {
-        'markets': markets,
-        'active_nav': 'markets',
-    })
+    return render(
+        request,
+        'markets/list.html',
+        {
+            'markets': markets,
+            'active_nav': 'markets',
+        },
+    )
 
 
 @staff_member_required
@@ -33,10 +37,13 @@ def market_form(request: HttpRequest, market_id=None) -> HttpResponse:
         currency = (request.POST.get('currency') or '').strip().upper()[:3]
         default_locale = (request.POST.get('default_locale') or 'en').strip()[:10]
         countries_raw = (request.POST.get('country_codes') or '').strip()
-        country_codes = [c.strip().upper()[:2] for c in countries_raw.replace('\n', ',').split(',') if c.strip()]
+        country_codes = [
+            c.strip().upper()[:2] for c in countries_raw.replace('\n', ',').split(',') if c.strip()
+        ]
         adj_raw = (request.POST.get('base_price_adjustment_pct') or '0').strip()
         try:
             from decimal import Decimal
+
             adj = Decimal(adj_raw)
         except Exception:  # noqa: BLE001
             adj = 0
@@ -47,11 +54,14 @@ def market_form(request: HttpRequest, market_id=None) -> HttpResponse:
             messages.error(request, 'Code, label, and currency are required.')
         else:
             data = {
-                'code': code, 'label': label, 'currency': currency,
+                'code': code,
+                'label': label,
+                'currency': currency,
                 'default_locale': default_locale,
                 'country_codes': country_codes,
                 'base_price_adjustment_pct': adj,
-                'is_active': is_active, 'is_default': is_default,
+                'is_active': is_active,
+                'is_default': is_default,
             }
             try:
                 if market is None:
@@ -69,11 +79,15 @@ def market_form(request: HttpRequest, market_id=None) -> HttpResponse:
                 logger.warning('market save failed: %s', e, exc_info=True)
                 messages.error(request, f'Save failed: {e}')
 
-    return render(request, 'markets/edit.html', {
-        'market': market,
-        'country_codes_str': ', '.join(market.country_codes) if market else '',
-        'active_nav': 'markets',
-    })
+    return render(
+        request,
+        'markets/edit.html',
+        {
+            'market': market,
+            'country_codes_str': ', '.join(market.country_codes) if market else '',
+            'active_nav': 'markets',
+        },
+    )
 
 
 @staff_member_required

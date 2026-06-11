@@ -1,7 +1,6 @@
 """GraphQL queries for the Functions plugin."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import strawberry
 
@@ -23,13 +22,14 @@ class FunctionType:
 
 @strawberry.type
 class FunctionsQueryExtension:
-
-    @strawberry.field(description='List functions visible to the caller (admin or read:functions scope).')
+    @strawberry.field(
+        description='List functions visible to the caller (admin or read:functions scope).'
+    )
     def functions(
         self,
         info: strawberry.Info,
-        target: Optional[str] = None,
-    ) -> List[FunctionType]:
+        target: str | None = None,
+    ) -> list[FunctionType]:
         from plugins.installed.functions.models import Function
 
         require_authenticated(info)

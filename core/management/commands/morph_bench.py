@@ -18,13 +18,12 @@ Usage:
 Output: human-readable table by default; ``--json`` emits one JSON line
 per URL with all percentiles so CI can diff between runs.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import statistics
 import time
-from typing import Iterable
 from urllib import error, request
 
 from django.core.management.base import BaseCommand
@@ -33,24 +32,24 @@ logger = logging.getLogger('morpheus.bench')
 
 
 _PUBLIC_PATHS = [
-    ('home',                  '/'),
-    ('plp',                   '/products/'),
-    ('pdp',                   '/products/hamlet/'),
-    ('category',              '/category/fiction/'),
-    ('staff_picks',           '/staff-picks/'),
-    ('journal_index',         '/journal/'),
-    ('about',                 '/about/'),
-    ('llms_txt',              '/llms.txt'),
-    ('sitemap',               '/sitemap.xml'),
-    ('robots',                '/robots.txt'),
+    ('home', '/'),
+    ('plp', '/products/'),
+    ('pdp', '/products/hamlet/'),
+    ('category', '/category/fiction/'),
+    ('staff_picks', '/staff-picks/'),
+    ('journal_index', '/journal/'),
+    ('about', '/about/'),
+    ('llms_txt', '/llms.txt'),
+    ('sitemap', '/sitemap.xml'),
+    ('robots', '/robots.txt'),
 ]
 
 _AUTH_PATHS = [
     # Hits the assistant page directly — will 302 to login when not
     # authenticated, but still measures the auth-redirect latency.
-    ('dashboard_home',        '/dashboard/'),
-    ('dashboard_assistant',   '/dashboard/assistant/'),
-    ('dashboard_products',    '/dashboard/products/'),
+    ('dashboard_home', '/dashboard/'),
+    ('dashboard_assistant', '/dashboard/assistant/'),
+    ('dashboard_products', '/dashboard/products/'),
 ]
 
 
@@ -71,16 +70,19 @@ def _hit(url: str, *, timeout: float = 10.0) -> tuple[int, float]:
     "bot-like" (including ``morph-bench/1.0``). The bench is meant to
     measure what real users experience, not the WAF's mood.
     """
-    req = request.Request(url, headers={
-        'User-Agent': (
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 '
-            'morph-bench'
-        ),
-    })
+    req = request.Request(  # noqa: S310
+        url,
+        headers={  # noqa: S310
+            'User-Agent': (
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 '
+                'morph-bench'
+            ),
+        },
+    )
     started = time.perf_counter()
     try:
-        with request.urlopen(req, timeout=timeout) as resp:
+        with request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310
             resp.read(1024)  # touch first chunk to measure TTFB-ish
             elapsed = time.perf_counter() - started
             return resp.status, elapsed
@@ -95,40 +97,54 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--base-url', default='http://localhost:8000',
+            '--base-url',
+            default='http://localhost:8000',
             help='Base URL to bench against. Default localhost:8000.',
         )
         parser.add_argument(
-            '--iterations', type=int, default=20,
+            '--iterations',
+            type=int,
+            default=20,
             help='Requests per URL. More = tighter percentiles. Default 20.',
         )
         parser.add_argument(
-            '--target', choices=('public', 'dashboard', 'all'), default='public',
+            '--target',
+            choices=('public', 'dashboard', 'all'),
+            default='public',
             help='Which path set to hit. Default `public` (no auth needed).',
         )
         parser.add_argument(
-            '--warmup', type=int, default=2,
+            '--warmup',
+            type=int,
+            default=2,
             help='Discarded warmup hits per URL before measuring. Default 2.',
         )
         parser.add_argument(
-            '--json', dest='emit_json', action='store_true',
+            '--json',
+            dest='emit_json',
+            action='store_true',
             help='Emit JSON per URL (machine-readable) instead of the table.',
         )
         parser.add_argument(
-            '--save', metavar='PATH',
-            help='Write this run\'s numbers to PATH as a baseline for future --baseline comparisons.',
+            '--save',
+            metavar='PATH',
+            help="Write this run's numbers to PATH as a baseline for future --baseline comparisons.",
         )
         parser.add_argument(
-            '--baseline', metavar='PATH',
+            '--baseline',
+            metavar='PATH',
             help='Path to a saved baseline (from --save). Prints deltas + exits non-zero on regression.',
         )
         parser.add_argument(
-            '--regression-pct', type=float, default=15.0,
+            '--regression-pct',
+            type=float,
+            default=15.0,
             help='p95 regression threshold (%%) that triggers non-zero exit. Default 15.',
         )
 
-    def handle(self, *args, **opts):
+    def handle(self, *args, **opts):  # noqa: PLR0912, PLR0915
         import os
+
         base = opts['base_url'].rstrip('/')
         n = max(1, int(opts['iterations']))
         warmup = max(0, int(opts['warmup']))
@@ -142,7 +158,7 @@ class Command(BaseCommand):
         if baseline_path and os.path.exists(baseline_path):
             with open(baseline_path) as fh:
                 for line in fh:
-                    line = line.strip()
+                    line = line.strip()  # noqa: PLW2901
                     if not line:
                         continue
                     try:
@@ -158,17 +174,25 @@ class Command(BaseCommand):
             paths.extend(_AUTH_PATHS)
 
         results = []
-        regressions: list[tuple[str, float, float, float]] = []  # (name, base_p95, now_p95, delta_pct)
+        regressions: list[
+            tuple[str, float, float, float]
+        ] = []  # (name, base_p95, now_p95, delta_pct)
         if not as_json:
-            self.stdout.write(self.style.SUCCESS(
-                f'Benchmarking {base} — {n} iterations per URL (warmup={warmup}, target={target})'
-                + (f' [baseline: {baseline_path}]' if baseline else '')
-            ))
-            header = f'  {"name":<20} {"path":<32} {"p50":>8} {"p95":>8} {"p99":>8} {"max":>8}  status'
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Benchmarking {base} — {n} iterations per URL (warmup={warmup}, target={target})'
+                    + (f' [baseline: {baseline_path}]' if baseline else '')
+                )
+            )
+            header = (
+                f'  {"name":<20} {"path":<32} {"p50":>8} {"p95":>8} {"p99":>8} {"max":>8}  status'
+            )
             if baseline:
                 header += '   vs-base'
             self.stdout.write(header)
-            self.stdout.write(f'  {"-" * 20} {"-" * 32} {"-" * 8} {"-" * 8} {"-" * 8} {"-" * 8}  ------')
+            self.stdout.write(
+                f'  {"-" * 20} {"-" * 32} {"-" * 8} {"-" * 8} {"-" * 8} {"-" * 8}  ------'
+            )
 
         for name, path in paths:
             url = base + path
@@ -183,11 +207,12 @@ class Command(BaseCommand):
                 statuses.append(status)
 
             from collections import Counter
-            status_summary = ','.join(
-                f'{s}×{c}' for s, c in Counter(statuses).most_common()
-            )
+
+            status_summary = ','.join(f'{s}×{c}' for s, c in Counter(statuses).most_common())
             row = {
-                'name': name, 'path': path, 'url': url,
+                'name': name,
+                'path': path,
+                'url': url,
                 'iterations': n,
                 'p50_ms': _percentile(times, 50),
                 'p95_ms': _percentile(times, 95),
@@ -207,15 +232,14 @@ class Command(BaseCommand):
                     delta_str = f'  {sign}{delta_pct:>5.1f}%'
                     if delta_pct > regression_pct:
                         regressions.append((name, base_p95, row['p95_ms'], delta_pct))
-                        delta_str += ' ⚠'   # warning sign
+                        delta_str += ' ⚠'  # warning sign
                 else:
                     delta_str = '   (new)'
             if not as_json:
                 self.stdout.write(
                     f'  {name:<20} {path:<32} '
                     f'{row["p50_ms"]:>7.0f}ms {row["p95_ms"]:>7.0f}ms '
-                    f'{row["p99_ms"]:>7.0f}ms {row["max_ms"]:>7.0f}ms  {status_summary}'
-                    + delta_str
+                    f'{row["p99_ms"]:>7.0f}ms {row["max_ms"]:>7.0f}ms  {status_summary}' + delta_str
                 )
 
         if as_json:
@@ -224,18 +248,22 @@ class Command(BaseCommand):
         else:
             self.stdout.write('')
             overall_p95 = _percentile([r['p95_ms'] for r in results], 50)
-            self.stdout.write(self.style.SUCCESS(
-                f'Median p95 across {len(results)} URLs: {overall_p95:.0f}ms'
-            ))
+            self.stdout.write(
+                self.style.SUCCESS(f'Median p95 across {len(results)} URLs: {overall_p95:.0f}ms')
+            )
             if regressions:
                 self.stdout.write('')
-                self.stdout.write(self.style.ERROR(
-                    f'{len(regressions)} regression(s) past +{regression_pct:.0f}% threshold:'
-                ))
+                self.stdout.write(
+                    self.style.ERROR(
+                        f'{len(regressions)} regression(s) past +{regression_pct:.0f}% threshold:'
+                    )
+                )
                 for name, base_p95, now_p95, delta_pct in regressions:
-                    self.stdout.write(self.style.ERROR(
-                        f'  {name:<20} p95 {base_p95:.0f}ms → {now_p95:.0f}ms ({delta_pct:+.1f}%)'
-                    ))
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f'  {name:<20} p95 {base_p95:.0f}ms → {now_p95:.0f}ms ({delta_pct:+.1f}%)'
+                        )
+                    )
 
         if save_path:
             with open(save_path, 'w') as fh:
@@ -247,4 +275,5 @@ class Command(BaseCommand):
         # Non-zero exit on regression so CI can gate on the bench.
         if regressions:
             import sys
+
             sys.exit(2)

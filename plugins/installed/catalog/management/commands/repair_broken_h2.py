@@ -12,6 +12,7 @@ Usage:
     python manage.py repair_broken_h2 --slugs pinocchio,dorian-gray
     python manage.py repair_broken_h2 --dry-run
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +37,7 @@ def _repair(html: str) -> str:
         title = m.group(2).strip()
         body = m.group(3).strip()
         return f'<{tag}>{title}</{tag}>\n<p>{body}</p>'
+
     return _BROKEN_HEADING.sub(_sub, html or '')
 
 
@@ -70,6 +72,4 @@ class Command(BaseCommand):
             product.save(update_fields=['description'])
             fixed += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'done — fixed={fixed} unchanged={unchanged}'
-        ))
+        self.stdout.write(self.style.SUCCESS(f'done — fixed={fixed} unchanged={unchanged}'))

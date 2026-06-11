@@ -3,6 +3,7 @@
 No-op when `SENTRY_DSN` isn't set, so dev environments stay quiet. When
 configured, scrubs auth/secret headers from every event before sending.
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,12 +14,23 @@ logger = logging.getLogger('morpheus.sentry')
 
 # Header keys we should never ship to Sentry, even via `request.headers`.
 _SCRUB_HEADERS = {
-    'authorization', 'cookie', 'x-agent-token', 'x-shopify-access-token',
-    'x-shopify-shop-domain', 'x-csrftoken', 'stripe-signature',
+    'authorization',
+    'cookie',
+    'x-agent-token',
+    'x-shopify-access-token',
+    'x-shopify-shop-domain',
+    'x-csrftoken',
+    'stripe-signature',
 }
 # Body-key fragments we also want to scrub from breadcrumbs / error contexts.
 _SCRUB_BODY_FRAGMENTS = (
-    'password', 'secret', 'token', 'api_key', 'apikey', 'credit', 'card',
+    'password',
+    'secret',
+    'token',
+    'api_key',
+    'apikey',
+    'credit',
+    'card',
 )
 
 

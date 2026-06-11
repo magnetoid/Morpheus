@@ -20,13 +20,13 @@ Usage:
 Designed to be called from the Docker entrypoint after ``migrate`` so
 the first real user request lands on a hot cache.
 """
+
 from __future__ import annotations
 
 import logging
 import time
 import urllib.error
 import urllib.request
-from typing import Iterable
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -38,6 +38,7 @@ logger = logging.getLogger('morpheus.storefront.warmup')
 def _config() -> dict:
     try:
         from plugins.registry import plugin_registry
+
         p = plugin_registry.get('storefront')
         if p is None:
             return {}
@@ -60,6 +61,7 @@ def _urls_to_warm(top_n: int) -> list[str]:
 
     try:
         from plugins.installed.catalog.models import Category, Product
+
         # Featured + most-recent active categories.
         cats = list(
             Category.objects.filter(is_active=True)
@@ -92,14 +94,17 @@ def _urls_to_warm(top_n: int) -> list[str]:
 
 
 def _fetch(url: str, timeout: float, user_agent: str) -> tuple[int, float]:
-    req = urllib.request.Request(url, headers={
-        'User-Agent': user_agent,
-        'Accept': 'text/html,*/*;q=0.8',
-        'Accept-Encoding': 'gzip',
-    })
+    req = urllib.request.Request(  # noqa: S310
+        url,
+        headers={  # noqa: S310
+            'User-Agent': user_agent,
+            'Accept': 'text/html,*/*;q=0.8',
+            'Accept-Encoding': 'gzip',
+        },
+    )
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310
             resp.read(1024)  # touch the body so the origin actually renders
             return resp.status, time.monotonic() - started
     except urllib.error.HTTPError as e:
@@ -113,17 +118,29 @@ class Command(BaseCommand):
     help = 'Fetch the top-N storefront URLs to prime origin + CF edge caches.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--base', default='', help='Base URL (default: SITE_URL setting or http://localhost:8000)')
-        parser.add_argument('--top-n', type=int, default=0, help='Override warmup_top_n config value')
-        parser.add_argument('--force', action='store_true', help='Run even if post_deploy_warmup config is off')
+        parser.add_argument(
+            '--base',
+            default='',
+            help='Base URL (default: SITE_URL setting or http://localhost:8000)',
+        )
+        parser.add_argument(
+            '--top-n', type=int, default=0, help='Override warmup_top_n config value'
+        )
+        parser.add_argument(
+            '--force', action='store_true', help='Run even if post_deploy_warmup config is off'
+        )
         parser.add_argument('--dry-run', action='store_true', help='List URLs without fetching')
-        parser.add_argument('--timeout', type=float, default=10.0, help='Per-request timeout in seconds')
+        parser.add_argument(
+            '--timeout', type=float, default=10.0, help='Per-request timeout in seconds'
+        )
 
     def handle(self, *args, base, top_n, force, dry_run, timeout, **kwargs):
         cfg = _config()
         enabled = bool(cfg.get('post_deploy_warmup', False))
         if not enabled and not force:
-            self.stdout.write('warmup_cache: post_deploy_warmup is off — skipping (use --force to override).')
+            self.stdout.write(
+                'warmup_cache: post_deploy_warmup is off — skipping (use --force to override).'
+            )
             return
 
         configured_top_n = int(cfg.get('warmup_top_n') or 20)
@@ -149,9 +166,13 @@ class Command(BaseCommand):
             total_ms += elapsed * 1000.0
             if 200 <= status < 400:
                 ok += 1
-                self.stdout.write(self.style.SUCCESS(f'  ✓ {status} {path}  ({elapsed*1000:.0f}ms)'))
+                self.stdout.write(
+                    self.style.SUCCESS(f'  ✓ {status} {path}  ({elapsed * 1000:.0f}ms)')
+                )
             else:
-                self.stdout.write(self.style.WARNING(f'  ✗ {status} {path}  ({elapsed*1000:.0f}ms)'))
+                self.stdout.write(
+                    self.style.WARNING(f'  ✗ {status} {path}  ({elapsed * 1000:.0f}ms)')
+                )
 
         self.stdout.write(
             f'warmup_cache: {ok}/{len(paths)} ok in {total_ms:.0f}ms total '

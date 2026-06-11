@@ -1,4 +1,5 @@
 """digital_products plugin — models."""
+
 from __future__ import annotations
 
 import secrets
@@ -23,17 +24,26 @@ class DownloadToken(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     token = models.CharField(
-        max_length=64, unique=True, db_index=True, default=_new_token,
+        max_length=64,
+        unique=True,
+        db_index=True,
+        default=_new_token,
         help_text='Random URL-safe token used in the public download URL.',
     )
     order = models.ForeignKey(
-        'orders.Order', on_delete=models.CASCADE, related_name='download_tokens',
+        'orders.Order',
+        on_delete=models.CASCADE,
+        related_name='download_tokens',
     )
     order_item = models.ForeignKey(
-        'orders.OrderItem', on_delete=models.CASCADE, related_name='download_tokens',
+        'orders.OrderItem',
+        on_delete=models.CASCADE,
+        related_name='download_tokens',
     )
     product = models.ForeignKey(
-        'catalog.Product', on_delete=models.CASCADE, related_name='+',
+        'catalog.Product',
+        on_delete=models.CASCADE,
+        related_name='+',
     )
     expires_at = models.DateTimeField(db_index=True)
     max_downloads = models.PositiveIntegerField(default=5)
@@ -55,6 +65,7 @@ class DownloadToken(models.Model):
     @property
     def is_active(self) -> bool:
         from django.utils import timezone
+
         if self.revoked_at:
             return False
         if self.downloads_used >= self.max_downloads:

@@ -1,4 +1,5 @@
 """Market + ProductMarketPrice — per-region pricing primitives."""
+
 from __future__ import annotations
 
 import uuid
@@ -18,26 +19,33 @@ class Market(models.Model):
       3. Else the market flagged `is_default=True`.
       4. Else None — caller falls back to channel default.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     code = models.SlugField(
-        max_length=40, unique=True,
+        max_length=40,
+        unique=True,
         help_text='Stable identifier — used in URLs and per-product price overrides.',
     )
     label = models.CharField(max_length=120)
     country_codes = models.JSONField(
-        default=list, blank=True,
+        default=list,
+        blank=True,
         help_text='List of ISO 3166-1 alpha-2 country codes (e.g. ["US", "CA"]).',
     )
     currency = models.CharField(
-        max_length=3, default='USD',
+        max_length=3,
+        default='USD',
         help_text='ISO 4217 currency code prices in this market are quoted in.',
     )
     default_locale = models.CharField(
-        max_length=10, default='en',
+        max_length=10,
+        default='en',
         help_text='Locale code for storefront translations (e.g. "en", "en-GB", "fr").',
     )
     base_price_adjustment_pct = models.DecimalField(
-        max_digits=6, decimal_places=2, default=0,
+        max_digits=6,
+        decimal_places=2,
+        default=0,
         help_text=(
             'Whole-catalog price multiplier vs the channel base, in %. '
             'e.g. 10 = +10% in this market. Per-product overrides in '
@@ -73,12 +81,16 @@ class ProductMarketPrice(models.Model):
     `base_price_adjustment_pct`, then to the channel listing, then
     to `Product.price`.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     market = models.ForeignKey(
-        Market, on_delete=models.CASCADE, related_name='product_prices',
+        Market,
+        on_delete=models.CASCADE,
+        related_name='product_prices',
     )
     product = models.ForeignKey(
-        'catalog.Product', on_delete=models.CASCADE,
+        'catalog.Product',
+        on_delete=models.CASCADE,
         related_name='market_prices',
     )
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')

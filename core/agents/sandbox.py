@@ -159,7 +159,7 @@ def run_sandboxed(
 
     def _wrap() -> None:
         try:
-            exec(code, namespace, namespace)  # noqa: S102 — curated builtins + AST-validated
+            exec(code, namespace, namespace)  # noqa: S102 — curated builtins + AST-validated  # nosec B102
             box['result'] = namespace.get('result')
         except BaseException as e:  # noqa: BLE001 — capture in-script failure
             box['err'] = e

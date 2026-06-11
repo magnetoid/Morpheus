@@ -65,12 +65,14 @@ Each step + compensation auto-logs to ``core.audit`` with the workflow name,
 step name, outcome ('ok' | 'failed' | 'compensated'), and a JSON-safe ctx
 snapshot for replay / debugging.
 """
+
 from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, ClassVar
+from typing import Any, ClassVar
 
 logger = logging.getLogger('morpheus.workflows')
 
@@ -82,7 +84,7 @@ class WorkflowError(Exception):
 @dataclass
 class StepResult:
     name: str
-    state: str                              # 'ok' | 'failed' | 'skipped'
+    state: str  # 'ok' | 'failed' | 'skipped'
     duration_ms: int
     error: str = ''
     output: Any = None
@@ -91,7 +93,7 @@ class StepResult:
 @dataclass
 class CompensationResult:
     step_name: str
-    state: str                              # 'ok' | 'failed' | 'skipped'
+    state: str  # 'ok' | 'failed' | 'skipped'
     error: str = ''
 
 
@@ -100,7 +102,7 @@ class WorkflowResult:
     workflow: str
     started_at: float
     completed_at: float
-    state: str                              # 'completed' | 'failed' | 'compensated'
+    state: str  # 'completed' | 'failed' | 'compensated'
     steps: list[StepResult] = field(default_factory=list)
     compensations: list[CompensationResult] = field(default_factory=list)
     error: str = ''
@@ -139,8 +141,10 @@ def step(*, name: str | None = None) -> Callable:
     audit logs + the result object. The decorated callable gains a
     ``.compensate`` method that registers the reverse operation.
     """
+
     def deco(fn: Callable) -> _Step:
         return _Step(fn, name=name or fn.__name__)
+
     return deco
 
 
@@ -159,10 +163,12 @@ class Workflow:
     @classmethod
     def register(cls, name: str):
         """Class decorator — register a workflow class in the global registry."""
+
         def deco(workflow_cls: type[Workflow]) -> type[Workflow]:
             workflow_cls.name = name
             cls._registry[name] = workflow_cls
             return workflow_cls
+
         return deco
 
     @classmethod
@@ -178,7 +184,7 @@ class Workflow:
         seen: set[str] = set()
         steps: list[_Step] = []
         for klass in type(self).__mro__:
-            for attr_name, attr in vars(klass).items():
+            for attr in vars(klass).values():
                 if isinstance(attr, _Step) and attr.name not in seen:
                     seen.add(attr.name)
                     steps.append(attr)
@@ -192,7 +198,6 @@ class Workflow:
         ``core.audit`` (when available).
         """
         ctx = dict(ctx or {})
-        started = time.monotonic()
         started_wall = time.time()
         result = WorkflowResult(
             workflow=self.name or type(self).__name__,
@@ -206,53 +211,76 @@ class Workflow:
             step_start = time.monotonic()
             try:
                 output = step_def(self, ctx)
-                result.steps.append(StepResult(
-                    name=step_def.name, state='ok',
-                    duration_ms=int((time.monotonic() - step_start) * 1000),
-                    output=output,
-                ))
+                result.steps.append(
+                    StepResult(
+                        name=step_def.name,
+                        state='ok',
+                        duration_ms=int((time.monotonic() - step_start) * 1000),
+                        output=output,
+                    )
+                )
                 completed.append(step_def)
                 self._audit('step.ok', step_def.name, ctx, error='')
             except Exception as exc:  # noqa: BLE001 — workflows isolate at the step boundary
-                result.steps.append(StepResult(
-                    name=step_def.name, state='failed',
-                    duration_ms=int((time.monotonic() - step_start) * 1000),
-                    error=str(exc)[:500],
-                ))
+                result.steps.append(
+                    StepResult(
+                        name=step_def.name,
+                        state='failed',
+                        duration_ms=int((time.monotonic() - step_start) * 1000),
+                        error=str(exc)[:500],
+                    )
+                )
                 result.state = 'failed'
                 result.error = f'step "{step_def.name}" failed: {exc}'
                 self._audit('step.failed', step_def.name, ctx, error=str(exc))
                 logger.warning(
                     'workflow[%s]: step "%s" failed: %s',
-                    result.workflow, step_def.name, exc, exc_info=True,
+                    result.workflow,
+                    step_def.name,
+                    exc,
+                    exc_info=True,
                 )
                 # Compensate every completed step in reverse.
                 for done in reversed(completed):
                     if done.compensate_fn is None:
-                        result.compensations.append(CompensationResult(
-                            step_name=done.name, state='skipped',
-                            error='no compensation defined',
-                        ))
+                        result.compensations.append(
+                            CompensationResult(
+                                step_name=done.name,
+                                state='skipped',
+                                error='no compensation defined',
+                            )
+                        )
                         continue
                     try:
                         done.compensate_fn(self, ctx)
-                        result.compensations.append(CompensationResult(
-                            step_name=done.name, state='ok',
-                        ))
+                        result.compensations.append(
+                            CompensationResult(
+                                step_name=done.name,
+                                state='ok',
+                            )
+                        )
                         self._audit('compensate.ok', done.name, ctx, error='')
                     except Exception as cexc:  # noqa: BLE001
-                        result.compensations.append(CompensationResult(
-                            step_name=done.name, state='failed',
-                            error=str(cexc)[:500],
-                        ))
+                        result.compensations.append(
+                            CompensationResult(
+                                step_name=done.name,
+                                state='failed',
+                                error=str(cexc)[:500],
+                            )
+                        )
                         self._audit('compensate.failed', done.name, ctx, error=str(cexc))
                         logger.error(
                             'workflow[%s]: COMPENSATION for "%s" failed: %s',
-                            result.workflow, done.name, cexc, exc_info=True,
+                            result.workflow,
+                            done.name,
+                            cexc,
+                            exc_info=True,
                         )
-                result.state = 'compensated' if any(
-                    c.state == 'ok' for c in result.compensations
-                ) else 'failed'
+                result.state = (
+                    'compensated'
+                    if any(c.state == 'ok' for c in result.compensations)
+                    else 'failed'
+                )
                 break
 
         result.completed_at = time.time()
@@ -263,6 +291,7 @@ class Workflow:
         workflows must not be blocked by observability outages."""
         try:
             from core.audit.services import record
+
             # Don't dump the full ctx — it may contain PII or huge payloads.
             # Just the keys + a string preview of each value.
             ctx_preview = {k: type(v).__name__ for k, v in ctx.items()}
@@ -275,5 +304,5 @@ class Workflow:
                     'error': error[:500] if error else '',
                 },
             )
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass

@@ -8,6 +8,7 @@ exception classes or paths in prod.
 
 Wired via `REST_FRAMEWORK['EXCEPTION_HANDLER']` in settings.py.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,21 +36,28 @@ def morpheus_exception_handler(exc, context):
                 'request_id': current_request_id(),
             },
             status=response.status_code,
-            headers={k: v for k, v in (response.headers or {}).items() if k.lower() != 'content-type'},
+            headers={
+                k: v for k, v in (response.headers or {}).items() if k.lower() != 'content-type'
+            },
         )
 
     # Unknown / unhandled — log loudly, return a 500 with no internals.
-    logger.error('unhandled DRF exception: %s', exc, exc_info=True, extra={
-        'request_id': current_request_id(),
-    })
-    try:
+    logger.error(
+        'unhandled DRF exception: %s',
+        exc,
+        exc_info=True,
+        extra={
+            'request_id': current_request_id(),
+        },
+    )
+    try:  # noqa: SIM105
         record_error(
             source='api.rest',
             message=str(exc)[:5000],
             stack_trace=_safe_stack(exc),
             metadata={'request_id': current_request_id()},
         )
-    except Exception:  # noqa: BLE001 — never fail a request because logging failed
+    except Exception:  # noqa: BLE001, S110
         pass
     return Response(
         data={
@@ -74,6 +82,7 @@ def _safe_message(data) -> str:
 
 def _safe_stack(exc) -> str:
     import traceback
+
     try:
         return ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))[:20000]
     except Exception:  # noqa: BLE001

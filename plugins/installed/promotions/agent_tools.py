@@ -1,4 +1,5 @@
 """Agent tools for the promotions engine."""
+
 from __future__ import annotations
 
 from core.agents import ToolError, ToolResult, tool
@@ -12,13 +13,19 @@ from core.agents import ToolError, ToolResult, tool
 )
 def list_promotions_tool(*, active_only: bool = True) -> ToolResult:
     from plugins.installed.promotions.models import Promotion
+
     qs = Promotion.objects.all()
     if active_only:
         qs = qs.filter(is_active=True)
     rows = [
         {
-            'id': str(p.id), 'name': p.name, 'slug': p.slug, 'type': p.type,
-            'priority': p.priority, 'times_used': p.times_used, 'channels': p.channels,
+            'id': str(p.id),
+            'name': p.name,
+            'slug': p.slug,
+            'type': p.type,
+            'priority': p.priority,
+            'times_used': p.times_used,
+            'channels': p.channels,
         }
         for p in qs.order_by('priority')[:200]
     ]
@@ -44,15 +51,24 @@ def list_promotions_tool(*, active_only: bool = True) -> ToolResult:
     requires_approval=True,
 )
 def create_percent_off_tool(
-    *, name: str, slug: str, percent_off: float,
-    min_subtotal: float = 0, channels: list[str] | None = None, priority: int = 100,
+    *,
+    name: str,
+    slug: str,
+    percent_off: float,
+    min_subtotal: float = 0,
+    channels: list[str] | None = None,
+    priority: int = 100,
 ) -> ToolResult:
     from plugins.installed.promotions.models import Promotion, PromotionRule
+
     if Promotion.objects.filter(slug=slug).exists():
         raise ToolError(f'Promotion slug already exists: {slug}')
     promo = Promotion.objects.create(
-        name=name, slug=slug, type=Promotion.TYPE_ORDER,
-        priority=priority, channels=list(channels or []),
+        name=name,
+        slug=slug,
+        type=Promotion.TYPE_ORDER,
+        priority=priority,
+        channels=list(channels or []),
     )
     PromotionRule.objects.create(
         promotion=promo,

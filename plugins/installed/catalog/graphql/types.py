@@ -1,17 +1,18 @@
-import strawberry
-from typing import Optional, List
 from datetime import datetime
+
+import strawberry
 import strawberry_django
+
 from plugins.installed.catalog import models
 
 
 @strawberry.type
 class ImageType:
     url: str
-    alt_text: Optional[str] = None
-    is_primary: Optional[bool] = None
-    sort_order: Optional[int] = None  # 0=front cover, 1=back cover, ≥2=slider
-    webp_url: Optional[str] = None  # null when no WebP variant exists yet
+    alt_text: str | None = None
+    is_primary: bool | None = None
+    sort_order: int | None = None  # 0=front cover, 1=back cover, ≥2=slider
+    webp_url: str | None = None  # null when no WebP variant exists yet
 
 
 @strawberry_django.type(models.Category)
@@ -23,7 +24,7 @@ class CategoryType:
     is_active: bool = strawberry.field(description='Whether this category is active')
 
     @strawberry.field
-    def image(self) -> Optional[ImageType]:
+    def image(self) -> ImageType | None:
         if not self.image:
             return None
         return ImageType(url=self.image.url, alt_text=self.name)
@@ -31,6 +32,7 @@ class CategoryType:
     @strawberry.field(description='Schema.org JSON-LD structured data for SEO')
     def structured_data(self) -> str:
         import json
+
         from plugins.installed.seo.services import _structured_data_for
 
         try:
@@ -72,7 +74,7 @@ class AttributeValueType:
     value: str
 
 
-from core.graphql.types import MoneyType
+from core.graphql.types import MoneyType  # noqa: E402 — deliberate late import
 
 
 @strawberry_django.type(models.Collection)
@@ -84,7 +86,7 @@ class CollectionType:
     is_featured: bool
 
     @strawberry.field
-    def image(self) -> Optional[ImageType]:
+    def image(self) -> ImageType | None:
         if not self.image:
             return None
         return ImageType(url=self.image.url, alt_text=self.name)
@@ -135,7 +137,7 @@ class ProductVariantType:
     @strawberry.field(
         description='Price of the variant. Falls back to Product.price when the variant has no override (Shopify-parity behaviour).'
     )
-    def price(self) -> Optional[MoneyType]:
+    def price(self) -> MoneyType | None:
         own = self.price
         if own:
             return MoneyType(amount=str(own.amount), currency=str(own.currency))
@@ -148,7 +150,7 @@ class ProductVariantType:
     @strawberry.field(
         description='Compare-at (was-price) for the variant. Falls back to Product.compare_at_price when blank, so the strikethrough renders on per-product sales even if the variant has no override.'
     )
-    def compare_at_price(self) -> Optional[MoneyType]:
+    def compare_at_price(self) -> MoneyType | None:
         own = getattr(self, 'compare_at_price', None)
         if own:
             return MoneyType(amount=str(own.amount), currency=str(own.currency))
@@ -195,7 +197,7 @@ class ProductVariantType:
             return 0
 
     @strawberry.field(description='Per-variant digital file URL (overrides Product.digital_file)')
-    def digital_file_url(self) -> Optional[str]:
+    def digital_file_url(self) -> str | None:
         f = getattr(self, 'digital_file', None)
         if f and getattr(f, 'name', ''):
             try:
@@ -207,7 +209,7 @@ class ProductVariantType:
     @strawberry.field(
         description="Per-variant image URL. Falls back to the parent product's primary image when the variant has no image of its own, so the storefront picker always has a thumbnail."
     )
-    def image_url(self) -> Optional[str]:
+    def image_url(self) -> str | None:
         # variant.image is an FK → ProductImage. Prefer its WebP variant
         # when present (smaller), else the original.
         own = getattr(self, 'image', None)
@@ -216,13 +218,13 @@ class ProductVariantType:
             if webp and getattr(webp, 'name', ''):
                 try:
                     return webp.url
-                except Exception:  # noqa: BLE001
+                except Exception:  # noqa: BLE001, S110
                     pass
             base = getattr(own, 'image', None)
             if base and getattr(base, 'name', ''):
                 try:
                     return base.url
-                except Exception:  # noqa: BLE001
+                except Exception:  # noqa: BLE001, S110
                     pass
         # Fallback: parent product's primary image.
         parent = getattr(self, 'product', None)
@@ -246,17 +248,17 @@ class ProductType:
     short_description: str = strawberry.field(description='Short summary description')
     description: str = strawberry.field(description='Full HTML or Markdown description')
     is_featured: bool = strawberry.field(description='Whether this product is featured')
-    category: Optional[CategoryType] = strawberry.field(
+    category: CategoryType | None = strawberry.field(
         description="Primary category (hierarchical taxonomy — the product's 'shelf')"
     )
-    variants: List[ProductVariantType] = strawberry.field(
+    variants: list[ProductVariantType] = strawberry.field(
         description='Available variants if variable product'
     )
 
     @strawberry.field(
         description="Curated Collections this product is featured in (flat merchandising sets — the 'tables' it's laid out on). Distinct from category."
     )
-    def collections(self) -> List[CollectionType]:
+    def collections(self) -> list[CollectionType]:
         # Real Collection M2M (active only). Model instances → CollectionType.
         return list(self.collections.filter(is_active=True)) if hasattr(self, 'collections') else []
 
@@ -264,7 +266,7 @@ class ProductType:
     discount_percentage: int = strawberry.field(description='Discount percentage if on sale')
 
     @strawberry.field(description='Average rating from reviews')
-    def average_rating(self) -> Optional[float]:
+    def average_rating(self) -> float | None:
         # Prefer the queryset-level annotation (set in queries._REVIEW_ANNOTATIONS)
         # to avoid a per-card aggregate query. Falls back to the model property
         # when the annotation isn't present (e.g. single-Product lookups).
@@ -299,7 +301,7 @@ class ProductType:
     )
 
     @strawberry.field(description='Primary product image')
-    def primary_image(self) -> Optional[ImageType]:
+    def primary_image(self) -> ImageType | None:
         # Iterate the prefetched cache (ordered by sort_order via Prefetch in
         # queries._PRODUCT_PREFETCH). Falling back to .filter()/.first() would
         # re-query and defeat the prefetch.
@@ -321,7 +323,7 @@ class ProductType:
         )
 
     @strawberry.field(description='All product images, ordered by sort_order ASC')
-    def images(self) -> List[ImageType]:
+    def images(self) -> list[ImageType]:
         images = []
         # Consume the prefetched cache — ordering is established by the
         # Prefetch(queryset=ProductImage.objects.order_by('sort_order')) in
@@ -342,11 +344,11 @@ class ProductType:
         return images
 
     @strawberry.field(description='Product tags')
-    def tags(self) -> List[str]:
+    def tags(self) -> list[str]:
         return [t.name for t in self.tags.all()]
 
     @strawberry.field(description='Approved product reviews')
-    def reviews(self) -> List['ReviewType']:
+    def reviews(self) -> list['ReviewType']:
         return list(self.reviews.filter(is_approved=True))
 
     @strawberry.field(
@@ -377,7 +379,7 @@ class ProductType:
         return self.variants.filter(is_active=True).count() > 1
 
     @strawberry.field(description='Compare at price (original price before discount)')
-    def compare_at_price(self) -> Optional[MoneyType]:
+    def compare_at_price(self) -> MoneyType | None:
         if not self.compare_at_price:
             return None
         return MoneyType(
@@ -387,6 +389,7 @@ class ProductType:
     @strawberry.field(description='Schema.org JSON-LD structured data for SEO')
     def structured_data(self) -> str:
         import json
+
         from plugins.installed.seo.services import product_jsonld
 
         try:
@@ -436,7 +439,7 @@ class AgentProductMetadata:
     is_digital: bool
     primary_image_url: str
     category_slug: str
-    tags: List[str]
+    tags: list[str]
     url_path: str
 
 
