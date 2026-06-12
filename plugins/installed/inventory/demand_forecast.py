@@ -280,14 +280,19 @@ def sync_stockout_alerts(
             )
             refreshed += 1
         else:
-            opened.append(
-                StockoutAlert.objects.create(
-                    variant_id=row.variant_id,
-                    days_of_cover=row.days_until_stockout,
-                    daily_velocity=row.daily_velocity,
-                    suggested_reorder_qty=row.suggested_reorder_qty,
-                )
+            # get_or_create (not create) so concurrent runs can't IntegrityError
+            # on the one-open-alert-per-variant partial unique constraint.
+            alert, created = StockoutAlert.objects.get_or_create(
+                variant_id=row.variant_id,
+                status='open',
+                defaults={
+                    'days_of_cover': row.days_until_stockout,
+                    'daily_velocity': row.daily_velocity,
+                    'suggested_reorder_qty': row.suggested_reorder_qty,
+                },
             )
+            if created:
+                opened.append(alert)
 
     resolved = 0
     for vid, alert in open_alerts.items():

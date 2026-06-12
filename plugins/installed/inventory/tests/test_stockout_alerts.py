@@ -11,7 +11,9 @@ from plugins.installed.inventory.models import StockLevel, StockMovement, Stocko
 
 
 def _variant(sku: str) -> ProductVariant:
-    p = Product.objects.create(name=f'P-{sku}', slug=f'p-{sku}', status='active', price=10)
+    p = Product.objects.create(
+        name=f'P-{sku}', slug=f'p-{sku}', sku=f'PRD-{sku}', status='active', price=10
+    )
     return ProductVariant.objects.create(product=p, sku=sku)
 
 
@@ -150,3 +152,53 @@ class StockoutForecastPageTests(TestCase):
 
         slugs = {p.slug for p in plugin_registry.dashboard_pages() if p.plugin == 'inventory'}
         self.assertIn('stockout-forecast', slugs)
+
+
+class StockoutAlertsEdgeCaseTests(TestCase):
+    def test_zero_velocity_variant_is_not_alerted(self):
+        from plugins.installed.inventory.demand_forecast import sync_stockout_alerts
+
+        # Stock on hand but no sales in the window → no velocity → not at risk.
+        v = _variant('Z1')
+        wh = Warehouse.objects.create(name='WHZ', code='WHZ')
+        StockLevel.objects.create(variant=v, warehouse=wh, quantity=3, reorder_point=0)
+        result = sync_stockout_alerts()
+        self.assertEqual(len(result['opened']), 0)
+        self.assertEqual(StockoutAlert.objects.filter(status='open').count(), 0)
+
+    def test_opens_multiple_alerts_in_one_sync(self):
+        from plugins.installed.inventory.demand_forecast import sync_stockout_alerts
+
+        for i in range(5):
+            _make_at_risk(f'M{i}', on_hand=5, sold=140)
+        result = sync_stockout_alerts()
+        self.assertEqual(len(result['opened']), 5)
+        self.assertEqual(StockoutAlert.objects.filter(status='open').count(), 5)
+
+    def test_forecast_uses_available_not_on_hand(self):
+        from plugins.installed.inventory.demand_forecast import sync_stockout_alerts
+
+        # 100 on hand but 98 reserved → 2 available. With high sales velocity it
+        # IS at risk; if the engine wrongly used on-hand (100) it would not be.
+        v = _variant('RES1')
+        wh = Warehouse.objects.create(name='WHR', code='WHR')
+        sl = StockLevel.objects.create(
+            variant=v, warehouse=wh, quantity=100, reserved_quantity=98, reorder_point=0
+        )
+        StockMovement.objects.create(
+            stock_level=sl,
+            movement_type='sale',
+            quantity_change=-140,
+            quantity_before=240,
+            quantity_after=100,
+        )
+        result = sync_stockout_alerts()
+        self.assertEqual(len(result['opened']), 1)
+
+    def test_tool_clamps_threshold_days(self):
+        from plugins.installed.inventory.agent_tools import stockout_forecast_tool
+
+        hi = stockout_forecast_tool.invoke({'threshold_days': 999})
+        self.assertEqual(hi.output['threshold_days'], 90)
+        lo = stockout_forecast_tool.invoke({'threshold_days': 0})
+        self.assertEqual(lo.output['threshold_days'], 14)  # 0 is falsy → default 14

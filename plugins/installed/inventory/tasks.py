@@ -159,7 +159,11 @@ def run_stockout_forecast() -> dict:
     """Daily: reconcile stockout alerts; alert staff for newly opened ones."""
     from plugins.installed.inventory.demand_forecast import sync_stockout_alerts  # noqa: PLC0415
 
-    result = sync_stockout_alerts()
+    try:
+        result = sync_stockout_alerts()
+    except Exception as exc:  # noqa: BLE001 — a beat task must never crash the scheduler
+        logger.exception('run_stockout_forecast: sync failed: %s', exc)
+        return {'opened': 0, 'resolved': 0, 'error': str(exc)}
     newly = result['opened']
     if newly:
         lines = '\n'.join(
