@@ -60,7 +60,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install coverage pytest pytest-django
-      - name: Django checks
+      - name: Django system checks (BLOCKING — catches model errors that crash prod boot)
+        # Plain `check` fails on Error-level issues (e.g. fields.E301/E300/E307 —
+        # a FK to a swapped-out user model, a lazy ref to a non-existent model).
+        # These break the prod boot, so this gate must NOT be `|| true`d.
+        run: python manage.py check
+      - name: Django deploy checks (advisory — security/HSTS warnings)
         run: python manage.py check --deploy --fail-level WARNING || true
       - name: Migrations are present
         run: python manage.py makemigrations --check --dry-run

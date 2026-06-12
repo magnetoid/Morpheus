@@ -145,9 +145,11 @@ hangs/dies outside the container. Always pin an in-memory DB:
 DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<name>
 ```
 
-CI gates a change with `ruff check .`, `ruff format --check .`, and
-`python manage.py makemigrations --check --dry-run` (the migration check is
-the one that fails every prod boot if you ship a model without one).
+CI gates a change with `ruff check .`, `ruff format --check .`,
+`python manage.py check` (blocking — fails on model-relation errors like
+`fields.E301/E300/E307` that crash the prod boot; PR #62 once 503'd prod
+because this step was `|| true`'d), and `python manage.py makemigrations
+--check --dry-run` (fails every prod boot if you ship a model without one).
 
 ---
 
