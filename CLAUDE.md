@@ -152,11 +152,28 @@ hangs/dies outside the container. Always pin an in-memory DB:
 DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<name>
 ```
 
+**Landmine — sqlite hides Postgres migration crashes.** The in-memory
+test DB types loosely: an auto-generated `AlterField` that retargets a
+FK across PK types (bigint→uuid) passes every local test and then
+crashes the prod `migrate` (PR #62 and PR #64 both 503'd prod this
+way). Cross-type FK retargets must be `RemoveField`+`AddField`. CI's
+`migrations` job now applies every migration against real Postgres —
+that's the gate; don't trust a green sqlite run for migration changes.
+
+**Landmine — merging to `main` deploys to production.** Coolify
+watches the repo: every push/merge to `main` triggers a build+deploy
+of dotbooks.store. There is no separate "ship" step — treat a merge as
+a deploy (and don't land several merges in rapid succession; Coolify
+thrashes). A broken migration or boot error on `main` is a live 503
+until hot-fixed.
+
 CI gates a change with `ruff check .`, `ruff format --check .`,
 `python manage.py check` (blocking — fails on model-relation errors like
 `fields.E301/E300/E307` that crash the prod boot; PR #62 once 503'd prod
-because this step was `|| true`'d), and `python manage.py makemigrations
---check --dry-run` (fails every prod boot if you ship a model without one).
+because this step was `|| true`'d), `python manage.py makemigrations
+--check --dry-run` (fails every prod boot if you ship a model without
+one), and the `migrations` job (applies every migration on real
+Postgres — catches casts sqlite silently accepts).
 
 ---
 

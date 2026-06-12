@@ -68,7 +68,9 @@ jobs:
           pip install -r requirements.txt
       - name: migrate on Postgres (catches cast/apply errors sqlite masks)
         env:
-          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci"
+          # sslmode=disable: the CI service container is plain TCP; settings
+          # default to sslmode=require for the managed-Postgres case.
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
         run: python manage.py migrate --noinput
 
   test:
