@@ -38,6 +38,39 @@ jobs:
         # B308/B703 (mark_safe) are covered per-site by ruff S308 noqa review.
         run: bandit -q -r . -x ./venv,./tests,./.venv,./db.sqlite3 -ll -s B308,B703
 
+  migrations:
+    # Apply every migration against real Postgres — sqlite (used by the test job)
+    # types loosely and silently accepts e.g. a bigint->uuid AlterField cast that
+    # crashes the prod `migrate`. PR #62 and PR #64 both 503'd prod this way; this
+    # job is the gate that catches it before merge.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: morph_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: migrate on Postgres (catches cast/apply errors sqlite masks)
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci"
+        run: python manage.py migrate --noinput
+
   test:
     runs-on: ubuntu-latest
     services:
