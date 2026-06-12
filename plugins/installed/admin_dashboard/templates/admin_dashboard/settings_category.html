@@ -90,10 +90,10 @@
       </div>
 
       {% if c.fields %}
-      <form method="post" action="{{ c.submit_url }}" class="card-padded space-y-4" data-morph-dirty>
+      <form method="post" action="{{ c.submit_url }}" class="card-padded grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4" data-morph-dirty>
         {% csrf_token %}
         {% for field in c.fields %}
-        <div class="space-y-1">
+        <div class="space-y-1{% if field.kind == 'string' and field.description|length > 80 %} md:col-span-2{% endif %}">
           <label for="f-{{ c.plugin_name }}-{{ field.key }}"
                  class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
             {{ field.title }}
@@ -120,7 +120,7 @@
         </div>
         {% endfor %}
 
-        <div class="pt-2 flex justify-end">
+        <div class="pt-2 flex justify-end md:col-span-2">
           <button class="btn btn-primary" type="submit">
             <i data-lucide="save" class="h-4 w-4"></i> Save
           </button>
