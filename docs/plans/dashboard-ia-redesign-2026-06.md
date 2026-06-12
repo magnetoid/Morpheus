@@ -41,9 +41,15 @@ disable test keeps holding.
 3. **Settings consolidation**: 11 categories → ~8 (General, Payments,
    Shipping, Taxes, Sales channels [absorbs Channels + Marketplace],
    Notifications, AI, Apps); Caching folds into the Developers hub.
-4. **Density pass**: list pages full container width; forms capped
-   `max-w-3xl` with two-column field rows; standard page header
-   (title + breadcrumb + primary action) on every page.
+4. **Density pass** (shipped, narrowed): plugin settings forms — both the
+   category panels and /dashboard/settings/<plugin>/ — render fields in a
+   responsive two-column grid (booleans/inputs side-by-side, long fields
+   and the Save row spanning); plugin_settings widened to max-w-4xl to
+   match. List pages were already full container width and the settings
+   pages already carry the icon+title+description header, so the
+   remaining "standard page header on every page" rollout is deferred
+   until a visual pass on the deployed dashboard says which pages still
+   feel empty.
 
 Each phase is one PR; merge = deploy (CLAUDE.md landmine), so phases land
 separately behind the full gate set.

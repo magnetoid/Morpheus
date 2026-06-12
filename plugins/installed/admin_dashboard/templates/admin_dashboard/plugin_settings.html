@@ -2,7 +2,7 @@
 {% block title %}{{ panel.label }} · Settings · Morpheus{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-4">
+<div class="max-w-4xl mx-auto space-y-4">
   {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
 
   <div>
@@ -10,7 +10,7 @@
     {% if panel.description %}<p class="text-sm text-[color:var(--text-muted)] mt-1">{{ panel.description }}</p>{% endif %}
   </div>
 
-  <form method="post" class="card card-padded space-y-5" data-morph-dirty>
+  <form method="post" class="card card-padded grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5" data-morph-dirty>
     {% csrf_token %}
     {% for field in fields %}
     <div class="space-y-1.5">
@@ -38,11 +38,11 @@
       {% endif %}
     </div>
     {% empty %}
-    <p class="text-sm text-[color:var(--text-muted)]">This plugin doesn't expose any settings.</p>
+    <p class="text-sm text-[color:var(--text-muted)] md:col-span-2">This plugin doesn't expose any settings.</p>
     {% endfor %}
 
     {% if fields %}
-    <div class="pt-3 border-t border-[color:var(--border)] flex justify-end">
+    <div class="pt-3 border-t border-[color:var(--border)] flex justify-end md:col-span-2">
       <button class="btn btn-primary" type="submit">Save</button>
     </div>
     {% endif %}
