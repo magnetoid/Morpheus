@@ -779,6 +779,52 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
             }
         )
 
+    # The Developers hub: every section='developer' DashboardPage renders
+    # here as a tool card (one sidebar entry instead of seven), plus the
+    # always-reachable core tools. A disabled plugin's card vanishes with
+    # its contribution.
+    developer_tools = []
+    if category == 'developer':
+        for page in sorted(
+            plugin_registry.dashboard_pages(section='developer'),
+            key=lambda pg: (pg.order, pg.label),
+        ):
+            developer_tools.append(
+                {
+                    'label': page.label,
+                    'url': getattr(page, 'url', '')
+                    or f'/dashboard/apps/{page.plugin}/{page.slug}/',
+                    'icon': page.icon or 'circle',
+                    'hint': page.plugin.replace('_', ' '),
+                }
+            )
+        developer_tools += [
+            {
+                'label': 'Tracking',
+                'url': '/dashboard/tracking/',
+                'icon': 'activity',
+                'hint': 'GA4 / GTM, event log, consent',
+            },
+            {
+                'label': 'Errors',
+                'url': '/dashboard/errors/',
+                'icon': 'alert-circle',
+                'hint': 'server + client error log',
+            },
+            {
+                'label': 'Updates',
+                'url': '/dashboard/updates/',
+                'icon': 'refresh-cw',
+                'hint': 'component version inventory',
+            },
+            {
+                'label': 'Caching',
+                'url': '/dashboard/settings/caching/',
+                'icon': 'zap',
+                'hint': 'page cache, Redis, Cloudflare edge',
+            },
+        ]
+
     return render(
         request,
         'admin_dashboard/settings_category.html',
@@ -786,6 +832,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
             'category': cat,
             'core_card': core_card,
             'cards': cards,
+            'developer_tools': developer_tools,
             'active_nav': 'settings',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

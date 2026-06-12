@@ -129,8 +129,14 @@ def plugin_context(request):
     settings_pages = [
         p
         for p in pages
-        if getattr(p, 'nav', 'main') == 'settings'
-        or (getattr(p, 'nav', 'main') == 'main' and getattr(p, 'section', '') == 'apps')
+        if (
+            getattr(p, 'nav', 'main') == 'settings'
+            or (getattr(p, 'nav', 'main') == 'main' and getattr(p, 'section', '') == 'apps')
+        )
+        # Developer tools render as cards inside the Developers hub
+        # (/dashboard/settings/developer/), not as individual sidebar
+        # entries — one "Developer" link instead of seven.
+        and getattr(p, 'section', '') != 'developer'
     ]
 
     # Shopify-style settings categories — drives the settings sidebar.
