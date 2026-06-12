@@ -19,6 +19,7 @@ Wishlists are shareable: a customer can publish a wishlist at
 `/wishlist/<token>/` for a friend to send a gift — the gift-giving
 use case that makes wishlists on-brand.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -56,9 +57,21 @@ class SaveForLaterPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'enable_price_drop': {'type': 'boolean', 'default': True, 'title': 'Price-drop notifications'},
-                'enable_back_in_stock': {'type': 'boolean', 'default': True, 'title': 'Back-in-stock notifications'},
-                'shareable_wishlist': {'type': 'boolean', 'default': True, 'title': 'Shareable wishlists (gift-giving)'},
+                'enable_price_drop': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Price-drop notifications',
+                },
+                'enable_back_in_stock': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Back-in-stock notifications',
+                },
+                'shareable_wishlist': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Shareable wishlists (gift-giving)',
+                },
                 'price_drop_check_interval_minutes': {
                     'type': 'integer',
                     'default': 60,

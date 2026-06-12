@@ -17,6 +17,7 @@ reduced motion server-side too.
 No models — pure CSS + JS, contributed once to
 `global_head` and once to `global_below_body`.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

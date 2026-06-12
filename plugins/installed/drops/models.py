@@ -7,6 +7,7 @@ queue position / raffle entry. `Waitlist` is the post-sellout
 The `inventory` plugin owns allocation; this plugin only schedules
 when the allocation *opens* and the queue ordering.
 """
+
 from __future__ import annotations
 
 from morpheus import models
@@ -35,7 +36,11 @@ class DropTicket(models.Model):
     drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name='tickets')
     customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     position = models.PositiveIntegerField(default=0)
-    raffle_seed = models.CharField(max_length=64, blank=True, help_text='For raffle drops: a deterministic seed for fair ordering.')
+    raffle_seed = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text='For raffle drops: a deterministic seed for fair ordering.',
+    )
     invited_at = models.DateTimeField(auto_now_add=True)
     won_at = models.DateTimeField(null=True, blank=True)
 

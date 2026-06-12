@@ -13,6 +13,7 @@ The merchant uploads brand assets here. The plugin:
     hero imagery and returns a palette + typography suggestion
     (the suggestion is then saved to `DesignTokenSet`).
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

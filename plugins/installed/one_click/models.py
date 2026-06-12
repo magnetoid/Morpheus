@@ -6,6 +6,7 @@ method id, shipping address id, device fingerprint}. We never
 store plaintext payment data ourselves — that's the gateway's job
 (Stripe PaymentMethod re-use).
 """
+
 from __future__ import annotations
 
 from morpheus import models

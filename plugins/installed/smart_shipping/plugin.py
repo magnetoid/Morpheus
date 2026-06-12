@@ -16,6 +16,7 @@ contributes a `shipping_rates_for_cart` GraphQL extension and
 reacts to the existing `ORDER_PLACED` hook to persist the
 shipper's choice.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -28,7 +29,7 @@ class SmartShippingPlugin(Plugin):
     description = (
         'Carrier integration (EasyPost / Shippo), live rates at checkout, '
         'and a per-rate carbon-emissions estimate with a "lowest-carbon" '
-        'badge. Persists the shopper\'s rate choice on the order.'
+        "badge. Persists the shopper's rate choice on the order."
     )
     has_models = True
     requires = ['shipping', 'orders']
@@ -54,9 +55,21 @@ class SmartShippingPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'enable_easypost': {'type': 'boolean', 'default': False, 'title': 'EasyPost carrier integration (EASYPOST_API_KEY)'},
-                'enable_shippo': {'type': 'boolean', 'default': False, 'title': 'Shippo carrier integration (SHIPPO_API_KEY)'},
-                'show_lowest_carbon_badge': {'type': 'boolean', 'default': True, 'title': 'Show "lowest carbon" badge on the rate list'},
+                'enable_easypost': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'EasyPost carrier integration (EASYPOST_API_KEY)',
+                },
+                'enable_shippo': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Shippo carrier integration (SHIPPO_API_KEY)',
+                },
+                'show_lowest_carbon_badge': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Show "lowest carbon" badge on the rate list',
+                },
                 'emissions_source': {
                     'type': 'string',
                     'enum': ['climatiq', 'manual', 'none'],

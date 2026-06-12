@@ -14,6 +14,7 @@ Hooks into `inventory` (allocator changes), `loyalty_points`
 (points on subscription payments), `affiliates` (subscription-
 aware commission), `experiments` (paywall vs skip vs swap).
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -58,7 +59,11 @@ class SubscriptionsPlusPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'default_cadence_days': {'type': 'integer', 'default': 30, 'title': 'Default cadence (days)'},
+                'default_cadence_days': {
+                    'type': 'integer',
+                    'default': 30,
+                    'title': 'Default cadence (days)',
+                },
                 'allowed_cadences_days': {
                     'type': 'array',
                     'items': {'type': 'integer'},

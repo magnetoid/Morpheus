@@ -9,6 +9,7 @@ plugin's lead pipeline.
 Returns are the most emotionally loaded moment in the journey.
 The opposite of vibe-coding is a generic UPS label email.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -22,7 +23,7 @@ class ReturnsPortalPlugin(Plugin):
         'Branded, multi-step self-serve returns portal. "Exchange or '
         'store credit" are first-class options (exchanges retain ~70 % '
         'of the original order value). A feedback box routes to the CRM '
-        'plugin\'s lead pipeline.'
+        "plugin's lead pipeline."
     )
     has_models = True
     requires = ['orders', 'loyalty_points', 'customers', 'consent']
@@ -48,7 +49,11 @@ class ReturnsPortalPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'return_window_days': {'type': 'integer', 'default': 30, 'title': 'Return window (days)'},
+                'return_window_days': {
+                    'type': 'integer',
+                    'default': 30,
+                    'title': 'Return window (days)',
+                },
                 'default_resolution': {
                     'type': 'string',
                     'enum': ['refund', 'exchange', 'store_credit'],

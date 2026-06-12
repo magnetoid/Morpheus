@@ -4,6 +4,7 @@
 can add block types in later releases without losing the old
 documents. The renderer keys on the version.
 """
+
 from __future__ import annotations
 
 from django.utils import timezone
@@ -12,7 +13,12 @@ from morpheus import models
 
 
 class Post(models.Model):
-    STATUS_CHOICES = (('draft', 'Draft'), ('scheduled', 'Scheduled'), ('published', 'Published'), ('archived', 'Archived'))
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('scheduled', 'Scheduled'),
+        ('published', 'Published'),
+        ('archived', 'Archived'),
+    )
 
     slug = models.SlugField(unique=True, max_length=200, db_index=True)
     title = models.CharField(max_length=240)

@@ -3,6 +3,7 @@
 ReviewMedia is 1-N per review (photo or video). CreatorProgram
 tracks who has been invited + who has accepted.
 """
+
 from __future__ import annotations
 
 from morpheus import models

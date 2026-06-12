@@ -6,6 +6,7 @@ should lead with the new arrival"). The fallback resolver in
 `services.resolve_rail()` reads personalisation signals; the curated
 list takes precedence.
 """
+
 from __future__ import annotations
 
 from morpheus import models

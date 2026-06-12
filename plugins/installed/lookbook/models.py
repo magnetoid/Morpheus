@@ -1,4 +1,5 @@
 """Lookbook: a hand-authored or AI-generated editorial bundle."""
+
 from __future__ import annotations
 
 from morpheus import models

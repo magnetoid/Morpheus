@@ -8,6 +8,7 @@ month get a free [product]").
 This is distinct from `affiliates` (B2B/influencer) and from
 `loyalty_points` (the store-credit ledger it consumes).
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -52,10 +53,26 @@ class ReferralsPlugin(Plugin):
             'type': 'object',
             'properties': {
                 'enabled': {'type': 'boolean', 'default': True, 'title': 'Master switch'},
-                'referrer_reward_cents': {'type': 'integer', 'default': 500, 'title': 'Referrer reward (cents in store credit)'},
-                'referee_reward_cents': {'type': 'integer', 'default': 500, 'title': 'Referee reward (cents in store credit)'},
-                'min_order_subtotal_cents': {'type': 'integer', 'default': 2000, 'title': 'Minimum order subtotal to trigger reward'},
-                'enable_contest': {'type': 'boolean', 'default': True, 'title': 'Contest layer (top referrers get a free product)'},
+                'referrer_reward_cents': {
+                    'type': 'integer',
+                    'default': 500,
+                    'title': 'Referrer reward (cents in store credit)',
+                },
+                'referee_reward_cents': {
+                    'type': 'integer',
+                    'default': 500,
+                    'title': 'Referee reward (cents in store credit)',
+                },
+                'min_order_subtotal_cents': {
+                    'type': 'integer',
+                    'default': 2000,
+                    'title': 'Minimum order subtotal to trigger reward',
+                },
+                'enable_contest': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Contest layer (top referrers get a free product)',
+                },
                 'contest_period': {
                     'type': 'string',
                     'enum': ['monthly', 'quarterly'],

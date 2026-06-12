@@ -1,4 +1,5 @@
 """Per-customer opt-in state for SMS / WhatsApp / push channels."""
+
 from __future__ import annotations
 
 from morpheus import models

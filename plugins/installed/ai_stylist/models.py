@@ -3,6 +3,7 @@
 GDPR-friendly: stores a hash of the session + a 90-day rolling
 window of messages. Merchants can wipe a session on request.
 """
+
 from __future__ import annotations
 
 import hashlib

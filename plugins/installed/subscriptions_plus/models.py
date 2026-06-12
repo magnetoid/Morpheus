@@ -5,6 +5,7 @@ orders. `SubscriptionShipment` is the schedule row (one per future
 ship date). `SubscriptionEvent` is the audit log of pauses / skips /
 swaps / cancels (used to drive the churn-save prompt).
 """
+
 from __future__ import annotations
 
 from morpheus import models
@@ -33,7 +34,9 @@ class Subscription(models.Model):
 
 class SubscriptionLine(models.Model):
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='lines')
-    variant = models.ForeignKey('catalog.ProductVariant', on_delete=models.PROTECT, related_name='+')
+    variant = models.ForeignKey(
+        'catalog.ProductVariant', on_delete=models.PROTECT, related_name='+'
+    )
     quantity = models.PositiveIntegerField(default=1)
 
 
@@ -44,13 +47,16 @@ class SubscriptionShipment(models.Model):
         ('shipped', 'Shipped'),
         ('skipped', 'Skipped'),
     )
-    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='shipments')
+    subscription = models.ForeignKey(
+        Subscription, on_delete=models.CASCADE, related_name='shipments'
+    )
     ship_at = models.DateTimeField(db_index=True)
     state = models.CharField(max_length=10, choices=STATE_CHOICES, default='scheduled')
     order = models.ForeignKey(
         'orders.Order',
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name='+',
     )
 

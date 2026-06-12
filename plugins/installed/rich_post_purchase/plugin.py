@@ -17,6 +17,7 @@ Channels supported by this plugin:
   * `whatsapp`  — opt-in, WhatsApp Business adapter
   * `push`      — PWA push (via the `pwa` plugin)
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel
