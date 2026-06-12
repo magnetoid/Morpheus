@@ -49,7 +49,7 @@ class BookProductPlugin(Plugin):
                 # (admin_dashboard base.html, guarded by plugin_enabled), so this
                 # standalone entry is hidden to avoid showing the item twice. The
                 # page + /dashboard/book-taxonomies/ route are unaffected.
-                nav='hidden',
+                nav='main',
                 url='/dashboard/book-taxonomies/',
             ),
         ]

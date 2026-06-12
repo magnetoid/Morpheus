@@ -734,13 +734,13 @@
       <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}">Chat</a>
       <a href="/dashboard/agents/" class="nav-link {% if request.path == '/dashboard/agents/' %}active{% endif %}">Activity</a>
       <a href="/dashboard/agents/background/" class="nav-link {% if request.path == '/dashboard/agents/background/' %}active{% endif %}">Automations</a>
-      <a href="/dashboard/agents/observability/" class="nav-link {% if request.path == '/dashboard/agents/observability/' %}active{% endif %}">Insights</a>
+      <a href="/dashboard/agents/observability/" class="nav-link {% if request.path == '/dashboard/agents/observability/' %}active{% endif %}">Observability</a>
+      <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">
+        Insights
+        {% if nav_badges.insights %}<span class="pill pill-info" style="margin-left:auto;">{{ nav_badges.insights }}</span>{% endif %}
+      </a>
     </div>
     {% endwith %}
-    <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">
-      <i data-lucide="lightbulb" class="h-4 w-4"></i> Insights
-      {% if nav_badges.insights %}<span class="pill pill-info" style="margin-left:auto;">{{ nav_badges.insights }}</span>{% endif %}
-    </a>
 
     {% comment %}
       Each top-level entry below renders an indented submenu when the
@@ -761,54 +761,17 @@
       </a>
     </div>
 
-    {% plugin_enabled "book_product" as book_product_enabled %}
     {% plugin_enabled "reviews" as reviews_enabled %}
     <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
     <div class="nav-children {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' or active_nav == 'collections' or active_nav == 'book_taxonomies' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' and request.path != '/dashboard/products/content-audit/' %}active{% endif %}">All products</a>
       <a href="{% url 'admin_dashboard:categories' %}" class="nav-link {% if active_nav == 'categories' %}active{% endif %}">Categories</a>
       <a href="{% url 'admin_dashboard:collections' %}" class="nav-link {% if active_nav == 'collections' %}active{% endif %}">Collections</a>
-      {% if book_product_enabled %}<a href="/dashboard/book-taxonomies/" class="nav-link {% if active_nav == 'book_taxonomies' %}active{% endif %}">Book taxonomies</a>{% endif %}
       <a href="{% url 'admin_dashboard:content_audit' %}" class="nav-link {% if request.path == '/dashboard/products/content-audit/' %}active{% endif %}">Content audit</a>
       {% if reviews_enabled %}<a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>{% endif %}
     </div>
 
-    <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Users</a>
-
-    {% comment %}Assets = the media plugin's library. Guarded so it vanishes when media is disabled (disable test). If media should never be off, add it to PROTECTED_PLUGINS instead.{% endcomment %}
-    {% plugin_enabled "media" as media_enabled %}
-    {% if media_enabled %}<a href="/dashboard/media/" class="nav-link {% if active_nav == 'assets' %}active{% endif %}"><i data-lucide="image" class="h-4 w-4"></i> Assets</a>{% endif %}
-
-    {% plugin_enabled "affiliates" as affiliates_enabled %}
-    {% if affiliates_enabled %}
-    {% comment %}
-    Affiliates parent + children. Parent <a> lands on the list page
-    (matches Orders / Products); children carry the rest. The submenu
-    auto-opens whenever any affiliates page is active.
-
-    NOTE (modular-os): this block is hard-coded because affiliates
-    contributes its DashboardPages with nav='hidden' (see
-    affiliates/plugin.py) — they're deliberately kept OUT of the
-    sidebar_sections loop so this parent/child shape can be rendered.
-    The guard is now plugin_enabled (registry-gated) so disabling the
-    plugin removes the nav. TODO(modular-os): migrate to nav='main'
-    DashboardPages + a sidebar-group so this block can be deleted.
-    {% endcomment %}
-    {% with affiliates_prefix=active_apps_slug|slice:":11" %}
-    <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if affiliates_prefix == 'affiliates/' %}active{% endif %}">
-      <i data-lucide="link" class="h-4 w-4"></i> Affiliates<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i>
-    </a>
-    <div class="nav-children {% if affiliates_prefix == 'affiliates/' %}open{% endif %}">
-      <a href="/dashboard/apps/affiliates/list/" class="nav-link {% if active_apps_slug == 'affiliates/list' %}active{% endif %}">Affiliates list</a>
-      <a href="/dashboard/apps/affiliates/programs/" class="nav-link {% if active_apps_slug == 'affiliates/programs' %}active{% endif %}">Programs</a>
-      <a href="/dashboard/apps/affiliates/links/" class="nav-link {% if active_apps_slug == 'affiliates/links' %}active{% endif %}">Links</a>
-      <a href="/dashboard/apps/affiliates/conversions/" class="nav-link {% if active_apps_slug == 'affiliates/conversions' %}active{% endif %}">Conversions</a>
-      <a href="/dashboard/apps/affiliates/analytics/" class="nav-link {% if active_apps_slug == 'affiliates/analytics' %}active{% endif %}">Analytics</a>
-      <a href="/dashboard/apps/affiliates/payouts/" class="nav-link {% if active_apps_slug == 'affiliates/payouts' %}active{% endif %}">Payouts</a>
-      <a href="/dashboard/settings/affiliates/" class="nav-link">Settings</a>
-    </div>
-    {% endwith %}
-    {% endif %}
+    <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Customers</a>
 
     {# Tracking + Errors moved to the Settings sidebar — see nav-settings below. #}
 
