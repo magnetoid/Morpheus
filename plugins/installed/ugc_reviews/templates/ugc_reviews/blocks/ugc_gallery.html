@@ -1,0 +1,15 @@
+{% load i18n %}<section class="morpheus-ugc__gallery" data-product="{{ product.slug }}" aria-label="Customer photos">
+  <ol class="morpheus-ugc__tiles">
+    {% for media in approved_ugc_media|slice:":12" %}
+      <li class="morpheus-ugc__tile" data-kind="{{ media.kind }}">
+        {% if media.kind == 'photo' %}
+          <img src="{{ media.url }}" alt="" loading="lazy" />
+        {% else %}
+          <video src="{{ media.url }}" muted loop playsinline aria-label="Customer video"></video>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="morpheus-ugc__empty" hidden></li>
+    {% endfor %}
+  </ol>
+</section>

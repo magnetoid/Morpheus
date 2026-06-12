@@ -1,0 +1,13 @@
+{% load i18n %}{% if post_order_upsell %}
+<section class="morpheus-upsell" aria-label="Post-order upsell">
+  <p>{{ settings.post_order_copy|default:'' }}</p>
+  <article class="morpheus-upsell__card" data-product-slug="{{ post_order_upsell.slug }}">
+    <img src="{{ post_order_upsell.hero_image|default:'' }}" alt="" loading="lazy" />
+    <h3>{{ post_order_upsell.name }}</h3>
+    <span>{{ post_order_upsell.price|default:"" }}</span>
+    <button type="button" data-action="add" data-product-id="{{ post_order_upsell.id }}">
+      {% trans 'One-tap add' %}
+    </button>
+  </article>
+</section>
+{% endif %}

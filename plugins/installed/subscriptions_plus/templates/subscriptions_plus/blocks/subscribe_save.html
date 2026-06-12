@@ -1,0 +1,17 @@
+{% load i18n %}{% if product and product.subscription_eligible %}
+<section class="morpheus-subplus" data-product="{{ product.slug }}" aria-label="Subscribe & save">
+  <h3>{% trans 'Subscribe & save' %}</h3>
+  <p>{% trans 'Pick a cadence. Skip, swap, or pause anytime.' %}</p>
+  <form class="morpheus-subplus__form" data-product="{{ product.slug }}">
+    <label>
+      <span>{% trans 'Cadence' %}</span>
+      <select name="cadence">
+        {% for c in settings.allowed_cadences_days %}
+          <option value="{{ c }}" {% if c == settings.default_cadence_days %}selected{% endif %}>{% blocktrans %}{{ c }} days{% endblocktrans %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">{% trans 'Subscribe' %}</button>
+  </form>
+</section>
+{% endif %}

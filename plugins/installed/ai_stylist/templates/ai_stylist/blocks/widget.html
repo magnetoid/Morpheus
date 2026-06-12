@@ -1,0 +1,21 @@
+{% load i18n %}<div id="morpheus-stylist"
+     class="morpheus-stylist"
+     data-persona="{{ settings.persona_name|default:'Aria' }}"
+     data-welcome="{{ settings.welcome_message|default:'' }}"
+     data-require-consent="{{ settings.require_consent|yesno:'1,0' }}"
+     aria-hidden="true">
+  <button type="button" class="morpheus-stylist__toggle" aria-label="{% trans 'Open stylist chat' %}">
+    💬
+  </button>
+  <div class="morpheus-stylist__panel" role="dialog" aria-label="{% trans 'Stylist chat' %}">
+    <header>
+      <strong>{{ settings.persona_name|default:'Aria' }}</strong>
+      <button type="button" class="morpheus-stylist__close" aria-label="{% trans 'Close' %}">×</button>
+    </header>
+    <ol class="morpheus-stylist__thread" aria-live="polite"></ol>
+    <form class="morpheus-stylist__form">
+      <input type="text" name="message" required placeholder="{% trans 'Ask me anything…' %}" autocomplete="off" />
+      <button type="submit">{% trans 'Send' %}</button>
+    </form>
+  </div>
+</div>

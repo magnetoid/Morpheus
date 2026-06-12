@@ -1,0 +1,27 @@
+{% load i18n %}<style id="morpheus-motion-styles"
+       data-intensity="{{ settings.intensity|default:'standard' }}"
+       data-reduced-motion="{{ settings.reduced_motion_default|yesno:'1,0' }}">
+  /* Skeleton shimmer. */
+  @keyframes morpheus-shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
+  .morpheus-skeleton {
+    background-color: #eee;
+    background-image: linear-gradient(90deg, #eee 0px, #f5f5f5 40px, #eee 80px);
+    background-size: 800px 100%;
+    animation: morpheus-shimmer 1.4s linear infinite;
+    border-radius: 6px;
+  }
+
+  /* Page transition. */
+  .morpheus-page-enter { animation: morpheus-fade-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  @keyframes morpheus-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Button press. */
+  button.morpheus-press:active { transform: scale(0.985); transition: transform 80ms ease; }
+
+  /* Reduced motion: opt out of all of it. */
+  @media (prefers-reduced-motion: reduce) {
+    .morpheus-skeleton,
+    .morpheus-page-enter,
+    button.morpheus-press:active { animation: none !important; transition: none !important; transform: none !important; }
+  }
+</style>

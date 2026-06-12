@@ -1,0 +1,14 @@
+{% load i18n %}<style id="morpheus-brand-tokens" data-token-set="{{ settings.active_token_set|default:'default' }}">
+  /* Design tokens are emitted by the active DesignTokenSet.
+   * This block is intentionally a stub — the active set is
+   * injected server-side from the brand_kit plugin's template
+   * tag in a follow-up render layer. */
+  :root {
+    /* Defaults; overridden by the active set. */
+    --morpheus-color-primary: {{ tokens.colors.primary|default:'#111' }};
+    --morpheus-color-accent: {{ tokens.colors.accent|default:'#c8a96a' }};
+    --morpheus-font-body: {{ tokens.fonts.body|default:'system-ui' }};
+    --morpheus-font-display: {{ tokens.fonts.display|default:'serif' }};
+    --morpheus-radius: {{ tokens.radii.base|default:'6px' }};
+  }
+</style>

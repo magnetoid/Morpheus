@@ -1,0 +1,15 @@
+{% load i18n %}{% if drop_for_product %}
+<section class="morpheus-drops__indicator" data-product="{{ product.slug }}" aria-label="Drop">
+  {% if drop_for_product.state == 'scheduled' %}
+    <p>{% trans 'Dropping at' %} <time datetime="{{ drop_for_product.starts_at|date:'c' }}">{{ drop_for_product.starts_at|date:'SHORT_DATETIME_FORMAT' }}</time></p>
+  {% elif drop_for_product.state == 'live' %}
+    <p>{% trans 'Live now' %}</p>
+  {% else %}
+    <p>{% trans 'Sold out — join the waitlist' %}</p>
+    <form class="morpheus-drops__waitlist" data-product-id="{{ product.id }}">
+      <input type="email" name="email" placeholder="{% trans 'Email' %}" required />
+      <button type="submit">{% trans 'Notify me' %}</button>
+    </form>
+  {% endif %}
+</section>
+{% endif %}

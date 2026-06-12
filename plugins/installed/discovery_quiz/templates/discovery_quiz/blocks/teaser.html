@@ -1,0 +1,7 @@
+{% load i18n %}{% if active_quiz %}
+<section class="morpheus-quiz-teaser" data-quiz="{{ active_quiz.slug }}" aria-label="Find your match">
+  <h2>{{ active_quiz.title }}</h2>
+  {% if active_quiz.intro %}<p>{{ active_quiz.intro }}</p>{% endif %}
+  <a class="morpheus-quiz-teaser__cta" href="/quiz/{{ active_quiz.slug }}/">{% trans 'Take the quiz' %}</a>
+</section>
+{% endif %}

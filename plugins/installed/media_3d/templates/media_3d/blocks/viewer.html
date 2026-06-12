@@ -1,0 +1,17 @@
+{% load i18n %}{% if asset %}
+<section class="morpheus-media3d"
+         data-product="{{ product.slug }}"
+         data-budget-mb="{{ settings.max_glb_size_mb|default:12 }}"
+         aria-label="3D / AR preview">
+  <button type="button"
+          class="morpheus-media3d__launch"
+          data-glb="{{ asset.glb_url }}"
+          data-usdz="{{ asset.usdz_url }}"
+          data-poster="{{ asset.poster_url }}">
+    {% trans 'View in your space' %}
+  </button>
+  <p class="morpheus-media3d__hint" aria-hidden="true">
+    {% trans 'AR-ready · tap to launch' %}
+  </p>
+</section>
+{% endif %}

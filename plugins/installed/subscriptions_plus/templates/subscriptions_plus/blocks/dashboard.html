@@ -1,0 +1,18 @@
+{% load i18n %}{% if subscriptions %}
+<section class="morpheus-subplus__dashboard" aria-label="Your subscriptions">
+  <h2>{% trans 'Your subscriptions' %}</h2>
+  <ol class="morpheus-subplus__list">
+    {% for sub in subscriptions %}
+      <li class="morpheus-subplus__item" data-id="{{ sub.id }}">
+        <header>
+          <span>{{ sub.get_flavour_display }}</span>
+          <span>{% trans 'Next ship' %}: {{ sub.next_ship_at|date:"SHORT_DATE_FORMAT" }}</span>
+        </header>
+        <button type="button" data-action="pause">{% trans 'Pause' %}</button>
+        <button type="button" data-action="skip">{% trans 'Skip next' %}</button>
+        <button type="button" data-action="cancel">{% trans 'Cancel' %}</button>
+      </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}

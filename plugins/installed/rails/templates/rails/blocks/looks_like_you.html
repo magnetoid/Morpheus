@@ -1,0 +1,15 @@
+{% load i18n %}<section class="morpheus-rails morpheus-rails--looks" data-rail="looks_like_you" aria-label="Looks like you">
+  <header><h2>{% trans 'Looks like you' %}</h2></header>
+  <ol class="morpheus-rails__items">
+    {% for product in looks_like_you_products|slice:":4" %}
+      <li class="morpheus-rails__item">
+        <a href="{{ product.get_absolute_url }}">
+          <img src="{{ product.hero_image|default:'' }}" alt="" loading="lazy" />
+          <h3>{{ product.name }}</h3>
+        </a>
+      </li>
+    {% empty %}
+      <li class="morpheus-rails__empty" hidden></li>
+    {% endfor %}
+  </ol>
+</section>

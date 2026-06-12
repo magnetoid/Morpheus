@@ -1,0 +1,8 @@
+{% load i18n %}<section class="morpheus-referrals" aria-label="Refer a friend">
+  <h2>{% trans 'Give $5, get $5' %}</h2>
+  <p>{% trans 'Share your link. You both get store credit when they place their first order.' %}</p>
+  <input type="text" readonly value="{{ referral_url }}" aria-label="{% trans 'Your referral link' %}" />
+  <p class="morpheus-referrals__stat">
+    {% blocktrans count counter=referrals_count %}{{ counter }} friend joined so far{% plural %}{{ counter }} friends joined so far{% endblocktrans %}
+  </p>
+</section>

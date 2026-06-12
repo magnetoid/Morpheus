@@ -1,0 +1,18 @@
+{% load i18n %}<aside class="morpheus-immersive__buybox" data-sticky="{{ settings.sticky_buybox|yesno:'1,0' }}" data-product="{{ product.slug }}">
+  <form class="morpheus-immersive__buybox-form" data-product="{{ product.slug }}">
+    <label>
+      <span>{% trans 'Variant' %}</span>
+      <select name="variant_id" required>
+        {% for v in variants %}<option value="{{ v.id }}">{{ v.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>{% trans 'Quantity' %}</span>
+      <input type="number" name="quantity" min="1" max="99" value="1" />
+    </label>
+    <button type="submit" class="morpheus-immersive__buybox-cta">
+      {% trans 'Add to bag' %}
+    </button>
+    <output class="morpheus-immersive__buybox-feedback" aria-live="polite"></output>
+  </form>
+</aside>
