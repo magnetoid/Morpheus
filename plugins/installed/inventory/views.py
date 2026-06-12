@@ -57,3 +57,25 @@ def back_in_stock_subscribe(request: HttpRequest, product_id) -> HttpResponse:
 
     messages.success(request, "We'll email you when this title is back.")
     return redirect(pdp_url)
+
+
+def stockout_forecast_view(request: HttpRequest) -> HttpResponse:
+    """Dashboard page: open predictive stockout alerts, worst cover first."""
+    from morpheus.views import render, staff_member_required  # noqa: PLC0415
+
+    @staff_member_required
+    def _inner(req: HttpRequest) -> HttpResponse:
+        from plugins.installed.inventory.models import StockoutAlert  # noqa: PLC0415
+
+        alerts = list(
+            StockoutAlert.objects.filter(status='open')
+            .select_related('variant', 'variant__product')
+            .order_by('days_of_cover')[:200]
+        )
+        return render(
+            req,
+            'inventory/dashboard/stockout_forecast.html',
+            {'alerts': alerts, 'active_nav': 'apps'},
+        )
+
+    return _inner(request)

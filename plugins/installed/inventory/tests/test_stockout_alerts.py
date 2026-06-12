@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import timedelta
-
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
@@ -31,9 +28,8 @@ class StockoutAlertModelTests(TestCase):
     def test_one_open_alert_per_variant_enforced(self):
         v = _variant('A2')
         StockoutAlert.objects.create(variant=v)
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                StockoutAlert.objects.create(variant=v)  # second OPEN -> constraint
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            StockoutAlert.objects.create(variant=v)  # second OPEN -> constraint
 
     def test_resolved_does_not_block_a_new_open(self):
         v = _variant('A3')
@@ -127,3 +123,30 @@ class StockoutForecastToolTests(TestCase):
         self.assertIn('inventory.stockout_forecast', names)
         worker = agent_registry.get_agent('worker')
         self.assertIn('inventory.stockout_forecast', {t.name for t in worker.get_tools()})
+
+
+class StockoutForecastPageTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        self.staff = get_user_model().objects.create_user(
+            username='ops', email='ops@example.com', password='x', is_staff=True
+        )
+
+    def test_page_lists_open_alerts(self):
+        v = _variant('D1')
+        StockoutAlert.objects.create(variant=v, days_of_cover=2.0, suggested_reorder_qty=30)
+        self.client.force_login(self.staff)
+        resp = self.client.get('/dashboard/apps/inventory/stockout-forecast/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'D1')
+
+    def test_page_requires_staff(self):
+        resp = self.client.get('/dashboard/apps/inventory/stockout-forecast/')
+        self.assertIn(resp.status_code, (301, 302, 403))
+
+    def test_dashboard_page_contributed(self):
+        from plugins.registry import plugin_registry
+
+        slugs = {p.slug for p in plugin_registry.dashboard_pages() if p.plugin == 'inventory'}
+        self.assertIn('stockout-forecast', slugs)

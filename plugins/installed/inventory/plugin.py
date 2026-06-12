@@ -121,6 +121,20 @@ class InventoryPlugin(Plugin):
                 exc_info=True,
             )
 
+    def contribute_dashboard_pages(self) -> list:
+        from morpheus import DashboardPage  # noqa: PLC0415
+
+        return [
+            DashboardPage(
+                label='Stockout Forecast',
+                slug='stockout-forecast',
+                view='plugins.installed.inventory.views.stockout_forecast_view',
+                icon='trending-down',
+                section='catalog',
+                nav='main',
+            )
+        ]
+
     def contribute_agent_tools(self) -> list:
         from plugins.installed.inventory.agent_tools import (  # noqa: PLC0415
             adjust_stock_tool,
