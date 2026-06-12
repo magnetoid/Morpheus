@@ -74,7 +74,7 @@ class BookProductPlugin(Plugin):
             label='Books',
             description='Defaults for the Book product type.',
             schema=self.get_config_schema(),
-            category='product_types',
+            category='general',
         )
 
     def get_config_schema(self) -> dict:

@@ -131,7 +131,7 @@ class AudiobooksPlugin(Plugin):
             label='Audiobooks',
             description='ElevenLabs narration + audiobook-edition defaults.',
             schema=self.get_config_schema(),
-            category='product_types',
+            category='general',
         )
 
     def get_config_schema(self) -> dict:

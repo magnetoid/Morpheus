@@ -1,5 +1,10 @@
 """Settings categories — the Shopify-style top-level grouping.
 
+IA redesign phase 3 (docs/plans/dashboard-ia-redesign-2026-06.md): caching
+lives as a card in the Developers hub (its /dashboard/settings/caching/
+URL is dispatched before the category lookup, so it stays reachable);
+product-type panels merged into General.
+
 Each category is one page under ``/dashboard/settings/<slug>/``. A
 plugin opts into a category by setting ``category=`` on the
 ``SettingsPanel`` it returns from ``contribute_settings_panel()``.
@@ -28,12 +33,11 @@ SETTINGS_CATEGORIES: list[SettingsCategory] = [
     ),
     SettingsCategory('shipping', 'Shipping', 'Zones, rates, and carriers.', 'truck'),
     SettingsCategory('taxes', 'Taxes', 'Regional rates and overrides.', 'percent'),
-    SettingsCategory('channels', 'Channels', 'Storefront, social, marketplace listings.', 'globe'),
     SettingsCategory(
-        'product_types',
-        'Product Types',
-        'Per-type defaults & fields — books, apparel, digital.',
-        'package',
+        'channels',
+        'Sales channels',
+        'Storefront, social, SEO, tracking, marketplace listings.',
+        'globe',
     ),
     SettingsCategory('ai', 'AI', 'Provider, model, and agent settings.', 'sparkles'),
     SettingsCategory(
@@ -44,12 +48,6 @@ SETTINGS_CATEGORIES: list[SettingsCategory] = [
         'Notifications',
         'Transactional email templates, SMS, and outbound webhooks.',
         'bell',
-    ),
-    SettingsCategory(
-        'caching',
-        'Caching',
-        'Page cache, Redis backend, Cloudflare edge — all the layers that make the storefront fast.',
-        'zap',
     ),
     SettingsCategory(
         'developer', 'Developer', 'API keys, webhooks, agent tokens, observability.', 'code'
