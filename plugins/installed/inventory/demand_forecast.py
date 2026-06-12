@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.utils import timezone
 
 logger = logging.getLogger('morpheus.inventory.demand_forecast')
@@ -82,8 +82,10 @@ def forecast_all(
 
     # 1. Per-variant available quantity from StockLevel (sum across warehouses).
     available_by_variant: dict[str, int] = defaultdict(int)
-    for row in StockLevel.objects.values('variant_id').annotate(total=Sum('available_quantity')):
-        available_by_variant[str(row['variant_id'])] = int(row['total'] or 0)
+    for row in StockLevel.objects.values('variant_id').annotate(
+        total=Sum(F('quantity') - F('reserved_quantity'))
+    ):
+        available_by_variant[str(row['variant_id'])] = max(0, int(row['total'] or 0))
 
     # 2. Per-variant rolling-window sales from StockMovement('sale').
     sales_by_variant: dict[str, int] = defaultdict(int)
@@ -93,11 +95,11 @@ def forecast_all(
             created_at__gte=cutoff,
         )
         .values('stock_level__variant_id')
-        .annotate(total=Sum('quantity'))
+        .annotate(total=Sum('quantity_change'))
     )
     for row in sale_rows:
         vid = str(row['stock_level__variant_id'])
-        # StockMovement.quantity is negative for sales — normalise.
+        # StockMovement.quantity_change is negative for sales — normalise.
         sales_by_variant[vid] = abs(int(row['total'] or 0))
 
     # 3. Build the forecast rows for every variant that exists in either map.
@@ -239,3 +241,60 @@ def projected_lost_revenue_if_no_reorder(row: ForecastRow, unit_price: Decimal) 
     days = max(0, row.window_days - (row.days_until_stockout or 0))
     units_lost = round(row.daily_velocity * days)
     return Decimal(str(unit_price)) * Decimal(str(units_lost))
+
+
+def sync_stockout_alerts(
+    *,
+    window_days: int = DEFAULT_WINDOW_DAYS,
+    threshold_days: int = DEFAULT_REORDER_THRESHOLD_DAYS,
+) -> dict:
+    """Reconcile the forecast against open StockoutAlerts.
+
+    Opens an alert for each newly at-risk variant, refreshes the snapshot of
+    ones still at risk, and resolves ones that have recovered. Returns
+    {'opened': [StockoutAlert, ...], 'refreshed': int, 'resolved': int}.
+    """
+    from django.utils import timezone  # noqa: PLC0415
+
+    from plugins.installed.inventory.models import StockoutAlert  # noqa: PLC0415
+
+    rows = forecast_all(window_days=window_days, threshold_days=threshold_days)
+    at_risk = {str(r.variant_id): r for r in rows if r.reorder_recommended}
+    open_alerts = {str(a.variant_id): a for a in StockoutAlert.objects.filter(status='open')}
+
+    opened: list = []
+    refreshed = 0
+    for vid, row in at_risk.items():
+        existing = open_alerts.get(vid)
+        if existing is not None:
+            existing.days_of_cover = row.days_until_stockout
+            existing.daily_velocity = row.daily_velocity
+            existing.suggested_reorder_qty = row.suggested_reorder_qty
+            existing.save(
+                update_fields=[
+                    'days_of_cover',
+                    'daily_velocity',
+                    'suggested_reorder_qty',
+                    'last_seen_at',
+                ]
+            )
+            refreshed += 1
+        else:
+            opened.append(
+                StockoutAlert.objects.create(
+                    variant_id=row.variant_id,
+                    days_of_cover=row.days_until_stockout,
+                    daily_velocity=row.daily_velocity,
+                    suggested_reorder_qty=row.suggested_reorder_qty,
+                )
+            )
+
+    resolved = 0
+    for vid, alert in open_alerts.items():
+        if vid not in at_risk:
+            alert.status = 'resolved'
+            alert.resolved_at = timezone.now()
+            alert.save(update_fields=['status', 'resolved_at'])
+            resolved += 1
+
+    return {'opened': opened, 'refreshed': refreshed, 'resolved': resolved}

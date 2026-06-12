@@ -44,3 +44,50 @@ class StockoutAlertModelTests(TestCase):
         # a fresh open alert for the same variant is now allowed
         StockoutAlert.objects.create(variant=v)
         self.assertEqual(StockoutAlert.objects.filter(variant=v, status='open').count(), 1)
+
+
+def _make_at_risk(sku: str, *, on_hand: int, sold: int):
+    """A variant with `on_hand` stock and `sold` units of 'sale' movements in
+    the window — high velocity so it's projected to stock out."""
+    v = _variant(sku)
+    wh = Warehouse.objects.create(name=f'WH-{sku}', code=f'WH{sku}')
+    sl = StockLevel.objects.create(variant=v, warehouse=wh, quantity=on_hand, reorder_point=0)
+    StockMovement.objects.create(
+        stock_level=sl,
+        movement_type='sale',
+        quantity_change=-sold,
+        quantity_before=on_hand + sold,
+        quantity_after=on_hand,
+    )
+    return v, sl
+
+
+class SyncStockoutAlertsTests(TestCase):
+    def test_opens_one_alert_for_a_newly_at_risk_variant(self):
+        from plugins.installed.inventory.demand_forecast import sync_stockout_alerts
+
+        _make_at_risk('R1', on_hand=5, sold=140)
+        result = sync_stockout_alerts()
+        self.assertEqual(len(result['opened']), 1)
+        self.assertEqual(StockoutAlert.objects.filter(status='open').count(), 1)
+
+    def test_rerun_is_idempotent_no_duplicate_alert(self):
+        from plugins.installed.inventory.demand_forecast import sync_stockout_alerts
+
+        _make_at_risk('R2', on_hand=5, sold=140)
+        sync_stockout_alerts()
+        second = sync_stockout_alerts()
+        self.assertEqual(len(second['opened']), 0)
+        self.assertEqual(second['refreshed'], 1)
+        self.assertEqual(StockoutAlert.objects.filter(status='open').count(), 1)
+
+    def test_resolves_when_restocked(self):
+        from plugins.installed.inventory.demand_forecast import sync_stockout_alerts
+
+        v, sl = _make_at_risk('R3', on_hand=5, sold=140)
+        sync_stockout_alerts()
+        sl.quantity = 5000
+        sl.save(update_fields=['quantity'])
+        result = sync_stockout_alerts()
+        self.assertEqual(result['resolved'], 1)
+        self.assertEqual(StockoutAlert.objects.filter(status='open').count(), 0)
