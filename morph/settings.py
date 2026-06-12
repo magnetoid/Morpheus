@@ -119,6 +119,51 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.pwa',
     'plugins.installed.webstories',
     'plugins.installed.consent',
+    # ── Vibe-coding roadmap (added 2026-06-12) ────────────────────────────
+    # These plugins implement the F1-F20 vibe-coding feature roadmap in
+    # docs/analysis/vibe_coding_gap_assessment.md. They all follow the
+    # plugin contract: settings panel + StorefrontBlock contributions,
+    # no hard-coded storefront edits, no cross-plugin model imports.
+    #   F10  checkout_experience    — end-to-end checkout + express pay
+    #   F1   immersive_pdp          — video hero, story blocks, sticky buybox
+    #   F6   rails                  — six personalised recommendation rails
+    #   F2   media_3d               — 3D / AR previews + shoppable video
+    #   F7   ai_stylist             — on-site AI shopping assistant
+    #   F14  ugc_reviews            — photo + video reviews + creator program
+    #   F11  one_click              — one-click returning shopper
+    #   F17  rich_post_purchase     — multichannel post-purchase chain
+    #   F3   journal                — block-editor story-telling CMS
+    #   F4   brand_kit              — brand asset library + design tokens
+    #   F8   discovery_quiz         — zero-party-data quiz funnel
+    #   F19  save_for_later         — save-for-later / wishlist upgrades
+    #   F15  referrals              — Give-5, Get-5 customer referrals
+    #   F12  smart_shipping         — live rates + carbon display
+    #   F20  returns_portal         — returns as a retention surface
+    #   F18  subscriptions_plus     — replenish + curated subscriptions
+    #   F9   lookbook               — editorial product bundles
+    #   F13  post_checkout_upsell   — single in-checkout + post-order upsell
+    #   F16  drops                  — scheduled drops + waitlist
+    #   F5   motion                 — micro-animations + skeleton states
+    'plugins.installed.checkout_experience',
+    'plugins.installed.immersive_pdp',
+    'plugins.installed.rails',
+    'plugins.installed.media_3d',
+    'plugins.installed.ai_stylist',
+    'plugins.installed.ugc_reviews',
+    'plugins.installed.one_click',
+    'plugins.installed.rich_post_purchase',
+    'plugins.installed.journal',
+    'plugins.installed.brand_kit',
+    'plugins.installed.discovery_quiz',
+    'plugins.installed.save_for_later',
+    'plugins.installed.referrals',
+    'plugins.installed.smart_shipping',
+    'plugins.installed.returns_portal',
+    'plugins.installed.subscriptions_plus',
+    'plugins.installed.lookbook',
+    'plugins.installed.post_checkout_upsell',
+    'plugins.installed.drops',
+    'plugins.installed.motion',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

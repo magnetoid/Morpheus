@@ -1,0 +1,26 @@
+{% load i18n %}<article class="morpheus-journal__post" data-slug="{{ post.slug }}" aria-labelledby="morpheus-journal__title">
+  <header class="morpheus-journal__hero">
+    {% if post.hero_image %}<img src="{{ post.hero_image }}" alt="" loading="eager" />{% endif %}
+    <h1 id="morpheus-journal__title">{{ post.title }}</h1>
+    {% if post.excerpt %}<p class="morpheus-journal__excerpt">{{ post.excerpt }}</p>{% endif %}
+  </header>
+  <div class="morpheus-journal__body">
+    {% for block in blocks %}
+      <section class="morpheus-journal__block" data-type="{{ block.type }}">
+        {% if block.type == 'text' %}{{ block.rendered|safe }}{% endif %}
+        {% if block.type == 'image' and block.data.url %}<img src="{{ block.data.url }}" alt="{{ block.data.alt|default:'' }}" loading="lazy" />{% endif %}
+        {% if block.type == 'video' and block.data.url %}<video src="{{ block.data.url }}" poster="{{ block.data.poster|default:'' }}" controls playsinline></video>{% endif %}
+        {% if block.type == 'product' and block.data.slug %}
+          <a class="morpheus-journal__product" href="/products/{{ block.data.slug }}/">
+            <span>{{ block.data.title|default:block.data.slug }}</span>
+          </a>
+        {% endif %}
+        {% if block.type == 'collection' and block.data.slug %}
+          <a class="morpheus-journal__collection" href="/collections/{{ block.data.slug }}/">
+            <span>{{ block.data.title|default:block.data.slug }}</span>
+          </a>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+</article>

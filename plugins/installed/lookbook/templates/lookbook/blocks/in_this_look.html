@@ -1,0 +1,18 @@
+{% load i18n %}{% if in_this_look %}
+<section class="morpheus-lookbook__in-this" data-product="{{ product.slug }}" aria-label="Worn with">
+  <h3>{% trans 'Worn with' %}</h3>
+  <ol class="morpheus-lookbook__items">
+    {% for item in in_this_look %}
+      <li class="morpheus-lookbook__item" data-sku="{{ item.sku }}">
+        <a href="{{ item.get_absolute_url }}">
+          <img src="{{ item.hero_image|default:'' }}" alt="" loading="lazy" />
+          <span>{{ item.name }}</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ol>
+  {% if parent_look %}
+    <a class="morpheus-lookbook__see-look" href="/looks/{{ parent_look.slug }}/">{% trans 'See the full look' %}</a>
+  {% endif %}
+</section>
+{% endif %}

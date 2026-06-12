@@ -1,0 +1,14 @@
+{% load i18n %}<section class="morpheus-rails morpheus-rails--recently-viewed" data-rail="recently_viewed" aria-label="Recently viewed">
+  <ol class="morpheus-rails__items">
+    {% for product in recently_viewed|slice:":10" %}
+      <li class="morpheus-rails__item">
+        <a href="{{ product.get_absolute_url }}">
+          <img src="{{ product.hero_image|default:'' }}" alt="" loading="lazy" />
+          <h3>{{ product.name }}</h3>
+        </a>
+      </li>
+    {% empty %}
+      <li class="morpheus-rails__empty" hidden></li>
+    {% endfor %}
+  </ol>
+</section>

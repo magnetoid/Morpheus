@@ -1,0 +1,50 @@
+{% load i18n %}<div
+  id="morpheus-checkout"
+  class="morpheus-checkout"
+  data-layout="{{ settings.layout|default:'one-page' }}"
+  data-express="{{ settings.express_methods|join:',' }}"
+  data-reduced-motion="{{ settings.reduced_motion_default|yesno:'1,0' }}"
+  data-csrf="{{ csrf_token }}"
+  data-cart-id="{{ cart.id }}"
+  data-currency="{{ breakdown.currency|default:'USD' }}"
+  data-country="{{ addresses.shipping.country|default:'' }}"
+>
+  <noscript>
+    <p>{% trans 'Please enable JavaScript to complete checkout.' %}</p>
+  </noscript>
+
+  <form id="morpheus-checkout-form" autocomplete="on" novalidate>
+    <section class="morpheus-checkout__section" data-step="contact">
+      <h2>{% trans 'Contact' %}</h2>
+      <label>
+        <span>{% trans 'Email' %}</span>
+        <input type="email" name="email" required autocomplete="email" />
+      </label>
+    </section>
+
+    <section class="morpheus-checkout__section" data-step="address">
+      <h2>{% trans 'Shipping address' %}</h2>
+      <label><span>{% trans 'Full name' %}</span><input name="full_name" autocomplete="name" required /></label>
+      <label><span>{% trans 'Address line 1' %}</span><input name="line1" autocomplete="address-line1" required /></label>
+      <label><span>{% trans 'Address line 2' %}</span><input name="line2" autocomplete="address-line2" /></label>
+      <label><span>{% trans 'City' %}</span><input name="city" autocomplete="address-level2" required /></label>
+      <label><span>{% trans 'Postal code' %}</span><input name="postal_code" autocomplete="postal-code" required /></label>
+      <label><span>{% trans 'Country' %}</span><input name="country" autocomplete="country" required value="{{ addresses.shipping.country|default:'' }}" /></label>
+    </section>
+
+    <section class="morpheus-checkout__section" data-step="shipping">
+      <h2>{% trans 'Shipping' %}</h2>
+      <div id="morpheus-shipping-rates" aria-live="polite"></div>
+    </section>
+
+    <section class="morpheus-checkout__section" data-step="payment">
+      <h2>{% trans 'Payment' %}</h2>
+      <div id="morpheus-express-buttons" data-express="{{ settings.express_methods|join:',' }}"></div>
+      <div id="morpheus-payment-element"></div>
+    </section>
+
+    <button type="submit" class="morpheus-checkout__submit" data-total="{{ breakdown.total.amount|default:'0' }}" data-currency="{{ breakdown.currency|default:'USD' }}">
+      {% trans 'Pay' %} {{ breakdown.currency|default:'USD' }} {{ breakdown.total.amount|default:'0' }}
+    </button>
+  </form>
+</div>

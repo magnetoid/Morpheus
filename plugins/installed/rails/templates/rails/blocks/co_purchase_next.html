@@ -1,0 +1,15 @@
+{% load i18n %}<section class="morpheus-rails morpheus-rails--co-purchase" data-rail="co_purchase" aria-label="Pairs with this">
+  <header><h2>{% trans 'Pairs with this' %}</h2></header>
+  <ol class="morpheus-rails__items">
+    {% for product in co_purchase_next|slice:":6" %}
+      <li class="morpheus-rails__item">
+        <a href="{{ product.get_absolute_url }}">
+          <img src="{{ product.hero_image|default:'' }}" alt="" loading="lazy" />
+          <h3>{{ product.name }}</h3>
+        </a>
+      </li>
+    {% empty %}
+      <li class="morpheus-rails__empty" hidden></li>
+    {% endfor %}
+  </ol>
+</section>

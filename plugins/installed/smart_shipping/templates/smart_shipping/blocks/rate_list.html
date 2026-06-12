@@ -1,0 +1,18 @@
+{% load i18n %}{% if rates %}
+<section class="morpheus-smart-shipping" data-cart-id="{{ cart.id }}" aria-label="Shipping options">
+  <ol class="morpheus-smart-shipping__rates" data-lowest-carbon-id="{{ lowest_carbon_id|default:'' }}">
+    {% for rate in rates %}
+      <li class="morpheus-smart-shipping__rate" data-rate-id="{{ rate.id }}">
+        <input type="radio" name="shipping_rate" id="rate-{{ rate.id }}" value="{{ rate.id }}" />
+        <label for="rate-{{ rate.id }}">
+          <span class="morpheus-smart-shipping__label">{{ rate.label }}</span>
+          <span class="morpheus-smart-shipping__price">{{ rate.currency }} {{ rate.amount }}</span>
+          {% if rate.id == lowest_carbon_id and settings.show_lowest_carbon_badge %}
+            <span class="morpheus-smart-shipping__lowest-carbon">{% trans 'Lowest carbon' %}</span>
+          {% endif %}
+        </label>
+      </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}

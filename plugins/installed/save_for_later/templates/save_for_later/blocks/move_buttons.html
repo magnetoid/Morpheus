@@ -1,0 +1,14 @@
+{% load i18n %}{% if cart and cart.items %}
+<section class="morpheus-sfl" data-cart-id="{{ cart.id }}" aria-label="Save for later">
+  <h3>{% trans 'Or save for later' %}</h3>
+  <ol class="morpheus-sfl__items">
+    {% for item in cart.items %}
+      <li class="morpheus-sfl__item" data-line-id="{{ item.id }}">
+        <button type="button" data-sfl-action="move" data-product-id="{{ item.product_id }}">
+          {% trans 'Save this' %}
+        </button>
+      </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}

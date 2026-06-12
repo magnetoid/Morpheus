@@ -1,0 +1,8 @@
+{% load i18n %}<section class="morpheus-ugc__highlights" data-product="{{ product.slug }}" aria-label="Customer highlights">
+  {% for highlight in ugc_highlights|slice:":3" %}
+    <blockquote class="morpheus-ugc__quote">
+      <p>{{ highlight.body }}</p>
+      <footer>— {{ highlight.author|default:'Customer' }}</footer>
+    </blockquote>
+  {% empty %}{% endfor %}
+</section>

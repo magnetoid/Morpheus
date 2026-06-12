@@ -1,0 +1,8 @@
+from django.apps import AppConfig
+
+
+class DropsConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'plugins.installed.drops'
+    label = 'drops'
+    verbose_name = 'Live drops + waitlist'

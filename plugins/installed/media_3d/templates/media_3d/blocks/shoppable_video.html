@@ -1,0 +1,11 @@
+{% load i18n %}{% if shoppable_video %}
+<section class="morpheus-media3d__shoppable" data-product="{{ product.slug }}" aria-label="Shoppable video">
+  <video controls playsinline
+         preload="metadata"
+         poster="{{ shoppable_video.poster_url }}"
+         data-max-cards="{{ settings.shoppable_video_max_cards|default:6 }}">
+    <source src="{{ shoppable_video.video_url }}" type="video/mp4" />
+  </video>
+  <ol class="morpheus-media3d__cards" hidden></ol>
+</section>
+{% endif %}

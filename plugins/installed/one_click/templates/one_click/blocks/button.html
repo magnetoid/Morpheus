@@ -1,0 +1,8 @@
+{% load i18n %}{% if one_click_token %}
+<form class="morpheus-oneclick" data-cart-id="{{ cart.id }}" data-token="{{ one_click_token }}">
+  <button type="submit" class="morpheus-oneclick__button">
+    {% trans 'One-tap checkout' %} · {{ device_label|default:'this device' }}
+  </button>
+  <output class="morpheus-oneclick__feedback" aria-live="polite"></output>
+</form>
+{% endif %}
