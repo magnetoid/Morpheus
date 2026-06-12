@@ -187,3 +187,41 @@ def schedule_price_change_tool(
         },
         display=f'Price change for {product.name} → {new_price} at {when}',
     )
+
+
+@tool(
+    name='inventory.stockout_forecast',
+    description=(
+        'List SKUs predicted to stock out within N days, with days of cover, '
+        'daily velocity and a suggested reorder quantity. Velocity-based — unlike '
+        'inventory.low_stock_report which is a static threshold.'
+    ),
+    scopes=['inventory.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'threshold_days': {'type': 'integer', 'minimum': 1, 'maximum': 90, 'default': 14},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100, 'default': 25},
+        },
+    },
+)
+def stockout_forecast_tool(*, threshold_days: int = 14, limit: int = 25) -> ToolResult:
+    from plugins.installed.inventory.demand_forecast import forecast_all  # noqa: PLC0415
+
+    threshold_days = max(1, min(int(threshold_days or 14), 90))
+    limit = max(1, min(int(limit or 25), 100))
+    rows = [r for r in forecast_all(threshold_days=threshold_days) if r.reorder_recommended][:limit]
+    out = [
+        {
+            'product': r.variant_label,
+            'available': r.available,
+            'days_of_cover': r.days_until_stockout,
+            'daily_velocity': round(r.daily_velocity, 2),
+            'suggested_reorder_qty': r.suggested_reorder_qty,
+        }
+        for r in rows
+    ]
+    return ToolResult(
+        output={'threshold_days': threshold_days, 'at_risk': out},
+        display=f'{len(out)} SKU(s) projected to stock out within {threshold_days}d',
+    )

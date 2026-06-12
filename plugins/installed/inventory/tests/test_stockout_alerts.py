@@ -109,3 +109,21 @@ class RunStockoutForecastTaskTests(TestCase):
             second = tasks.run_stockout_forecast()
             self.assertEqual(second['opened'], 0)
             m2.assert_not_called()
+
+
+class StockoutForecastToolTests(TestCase):
+    def test_tool_returns_at_risk_rows(self):
+        from plugins.installed.inventory.agent_tools import stockout_forecast_tool
+
+        _make_at_risk('G1', on_hand=5, sold=140)
+        result = stockout_forecast_tool.invoke({'threshold_days': 14, 'limit': 25})
+        self.assertGreaterEqual(len(result.output['at_risk']), 1)
+        self.assertIn('suggested_reorder_qty', result.output['at_risk'][0])
+
+    def test_tool_registered_and_worker_visible(self):
+        from core.agents import agent_registry
+
+        names = {t.name for t in agent_registry.platform_tools()}
+        self.assertIn('inventory.stockout_forecast', names)
+        worker = agent_registry.get_agent('worker')
+        self.assertIn('inventory.stockout_forecast', {t.name for t in worker.get_tools()})

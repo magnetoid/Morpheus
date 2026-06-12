@@ -127,6 +127,7 @@ class InventoryPlugin(Plugin):
             list_back_in_stock_tool,
             low_stock_report_tool,
             schedule_price_change_tool,
+            stockout_forecast_tool,
         )
 
         return [
@@ -134,6 +135,7 @@ class InventoryPlugin(Plugin):
             adjust_stock_tool,
             list_back_in_stock_tool,
             schedule_price_change_tool,
+            stockout_forecast_tool,
         ]
 
     def contribute_skills(self) -> list:
