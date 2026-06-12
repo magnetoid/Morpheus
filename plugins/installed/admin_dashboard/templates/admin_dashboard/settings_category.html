@@ -27,6 +27,21 @@
   </a>
   {% endif %}
 
+  {% if developer_tools %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    {% for tool in developer_tools %}
+    <a href="{{ tool.url }}" class="card card-padded flex items-start gap-3 hover:bg-[color:var(--surface-2)]">
+      <div class="settings-tile-icon"><i data-lucide="{{ tool.icon }}" class="h-5 w-5"></i></div>
+      <div class="min-w-0 flex-1">
+        <div class="font-medium">{{ tool.label }}</div>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ tool.hint }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)] mt-1"></i>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if core_card %}
   <div class="card">
     <div class="card-padded border-b border-[color:var(--border)]">

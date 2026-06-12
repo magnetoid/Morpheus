@@ -834,21 +834,9 @@
       <i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps
     </a>
 
-    {% comment %}Tracking control center — GA4 + GTM settings, event log, consent. Hardcoded so it's always reachable, even with the plugin disabled.{% endcomment %}
-    <a href="/dashboard/tracking/" class="nav-link {% if active_nav == 'tracking' %}active{% endif %}">
-      <i data-lucide="activity" class="h-4 w-4"></i> Tracking
-    </a>
-
-    {% comment %}Health: deep error log (server + client). Hardcoded so it's always reachable, even with every plugin disabled.{% endcomment %}
-    <a href="{% url 'errors:list' %}" class="nav-link {% if active_nav == 'errors' %}active{% endif %}">
-      <i data-lucide="alert-circle" class="h-4 w-4"></i> Errors
-    </a>
-
-    {% comment %}Updates: component version inventory (core/plugins/themes). Hardcoded so it's always reachable.{% endcomment %}
-    <a href="{% url 'admin_dashboard:updates' %}" class="nav-link {% if active_nav == 'updates' %}active{% endif %}">
-      <i data-lucide="refresh-cw" class="h-4 w-4"></i> Updates
-    </a>
-
+    {% comment %}Tracking / Errors / Updates / Caching now live as cards in
+    the Developers hub (settings → Developer) — core pages, still always
+    reachable through the hub, which is itself core.{% endcomment %}
     {% for section in settings_sections %}{% for page in section.pages %}
     <a href="{% if page.url %}{{ page.url }}{% else %}/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/{% endif %}"
        class="nav-link {% if page.url and request.path == page.url %}active{% elif active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
