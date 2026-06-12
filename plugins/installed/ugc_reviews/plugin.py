@@ -15,6 +15,7 @@ No cross-plugin imports — approved UGC is read via the existing
 that the `reviews` plugin ships and this plugin consumes via the
 hook bus.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -62,7 +63,11 @@ class UgcReviewsPlugin(Plugin):
             'properties': {
                 'allow_photo': {'type': 'boolean', 'default': True, 'title': 'Allow photo uploads'},
                 'allow_video': {'type': 'boolean', 'default': True, 'title': 'Allow video uploads'},
-                'max_video_seconds': {'type': 'integer', 'default': 60, 'title': 'Max video length (seconds)'},
+                'max_video_seconds': {
+                    'type': 'integer',
+                    'default': 60,
+                    'title': 'Max video length (seconds)',
+                },
                 'creator_prompt_delay_days': {
                     'type': 'integer',
                     'default': 90,

@@ -6,13 +6,16 @@ the attribution row: when the referee places their first qualifying
 order, the referrer's code is recorded on the order, and a credit
 ledger entry is queued for both sides.
 """
+
 from __future__ import annotations
 
 from morpheus import models
 
 
 class ReferralCode(models.Model):
-    customer = models.OneToOneField('customers.Customer', on_delete=models.CASCADE, related_name='+')
+    customer = models.OneToOneField(
+        'customers.Customer', on_delete=models.CASCADE, related_name='+'
+    )
     code = models.SlugField(max_length=24, unique=True, db_index=True)
     channel = models.CharField(max_length=24, default='default')
     created_at = models.DateTimeField(auto_now_add=True)

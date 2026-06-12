@@ -13,6 +13,7 @@ the storefront renders it inline in checkout and on the receipt.
 The post-checkout upsell ships with a *single* one-tap "add to my
 order" button that creates a follow-up order in the same session.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

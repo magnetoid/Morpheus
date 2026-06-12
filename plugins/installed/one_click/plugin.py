@@ -10,6 +10,7 @@ Encryption: tokens are AES-GCM, key lives in `settings.ONE_CLICK_KEY`
 (env). Tokens rotate every 30 days and on every checkout, with the
 last 3 retained per customer to support multi-device.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

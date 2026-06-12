@@ -4,6 +4,7 @@ ReturnRequest is the entry. ReturnItem is the line-level state.
 Exchange is the chosen replacement (optional). ReturnFeedback is
 the "we learned something" box.
 """
+
 from __future__ import annotations
 
 from morpheus import models

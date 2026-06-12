@@ -1,4 +1,5 @@
 """Smoke test for checkout_experience plugin (no model = no DB needed)."""
+
 from __future__ import annotations
 
 

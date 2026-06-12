@@ -17,6 +17,7 @@ No models — purely a delivery + UX layer that consumes the canonical
 orders/tax/shipping/promotions hooks. Disable it and the storefront
 falls back to its pre-existing (read-only) template behaviour.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

@@ -20,6 +20,7 @@ The block format is a JSON document with the shape:
 The render path: a `Block` record → a context dict → the
 `journal/blocks/<type>.html` template.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

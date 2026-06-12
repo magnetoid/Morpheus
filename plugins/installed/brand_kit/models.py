@@ -5,13 +5,20 @@ collection of design tokens (colors, fonts, spacing, radii). The
 storefront pulls the active set on every render and emits a CSS
 stylesheet of variables.
 """
+
 from __future__ import annotations
 
 from morpheus import models
 
 
 class Asset(models.Model):
-    KIND_CHOICES = (('image', 'Image'), ('font', 'Font'), ('icon', 'Icon'), ('video', 'Video'), ('other', 'Other'))
+    KIND_CHOICES = (
+        ('image', 'Image'),
+        ('font', 'Font'),
+        ('icon', 'Icon'),
+        ('video', 'Video'),
+        ('other', 'Other'),
+    )
 
     name = models.CharField(max_length=200)
     kind = models.CharField(max_length=12, choices=KIND_CHOICES, default='image')

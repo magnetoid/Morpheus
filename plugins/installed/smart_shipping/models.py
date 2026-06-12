@@ -5,6 +5,7 @@ so the checkout path stays fast. The lookup table lives in this
 model; it can be edited from the dashboard or refreshed by a
 Celery beat job.
 """
+
 from __future__ import annotations
 
 from morpheus import models

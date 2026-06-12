@@ -16,6 +16,7 @@ asset attached to a product. This plugin:
 The plugin never imports a sibling plugin's models; assets live in
 its own `Asset3D` model keyed to `catalog.Product`.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

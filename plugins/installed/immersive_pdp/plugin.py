@@ -17,6 +17,7 @@ Pieces contributed (via `StorefrontBlock(slot=…)`):
 No models — pure delivery + UX. Disable it and the existing PDP
 template reverts to its baseline render.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock

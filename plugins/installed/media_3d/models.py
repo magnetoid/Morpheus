@@ -4,6 +4,7 @@ Two concrete asset URLs (one for Android Scene Viewer, one for iOS
 Quick Look) and a `ShoppableVideo` for time-marker product cards.
 The viewer template picks the correct one at render time.
 """
+
 from __future__ import annotations
 
 from morpheus import models
@@ -17,8 +18,12 @@ class Asset3D(models.Model):
     )
     glb_url = models.URLField(blank=True, help_text='.glb for Android Scene Viewer')
     usdz_url = models.URLField(blank=True, help_text='.usdz for iOS Quick Look')
-    poster_url = models.URLField(blank=True, help_text='Static poster shown when the device cannot render AR')
-    glb_size_bytes = models.PositiveIntegerField(default=0, help_text='Set on upload; reader template fast-fails over the budget')
+    poster_url = models.URLField(
+        blank=True, help_text='Static poster shown when the device cannot render AR'
+    )
+    glb_size_bytes = models.PositiveIntegerField(
+        default=0, help_text='Set on upload; reader template fast-fails over the budget'
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

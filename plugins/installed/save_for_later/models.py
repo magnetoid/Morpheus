@@ -4,6 +4,7 @@ A `SavedItem` is an entry in a customer's "save for later" list.
 A `PriceSnapshot` is the price at the time the item was saved —
 we compare on each tick to decide whether to queue a notification.
 """
+
 from __future__ import annotations
 
 from morpheus import models

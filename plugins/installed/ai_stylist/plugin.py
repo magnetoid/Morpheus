@@ -15,6 +15,7 @@ agent already uses. Every reply is recorded via
 `core.audit.services.record_ai_decision` so EU AI Act art. 12/13
 audit is automatic.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -67,8 +68,8 @@ class AiStylistPlugin(Plugin):
                     'type': 'string',
                     'default': (
                         "You are a brand-aware shopping stylist. Speak in the merchant's "
-                        "voice. Always cite product names + prices from the catalog. "
-                        "Never invent SKUs."
+                        'voice. Always cite product names + prices from the catalog. '
+                        'Never invent SKUs.'
                     ),
                     'title': 'System prompt prelude',
                 },

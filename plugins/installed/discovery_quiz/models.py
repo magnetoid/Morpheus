@@ -5,6 +5,7 @@ are its components. `QuizResultTemplate` maps an answer pattern
 to a category + intro copy. `QuizSubmission` is a customer's
 filled-in answer set.
 """
+
 from __future__ import annotations
 
 from morpheus import models
@@ -74,7 +75,9 @@ class QuizSubmission(models.Model):
         related_name='+',
     )
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='submissions')
-    answers_json = models.TextField(default='{}', help_text='{question_id: [option_key, ...] or str}')
+    answers_json = models.TextField(
+        default='{}', help_text='{question_id: [option_key, ...] or str}'
+    )
     result_category = models.SlugField(max_length=80, blank=True)
     email = models.EmailField(blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
