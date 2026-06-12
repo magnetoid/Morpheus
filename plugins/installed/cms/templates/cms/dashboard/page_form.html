@@ -93,10 +93,61 @@
     <div class="space-y-4 pt-4 border-t border-[color:var(--border)]">
       <h2 class="text-sm font-semibold">Cover image &amp; SEO</h2>
       <div>
-        <label class="block text-xs font-medium mb-1" for="page-cover">Cover image URL</label>
-        <input type="url" id="page-cover" name="cover_image" class="input" value="{{ cover_image|default:'' }}" placeholder="https://… (paste, or copy a URL from the Media library)">
-        <p class="text-xs text-[color:var(--text-muted)] mt-1">Shown as the journal cover + social/OG image. Browse <a href="/dashboard/media/" target="_blank" rel="noopener" class="underline">Media</a> to upload &amp; copy a URL. {% if cover_image %}<a href="{{ cover_image }}" target="_blank" rel="noopener" class="underline">preview</a>{% endif %}</p>
+        <label class="block text-xs font-medium mb-1" for="page-cover">Cover image</label>
+        <div class="flex gap-2 items-center">
+          <input type="url" id="page-cover" name="cover_image" class="input flex-1" value="{{ cover_image|default:'' }}" placeholder="https://… or click Upload →">
+          <button type="button" id="page-cover-upload" class="btn btn-ghost btn-sm whitespace-nowrap">⬆ Upload</button>
+        </div>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Uploads land in your <a href="/dashboard/media/" target="_blank" rel="noopener" class="underline">Media library</a> and set the cover here. Or paste any URL.</p>
+        <img id="page-cover-preview" src="{{ cover_image|default:'' }}" alt="" class="mt-2 max-h-32 rounded border border-[color:var(--border)] {% if not cover_image %}hidden{% endif %}">
       </div>
+      <script>
+      (function () {
+        var btn = document.getElementById('page-cover-upload');
+        var input = document.getElementById('page-cover');
+        var preview = document.getElementById('page-cover-preview');
+        if (!btn || !input) return;
+        function syncPreview() {
+          if (!preview) return;
+          preview.src = input.value;
+          preview.classList.toggle('hidden', !input.value);
+        }
+        input.addEventListener('input', syncPreview);
+        btn.addEventListener('click', function () {
+          var file = document.createElement('input');
+          file.type = 'file';
+          file.accept = 'image/*';
+          file.onchange = async function () {
+            var f = file.files && file.files[0];
+            if (!f) return;
+            var tokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+            var fd = new FormData();
+            fd.append('file', f);
+            btn.disabled = true; btn.textContent = 'Uploading…';
+            try {
+              // Same Media-library endpoint the body editor uses → the asset is
+              // stored centrally in the Media library, then its URL set as cover.
+              var resp = await fetch('/dashboard/media/api/upload/', {
+                method: 'POST', body: fd, credentials: 'same-origin',
+                headers: tokenEl ? { 'X-CSRFToken': tokenEl.value } : {},
+              });
+              var data = await resp.json();
+              if (resp.ok && data.url) {
+                input.value = data.url;
+                syncPreview();
+              } else {
+                window.alert('Image upload failed: ' + (data.error || resp.status));
+              }
+            } catch (err) {
+              window.alert('Image upload failed: ' + err);
+            } finally {
+              btn.disabled = false; btn.textContent = '⬆ Upload';
+            }
+          };
+          file.click();
+        });
+      })();
+      </script>
       <div>
         <label class="block text-xs font-medium mb-1" for="page-meta-title">SEO title <span class="text-[color:var(--text-muted)]">(≤60 chars; blank = auto from title)</span></label>
         <input type="text" id="page-meta-title" name="meta_title" maxlength="255" class="input" value="{{ page_meta_title|default:'' }}">
