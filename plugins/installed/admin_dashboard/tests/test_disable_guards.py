@@ -60,8 +60,6 @@ class DashboardNavGuardTests(TestCase):
     GUARDED_LINKS = {
         '/dashboard/reviews/': 'reviews_enabled',
         '/dashboard/draft-orders/': 'draft_orders_enabled',
-        '/dashboard/media/': 'media_enabled',
-        '/dashboard/book-taxonomies/': 'book_product_enabled',
     }
 
     def test_plugin_nav_links_are_guarded(self):
@@ -78,12 +76,27 @@ class DashboardNavGuardTests(TestCase):
                     f'(ADR 0013 disable test).',
                 )
 
-    def test_affiliates_block_is_plugin_guarded(self):
-        # Affiliates renders a parent/child block (not a single inline link); it
-        # must sit inside a `{% plugin_enabled "affiliates" %}` / `{% if %}` block.
+    def test_contributed_nav_is_not_hardcoded(self):
+        # Affiliates / media / book_product moved from hardcoded base.html
+        # blocks to nav='main' DashboardPage contributions (IA redesign
+        # phase 1) — the contributed-sections loop auto-hides a disabled
+        # plugin, which is stronger than a template guard. Keep base.html
+        # free of them so the two nav systems can't drift apart again.
         src = _BASE_HTML.read_text(encoding='utf-8')
-        self.assertIn('{% plugin_enabled "affiliates" as affiliates_enabled %}', src)
-        self.assertIn('/dashboard/apps/affiliates/list/', src)
+        for fragment in (
+            '/dashboard/apps/affiliates/',
+            '/dashboard/media/',
+            '/dashboard/book-taxonomies/',
+        ):
+            self.assertNotIn(fragment, src, f'{fragment} is hardcoded again')
+
+        from plugins.registry import plugin_registry
+
+        pages = {(pg.plugin, pg.label): pg for pg in plugin_registry.dashboard_pages()}
+        self.assertTrue(
+            any(plugin == 'affiliates' for plugin, _ in pages),
+            'affiliates contributes no dashboard pages',
+        )
 
 
 class HotEnableTests(TestCase):

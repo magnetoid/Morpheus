@@ -40,6 +40,6 @@ class MediaPlugin(Plugin):
                 icon='image',
                 view='plugins.installed.media.views.library',
                 order=20,
-                nav='hidden',
+                nav='main',
             ),
         ]

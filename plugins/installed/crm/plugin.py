@@ -231,7 +231,7 @@ class CrmPlugin(Plugin):
                 slug='home',
                 view='plugins.installed.crm.views.crm_home',
                 icon='users-round',
-                section='crm',
+                section='customers',
                 order=10,
             ),
             DashboardPage(
@@ -239,7 +239,7 @@ class CrmPlugin(Plugin):
                 slug='inbox',
                 view='plugins.installed.crm.views.inbox_list',
                 icon='inbox',
-                section='crm',
+                section='customers',
                 order=20,
             ),
             DashboardPage(
@@ -247,7 +247,7 @@ class CrmPlugin(Plugin):
                 slug='pipeline',
                 view='plugins.installed.crm.views.pipeline_board',
                 icon='kanban',
-                section='crm',
+                section='customers',
                 order=30,
             ),
             DashboardPage(
@@ -255,7 +255,7 @@ class CrmPlugin(Plugin):
                 slug='tasks',
                 view='plugins.installed.crm.views.tasks_list',
                 icon='list-checks',
-                section='crm',
+                section='customers',
                 order=40,
             ),
         ]

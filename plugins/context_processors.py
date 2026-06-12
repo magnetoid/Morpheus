@@ -7,20 +7,17 @@ from collections import OrderedDict
 # Section display order in the admin sidebar — Shopify-style top-to-bottom.
 # Sections not in this list fall through to alphabetical order at the bottom.
 _SECTION_ORDER = [
-    # Main sidebar (daily-use)
-    # Marketing sits first so its section header lands right under the
-    # static daily-use links (Home / Assistant / Insights / Orders /
-    # Products / Customers) instead of getting buried near the bottom.
-    'marketing',  # Campaigns, Promotions, Coupons
-    'ai',  # AI & agents — Morpheus's defining surface
-    'sales',  # Orders (drafts surface inline)
-    'catalog',  # Products, Categories, Collections
-    'crm',  # Leads, Accounts, Deals, Tasks
-    'customers',  # Reviews, Subscriptions
-    'cms',  # Pages, Blocks, Menus, Forms
+    # Main sidebar — contributed sections render below the hardcoded
+    # Home / Linda / Orders / Products / Customers entries, in this order.
+    # Target IA: docs/plans/dashboard-ia-redesign-2026-06.md.
+    'catalog',  # Stockout forecast, Book taxonomies — sits nearest Products
+    'customers',  # CRM (Leads, Accounts, Deals, Tasks), Subscriptions
+    'cms',  # Pages, Blocks, Menus, Forms, Media assets
+    'marketing',  # Campaigns, Promotions, Coupons, Gift cards
+    'seo',  # SEO audit, redirects, JSON-LD config (7 pages — own section)
+    'growth',  # Affiliates (list, programs, links, conversions, payouts)
     'analytics',  # Sessions, Events, Funnels
-    'seo',  # SEO audit, redirects, JSON-LD config
-    'growth',  # Affiliates, loyalty
+    'ai',  # Agent setup beyond the hardcoded Linda group
     'marketplace',  # Vendor onboarding, splits, payouts
     'plugins',  # uncategorised main-nav plugin pages
     # Settings sidebar (admin / setup)
@@ -35,13 +32,12 @@ _SECTION_LABELS = {
     'ai': 'AI & agents',
     'sales': 'Sales',
     'catalog': 'Catalog',
-    'crm': 'Customers & CRM',
     'customers': 'Customers',
     'marketing': 'Marketing',
     'cms': 'Content',
     'analytics': 'Analytics',
     'seo': 'SEO',
-    'growth': 'Growth',
+    'growth': 'Affiliates',
     'marketplace': 'Multivendor',
     'plugins': 'More plugins',
     'developer': 'Developer tools',

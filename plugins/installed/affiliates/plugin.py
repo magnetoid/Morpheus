@@ -167,12 +167,9 @@ class AffiliatesPlugin(Plugin):
         }
 
     def contribute_dashboard_pages(self) -> list:
-        # nav='hidden' because base.html now renders the Affiliates +
-        # Payouts links explicitly in the main sidebar (with the
-        # parent/child shape the merchant expects). The DashboardPage
-        # rows are still registered so the plugin_page_router resolves
-        # the URLs at /dashboard/apps/affiliates/list/ and
-        # /dashboard/apps/affiliates/payouts/.
+        # nav='main': the sidebar group is rendered by the contributed-
+        # sections loop (section='growth', labelled 'Affiliates') — the old
+        # hardcoded base.html block is gone, so disable removes everything.
         from morpheus import DashboardPage
 
         return [
@@ -183,7 +180,7 @@ class AffiliatesPlugin(Plugin):
                 icon='link',
                 section='growth',
                 order=10,
-                nav='hidden',
+                nav='main',
             ),
             DashboardPage(
                 label='Programs',
@@ -192,7 +189,7 @@ class AffiliatesPlugin(Plugin):
                 icon='layers',
                 section='growth',
                 order=15,
-                nav='hidden',
+                nav='main',
             ),
             DashboardPage(
                 label='Links',
@@ -201,7 +198,7 @@ class AffiliatesPlugin(Plugin):
                 icon='link-2',
                 section='growth',
                 order=17,
-                nav='hidden',
+                nav='main',
             ),
             DashboardPage(
                 label='Conversions',
@@ -210,7 +207,7 @@ class AffiliatesPlugin(Plugin):
                 icon='trending-up',
                 section='growth',
                 order=18,
-                nav='hidden',
+                nav='main',
             ),
             DashboardPage(
                 label='Payouts',
@@ -219,7 +216,7 @@ class AffiliatesPlugin(Plugin):
                 icon='wallet',
                 section='growth',
                 order=20,
-                nav='hidden',
+                nav='main',
             ),
             DashboardPage(
                 label='Analytics',
@@ -228,6 +225,6 @@ class AffiliatesPlugin(Plugin):
                 icon='bar-chart-3',
                 section='growth',
                 order=25,
-                nav='hidden',
+                nav='main',
             ),
         ]
