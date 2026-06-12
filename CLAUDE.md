@@ -45,6 +45,13 @@ Examples (this is what's already shipped — mirror the pattern):
   not direct template edits in `themes/`.
 - Cross-plugin coupling through the `core.hooks` event bus — never import
   one plugin from another's models.
+- **Before creating a plugin, audit for overlap**: grep
+  `MORPHEUS_DEFAULT_PLUGINS` and the existing plugin descriptions, and
+  justify the boundary in the PR. One concept = one model owner —
+  extending a flow means a FK/OneToOne to the owner's model (declared in
+  `requires`) plus hooks, **never a parallel table**. (PR #62 shipped a
+  second, incompatible `ReturnRequest` invisible to the dashboard, RMA
+  numbers, and the refund service; consolidated since.)
 
 **A plugin owns all of its own code.** Every file a feature needs — views,
 URLs, templates, dashboard pages, settings panels, GraphQL, beat tasks —

@@ -1,10 +1,13 @@
 """Returns portal — a *retention* surface, not a transaction.
 
-Rebuilds the `orders/returns` flow as a branded, multi-step
-self-serve portal with **"exchange or store credit"** as first-class
-options (exchanges retain ~70 % of the original order value, per
-Narvar). A "we learned something" feedback box routes to the CRM
-plugin's lead pipeline.
+Extends the canonical return flow (``orders.ReturnRequest`` +
+``ReturnService`` in plugins/installed/orders/refunds.py) with
+**"exchange or store credit"** as first-class resolutions (exchanges
+retain ~70 % of the original order value, per Narvar) and a "we
+learned something" feedback box that routes to the CRM plugin's lead
+pipeline. The return itself — RMA numbers, state machine, refunds,
+store-credit ledger — stays owned by orders; this plugin only attaches
+``ReturnResolution`` / ``ReturnFeedback`` rows to it.
 
 Returns are the most emotionally loaded moment in the journey.
 The opposite of vibe-coding is a generic UPS label email.
@@ -20,10 +23,10 @@ class ReturnsPortalPlugin(Plugin):
     label = 'Returns portal'
     version = '1.0.0'
     description = (
-        'Branded, multi-step self-serve returns portal. "Exchange or '
-        'store credit" are first-class options (exchanges retain ~70 % '
-        'of the original order value). A feedback box routes to the CRM '
-        "plugin's lead pipeline."
+        'Retention layer over the canonical orders return flow: '
+        '"exchange or store credit" as first-class resolutions '
+        '(exchanges retain ~70 % of the original order value) plus a '
+        "feedback box routed to the CRM plugin's lead pipeline."
     )
     has_models = True
     requires = ['orders', 'loyalty_points', 'customers', 'consent']
