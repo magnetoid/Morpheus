@@ -12,6 +12,7 @@ The merchant can:
 Lookbooks are the *editorial* surface — the difference between a
 shop and a brand.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -37,11 +38,6 @@ class LookbookPlugin(Plugin):
                 template='lookbook/blocks/in_this_look.html',
                 priority=25,
                 context_keys=['product'],
-            ),
-            StorefrontBlock(
-                slot='home_above_grid',
-                template='lookbook/blocks/featured_looks.html',
-                priority=3,
             ),
         ]
 

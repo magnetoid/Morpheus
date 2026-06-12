@@ -39,12 +39,6 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
         <input type="hidden" name="quantity" value="1">
         <button type="submit" class="btn btn-primary btn-sm">{% translate "Add to cart" %}</button>
       </form>
-      <button type="button" class="btn btn-ghost btn-sm" data-quick-view
-              data-slug="{{ product.slug }}"
-              data-name="{{ product.name }}"
-              data-img="{{ img }}"
-              data-price="{% if product.display_price %}{{ product.display_price|money }}{% elif product.price %}{{ product.price|money }}{% endif %}"
-              data-add="/cart/add/{{ product.id }}/">{% translate "Quick view" %}</button>
     </div>
   </div>
 </div>

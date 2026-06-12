@@ -7,6 +7,7 @@ Waitlists persist post-sellout ("we'll email you when it's back").
 
 Drops are *built* from anticipation; the *waiting* is the product.
 """
+
 from __future__ import annotations
 
 from morpheus import Plugin, SettingsPanel, StorefrontBlock
@@ -25,11 +26,6 @@ class DropsPlugin(Plugin):
 
     def contribute_storefront_blocks(self) -> list:
         return [
-            StorefrontBlock(
-                slot='home_above_grid',
-                template='drops/blocks/next_drop.html',
-                priority=1,
-            ),
             StorefrontBlock(
                 slot='pdp_below_form',
                 template='drops/blocks/drop_indicator.html',
