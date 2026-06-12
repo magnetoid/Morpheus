@@ -101,9 +101,15 @@ class WebhooksUiPlugin(Plugin):
             logger.debug('webhooks_ui fanout import failed: %s', e)
             return
         try:
-            endpoints = WebhookEndpoint.objects.filter(
-                is_active=True,
-                events__contains=[event_name],
+            # Force evaluation inside the try: the events__contains lookup is
+            # lazy, so iterating it later (outside this guard) would propagate
+            # backend errors — e.g. sqlite has no JSON contains, which would
+            # otherwise break the model write that fired this event.
+            endpoints = list(
+                WebhookEndpoint.objects.filter(
+                    is_active=True,
+                    events__contains=[event_name],
+                )
             )
         except Exception as e:  # noqa: BLE001
             logger.debug('webhooks_ui fanout query failed: %s', e)
