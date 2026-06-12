@@ -28,7 +28,15 @@ class Migration(migrations.Migration):
             model_name="returnrequest",
             name="order",
         ),
-        migrations.AlterField(
+        # Retarget the FK from the old bigint-PK ReturnRequest to the uuid-PK
+        # orders.ReturnRequest. Postgres can't cast bigint->uuid, so drop + re-add
+        # instead of AlterField (the returnfeedback table is empty — returns_portal
+        # is brand new, verified 0 rows on prod before this change).
+        migrations.RemoveField(
+            model_name="returnfeedback",
+            name="request",
+        ),
+        migrations.AddField(
             model_name="returnfeedback",
             name="request",
             field=models.OneToOneField(
