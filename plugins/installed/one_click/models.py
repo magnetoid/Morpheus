@@ -13,7 +13,7 @@ from morpheus import models
 
 class OneClickToken(models.Model):
     customer = models.ForeignKey(
-        'auth.User',
+        'customers.Customer',
         on_delete=models.CASCADE,
         related_name='one_click_tokens',
     )

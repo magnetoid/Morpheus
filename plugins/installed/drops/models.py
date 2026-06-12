@@ -33,7 +33,7 @@ class Drop(models.Model):
 
 class DropTicket(models.Model):
     drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name='tickets')
-    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='+')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     position = models.PositiveIntegerField(default=0)
     raffle_seed = models.CharField(max_length=64, blank=True, help_text='For raffle drops: a deterministic seed for fair ordering.')
     invited_at = models.DateTimeField(auto_now_add=True)
@@ -45,7 +45,7 @@ class DropTicket(models.Model):
 
 
 class Waitlist(models.Model):
-    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='+')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     product = models.ForeignKey('catalog.Product', on_delete=models.CASCADE, related_name='+')
     joined_at = models.DateTimeField(auto_now_add=True)
     notified_at = models.DateTimeField(null=True, blank=True)

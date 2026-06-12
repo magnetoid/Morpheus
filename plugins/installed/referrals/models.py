@@ -12,7 +12,7 @@ from morpheus import models
 
 
 class ReferralCode(models.Model):
-    customer = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='+')
+    customer = models.OneToOneField('customers.Customer', on_delete=models.CASCADE, related_name='+')
     code = models.SlugField(max_length=24, unique=True, db_index=True)
     channel = models.CharField(max_length=24, default='default')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -21,8 +21,8 @@ class ReferralCode(models.Model):
 class Referral(models.Model):
     STATE_CHOICES = (('pending', 'Pending'), ('credited', 'Credited'), ('reversed', 'Reversed'))
 
-    referrer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='referrals_made')
-    referee = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='referrals_received')
+    referrer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
+    referee = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='+')
     code = models.SlugField(max_length=24)
     state = models.CharField(max_length=12, choices=STATE_CHOICES, default='pending')

@@ -67,7 +67,7 @@ class QuizResultTemplate(models.Model):
 
 class QuizSubmission(models.Model):
     customer = models.ForeignKey(
-        'auth.User',
+        'customers.Customer',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

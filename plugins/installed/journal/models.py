@@ -19,7 +19,7 @@ class Post(models.Model):
     excerpt = models.TextField(blank=True)
     hero_image = models.URLField(blank=True)
     author = models.ForeignKey(
-        'auth.User',
+        'customers.Customer',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

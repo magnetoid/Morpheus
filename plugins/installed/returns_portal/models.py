@@ -26,7 +26,7 @@ class ReturnRequest(models.Model):
     )
 
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='+')
-    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='+')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     state = models.CharField(max_length=16, choices=STATE_CHOICES, default='requested')
     resolution = models.CharField(max_length=12, choices=RESOLUTION_CHOICES, default='exchange')
     reason = models.CharField(max_length=200, blank=True)
@@ -40,7 +40,7 @@ class ReturnRequest(models.Model):
 
 class ReturnItem(models.Model):
     request = models.ForeignKey(ReturnRequest, on_delete=models.CASCADE, related_name='items')
-    line = models.ForeignKey('orders.OrderLine', on_delete=models.CASCADE, related_name='+')
+    line = models.ForeignKey('orders.OrderItem', on_delete=models.CASCADE, related_name='+')
     quantity = models.PositiveIntegerField(default=1)
     # Optional exchange target
     exchange_variant = models.ForeignKey(

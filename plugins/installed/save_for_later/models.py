@@ -10,7 +10,7 @@ from morpheus import models
 
 
 class SavedItem(models.Model):
-    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='+')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     product = models.ForeignKey('catalog.Product', on_delete=models.CASCADE, related_name='+')
     moved_at = models.DateTimeField(auto_now_add=True)
     # The snapshot price is the price at the time the item was moved
@@ -39,7 +39,7 @@ class PriceSnapshot(models.Model):
 class SharedWishlist(models.Model):
     """A shareable, read-only link to a customer's wishlist."""
 
-    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='+')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     token = models.SlugField(max_length=64, unique=True, db_index=True)
     title = models.CharField(max_length=120, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -148,28 +148,21 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.immersive_pdp',
     'plugins.installed.rails',
     'plugins.installed.media_3d',
-    # --- Roadmap plugins (PR #62) TEMPORARILY DISABLED ---
-    # These ship broken model relations that fail `manage.py check`
-    # (fields.E300/E301/E307) and crash the prod boot → 503 on dotbooks.store.
-    # Re-enable each only after fixing: use settings.AUTH_USER_MODEL (NOT
-    # auth.User) for customer/author/referrer FKs, and repair the dangling
-    # lazy refs ugc_reviews.ReviewMedia.review and returns_portal.ReturnItem.line
-    # (they point at models that don't exist).
-    # 'plugins.installed.ai_stylist',
-    # 'plugins.installed.ugc_reviews',
-    # 'plugins.installed.one_click',
-    # 'plugins.installed.rich_post_purchase',
-    # 'plugins.installed.journal',
+    'plugins.installed.ai_stylist',
+    'plugins.installed.ugc_reviews',
+    'plugins.installed.one_click',
+    'plugins.installed.rich_post_purchase',
+    'plugins.installed.journal',
     'plugins.installed.brand_kit',
-    # 'plugins.installed.discovery_quiz',
-    # 'plugins.installed.save_for_later',
-    # 'plugins.installed.referrals',
+    'plugins.installed.discovery_quiz',
+    'plugins.installed.save_for_later',
+    'plugins.installed.referrals',
     'plugins.installed.smart_shipping',
-    # 'plugins.installed.returns_portal',
-    # 'plugins.installed.subscriptions_plus',
+    'plugins.installed.returns_portal',
+    'plugins.installed.subscriptions_plus',
     'plugins.installed.lookbook',
     'plugins.installed.post_checkout_upsell',
-    # 'plugins.installed.drops',
+    'plugins.installed.drops',
     'plugins.installed.motion',
 ]
 

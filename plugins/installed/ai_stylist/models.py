@@ -17,7 +17,7 @@ def _hash_session(session_key: str) -> str:
 class StylistSession(models.Model):
     session_hash = models.CharField(max_length=64, unique=True, db_index=True)
     customer = models.ForeignKey(
-        'auth.User',
+        'customers.Customer',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

@@ -12,7 +12,7 @@ class ReviewMedia(models.Model):
     KIND_CHOICES = (('photo', 'Photo'), ('video', 'Video'))
 
     review = models.ForeignKey(
-        'reviews.Review',
+        'catalog.Review',
         on_delete=models.CASCADE,
         related_name='media',
     )
@@ -37,7 +37,7 @@ class CreatorInvite(models.Model):
     )
 
     customer = models.ForeignKey(
-        'auth.User',
+        'customers.Customer',
         on_delete=models.CASCADE,
         related_name='+',
     )

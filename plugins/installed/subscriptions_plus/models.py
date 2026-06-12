@@ -18,7 +18,7 @@ class Subscription(models.Model):
     )
     FLAVOUR_CHOICES = (('replenish', 'Replenish'), ('curated', 'Curated'))
 
-    customer = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='+')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='+')
     flavour = models.CharField(max_length=10, choices=FLAVOUR_CHOICES, default='replenish')
     state = models.CharField(max_length=10, choices=STATE_CHOICES, default='active')
     cadence_days = models.PositiveIntegerField(default=30)
