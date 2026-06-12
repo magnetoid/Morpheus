@@ -158,7 +158,12 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.save_for_later',
     'plugins.installed.referrals',
     'plugins.installed.smart_shipping',
-    'plugins.installed.returns_portal',
+    # TEMPORARILY DISABLED — PR #64 migration 0002 crashes the prod deploy:
+    # `cannot cast type bigint to uuid` on returnfeedback.request (the FK retarget
+    # from the old bigint-PK ReturnRequest to orders.ReturnRequest uses AlterField,
+    # which postgres can't cast). Fix = RemoveField+AddField (table is empty), then
+    # re-enable. Skipping the app skips its migrations so prod boots.
+    # 'plugins.installed.returns_portal',
     'plugins.installed.subscriptions_plus',
     'plugins.installed.lookbook',
     'plugins.installed.post_checkout_upsell',
