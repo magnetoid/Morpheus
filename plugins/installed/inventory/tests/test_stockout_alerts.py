@@ -91,3 +91,21 @@ class SyncStockoutAlertsTests(TestCase):
         result = sync_stockout_alerts()
         self.assertEqual(result['resolved'], 1)
         self.assertEqual(StockoutAlert.objects.filter(status='open').count(), 0)
+
+
+class RunStockoutForecastTaskTests(TestCase):
+    def test_notifies_staff_only_for_newly_opened(self):
+        from unittest import mock
+
+        from plugins.installed.inventory import tasks
+
+        _make_at_risk('T1', on_hand=5, sold=140)
+        with mock.patch.object(tasks, 'notify_all_staff', return_value=1) as m:
+            first = tasks.run_stockout_forecast()
+            self.assertEqual(first['opened'], 1)
+            m.assert_called_once()
+            self.assertEqual(m.call_args.kwargs['kind'], 'inventory.stockout_forecast')
+        with mock.patch.object(tasks, 'notify_all_staff', return_value=1) as m2:
+            second = tasks.run_stockout_forecast()
+            self.assertEqual(second['opened'], 0)
+            m2.assert_not_called()

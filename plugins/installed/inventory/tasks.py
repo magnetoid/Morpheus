@@ -10,6 +10,13 @@ from morph.celery import app
 
 logger = logging.getLogger('morpheus.inventory')
 
+try:
+    from plugins.installed.notifications_center.services import notify_all_staff
+except ImportError:  # notifications_center not installed
+
+    def notify_all_staff(**kwargs) -> int:  # fail-soft stub
+        return 0
+
 
 @app.task(
     name='inventory.notify_back_in_stock', ignore_result=True, time_limit=60, soft_time_limit=30
@@ -143,3 +150,30 @@ def find_abandoned_carts() -> int:
         except Exception as e:  # noqa: BLE001
             logger.warning('inventory: cart.abandoned fire failed: %s', e)
     return fired
+
+
+@app.task(
+    name='inventory.run_stockout_forecast', ignore_result=True, time_limit=120, soft_time_limit=90
+)
+def run_stockout_forecast() -> dict:
+    """Daily: reconcile stockout alerts; alert staff for newly opened ones."""
+    from plugins.installed.inventory.demand_forecast import sync_stockout_alerts  # noqa: PLC0415
+
+    result = sync_stockout_alerts()
+    newly = result['opened']
+    if newly:
+        lines = '\n'.join(
+            f'{a.variant} — ~{(a.days_of_cover or 0):.0f}d of cover, reorder {a.suggested_reorder_qty}'
+            for a in newly[:10]
+        )
+        try:
+            notify_all_staff(
+                kind='inventory.stockout_forecast',
+                title=f'{len(newly)} SKU(s) projected to stock out soon',
+                body=lines,
+                action_url='/dashboard/apps/inventory/stockout-forecast/',
+                icon='alert-triangle',
+            )
+        except Exception as exc:  # noqa: BLE001 — alerting never breaks the job
+            logger.warning('run_stockout_forecast: notify failed: %s', exc, exc_info=True)
+    return {'opened': len(newly), 'resolved': result['resolved']}

@@ -1,3 +1,5 @@
+from celery.schedules import crontab
+
 from morpheus import Plugin, events
 
 
@@ -48,6 +50,14 @@ class InventoryPlugin(Plugin):
             {
                 'task': 'inventory.reconcile_redis_stock',
                 'schedule': 60 * 5,
+            },
+        )
+        # Daily predictive stockout forecast → dedup'd staff alerts.
+        self.register_celery_beat(
+            'inventory:run_stockout_forecast',
+            {
+                'task': 'inventory.run_stockout_forecast',
+                'schedule': crontab(hour=6, minute=0),  # 06:00 UTC daily
             },
         )
 
