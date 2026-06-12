@@ -149,3 +149,38 @@ class BackInStockSubscription(models.Model):
             models.Index(fields=['product', 'notified_at']),
             models.Index(fields=['variant', 'notified_at']),
         ]
+
+
+class StockoutAlert(models.Model):
+    """An open episode where a variant is projected to stock out within the
+    reorder window. Created by sync_stockout_alerts(); one OPEN row per
+    variant (partial unique constraint) so merchants are alerted once per
+    episode, not nagged on every forecast run."""
+
+    STATUS_CHOICES = [('open', 'Open'), ('resolved', 'Resolved')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    variant = models.ForeignKey(
+        'catalog.ProductVariant', on_delete=models.CASCADE, related_name='stockout_alerts'
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open', db_index=True)
+    days_of_cover = models.FloatField(null=True, blank=True)
+    daily_velocity = models.FloatField(default=0)
+    suggested_reorder_qty = models.IntegerField(default=0)
+    opened_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['days_of_cover']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['variant'],
+                condition=models.Q(status='open'),
+                name='uniq_open_stockout_alert_per_variant',
+            )
+        ]
+        indexes = [models.Index(fields=['status', 'days_of_cover'])]
+
+    def __str__(self):
+        return f'StockoutAlert({self.variant} — {self.status})'
