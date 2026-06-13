@@ -19,6 +19,15 @@ def _active_products(books):
 
 
 def _render(request, label, value, products, *, term=None, index_url=None):
+    # Per-visitor merchandising: reorder by purchase propensity (no-op without
+    # consent/history/personalisation). Series keeps its reading order
+    # (series_position), so it opts out.
+    if label != 'Series':
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        products = hook_registry.filter(
+            MorpheusEvents.PRODUCT_LIST_REORDER, value=products, request=request, surface='facet'
+        )
     seo_title = term.meta_title if (term and term.meta_title) else f'{value} — {label} — dot books'
     return render(
         request,

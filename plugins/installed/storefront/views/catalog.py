@@ -356,7 +356,7 @@ def product_detail(request, slug):
     if product_row is not None and product_row.vendor and product_row.vendor.is_active:
         pdp_vendor = product_row.vendor
 
-    related = _related_products(slug)
+    related = _related_products(slug, request=request)
     images = product.get('images') or []
     primary_images = sorted(
         (i for i in images if i.get('isPrimary')),
@@ -675,8 +675,8 @@ def _book_specs_from_metafields(slug, slugify, urlencode):
     return out
 
 
-def _related_products(current_slug: str, limit: int = 4) -> list[dict]:
-    """AI-driven 'you might also like' for the PDP."""
+def _related_products(current_slug: str, limit: int = 4, *, request=None) -> list[dict]:
+    """AI-driven 'you might also like' for the PDP, reordered per visitor."""
     try:
         from plugins.installed.ai_assistant.services.recommendations import similar_to
         from plugins.installed.catalog.models import Product
@@ -687,6 +687,15 @@ def _related_products(current_slug: str, limit: int = 4) -> list[dict]:
         if product is None:
             return []
         rows = similar_to(product, limit=limit)
+        if request is not None:
+            from core.hooks import MorpheusEvents, hook_registry
+
+            rows = hook_registry.filter(
+                MorpheusEvents.PRODUCT_LIST_REORDER,
+                value=list(rows),
+                request=request,
+                surface='related',
+            )
     except Exception:  # noqa: BLE001
         return []
     out = []
@@ -1024,6 +1033,14 @@ def author_detail(request, slug):
         raise
     except Exception:  # noqa: BLE001
         raise Http404
+
+    # Per-visitor merchandising: surface the books this visitor is most likely
+    # to buy first (no-op without consent/history/personalisation plugin).
+    from core.hooks import MorpheusEvents, hook_registry
+
+    bibliography = hook_registry.filter(
+        MorpheusEvents.PRODUCT_LIST_REORDER, value=bibliography, request=request, surface='author'
+    )
 
     bio_page = None
     try:

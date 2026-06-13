@@ -393,6 +393,11 @@ class MorpheusEvents:
     #                             the customer page.
     CART_CALCULATE_BREAKDOWN = 'cart.calculate_breakdown'  # filter
     PRODUCT_CALCULATE_PRICE = 'product.calculate_price'  # filter
+    # PRODUCT_LIST_REORDER — filter, value=list[Product]. Per-visitor
+    #   merchandising reorders a storefront product list by purchase-propensity.
+    #   kwargs: request=HttpRequest, surface=str ('author'|'facet'|'related'|…).
+    #   Subscribed by the personalisation plugin; consent-gated, no-op otherwise.
+    PRODUCT_LIST_REORDER = 'product.list.reorder'  # filter
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
