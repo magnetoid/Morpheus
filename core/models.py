@@ -145,14 +145,32 @@ class ProductChannelListing(models.Model):
         return f'{self.channel.slug}/{self.product_id} {self.price_amount}'
 
 
+def hash_api_key(raw: str) -> str:
+    """SHA-256 of an API token, for hash-at-rest storage + constant lookup.
+    API tokens are high-entropy random strings, so a fast cryptographic hash is
+    sufficient (unlike low-entropy passwords, which need bcrypt/argon2)."""
+    import hashlib
+
+    return hashlib.sha256((raw or '').encode()).hexdigest()
+
+
 class APIKey(models.Model):
     """
     Law 2: Secure Core. Granular RBAC for headless clients and Remote Plugins.
+
+    The token is stored HASHED (``key_hash``), never in plaintext — a DB dump
+    can't leak live credentials. The raw token is shown once at creation (via
+    the transient ``_raw_key``) and authenticated by hash.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
-    key = models.CharField(max_length=64, unique=True, editable=False)
+    # Legacy plaintext column — blanked once hashed; kept for the backfill only.
+    key = models.CharField(max_length=64, blank=True, default='', editable=False)
+    key_hash = models.CharField(max_length=64, db_index=True, default='', editable=False)
+    key_prefix = models.CharField(
+        max_length=16, default='', editable=False, help_text='First chars, for identification.'
+    )
     scopes = models.JSONField(
         default=list, help_text="List of permitted scopes, e.g. ['read:products', 'write:orders']"
     )
@@ -169,10 +187,14 @@ class APIKey(models.Model):
         return 'admin' in self.scopes or scope in self.scopes
 
     def save(self, *args, **kwargs):  # noqa: DJ012
-        if not self.key:
+        if not self.key_hash:
             import secrets
 
-            self.key = secrets.token_urlsafe(48)
+            raw = self.key or secrets.token_urlsafe(48)
+            self.key_hash = hash_api_key(raw)
+            self.key_prefix = raw[:12]
+            self._raw_key = raw  # transient — surfaced once at creation
+            self.key = ''  # never persist the full plaintext
         super().save(*args, **kwargs)
 
 

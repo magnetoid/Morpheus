@@ -54,8 +54,19 @@ class StoreChannelAdmin(admin.ModelAdmin):
 
 @admin.register(APIKey)
 class APIKeyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'channel', 'is_active', 'created_at')
-    readonly_fields = ('key',)
+    list_display = ('name', 'key_prefix', 'channel', 'is_active', 'created_at')
+    readonly_fields = ('key_prefix', 'key_hash', 'created_at')
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        raw = getattr(obj, '_raw_key', None)
+        if raw:
+            from django.contrib import messages
+
+            messages.warning(
+                request,
+                f'Copy this API token now — it is stored hashed and will not be shown again: {raw}',
+            )
 
 
 @admin.register(WebhookEndpoint)

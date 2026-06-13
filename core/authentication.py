@@ -48,8 +48,12 @@ class MorpheusAPIKeyAuthentication(authentication.BaseAuthentication):
     def authenticate_credentials(
         self, key: str, request: Request | None = None
     ) -> tuple[None, APIKey]:
+        from core.models import hash_api_key
+
         try:
-            api_key = APIKey.objects.select_related('channel').get(key=key, is_active=True)
+            api_key = APIKey.objects.select_related('channel').get(
+                key_hash=hash_api_key(key), is_active=True
+            )
         except APIKey.DoesNotExist as e:
             raise exceptions.AuthenticationFailed(_('Invalid API key.')) from e
         if request is not None:

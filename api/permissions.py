@@ -39,9 +39,12 @@ class AgentAuthMiddleware(MiddlewareMixin):
 
         token = auth_header.split(' ', 1)[1].strip()
 
-        # Path 1 — core.APIKey table (legacy / shell-issued).
+        # Path 1 — core.APIKey table (legacy / shell-issued). Tokens are stored
+        # hashed; look up by hash.
         try:
-            api_key = APIKey.objects.get(key=token, is_active=True)
+            from core.models import hash_api_key
+
+            api_key = APIKey.objects.get(key_hash=hash_api_key(token), is_active=True)
             request.agent_capabilities = {
                 'scopes': api_key.scopes,
                 'channel_id': str(api_key.channel_id) if api_key.channel else None,

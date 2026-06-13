@@ -26,7 +26,8 @@ class GraphQLAgentAuthTests(TestCase):
             '/graphql/agent/',
             data=json.dumps({'query': '{ ping }'}),
             content_type='application/json',
-            HTTP_AUTHORIZATION=f'Bearer {api_key.key}',
+            # Tokens are stored hashed; the raw value is exposed once at creation.
+            HTTP_AUTHORIZATION=f'Bearer {api_key._raw_key}',
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json().get('data', {}).get('ping'), 'pong')
