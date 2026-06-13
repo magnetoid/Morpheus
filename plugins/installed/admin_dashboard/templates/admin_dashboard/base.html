@@ -767,6 +767,8 @@
       <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' and request.path != '/dashboard/products/content-audit/' %}active{% endif %}">All products</a>
       <a href="{% url 'admin_dashboard:categories' %}" class="nav-link {% if active_nav == 'categories' %}active{% endif %}">Categories</a>
       <a href="{% url 'admin_dashboard:collections' %}" class="nav-link {% if active_nav == 'collections' %}active{% endif %}">Collections</a>
+      {# Plugin-contributed Products children (e.g. book_product's Book taxonomies), placed by each plugin via DashboardPage(section='products', order=…) — ADR 0016. #}
+      {% for p in products_nav_children %}<a href="{{ p.url }}" class="nav-link {% if p.is_active %}active{% endif %}">{{ p.label }}</a>{% endfor %}
       <a href="{% url 'admin_dashboard:content_audit' %}" class="nav-link {% if request.path == '/dashboard/products/content-audit/' %}active{% endif %}">Content audit</a>
       {% if reviews_enabled %}<a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>{% endif %}
     </div>

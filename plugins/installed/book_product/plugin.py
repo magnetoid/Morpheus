@@ -43,12 +43,11 @@ class BookProductPlugin(Plugin):
                 slug='book-taxonomies',
                 view='plugins.installed.book_product.dashboard_taxonomies.taxonomies_list',
                 icon='tags',
-                section='catalog',
-                order=40,
-                # Surfaced as a child link under the hardcoded Products group
-                # (admin_dashboard base.html, guarded by plugin_enabled), so this
-                # standalone entry is hidden to avoid showing the item twice. The
-                # page + /dashboard/book-taxonomies/ route are unaffected.
+                # section='products' renders this as a child of the hardcoded
+                # Products nav group (just below Collections, via order) — the
+                # plugin owns its placement; no hardcoded link in base.html (ADR 0016).
+                section='products',
+                order=10,
                 nav='main',
                 url='/dashboard/book-taxonomies/',
             ),

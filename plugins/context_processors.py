@@ -124,7 +124,28 @@ def plugin_context(request):
         p
         for p in pages
         if getattr(p, 'nav', 'main') not in ('settings', 'hidden')
-        and getattr(p, 'section', '') != 'apps'
+        and getattr(p, 'section', '') not in ('apps', 'products')
+    ]
+    # Pages that declare section='products' render as children of the hardcoded
+    # "Products" nav group (just below Collections), ordered by `order` — so a
+    # plugin owns where its entry lands under Products (ADR 0016) instead of a
+    # hardcoded link in admin_dashboard's base.html.
+    products_nav_children = [
+        {
+            'label': p.label,
+            'url': getattr(p, 'url', '') or f'/dashboard/apps/{p.plugin}/{p.slug}/',
+            'is_active': request.path.startswith(
+                getattr(p, 'url', '') or f'/dashboard/apps/{p.plugin}/{p.slug}/'
+            ),
+        }
+        for p in sorted(
+            (
+                p
+                for p in pages
+                if getattr(p, 'nav', 'main') == 'main' and getattr(p, 'section', '') == 'products'
+            ),
+            key=lambda p: getattr(p, 'order', 100),
+        )
     ]
     settings_pages = [
         p
@@ -209,6 +230,8 @@ def plugin_context(request):
         'nav_badges': nav_badges,
         'dashboard_pages': pages,  # back-compat flat list
         'sidebar_sections': _group_by_section(main_pages, active_apps_slug=active_apps_slug),
+        # Plugin pages that opt into the hardcoded "Products" nav group.
+        'products_nav_children': products_nav_children,
         'settings_sections': _group_by_section(settings_pages, active_apps_slug=active_apps_slug),
         # Schema-driven settings panels (form-based).
         'plugin_settings_panels': plugin_registry.all_settings_panels(),
