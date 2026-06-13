@@ -349,6 +349,8 @@ def links(request: HttpRequest) -> HttpResponse:
             'q': q,
             'status': status,
             'site_base': request.build_absolute_uri('/').rstrip('/'),
+            'share_text': 'Books worth your shelf — take a look:',
+            'share_subject': 'A book recommendation',
             'seo_title': 'Your tracked links',
         },
     )
@@ -690,5 +692,48 @@ def settings(request: HttpRequest) -> HttpResponse:
             'saved': saved,
             'error': error,
             'seo_title': 'Affiliate settings',
+        },
+    )
+
+
+@login_required(login_url='/auth/login/')
+def leaderboard(request: HttpRequest) -> HttpResponse:
+    """Top affiliates by sales driven — a motivational leaderboard. Shows
+    pseudonymous @handles + sales counts (never others' earnings) and
+    highlights the viewer's own position."""
+    from django.db.models import Count, Q
+
+    from plugins.installed.affiliates.models import Affiliate, AffiliateConversion
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    counted = Q(conversions__status__in=['approved', 'paid'])
+    ranked = list(
+        Affiliate.objects.filter(status='approved')
+        .annotate(sales=Count('conversions', filter=counted))
+        .filter(sales__gt=0)
+        .order_by('-sales', 'created_at')[:20]
+    )
+    rows = []
+    my_rank = None
+    for i, a in enumerate(ranked, start=1):
+        is_me = a.id == affiliate.id
+        if is_me:
+            my_rank = i
+        rows.append({'rank': i, 'name': f'@{a.handle}', 'sales': a.sales, 'is_me': is_me})
+    my_sales = AffiliateConversion.objects.filter(
+        affiliate=affiliate, status__in=['approved', 'paid']
+    ).count()
+    return render(
+        request,
+        'affiliates/leaderboard.html',
+        {
+            'affiliate': affiliate,
+            'rows': rows,
+            'my_rank': my_rank,
+            'my_sales': my_sales,
+            'seo_title': 'Affiliate leaderboard',
         },
     )

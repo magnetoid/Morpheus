@@ -18,6 +18,7 @@
         <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Tracked links<span class="text-accent">.</span></h1>
         <p class="lede" style="margin: 0; max-width: 56ch;">Every link you've spun up, with its click and conversion history. Toggle a link off when a campaign ends; the URL still resolves but stops accruing.</p>
       </div>
+      <a href="/affiliates/me/leaderboard/" class="btn">🏆 Leaderboard</a>
     </header>
 
     {% comment %}── Filters + new-link form ───────────────────────────{% endcomment %}
@@ -70,6 +71,12 @@
                   <code>/r/{{ link.code }}</code>
                   <span class="aff-link__copy-icon" aria-hidden="true">⧉</span>
                 </button>
+                <div class="aff-share" role="group" aria-label="Share this link">
+                  <a class="aff-share__btn" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ full_url|urlencode }}" target="_blank" rel="noopener" title="Share on X" aria-label="Share on X">𝕏</a>
+                  <a class="aff-share__btn" href="https://wa.me/?text={{ share_text|urlencode }}%20{{ full_url|urlencode }}" target="_blank" rel="noopener" title="Share on WhatsApp" aria-label="Share on WhatsApp">✆</a>
+                  <a class="aff-share__btn" href="https://www.facebook.com/sharer/sharer.php?u={{ full_url|urlencode }}" target="_blank" rel="noopener" title="Share on Facebook" aria-label="Share on Facebook">f</a>
+                  <a class="aff-share__btn" href="mailto:?subject={{ share_subject|urlencode }}&body={{ share_text|urlencode }}%20{{ full_url|urlencode }}" title="Share by email" aria-label="Share by email">✉</a>
+                </div>
               </td>
               <td>
                 <details class="aff-inline-edit">
@@ -139,6 +146,16 @@
 .aff-link__copy.is-copied::after { content: ' copied'; font-size: .7rem; }
 .aff-link__copy code { font-size: .82rem; }
 .aff-link__copy-icon { font-size: .85rem; color: var(--muted); }
+
+.aff-share { display: inline-flex; gap: .25rem; margin-left: .4rem; vertical-align: middle; }
+.aff-share__btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 6px;
+  background: var(--paper-2); color: var(--muted); font-size: .8rem;
+  text-decoration: none; border: 1px solid transparent;
+  transition: border-color .15s ease, color .15s ease;
+}
+.aff-share__btn:hover { border-color: var(--rule); color: var(--ink); }
 
 .aff-inline-edit { display: inline; }
 .aff-inline-edit summary { cursor: pointer; list-style: none; }

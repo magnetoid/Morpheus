@@ -1,0 +1,67 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 760px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
+      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Leaderboard</span>
+    </nav>
+
+    <header style="margin: 0 0 1.5rem;">
+      <p class="eyebrow">@{{ affiliate.handle }}</p>
+      <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Leaderboard<span class="text-accent">.</span></h1>
+      <p class="lede" style="margin: 0; max-width: 56ch;">Top affiliates by sales driven. Ranked by confirmed conversions — earnings stay private.</p>
+    </header>
+
+    <div class="lb-you">
+      <span>You{% if my_rank %} · rank #{{ my_rank }}{% endif %}</span>
+      <strong>{{ my_sales }} sale{{ my_sales|pluralize }}</strong>
+    </div>
+
+    {% if rows %}
+    <ol class="lb-list">
+      {% for r in rows %}
+      <li class="lb-row{% if r.is_me %} lb-row--me{% endif %}">
+        <span class="lb-rank">{% if r.rank == 1 %}🥇{% elif r.rank == 2 %}🥈{% elif r.rank == 3 %}🥉{% else %}{{ r.rank }}{% endif %}</span>
+        <span class="lb-name">{{ r.name }}{% if r.is_me %} <span class="lb-tag">you</span>{% endif %}</span>
+        <span class="lb-sales">{{ r.sales }} sale{{ r.sales|pluralize }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <div class="lb-empty">
+      <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 .5rem;">No sales on the board yet.</p>
+      <p style="color: var(--muted); margin: 0;">Be the first — share your links and drive a sale to claim the top spot.</p>
+    </div>
+    {% endif %}
+
+    <p style="margin-top: 1.75rem;"><a href="/affiliates/me/links/" class="btn btn-primary">Share your links →</a></p>
+  </div>
+</section>
+
+<style>
+.lb-you {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .9rem 1.1rem; margin-bottom: 1.25rem; border-radius: 10px;
+  background: var(--paper-2); border: 1px solid var(--rule);
+}
+.lb-you strong { font-variant-numeric: tabular-nums; }
+.lb-list { list-style: none; margin: 0; padding: 0; }
+.lb-row {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .8rem 1.1rem; border-bottom: 1px solid var(--rule);
+}
+.lb-row:last-child { border-bottom: 0; }
+.lb-row--me { background: rgba(16,185,129,.08); border-radius: 8px; }
+.lb-rank { width: 2rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
+.lb-name { flex: 1; font-family: var(--serif); font-size: 1.05rem; }
+.lb-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: #047857; background: rgba(16,185,129,.15); padding: .1rem .4rem; border-radius: 999px; vertical-align: middle; }
+.lb-sales { font-variant-numeric: tabular-nums; color: var(--muted); }
+.lb-empty { text-align: center; padding: 3rem 2rem; background: var(--paper-2); border-radius: 12px; }
+</style>
+{% endblock %}
