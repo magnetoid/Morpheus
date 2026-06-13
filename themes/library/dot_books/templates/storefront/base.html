@@ -241,7 +241,10 @@
   /* Full-bleed mega panel — spans the whole viewport width below the header,
      content centered to a max width. Always on-screen; roomy for many items. */
   .nav-mega__panel {
-    position: fixed; top: var(--mega-menu-top, 64px); left: 0; right: 0; width: 100%;
+    /* .topbar has backdrop-filter, so it is the containing block for this
+       fixed panel — top:100% is the topbar's own bottom, flush with the bar
+       and correct with or without the staff admin-bar offset. No JS needed. */
+    position: fixed; top: 100%; left: 0; right: 0; width: 100%;
     transform: translateY(6px);
     max-height: 76vh; overflow-y: auto;
     background: var(--paper); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
@@ -805,34 +808,10 @@
   document.getElementById('drawer-close')?.addEventListener('click', () => dr.classList.remove('open'));
 })();
 </script>
-<script>
-(() => {
-  const root = document.documentElement;
-  function updateMegaMenuTop() {
-    const triggers = Array.from(document.querySelectorAll('.nav-mega__trigger'));
-    const topbar = document.querySelector('.topbar');
-    if (!triggers.length && !topbar) return;
-    const triggerBottom = triggers.length
-      ? Math.max(...triggers.map((el) => el.getBoundingClientRect().bottom))
-      : 0;
-    // Sit the panel FLUSH at the live topbar bottom. Using the topbar bottom
-    // (not trigger-bottom) keeps the panel attached to the bar regardless of the
-    // staff admin bar's +32px offset, so the hover bridge always reaches the
-    // trigger and the menu never drops on hover. triggerBottom is the floor.
-    const topbarBottom = topbar ? topbar.getBoundingClientRect().bottom : NaN;
-    const top = Number.isFinite(topbarBottom) ? topbarBottom : (triggerBottom + 6);
-    if (top > 0) {
-      root.style.setProperty('--mega-menu-top', `${Math.round(top)}px`);
-    }
-  }
-
-  window.addEventListener('resize', updateMegaMenuTop, { passive: true });
-  window.addEventListener('load', updateMegaMenuTop, { once: true });
-  document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(updateMegaMenuTop), { once: true });
-  if (document.fonts?.ready) document.fonts.ready.then(updateMegaMenuTop).catch(() => {});
-  updateMegaMenuTop();
-})();
-</script>
+{% comment %}The mega-menu panel now anchors to the topbar via pure CSS
+(top:100% inside .topbar's backdrop-filter containing block), so the old
+JS that measured a viewport pixel into --mega-menu-top is gone — it
+mis-measured under the staff admin bar and opened a gap.{% endcomment %}
 {% storefront_blocks "global_below_body" %}
 
 
