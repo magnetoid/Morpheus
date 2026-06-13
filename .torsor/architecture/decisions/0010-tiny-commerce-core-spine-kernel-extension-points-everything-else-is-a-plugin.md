@@ -1,11 +1,11 @@
 ---
 type: decision
-status: accepted
+status: superseded
 tags:
 - adr
 links: []
 created: '2026-06-07T15:28:09'
-updated: '2026-06-07T15:28:09'
+updated: '2026-06-13T18:47:49'
 rules:
 - id: core-owns-interfaces-not-engines
   pattern: core/.*(tax|payment|gateway|shipping_rate|discount_engine)
@@ -15,6 +15,7 @@ rules:
   pattern: core/.*(models|views)\.py
   message: Is this kernel/spine, or a feature? Non-spine features belong in a plugin,
     not core/. Core should own extension points, not feature logic.
+superseded_by: 0017-advanced-powerful-commerce-core-delivered-through-modularity-supersedes-tiny-core
 ---
 
 # ADR 0010: Tiny commerce core: spine + kernel + extension points; everything else is a plugin

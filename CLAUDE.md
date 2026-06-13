@@ -13,9 +13,18 @@ Target length: under 200 lines. Edit it when an assumption ships wrong.
 
 ## Architectural compass
 
-**Build a powerful core e-commerce platform — but ship features in modular
-plugins, not core.** Anything that isn't *required* for catalog → cart →
-checkout → fulfillment lives in `plugins/installed/<name>/` with its own
+**Build an advanced, powerful e-commerce platform — and deliver that power
+*through* modularity, not by bloating core.** Ambition is the point: deep
+catalog (variants, bundles, digital, subscriptions), rich pricing/promotions,
+multi-currency/markets, B2B, inventory, checkout, fulfillment — a serious
+commerce engine, never a toy "minimal" spine. "Powerful" means deep
+capabilities + a first-class agent/dashboard/storefront surface; it does **not**
+mean feature code accreting in `core/`. The kernel stays a clean set of
+extension points — that's the *mechanism* that keeps the powerful platform
+swap-able, disable-safe, and agent-legible, not a cap on how capable it may be.
+(ADR 0017, superseding the old "tiny core" framing of ADR 0010.) Anything that
+isn't *required* for catalog → cart → checkout → fulfillment lives in
+`plugins/installed/<name>/` with its own
 `apps.py`, `plugin.py` manifest, `models.py`, `migrations/`, and
 templates. Reach for `core/` only when the feature is genuinely
 foundational: auth, hooks, i18n kernel, request_id, observability,
