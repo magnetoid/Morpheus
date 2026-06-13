@@ -758,3 +758,81 @@ def creatives(request: HttpRequest) -> HttpResponse:
             'seo_title': 'Marketing creatives',
         },
     )
+
+
+@login_required(login_url='/auth/login/')
+def analytics(request: HttpRequest) -> HttpResponse:
+    """Affiliate's own performance: 30-day clicks/conversions trend, lifetime
+    KPIs (CR, earned, EPC) and a per-link breakdown. Read-only."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    from django.db.models import Count, Sum
+    from django.db.models.functions import TruncDate
+    from django.utils import timezone
+    from djmoney.money import Money
+
+    from plugins.installed.affiliates.models import (
+        AffiliateClick,
+        AffiliateConversion,
+        AffiliateLink,
+    )
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    since = (timezone.now() - timedelta(days=29)).date()
+    clicks_by_day = dict(
+        AffiliateClick.objects.filter(link__affiliate=affiliate, occurred_at__date__gte=since)
+        .annotate(d=TruncDate('occurred_at'))
+        .values('d')
+        .annotate(n=Count('id'))
+        .values_list('d', 'n')
+    )
+    conv_by_day = dict(
+        AffiliateConversion.objects.filter(affiliate=affiliate, created_at__date__gte=since)
+        .annotate(d=TruncDate('created_at'))
+        .values('d')
+        .annotate(n=Count('id'))
+        .values_list('d', 'n')
+    )
+    series = []
+    peak = 1
+    for i in range(30):
+        day = since + timedelta(days=i)
+        c = clicks_by_day.get(day, 0)
+        peak = max(peak, c)
+        series.append({'day': day, 'clicks': c, 'convs': conv_by_day.get(day, 0)})
+    for s in series:
+        s['pct'] = round(100 * s['clicks'] / peak, 1)
+
+    agg = AffiliateLink.objects.filter(affiliate=affiliate).aggregate(
+        c=Sum('click_count'), v=Sum('conversion_count')
+    )
+    total_clicks = agg['c'] or 0
+    total_convs = agg['v'] or 0
+    cur = affiliate.accrued_balance.currency
+    earned_amount = (affiliate.accrued_balance.amount or Decimal('0')) + (
+        affiliate.lifetime_paid.amount or Decimal('0')
+    )
+    epc_amount = (
+        (earned_amount / total_clicks).quantize(Decimal('0.01')) if total_clicks else Decimal('0')
+    )
+    return render(
+        request,
+        'affiliates/analytics.html',
+        {
+            'affiliate': affiliate,
+            'series': series,
+            'total_clicks': total_clicks,
+            'total_convs': total_convs,
+            'cr': round(100 * total_convs / total_clicks, 1) if total_clicks else 0,
+            'earned': Money(earned_amount, cur),
+            'epc': Money(epc_amount, cur),
+            'top_links': list(
+                AffiliateLink.objects.filter(affiliate=affiliate).order_by('-click_count')[:15]
+            ),
+            'seo_title': 'Your analytics',
+        },
+    )

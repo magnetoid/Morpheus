@@ -1,0 +1,90 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 1000px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
+      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Analytics</span>
+    </nav>
+
+    <header style="margin: 0 0 1.5rem;">
+      <p class="eyebrow">@{{ affiliate.handle }}</p>
+      <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Analytics<span class="text-accent">.</span></h1>
+      <p class="lede" style="margin: 0; max-width: 56ch;">Your last 30 days, and lifetime performance at a glance.</p>
+    </header>
+
+    <div class="an-kpis">
+      <div class="an-kpi"><span class="an-kpi__n">{{ total_clicks }}</span><span class="an-kpi__l">Clicks</span></div>
+      <div class="an-kpi"><span class="an-kpi__n">{{ total_convs }}</span><span class="an-kpi__l">Conversions</span></div>
+      <div class="an-kpi"><span class="an-kpi__n">{{ cr }}%</span><span class="an-kpi__l">Conv. rate</span></div>
+      <div class="an-kpi"><span class="an-kpi__n">{{ earned|money }}</span><span class="an-kpi__l">Earned</span></div>
+      <div class="an-kpi"><span class="an-kpi__n">{{ epc|money }}</span><span class="an-kpi__l">Per click</span></div>
+    </div>
+
+    <div class="an-card">
+      <h2 class="an-h2">Last 30 days — clicks</h2>
+      <div class="an-chart" role="img" aria-label="Daily clicks over the last 30 days">
+        {% for s in series %}
+        <div class="an-bar-wrap" title="{{ s.day|date:'M j' }} · {{ s.clicks }} click{{ s.clicks|pluralize }}{% if s.convs %} · {{ s.convs }} conv{% endif %}">
+          <div class="an-bar{% if s.convs %} an-bar--conv{% endif %}" style="height: {{ s.pct }}%;"></div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="an-axis"><span>{{ series.0.day|date:'M j' }}</span><span>today</span></div>
+      <p class="an-legend"><span class="an-dot an-dot--conv"></span> days with a conversion</p>
+    </div>
+
+    <div class="an-card">
+      <h2 class="an-h2">Top links</h2>
+      {% if top_links %}
+      <table class="an-table">
+        <thead><tr><th>Code</th><th>Label</th><th class="r">Clicks</th><th class="r">Conv.</th><th class="r">CR</th></tr></thead>
+        <tbody>
+          {% for l in top_links %}
+          <tr>
+            <td><code>/r/{{ l.code }}</code></td>
+            <td>{{ l.label|default:"—" }}</td>
+            <td class="r">{{ l.click_count }}</td>
+            <td class="r">{{ l.conversion_count }}</td>
+            <td class="r">{% if l.click_count %}{% widthratio l.conversion_count l.click_count 100 %}%{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color: var(--muted); margin: 0;">No links yet — <a href="/affiliates/me/links/" style="border-bottom:1px dotted var(--rule);">create one</a> to start tracking.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+
+<style>
+.an-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.an-kpi { background: var(--paper-2); border-radius: 10px; padding: 1rem; text-align: center; }
+.an-kpi__n { display: block; font-family: var(--serif); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.an-kpi__l { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: .25rem; }
+.an-card { border: 1px solid var(--rule); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
+.an-h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 1rem; }
+.an-chart { display: flex; align-items: flex-end; gap: 3px; height: 140px; }
+.an-bar-wrap { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.an-bar { width: 100%; min-height: 2px; background: var(--rule); border-radius: 2px 2px 0 0; transition: background .15s; }
+.an-bar-wrap:hover .an-bar { background: var(--ink); }
+.an-bar--conv { background: var(--accent-ink, #047857); }
+.an-axis { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-top: .4rem; }
+.an-legend { font-size: .75rem; color: var(--muted); margin: .75rem 0 0; display: flex; align-items: center; gap: .4rem; }
+.an-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.an-dot--conv { background: var(--accent-ink, #047857); }
+.an-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.an-table th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: .4rem .5rem; border-bottom: 1px solid var(--rule); }
+.an-table th.r, .an-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.an-table td { padding: .5rem; border-bottom: 1px solid var(--rule); }
+.an-table tr:last-child td { border-bottom: 0; }
+</style>
+{% endblock %}
