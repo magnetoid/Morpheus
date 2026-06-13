@@ -170,3 +170,85 @@ def taxonomy_root_edit(request: HttpRequest, taxonomy: str) -> HttpResponse:
             ],
         },
     )
+
+
+@staff_member_required
+def taxonomy_generate(request: HttpRequest, taxonomy: str, slug: str = '') -> HttpResponse:
+    """AI-generate the intro + SEO for a taxonomy page — a term when `slug` is
+    given, otherwise the root/index page. Returns JSON
+    {description, meta_title, meta_description}. Fail-soft: a {error} payload
+    (HTTP 200) the editor surfaces when the AI provider isn't configured."""
+    import json  # noqa: F401
+
+    from django.http import JsonResponse
+
+    from plugins.installed.book_product.compat import (
+        distinct_values,
+        product_ids_for,
+        resolve_slug,
+    )
+    from plugins.installed.book_product.models import BookTaxonomy
+    from plugins.installed.catalog.models import Product
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required.'}, status=405)
+    if taxonomy not in BookTaxonomy.values:
+        return JsonResponse({'error': 'Unknown taxonomy.'}, status=400)
+
+    label = _LABELS.get(taxonomy, taxonomy)
+    if slug:
+        name = resolve_slug(taxonomy, slug) or slug
+        ids = product_ids_for(taxonomy, name)[:12]
+        titles = list(Product.objects.filter(id__in=ids).values_list('name', flat=True)[:12])
+        subject = f'the {label} page for "{name}"'
+        context_line = f'Books on this page: {", ".join(titles) or "(none yet)"}.'
+    else:
+        name = f'All {label}'
+        terms = distinct_values(taxonomy)[:15]
+        subject = f'the {label} index page, which lists every {label.lower()} entry'
+        context_line = f'{label} include: {", ".join(terms) or "(none yet)"}.'
+
+    mode = request.POST.get('mode', 'generate')
+    existing = (request.POST.get('existing') or '').strip()
+    if mode == 'rewrite' and existing:
+        # Rewrite just the intro the merchant already has — keep their facts,
+        # improve the prose. Returns only {description}.
+        prompt = (
+            f'Rewrite and improve this intro for {subject} on dot books, an '
+            'independent online bookshop. Keep it warm, concise (2-3 sentences) '
+            'and specific; preserve the facts. Return STRICT JSON {"description": '
+            '"..."} and nothing else.\n\nCurrent text:\n' + existing
+        )
+    else:
+        prompt = (
+            f'Write storefront copy for {subject} on an independent online bookshop '
+            f'called dot books.\n{context_line}\n\n'
+            'Return STRICT JSON (no markdown, nothing outside the JSON) with keys:\n'
+            '  "description": a warm, specific 2-3 sentence editorial intro (plain text),\n'
+            '  "meta_title": an SEO title, max 60 characters,\n'
+            '  "meta_description": an SEO meta description, max 155 characters.'
+        )
+    try:
+        from plugins.installed.ai_assistant.services.llm import get_llm
+
+        raw = get_llm().complete(
+            prompt,
+            system='You write concise, warm, specific bookshop copy. Output JSON only.',
+            max_tokens=400,
+            temperature=0.7,
+        )
+    except Exception as e:  # noqa: BLE001 — provider missing/misconfigured
+        return JsonResponse({'error': f'AI provider unavailable ({e}).'}, status=200)
+
+    from core.llm_parsing import parse_llm_json
+
+    data = parse_llm_json(raw) if raw else None
+    if not isinstance(data, dict):
+        data = {'description': (raw or '').strip()[:600]}
+    return JsonResponse(
+        {
+            'description': (data.get('description') or '').strip()[:600],
+            'meta_title': (data.get('meta_title') or '').strip()[:200],
+            'meta_description': (data.get('meta_description') or '').strip()[:320],
+        }
+    )

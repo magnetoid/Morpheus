@@ -1,0 +1,68 @@
+{% comment %}
+Reusable AI text-assist buttons — "✨ Generate" + "↻ Rewrite" next to a text
+field, wired to an internal-AI endpoint. Reusable across taxonomies, products,
+categories. Include with:
+
+  {% include "admin_dashboard/_ai_text_assist.html" with endpoint=url desc_id="x" title_id="y" metadesc_id="z" label="page" %}
+
+Params: endpoint (POST url, required), desc_id (description field id, required),
+title_id / metadesc_id (optional SEO field ids), label (button hint noun).
+The endpoint receives {mode: generate|rewrite, existing: <desc value>} and
+returns JSON {description, meta_title?, meta_description?} or {error}.
+Must sit inside a <form> that has {% csrf_token %} (or any csrf token on page).
+{% endcomment %}
+<div class="flex items-center gap-2 flex-wrap" data-ai-assist
+     data-endpoint="{{ endpoint }}" data-desc="{{ desc_id }}"
+     data-title="{{ title_id|default:'' }}" data-metadesc="{{ metadesc_id|default:'' }}">
+  <button type="button" class="btn btn-ghost btn-sm" data-ai-generate>✨ Generate {{ label|default:'text' }}</button>
+  <button type="button" class="btn btn-ghost btn-sm" data-ai-rewrite>↻ Rewrite</button>
+  <span class="text-xs text-[color:var(--text-muted)]" data-ai-status></span>
+</div>
+<script>
+(function () {
+  var root = document.currentScript.previousElementSibling;
+  if (!root || !root.hasAttribute('data-ai-assist')) return;
+  var endpoint = root.dataset.endpoint;
+  var desc = document.getElementById(root.dataset.desc);
+  var title = root.dataset.title ? document.getElementById(root.dataset.title) : null;
+  var metadesc = root.dataset.metadesc ? document.getElementById(root.dataset.metadesc) : null;
+  var status = root.querySelector('[data-ai-status]');
+  var btnGen = root.querySelector('[data-ai-generate]');
+  var btnRw = root.querySelector('[data-ai-rewrite]');
+
+  function setBusy(on, msg) {
+    btnGen.disabled = on; btnRw.disabled = on;
+    if (status) status.textContent = msg || '';
+  }
+
+  async function run(mode) {
+    if (!desc) return;
+    if (mode === 'rewrite' && !desc.value.trim()) {
+      setBusy(false, 'Nothing to rewrite yet.');
+      return;
+    }
+    var tokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+    var fd = new FormData();
+    fd.append('mode', mode);
+    fd.append('existing', desc.value || '');
+    setBusy(true, mode === 'rewrite' ? 'Rewriting…' : 'Generating…');
+    try {
+      var resp = await fetch(endpoint, {
+        method: 'POST', body: fd, credentials: 'same-origin',
+        headers: tokenEl ? { 'X-CSRFToken': tokenEl.value } : {},
+      });
+      var data = await resp.json();
+      if (data.error) { setBusy(false, data.error); return; }
+      if (data.description) desc.value = data.description;
+      if (title && data.meta_title) title.value = data.meta_title;
+      if (metadesc && data.meta_description) metadesc.value = data.meta_description;
+      setBusy(false, '✓ Done — review and save.');
+    } catch (err) {
+      setBusy(false, 'Failed: ' + err);
+    }
+  }
+
+  btnGen.addEventListener('click', function () { run('generate'); });
+  btnRw.addEventListener('click', function () { run('rewrite'); });
+})();
+</script>

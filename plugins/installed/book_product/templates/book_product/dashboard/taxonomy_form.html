@@ -19,17 +19,19 @@
     </div>
     <div>
       <label class="block text-sm font-medium mb-1">Intro / description</label>
-      <textarea name="description" rows="4" class="input w-full">{{ term.description|default:'' }}</textarea>
-      <p class="text-xs text-[color:var(--text-muted)] mt-1">Editorial blurb shown at the top of the landing page.</p>
+      <textarea name="description" id="tax-desc" rows="4" class="input w-full">{{ term.description|default:'' }}</textarea>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1 mb-2">Editorial blurb shown at the top of the landing page.</p>
+      {% url 'book_product_dashboard:taxonomy_generate' taxonomy slug as gen_url %}
+      {% include "admin_dashboard/_ai_text_assist.html" with endpoint=gen_url desc_id="tax-desc" title_id="tax-metatitle" metadesc_id="tax-metadesc" label="page text" %}
     </div>
     <hr class="border-[color:var(--border)]">
     <div>
       <label class="block text-sm font-medium mb-1">SEO title</label>
-      <input type="text" name="meta_title" class="input w-full" value="{{ term.meta_title|default:'' }}" maxlength="200" placeholder="{{ name }} — dot books">
+      <input type="text" name="meta_title" id="tax-metatitle" class="input w-full" value="{{ term.meta_title|default:'' }}" maxlength="200" placeholder="{{ name }} — dot books">
     </div>
     <div>
       <label class="block text-sm font-medium mb-1">SEO meta description</label>
-      <textarea name="meta_description" rows="3" class="input w-full" maxlength="320">{{ term.meta_description|default:'' }}</textarea>
+      <textarea name="meta_description" id="tax-metadesc" rows="3" class="input w-full" maxlength="320">{{ term.meta_description|default:'' }}</textarea>
     </div>
     <div>
       <label class="block text-sm font-medium mb-1">Image</label>
