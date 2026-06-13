@@ -287,6 +287,15 @@ class MorpheusPlugin:
         """
         return None
 
+    def contribute_email_templates(self) -> list:
+        """Return a list of `EmailTemplateDef` — this plugin's transactional
+        emails for the CENTRAL registry (Settings → Notifications → Email
+        templates). Ship the default bodies as
+        `templates/emails/<key>.{html,txt}` and send via
+        `core.emails.send_templated_email(key, ...)`.
+        """
+        return []
+
     def contribute_agents(self) -> list:
         """Return a list of `MorpheusAgent` instances this plugin ships.
 

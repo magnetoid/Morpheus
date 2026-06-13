@@ -1,0 +1,13 @@
+Hi {{ affiliate.display_name|default:affiliate.handle }},
+
+Good news — your application to our affiliate programme has been approved.
+
+You can now sign in to your affiliate dashboard to grab your referral links,
+track conversions, and follow your earnings:
+
+  {{ dashboard_url }}
+
+Thanks for partnering with us. Share with confidence — every approved
+referral earns you commission.
+
+— The {{ site_name }} team

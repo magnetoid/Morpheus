@@ -44,6 +44,7 @@ class PluginRegistry:
         self._storefront_blocks: list = []  # [StorefrontBlock]
         self._dashboard_pages: list = []  # [DashboardPage]
         self._settings_panels: dict = {}  # name -> SettingsPanel
+        self._email_templates: list = []  # [EmailTemplateDef]
         self._ready = False
 
     # ── Discovery ──────────────────────────────────────────────────────────────
@@ -263,6 +264,14 @@ class PluginRegistry:
                 'plugins: %s.contribute_dashboard_pages failed: %s', plugin.name, e, exc_info=True
             )
         try:
+            for tpl in plugin.contribute_email_templates() or []:
+                tpl.plugin = plugin.name
+                self._email_templates.append(tpl)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                'plugins: %s.contribute_email_templates failed: %s', plugin.name, e, exc_info=True
+            )
+        try:
             panel = plugin.contribute_settings_panel()
             if panel is not None:
                 panel.plugin = plugin.name
@@ -294,6 +303,7 @@ class PluginRegistry:
     def _drop_contributions(self, plugin_name: str) -> None:
         self._storefront_blocks = [b for b in self._storefront_blocks if b.plugin != plugin_name]
         self._dashboard_pages = [p for p in self._dashboard_pages if p.plugin != plugin_name]
+        self._email_templates = [t for t in self._email_templates if t.plugin != plugin_name]
         self._settings_panels.pop(plugin_name, None)
         try:
             from core.agents.registry import agent_registry
@@ -309,6 +319,11 @@ class PluginRegistry:
         if section is None:
             return list(self._dashboard_pages)
         return [p for p in self._dashboard_pages if p.section == section]
+
+    def email_templates(self) -> list:
+        """Every active plugin's contributed email templates (EmailTemplateDef),
+        sorted by group then label — for the central email-templates list."""
+        return sorted(self._email_templates, key=lambda t: (t.group, t.label))
 
     def settings_panel(self, plugin_name: str):
         return self._settings_panels.get(plugin_name)

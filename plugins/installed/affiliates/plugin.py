@@ -129,6 +129,19 @@ class AffiliatesPlugin(Plugin):
             category='marketing',
         )
 
+    def contribute_email_templates(self) -> list:
+        from morpheus import EmailTemplateDef
+
+        return [
+            EmailTemplateDef(
+                key='affiliate_approved',
+                label='Affiliate approved',
+                default_subject='You’re approved — welcome to the affiliate programme',
+                group='Affiliates',
+                description='Sent to an affiliate when you approve their application.',
+            ),
+        ]
+
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',

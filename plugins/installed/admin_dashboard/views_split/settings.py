@@ -873,36 +873,66 @@ _EMAIL_TEMPLATE_KEYS = [
 def _filesystem_default(key: str) -> str:
     """Read the shipped default body so the editor can show / restore it.
 
-    Path traversal: this file lives at
-    ``plugins/installed/admin_dashboard/views_split/settings.py`` — five
-    `.parent` hops to reach the project root, then `core/emails/...`
+    Plugin-contributed templates ship their default at
+    ``<plugin>/templates/emails/<key>.txt`` — Django's app template loader
+    finds those across every installed app. Core's live at
+    ``core/emails/templates/emails/<key>.txt``; that dir isn't on the
+    loader's search path, so fall back to a direct read for those.
     """
+    import contextlib
+
+    from django.template import TemplateDoesNotExist
+    from django.template.loader import get_template
+
+    with contextlib.suppress(TemplateDoesNotExist, OSError):
+        return get_template(f'emails/{key}.txt').template.source
+
     from pathlib import Path
 
-    base = (
+    # `plugins/installed/admin_dashboard/views_split/settings.py` — five
+    # `.parent` hops to the project root, then `core/emails/...`.
+    fp = (
         Path(__file__).resolve().parent.parent.parent.parent.parent
         / 'core'
         / 'emails'
         / 'templates'
         / 'emails'
+        / f'{key}.txt'
     )
-    fp = base / f'{key}.txt'
     try:
         return fp.read_text(encoding='utf-8')
     except OSError:
         return ''
 
 
+def _email_template_defs():
+    """(key, label, default_subject, group) for every template in the central
+    registry — core transactional emails + every active plugin's contributions."""
+    import contextlib
+
+    from plugins.registry import plugin_registry
+
+    defs = [(k, lbl, subj, 'Core') for k, lbl, subj in _EMAIL_TEMPLATE_KEYS]
+    with contextlib.suppress(Exception):  # never break the settings page on a bad def
+        defs += [
+            (t.key, t.label, t.default_subject, t.group or 'Other')
+            for t in plugin_registry.email_templates()
+        ]
+    return defs
+
+
 @staff_member_required
 def email_templates_list(request: HttpRequest) -> HttpResponse:
-    """Show every transactional email template, edited or not."""
+    """Central email-templates list — core + every plugin's contributed
+    templates, grouped by the owning app (the WooCommerce Settings → Emails
+    pattern)."""
     from plugins.installed.cms.models import EmailTemplate
 
     existing = {t.key: t for t in EmailTemplate.objects.all()}
-    rows = []
-    for key, label, default_subject in _EMAIL_TEMPLATE_KEYS:
+    groups: dict[str, list] = {}
+    for key, label, default_subject, group in _email_template_defs():
         tpl = existing.get(key)
-        rows.append(
+        groups.setdefault(group, []).append(
             {
                 'key': key,
                 'label': label,
@@ -912,13 +942,15 @@ def email_templates_list(request: HttpRequest) -> HttpResponse:
                 'is_customised': tpl is not None,
             }
         )
+    # Core first, then groups alphabetically.
+    grouped = [
+        {'group': g, 'rows': groups[g]}
+        for g in sorted(groups, key=lambda g: (g != 'Core', g.lower()))
+    ]
     return render(
         request,
         'admin_dashboard/email_templates_list.html',
-        {
-            'rows': rows,
-            'active_nav': 'settings',
-        },
+        {'grouped': grouped, 'active_nav': 'settings'},
     )
 
 
@@ -927,8 +959,10 @@ def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
     """Edit one template. Reset = delete the row → falls back to filesystem default."""
     from plugins.installed.cms.models import EmailTemplate
 
-    label_map = {k: lbl for k, lbl, _ in _EMAIL_TEMPLATE_KEYS}
-    default_subject_map = {k: subj for k, _, subj in _EMAIL_TEMPLATE_KEYS}
+    # Core + every plugin-contributed template is editable here.
+    defs = _email_template_defs()
+    label_map = {k: lbl for k, lbl, _, _ in defs}
+    default_subject_map = {k: subj for k, _, subj, _ in defs}
     if key not in label_map:
         from django.http import Http404
 

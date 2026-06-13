@@ -1,0 +1,13 @@
+{% extends "emails/_layout.html" %}
+{% block title %}You’re approved — welcome to the affiliate programme{% endblock %}
+{% block preheader %}Your affiliate application has been approved.{% endblock %}
+{% block body %}
+  <p>Hi {{ affiliate.display_name|default:affiliate.handle }},</p>
+  <p>Good news — your application to our affiliate programme has been
+  <strong>approved</strong>.</p>
+  <p>You can now sign in to your affiliate dashboard to grab your referral
+  links, track conversions, and follow your earnings:</p>
+  <p><a class="btn" href="{{ dashboard_url }}">Open your affiliate dashboard</a></p>
+  <p>Thanks for partnering with us. Share with confidence — every approved
+  referral earns you commission.</p>
+{% endblock %}

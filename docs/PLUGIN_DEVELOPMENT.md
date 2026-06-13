@@ -194,13 +194,14 @@ is registry-driven, **turning the app off removes all of them at once** — the
 WordPress "deactivate plugin → its widgets/menu items/shortcodes disappear"
 contract.
 
-The four contribution surfaces an app may use:
+The contribution surfaces an app may use:
 
 | Surface | Method | Lands in | Auto-removed on disable? |
 |---|---|---|---|
 | **Storefront block** | `contribute_storefront_blocks()` | a theme slot via `{% storefront_blocks "slot" %}` | ✅ |
 | **Dashboard page** | `contribute_dashboard_pages()` | merchant sidebar (main or settings nav) | ✅ |
 | **Settings panel** | `contribute_settings_panel()` | `/dashboard/settings/<category>/` form | ✅ |
+| **Email template** | `contribute_email_templates()` | central list at Settings → Email templates | ✅ |
 | **Hook subscriber** | `register_hook(event, handler)` in `ready()` | the `core.hooks` event bus | ✅ (handler isn't re-registered) |
 
 Beyond `ready()`-time imperative registration, plugins **declaratively
@@ -292,6 +293,64 @@ block targeting a slot the active theme doesn't render simply shows nothing.
 (There is **no** `account_nav` / `account_page` slot yet — see "planned" in the
 Theme SDK; account surfaces can't be contributed the clean way until the
 [modular-OS plan](plans/modular-os-2026-06.md) ships them.)
+
+### 5.2 Email templates (the central registry)
+
+Morpheus has **one** place for transactional email — Settings → Email
+templates — the WooCommerce *Settings → Emails* analog. Core ships the
+order/refund/welcome lifecycle; **plugins add their own emails to the same
+list** so a merchant edits every message the store can send in one screen,
+never plugin-by-plugin. Contribute an `EmailTemplateDef` per email:
+
+```python
+from morpheus import EmailTemplateDef
+
+class AffiliatesPlugin(Plugin):
+    name = 'affiliates'
+
+    def contribute_email_templates(self) -> list:
+        return [
+            EmailTemplateDef(
+                key='affiliate_approved',          # globally-unique, namespace it
+                label='Affiliate approved',
+                default_subject='You’re approved — welcome aboard',
+                group='Affiliates',                # display group in the central list
+                description='Sent when you approve an affiliate application.',
+            ),
+        ]
+```
+
+Three pieces make one email:
+
+1. **The def** (above) — registers the email in the central list, grouped
+   under `group`, editable like any core template.
+2. **The default bodies** — ship `templates/emails/<key>.txt` and
+   (optionally) `templates/emails/<key>.html` inside your plugin. The `.html`
+   extends the shared `emails/_layout.html`. These are what the editor shows
+   and what "Reset to default" restores to.
+3. **The send** — call `core.emails.send_templated_email(key, to=…,
+   subject=…, ctx=…)`. It renders your bodies through Django's template
+   engine (so `{{ order.total }}`-style placeholders work) **but a merchant's
+   dashboard override wins** — same pipeline as the core lifecycle emails.
+   Failures are logged, never raised, so a flaky SMTP host can't break the
+   action that triggered the email.
+
+```python
+from core.emails import send_templated_email
+
+send_templated_email(
+    'affiliate_approved',
+    to=affiliate.user.email,
+    subject='You’re approved — welcome aboard',   # fallback if no override
+    ctx={'affiliate': affiliate, 'dashboard_url': url},
+)
+```
+
+**Disable contract:** the def is contributed only while the plugin is
+enabled, so disabling the plugin removes its emails from the central list
+(its `templates/emails/` defaults go with the plugin directory). Don't send
+plugin email with a hand-rolled `EmailMultiAlternatives` — that bypasses the
+central editor and the override pipeline.
 
 ### Enable / disable lifecycle
 

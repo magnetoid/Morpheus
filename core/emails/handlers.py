@@ -165,6 +165,26 @@ def _order_recipient(order: Any) -> str | None:
     return getattr(order, 'email', None) or getattr(getattr(order, 'customer', None), 'email', None)
 
 
+def send_templated_email(
+    key: str,
+    *,
+    to: str | None,
+    subject: str,
+    ctx: dict | None = None,
+) -> None:
+    """Send a transactional email by its registry ``key``.
+
+    The public entry point for plugin-contributed emails (see
+    ``Plugin.contribute_email_templates`` / ``EmailTemplateDef``). Renders
+    ``emails/<key>.{txt,html}`` from the owning plugin's templates, but a
+    merchant's dashboard override (cms.EmailTemplate, via the
+    ``EMAIL_TEMPLATE_OVERRIDE`` filter) wins — exactly like the core
+    transactional emails. ``subject`` is the fallback used when no override
+    supplies one. Failures are logged, never raised.
+    """
+    _send(template_base=f'emails/{key}', subject=subject, to=to, ctx=ctx or {})
+
+
 def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> None:
     if not to:
         return

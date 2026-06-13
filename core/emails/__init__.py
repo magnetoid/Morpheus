@@ -11,6 +11,6 @@ Wiring is done by ``core.apps.CoreConfig.ready()`` calling
 
 from __future__ import annotations
 
-from core.emails.handlers import register_handlers
+from core.emails.handlers import register_handlers, send_templated_email
 
-__all__ = ['register_handlers']
+__all__ = ['register_handlers', 'send_templated_email']

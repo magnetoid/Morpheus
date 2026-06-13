@@ -46,6 +46,32 @@ def _affiliate_commission_override(affiliate):
         return ''
 
 
+def _send_affiliate_approved(aff):
+    """Email an affiliate that they've been approved (central email registry).
+
+    Best-effort: a missing recipient or flaky SMTP host must never break the
+    approval action.
+    """
+    from django.conf import settings  # noqa: PLC0415
+
+    from core.emails import send_templated_email  # noqa: PLC0415
+    from core.utils.site import site_base_url  # noqa: PLC0415
+
+    to = getattr(aff.payout_email, 'strip', lambda: '')() or getattr(aff.user, 'email', '')
+    if not to:
+        return
+    send_templated_email(
+        'affiliate_approved',
+        to=to,
+        subject='You’re approved — welcome to the affiliate programme',
+        ctx={
+            'affiliate': aff,
+            'dashboard_url': f'{site_base_url()}/affiliates/me/',
+            'site_name': getattr(settings, 'SITE_NAME', '') or 'our store',
+        },
+    )
+
+
 def _affiliate_apply_status(aff, action):
     """Mutate + save an Affiliate based on a status action. Returns True on hit."""
     status_map = {
@@ -60,10 +86,13 @@ def _affiliate_apply_status(aff, action):
     new_status = status_map.get(action)
     if new_status is None:
         return False
+    was_approved = aff.status == 'approved'
     aff.status = new_status
     if new_status == 'approved':
         aff.approved_at = timezone.now()
         aff.save(update_fields=['status', 'approved_at'])
+        if not was_approved:
+            _send_affiliate_approved(aff)
     else:
         aff.save(update_fields=['status'])
     return True

@@ -45,6 +45,7 @@ from plugins.base import MorpheusPlugin as Plugin
 from plugins.base import PluginConfigurationError
 from plugins.contributions import (
     DashboardPage,
+    EmailTemplateDef,
     SettingsPanel,
     StorefrontBlock,
 )
@@ -56,6 +57,7 @@ __all__ = [
     'Plugin',
     'PluginConfigurationError',
     'DashboardPage',
+    'EmailTemplateDef',
     'SettingsPanel',
     'StorefrontBlock',
     '__version__',

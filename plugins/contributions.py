@@ -111,3 +111,26 @@ class SettingsPanel:
     description: str = ''
     plugin: str = ''
     category: str = 'apps'  # one of the standard category slugs above
+
+
+@dataclass(slots=True)
+class EmailTemplateDef:
+    """A transactional email template a plugin contributes to the CENTRAL email
+    registry (Settings → Notifications → Email templates) — the WooCommerce
+    `WC_Email` analog.
+
+    The plugin OWNS its default template files
+    (`plugins/installed/<name>/templates/emails/<key>.{html,txt}`); the merchant
+    edits/overrides them centrally (stored on `cms.EmailTemplate`, keyed by
+    `key`, with reset-to-default). Contributing a def makes the email appear in
+    the one central list, grouped under the owning app; disabling the plugin
+    removes it (modularity contract). Send the email via
+    `core.emails.send_templated_email(key, ...)` so DB overrides apply.
+    """
+
+    key: str  # globally-unique, namespaced — e.g. 'loyalty_points_earned'
+    label: str  # 'Loyalty points earned'
+    default_subject: str  # 'You earned {{ points }} points'
+    group: str = 'Other'  # display group in the central list — e.g. 'Loyalty'
+    description: str = ''  # what triggers it (shown as a hint)
+    plugin: str = ''  # set by the registry
