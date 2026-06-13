@@ -205,12 +205,20 @@
       <div>
         <div class="flex items-center justify-between mb-1">
           <label class="block text-sm font-medium">Description</label>
-          <button type="button" id="ai-draft-description"
-                  class="btn btn-ghost text-xs"
-                  style="padding:.2rem .5rem;"
-                  data-csrf="{{ csrf_token }}">
-            <i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Draft with AI
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button type="button" id="ai-rewrite-description"
+                    class="btn btn-ghost text-xs"
+                    style="padding:.2rem .5rem;"
+                    data-csrf="{{ csrf_token }}">
+              <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> Rewrite
+            </button>
+            <button type="button" id="ai-draft-description"
+                    class="btn btn-ghost text-xs"
+                    style="padding:.2rem .5rem;"
+                    data-csrf="{{ csrf_token }}">
+              <i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Draft with AI
+            </button>
+          </div>
         </div>
         <div id="description-editor-wrap" class="rte">
           <div id="description-toolbar" class="rte-toolbar" role="toolbar" aria-label="Formatting">
@@ -527,6 +535,51 @@
             }
             ta.value = res.data.text || '';
             if (window.Morph && Morph.toast) Morph.toast('Draft inserted — review before saving.', 'success');
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            if (window.lucide) window.lucide.createIcons();
+            if (window.Morph && Morph.toast) Morph.toast('Connection error.', 'error');
+          });
+      });
+    })();
+    </script>
+
+    <script>
+    (function () {
+      var btn = document.getElementById('ai-rewrite-description');
+      var ta  = document.getElementById('product-description');
+      if (!btn || !ta) return;
+      var nameInput = document.querySelector('input[name="name"]');
+      btn.addEventListener('click', function () {
+        if (!(ta.value || '').trim()) {
+          if (window.Morph && Morph.toast) Morph.toast('Write or draft a description first.', 'warn');
+          return;
+        }
+        btn.disabled = true;
+        var original = btn.innerHTML;
+        btn.innerHTML = 'Rewriting…';
+        fetch('/dashboard/ai/rewrite-description/', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': btn.dataset.csrf },
+          body: JSON.stringify({
+            existing: ta.value || '',
+            name: (nameInput && nameInput.value || '').trim(),
+          }),
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (res) {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            if (window.lucide) window.lucide.createIcons();
+            if (!res.ok || res.data.error) {
+              if (window.Morph && Morph.toast) Morph.toast(res.data.error || 'Rewrite failed.', 'error');
+              return;
+            }
+            ta.value = res.data.text || '';
+            if (window.Morph && Morph.toast) Morph.toast('Rewritten — review before saving.', 'success');
           })
           .catch(function () {
             btn.disabled = false;

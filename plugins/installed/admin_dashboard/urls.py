@@ -254,6 +254,7 @@ urlpatterns = [
     path('apps/<str:plugin>/<slug:slug>/', plugin_page_router, name='plugin_page'),
     path('palette/search/', views.palette_search, name='palette_search'),
     path('ai/draft-description/', views.ai_draft_description, name='ai_draft_description'),
+    path('ai/rewrite-description/', views.ai_rewrite_description, name='ai_rewrite_description'),
     path('ai/rewrite-email/', views.ai_rewrite_email, name='ai_rewrite_email'),
     path('settings/', views.settings_view, name='settings'),
     path('settings/ai/probe/', views.settings_ai_probe, name='settings_ai_probe'),

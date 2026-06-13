@@ -68,6 +68,33 @@ def ai_draft_description(request: HttpRequest) -> HttpResponse:
 
 @staff_member_required
 @require_POST
+def ai_rewrite_description(request: HttpRequest) -> HttpResponse:
+    """Rewrite an existing product description — clearer, more concrete, concise —
+    keeping every fact from the original. Returns {text}."""
+    body = _json_body(request)
+    existing = (body.get('existing') or '').strip()
+    name = (body.get('name') or '').strip()
+    if not existing:
+        return JsonResponse({'error': 'Nothing to rewrite yet.'}, status=400)
+
+    system = (
+        'You rewrite ecommerce product descriptions to be clearer, more '
+        'concrete and concise. Keep every fact and claim from the original; '
+        'never invent features. Three or four sentences. No exclamation marks '
+        'or all-caps. Return only the rewritten description, no preamble.'
+    )
+    prompt = (f'Product name: {name}\n\n' if name else '') + (
+        'Rewrite and improve this product description:\n\n' + existing
+    )
+    text, error = call_llm(prompt=prompt, system=system, max_tokens=400)
+    if error:
+        logger.warning('ai_rewrite_description: %s', error)
+        return JsonResponse({'error': error}, status=502)
+    return JsonResponse({'text': text})
+
+
+@staff_member_required
+@require_POST
 def ai_rewrite_email(request: HttpRequest) -> HttpResponse:
     """Rewrite an email subject + body in a target tone, preserving any
     Django template placeholders (``{{ order.* }}`` etc.) verbatim."""
