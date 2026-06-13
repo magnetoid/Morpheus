@@ -1,0 +1,172 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Structured data · {{ object_label }} · Morpheus{% endblock %}
+
+{% block content %}
+<style>
+  .sd-block { margin-bottom: 1rem; }
+  .sd-block-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .25rem; }
+  .sd-block-title { font-weight: 600; font-size: .95rem; }
+  .sd-help { font-size: .8rem; color: var(--text-muted); margin: 0 0 .75rem; }
+  .sd-field { margin-bottom: .75rem; }
+  .sd-label { display: block; font-size: .8rem; font-weight: 500; margin-bottom: .25rem; }
+  .sd-group { margin-bottom: .9rem; padding: .75rem; border: 1px solid var(--border); border-radius: 8px; }
+  .sd-rows { display: flex; flex-direction: column; gap: .5rem; margin: .4rem 0 .6rem; }
+  .sd-row { display: flex; gap: .5rem; align-items: end; }
+  .sd-cell { flex: 1; min-width: 0; }
+  .sd-sublabel { display: block; font-size: .7rem; color: var(--text-muted); margin-bottom: .15rem; }
+  .sd-rowrm { flex: none; }
+  .sd-empty { font-size: .85rem; color: var(--text-muted); padding: 1rem; text-align: center; border: 1px dashed var(--border); border-radius: 8px; }
+  .sd-addbar { display: flex; gap: .5rem; align-items: center; margin-top: .5rem; }
+</style>
+
+<div class="max-w-3xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex items-start justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Structured data</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">{{ object_label }} — add rich-result schema (FAQ, How-to, Event, …) with no JSON. Product/Article schema is already generated automatically.</p>
+    </div>
+    {% if object_url %}
+    <div class="flex items-center gap-2 whitespace-nowrap">
+      <a href="{{ object_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-sm"><i data-lucide="external-link" class="h-4 w-4"></i> View live</a>
+      <a href="https://search.google.com/test/rich-results?url={{ request.scheme }}://{{ request.get_host }}{{ object_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-sm">Test rich results</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <form method="post" id="schema-form" class="space-y-3">
+    {% csrf_token %}
+    <input type="hidden" name="blocks_json" id="blocks-json">
+    <div id="blocks"></div>
+
+    <div class="card card-padded sd-addbar">
+      <label class="text-sm font-medium" for="add-type">Add schema:</label>
+      <select id="add-type" class="input" style="max-width: 16rem;">
+        {% for t in schema_types %}<option value="{{ t.key }}">{{ t.label }}</option>{% endfor %}
+      </select>
+      <button type="button" id="add-block" class="btn btn-ghost text-sm">+ Add</button>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-1">
+      <a href="/dashboard/seo/schema/" class="btn btn-ghost">Back</a>
+      <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+</div>
+
+{{ schema_types|json_script:"schema-types-data" }}
+{{ existing_blocks|json_script:"existing-blocks-data" }}
+
+<script>
+(function () {
+  var TYPES = JSON.parse(document.getElementById('schema-types-data').textContent);
+  var BY_KEY = {};
+  TYPES.forEach(function (t) { BY_KEY[t.key] = t; });
+
+  var blocks = (JSON.parse(document.getElementById('existing-blocks-data').textContent) || [])
+    .filter(function (b) { return b && BY_KEY[b.type]; })
+    .map(function (b) { return { type: b.type, data: b.data || {} }; });
+
+  var container = document.getElementById('blocks');
+  var hidden = document.getElementById('blocks-json');
+
+  function el(tag, attrs) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === 'class') e.className = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null) continue;
+      e.append(c.nodeType ? c : document.createTextNode(c));
+    }
+    return e;
+  }
+
+  function input(field, value, onInput) {
+    var node;
+    if (field.kind === 'textarea') {
+      node = el('textarea', { class: 'input w-full', rows: '2' });
+    } else {
+      var map = { url: 'url', date: 'date', datetime: 'datetime-local', number: 'number', duration_min: 'number' };
+      node = el('input', { type: map[field.kind] || 'text', class: 'input w-full' });
+      if (field.kind === 'duration_min') node.setAttribute('min', '0');
+    }
+    node.value = value == null ? '' : value;
+    node.addEventListener('input', function () { onInput(node.value); });
+    return node;
+  }
+
+  function renderGroup(block, field) {
+    if (!Array.isArray(block.data[field.name])) block.data[field.name] = [];
+    var rows = block.data[field.name];
+    var wrap = el('div', { class: 'sd-group' });
+    wrap.append(el('label', { class: 'sd-label' }, field.label));
+    var list = el('div', { class: 'sd-rows' });
+    rows.forEach(function (row, ri) {
+      var rowEl = el('div', { class: 'sd-row' });
+      field.subfields.forEach(function (sf) {
+        var cell = el('div', { class: 'sd-cell' });
+        cell.append(el('span', { class: 'sd-sublabel' }, sf.label));
+        cell.append(input(sf, row[sf.name], function (v) { row[sf.name] = v; sync(); }));
+        rowEl.append(cell);
+      });
+      var rm = el('button', { type: 'button', class: 'btn btn-ghost btn-sm sd-rowrm', title: 'Remove' }, '✕');
+      rm.addEventListener('click', function () { rows.splice(ri, 1); render(); });
+      rowEl.append(rm);
+      list.append(rowEl);
+    });
+    wrap.append(list);
+    var add = el('button', { type: 'button', class: 'btn btn-ghost btn-sm' }, '+ Add ' + field.label.toLowerCase());
+    add.addEventListener('click', function () { rows.push({}); render(); });
+    wrap.append(add);
+    return wrap;
+  }
+
+  function renderField(block, field) {
+    if (field.kind === 'group') return renderGroup(block, field);
+    var wrap = el('div', { class: 'sd-field' });
+    wrap.append(el('label', { class: 'sd-label' }, field.label + (field.required ? ' *' : '')));
+    wrap.append(input(field, block.data[field.name], function (v) { block.data[field.name] = v; sync(); }));
+    if (field.help) wrap.append(el('p', { class: 'sd-help' }, field.help));
+    return wrap;
+  }
+
+  function renderBlock(block, idx) {
+    var spec = BY_KEY[block.type];
+    var card = el('div', { class: 'card card-padded sd-block' });
+    var head = el('div', { class: 'sd-block-head' });
+    head.append(el('h3', { class: 'sd-block-title' }, spec.label));
+    var rm = el('button', { type: 'button', class: 'btn btn-ghost btn-sm' }, 'Remove');
+    rm.addEventListener('click', function () { blocks.splice(idx, 1); render(); });
+    head.append(rm);
+    card.append(head);
+    if (spec.help) card.append(el('p', { class: 'sd-help' }, spec.help));
+    spec.fields.forEach(function (f) { card.append(renderField(block, f)); });
+    return card;
+  }
+
+  function sync() { hidden.value = JSON.stringify(blocks); }
+
+  function render() {
+    container.innerHTML = '';
+    if (!blocks.length) {
+      container.append(el('p', { class: 'sd-empty' }, 'No schema yet — pick a type below and click Add.'));
+    }
+    blocks.forEach(function (b, i) { container.append(renderBlock(b, i)); });
+    sync();
+    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  }
+
+  document.getElementById('add-block').addEventListener('click', function () {
+    blocks.push({ type: document.getElementById('add-type').value, data: {} });
+    render();
+  });
+  document.getElementById('schema-form').addEventListener('submit', sync);
+
+  render();
+})();
+</script>
+{% endblock %}

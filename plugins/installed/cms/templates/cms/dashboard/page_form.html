@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph %}
 {% block title %}{% if creating %}New page{% else %}{{ page.title }}{% endif %} · CMS · Morpheus{% endblock %}
 
 {% block content %}
@@ -157,6 +158,13 @@
         <label class="block text-xs font-medium mb-1" for="page-meta-desc">SEO description <span class="text-[color:var(--text-muted)]">(≤160 chars)</span></label>
         <textarea id="page-meta-desc" name="meta_description" rows="2" maxlength="500" class="input">{{ page_meta_description|default:'' }}</textarea>
       </div>
+      {% plugin_enabled "seo" as seo_enabled %}
+      {% if seo_enabled and not creating %}
+      <div>
+        <a href="/dashboard/seo/schema/cms/page/{{ page.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Add rich-result schema with no JSON.</p>
+      </div>
+      {% endif %}
     </div>
 
     <div class="flex items-center justify-end gap-2 pt-2 border-t border-[color:var(--border)]">

@@ -1364,3 +1364,116 @@ def not_found_dismiss(request, pk):
         log.save(update_fields=['is_resolved'])
         messages.success(request, 'Marked 404 as resolved.')
     return redirect('seo_dashboard:not_found')
+
+
+# --- Visual structured-data (schema.org) editor ---------------------------
+# A per-object editor: pick a schema.org @type from a friendly list and fill
+# labeled fields (no JSON). Entries are stored on SeoMeta.schema_blocks and
+# built into <script type="application/ld+json"> at render time (see
+# services/meta.py:_visual_schema_blocks). Reached from the product/page forms.
+
+
+@staff_member_required
+def schema_index(request: HttpRequest) -> HttpResponse:
+    from django.urls import reverse
+
+    from plugins.installed.seo.models import SeoMeta
+
+    rows = []
+    for meta in SeoMeta.objects.exclude(schema_blocks=[]).select_related('content_type')[:200]:
+        if not meta.schema_blocks:
+            continue
+        ct = meta.content_type
+        try:
+            obj = ct.get_object_for_this_type(pk=meta.object_id)
+        except Exception:
+            obj = None
+        types = sorted({e.get('type', '') for e in meta.schema_blocks if isinstance(e, dict)})
+        rows.append(
+            {
+                'label': str(obj) if obj else f'{ct.model} #{meta.object_id}',
+                'count': len(meta.schema_blocks),
+                'types': ', '.join(t for t in types if t),
+                'edit_url': reverse(
+                    'seo_dashboard:schema_editor',
+                    args=[ct.app_label, ct.model, meta.object_id],
+                ),
+            }
+        )
+    return render(
+        request,
+        'seo/schema_index.html',
+        {
+            'rows': rows,
+            'active_nav': 'seo',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'SEO', 'url': '/dashboard/seo/'},
+                {'label': 'Structured data'},
+            ],
+        },
+    )
+
+
+@staff_member_required
+def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> HttpResponse:
+    from django.contrib.contenttypes.models import ContentType
+
+    from morpheus.views import Http404
+    from plugins.installed.seo.models import SeoMeta
+    from plugins.installed.seo.schema_types import build_block, registry_json
+
+    ct = ContentType.objects.filter(app_label=app_label, model=model).first()
+    if ct is None:
+        raise Http404('Unknown content type.')
+
+    try:
+        obj = ct.get_object_for_this_type(pk=pk)
+    except Exception:
+        obj = None
+
+    meta = SeoMeta.objects.filter(content_type=ct, object_id=str(pk)).first()
+
+    if request.method == 'POST':
+        try:
+            entries = json.loads(request.POST.get('blocks_json') or '[]')
+        except (ValueError, TypeError):
+            entries = []
+        clean = [
+            {'type': e.get('type', ''), 'data': e.get('data') or {}}
+            for e in entries
+            if isinstance(e, dict) and build_block(e.get('type', ''), e.get('data') or {})
+        ]
+        meta, _ = SeoMeta.objects.get_or_create(content_type=ct, object_id=str(pk))
+        meta.schema_blocks = clean
+        meta.save()
+        messages.success(request, f'Structured data saved ({len(clean)} block(s)).')
+        return redirect('seo_dashboard:schema_editor', app_label=app_label, model=model, pk=str(pk))
+
+    try:
+        object_url = obj.get_absolute_url() if (obj and hasattr(obj, 'get_absolute_url')) else ''
+    except Exception:
+        object_url = ''
+
+    return render(
+        request,
+        'seo/schema_editor.html',
+        {
+            'app_label': app_label,
+            'model': model,
+            'pk': str(pk),
+            'object_label': str(obj) if obj else f'{model} #{pk}',
+            'object_url': object_url,
+            # Passed as Python objects → rendered with |json_script, which escapes
+            # </script> in user answer text. The editor JS JSON.parses them.
+            'schema_types': registry_json(),
+            'existing_blocks': meta.schema_blocks if meta else [],
+            'active_nav': 'seo',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'SEO', 'url': '/dashboard/seo/'},
+                {'label': 'Structured data', 'url': '/dashboard/seo/schema/'},
+                {'label': (str(obj) if obj else model)[:40]},
+            ],
+        },
+    )

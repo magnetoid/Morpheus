@@ -1,0 +1,44 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Structured data · SEO · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Structured data</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      Rich-result schema (FAQ, How-to, Event, Recipe, Video, …) you've added to specific
+      products and pages — no JSON. Product/Article/Organization schema is generated
+      automatically; this is for the extra types you author by hand.
+    </p>
+    <p class="text-sm text-[color:var(--text-muted)] mt-1">
+      Add schema from a product or page editor — open one and click
+      <strong>“✦ Structured data”</strong> in its SEO section.
+    </p>
+  </div>
+
+  {% if rows %}
+  <div class="card overflow-hidden">
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Object</th><th>Schema types</th><th class="text-right">Blocks</th><th class="text-right">Actions</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="font-medium">{{ r.label }}</td>
+          <td class="text-[color:var(--text-muted)]">{{ r.types }}</td>
+          <td class="text-right font-mono text-xs">{{ r.count }}</td>
+          <td class="text-right"><a href="{{ r.edit_url }}" class="btn btn-ghost text-xs">Edit</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card card-padded text-sm text-[color:var(--text-muted)]">
+    No hand-authored schema yet. Open a product or page and use its
+    “✦ Structured data” button to add an FAQ, How-to, Event and more.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

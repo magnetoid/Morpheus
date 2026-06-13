@@ -68,6 +68,15 @@ class SeoMeta(models.Model):
         blank=True,
         help_text='Extra JSON-LD properties merged into the auto-generated payload.',
     )
+    schema_blocks = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Visual schema editor entries [{type, data}, …] (FAQ, HowTo, Event, '
+            '…). Built into standalone <script type="application/ld+json"> blocks '
+            'at render time — distinct from the merged structured_data dict above.'
+        ),
+    )
     auto_filled = models.BooleanField(
         default=False, help_text='True if filled by AI; False if merchant-edited.'
     )

@@ -301,6 +301,15 @@ class SeoPlugin(Plugin):
                 url='/dashboard/seo/sitemap/',
             ),
             DashboardPage(
+                label='Structured data',
+                slug='schema',
+                view='plugins.installed.seo.views.schema_index',
+                icon='braces',
+                section='seo',
+                order=57,
+                url='/dashboard/seo/schema/',
+            ),
+            DashboardPage(
                 label='Site SEO settings',
                 slug='settings',
                 view='plugins.installed.seo.views.seo_settings_page',

@@ -208,7 +208,20 @@ def resolve_meta(
         robots=robots,
         keywords=keywords,
         structured_data=structured,
+        # schema_blocks stores raw editor entries [{type, data}, …]; build the
+        # emit-ready JSON-LD here so the editor round-trips its own format.
+        extra_blocks=_visual_schema_blocks(meta),
     )
+
+
+def _visual_schema_blocks(meta) -> list | None:
+    """JSON-LD blocks from the visual schema editor's stored entries, or None."""
+    entries = getattr(meta, 'schema_blocks', None) if meta else None
+    if not entries:
+        return None
+    from plugins.installed.seo.schema_types import build_blocks  # noqa: PLC0415
+
+    return build_blocks(entries) or None
 
 
 def _structured_data_for(obj: Any, *, title: str, description: str, image: str) -> dict:

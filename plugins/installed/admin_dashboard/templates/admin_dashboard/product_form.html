@@ -1,5 +1,6 @@
 {% extends "admin_dashboard/base.html" %}
 {% load metafields_tags %}
+{% load morph %}
 {% block title %}{% if product %}{{ product.name }}{% else %}New product{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
@@ -1233,11 +1234,16 @@
           </div>
         </div>
 
-        {# Extra structured data (JSON-LD overrides). #}
+        {# Structured data: visual editor (primary) + raw JSON-LD overrides (advanced). #}
         <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
-          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Structured data overrides</h3>
+          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Structured data</h3>
+          {% plugin_enabled "seo" as seo_enabled %}
+          {% if seo_enabled and product.id %}
+          <a href="/dashboard/seo/schema/catalog/product/{{ product.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
+          <p class="text-xs text-[color:var(--text-muted)]">Add rich-result schema with no JSON. Product/Offer/review schema is generated automatically.</p>
+          {% endif %}
           <div>
-            <label class="block text-sm font-medium mb-1">Extra JSON-LD (object)</label>
+            <label class="block text-sm font-medium mb-1">Extra JSON-LD (advanced)</label>
             <textarea name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
             {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
             <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>

@@ -53,6 +53,9 @@ class ResolvedMeta:
     robots: str = 'index, follow'
     keywords: str = ''
     structured_data: dict = None  # type: ignore[assignment]
+    # Standalone JSON-LD blocks (visual schema editor): each emitted as its own
+    # <script>, separate from the single merged structured_data dict above.
+    extra_blocks: list = None  # type: ignore[assignment]
 
     def to_html(self) -> str:
         """Render the meta tags as an HTML fragment for the <head>."""
@@ -112,6 +115,13 @@ class ResolvedMeta:
                 + json.dumps(self.structured_data, separators=(',', ':'))
                 + '</script>'
             )
+        for block in self.extra_blocks or []:
+            if block:
+                parts.append(
+                    '<script type="application/ld+json">'
+                    + json.dumps(block, separators=(',', ':'))
+                    + '</script>'
+                )
         return '\n'.join(parts)
 
 

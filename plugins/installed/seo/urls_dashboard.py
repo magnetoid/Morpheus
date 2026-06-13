@@ -20,4 +20,7 @@ urlpatterns = [
     path('bulk-meta/', views.bulk_meta, name='bulk_meta'),
     path('sitemap/', views.sitemap_page, name='sitemap'),
     path('inspect/', views.seo_inspector, name='inspector'),
+    # Visual structured-data (schema.org) editor.
+    path('schema/', views.schema_index, name='schema_index'),
+    path('schema/<str:app_label>/<str:model>/<str:pk>/', views.schema_editor, name='schema_editor'),
 ]
