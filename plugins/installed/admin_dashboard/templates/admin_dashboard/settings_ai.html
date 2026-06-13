@@ -49,7 +49,7 @@
   {% endif %}
   {% endwith %}
 
-  <form method="post" action="/dashboard/apps/ai_assistant/settings/"
+  <form method="post" action="/dashboard/settings/ai_assistant/"
         class="card card-padded flex items-center justify-between gap-3 flex-wrap"
         data-ajax data-autosave-hide-submit>
     {% csrf_token %}
@@ -100,7 +100,7 @@
       </div>
     </div>
 
-    <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card-padded space-y-3" data-provider-form="{{ c.slug }}" data-ajax>
+    <form method="post" action="/dashboard/settings/ai_assistant/" class="card-padded space-y-3" data-provider-form="{{ c.slug }}" data-ajax>
       {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
 
@@ -159,7 +159,7 @@
   </div>
   {% endfor %}
 
-  <form method="post" action="/dashboard/apps/ai_assistant/settings/" class="card overflow-hidden" data-ajax>
+  <form method="post" action="/dashboard/settings/ai_assistant/" class="card overflow-hidden" data-ajax>
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="card-padded border-b border-[color:var(--border)]">

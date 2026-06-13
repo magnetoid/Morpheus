@@ -737,6 +737,14 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
         from plugins.registry import plugin_registry
 
         if plugin_registry.settings_panel(category) is not None:
+            # ai_assistant's provider config is rendered in full by the
+            # dedicated rich AI page at /dashboard/settings/ai/. Its generic
+            # schema page here was a confusing duplicate, so a GET bounces to
+            # the canonical page. POSTs still flow through the generic save
+            # handler — the rich page's forms post here and carry `_next`
+            # back to themselves.
+            if category == 'ai_assistant' and request.method == 'GET':
+                return redirect('/dashboard/settings/ai/')
             from plugins.installed.admin_dashboard.urls import plugin_settings_view
 
             return plugin_settings_view(request, plugin=category)
