@@ -17,6 +17,10 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
     timezone = forms.CharField(max_length=50, required=False)
     contact_email = forms.EmailField(required=False)
     support_phone = forms.CharField(max_length=30, required=False)
+    product_placeholder_image = forms.ImageField(
+        required=False,
+        help_text='Shown on the storefront when a product has no image of its own.',
+    )
 
     def __init__(self, *args, instance=None, **kwargs):
         self.instance = instance
@@ -31,6 +35,7 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
                     'timezone',
                     'contact_email',
                     'support_phone',
+                    'product_placeholder_image',
                 )
             }
         super().__init__(*args, **kwargs)
@@ -40,6 +45,10 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
 
         instance = self.instance or StoreSettings.objects.first() or StoreSettings()
         for field, value in self.cleaned_data.items():
+            # An unchanged file field comes back falsy — don't clobber the
+            # stored image with an empty value when no new file was uploaded.
+            if field == 'product_placeholder_image' and not value:
+                continue
             setattr(instance, field, value)
         instance.save()
         return instance

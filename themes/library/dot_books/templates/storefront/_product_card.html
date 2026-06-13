@@ -21,6 +21,8 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
         {% seo_responsive_image product.primary_image.image alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
       {% elif img %}
         <img src="{{ img }}" alt="{{ product.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+      {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+        <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ product.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
       {% else %}
         <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
       {% endif %}

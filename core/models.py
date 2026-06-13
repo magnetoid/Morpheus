@@ -15,6 +15,12 @@ class StoreSettings(models.Model):
     store_description = models.TextField(blank=True)
     logo = models.ImageField(upload_to='store/', blank=True, null=True)
     favicon = models.ImageField(upload_to='store/', blank=True, null=True)
+    product_placeholder_image = models.ImageField(
+        upload_to='store/',
+        blank=True,
+        null=True,
+        help_text='Fallback cover shown on the storefront when a product has no image of its own.',
+    )
     primary_currency = models.CharField(max_length=3, default='USD')
     country = models.CharField(max_length=2, default='US')
     timezone = models.CharField(max_length=50, default='UTC')

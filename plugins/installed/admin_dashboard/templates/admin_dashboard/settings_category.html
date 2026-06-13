@@ -48,7 +48,7 @@
       <h2 class="font-semibold">{{ core_card.title }}</h2>
       <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ core_card.description }}</p>
     </div>
-    <form method="post" class="card-padded space-y-4" data-morph-dirty>
+    <form method="post" enctype="multipart/form-data" class="card-padded space-y-4" data-morph-dirty>
       {% csrf_token %}
       <input type="hidden" name="_form" value="core">
 

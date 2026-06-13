@@ -745,7 +745,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
         instance = StoreSettings.objects.first()
 
         if request.method == 'POST' and request.POST.get('_form') == 'core':
-            form = FormCls(request.POST, instance=instance)
+            form = FormCls(request.POST, request.FILES, instance=instance)
             if form.is_valid():
                 form.save()
                 messages.success(request, f'{core_title} saved.')

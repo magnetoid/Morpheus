@@ -11,7 +11,20 @@ def store_settings(request):
         'DEBUG': django_settings.DEBUG,
         'MORPHEUS_VERSION': getattr(django_settings, 'MORPHEUS_VERSION', 'v0.1.0'),
         'GOOGLE_PLACES_API_KEY': getattr(django_settings, 'GOOGLE_PLACES_API_KEY', ''),
+        # Storefront fallback cover for products with no image (Settings → General).
+        'PRODUCT_PLACEHOLDER_IMAGE': _product_placeholder_url(),
     }
+
+
+def _product_placeholder_url() -> str:
+    """URL of the configured product placeholder image, or '' if unset/unavailable."""
+    try:
+        from core.models import StoreSettings
+
+        img = StoreSettings.get('product_placeholder_image')
+        return img.url if img else ''
+    except Exception:
+        return ''
 
 
 def cart_context(request):
