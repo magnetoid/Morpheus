@@ -1,0 +1,42 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ taxonomy_label }} landing page · Book taxonomies · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ taxonomy_label }} landing page</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">The index page listing every {{ taxonomy_label|lower }} — at <code class="font-mono text-xs">{{ page_url }}</code>. Set its intro, SEO and hero image.</p>
+    </div>
+    <a href="{{ page_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-sm"><i data-lucide="external-link" class="h-4 w-4"></i> View landing page</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="card card-padded space-y-4">
+    {% csrf_token %}
+    <div>
+      <label class="block text-sm font-medium mb-1">Intro / description</label>
+      <textarea name="description" rows="4" class="input w-full">{{ root.description|default:'' }}</textarea>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">Editorial blurb shown at the top of the {{ taxonomy_label|lower }} index page.</p>
+    </div>
+    <hr class="border-[color:var(--border)]">
+    <div>
+      <label class="block text-sm font-medium mb-1">SEO title</label>
+      <input type="text" name="meta_title" class="input w-full" value="{{ root.meta_title|default:'' }}" maxlength="200" placeholder="{{ taxonomy_label }} — dot books">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">SEO meta description</label>
+      <textarea name="meta_description" rows="3" class="input w-full" maxlength="320">{{ root.meta_description|default:'' }}</textarea>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Hero image</label>
+      {% if root.image %}<p class="text-xs text-[color:var(--text-muted)] mb-1">Current: <a href="{{ root.image.url }}" target="_blank" rel="noopener" class="underline">{{ root.image.name }}</a></p>{% endif %}
+      <input type="file" name="image" accept="image/*" class="input w-full">
+    </div>
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

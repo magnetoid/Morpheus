@@ -1,0 +1,36 @@
+{% extends "storefront/base.html" %}
+
+{% block title %}{{ seo_title }}{% endblock %}
+{% block meta_description %}{{ seo_description }}{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap">
+    <p class="eyebrow" style="margin-bottom: .5rem;">
+      <a href="/products/" style="color: var(--muted);">All books</a> · {{ root_label }}
+    </p>
+    <h1 class="display display-xl" style="margin: 0 0 {% if root.description %}1rem{% else %}2rem{% endif %};">{{ root.meta_title|default:root_label }}</h1>
+
+    {% if root.image %}<img src="{{ root.image.url }}" alt="{{ root_label }}" style="max-width:220px; border-radius:8px; margin:0 0 1.25rem;">{% endif %}
+    {% if root.description %}<div class="lede" style="max-width:60ch; margin:0 0 2.25rem;">{{ root.description|linebreaks }}</div>{% endif %}
+
+    {% if terms %}
+    <ul style="list-style:none; margin:0; padding:0; display:grid; gap:.75rem; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));">
+      {% for t in terms %}
+      <li>
+        <a href="{{ t.url }}" style="display:flex; align-items:center; gap:.85rem; padding:.85rem 1rem; border:1px solid var(--rule); border-radius:10px; text-decoration:none; color:inherit;">
+          {% if t.image %}<img src="{{ t.image.url }}" alt="" style="width:48px; height:48px; object-fit:cover; border-radius:6px; flex:none;">{% endif %}
+          <span style="min-width:0;">
+            <span style="display:block; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ t.name }}</span>
+            <span style="display:block; color:var(--muted); font-size:.85rem;">{{ t.count }} book{{ t.count|pluralize }}</span>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="lede">Nothing here yet. Browse the <a href="/products/" style="border-bottom:1px dotted var(--rule);">full catalogue</a>.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

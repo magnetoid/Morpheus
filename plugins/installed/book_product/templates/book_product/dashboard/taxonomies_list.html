@@ -12,8 +12,12 @@
 
   {% for group in groups %}
   <div class="card overflow-hidden">
-    <div class="card-padded border-b border-[color:var(--border)]">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3">
       <h2 class="font-semibold text-sm">{{ group.label }} <span class="text-[color:var(--text-muted)] font-normal">({{ group.terms|length }})</span></h2>
+      <div class="flex items-center gap-1 whitespace-nowrap">
+        <a href="{{ group.root_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-xs">View index</a>
+        <a href="{{ group.root_edit_url }}" class="btn btn-ghost text-xs">Edit landing page</a>
+      </div>
     </div>
     {% if group.terms %}
     <table class="morph-table morph-table-zebra">

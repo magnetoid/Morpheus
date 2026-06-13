@@ -6,7 +6,7 @@
 <section style="padding: 3rem 0 5rem;">
   <div class="wrap">
     <p class="eyebrow" style="margin-bottom: .5rem;">
-      <a href="/products/" style="color: var(--muted);">All books</a> · {{ facet_label }}
+      <a href="/products/" style="color: var(--muted);">All books</a> · {% if facet_index_url %}<a href="{{ facet_index_url }}" style="color: var(--muted);">{{ facet_label }}</a>{% else %}{{ facet_label }}{% endif %}
     </p>
     <h1 class="display display-xl" style="margin: 0 0 {% if term.description %}1rem{% else %}2rem{% endif %};">{{ facet_value }}</h1>
 

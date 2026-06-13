@@ -18,7 +18,7 @@ def _active_products(books):
     return [b.product for b in books if getattr(b.product, 'status', '') == 'active']
 
 
-def _render(request, label, value, products, *, term=None):
+def _render(request, label, value, products, *, term=None, index_url=None):
     seo_title = term.meta_title if (term and term.meta_title) else f'{value} — {label} — dot books'
     return render(
         request,
@@ -26,6 +26,9 @@ def _render(request, label, value, products, *, term=None):
         {
             'facet_label': label,
             'facet_value': value,
+            # When this facet kind has an index page (publisher/series/imprint),
+            # link the breadcrumb label up to it (e.g. "Publisher" → /publishers/).
+            'facet_index_url': index_url,
             'products': products,
             'term': term,
             'seo_title': seo_title,
@@ -33,7 +36,7 @@ def _render(request, label, value, products, *, term=None):
             'active_nav': '',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/'},
-                {'label': label},
+                {'label': label, 'url': index_url} if index_url else {'label': label},
                 {'label': value},
             ],
         },
@@ -59,7 +62,8 @@ def _slug_facet(request, field, slug, label, *, taxonomy=None, order_by='-produc
         from plugins.installed.book_product.models import BookTaxonomyTerm  # noqa: PLC0415
 
         term = BookTaxonomyTerm.objects.filter(taxonomy=taxonomy, slug=slug).first()
-    return _render(request, label, match, _active_products(books), term=term)
+    index_url = _ROOT_INDEX_URL.get(taxonomy) if taxonomy else None
+    return _render(request, label, match, _active_products(books), term=term, index_url=index_url)
 
 
 def _value_facet(request, field, value, label, display):
@@ -102,3 +106,83 @@ def format_detail(request, value):
 
 def language_detail(request, value):
     return _value_facet(request, 'language', value, 'Language', value)
+
+
+# --- Taxonomy root listing pages -------------------------------------------
+# /authors/, /publishers/, /series/, /imprints/ — one index page per taxonomy
+# kind, listing every term with its book count and a link to the term's detail
+# page. The editable intro / SEO / hero image comes from a BookTaxonomyRoot row
+# (one per kind); per-term name/image overrides come from BookTaxonomyTerm.
+
+# Term-detail URL prefix per kind. Author details live in the storefront app
+# (/author/<slug>/); the rest are this plugin's own facet pages.
+_ROOT_DETAIL_PREFIX = {
+    'author': '/author/',
+    'publisher': '/publisher/',
+    'series': '/series/',
+    'imprint': '/imprint/',
+}
+# The index/listing page for each kind (links a term detail back up to its index).
+_ROOT_INDEX_URL = {
+    'author': '/authors/',
+    'publisher': '/publishers/',
+    'series': '/series/',
+    'imprint': '/imprints/',
+}
+
+
+def _taxonomy_root(request, *, key, label):
+    from plugins.installed.book_product.compat import (  # noqa: PLC0415
+        distinct_values,
+        product_ids_for,
+    )
+    from plugins.installed.book_product.models import (  # noqa: PLC0415
+        BookTaxonomyRoot,
+        BookTaxonomyTerm,
+    )
+
+    root = BookTaxonomyRoot.objects.filter(taxonomy=key).first()
+    overrides = {t.slug: t for t in BookTaxonomyTerm.objects.filter(taxonomy=key)}
+    prefix = _ROOT_DETAIL_PREFIX.get(key, '/')
+    terms = []
+    for name in distinct_values(key):
+        slug = slugify(name)
+        term = overrides.get(slug)
+        terms.append(
+            {
+                'name': term.name if (term and term.name) else name,
+                'slug': slug,
+                'count': len(product_ids_for(key, name)),
+                'url': f'{prefix}{slug}/',
+                'image': term.image if (term and term.image) else None,
+            }
+        )
+    terms.sort(key=lambda t: t['name'].lower())
+    return render(
+        request,
+        'storefront/taxonomy_root.html',
+        {
+            'root_label': label,
+            'root': root,
+            'terms': terms,
+            'seo_title': root.meta_title if (root and root.meta_title) else f'{label} — dot books',
+            'seo_description': (root.meta_description if root else '')
+            or f'Browse books by {label.lower()} at dot books.',
+        },
+    )
+
+
+def authors_root(request):
+    return _taxonomy_root(request, key='author', label='Authors')
+
+
+def publishers_root(request):
+    return _taxonomy_root(request, key='publisher', label='Publishers')
+
+
+def series_root(request):
+    return _taxonomy_root(request, key='series', label='Series')
+
+
+def imprints_root(request):
+    return _taxonomy_root(request, key='imprint', label='Imprints')

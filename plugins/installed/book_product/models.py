@@ -116,3 +116,27 @@ class BookTaxonomyTerm(models.Model):
 
     def __str__(self) -> str:
         return f'{self.get_taxonomy_display()}: {self.name}'
+
+
+class BookTaxonomyRoot(models.Model):
+    """The landing page for a whole taxonomy kind (e.g. /authors/).
+
+    One row per BookTaxonomy kind, holding the editable intro blurb, SEO, and
+    hero image the listing page renders — the same widgets as a term, but for
+    the root listing rather than a single author/publisher/series/imprint.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    taxonomy = models.CharField(max_length=20, choices=BookTaxonomy.choices, unique=True)
+    description = models.TextField(blank=True)
+    meta_title = models.CharField(max_length=200, blank=True)
+    meta_description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='book_taxonomies/', null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Book taxonomy root page'
+        verbose_name_plural = 'Book taxonomy root pages'
+
+    def __str__(self) -> str:
+        return f'{self.get_taxonomy_display()} root page'

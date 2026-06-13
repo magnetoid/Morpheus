@@ -10,5 +10,6 @@ app_name = 'book_product_dashboard'
 
 urlpatterns = [
     path('', views.taxonomies_list, name='taxonomies'),
+    path('<slug:taxonomy>/landing/', views.taxonomy_root_edit, name='taxonomy_root_edit'),
     path('<slug:taxonomy>/<slug:slug>/edit/', views.taxonomy_edit, name='taxonomy_edit'),
 ]

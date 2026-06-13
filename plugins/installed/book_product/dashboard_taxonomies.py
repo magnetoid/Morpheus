@@ -24,6 +24,14 @@ _TAXONOMIES = [
 ]
 _LABELS = {k: label for k, label, _ in _TAXONOMIES}
 _URL_PREFIX = {k: prefix for k, _, prefix in _TAXONOMIES}
+# Storefront listing page (the whole taxonomy kind) per key. Author details
+# live in the storefront app at /author/<slug>/, so its index is /authors/.
+_ROOT_URL = {
+    'author': '/authors/',
+    'publisher': '/publishers/',
+    'series': '/series/',
+    'imprint': '/imprints/',
+}
 
 
 @staff_member_required
@@ -47,7 +55,15 @@ def taxonomies_list(request: HttpRequest) -> HttpResponse:
                     'edit_url': reverse('book_product_dashboard:taxonomy_edit', args=[key, slug]),
                 }
             )
-        groups.append({'key': key, 'label': label, 'terms': terms})
+        groups.append(
+            {
+                'key': key,
+                'label': label,
+                'terms': terms,
+                'root_url': _ROOT_URL.get(key, '/'),
+                'root_edit_url': reverse('book_product_dashboard:taxonomy_root_edit', args=[key]),
+            }
+        )
     return render(
         request,
         'book_product/dashboard/taxonomies_list.html',
@@ -106,6 +122,51 @@ def taxonomy_edit(request: HttpRequest, taxonomy: str, slug: str) -> HttpRespons
                 {'label': 'Products', 'url': '/dashboard/products/'},
                 {'label': 'Book taxonomies', 'url': reverse('book_product_dashboard:taxonomies')},
                 {'label': name[:50]},
+            ],
+        },
+    )
+
+
+@staff_member_required
+def taxonomy_root_edit(request: HttpRequest, taxonomy: str) -> HttpResponse:
+    """Edit the landing page for a whole taxonomy kind (e.g. /authors/) —
+    its intro blurb, SEO, and hero image. The BookTaxonomyRoot row is created
+    only on first save."""
+    from plugins.installed.book_product.models import BookTaxonomy, BookTaxonomyRoot
+
+    if taxonomy not in BookTaxonomy.values:
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+
+    label = _LABELS.get(taxonomy, taxonomy)
+    root = BookTaxonomyRoot.objects.filter(taxonomy=taxonomy).first()
+
+    if request.method == 'POST':
+        root, _ = BookTaxonomyRoot.objects.get_or_create(taxonomy=taxonomy)
+        root.description = (request.POST.get('description') or '').strip()
+        root.meta_title = (request.POST.get('meta_title') or '').strip()
+        root.meta_description = (request.POST.get('meta_description') or '').strip()
+        if request.FILES.get('image'):
+            root.image = request.FILES['image']
+        root.save()
+        messages.success(request, f'{label} landing page saved.')
+        return HttpResponseRedirect(
+            reverse('book_product_dashboard:taxonomy_root_edit', args=[taxonomy])
+        )
+
+    return render(
+        request,
+        'book_product/dashboard/taxonomy_root_form.html',
+        {
+            'taxonomy': taxonomy,
+            'taxonomy_label': label,
+            'root': root,
+            'page_url': _ROOT_URL.get(taxonomy, '/'),
+            'active_nav': 'book_taxonomies',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Products', 'url': '/dashboard/products/'},
+                {'label': 'Book taxonomies', 'url': reverse('book_product_dashboard:taxonomies')},
+                {'label': f'{label} landing page'},
             ],
         },
     )
