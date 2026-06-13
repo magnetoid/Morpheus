@@ -201,6 +201,15 @@ class AffiliatesPlugin(Plugin):
                 nav='main',
             ),
             DashboardPage(
+                label='Creatives',
+                slug='creatives',
+                view='plugins.installed.affiliates.dashboard.creatives_list',
+                icon='image',
+                section='growth',
+                order=17,
+                nav='main',
+            ),
+            DashboardPage(
                 label='Conversions',
                 slug='conversions',
                 view='plugins.installed.affiliates.dashboard.conversions_list',

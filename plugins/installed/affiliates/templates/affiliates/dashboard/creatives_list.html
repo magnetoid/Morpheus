@@ -1,0 +1,67 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Affiliate creatives · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Affiliate creatives</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Share-ready banners, covers and swipe copy. Affiliates grab these from their <code class="text-xs">/affiliates/me/creatives/</code> library and spin a tracked link in one click.</p>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="card card-padded space-y-4">
+    {% csrf_token %}
+    <h2 class="text-sm font-semibold">Add a creative</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium mb-1">Title</label>
+        <input type="text" name="title" required maxlength="200" class="input w-full" placeholder="Summer reading banner">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">Promotes (path)</label>
+        <input type="text" name="landing_url" value="/" maxlength="500" class="input w-full" placeholder="/products/example-book/">
+      </div>
+    </div>
+    <div>
+      <label class="block text-xs font-medium mb-1">Image</label>
+      <input type="file" name="image" accept="image/*" class="input w-full">
+    </div>
+    <div>
+      <label class="block text-xs font-medium mb-1">Swipe copy <span class="text-[color:var(--text-muted)]">(ready-to-paste promo text)</span></label>
+      <textarea name="swipe_copy" rows="3" class="input w-full" placeholder="Just discovered dot books — a quieter shelf for louder books. Shop my picks:"></textarea>
+    </div>
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Add creative</button>
+    </div>
+  </form>
+
+  {% if creatives %}
+  <div class="card overflow-hidden">
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Preview</th><th>Title</th><th>Promotes</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
+      <tbody>
+        {% for c in creatives %}
+        <tr>
+          <td>{% if c.image %}<img src="{{ c.image.url }}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:4px;">{% else %}<span class="text-[color:var(--text-muted)] text-xs">—</span>{% endif %}</td>
+          <td class="font-medium">{{ c.title }}</td>
+          <td class="text-[color:var(--text-muted)] text-xs"><code>{{ c.landing_url }}</code></td>
+          <td>{% if c.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral text-xs">Hidden</span>{% endif %}</td>
+          <td class="text-right">
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this creative?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="id" value="{{ c.id }}">
+              <button type="submit" class="btn btn-ghost text-xs text-[color:var(--danger)]">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card card-padded text-sm text-[color:var(--text-muted)]">No creatives yet — add your first above.</div>
+  {% endif %}
+</div>
+{% endblock %}

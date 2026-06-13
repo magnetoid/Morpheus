@@ -737,3 +737,24 @@ def leaderboard(request: HttpRequest) -> HttpResponse:
             'seo_title': 'Affiliate leaderboard',
         },
     )
+
+
+@login_required(login_url='/auth/login/')
+def creatives(request: HttpRequest) -> HttpResponse:
+    """Affiliate-facing marketing creatives library — grab a banner/cover +
+    swipe copy, then spin a tracked link to its target in one click."""
+    from plugins.installed.affiliates.models import AffiliateCreative
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    return render(
+        request,
+        'affiliates/creatives.html',
+        {
+            'affiliate': affiliate,
+            'creatives': list(AffiliateCreative.objects.filter(is_active=True)),
+            'seo_title': 'Marketing creatives',
+        },
+    )

@@ -970,3 +970,39 @@ def program_detail(request, program_id):
             'breadcrumb_trail': breadcrumb,
         },
     )
+
+
+@staff_member_required
+def creatives_list(request):
+    """Merchant management of affiliate marketing creatives — upload images +
+    swipe copy that affiliates grab from /affiliates/me/creatives/."""
+    from plugins.installed.affiliates.models import AffiliateCreative
+
+    if request.method == 'POST':
+        if request.POST.get('action') == 'delete':
+            AffiliateCreative.objects.filter(id=request.POST.get('id')).delete()
+            messages.success(request, 'Creative deleted.')
+        else:
+            title = (request.POST.get('title') or '').strip()
+            if not title:
+                messages.error(request, 'A title is required.')
+            else:
+                AffiliateCreative.objects.create(
+                    title=title[:200],
+                    image=request.FILES.get('image'),
+                    landing_url=(request.POST.get('landing_url') or '/').strip()[:500],
+                    swipe_copy=(request.POST.get('swipe_copy') or '').strip(),
+                    is_active=request.POST.get('is_active') != '0',
+                )
+                messages.success(request, 'Creative added.')
+        return HttpResponseRedirect('/dashboard/apps/affiliates/creatives/')
+
+    return render(
+        request,
+        'affiliates/dashboard/creatives_list.html',
+        {
+            'creatives': list(AffiliateCreative.objects.all()),
+            'breadcrumb_trail': _trail('Creatives'),
+            'active_nav': 'affiliates',
+        },
+    )

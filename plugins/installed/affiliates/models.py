@@ -331,3 +331,30 @@ class AffiliatePayout(models.Model):
 
     class Meta:
         ordering = ['-requested_at']
+
+
+class AffiliateCreative(models.Model):
+    """A ready-to-share marketing asset (banner / cover / social image) the
+    merchant publishes for affiliates to grab — image + swipe copy + the page it
+    promotes. Affiliates download the image, copy the text, and spin a tracked
+    link to the target from their Links tab."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200)
+    image = models.ImageField(upload_to='affiliate_creatives/', blank=True, null=True)
+    landing_url = models.CharField(
+        max_length=500,
+        default='/',
+        help_text='The storefront path this creative promotes (e.g. /products/foo/).',
+    )
+    swipe_copy = models.TextField(
+        blank=True, help_text='Ready-to-paste promo text affiliates can use as-is.'
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return self.title
