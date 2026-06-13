@@ -36,6 +36,19 @@ class AIAssistantPlugin(Plugin):
     requires = ['catalog', 'orders', 'customers']
 
     def ready(self):
+        # Enrich the kernel's provider-config registry with dashboard-saved
+        # settings. Core (core/agents/llm.py, core/assistant/consensus.py)
+        # resolves providers through this registry and falls back to an
+        # env-only default when this plugin is absent — so the dependency
+        # points plugin→core, never the reverse.
+        from core.agents.provider_registry import provider_config_registry
+        from plugins.installed.ai_assistant.services.config import (
+            get_active_provider_name,
+            get_provider_config,
+        )
+
+        provider_config_registry.register(get_provider_config, get_active_provider_name)
+
         # GraphQL extensions
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.queries')
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.mutations')

@@ -153,7 +153,7 @@ class OpenAIProvider(LLMProvider):
     name = 'openai'
 
     def __init__(self, model: str | None = None) -> None:
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('openai')
         base = cfg.base_url if cfg.base_url and cfg.base_url != 'https://api.openai.com/v1' else ''
@@ -235,7 +235,7 @@ class AnthropicProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         import anthropic
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('anthropic')
         # Same timeout discipline as the OpenAI client — must be less
@@ -347,7 +347,7 @@ class OllamaProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         import requests
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('ollama')
         self._requests = requests
@@ -402,7 +402,7 @@ class GeminiProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         import requests
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('gemini')
         if not cfg.api_key:
@@ -476,7 +476,7 @@ class OpenRouterProvider(OpenAIProvider):
     name = 'openrouter'
 
     def __init__(self, model: str | None = None) -> None:
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('openrouter')
         self._client = _openai_client(
@@ -495,7 +495,7 @@ class GrokProvider(OpenAIProvider):
     name = 'grok'
 
     def __init__(self, model: str | None = None) -> None:
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('grok')
         self._client = _openai_client(
@@ -514,7 +514,7 @@ class PackyProvider(OpenAIProvider):
     name = 'packy'
 
     def __init__(self, model: str | None = None) -> None:
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('packy')
         self._client = _openai_client(
@@ -535,7 +535,7 @@ class HermesProvider(OpenAIProvider):
     name = 'hermes'
 
     def __init__(self, model: str | None = None) -> None:
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
 
         cfg = get_provider_config('hermes')
         self._client = _openai_client(
@@ -617,7 +617,7 @@ def get_llm_provider(name: str | None = None, *, model: str | None = None) -> LL
         chosen = name.strip().lower()
     else:
         try:
-            from plugins.installed.ai_assistant.services.config import get_active_provider_name
+            from core.agents.provider_registry import get_active_provider_name
 
             chosen = get_active_provider_name()
         except Exception:  # noqa: BLE001 — registry not ready (early boot, tests)

@@ -39,7 +39,7 @@ def configured_providers() -> list[str]:
     """Names of providers that actually have an API key — the consensus panel."""
     out: list[str] = []
     try:
-        from plugins.installed.ai_assistant.services.config import get_provider_config
+        from core.agents.provider_registry import get_provider_config
     except Exception:  # noqa: BLE001
         return out
     for name in _PREFERRED:

@@ -19,19 +19,11 @@ caller can decide how to fail (e.g. fall back to MockLLMProvider).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from django.conf import settings
 
-
-@dataclass(slots=True)
-class ProviderConfig:
-    provider: str
-    api_key: str
-    base_url: str
-    model: str
-    embedding_model: str
-
+# Canonical type lives in core (plugin→core is the allowed direction); this
+# resolver is registered into core's provider_config_registry at ready().
+from core.agents.provider_registry import ProviderConfig  # noqa: I001
 
 _DEFAULT_BASE_URLS = {
     'openai': 'https://api.openai.com/v1',

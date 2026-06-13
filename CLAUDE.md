@@ -115,9 +115,11 @@ plugin at all.
 **Core → plugin imports (wrong direction; core should never import
 `plugins.installed.*`):** `core/emails` is fixed (cms's EmailTemplate now
 arrives via the `EMAIL_TEMPLATE_OVERRIDE` filter; the site base URL moved
-to `core/utils/site.py` and seo delegates to it). Still leaking:
-`core/agents/llm.py` + `core/assistant/consensus.py` reach into
-ai_assistant's provider config (~10 sites); `core/assistant/tools/*`
+to `core/utils/site.py` and seo delegates to it). The **provider-config
+coupling is fixed** too: `core/agents/llm.py` + `core/assistant/consensus.py`
+now resolve through `core/agents/provider_registry.py` (env/settings-only
+default; ai_assistant's `ready()` registers its dashboard-aware resolver) —
+core no longer imports the plugin. Still leaking: `core/assistant/tools/*`
 queries catalog/orders/cms/metafields/… models directly — the right fix
 is migrating those tools to each plugin's `contribute_agent_tools()`;
 and `core/context_processors.cart_context` imports orders.Cart
