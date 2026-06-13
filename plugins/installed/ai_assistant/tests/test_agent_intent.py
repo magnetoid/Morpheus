@@ -60,6 +60,26 @@ class IntentLifecycleTests(TestCase):
                 estimated_cost=Money(50, 'USD'),
             )
 
+    def test_propose_blocked_when_intent_engine_disabled(self):
+        # The enable_intent_engine flag gates new proposals (default on).
+        from plugins.registry import plugin_registry
+
+        plugin = plugin_registry.get('ai_assistant')
+        plugin.set_config('enable_intent_engine', False)
+        try:
+            with self.assertRaises(intent_service.CapabilityDenied):
+                intent_service.propose(agent=_make_agent(), kind='browse')
+        finally:
+            plugin.set_config('enable_intent_engine', True)
+
+    def test_propose_allowed_when_intent_engine_enabled(self):
+        from plugins.registry import plugin_registry
+
+        plugin = plugin_registry.get('ai_assistant')
+        plugin.set_config('enable_intent_engine', True)
+        intent = intent_service.propose(agent=_make_agent(), kind='browse', summary='ok')
+        self.assertEqual(intent.state, 'proposed')
+
     def test_full_lifecycle_emits_signed_receipt(self):
         agent = _make_agent()
         intent = intent_service.propose(

@@ -61,6 +61,23 @@ class IntentResult:
     signature: str | None = None
 
 
+def _enforce_intent_engine_enabled() -> None:
+    """The intent engine is gated by the `enable_intent_engine` flag
+    (Settings → AI). Default on; when a merchant turns it off, agents may not
+    propose new intents (existing intents still transition). Fail-soft: any
+    config-lookup error leaves the engine enabled so the flow never breaks on
+    an infra hiccup."""
+    from plugins.registry import plugin_registry  # noqa: PLC0415
+
+    try:
+        plugin = plugin_registry.get('ai_assistant')
+        enabled = plugin.get_config_value('enable_intent_engine', True) if plugin else True
+    except Exception:  # noqa: BLE001
+        enabled = True
+    if not enabled:
+        raise CapabilityDenied('intent engine is disabled (Settings → AI → Enable intent engine)')
+
+
 def _enforce_capabilities(agent, kind: str) -> None:
     cap = _KIND_TO_CAPABILITY.get(kind)
     if cap is None:
@@ -97,6 +114,7 @@ def propose(
 
     if kind not in {c[0] for c in AgentIntent.KIND_CHOICES}:
         raise IntentTransitionError(f'Unknown intent kind: {kind}')
+    _enforce_intent_engine_enabled()
     _enforce_capabilities(agent, kind)
     _enforce_budget(agent, estimated_cost)
 

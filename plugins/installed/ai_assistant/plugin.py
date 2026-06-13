@@ -404,6 +404,11 @@ class AIAssistantPlugin(Plugin):
                     'type': 'boolean',
                     'default': True,
                     'title': 'Enable intent engine',
+                    'description': (
+                        'Lets agents propose authorised actions (browse, checkout, '
+                        'subscribe…) through the intent state machine. Off blocks new '
+                        'intent proposals; in-flight intents still resolve.'
+                    ),
                 },
                 'enable_semantic_search': {
                     'type': 'boolean',
@@ -422,8 +427,13 @@ class AIAssistantPlugin(Plugin):
                 },
                 'enable_zero_shot_catalog': {
                     'type': 'boolean',
-                    'default': True,
-                    'title': 'Enable zero-shot catalog',
+                    'default': False,
+                    'title': 'Enable zero-shot catalog (coming soon)',
+                    'description': (
+                        'Not yet implemented — no classifier service is wired behind '
+                        'this toggle. Reserved for zero-shot product categorisation; '
+                        'leave off.'
+                    ),
                 },
                 'enable_autonomous_operator': {
                     'type': 'boolean',
@@ -433,7 +443,12 @@ class AIAssistantPlugin(Plugin):
                 'enable_synthetic_testing': {
                     'type': 'boolean',
                     'default': False,
-                    'title': 'Enable synthetic testing',
+                    'title': 'Enable synthetic testing (coming soon)',
+                    'description': (
+                        'Not yet implemented — no synthetic-testing service is wired '
+                        'behind this toggle. Reserved for automated store smoke tests; '
+                        'leave off.'
+                    ),
                 },
                 'agent_purchase_requires_approval': {
                     'type': 'boolean',
