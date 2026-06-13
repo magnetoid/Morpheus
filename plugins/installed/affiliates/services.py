@@ -599,3 +599,64 @@ def mark_payout_paid(payout, *, external_reference: str = '') -> None:
             accrued_balance=affiliate.accrued_balance - payout.amount,
             lifetime_paid=affiliate.lifetime_paid + payout.amount,
         )
+
+
+def _affiliate_coupon_taken(code: str) -> bool:
+    """True if a coupon code is already an affiliate link's code, or — fail-soft —
+    an existing store promotion coupon (so an affiliate can't claim a code that
+    would attribute the store's own promo orders to them)."""
+    from plugins.installed.affiliates.models import AffiliateLink
+
+    if AffiliateLink.objects.filter(coupon_code__iexact=code).exists():
+        return True
+    try:
+        from plugins.installed.promotions.models import Promotion
+
+        if Promotion.objects.filter(requires_coupon__iexact=code).exists():
+            return True
+    except Exception:  # noqa: BLE001 — promotions may be disabled
+        pass
+    return False
+
+
+def affiliate_coupon(affiliate, *, claim: bool = False) -> str:
+    """The affiliate's personal coupon code, or '' if none yet.
+
+    With ``claim=True``, mint one: a handle-DERIVED code (so the affiliate can't
+    pick an arbitrary code and hijack the store's own coupons), made unique with
+    a numeric suffix, stored on a dedicated AffiliateLink. The code attributes
+    sales via the existing coupon path; the store pairs it with a discount
+    Promotion (merchant-managed). Returns the code (or '' if not claimed)."""
+    import re
+
+    from plugins.installed.affiliates.models import AffiliateLink
+
+    existing = (
+        AffiliateLink.objects.filter(affiliate=affiliate)
+        .exclude(coupon_code='')
+        .order_by('created_at')
+        .first()
+    )
+    if existing:
+        return existing.coupon_code
+    if not claim:
+        return ''
+
+    base = re.sub(r'[^A-Z0-9]', '', (affiliate.handle or '').upper())[:16] or 'AFF'
+    candidate, n = base, 1
+    while _affiliate_coupon_taken(candidate):
+        n += 1
+        candidate = f'{base}{n}'
+        if n > 50:
+            import secrets
+
+            candidate = f'{base}{secrets.token_hex(2).upper()}'
+            break
+
+    AffiliateLink.objects.create(
+        affiliate=affiliate,
+        landing_url='/',
+        label='Personal coupon',
+        coupon_code=candidate,
+    )
+    return candidate

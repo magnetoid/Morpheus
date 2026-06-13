@@ -836,3 +836,31 @@ def analytics(request: HttpRequest) -> HttpResponse:
             'seo_title': 'Your analytics',
         },
     )
+
+
+@login_required(login_url='/auth/login/')
+def coupon(request: HttpRequest) -> HttpResponse:
+    """The affiliate's personal coupon code — claim a handle-derived code, then
+    share it. Customers who use it at checkout are attributed to the affiliate
+    (via the existing coupon path); the store pairs it with a discount."""
+    from plugins.installed.affiliates.services import affiliate_coupon
+
+    affiliate, bounce = _affiliate_or_redirect(request)
+    if bounce is not None:
+        return bounce
+
+    if request.method == 'POST':
+        affiliate_coupon(affiliate, claim=True)
+        return redirect('/affiliates/me/coupon/')
+
+    return render(
+        request,
+        'affiliates/coupon.html',
+        {
+            'affiliate': affiliate,
+            'code': affiliate_coupon(affiliate),
+            'share_text': 'Use my code at dot books:',
+            'share_subject': 'A discount code for dot books',
+            'seo_title': 'Your coupon',
+        },
+    )

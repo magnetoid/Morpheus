@@ -17,6 +17,7 @@ urlpatterns = [
     path('affiliates/me/links/<uuid:link_id>/edit/', views.edit_link, name='edit_link'),
     path('affiliates/me/conversions/', views.conversions, name='conversions'),
     path('affiliates/me/analytics/', views.analytics, name='analytics'),
+    path('affiliates/me/coupon/', views.coupon, name='coupon'),
     path('affiliates/me/payouts/', views.payouts, name='payouts'),
     path('affiliates/me/leaderboard/', views.leaderboard, name='leaderboard'),
     path('affiliates/me/settings/', views.settings, name='settings'),

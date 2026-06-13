@@ -1,0 +1,92 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ seo_title }} — dot books{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
+      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Coupon</span>
+    </nav>
+
+    <header style="margin: 0 0 1.5rem;">
+      <p class="eyebrow">@{{ affiliate.handle }}</p>
+      <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Your coupon<span class="text-accent">.</span></h1>
+      <p class="lede" style="margin: 0; max-width: 52ch;">A personal code customers enter at checkout. Every order that uses it is credited to you — no link click needed.</p>
+    </header>
+
+    {% if code %}
+      {% with full_msg="Use my code "|add:code|add:" at dot books:" %}
+      {% with site=request.scheme|add:"://"|add:request.get_host %}
+      <div class="cp-card">
+        <p class="cp-label">Your code</p>
+        <button type="button" class="cp-code" data-aff-copy="{{ code }}" title="Copy code">{{ code }} <span class="cp-copyicon">⧉</span></button>
+        <div class="cp-share">
+          <a class="aff-share__btn" href="https://twitter.com/intent/tweet?text={{ full_msg|urlencode }}&url={{ site|urlencode }}" target="_blank" rel="noopener" title="Share on X">𝕏</a>
+          <a class="aff-share__btn" href="https://wa.me/?text={{ full_msg|urlencode }}%20{{ site|urlencode }}" target="_blank" rel="noopener" title="WhatsApp">✆</a>
+          <a class="aff-share__btn" href="https://www.facebook.com/sharer/sharer.php?u={{ site|urlencode }}&quote={{ full_msg|urlencode }}" target="_blank" rel="noopener" title="Facebook">f</a>
+          <a class="aff-share__btn" href="mailto:?subject={{ share_subject|urlencode }}&body={{ full_msg|urlencode }}%20{{ site|urlencode }}" title="Email">✉</a>
+        </div>
+      </div>
+      {% endwith %}
+      {% endwith %}
+      <div class="cp-note">
+        <p style="margin:0 0 .35rem;"><strong>How the discount works.</strong> The store decides the discount tied to your code. If customers aren't seeing one at checkout yet, ask the team to set it up — your attribution still works either way.</p>
+        <p style="margin:0; color:var(--muted); font-size:.85rem;">Your code is derived from your handle so it's uniquely yours and can't clash with store-wide coupons.</p>
+      </div>
+    {% else %}
+      <div class="cp-claim">
+        <p style="font-family:var(--serif); font-size:1.15rem; margin:0 0 1rem;">You don't have a coupon code yet.</p>
+        <p style="color:var(--muted); margin:0 0 1.5rem;">Claim a personal code (based on your <code>@{{ affiliate.handle }}</code> handle). Share it anywhere — every order that uses it is credited to you.</p>
+        <form method="post" style="margin:0;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary">Claim my coupon code</button>
+        </form>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+
+<style>
+.cp-card { border: 1px solid var(--rule); border-radius: 12px; padding: 1.75rem; text-align: center; }
+.cp-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 .6rem; }
+.cp-code {
+  font-family: var(--serif); font-size: 2.2rem; letter-spacing: .04em;
+  background: var(--paper-2); border: 1px dashed var(--rule); border-radius: 10px;
+  padding: .6rem 1.4rem; cursor: pointer; color: inherit; transition: border-color .15s;
+}
+.cp-code:hover { border-color: var(--ink); }
+.cp-code.is-copied { border-color: #047857; color: #047857; }
+.cp-code.is-copied::after { content: ' ✓'; }
+.cp-copyicon { font-size: 1rem; color: var(--muted); vertical-align: middle; }
+.cp-share { display: flex; justify-content: center; gap: .4rem; margin-top: 1rem; }
+.aff-share__btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 7px; background: var(--paper-2); color: var(--muted); text-decoration: none; border: 1px solid transparent; transition: border-color .15s, color .15s; }
+.aff-share__btn:hover { border-color: var(--rule); color: var(--ink); }
+.cp-note { margin-top: 1.5rem; background: var(--paper-2); border-radius: 10px; padding: 1rem 1.25rem; font-size: .9rem; line-height: 1.5; }
+.cp-claim { border: 1px solid var(--rule); border-radius: 12px; padding: 2.5rem 2rem; text-align: center; }
+</style>
+
+<script>
+(function () {
+  function copy(t) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
+    return new Promise(function (res, rej) {
+      var ta = document.createElement('textarea'); ta.value = t; ta.style.position='fixed'; ta.style.left='-9999px';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); ta.remove(); res(); } catch (e) { ta.remove(); rej(e); }
+    });
+  }
+  document.querySelectorAll('[data-aff-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      copy(b.dataset.affCopy).then(function () {
+        b.classList.add('is-copied'); setTimeout(function () { b.classList.remove('is-copied'); }, 1500);
+      }).catch(function () {});
+    });
+  });
+})();
+</script>
+{% endblock %}
