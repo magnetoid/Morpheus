@@ -409,6 +409,11 @@ class AIAssistantPlugin(Plugin):
                     'type': 'boolean',
                     'default': True,
                     'title': 'Enable semantic search',
+                    'description': (
+                        'Gives Linda the catalog.semantic_search tool — meaning-based '
+                        'product retrieval (dense embeddings, keyword fallback). Off '
+                        'removes the tool from her catalogue.'
+                    ),
                 },
                 'enable_dynamic_pricing': {
                     'type': 'boolean',
@@ -450,3 +455,14 @@ class AIAssistantPlugin(Plugin):
             schema=self.get_config_schema(),
             category='ai',
         )
+
+    def contribute_agent_tools(self) -> list:
+        """Expose AI-signal services to Linda + the agent layer, each behind its
+        feature flag (Settings → AI). The services already exist; the flag gates
+        whether the tool is registered at all (off → absent from the catalogue)."""
+        tools: list = []
+        if self.get_config_value('enable_semantic_search'):
+            from plugins.installed.ai_assistant.agent_tools import semantic_search_tool
+
+            tools.append(semantic_search_tool)
+        return tools
