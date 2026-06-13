@@ -18,6 +18,22 @@ def _active_products(books):
     return [b.product for b in books if getattr(b.product, 'status', '') == 'active']
 
 
+def _jsonld_items(products):
+    """[{name, url, image}] for seo_collection_jsonld — the auto structured data
+    (CollectionPage + ItemList) on taxonomy pages."""
+    out = []
+    for p in products[:60]:
+        image = ''
+        primary = getattr(p, 'primary_image', None)
+        if primary and getattr(primary, 'image', None):
+            try:
+                image = primary.image.url
+            except Exception:  # noqa: BLE001 — image may have no file on disk
+                image = ''
+        out.append({'name': p.name, 'url': f'/products/{p.slug}/', 'image': image})
+    return out
+
+
 def _render(request, label, value, products, *, term=None, index_url=None):
     # Per-visitor merchandising: reorder by purchase propensity (no-op without
     # consent/history/personalisation). Series keeps its reading order
@@ -39,6 +55,7 @@ def _render(request, label, value, products, *, term=None, index_url=None):
             # link the breadcrumb label up to it (e.g. "Publisher" → /publishers/).
             'facet_index_url': index_url,
             'products': products,
+            'jsonld_items': _jsonld_items(products),
             'term': term,
             'seo_title': seo_title,
             'seo_description': term.meta_description if term else '',
@@ -174,6 +191,16 @@ def _taxonomy_root(request, *, key, label):
             'root_label': label,
             'root': root,
             'terms': terms,
+            # Auto structured data: the index page is a CollectionPage listing
+            # every term (author/publisher/…) as an ItemList.
+            'jsonld_items': [
+                {
+                    'name': t['name'],
+                    'url': t['url'],
+                    'image': t['image'].url if t['image'] else '',
+                }
+                for t in terms
+            ],
             'seo_title': root.meta_title if (root and root.meta_title) else f'{label} — dot books',
             'seo_description': (root.meta_description if root else '')
             or f'Browse books by {label.lower()} at dot books.',

@@ -1,9 +1,12 @@
 {% extends "storefront/base.html" %}
+{% load seo %}
 
 {% block title %}{{ seo_title }}{% endblock %}
 {% block meta_description %}{{ seo_description }}{% endblock %}
 
 {% block content %}
+{# Auto structured data: CollectionPage + ItemList of every term on this index. #}
+{% seo_collection_jsonld items=jsonld_items name=root_label description=seo_description %}
 <section style="padding: 3rem 0 5rem;">
   <div class="wrap">
     <p class="eyebrow" style="margin-bottom: .5rem;">
