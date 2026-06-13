@@ -40,10 +40,9 @@ _DEFAULT_BASE_URLS = {
     'openrouter': 'https://openrouter.ai/api/v1',
     'ollama': 'http://localhost:11434',
     'grok': 'https://api.x.ai/v1',
-    # Packy — Chinese LLM gateway proxying OpenAI / Anthropic / etc. through
-    # one OpenAI-compatible chat-completions endpoint. Model groups are
-    # selected via the model name prefix (e.g. "claude-officially/...").
-    'packy': 'https://www.packyapi.com/v1',
+    # Packy — unified LLM gateway. Wired via its ANTHROPIC-compatible Messages
+    # API (serves Claude models); the SDK appends /v1/messages to this root.
+    'packy': 'https://www.packyapi.com',
     # Hermes (NousResearch) — defaults to the OpenRouter gateway that hosts the
     # Hermes family; override to Nous's own inference API in the panel.
     'hermes': 'https://openrouter.ai/api/v1',

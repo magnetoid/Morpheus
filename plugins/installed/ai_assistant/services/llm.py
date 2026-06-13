@@ -163,9 +163,18 @@ class AnthropicGateway(LLMGateway):
         import anthropic
 
         cfg = cfg or get_provider_config('anthropic')
-        self.client = (
-            anthropic.Anthropic(api_key=cfg.api_key) if cfg.api_key else anthropic.Anthropic()
-        )
+        kwargs: dict = {}
+        if cfg.api_key:
+            kwargs['api_key'] = cfg.api_key
+        # Honour a custom endpoint (packy / a proxy / a Bedrock-style gateway).
+        # The Anthropic SDK appends /v1/messages itself, so strip a trailing
+        # /v1 and never pass the public default.
+        base = (cfg.base_url or '').rstrip('/')
+        if base.endswith('/v1'):
+            base = base[: -len('/v1')]
+        if base and base != 'https://api.anthropic.com':
+            kwargs['base_url'] = base
+        self.client = anthropic.Anthropic(**kwargs)
         self.model = cfg.model or 'claude-3-5-sonnet-latest'
 
     def complete(
@@ -329,25 +338,18 @@ class GrokGateway(OpenAIGateway):
         )
 
 
-class PackyGateway(OpenAIGateway):
-    """Packy (www.packyapi.com) — Chinese LLM gateway that proxies Claude /
-    GPT / Gemini / etc. through one OpenAI-compatible chat-completions
-    endpoint. Model groups are selected via name prefix (e.g.
-    ``claude-officially/claude-haiku-4-5-20251001``)."""
+class PackyGateway(AnthropicGateway):
+    """Packy (www.packyapi.com) via its Anthropic-compatible Messages API — a
+    unified gateway that serves Claude (and other) models. Set the API key,
+    optional base URL, and a Claude model in Settings → AI providers. base_url
+    defaults to packy's root (the Anthropic SDK appends /v1/messages).
+    Embeddings fall back to OpenAI/Ollama via AnthropicGateway.embed."""
 
     def __init__(self, cfg: ProviderConfig | None = None):
         cfg = cfg or get_provider_config('packy')
         if not cfg.base_url:
-            cfg.base_url = 'https://www.packyapi.com/v1'
+            cfg.base_url = 'https://www.packyapi.com'
         super().__init__(cfg)
-
-    def embed(self, text: str) -> list[float]:
-        oa = get_provider_config('openai')
-        if oa.api_key:
-            return OpenAIGateway(oa).embed(text)
-        raise NotImplementedError(
-            'Packy gateway does not expose embeddings. Configure OpenAI or Ollama for embeddings.'
-        )
 
 
 class OllamaGateway(LLMGateway):
