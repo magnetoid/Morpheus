@@ -205,11 +205,17 @@ def page_edit(request, page_id=None):  # noqa: PLR0912 — flat validate→save 
                 layout,
                 publish_at,
             )
-            return render(
-                request,
-                'cms/dashboard/page_form.html',
-                _page_form_context(request, draft, creating=creating),
+            ctx = _page_form_context(request, draft, creating=creating)
+            # Carry the POSTed cover + SEO fields into the re-render — the
+            # context derives them from saved state, which would silently
+            # drop a just-uploaded cover (orphaning the Media asset) on a
+            # validation error like a slug clash.
+            ctx.update(
+                cover_image=(request.POST.get('cover_image') or '').strip()[:600],
+                page_meta_title=(request.POST.get('meta_title') or '').strip()[:255],
+                page_meta_description=(request.POST.get('meta_description') or '').strip()[:500],
             )
+            return render(request, 'cms/dashboard/page_form.html', ctx)
 
         if page is None:
             page = Page()

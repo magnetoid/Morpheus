@@ -96,7 +96,7 @@
         <label class="block text-xs font-medium mb-1" for="page-cover">Cover image</label>
         <div class="flex gap-2 items-center">
           {# type=text (not url): uploaded Media assets are relative paths (/media/…), which type=url rejects on submit. #}
-          <input type="text" id="page-cover" name="cover_image" class="input flex-1" value="{{ cover_image|default:'' }}" placeholder="/media/… (Upload) or paste any URL">
+          <input type="text" id="page-cover" name="cover_image" maxlength="600" class="input flex-1" value="{{ cover_image|default:'' }}" placeholder="/media/… (Upload) or paste any URL">
           <button type="button" id="page-cover-upload" class="btn btn-ghost btn-sm whitespace-nowrap">⬆ Upload</button>
         </div>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Uploads land in your <a href="/dashboard/media/" target="_blank" rel="noopener" class="underline">Media library</a> and set the cover here. Or paste any URL.</p>

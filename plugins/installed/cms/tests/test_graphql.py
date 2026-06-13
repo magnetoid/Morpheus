@@ -100,7 +100,9 @@ class CmsGraphQLTests(TestCase):
         self.assertIsNotNone(entry)
         self.assertEqual(entry.slug, 'single-journal')
         self.assertEqual(entry.author, 'Marko')
-        self.assertEqual(entry.image, '/media/cover.jpg')
+        # Relative media paths are absolutized for og:image (scrapers require it).
+        self.assertTrue(entry.image.startswith('https://'))
+        self.assertTrue(entry.image.endswith('/media/cover.jpg'))
 
     def test_non_staff_cannot_create_page(self):
         with self.assertRaises(PermissionDenied):

@@ -19,7 +19,9 @@ class JournalDictSeoTests(TestCase):
             metadata={'category': 'journal', 'author': 'Jane Doe'},
         )
         d = _journal_dict(page)
-        self.assertEqual(d['image'], '/media/cover.jpg')
+        # Relative media paths are absolutized for og:image (scrapers require it).
+        self.assertTrue(d['image'].startswith('https://'))
+        self.assertTrue(d['image'].endswith('/media/cover.jpg'))
         self.assertEqual(d['author'], 'Jane Doe')
         self.assertIsNotNone(d['updated_at'])
 
@@ -31,7 +33,9 @@ class JournalDictSeoTests(TestCase):
             body='<img src="/media/body.jpg">',
             metadata={'category': 'journal', 'cover': '/media/explicit.jpg'},
         )
-        self.assertEqual(_journal_dict(page)['image'], '/media/explicit.jpg')
+        image = _journal_dict(page)['image']
+        self.assertTrue(image.startswith('https://'))
+        self.assertTrue(image.endswith('/media/explicit.jpg'))
 
     def test_author_falls_back_to_default(self):
         page = Page.objects.create(slug='n3', title='N3', state='published', body='x', metadata={})

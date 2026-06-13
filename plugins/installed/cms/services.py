@@ -34,6 +34,12 @@ def _journal_dict(page) -> dict:
         m = re.search(r"""<img[^>]+src=["']([^"']+)["']""", page.body)
         if m:
             image = m.group(1)
+    if image.startswith('/'):
+        # Uploaded Media assets are relative (/media/…); OG scrapers require
+        # absolute URLs for og:image, so prefix the canonical site base.
+        from core.utils.site import site_base_url
+
+        image = site_base_url().rstrip('/') + image
     author = (meta.get('author') or '').strip()
     if not author and getattr(page, 'author', None):
         author = (page.author.get_full_name() or page.author.get_username() or '').strip()
