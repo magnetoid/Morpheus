@@ -81,5 +81,42 @@ class CloudflarePlugin(Plugin):
 
     # Cloudflare config (API token, zones, purge policy) lives on
     # CloudflareAccount + CloudflareZone rows, managed on the Cloudflare
-    # dashboard page (views.overview). No separate SettingsPanel — that was a
-    # duplicate "Cloudflare" entry whose schema nothing read (ADR 0003).
+    # dashboard page (views.overview). No separate SettingsPanel for that — it
+    # was a duplicate "Cloudflare" entry whose schema nothing read (ADR 0003).
+
+    # Turnstile config IS read (by verify_turnstile + the {% turnstile %} tag),
+    # so it's a real schema-driven settings panel, not a duplicate.
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'turnstile_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Enable Cloudflare Turnstile',
+                    'description': 'Bot/CAPTCHA-free protection on public forms (affiliate apply, contact, signup).',
+                },
+                'turnstile_site_key': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Turnstile site key',
+                    'description': 'Public key (0x…). Cloudflare dashboard → Turnstile → your widget.',
+                },
+                'turnstile_secret_key': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Turnstile secret key',
+                    'description': 'Private key — used server-side to verify the challenge. Keep it secret.',
+                },
+            },
+        }
+
+    def contribute_settings_panel(self):
+        from morpheus import SettingsPanel
+
+        return SettingsPanel(
+            label='Turnstile',
+            description='Cloudflare Turnstile bot protection for public forms.',
+            schema=self.get_config_schema(),
+            category='general',
+        )

@@ -76,6 +76,24 @@ def apply(request: HttpRequest) -> HttpResponse:
     existing = Affiliate.objects.filter(user=request.user).first()
 
     if request.method == 'POST' and existing is None:
+        # Cloudflare Turnstile bot check (fail-soft: no-op when Turnstile/cloudflare off).
+        try:
+            from plugins.installed.cloudflare.services import verify_turnstile
+
+            turnstile_ok = verify_turnstile(request)
+        except Exception:  # noqa: BLE001 — cloudflare plugin may be disabled
+            turnstile_ok = True
+        if not turnstile_ok:
+            return render(
+                request,
+                'affiliates/apply.html',
+                {
+                    'error': 'Bot check failed — please try again.',
+                    'existing': None,
+                    'programs': list(AffiliateProgram.objects.filter(is_active=True)),
+                    'seo_title': 'Become an affiliate',
+                },
+            )
         handle_raw = (request.POST.get('handle') or '').strip()
         program_slug = (request.POST.get('program_slug') or '').strip()
         payout_email = (request.POST.get('payout_email') or request.user.email).strip()[:254]

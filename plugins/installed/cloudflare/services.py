@@ -486,3 +486,54 @@ def purge_for_category_update(category) -> list:
         except Exception as e:  # noqa: BLE001
             logger.warning('cloudflare: purge_for_category_update tag failed: %s', e)
     return invalidations
+
+
+# --- Cloudflare Turnstile (bot protection for public forms) ----------------
+
+
+def _turnstile_config() -> dict:
+    """Cloudflare plugin config (Turnstile keys + toggle) from PluginConfig."""
+    try:
+        from plugins.registry import plugin_registry
+
+        p = plugin_registry.get('cloudflare')
+        return (p.get_config() if p else {}) or {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def turnstile_site_key() -> str:
+    """The Turnstile site key to render, or '' when disabled/unset."""
+    cfg = _turnstile_config()
+    if not cfg.get('turnstile_enabled'):
+        return ''
+    return (cfg.get('turnstile_site_key') or '').strip()
+
+
+def verify_turnstile(request) -> bool:
+    """Verify a Turnstile challenge server-side. True when Turnstile is disabled
+    (not enforced) or the token validates; False when enforced and the token is
+    missing/invalid. Fail-CLOSED while enforced."""
+    cfg = _turnstile_config()
+    if not cfg.get('turnstile_enabled'):
+        return True
+    secret = (cfg.get('turnstile_secret_key') or '').strip()
+    token = (request.POST.get('cf-turnstile-response') or '').strip()
+    if not (secret and token):
+        return False
+    ip = (
+        (request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR', ''))
+        .split(',')[0]
+        .strip()
+    )
+    import requests  # noqa: PLC0415 — matches the lazy-import style in this module
+
+    try:
+        resp = requests.post(
+            'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+            data={'secret': secret, 'response': token, 'remoteip': ip},
+            timeout=8,
+        )
+        return bool(resp.json().get('success'))
+    except Exception:  # noqa: BLE001 — fail closed while enforced
+        return False

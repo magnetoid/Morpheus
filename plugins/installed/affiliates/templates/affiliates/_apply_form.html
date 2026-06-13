@@ -1,4 +1,5 @@
-{# Affiliate application form — shared by the success/error paths. #}
+{% load cloudflare %}
+{% comment %}Affiliate application form — shared by the success/error paths.{% endcomment %}
 <form method="post" action="/affiliates/apply/" style="display:grid; gap: 1.25rem;">
   {% csrf_token %}
   <div>
@@ -31,6 +32,7 @@
     <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tell us about your audience</label>
     <textarea name="notes" rows="5" class="input" placeholder="What kinds of books do you recommend? Roughly how many people will see your links?"></textarea>
   </div>
+  {% turnstile %}
   <div style="margin-top: 1rem;">
     <button type="submit" class="btn btn-primary" style="padding: .8rem 2rem;">Send application</button>
     <p style="font-size: .8rem; color: var(--muted); margin-top: .75rem;">We typically review within 3 business days.</p>
