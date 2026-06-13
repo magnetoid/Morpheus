@@ -773,7 +773,7 @@
       {% if reviews_enabled %}<a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>{% endif %}
     </div>
 
-    <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Customers</a>
+    <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Users</a>
 
     {# Tracking + Errors moved to the Settings sidebar — see nav-settings below. #}
 

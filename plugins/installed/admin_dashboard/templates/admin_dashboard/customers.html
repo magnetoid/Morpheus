@@ -1,6 +1,6 @@
 {% extends "admin_dashboard/base.html" %}
 {% load morph_dashboard %}
-{% block title %}Customers · Morpheus{% endblock %}
+{% block title %}Users · Morpheus{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-4">
@@ -8,7 +8,7 @@
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold tracking-tight">Customers</h1>
+      <h1 class="text-xl font-semibold tracking-tight">Users</h1>
       <p class="text-sm text-[color:var(--text-muted)]">Customers, leads, signups — one unified table.{% if page_obj %} {{ page_obj.paginator.count }} contact{{ page_obj.paginator.count|pluralize }}.{% endif %}</p>
     </div>
     <div class="flex items-center gap-2">
