@@ -250,8 +250,17 @@
     opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity .18s ease, transform .18s ease; z-index: 60;
   }
-  /* Hover bridge spanning the gap between the header trigger and the panel. */
-  .nav-mega__panel::before { content: ""; position: absolute; top: -32px; left: 0; right: 0; height: 32px; }
+  /* Hover bridge spanning the gap between the trigger and the fixed panel.
+     It lives on the TRIGGER WRAPPER, not the panel: the panel's
+     overflow-y:auto clips a pseudo placed above it, which silently kills the
+     bridge and drops the menu the moment the pointer leaves the trigger.
+     pointer-events is enabled only while the menu is open so the invisible
+     strip never blocks clicks on the page below. */
+  .nav-mega::after {
+    content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    width: 260px; max-width: 70vw; height: 46px; pointer-events: none;
+  }
+  .nav-mega:hover::after, .nav-mega:focus-within::after { pointer-events: auto; }
   .nav-mega:hover .nav-mega__panel, .nav-mega:focus-within .nav-mega__panel {
     opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
   }
@@ -810,6 +819,7 @@
     // (not trigger-bottom) keeps the panel attached to the bar regardless of the
     // staff admin bar's +32px offset, so the hover bridge always reaches the
     // trigger and the menu never drops on hover. triggerBottom is the floor.
+    const topbarBottom = topbar ? topbar.getBoundingClientRect().bottom : NaN;
     const top = Number.isFinite(topbarBottom) ? topbarBottom : (triggerBottom + 6);
     if (top > 0) {
       root.style.setProperty('--mega-menu-top', `${Math.round(top)}px`);
