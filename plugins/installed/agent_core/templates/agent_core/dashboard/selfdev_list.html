@@ -1,0 +1,51 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Self-development · Linda · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Self-development</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Code Linda has drafted for herself. Each proposal is statically scanned and reviewed by a multi-model consensus panel; applying writes it to a <code>selfdev/*</code> git branch — never <code>main</code> — for your review.</p>
+  </div>
+
+  {% if apply_enabled %}
+  <div class="card card-padded" style="border-left: 3px solid var(--success);">
+    <p class="text-sm"><strong>Apply is enabled</strong> on this deployment (<code>MORPHEUS_SELF_UPDATE_ENABLED</code>). Approved proposals can be written to a branch.</p>
+  </div>
+  {% else %}
+  <div class="card card-padded" style="border-left: 3px solid var(--warn);">
+    <p class="text-sm"><strong>Apply is disabled.</strong> You can review, approve, and run consensus, but writing to a branch needs <code>MORPHEUS_SELF_UPDATE_ENABLED</code> set on the server.</p>
+  </div>
+  {% endif %}
+
+  {% for grp in grouped %}
+  <div class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-muted)]">
+      <h2 class="font-semibold text-sm capitalize">{{ grp.status }} <span class="text-[color:var(--text-muted)] font-normal">({{ grp.rows|length }})</span></h2>
+    </div>
+    <table class="morph-table">
+      <thead><tr><th>Name</th><th>Kind</th><th>Scan</th><th>Consensus</th><th>Created</th><th></th></tr></thead>
+      <tbody>
+        {% for p in grp.rows %}
+        <tr>
+          <td><a href="{% url 'agent_core_dash:selfdev_detail' p.id %}" class="font-medium hover:underline">{{ p.name }}</a></td>
+          <td class="text-[color:var(--text-muted)]">{{ p.kind }}</td>
+          <td>
+            {% if p.passed %}<span class="pill pill-success">passed</span>{% else %}<span class="pill pill-danger">flagged</span>{% endif %}
+          </td>
+          <td class="text-[color:var(--text-muted)]">{{ p.consensus.decision|default:"—" }}</td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ p.created_at|date:"M j, H:i" }}</td>
+          <td class="text-right"><a class="btn text-xs" href="{% url 'agent_core_dash:selfdev_detail' p.id %}">Review</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% empty %}
+  <div class="card card-padded text-center text-[color:var(--text-muted)]">
+    <p>Linda hasn't drafted any code yet. Ask her in <a href="/dashboard/assistant/" class="hover:underline">chat</a> (dev mode) to draft a tool, and it'll appear here for your review.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

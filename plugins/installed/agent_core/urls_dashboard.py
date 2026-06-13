@@ -18,5 +18,13 @@ urlpatterns = [
         views.background_agent_action_view,
         name='background_action',
     ),
+    # Self-development approval dashboard (Linda's draft→apply loop).
+    path('selfdev/', views.selfdev_list_view, name='selfdev'),
+    path('selfdev/<uuid:proposal_id>/', views.selfdev_detail_view, name='selfdev_detail'),
+    path(
+        'selfdev/<uuid:proposal_id>/<str:action>/',
+        views.selfdev_action_view,
+        name='selfdev_action',
+    ),
     path('<uuid:run_id>/', views.run_detail_view, name='run_detail'),
 ]

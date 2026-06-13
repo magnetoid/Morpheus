@@ -416,3 +416,138 @@ def background_agent_action_view(request, bg_id: str, action: str):
     elif action == 'delete':
         bg.delete()
     return redirect('/dashboard/agents/background/')
+
+
+# ── Self-development approval dashboard ─────────────────────────────────────
+#
+# Owner window over Linda's draft→scan→consensus→apply loop. Read views are
+# staff-only; the mutating actions (approve/apply/reject/revert) additionally
+# require a superuser. Every action wraps an existing, fully-gated core
+# function — the dashboard widens no gate. Design: docs/plans/linda-selfdev-dashboard.md
+
+
+@staff_member_required
+def selfdev_list_view(request):
+    from core.assistant.apply import apply_enabled
+    from core.assistant.models import CodeProposal
+
+    proposals = CodeProposal.objects.all().order_by('-created_at')[:200]
+    order = ['draft', 'approved', 'applied', 'rejected']
+    groups = {s: [] for s in order}
+    for p in proposals:
+        groups.setdefault(p.status, []).append(p)
+    grouped = [{'status': s, 'rows': groups[s]} for s in order if groups.get(s)]
+    return render(
+        request,
+        'agent_core/dashboard/selfdev_list.html',
+        {
+            'grouped': grouped,
+            'apply_enabled': apply_enabled(),
+            'active_nav': 'agents',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Linda', 'url': '/dashboard/assistant/'},
+                {'label': 'Self-development'},
+            ],
+        },
+    )
+
+
+@staff_member_required
+def selfdev_detail_view(request, proposal_id: str):
+    from core.assistant.apply import apply_enabled, preflight
+    from core.assistant.models import CodeProposal
+
+    p = get_object_or_404(CodeProposal, id=proposal_id)
+    return render(
+        request,
+        'agent_core/dashboard/selfdev_detail.html',
+        {
+            'p': p,
+            'block_reasons': preflight(p),
+            'consensus_verdicts': (p.consensus or {}).get('verdicts', []),
+            'apply_enabled': apply_enabled(),
+            'can_act': request.user.is_superuser,
+            'active_nav': 'agents',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Linda', 'url': '/dashboard/assistant/'},
+                {'label': 'Self-development', 'url': '/dashboard/agents/selfdev/'},
+                {'label': p.name},
+            ],
+        },
+    )
+
+
+def _selfdev_consensus(request, p):
+    from core.assistant.consensus import evaluate
+
+    p.consensus = evaluate(p)
+    p.save(update_fields=['consensus', 'updated_at'])
+    return 'success', f'Consensus: {p.consensus.get("decision", "?")}.'
+
+
+def _selfdev_approve(request, p):
+    try:
+        p.approve(request.user)
+    except (PermissionError, ValueError) as e:
+        return 'error', str(e)
+    return 'success', 'Proposal approved.'
+
+
+def _selfdev_reject(request, p):
+    p.status = 'rejected'
+    p.save(update_fields=['status', 'updated_at'])
+    return 'success', 'Proposal rejected.'
+
+
+def _selfdev_apply(request, p):
+    from core.assistant.apply import apply_proposal
+
+    result = apply_proposal(p)
+    if result.get('applied'):
+        return 'success', f'Applied to branch {result["branch"]}.'
+    return 'error', f'Apply blocked: {result.get("reason", "unknown")}'
+
+
+def _selfdev_revert(request, p):
+    from core.assistant.apply import revert_branch
+
+    result = revert_branch(p)
+    if result.get('reverted'):
+        return 'success', f'Reverted ({result.get("detail", "")}).'
+    return 'error', f'Revert failed: {result.get("reason", "unknown")}'
+
+
+_SELFDEV_ACTIONS = {
+    'consensus': _selfdev_consensus,  # advisory — no privilege change
+    'approve': _selfdev_approve,
+    'reject': _selfdev_reject,
+    'apply': _selfdev_apply,
+    'revert': _selfdev_revert,
+}
+# Actions that mutate the binding human-gate state require the owner (superuser).
+_SELFDEV_OWNER_ONLY = {'approve', 'reject', 'apply', 'revert'}
+
+
+@staff_member_required
+def selfdev_action_view(request, proposal_id: str, action: str):
+    """POST-only dispatch over the gated core functions. Owner-only actions
+    require a superuser (mirrors CodeProposal.approve's own check)."""
+    from django.contrib import messages
+    from django.http import HttpResponseForbidden
+
+    from core.assistant.models import CodeProposal
+    from morpheus.views import redirect
+
+    p = get_object_or_404(CodeProposal, id=proposal_id)
+    here = f'/dashboard/agents/selfdev/{p.id}/'
+    handler = _SELFDEV_ACTIONS.get(action)
+    if request.method != 'POST' or handler is None:
+        return redirect(here)
+    if action in _SELFDEV_OWNER_ONLY and not request.user.is_superuser:
+        return HttpResponseForbidden('Only the owner (a superuser) may approve, apply, or revert.')
+
+    level, msg = handler(request, p)
+    getattr(messages, level)(request, msg)
+    return redirect(here)

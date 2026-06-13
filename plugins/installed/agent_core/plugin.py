@@ -214,6 +214,20 @@ class AgentCorePlugin(Plugin):
                 nav='hidden',
                 url='/dashboard/agents/observability/',
             ),
+            # Self-development: the owner window over Linda's draft→scan→
+            # consensus→apply loop. Surfaced (nav='main') so the owner can
+            # find proposals; the dangerous apply path stays behind the
+            # MORPHEUS_SELF_UPDATE_ENABLED env switch regardless.
+            DashboardPage(
+                label='Self-development',
+                slug='selfdev',
+                view='plugins.installed.agent_core.views.selfdev_list_view',
+                icon='git-branch',
+                section='ai',
+                order=50,
+                nav='main',
+                url='/dashboard/agents/selfdev/',
+            ),
         ]
 
     # No SettingsPanel — agent_core is a system component, not a

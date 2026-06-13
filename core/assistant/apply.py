@@ -180,6 +180,46 @@ def _write_branch(proposal, target: str, branch: str) -> tuple[bool, str]:
             os.unlink(index_path)
 
 
+def revert_branch(proposal) -> dict:
+    """Undo an applied proposal: delete its selfdev/* branch and reset the row to
+    'approved'. NEVER touches main/HEAD/the worktree (the branch only ever held
+    the generated file). Never raises; audits + returns a structured result."""
+    from django.utils import timezone
+
+    from core.audit import services as audit
+
+    branch = (proposal.applied_branch or '').strip()
+    if not branch:
+        return {'reverted': False, 'reason': 'proposal has no applied branch'}
+    if not branch.startswith(_BRANCH_PREFIX):
+        # Defensive: only ever delete our own selfdev/* refs.
+        return {'reverted': False, 'reason': f'refusing to delete non-selfdev branch {branch!r}'}
+
+    detail = 'branch absent (already removed)'
+    if _is_git_repo():
+        rc, out = _git(['rev-parse', '--verify', '--quiet', f'refs/heads/{branch}'])
+        if rc == 0:
+            rc, out = _git(['branch', '-D', branch])
+            if rc != 0:
+                return {'reverted': False, 'reason': f'git branch -D failed: {out}'}
+            detail = f'deleted {branch}'
+
+    # Reset the row so it can be re-applied after another review.
+    proposal.status = 'approved'
+    proposal.applied_branch = ''
+    proposal.applied_at = None
+    proposal.save(update_fields=['status', 'applied_branch', 'applied_at', 'updated_at'])
+    proposal.updated_at = timezone.now()
+
+    audit.record(
+        event_type='selfdev.revert',
+        target=str(proposal.id),
+        metadata={'name': proposal.name, 'branch': branch, 'detail': detail},
+        severity='warning',
+    )
+    return {'reverted': True, 'branch': branch, 'detail': detail}
+
+
 def apply_proposal(proposal) -> dict:
     """Gate → write to a NEW selfdev/* branch (never main) → audit. Never raises.
     Returns {'applied': bool, 'reason'|'branch'|'commit': ...}."""
