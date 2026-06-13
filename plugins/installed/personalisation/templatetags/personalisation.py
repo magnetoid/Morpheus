@@ -25,6 +25,21 @@ def frequently_bought(context, product, count: int = 4) -> list:
     return related_to(product, k=int(count))
 
 
+@register.simple_tag(takes_context=True)
+def pairs_with(context, product, count: int = 10) -> list:
+    """'Pairs with this' for the PDP — a dynamic blend of co-purchase +
+    embedding similarity, reordered per visitor. The aggregate recommendations
+    always show (not personal data); only the per-visitor ORDER is
+    consent-gated, inside the service."""
+    if product is None:
+        return []
+    from plugins.installed.personalisation.services import (  # noqa: PLC0415
+        pairs_with as _pairs,
+    )
+
+    return _pairs(product, request=context.get('request'), k=int(count))
+
+
 def _has_consent(request) -> bool:
     """Check the consent cookie set by the consent plugin.
 

@@ -287,3 +287,44 @@ def rank_for_visitor(request, products, *, surface: str = ''):
 
     order = sorted(range(len(items)), key=lambda i: (-score(items[i]), i))
     return [items[i] for i in order]
+
+
+def pairs_with(product, request=None, k: int = 10):
+    """'Pairs with this' recommendations for the PDP — a dynamic blend:
+    co-purchase (what people actually buy together) + embedding similarity
+    (books like this one), then reordered per visitor via rank_for_visitor.
+
+    Aggregate candidates (co-purchase/similar) always show; the per-visitor
+    REORDER is consent-gated inside rank_for_visitor (no consent → blended
+    default order). Fail-soft throughout."""
+    seen = {str(product.pk)}
+    candidates: list = []
+
+    try:
+        for p in related_to(product, k=k):  # co-purchase — strongest buy signal
+            if str(p.pk) not in seen:
+                seen.add(str(p.pk))
+                candidates.append(p)
+    except Exception:  # noqa: BLE001
+        pass
+
+    if len(candidates) < k:
+        try:
+            from plugins.installed.ai_assistant.services.recommendations import (  # noqa: PLC0415
+                similar_to,
+            )
+
+            for p in similar_to(product, limit=k):  # content similarity fills out
+                if str(p.pk) not in seen:
+                    seen.add(str(p.pk))
+                    candidates.append(p)
+        except Exception:  # noqa: BLE001
+            pass
+
+    if request is not None and len(candidates) > 1:
+        try:
+            candidates = rank_for_visitor(request, candidates, surface='pairs')
+        except Exception:  # noqa: BLE001
+            pass
+
+    return candidates[:k]
