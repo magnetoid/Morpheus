@@ -131,6 +131,7 @@ class AIAssistantPlugin(Plugin):
                 'gemini_api_key',
                 'openrouter_api_key',
                 'grok_api_key',
+                'apikey_api_key',
                 'packy_api_key',
                 'ollama_api_key',
             )
@@ -299,6 +300,23 @@ class AIAssistantPlugin(Plugin):
                     'default': 'grok-4',
                     'description': 'e.g. grok-4 · grok-4-fast-reasoning · grok-3',
                 },
+                # ── apikey.fun (unified OpenAI-compatible gateway) ────
+                'apikey_api_key': {
+                    'type': 'string',
+                    'title': 'apikey.fun · API Key',
+                    'description': 'apikey.fun API key. https://apikey.fun/docs',
+                },
+                'apikey_base_url': {
+                    'type': 'string',
+                    'title': 'apikey.fun · Base URL',
+                    'default': 'https://api.apikey.fun/v1',
+                },
+                'apikey_model': {
+                    'type': 'string',
+                    'title': 'apikey.fun · Default model',
+                    'default': 'gpt-4o-mini',
+                    'description': 'Any model apikey.fun serves, e.g. gpt-4o · claude-3-5-sonnet.',
+                },
                 # ── Packy (www.packyapi.com — Chinese LLM gateway) ────
                 'packy_api_key': {
                     'type': 'string',
@@ -359,6 +377,7 @@ class AIAssistantPlugin(Plugin):
                         'gemini',
                         'openrouter',
                         'grok',
+                        'apikey',
                         'packy',
                         'hermes',
                         'ollama',
@@ -414,7 +433,7 @@ class AIAssistantPlugin(Plugin):
     def contribute_settings_panel(self):
         return SettingsPanel(
             label='AI providers',
-            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, Packy, Hermes (NousResearch), and Ollama. Pick the active provider with "Active provider".',
+            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, apikey.fun, Packy, Hermes (NousResearch), and Ollama. Pick the active provider with "Active provider".',
             schema=self.get_config_schema(),
             category='ai',
         )

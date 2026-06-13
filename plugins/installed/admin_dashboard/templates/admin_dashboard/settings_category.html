@@ -173,7 +173,7 @@
 <script>
 (() => {
   const PROBE_URL = '{% url "admin_dashboard:settings_ai_probe" %}';
-  const PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'grok', 'packy', 'ollama'];
+  const PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'grok', 'apikey', 'packy', 'ollama'];
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value
             || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 

@@ -338,6 +338,24 @@ class GrokGateway(OpenAIGateway):
         )
 
 
+class ApikeyFunGateway(OpenAIGateway):
+    """apikey.fun — a unified LLM gateway exposing an OpenAI-compatible Chat
+    Completions API at https://api.apikey.fun/v1 (proxies GPT / Claude / Gemini
+    / … through one endpoint). Same client, different base URL + model."""
+
+    def __init__(self, cfg: ProviderConfig | None = None):
+        cfg = cfg or get_provider_config('apikey')
+        if not cfg.base_url:
+            cfg.base_url = 'https://api.apikey.fun/v1'
+        super().__init__(cfg)
+
+    def embed(self, text: str) -> list[float]:
+        oa = get_provider_config('openai')
+        if oa.api_key:
+            return OpenAIGateway(oa).embed(text)
+        raise NotImplementedError('apikey.fun: configure OpenAI or Ollama for embeddings.')
+
+
 class PackyGateway(AnthropicGateway):
     """Packy (www.packyapi.com) via its Anthropic-compatible Messages API — a
     unified gateway that serves Claude (and other) models. Set the API key,
@@ -414,6 +432,7 @@ _GATEWAYS = {
     'gemini': GeminiGateway,
     'openrouter': OpenRouterGateway,
     'grok': GrokGateway,
+    'apikey': ApikeyFunGateway,
     'packy': PackyGateway,
     'ollama': OllamaGateway,
 }

@@ -122,7 +122,7 @@
           <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Base URL</label>
           <input type="text" name="{{ c.slug }}_base_url" class="input mt-1"
                  value="{{ c.base_url }}"
-                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'packy' %}https://www.packyapi.com{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
+                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'apikey' %}https://api.apikey.fun/v1{% elif c.slug == 'packy' %}https://www.packyapi.com{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
         </div>
         {% endif %}
 
