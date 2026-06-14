@@ -231,13 +231,26 @@ def assistant_stream(request):
 @staff_member_required
 def assistant_history(request):
     """JSON history of the current conversation — used by the floating widget."""
+    key = _conversation_key(request)
     store = get_default_store()
-    history = store.history(conversation_key=_conversation_key(request), limit=30)
+    history = store.history(conversation_key=key, limit=30)
     return JsonResponse(
         {
             'messages': [
                 {'role': m.role, 'content': m.content, 'tool_name': m.tool_name, 'at': m.at}
                 for m in history
             ],
+            'summary': _conversation_cost_summary(key),
         }
     )
+
+
+def _conversation_cost_summary(key: str) -> dict:
+    """Tokens + estimated USD for the conversation. Empty when DB-less."""
+    try:
+        from core.assistant.models import AssistantConversation
+
+        conv = AssistantConversation.objects.filter(key=key).first()
+        return conv.cost_summary() if conv else {}
+    except Exception:  # noqa: BLE001, S110 — cost display must never break history
+        return {}

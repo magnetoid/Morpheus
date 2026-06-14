@@ -35,6 +35,7 @@
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l5-5 5 5M12 6v13"/></svg>
       </button>
     </form>
+    <p id="linda-cost" class="linda-cost" hidden></p>
   </div>
 
 </div>
@@ -284,6 +285,7 @@
     color: var(--text);
   }
   .linda-input::placeholder { color: var(--text-muted); }
+  .linda-cost { margin: .4rem 0 0; text-align: center; font-size: .72rem; color: var(--text-muted); }
   .linda-send {
     flex: 0 0 auto;
     border: none; cursor: pointer;
@@ -328,6 +330,18 @@
   function clearEmpty() {
     var empty = log.querySelector('.linda-empty');
     if (empty) empty.remove();
+  }
+  function refreshCost() {
+    fetch('/dashboard/assistant/history/', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var s = d && d.summary;
+        var el = document.getElementById('linda-cost');
+        if (!el || !s || !s.total_tokens) return;
+        var k = s.total_tokens >= 1000 ? (s.total_tokens / 1000).toFixed(1) + 'k' : s.total_tokens;
+        el.textContent = 'This conversation: $' + (s.cost_usd || 0).toFixed(4) + ' · ' + k + ' tokens';
+        el.hidden = false;
+      }).catch(function () {});
   }
   function pushLine(role, text) {
     clearEmpty();
@@ -619,6 +633,7 @@
               ensureAssistant();
               if (ev.text && typer) typer.finalize(ev.text);
               hideThinking();
+              refreshCost();
             } else if (ev.type === 'error') {
               hideThinking();
               ensureAssistant();
@@ -634,6 +649,8 @@
       pushLine('assistant', 'Connection lost — try again.');
     });
   });
+
+  refreshCost();  // show any accumulated cost from a resumed conversation
 })();
 </script>
 {% endblock %}

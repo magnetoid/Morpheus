@@ -50,6 +50,10 @@ class StoredMessage:
     tool_args: dict = field(default_factory=dict)
     tool_output: Any = None
     at: str = ''
+    # Token accounting (set on the final assistant message for cost display).
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    model: str = ''
 
 
 class AssistantStore:
@@ -97,6 +101,9 @@ class AssistantStore:
                 )
                 if m.tool_output is not None
                 else {},
+                prompt_tokens=m.prompt_tokens or 0,
+                completion_tokens=m.completion_tokens or 0,
+                model=(m.model or '')[:100],
             )
             return True
         except DatabaseError as e:

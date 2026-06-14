@@ -21,6 +21,30 @@ class AssistantConversation(models.Model):
     class Meta:
         ordering = ['-updated_at']
 
+    def cost_summary(self) -> dict:
+        """Tokens + estimated USD cost for this conversation (dashboard display,
+        not billing). Sums per-message tokens, priced by each message's model."""
+        from django.db.models import Sum
+
+        from core.agents.pricing import estimate_cost
+
+        agg = self.messages.aggregate(p=Sum('prompt_tokens'), c=Sum('completion_tokens'))
+        prompt = agg['p'] or 0
+        completion = agg['c'] or 0
+        cost = 0.0
+        for row in (
+            self.messages.exclude(model='')
+            .values('model')
+            .annotate(p=Sum('prompt_tokens'), c=Sum('completion_tokens'))
+        ):
+            cost += estimate_cost(row['model'], row['p'] or 0, row['c'] or 0)
+        return {
+            'prompt_tokens': prompt,
+            'completion_tokens': completion,
+            'total_tokens': prompt + completion,
+            'cost_usd': round(cost, 4),
+        }
+
 
 class AssistantMessage(models.Model):
     ROLE_CHOICES = [
@@ -41,6 +65,10 @@ class AssistantMessage(models.Model):
     tool_name = models.CharField(max_length=200, blank=True)
     tool_args = models.JSONField(default=dict, blank=True)
     tool_output = models.JSONField(default=dict, blank=True)
+    # Token accounting for cost display (set on the final assistant message).
+    prompt_tokens = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+    model = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

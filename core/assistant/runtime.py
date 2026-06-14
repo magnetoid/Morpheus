@@ -355,7 +355,13 @@ class Assistant:
                 final = resp.text or ''
                 self.store.append(
                     conversation_key=conversation_key,
-                    message=StoredMessage(role='assistant', content=final[:50_000]),
+                    message=StoredMessage(
+                        role='assistant',
+                        content=final[:50_000],
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        model=getattr(resp, 'model', '') or '',
+                    ),
                 )
                 yield {
                     'type': 'final',
