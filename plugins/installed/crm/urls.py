@@ -1,11 +1,13 @@
 from django.urls import path
 
-from plugins.installed.crm import views
+from plugins.installed.crm import chat_views, views
 
 app_name = 'crm'
 
 urlpatterns = [
     path('', views.crm_home, name='home'),
+    path('chat/', chat_views.chat_inbox, name='chat_inbox'),
+    path('chat/<uuid:thread_id>/', chat_views.chat_thread, name='chat_thread'),
     path('leads/', views.leads_list, name='leads'),
     path('pipeline/', views.pipeline_board, name='pipeline'),
     path('tasks/', views.tasks_list, name='tasks'),

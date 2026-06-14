@@ -1,0 +1,40 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Support chat · CRM · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Support chat</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Live conversations from the storefront chat widget. {{ counts.unread }} thread(s) with unread messages.</p>
+  </div>
+
+  <div class="flex items-center gap-2 text-sm">
+    <a class="pill {% if status == 'open' %}pill-info{% else %}pill-neutral{% endif %}" href="?status=open">Open ({{ counts.open }})</a>
+    <a class="pill {% if status == 'closed' %}pill-info{% else %}pill-neutral{% endif %}" href="?status=closed">Closed</a>
+    <a class="pill {% if status == 'all' %}pill-info{% else %}pill-neutral{% endif %}" href="?status=all">All</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>From</th><th>Messages</th><th>Status</th><th>Last activity</th><th></th></tr></thead>
+      <tbody>
+        {% for t in threads %}
+        <tr>
+          <td class="font-medium">
+            {{ t.display_name }}
+            {% if t.unread_staff %}<span class="pill pill-danger ml-2">{{ t.unread_staff }} new</span>{% endif %}
+          </td>
+          <td class="text-[color:var(--text-muted)]">{{ t.n }}</td>
+          <td><span class="pill {% if t.status == 'open' %}pill-success{% else %}pill-neutral{% endif %}">{{ t.status }}</span></td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ t.last_message_at|date:"M j, H:i" }}</td>
+          <td class="text-right"><a class="btn text-xs" href="/dashboard/crm/chat/{{ t.id }}/">Open</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No conversations yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

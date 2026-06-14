@@ -489,3 +489,72 @@ class CustomerNote(models.Model):
 
     class Meta:
         ordering = ['-is_pinned', '-created_at']
+
+
+class ChatThread(models.Model):
+    """A live customer-support conversation. Started from the storefront chat
+    widget; answered by staff in the CRM inbox. Distinct from MailMessage
+    (email) and Interaction (log) — this is a real back-and-forth thread."""
+
+    STATUS_CHOICES = [('open', 'Open'), ('closed', 'Closed')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='support_threads',
+    )
+    email = models.EmailField(blank=True)  # captured for anonymous visitors
+    session_key = models.CharField(max_length=64, blank=True, db_index=True)
+    lead = models.ForeignKey(
+        'crm.Lead', on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_threads'
+    )
+    subject = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default='open', db_index=True)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_chat_threads',
+    )
+    unread_staff = models.PositiveIntegerField(default=0)  # customer msgs unseen by staff
+    last_message_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-last_message_at']
+        indexes = [models.Index(fields=['status', '-last_message_at'])]
+
+    def __str__(self) -> str:
+        return f'ChatThread[{self.status}] {self.email or self.customer_id}'
+
+    def display_name(self) -> str:
+        if self.customer_id:
+            return getattr(self.customer, 'email', '') or str(self.customer_id)
+        return self.email or 'Anonymous visitor'
+
+
+class ChatMessage(models.Model):
+    SENDER_CHOICES = [('customer', 'Customer'), ('staff', 'Staff')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    thread = models.ForeignKey(ChatThread, on_delete=models.CASCADE, related_name='messages')
+    sender = models.CharField(max_length=8, choices=SENDER_CHOICES)
+    staff_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self) -> str:
+        return f'{self.sender}: {self.body[:40]}'

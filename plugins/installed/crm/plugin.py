@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, events
+from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
 
 logger = logging.getLogger('morpheus.crm')
 
@@ -28,6 +28,12 @@ class CrmPlugin(Plugin):
             'plugins.installed.crm.urls',
             prefix='dashboard/crm/',
             namespace='crm',
+        )
+        # Public support-chat endpoints for the storefront widget.
+        self.register_urls(
+            'plugins.installed.crm.urls_storefront',
+            prefix='',
+            namespace='crm_support',
         )
 
         self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=70)
@@ -243,6 +249,15 @@ class CrmPlugin(Plugin):
                 order=20,
             ),
             DashboardPage(
+                label='Support chat',
+                slug='chat',
+                view='plugins.installed.crm.chat_views.chat_inbox',
+                icon='message-circle',
+                section='customers',
+                order=25,
+                url='/dashboard/crm/chat/',
+            ),
+            DashboardPage(
                 label='Pipeline',
                 slug='pipeline',
                 view='plugins.installed.crm.views.pipeline_board',
@@ -257,6 +272,17 @@ class CrmPlugin(Plugin):
                 icon='list-checks',
                 section='customers',
                 order=40,
+            ),
+        ]
+
+    def contribute_storefront_blocks(self) -> list:
+        # Customer-facing support-chat bubble (replaces the old agent_core
+        # "concierge" widget). Disable CRM and the chat disappears.
+        return [
+            StorefrontBlock(
+                slot='global_below_body',
+                template='crm/blocks/support_chat.html',
+                priority=80,
             ),
         ]
 

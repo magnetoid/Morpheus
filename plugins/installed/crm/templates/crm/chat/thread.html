@@ -1,0 +1,45 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ thread.display_name }} · Support chat · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div class="flex items-end justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ thread.display_name }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        <span class="pill {% if thread.status == 'open' %}pill-success{% else %}pill-neutral{% endif %}">{{ thread.status }}</span>
+        {% if thread.lead_id %}· linked lead{% endif %}
+        {% if thread.email %}· {{ thread.email }}{% endif %}
+      </p>
+    </div>
+    <form method="post">{% csrf_token %}
+      {% if thread.status == 'open' %}
+      <button class="btn text-xs" type="submit" name="action" value="close">Close thread</button>
+      {% else %}
+      <button class="btn text-xs" type="submit" name="action" value="reopen">Reopen</button>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="card card-padded" style="max-height:26rem;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;">
+    {% for m in messages %}
+    <div style="max-width:80%;padding:.5rem .75rem;border-radius:12px;white-space:pre-wrap;
+      {% if m.sender == 'staff' %}align-self:flex-end;background:var(--accent,#111);color:#fff;{% else %}align-self:flex-start;background:var(--surface-muted,#f0eee8);{% endif %}">
+      {{ m.body }}
+      <div style="font-size:.65rem;opacity:.7;margin-top:.2rem;">{{ m.get_sender_display }} · {{ m.created_at|date:"M j, H:i" }}</div>
+    </div>
+    {% empty %}
+    <p class="text-[color:var(--text-muted)] text-sm">No messages.</p>
+    {% endfor %}
+  </div>
+
+  <form method="post" class="card card-padded">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="reply">
+    <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Reply</label>
+    <textarea name="body" rows="3" class="input" placeholder="Type your reply — the customer sees it in their chat widget." required></textarea>
+    <div class="flex justify-end mt-2"><button class="btn btn-primary" type="submit"><i data-lucide="send" class="h-4 w-4"></i> Send reply</button></div>
+  </form>
+</div>
+{% endblock %}

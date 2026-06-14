@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, StorefrontBlock, events
+from morpheus import DashboardPage, Plugin, events
 
 logger = logging.getLogger('morpheus.agent_core')
 
@@ -157,13 +157,10 @@ class AgentCorePlugin(Plugin):
         return all_builtin_agents()
 
     def contribute_storefront_blocks(self) -> list:
-        return [
-            StorefrontBlock(
-                slot='global_below_body',
-                template='agent_core/blocks/concierge_widget.html',
-                priority=80,
-            ),
-        ]
+        # The storefront "concierge" widget was retired in favour of the CRM
+        # support-chat widget (a real customer↔staff inbox). No storefront
+        # block contributed here any more.
+        return []
 
     def contribute_dashboard_pages(self) -> list:
         # All four pages are hidden from the sidebar — they're folded
@@ -244,16 +241,8 @@ class AgentCorePlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'enable_concierge_widget': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Show storefront concierge widget',
-                },
-                'concierge_greeting': {
-                    'type': 'string',
-                    'default': "Hi — I'm the concierge. What kind of book are you in the mood for?",
-                    'title': 'Concierge greeting',
-                },
+                # Storefront concierge widget retired → CRM support chat owns
+                # the customer-facing chat surface now.
                 'merchant_ops_enabled': {
                     'type': 'boolean',
                     'default': True,
