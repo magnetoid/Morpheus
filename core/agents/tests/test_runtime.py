@@ -170,6 +170,30 @@ class AgentRuntimeTests(TestCase):
         self.assertEqual(res.state, 'failed')
         self.assertEqual(res.error, 'max_steps_exceeded')
 
+    def test_token_budget_exceeded_aborts(self):
+        agent = _agent(tools=[_tool()], max_steps=8)
+        agent.token_budget = 10
+        # First response burns 20 tokens (over the cap) and asks for a tool, so
+        # the loop continues; the next iteration's budget check aborts the run.
+        provider = MockLLMProvider(
+            [
+                LLMResponse(
+                    tool_calls=[LLMToolCall(id='c1', name='do_thing', arguments={})],
+                    prompt_tokens=20,
+                ),
+                LLMResponse(text='should-not-reach'),
+            ]
+        )
+        res = self._run(agent, provider)
+        self.assertEqual(res.state, 'failed')
+        self.assertEqual(res.error, 'budget_exceeded')
+
+    def test_zero_budget_is_unlimited(self):
+        agent = _agent(max_steps=8)  # token_budget defaults to 0
+        provider = MockLLMProvider([LLMResponse(text='ok', prompt_tokens=9999)])
+        res = self._run(agent, provider)
+        self.assertEqual(res.state, 'completed')
+
     def test_returns_tool_result_object(self):
         tool = _tool(handler=lambda **kw: ToolResult(output={'n': 7}, display='seven'))
         provider = MockLLMProvider(

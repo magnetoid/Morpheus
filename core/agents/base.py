@@ -59,6 +59,10 @@ class MorpheusAgent:
     # Runtime guards.
     max_steps: int = 8
     requires_approval: bool = False  # blanket approval gate (per-tool gates also exist)
+    # Total-token cap for a single run (prompt + completion, summed across
+    # steps). 0 = unlimited. When set, the runtime aborts the run with
+    # error='budget_exceeded' before the provider call that would cross it.
+    token_budget: int = 0
 
     # Tools — concrete tool list, populated by `get_tools()` at runtime.
     # Tuple, NOT list, so accidental .append() on the class default raises

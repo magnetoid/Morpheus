@@ -38,7 +38,7 @@ from typing import Any
 from core.agents.base import MorpheusAgent
 from core.agents.events import AgentEvents
 from core.agents.llm import LLMMessage, LLMProvider, LLMToolCall, get_llm_provider
-from core.agents.policies import ScopeDenied, enforce_policy
+from core.agents.policies import BudgetExceeded, ScopeDenied, enforce_budget, enforce_policy
 from core.agents.tools import Tool, ToolError, ToolResult
 from core.agents.trace import AgentTrace, TraceStep
 from core.hooks import hook_registry
@@ -129,6 +129,17 @@ class AgentRuntime:
         tool_call_count = 0
 
         for _step in range(max(1, self.agent.max_steps)):
+            # Token-budget guard — abort before the provider call that would
+            # cross the agent's cap (0 = unlimited). Tokens accumulate on the
+            # trace as the run proceeds.
+            try:
+                enforce_budget(
+                    spent=trace.total_tokens(),
+                    cap=self.agent.token_budget or None,
+                )
+            except BudgetExceeded:
+                return self._fail(trace, run_id, context, 'budget_exceeded')
+
             try:
                 response = self.provider.respond(
                     messages=messages,
