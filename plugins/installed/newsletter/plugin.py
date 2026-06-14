@@ -63,6 +63,21 @@ class NewsletterPlugin(Plugin):
             ),
         ]
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.newsletter.agent_tools import (
+            newsletter_create_popup_tool,
+            newsletter_list_subscribers_tool,
+            newsletter_stats_tool,
+            newsletter_toggle_popup_tool,
+        )
+
+        return [
+            newsletter_stats_tool,
+            newsletter_list_subscribers_tool,
+            newsletter_create_popup_tool,
+            newsletter_toggle_popup_tool,
+        ]
+
     def contribute_email_templates(self) -> list:
         return [
             EmailTemplateDef(
