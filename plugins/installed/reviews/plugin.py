@@ -71,3 +71,12 @@ class ReviewsPlugin(Plugin):
         # the /dashboard/apps/ tile grid; removing it kills that one
         # tile but the plugin remains active and reachable.
         return []
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.reviews.agent_tools import (
+            reviews_approve_tool,
+            reviews_delete_tool,
+            reviews_list_pending_tool,
+        )
+
+        return [reviews_list_pending_tool, reviews_approve_tool, reviews_delete_tool]
