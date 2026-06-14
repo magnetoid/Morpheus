@@ -147,6 +147,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     #   F5   motion                 — micro-animations + skeleton states
     'plugins.installed.checkout_experience',
     'plugins.installed.immersive_pdp',
+    'plugins.installed.product_stories',
     'plugins.installed.rails',
     'plugins.installed.media_3d',
     'plugins.installed.ai_stylist',

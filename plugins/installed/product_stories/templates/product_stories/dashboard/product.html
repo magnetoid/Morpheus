@@ -1,0 +1,57 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ product.name }} story · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div class="flex items-end justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{{ product.name }} — story</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Blocks render on the product page in order. <a href="/products/{{ product.slug }}/" target="_blank" class="hover:underline">View page ↗</a></p>
+    </div>
+    <a class="text-sm text-[color:var(--text-muted)] hover:underline" href="/dashboard/stories/">&larr; All stories</a>
+  </div>
+
+  {% for b in blocks %}
+  <form method="post" class="card card-padded space-y-3">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="update"><input type="hidden" name="block_id" value="{{ b.id }}">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Order</label><input class="input" type="number" name="order" value="{{ b.order }}" min="0" style="width:5rem;"></div>
+      <div class="md:col-span-2"><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Eyebrow</label><input class="input" name="eyebrow" value="{{ b.eyebrow }}"></div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Layout</label>
+        <select class="input" name="layout">{% for v, lbl in LAYOUTS %}<option value="{{ v }}" {% if b.layout == v %}selected{% endif %}>{{ lbl }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Heading</label><input class="input" name="heading" value="{{ b.heading }}" required></div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Body</label><textarea class="input" name="body" rows="2">{{ b.body }}</textarea></div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Image URL</label><input class="input" name="image_url" value="{{ b.image_url }}" placeholder="https://…"></div>
+    <div class="flex items-center justify-between">
+      <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" {% if b.is_active %}checked{% endif %}> Active</label>
+      <div class="flex gap-2">
+        <button class="btn btn-primary text-xs" type="submit">Save</button>
+        <button class="btn text-xs" type="submit" name="action" value="delete" onclick="return confirm('Delete this block?');">Delete</button>
+      </div>
+    </div>
+  </form>
+  {% endfor %}
+
+  <form method="post" class="card card-padded space-y-3" style="border:1px dashed var(--border);">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <h2 class="font-semibold text-sm">Add a story block</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Eyebrow (optional)</label><input class="input" name="eyebrow" placeholder="Why readers love it"></div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Layout</label>
+        <select class="input" name="layout">{% for v, lbl in LAYOUTS %}<option value="{{ v }}">{{ lbl }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Heading</label><input class="input" name="heading" required placeholder="A story you won’t put down"></div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Body</label><textarea class="input" name="body" rows="2"></textarea></div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Image URL (optional)</label><input class="input" name="image_url" placeholder="https://…"></div>
+    <div class="flex justify-end"><button class="btn btn-primary" type="submit"><i data-lucide="plus" class="h-4 w-4"></i> Add block</button></div>
+  </form>
+</div>
+{% endblock %}

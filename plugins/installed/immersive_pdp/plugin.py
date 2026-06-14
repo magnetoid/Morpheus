@@ -43,12 +43,11 @@ class ImmersivePdpPlugin(Plugin):
                 priority=5,
                 context_keys=['product'],
             ),
-            StorefrontBlock(
-                slot='pdp_below_gallery',
-                template='immersive_pdp/blocks/story_rail.html',
-                priority=20,
-                context_keys=['product'],
-            ),
+            # Story blocks moved to the dedicated `product_stories` plugin — a
+            # real content model + editor on the theme-honoured
+            # `pdp_above_long_description` slot. The old data-less story_rail
+            # targeted `pdp_below_gallery`, a slot the dot_books theme never
+            # renders, so it never appeared. Retired.
             StorefrontBlock(
                 slot='pdp_below_form',
                 template='immersive_pdp/blocks/sticky_buybox.html',

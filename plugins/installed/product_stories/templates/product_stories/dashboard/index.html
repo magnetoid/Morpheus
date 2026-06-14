@@ -1,0 +1,41 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Product stories · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Product stories</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Scroll-snap “why you’ll love it” panels on the product page — image + heading + body, in order. Pick a product to edit its story.</p>
+  </div>
+
+  <form method="post" class="card card-padded flex items-end gap-2 flex-wrap">
+    {% csrf_token %}
+    <div class="flex-1 min-w-0">
+      <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Edit a product’s story (enter its slug)</label>
+      <input type="text" name="slug" required class="input mt-1" placeholder="e.g. the-midnight-library">
+    </div>
+    <button class="btn btn-primary" type="submit">Edit story →</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-muted)]">
+      <h2 class="font-semibold text-sm">Products with stories</h2>
+    </div>
+    <table class="morph-table">
+      <thead><tr><th>Product</th><th>Blocks</th><th></th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="font-medium">{{ r.product__name }} <code class="text-[color:var(--text-muted)]">/{{ r.product__slug }}</code></td>
+          <td>{{ r.n }}</td>
+          <td class="text-right"><a class="btn text-xs" href="/dashboard/stories/{{ r.product__slug }}/">Edit</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--text-muted);">No product stories yet — enter a slug above to add one.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
