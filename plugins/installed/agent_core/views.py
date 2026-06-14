@@ -338,6 +338,30 @@ def observability_view(request):
         .order_by('-n')[:25]
     )
     failures = list(runs.filter(state='failed').order_by('-started_at')[:25])
+
+    # Tool reliability — failed tool_result steps carry metadata={'failed': True}
+    # (runtime _tool_back). Success rate = (calls - fails) / calls.
+    tool_steps = AgentStep.objects.filter(run__started_at__gte=since)
+    tool_calls = tool_steps.filter(kind='tool_call').count()
+    tool_fails = tool_steps.filter(kind='tool_result', metadata__failed=True).count()
+    tool_success_rate = (
+        round(100 * (tool_calls - tool_fails) / tool_calls, 1) if tool_calls else None
+    )
+    failing_tools = list(
+        tool_steps.filter(kind='tool_result', metadata__failed=True)
+        .values('name')
+        .annotate(n=Count('id'))
+        .order_by('-n')[:10]
+    )
+
+    # p95 run latency (no percentile in sqlite → compute in Python over the window).
+    durations = sorted(
+        runs.filter(state='completed').exclude(duration_ms=0).values_list('duration_ms', flat=True)
+    )
+    p95_ms = (
+        durations[min(len(durations) - 1, round(0.95 * (len(durations) - 1)))] if durations else 0
+    )
+
     totals = runs.aggregate(
         n=Count('id'),
         tokens=Sum('prompt_tokens') + Sum('completion_tokens'),
@@ -351,6 +375,10 @@ def observability_view(request):
             'days': days,
             'totals': totals,
             'total_cost': total_cost,
+            'tool_success_rate': tool_success_rate,
+            'tool_calls': tool_calls,
+            'p95_ms': p95_ms,
+            'failing_tools': failing_tools,
             'by_agent': by_agent,
             'by_state': by_state,
             'top_tools': top_tools,

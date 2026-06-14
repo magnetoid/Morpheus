@@ -22,7 +22,7 @@
   </form>
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
   <div class="card card-padded">
     <p class="meta">Runs</p>
     <p class="display display-l">{{ totals.n|default:"0" }}</p>
@@ -30,6 +30,14 @@
   <div class="card card-padded">
     <p class="meta">Est. cost</p>
     <p class="display display-l">${{ total_cost|default:0|floatformat:2 }}</p>
+  </div>
+  <div class="card card-padded">
+    <p class="meta">Tool success</p>
+    <p class="display display-l">{% if tool_success_rate is not None %}{{ tool_success_rate|floatformat:1 }}%{% else %}—{% endif %}</p>
+  </div>
+  <div class="card card-padded">
+    <p class="meta">p95 latency</p>
+    <p class="display display-l">{{ p95_ms|default:0 }}ms</p>
   </div>
   <div class="card card-padded">
     <p class="meta">Tokens</p>
@@ -43,7 +51,25 @@
     <p class="meta">Avg duration</p>
     <p class="display display-l">{{ totals.avg_ms|default:0|floatformat:0 }}ms</p>
   </div>
+  <div class="card card-padded">
+    <p class="meta">Failing tools</p>
+    <p class="display display-l">{{ failing_tools|length }}</p>
+  </div>
 </div>
+
+{% if failing_tools %}
+<h2 class="text-base font-semibold mb-2">Failing tools</h2>
+<div class="card mb-6">
+  <table class="morph-table">
+    <thead><tr><th>Tool</th><th>Failures</th></tr></thead>
+    <tbody>
+      {% for row in failing_tools %}
+      <tr><td><code>{{ row.name|default:"(unnamed)" }}</code></td><td>{{ row.n }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 
 <h2 class="text-base font-semibold mb-2">By agent</h2>
 <div class="card mb-6">
