@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.agents.base import MorpheusAgent
+from core.agents.compaction import compact
 from core.agents.events import AgentEvents
 from core.agents.llm import LLMMessage, LLMProvider, LLMToolCall, get_llm_provider
 from core.agents.policies import BudgetExceeded, ScopeDenied, enforce_budget, enforce_policy
@@ -129,6 +130,10 @@ class AgentRuntime:
         tool_call_count = 0
 
         for _step in range(max(1, self.agent.max_steps)):
+            # Context compaction — keep `messages` under a soft token budget by
+            # summarizing the oldest turns. No-op for short conversations.
+            messages = compact(messages, summarizer=self._summarize_history)
+
             # Token-budget guard — abort before the provider call that would
             # cross the agent's cap (0 = unlimited). Tokens accumulate on the
             # trace as the run proceeds.
@@ -367,6 +372,27 @@ class AgentRuntime:
         )
         self._on_end(run_id, context, result)
         return result
+
+    def _summarize_history(self, transcript: str) -> str:
+        """Provider-backed summarizer for context compaction. A terse, low-cost
+        call; on any failure the caller (`compact`) falls back to truncation."""
+        resp = self.provider.respond(
+            messages=[
+                LLMMessage(
+                    role='system',
+                    content=(
+                        'Summarize the following agent transcript in a few sentences. '
+                        'Preserve facts established, decisions made, and tasks still '
+                        'pending. Be concise.'
+                    ),
+                ),
+                LLMMessage(role='user', content=transcript[:12000]),
+            ],
+            tools=None,
+            temperature=0.0,
+            max_tokens=300,
+        )
+        return resp.text or ''
 
     def _on_end(self, run_id: str, context: dict[str, Any], result: RunResult) -> None:
         try:
