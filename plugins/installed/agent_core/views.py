@@ -312,6 +312,21 @@ def observability_view(request):
         )
         .order_by('-n')[:50]
     )
+    # Cost — estimated per (agent, model) so each row uses the right price,
+    # then folded into per-agent + grand totals. One query, few rows.
+    from core.agents.pricing import estimate_cost
+
+    cost_by_agent: dict[str, float] = {}
+    total_cost = 0.0
+    for r in runs.values('agent_name', 'model').annotate(
+        p=Sum('prompt_tokens'), c=Sum('completion_tokens')
+    ):
+        c = estimate_cost(r['model'], r['p'] or 0, r['c'] or 0)
+        cost_by_agent[r['agent_name']] = cost_by_agent.get(r['agent_name'], 0.0) + c
+        total_cost += c
+    for row in by_agent:
+        row['cost'] = cost_by_agent.get(row['agent_name'], 0.0)
+
     by_state = list(runs.values('state').annotate(n=Count('id')).order_by('-n'))
     top_tools = list(
         AgentStep.objects.filter(
@@ -335,6 +350,7 @@ def observability_view(request):
         {
             'days': days,
             'totals': totals,
+            'total_cost': total_cost,
             'by_agent': by_agent,
             'by_state': by_state,
             'top_tools': top_tools,

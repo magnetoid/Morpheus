@@ -82,6 +82,13 @@ class AgentRun(models.Model):
     def total_tokens(self) -> int:
         return self.prompt_tokens + self.completion_tokens
 
+    @property
+    def estimated_cost_usd(self) -> float:
+        """Approximate USD cost of this run (dashboard display, not billing)."""
+        from core.agents.pricing import estimate_cost
+
+        return estimate_cost(self.model, self.prompt_tokens, self.completion_tokens)
+
 
 class AgentStep(models.Model):
     """One step in a run's trace — mirror of `core.agents.trace.TraceStep`."""

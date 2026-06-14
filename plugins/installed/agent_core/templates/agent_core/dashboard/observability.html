@@ -22,10 +22,14 @@
   </form>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
   <div class="card card-padded">
     <p class="meta">Runs</p>
     <p class="display display-l">{{ totals.n|default:"0" }}</p>
+  </div>
+  <div class="card card-padded">
+    <p class="meta">Est. cost</p>
+    <p class="display display-l">${{ total_cost|default:0|floatformat:2 }}</p>
   </div>
   <div class="card card-padded">
     <p class="meta">Tokens</p>
@@ -44,18 +48,19 @@
 <h2 class="text-base font-semibold mb-2">By agent</h2>
 <div class="card mb-6">
   <table class="morph-table">
-    <thead><tr><th>Agent</th><th>Runs</th><th>Tokens</th><th>Tool calls</th><th>Avg duration</th></tr></thead>
+    <thead><tr><th>Agent</th><th>Runs</th><th>Est. cost</th><th>Tokens</th><th>Tool calls</th><th>Avg duration</th></tr></thead>
     <tbody>
     {% for row in by_agent %}
       <tr>
         <td><code>{{ row.agent_name }}</code></td>
         <td>{{ row.n }}</td>
+        <td>${{ row.cost|default:0|floatformat:2 }}</td>
         <td>{{ row.tokens|default:"0" }}</td>
         <td>{{ row.tools|default:"0" }}</td>
         <td>{{ row.avg_ms|default:0|floatformat:0 }}ms</td>
       </tr>
     {% empty %}
-      <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">
+      <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">
         No runs in window.</td></tr>
     {% endfor %}
     </tbody>

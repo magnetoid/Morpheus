@@ -7,6 +7,7 @@
 <p class="text-sm text-[color:var(--text-muted)]">
   Started {{ run.started_at|date:"M j, Y H:i:s" }} · {{ run.duration_ms }}ms ·
   {{ run.tool_call_count }} tool calls · {{ run.total_tokens }} tokens ·
+  ~${{ run.estimated_cost_usd|floatformat:4 }} ·
   {{ run.provider }}/{{ run.model }}
 </p>
 
