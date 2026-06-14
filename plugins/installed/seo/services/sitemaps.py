@@ -112,6 +112,18 @@ def _iter_book_facet_entries(base: str) -> Iterable[dict]:
                     'changefreq': 'weekly',
                     'priority': '0.5',
                 }
+        # Curated taxonomies (Genre, Topic) — only those with ≥1 active book
+        # (the index/detail views 404 on an empty set, so an empty one is dead).
+        from plugins.installed.book_product.models import Genre, Topic
+
+        for prefix, model in (('genre', Genre), ('topic', Topic)):
+            for obj in model.objects.filter(is_active=True):
+                if obj.books.filter(product__status='active').exists():
+                    yield {
+                        'loc': urljoin(base, f'/{prefix}/{obj.slug}/'),
+                        'changefreq': 'weekly',
+                        'priority': '0.6',
+                    }
     except Exception as e:  # noqa: BLE001 — book_product plugin optional
         logger.debug('seo: sitemap book facets skipped: %s', e)
 

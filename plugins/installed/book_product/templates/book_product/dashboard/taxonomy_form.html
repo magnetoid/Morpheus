@@ -42,5 +42,12 @@
       <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
     </div>
   </form>
+
+  {% if delete_url %}
+  <form method="post" action="{{ delete_url }}" class="flex justify-end" onsubmit="return confirm('Delete “{{ name|escapejs }}”? Books keep their other taxonomies.');">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-ghost text-sm text-[color:var(--danger,#dc2626)]"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete {{ taxonomy_label|lower }}</button>
+  </form>
+  {% endif %}
 </div>
 {% endblock %}

@@ -7,6 +7,7 @@ import importlib
 from decimal import Decimal
 
 from django.apps import apps as global_apps
+from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from djmoney.money import Money
 
@@ -105,3 +106,56 @@ class GenreTopicStorefrontTests(TestCase):
 
         names = [g['slug'] for g in nav_genres(None)['nav_genres']]
         self.assertIn('fiction', names)
+
+
+class GenreTopicDashboardTests(TestCase):
+    """Curated management, author-style: add / edit / delete + boundaries."""
+
+    ADD = '/dashboard/book-taxonomies/curated/genre/new/'
+
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username='s', email='s@x.test', password='pw', is_staff=True
+        )
+
+    def _staff_client(self):
+        c = Client()
+        c.force_login(self.staff)
+        return c
+
+    def test_list_shows_genre_and_topic_groups(self):
+        Genre.objects.create(name='Fiction', slug='fiction')
+        r = self._staff_client().get('/dashboard/book-taxonomies/')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Genres')
+        self.assertContains(r, 'Topics')
+        self.assertContains(r, 'Fiction')
+
+    def test_add_creates_genre(self):
+        r = self._staff_client().post(self.ADD, {'name': 'Science Fiction'})
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(Genre.objects.filter(slug='science-fiction').exists())
+
+    def test_edit_saves_seo(self):
+        g = Genre.objects.create(name='Poetry', slug='poetry')
+        url = f'/dashboard/book-taxonomies/curated/genre/{g.slug}/edit/'
+        r = self._staff_client().post(url, {'name': 'Poetry', 'description': 'Verse.'})
+        self.assertEqual(r.status_code, 302)
+        g.refresh_from_db()
+        self.assertEqual(g.description, 'Verse.')
+
+    def test_delete_removes_genre(self):
+        g = Genre.objects.create(name='Essays', slug='essays')
+        url = f'/dashboard/book-taxonomies/curated/genre/{g.slug}/delete/'
+        self._staff_client().post(url)
+        self.assertFalse(Genre.objects.filter(slug='essays').exists())
+
+    def test_add_requires_staff(self):
+        # Anonymous and non-staff are both blocked (redirect to login).
+        self.assertEqual(Client().post(self.ADD, {'name': 'X'}).status_code, 302)
+        self.assertFalse(Genre.objects.filter(name='X').exists())
+        plain = get_user_model().objects.create_user(username='u', email='u@x.test', password='pw')
+        c = Client()
+        c.force_login(plain)
+        self.assertEqual(c.post(self.ADD, {'name': 'Y'}).status_code, 302)
+        self.assertFalse(Genre.objects.filter(name='Y').exists())

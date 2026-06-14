@@ -21,9 +21,13 @@ _DEMO_INSTALLED = apps.is_installed('plugins.installed.demo_data')
 
 @skipUnless(_DEMO_INSTALLED, 'demo_data is opt-in (not in MORPHEUS_DEFAULT_PLUGINS)')
 class SeedDemoTests(TestCase):
-    def test_seed_creates_categories_and_books(self):
+    def test_seed_creates_genres_and_books(self):
+        from plugins.installed.book_product.models import Genre
+
         call_command('morph_seed_demo')
-        self.assertGreaterEqual(Category.objects.count(), 6)
+        # Books are organised by Genre now; the category tree is the lone Books root.
+        self.assertTrue(Category.objects.filter(slug='books').exists())
+        self.assertGreaterEqual(Genre.objects.count(), 6)
         self.assertGreaterEqual(Product.objects.filter(status='active').count(), 25)
         self.assertGreaterEqual(Vendor.objects.count(), 3)
         self.assertGreaterEqual(Collection.objects.count(), 3)

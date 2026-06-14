@@ -55,6 +55,15 @@ def product_list(request):
             Q(category__slug=cat_slug) | Q(additional_categories__slug=cat_slug)
         ).distinct()
 
+    # Genre / Topic filter — `?genre=<slug>` / `?topic=<slug>` (the book_product
+    # taxonomies that replaced category-as-genre). Match via the book's M2M.
+    genre_slug = (request.GET.get('genre') or '').strip()
+    if genre_slug:
+        qs = qs.filter(book__genres__slug=genre_slug).distinct()
+    topic_slug = (request.GET.get('topic') or '').strip()
+    if topic_slug:
+        qs = qs.filter(book__topics__slug=topic_slug).distinct()
+
     # Collection filter — `?collection=<slug>` (curated merchandising sets;
     # the PDP "Featured in" chips link here so a shopper can browse the set).
     col_slug = (request.GET.get('collection') or '').strip()

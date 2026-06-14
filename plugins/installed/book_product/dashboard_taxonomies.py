@@ -24,6 +24,57 @@ _TAXONOMIES = [
 ]
 _LABELS = {k: label for k, label, _ in _TAXONOMIES}
 _URL_PREFIX = {k: prefix for k, _, prefix in _TAXONOMIES}
+# Curated taxonomies (real models, unlike the auto-discovered ones above): same
+# dashboard UX as authors/publishers, plus add/delete since they're hand-managed.
+_CURATED = [
+    ('genre', 'Genre', 'Genres', '/genre/', '/genres/'),
+    ('topic', 'Topic', 'Topics', '/topic/', '/topics/'),
+]
+_CURATED_LABELS = {k: singular for k, singular, *_ in _CURATED}
+
+
+def _curated_model(kind):
+    from plugins.installed.book_product.models import Genre, Topic
+
+    return {'genre': Genre, 'topic': Topic}.get(kind)
+
+
+def _curated_groups():
+    from django.urls import reverse
+
+    groups = []
+    for kind, _singular, label, prefix, root_url in _CURATED:
+        model = _curated_model(kind)
+        terms = []
+        for obj in model.objects.all():
+            terms.append(
+                {
+                    'name': obj.name,
+                    'slug': obj.slug,
+                    'count': obj.books.count(),
+                    'has_seo': bool(obj.description or obj.meta_title or obj.meta_description),
+                    'page_url': f'{prefix}{obj.slug}/',
+                    'edit_url': reverse(
+                        'book_product_dashboard:curated_edit', args=[kind, obj.slug]
+                    ),
+                    'delete_url': reverse(
+                        'book_product_dashboard:curated_delete', args=[kind, obj.slug]
+                    ),
+                }
+            )
+        groups.append(
+            {
+                'key': kind,
+                'label': label,
+                'terms': terms,
+                'is_curated': True,
+                'root_url': root_url,
+                'add_url': reverse('book_product_dashboard:curated_add', args=[kind]),
+            }
+        )
+    return groups
+
+
 # Storefront listing page (the whole taxonomy kind) per key. Author details
 # live in the storefront app at /author/<slug>/, so its index is /authors/.
 _ROOT_URL = {
@@ -40,7 +91,8 @@ def taxonomies_list(request: HttpRequest) -> HttpResponse:
     from plugins.installed.book_product.models import BookTaxonomyTerm
 
     customized = {(t.taxonomy, t.slug) for t in BookTaxonomyTerm.objects.all()}
-    groups = []
+    # Curated taxonomies (Genre, Topic) lead — they're the browse axis now.
+    groups = _curated_groups()
     for key, label, url_prefix in _TAXONOMIES:
         terms = []
         for name in distinct_values(key):
@@ -172,6 +224,86 @@ def taxonomy_root_edit(request: HttpRequest, taxonomy: str) -> HttpResponse:
     )
 
 
+def _curated_breadcrumb(label, extra):
+    return [
+        {'label': 'Dashboard', 'url': '/dashboard/'},
+        {'label': 'Products', 'url': '/dashboard/products/'},
+        {'label': 'Book taxonomies', 'url': reverse('book_product_dashboard:taxonomies')},
+        {'label': extra},
+    ]
+
+
+@staff_member_required
+def curated_add(request: HttpRequest, kind: str) -> HttpResponse:
+    """Create a curated Genre/Topic (curated taxonomies need a create path that
+    auto-discovered authors/publishers don't)."""
+    model = _curated_model(kind)
+    if model is None or request.method != 'POST':
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+    name = (request.POST.get('name') or '').strip()
+    if not name:
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+    obj, created = model.objects.get_or_create(slug=slugify(name), defaults={'name': name})
+    messages.success(
+        request, f'{_CURATED_LABELS[kind]} "{obj.name}" {"added" if created else "already exists"}.'
+    )
+    return HttpResponseRedirect(
+        reverse('book_product_dashboard:curated_edit', args=[kind, obj.slug])
+    )
+
+
+@staff_member_required
+def curated_edit(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
+    """Edit a Genre/Topic landing page — name, intro, SEO, image. Same UX as a
+    book-taxonomy term, but writes the model row directly (it carries its own SEO)."""
+    model = _curated_model(kind)
+    if model is None:
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+    obj = model.objects.filter(slug=slug).first()
+    if obj is None:
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+    label = _CURATED_LABELS[kind]
+    prefix = '/genre/' if kind == 'genre' else '/topic/'
+
+    if request.method == 'POST':
+        obj.name = (request.POST.get('name') or obj.name).strip()
+        obj.description = (request.POST.get('description') or '').strip()
+        obj.meta_title = (request.POST.get('meta_title') or '').strip()
+        obj.meta_description = (request.POST.get('meta_description') or '').strip()
+        if request.FILES.get('image'):
+            obj.image = request.FILES['image']
+        obj.save()
+        messages.success(request, f'{label} "{obj.name}" saved.')
+        return HttpResponseRedirect(
+            reverse('book_product_dashboard:curated_edit', args=[kind, obj.slug])
+        )
+
+    return render(
+        request,
+        'book_product/dashboard/taxonomy_form.html',
+        {
+            'taxonomy': kind,
+            'taxonomy_label': label,
+            'slug': obj.slug,
+            'name': obj.name,
+            'term': obj,
+            'page_url': f'{prefix}{obj.slug}/',
+            'delete_url': reverse('book_product_dashboard:curated_delete', args=[kind, obj.slug]),
+            'active_nav': 'book_taxonomies',
+            'breadcrumb_trail': _curated_breadcrumb(label, obj.name[:50]),
+        },
+    )
+
+
+@staff_member_required
+def curated_delete(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
+    model = _curated_model(kind)
+    if model is not None and request.method == 'POST':
+        model.objects.filter(slug=slug).delete()
+        messages.success(request, f'{_CURATED_LABELS[kind]} deleted. Books keep their other tags.')
+    return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+
+
 @staff_member_required
 def taxonomy_generate(request: HttpRequest, taxonomy: str, slug: str = '') -> HttpResponse:
     """AI-generate the intro + SEO for a taxonomy page — a term when `slug` is
@@ -192,17 +324,35 @@ def taxonomy_generate(request: HttpRequest, taxonomy: str, slug: str = '') -> Ht
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required.'}, status=405)
-    if taxonomy not in BookTaxonomy.values:
+    if taxonomy not in BookTaxonomy.values and taxonomy not in _CURATED_LABELS:
         return JsonResponse({'error': 'Unknown taxonomy.'}, status=400)
 
-    label = _LABELS.get(taxonomy, taxonomy)
-    if slug:
+    if taxonomy in _CURATED_LABELS:
+        # Curated Genre/Topic — titles come from the M2M, not a string field.
+        label = _CURATED_LABELS[taxonomy]
+        model = _curated_model(taxonomy)
+        if slug:
+            obj = model.objects.filter(slug=slug).first()
+            if obj is None:
+                return JsonResponse({'error': 'Unknown term.'}, status=400)
+            name = obj.name
+            titles = [t for t in obj.books.values_list('product__name', flat=True)[:12] if t]
+            subject = f'the {label} page for "{name}"'
+            context_line = f'Books on this page: {", ".join(titles) or "(none yet)"}.'
+        else:
+            name = f'All {label}s'
+            terms = list(model.objects.values_list('name', flat=True)[:15])
+            subject = f'the {label} index page, which lists every {label.lower()}'
+            context_line = f'{label}s include: {", ".join(terms) or "(none yet)"}.'
+    elif slug:
+        label = _LABELS.get(taxonomy, taxonomy)
         name = resolve_slug(taxonomy, slug) or slug
         ids = product_ids_for(taxonomy, name)[:12]
         titles = list(Product.objects.filter(id__in=ids).values_list('name', flat=True)[:12])
         subject = f'the {label} page for "{name}"'
         context_line = f'Books on this page: {", ".join(titles) or "(none yet)"}.'
     else:
+        label = _LABELS.get(taxonomy, taxonomy)
         name = f'All {label}'
         terms = distinct_values(taxonomy)[:15]
         subject = f'the {label} index page, which lists every {label.lower()} entry'

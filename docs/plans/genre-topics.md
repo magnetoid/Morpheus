@@ -1,17 +1,19 @@
 # Genres & Topics for books — 2026-06
 
 > **Status: BUILT on branch `feat/book-genres-topics` (not yet deployed).**
-> Phases 1–3 + admin CRUD shipped: Genre/Topic models + M2M, schema migration
-> 0005, the destructive data migration 0006 (categories→genres, Books root,
-> delete old), genre/topic index+detail pages, nav rewired to genres+topics,
-> `/category/…`→`/genre/…` 301s, book-form assignment, PDP breadcrumb/eyebrow.
-> 55 book_product tests + storefront suite green on sqlite. **Not pushed** — the
-> data migration is **destructive on prod** (deletes category rows); deploy
-> deliberately (back up the DB; CI Postgres `migrations` job is the real gate).
-> **Deferred (Phase 4 polish):** sitemap genre/topic entries + drop dead
-> `/category/` URLs; `?category=`→`?genre=` PLP/search facet; `_CATEGORY_INTROS`
-> → genre `description`; seed `Books`+genres+sample topics; a first-class
-> dashboard Genre/Topic editor (admin CRUD covers it for now).
+> Phases 1–4 shipped: Genre/Topic models + M2M, schema migration 0005, the
+> destructive data migration 0006 (categories→genres, Books root, delete old),
+> genre/topic index+detail pages, nav rewired to genres+topics,
+> `/category/…`→`/genre/…` 301s, book-form assignment, PDP breadcrumb/eyebrow,
+> **author-style dashboard management** (genres/topics in the Book taxonomies
+> page — add/edit/delete + AI-assist; no Django admin), **sitemap** genre/topic
+> entries, **`?genre=`/`?topic=` PLP filter**, and **seeds** (fresh installs get
+> Books + genres; topics start empty by design). **Not pushed** — migration 0006
+> is **destructive on prod** (deletes category rows); deploy deliberately (back
+> up the DB; CI Postgres `migrations` job is the real gate).
+> **Remaining nits (optional):** `_CATEGORY_INTROS` is now only hit by the lone
+> Books category page (falls through to a default — harmless); the `categories.html`
+> theme template is orphaned by the `/categories/`→`/genres/` 301.
 
 **Goal (user):** books are organised by **Genre** (Fiction, Poetry, Essays, …)
 and **Topic** (subject tags: WWII, grief, space exploration). Today those

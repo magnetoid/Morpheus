@@ -7,16 +7,24 @@
 
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Book taxonomies</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">Authors, publishers, series and imprints derived from your books. Each has a storefront landing page whose SEO + intro you can edit — like categories and collections.</p>
+    <p class="text-sm text-[color:var(--text-muted)]">Genres &amp; topics you curate, plus authors, publishers, series and imprints derived from your books. Each has a storefront landing page whose SEO + intro you can edit — like categories and collections.</p>
   </div>
 
   {% for group in groups %}
   <div class="card overflow-hidden">
-    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3 flex-wrap">
       <h2 class="font-semibold text-sm">{{ group.label }} <span class="text-[color:var(--text-muted)] font-normal">({{ group.terms|length }})</span></h2>
       <div class="flex items-center gap-1 whitespace-nowrap">
         <a href="{{ group.root_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-xs">View index</a>
+        {% if group.is_curated %}
+        <form method="post" action="{{ group.add_url }}" class="flex items-center gap-1">
+          {% csrf_token %}
+          <input type="text" name="name" required placeholder="New {{ group.label|lower|slice:':-1' }}…" class="input text-xs py-1 w-40">
+          <button type="submit" class="btn btn-primary text-xs"><i data-lucide="plus" class="h-3.5 w-3.5"></i> Add</button>
+        </form>
+        {% else %}
         <a href="{{ group.root_edit_url }}" class="btn btn-ghost text-xs">Edit landing page</a>
+        {% endif %}
       </div>
     </div>
     {% if group.terms %}
@@ -31,11 +39,19 @@
           <td class="text-right whitespace-nowrap">
             <a href="{{ t.page_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-xs">View page</a>
             <a href="{{ t.edit_url }}" class="btn btn-ghost text-xs">Edit SEO</a>
+            {% if group.is_curated %}
+            <form method="post" action="{{ t.delete_url }}" class="inline" onsubmit="return confirm('Delete “{{ t.name|escapejs }}”? Books keep their other taxonomies.');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost text-xs text-[color:var(--danger,#dc2626)]">Delete</button>
+            </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    {% elif group.is_curated %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No {{ group.label|lower }} yet — add one above, then tag books with it under Book details.</div>
     {% else %}
     <div class="card-padded text-sm text-[color:var(--text-muted)]">No {{ group.label|lower }} yet — set them on your books (Book details) or via the API.</div>
     {% endif %}

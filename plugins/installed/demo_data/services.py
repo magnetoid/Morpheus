@@ -40,29 +40,44 @@ def seed_all(*, currency: str = 'USD', wipe: bool = False) -> SeedSummary:
         _wipe_demo(summary)
 
     with transaction.atomic():
-        cat_by_slug = _seed_categories(summary)
+        books_cat, genre_by_slug = _seed_taxonomy(summary)
         col_by_slug = _seed_collections(summary)
         ven_by_slug = _seed_vendors(summary)
-        _seed_books(summary, cat_by_slug, ven_by_slug, col_by_slug, currency)
+        _seed_books(summary, books_cat, genre_by_slug, ven_by_slug, col_by_slug, currency)
         _seed_customers(summary)
         _seed_orders(summary, currency)
 
     return summary
 
 
-def _seed_categories(summary: SeedSummary) -> dict[str, Any]:
+def _seed_taxonomy(summary: SeedSummary) -> tuple[Any, dict[str, Any]]:
+    """Seed the single ``Books`` category + one Genre per ``seeds.CATEGORIES``
+    entry (fiction, poetry, …). Books are organised by Genre now; the category
+    tree is just the lone ``Books`` root. Topics start empty (merchant-curated).
+    Returns (books_category, {slug: Genre})."""
     from plugins.installed.catalog.models import Category
 
-    by_slug: dict[str, Any] = {}
-    for entry in seeds.CATEGORIES:
-        cat, created = Category.objects.update_or_create(
-            slug=entry['slug'],
-            defaults={'name': entry['name'], 'is_active': True},
-        )
-        by_slug[entry['slug']] = cat
-        if created:
-            summary.inc('categories')
-    return by_slug
+    books, created = Category.objects.update_or_create(
+        slug='books', defaults={'name': 'Books', 'is_active': True}
+    )
+    if created:
+        summary.inc('categories')
+
+    genre_by_slug: dict[str, Any] = {}
+    try:
+        from plugins.installed.book_product.models import Genre
+
+        for i, entry in enumerate(seeds.CATEGORIES):
+            genre, made = Genre.objects.update_or_create(
+                slug=entry['slug'],
+                defaults={'name': entry['name'], 'is_active': True, 'sort_order': i},
+            )
+            genre_by_slug[entry['slug']] = genre
+            if made:
+                summary.inc('genres')
+    except Exception:  # noqa: BLE001 — book_product optional; Books category still seeded
+        pass
+    return books, genre_by_slug
 
 
 def _seed_collections(summary: SeedSummary) -> dict[str, Any]:
@@ -106,7 +121,8 @@ def _seed_vendors(summary: SeedSummary) -> dict[str, Any]:
 
 def _seed_books(
     summary: SeedSummary,
-    cat_by_slug: dict[str, Any],
+    books_cat: Any,
+    genre_by_slug: dict[str, Any],
     ven_by_slug: dict[str, Any],
     col_by_slug: dict[str, Any],
     currency: str,
@@ -117,7 +133,8 @@ def _seed_books(
     pick_collection = col_by_slug.get('editors-pick-april')
 
     for row in seeds.BOOKS:
-        (name, slug, sku, cat_slug, ven_slug, price, short_desc, desc, featured) = row
+        # The 4th field is the genre slug now (was a category slug pre-genres).
+        (name, slug, sku, genre_slug, ven_slug, price, short_desc, desc, featured) = row
         defaults = {
             'name': name,
             'sku': sku,
@@ -126,7 +143,7 @@ def _seed_books(
             'price': Money(Decimal(price), currency),
             'status': 'active',
             'is_featured': featured,
-            'category': cat_by_slug.get(cat_slug),
+            'category': books_cat,
             'vendor': ven_by_slug.get(ven_slug),
         }
         product, created = Product.objects.update_or_create(slug=slug, defaults=defaults)
@@ -138,7 +155,22 @@ def _seed_books(
         if featured_collection is not None:
             product.collections.add(featured_collection)
         _seed_book_metafields(product, slug)
+        _assign_genre(product, genre_by_slug.get(genre_slug))
         _seed_book_cover(product, slug)
+
+
+def _assign_genre(product, genre) -> None:
+    """Tag a seeded book with its genre (model-first; fail-soft if book_product
+    is absent). Ensures a BookProduct row exists to carry the M2M."""
+    if genre is None:
+        return
+    try:
+        from plugins.installed.book_product.models import BookProduct
+
+        book, _ = BookProduct.objects.get_or_create(product=product)
+        book.genres.add(genre)
+    except Exception:  # noqa: BLE001 — book_product optional
+        pass
 
 
 def _seed_book_metafields(product, slug: str) -> None:
@@ -269,7 +301,14 @@ def _wipe_demo(summary: SeedSummary) -> None:
     legacy_slugs = list(getattr(seeds, 'LEGACY_BOOK_SLUGS', []) or [])
     Product.objects.filter(slug__in=book_slugs + legacy_slugs).delete()
     Collection.objects.filter(slug__in=[c['slug'] for c in seeds.COLLECTIONS]).delete()
-    Category.objects.filter(slug__in=[c['slug'] for c in seeds.CATEGORIES]).delete()
+    genre_slugs = [c['slug'] for c in seeds.CATEGORIES]
+    Category.objects.filter(slug__in=[*genre_slugs, 'books']).delete()
+    try:
+        from plugins.installed.book_product.models import Genre
+
+        Genre.objects.filter(slug__in=genre_slugs).delete()
+    except Exception:  # noqa: BLE001 — book_product optional
+        pass
     Vendor.objects.filter(slug__in=[v['slug'] for v in seeds.VENDORS]).delete()
     Order.objects.filter(source='demo').delete()
     summary.inc('wiped', 1)
