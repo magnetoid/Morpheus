@@ -56,6 +56,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.payments',
     'plugins.installed.inventory',
     'plugins.installed.marketing',
+    'plugins.installed.newsletter',
     'plugins.installed.analytics',
     'plugins.installed.storefront',
     'plugins.installed.admin_dashboard',

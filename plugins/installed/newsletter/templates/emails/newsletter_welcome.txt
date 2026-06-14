@@ -1,0 +1,8 @@
+You're in! Thanks for confirming your subscription to the {{ site_name }} newsletter.
+
+You'll hear from us with news, new arrivals, and the occasional offer.
+
+Changed your mind? Unsubscribe any time:
+  {{ unsubscribe_url }}
+
+— The {{ site_name }} team

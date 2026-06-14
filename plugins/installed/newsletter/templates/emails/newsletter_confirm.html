@@ -1,0 +1,9 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Confirm your subscription{% endblock %}
+{% block preheader %}One click to confirm your newsletter subscription.{% endblock %}
+{% block body %}
+  <p>Hi,</p>
+  <p>Please confirm you'd like to receive our newsletter at <strong>{{ email }}</strong>.</p>
+  <p><a class="btn" href="{{ confirm_url }}">Confirm subscription</a></p>
+  <p class="muted">If you didn't request this, ignore this email — you won't be subscribed.</p>
+{% endblock %}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if ok %}Subscription confirmed{% else %}Link expired{% endif %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: grid; place-items: center;
+           min-height: 100vh; margin: 0; background: #fafafa; color: #222; }
+    .box { text-align: center; max-width: 28rem; padding: 2rem; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    {% if ok %}
+      <h1>You're subscribed 🎉</h1>
+      <p>Thanks for confirming <strong>{{ email }}</strong>. Welcome aboard.</p>
+    {% else %}
+      <h1>This link is invalid or expired</h1>
+      <p>The confirmation link couldn't be matched. Try subscribing again.</p>
+    {% endif %}
+    <p><a href="/">← Back to the store</a></p>
+  </div>
+</body>
+</html>
