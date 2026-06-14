@@ -1,0 +1,9 @@
+{% extends "emails/_layout.html" %}
+{% block title %}New support message{% endblock %}
+{% block preheader %}A customer needs a reply in support chat.{% endblock %}
+{% block body %}
+  <p>A customer needs a reply in support chat.</p>
+  <p><strong>From:</strong> {{ thread.display_name }}</p>
+  <p style="padding:.75rem 1rem;background:#f3f1ea;border-radius:8px;">{{ preview }}</p>
+  <p><a class="btn" href="{{ url }}">Reply in the CRM inbox</a></p>
+{% endblock %}

@@ -163,6 +163,8 @@ class CrmPlugin(Plugin):
         from plugins.installed.crm.agent_tools import (  # noqa: PLC0415
             advance_deal_tool,
             create_lead_tool,
+            crm_reply_support_tool,
+            crm_support_threads_tool,
             customer_timeline_tool,
             find_leads_tool,
             list_open_tasks_tool,
@@ -176,6 +178,8 @@ class CrmPlugin(Plugin):
             list_open_tasks_tool,
             advance_deal_tool,
             customer_timeline_tool,
+            crm_support_threads_tool,
+            crm_reply_support_tool,
         ]
 
     def contribute_skills(self) -> list:
@@ -283,6 +287,19 @@ class CrmPlugin(Plugin):
                 slot='global_below_body',
                 template='crm/blocks/support_chat.html',
                 priority=80,
+            ),
+        ]
+
+    def contribute_email_templates(self) -> list:
+        from morpheus import EmailTemplateDef
+
+        return [
+            EmailTemplateDef(
+                key='crm_support_new_message',
+                label='Support chat — new message',
+                default_subject='New support message',
+                group='CRM',
+                description='Sent to staff when a customer needs a reply in support chat.',
             ),
         ]
 

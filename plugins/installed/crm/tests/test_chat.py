@@ -95,3 +95,68 @@ class PluginWiringTests(TestCase):
         self.assertIn('global_below_body', slots)
         pages = {p.slug for p in plugin.contribute_dashboard_pages()}
         self.assertIn('chat', pages)
+
+
+class PollRobustnessTests(TestCase):
+    def test_poll_with_no_thread_does_not_500(self):
+        r = Client().get('/support/chat/poll/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['messages'], [])
+
+    def test_poll_with_garbage_thread_does_not_500(self):
+        r = Client().get('/support/chat/poll/?thread=not-a-uuid')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['messages'], [])
+
+
+class StaffNotifyTests(TestCase):
+    def setUp(self):
+        get_user_model().objects.create_user(
+            username='op', email='op@x.test', password='pw', is_staff=True
+        )
+
+    def test_first_unread_notifies_staff_once(self):
+        from django.core import mail
+        from django.test import override_settings
+
+        from plugins.installed.crm.chat import post_customer_message
+
+        thread = ChatThread.objects.create(email='c@x.test')
+        with override_settings(DEFAULT_FROM_EMAIL='store@x.test'):
+            post_customer_message(thread, 'first')
+            self.assertEqual(len(mail.outbox), 1)  # one staff recipient
+            self.assertEqual(mail.outbox[0].to, ['op@x.test'])
+            # Still unread → no second notification on the next message.
+            post_customer_message(thread, 'second')
+            self.assertEqual(len(mail.outbox), 1)
+
+
+class SupportAgentToolTests(TestCase):
+    def test_threads_and_reply(self):
+        from plugins.installed.crm.agent_tools import (
+            crm_reply_support_tool,
+            crm_support_threads_tool,
+        )
+
+        thread = ChatThread.objects.create(email='c@x.test', unread_staff=1)
+        ChatMessage.objects.create(thread=thread, sender='customer', body='help')
+
+        listed = crm_support_threads_tool.invoke({'status': 'open'}).output
+        self.assertEqual(listed['count'], 1)
+        self.assertEqual(listed['threads'][0]['unread'], 1)
+
+        out = crm_reply_support_tool.invoke(
+            {'thread_id': str(thread.id), 'message': 'On it!', 'close': True}
+        ).output
+        self.assertTrue(out['replied'])
+        thread.refresh_from_db()
+        self.assertEqual(thread.status, 'closed')
+        self.assertTrue(
+            ChatMessage.objects.filter(thread=thread, sender='staff').exists()
+        )
+
+    def test_reply_unknown_thread_errors(self):
+        from plugins.installed.crm.agent_tools import crm_reply_support_tool
+
+        out = crm_reply_support_tool.invoke({'thread_id': 'nope', 'message': 'x'}).output
+        self.assertIn('error', out)

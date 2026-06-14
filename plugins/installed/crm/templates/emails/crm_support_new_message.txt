@@ -1,0 +1,9 @@
+A customer needs a reply in support chat.
+
+From: {{ thread.display_name }}
+Message: {{ preview }}
+
+Reply here:
+  {{ url }}
+
+— {{ site_name }}

@@ -7,6 +7,26 @@ pipeline (this is why it lives in the CRM app).
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger('morpheus.crm.chat')
+
+
+def thread_by_id(thread_id: str):
+    """Look up a thread by id, returning None for empty/malformed UUIDs (never
+    raises ValidationError — the public endpoints accept untrusted input)."""
+    tid = (thread_id or '').strip()
+    if not tid:
+        return None
+    from django.core.exceptions import ValidationError
+
+    from plugins.installed.crm.models import ChatThread
+
+    try:
+        return ChatThread.objects.filter(id=tid).first()
+    except (ValueError, ValidationError):
+        return None
+
 
 def resolve_thread(request, thread_id: str = '', email: str = ''):
     """Find the customer's current thread (by id, then by logged-in customer),
@@ -15,7 +35,7 @@ def resolve_thread(request, thread_id: str = '', email: str = ''):
 
     user = request.user if getattr(request.user, 'is_authenticated', False) else None
     if thread_id:
-        t = ChatThread.objects.filter(id=thread_id).first()
+        t = thread_by_id(thread_id)
         if t is not None:
             return t
     if user is not None:
@@ -58,17 +78,49 @@ def _link_lead(thread) -> None:
 
 
 def post_customer_message(thread, body: str):
-    """Append a customer message; reopen + flag unread for staff."""
+    """Append a customer message; reopen + flag unread for staff. Notifies staff
+    by email only on the 0→1 unread transition (a 'now needs attention' edge)."""
     from django.utils import timezone
 
     from plugins.installed.crm.models import ChatMessage
 
+    was_unread = thread.unread_staff or 0
     msg = ChatMessage.objects.create(thread=thread, sender='customer', body=body[:5000])
-    thread.unread_staff = (thread.unread_staff or 0) + 1
+    thread.unread_staff = was_unread + 1
     thread.status = 'open'
     thread.last_message_at = timezone.now()
     thread.save(update_fields=['unread_staff', 'status', 'last_message_at'])
+    if was_unread == 0:
+        _notify_staff(thread, msg)
     return msg
+
+
+def _notify_staff(thread, msg) -> None:
+    """Email active staff that a support thread needs a reply. Best-effort."""
+    try:
+        from django.contrib.auth import get_user_model
+
+        from core.emails import send_templated_email
+        from core.utils.site import site_base_url
+
+        emails = list(
+            dict.fromkeys(
+                get_user_model()
+                .objects.filter(is_staff=True, is_active=True)
+                .exclude(email='')
+                .values_list('email', flat=True)[:25]
+            )
+        )
+        url = f'{site_base_url()}/dashboard/crm/chat/{thread.id}/'
+        for email in emails:
+            send_templated_email(
+                'crm_support_new_message',
+                to=email,
+                subject=f'New support message from {thread.display_name()}',
+                ctx={'thread': thread, 'preview': (msg.body or '')[:200], 'url': url},
+            )
+    except Exception as e:  # noqa: BLE001 — notification must never break the chat
+        logger.warning('crm.chat: staff notify failed: %s', e)
 
 
 def post_staff_reply(thread, body: str, staff_user=None):

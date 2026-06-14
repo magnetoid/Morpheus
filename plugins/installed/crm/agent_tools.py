@@ -251,3 +251,73 @@ def customer_timeline_tool(*, email: str, limit: int = 30) -> ToolResult:
             ],
         }
     )
+
+
+@tool(
+    name='crm.support_threads',
+    description='List customer support-chat threads (default open ones), newest '
+    'first, with the unread count so you can triage what needs a reply.',
+    scopes=['crm.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'status': {'type': 'string', 'description': 'open | closed | all (default open)'},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20},
+        },
+    },
+)
+def crm_support_threads_tool(*, status: str = 'open', limit: int = 20) -> ToolResult:
+    from plugins.installed.crm.models import ChatThread
+
+    qs = ChatThread.objects.select_related('customer').all()
+    if status in ('open', 'closed'):
+        qs = qs.filter(status=status)
+    try:
+        n = max(1, min(int(limit or 20), 50))
+    except (TypeError, ValueError):
+        n = 20
+    rows = [
+        {
+            'thread_id': str(t.id),
+            'from': t.display_name(),
+            'status': t.status,
+            'unread': t.unread_staff,
+            'last_activity': t.last_message_at.isoformat() if t.last_message_at else None,
+        }
+        for t in qs[:n]
+    ]
+    return ToolResult(output={'threads': rows, 'count': len(rows)}, display=f'{len(rows)} thread(s).')
+
+
+@tool(
+    name='crm.reply_support',
+    description='Reply to a customer in a support-chat thread (sent as staff; the '
+    'customer sees it in their chat widget). Optionally close the thread after.',
+    scopes=['crm.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'thread_id': {'type': 'string'},
+            'message': {'type': 'string'},
+            'close': {'type': 'boolean', 'default': False},
+        },
+        'required': ['thread_id', 'message'],
+    },
+)
+def crm_reply_support_tool(*, thread_id: str, message: str, close: bool = False) -> ToolResult:
+    from plugins.installed.crm.chat import post_staff_reply, thread_by_id
+
+    thread = thread_by_id(thread_id)
+    if thread is None:
+        return ToolResult(output={'error': f'no support thread {thread_id!r}'})
+    body = (message or '').strip()
+    if not body:
+        return ToolResult(output={'error': 'message is required'})
+    post_staff_reply(thread, body, staff_user=None)
+    if close:
+        thread.status = 'closed'
+        thread.save(update_fields=['status'])
+    return ToolResult(
+        output={'thread_id': str(thread.id), 'replied': True, 'closed': bool(close)},
+        display=f'Replied to {thread.display_name()}.',
+    )

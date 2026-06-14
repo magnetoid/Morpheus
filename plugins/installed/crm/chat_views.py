@@ -41,9 +41,9 @@ def chat_send(request):
 def chat_poll(request):
     """Customer widget polls for replies. Knowing the thread UUID is the
     capability (unguessable); returns messages, optionally only after a time."""
-    from plugins.installed.crm.models import ChatThread
+    from plugins.installed.crm.chat import thread_by_id
 
-    thread = ChatThread.objects.filter(id=(request.GET.get('thread') or '').strip()).first()
+    thread = thread_by_id(request.GET.get('thread') or '')
     if thread is None:
         return JsonResponse({'ok': True, 'messages': []})
     qs = thread.messages.all()
