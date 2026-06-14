@@ -209,3 +209,11 @@ class LoyaltyPointsPlugin(Plugin):
             schema=self.get_config_schema(),
             category='marketing',
         )
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.loyalty_points.agent_tools import (
+            loyalty_adjust_points_tool,
+            loyalty_balance_tool,
+        )
+
+        return [loyalty_balance_tool, loyalty_adjust_points_tool]

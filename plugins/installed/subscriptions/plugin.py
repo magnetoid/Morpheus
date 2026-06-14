@@ -34,3 +34,18 @@ class SubscriptionsPlugin(Plugin):
                 order=70,
             ),
         ]
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.subscriptions.agent_tools import (
+            subscriptions_cancel_tool,
+            subscriptions_list_tool,
+            subscriptions_pause_tool,
+            subscriptions_resume_tool,
+        )
+
+        return [
+            subscriptions_list_tool,
+            subscriptions_pause_tool,
+            subscriptions_resume_tool,
+            subscriptions_cancel_tool,
+        ]
