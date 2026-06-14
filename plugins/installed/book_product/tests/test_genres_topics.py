@@ -17,6 +17,9 @@ from plugins.installed.catalog.models import Category, Product
 _migration = importlib.import_module(
     'plugins.installed.book_product.migrations.0006_categories_to_genres'
 )
+_backfill = importlib.import_module(
+    'plugins.installed.book_product.migrations.0007_backfill_remaining_books_to_genres'
+)
 
 
 def _product(slug, sku, **kw):
@@ -62,6 +65,32 @@ class CategoriesToGenresMigrationTests(TestCase):
 
         # Guard: a category still used by a non-book product is never deleted.
         self.assertTrue(Category.objects.filter(slug='comics').exists())
+
+
+class BackfillMigrationTests(TestCase):
+    """0007 completes the collapse for products that had no BookProduct row."""
+
+    def test_backfills_products_without_a_bookproduct_row(self):
+        # Simulate the post-0006 state: Books root + a Genre, but a product still
+        # on the old category with NO BookProduct row (legacy metafield book).
+        # (0006 runs when the test DB is built, so 'books' already exists.)
+        Category.objects.get_or_create(
+            slug='books', defaults={'name': 'Books', 'lft': 1, 'rght': 2, 'level': 0, 'tree_id': 99}
+        )
+        Genre.objects.create(name='Thriller', slug='thriller')
+        thriller = Category.objects.create(name='Thriller', slug='thriller')
+        p = _product('gone-girl', 'SKU9', category=thriller)
+        self.assertFalse(BookProduct.objects.filter(product=p).exists())
+
+        _backfill.forwards(global_apps, None)
+
+        # A BookProduct row now exists, tagged with the genre, re-homed to Books.
+        book = BookProduct.objects.get(product=p)
+        self.assertEqual(set(book.genres.values_list('slug', flat=True)), {'thriller'})
+        p.refresh_from_db()
+        self.assertEqual(p.category.slug, 'books')
+        # The emptied old category is gone.
+        self.assertFalse(Category.objects.filter(slug='thriller').exists())
 
 
 class GenreTopicStorefrontTests(TestCase):
