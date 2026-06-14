@@ -9,6 +9,11 @@ from plugins.installed.book_product import views
 app_name = 'book_product'
 
 urlpatterns = [
+    # Curated taxonomies (Genre, Topic) — index + detail pages.
+    path('genres/', views.genres_root, name='genres'),
+    path('genre/<slug:slug>/', views.genre_detail, name='genre'),
+    path('topics/', views.topics_root, name='topics'),
+    path('topic/<slug:slug>/', views.topic_detail, name='topic'),
     # Taxonomy root listing pages — one index per kind (author lives in the
     # storefront app at /author/<slug>/, so its index is /authors/ here).
     path('authors/', views.authors_root, name='authors'),

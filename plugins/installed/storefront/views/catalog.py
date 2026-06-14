@@ -859,6 +859,17 @@ def category_detail(request, slug):
 
     category = Category.objects.filter(slug=slug).first()
     if category is None:
+        # Old genre-categories were migrated to /genre/<slug>/ — 301 so indexed
+        # /category/<slug>/ URLs + bookmarks keep their link equity.
+        from django.shortcuts import redirect  # noqa: PLC0415
+
+        try:
+            from plugins.installed.book_product.models import Genre  # noqa: PLC0415
+
+            if Genre.objects.filter(slug=slug, is_active=True).exists():
+                return redirect(f'/genre/{slug}/', permanent=True)
+        except Exception:  # noqa: BLE001 — book_product may be disabled
+            pass
         raise Http404
     # Include products whose PRIMARY category is this one OR whose
     # `additional_categories` M2M includes it (multi-category surface
@@ -1161,44 +1172,11 @@ def staff_picks(request):
 
 
 def categories(request):
-    data = (
-        internal_graphql(
-            """
-        query Categories {
-          categories(topLevel: true, first: 50) {
-            id name slug image { url }
-          }
-        }
-    """,
-            request=request,
-        )
-        or {}
-    )
-    cats = data.get('categories', [])
-    cat_items = [
-        {
-            'name': c.get('name', ''),
-            'url': request.build_absolute_uri(f'/products/?category={c.get("slug", "")}'),
-            'image': (c.get('image') or {}).get('url', ''),
-        }
-        for c in cats
-    ]
-    breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Categories', 'url': request.build_absolute_uri(request.path)},
-    ]
-    return render(
-        request,
-        'storefront/categories.html',
-        {
-            'categories': cats,
-            'cat_items': cat_items,
-            'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Categories — dot books',
-            'seo_description': "All categories on the dot books shelf — fiction, non-fiction, poetry, essays, art & design, children's.",
-            'seo_og_type': 'website',
-        },
-    )
+    # Categories were collapsed to a single "Books" root; genres are the browse
+    # axis now. 301 the old index to /genres/ to preserve SEO + bookmarks.
+    from django.shortcuts import redirect  # noqa: PLC0415
+
+    return redirect('/genres/', permanent=True)
 
 
 def quick_search(request):

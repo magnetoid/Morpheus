@@ -35,11 +35,62 @@ class PaperType(models.TextChoices):
     RECYCLED = 'recycled', 'Recycled'
 
 
+class _CuratedTaxonomy(models.Model):
+    """Shared shape for the curated, multi-value book taxonomies (Genre, Topic).
+
+    Unlike author/publisher/series/imprint (single string fields auto-discovered
+    from BookProduct), genres and topics are curated rows a book belongs to many
+    of — so they're real models with their own landing-page SEO, mirroring how a
+    Category/Collection is edited. Flat (no parent): a deliberate SEO choice —
+    shallow, content-rich pages over thin nested sub-genres.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True)
+    description = models.TextField(blank=True)
+    meta_title = models.CharField(max_length=200, blank=True)
+    meta_description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='book_taxonomies/', null=True, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['sort_order', 'name']
+
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify  # noqa: PLC0415
+
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+
+class Genre(_CuratedTaxonomy):
+    """A literary genre (Fiction, Poetry, Essays, …). The primary book taxonomy
+    the storefront browses by — replaces the old catalog-Category-as-genre."""
+
+
+class Topic(_CuratedTaxonomy):
+    """A subject/theme tag (WWII, grief, space exploration). A second, flat axis
+    that intersects Genre to cover the long-tail without nested sub-genres."""
+
+
 class BookProduct(models.Model):
     """Book-specific attributes for a catalog Product (one-to-one)."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.OneToOneField('catalog.Product', on_delete=models.CASCADE, related_name='book')
+
+    # ── Curated taxonomies (multi-value) ───────────────────────────────────
+    genres = models.ManyToManyField(Genre, blank=True, related_name='books')
+    topics = models.ManyToManyField(Topic, blank=True, related_name='books')
 
     # ── Bibliographic ──────────────────────────────────────────────────────
     author = models.CharField(max_length=300, blank=True)

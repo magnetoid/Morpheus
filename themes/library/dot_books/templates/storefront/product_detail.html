@@ -23,10 +23,15 @@
       <a href="/" style="color: var(--muted);">Home</a>
       <span style="margin: 0 0.5rem;">/</span>
       <a href="/products/" style="color: var(--muted);">All books</a>
-      {% if product.category %}
+      {% with genre=product.book.genres.first %}
+      {% if genre %}
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/genre/{{ genre.slug }}/" style="color: var(--muted);">{{ genre.name }}</a>
+      {% elif product.category %}
       <span style="margin: 0 0.5rem;">/</span>
       <a href="/category/{{ product.category.slug }}/" style="color: var(--muted);">{{ product.category.name }}</a>
       {% endif %}
+      {% endwith %}
     </p>
 
     <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
@@ -40,7 +45,7 @@
 
       <!-- Details -->
       <div>
-        <p class="eyebrow">{{ product.category.name|default:"Independent press" }}</p>
+        {% with genre=product.book.genres.first %}<p class="eyebrow">{{ genre.name|default:product.category.name|default:"Independent press" }}</p>{% endwith %}
         <h1 class="display display-l" style="margin: 1rem 0 0.75rem;">{{ product.name }}<span class="text-accent">.</span></h1>
 
         {% if review_summary %}

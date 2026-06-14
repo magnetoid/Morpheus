@@ -208,6 +208,80 @@ def _taxonomy_root(request, *, key, label):
     )
 
 
+# --- Genre / Topic (curated multi-value taxonomies) ------------------------
+# Unlike author/publisher/… (auto-discovered string fields), Genre and Topic are
+# real M2M models — so they get their own listing + detail pages, reusing the
+# same templates. Each carries its own landing-page SEO (no BookTaxonomyRoot).
+
+
+def _curated_root(request, *, model, label, detail_prefix):
+    terms = []
+    for obj in model.objects.filter(is_active=True):
+        count = obj.books.filter(product__status='active').count()
+        if not count:
+            continue
+        terms.append(
+            {
+                'name': obj.name,
+                'slug': obj.slug,
+                'count': count,
+                'url': f'{detail_prefix}{obj.slug}/',
+                'image': obj.image or None,
+            }
+        )
+    return render(
+        request,
+        'storefront/taxonomy_root.html',
+        {
+            'root_label': label,
+            'root': None,
+            'terms': terms,
+            'jsonld_items': [
+                {'name': t['name'], 'url': t['url'], 'image': t['image'].url if t['image'] else ''}
+                for t in terms
+            ],
+            'seo_title': f'{label} — dot books',
+            'seo_description': f'Browse books by {label.lower()} at dot books.',
+        },
+    )
+
+
+def _curated_detail(request, *, model, slug, label, index_url):
+    obj = model.objects.filter(slug=slug, is_active=True).first()
+    if obj is None:
+        raise Http404
+    books = (
+        obj.books.select_related('product')
+        .filter(product__status='active')
+        .order_by('-product__is_featured', '-product__created_at')
+    )
+    return _render(request, label, obj.name, _active_products(books), term=obj, index_url=index_url)
+
+
+def genres_root(request):
+    from plugins.installed.book_product.models import Genre  # noqa: PLC0415
+
+    return _curated_root(request, model=Genre, label='Genres', detail_prefix='/genre/')
+
+
+def topics_root(request):
+    from plugins.installed.book_product.models import Topic  # noqa: PLC0415
+
+    return _curated_root(request, model=Topic, label='Topics', detail_prefix='/topic/')
+
+
+def genre_detail(request, slug):
+    from plugins.installed.book_product.models import Genre  # noqa: PLC0415
+
+    return _curated_detail(request, model=Genre, slug=slug, label='Genre', index_url='/genres/')
+
+
+def topic_detail(request, slug):
+    from plugins.installed.book_product.models import Topic  # noqa: PLC0415
+
+    return _curated_detail(request, model=Topic, slug=slug, label='Topic', index_url='/topics/')
+
+
 def authors_root(request):
     return _taxonomy_root(request, key='author', label='Authors')
 

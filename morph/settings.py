@@ -293,6 +293,8 @@ TEMPLATES = [
                 'plugins.installed.catalog.context_processors.nav_categories',
                 'plugins.installed.catalog.context_processors.nav_authors',
                 'plugins.installed.catalog.context_processors.nav_featured_books',
+                'plugins.installed.book_product.context_processors.nav_genres',
+                'plugins.installed.book_product.context_processors.nav_topics',
                 'plugins.installed.cms.context_processors.nav_menus',
                 'themes.context_processors.theme_context',
                 'plugins.context_processors.plugin_context',

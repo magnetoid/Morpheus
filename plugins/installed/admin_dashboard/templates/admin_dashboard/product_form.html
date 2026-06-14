@@ -1047,6 +1047,36 @@
       <h2 class="font-semibold text-sm flex items-center gap-2"><i data-lucide="book-open" class="h-4 w-4"></i> Book details</h2>
       <p class="text-xs text-[color:var(--text-muted)]">Author, edition, physical attributes, and the cover PDF that drives the 3D preview. Stored on the book record, not as meta tags.</p>
       <input type="hidden" name="book_submitted" value="1">
+      {% if book_widget.all_genres or book_widget.all_topics %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% if book_widget.all_genres %}
+        <div>
+          <label class="block text-sm font-medium mb-1">Genres</label>
+          <div class="flex flex-wrap gap-x-4 gap-y-1.5 max-h-40 overflow-auto p-2 border border-[color:var(--border)] rounded-md">
+            {% for g in book_widget.all_genres %}
+            <label class="flex items-center gap-1.5 text-sm whitespace-nowrap">
+              <input type="checkbox" name="genres" value="{{ g.id }}" {% if g.id|stringformat:'s' in book_widget.selected_genre_ids %}checked{% endif %}>
+              {{ g.name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if book_widget.all_topics %}
+        <div>
+          <label class="block text-sm font-medium mb-1">Topics</label>
+          <div class="flex flex-wrap gap-x-4 gap-y-1.5 max-h-40 overflow-auto p-2 border border-[color:var(--border)] rounded-md">
+            {% for t in book_widget.all_topics %}
+            <label class="flex items-center gap-1.5 text-sm whitespace-nowrap">
+              <input type="checkbox" name="topics" value="{{ t.id }}" {% if t.id|stringformat:'s' in book_widget.selected_topic_ids %}checked{% endif %}>
+              {{ t.name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">Author</label>

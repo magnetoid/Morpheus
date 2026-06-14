@@ -1,20 +1,25 @@
-{% comment %}Genres mega-menu panel. Params: label (default "Genres"). Reads nav_categories + nav_featured_books from context.{% endcomment %}
-{% if nav_categories %}
+{% comment %}Genres + Topics mega-menu panel. Params: label (default "Genres"). Reads nav_genres, nav_topics, nav_featured_books from context (book_product plugin).{% endcomment %}
+{% if nav_genres %}
 <div class="nav-mega">
-  <a href="/categories/" class="nav-mega__trigger" aria-haspopup="true">{{ label|default:"Genres" }}
+  <a href="/genres/" class="nav-mega__trigger" aria-haspopup="true">{{ label|default:"Genres" }}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="nav-mega__chev"><path d="m6 9 6 6 6-6"/></svg>
   </a>
   <div class="nav-mega__panel">
     <div class="nav-mega__grid">
-      {% for cat in nav_categories %}
-      <div class="nav-mega__col">
-        <a href="/category/{{ cat.slug }}/" class="nav-mega__head">{{ cat.name }}</a>
-        {% for child in cat.children %}
-        <a href="/category/{{ child.slug }}/" class="nav-mega__link">{{ child.name }}</a>
-        {% endfor %}
-      </div>
+      {% for g in nav_genres %}
+      <a href="/genre/{{ g.slug }}/" class="nav-mega__link">{{ g.name }}</a>
       {% endfor %}
     </div>
+    {% if nav_topics %}
+    <div class="nav-mega__books">
+      <div class="nav-mega__books-h">Topics</div>
+      <div class="nav-mega__grid">
+        {% for t in nav_topics %}
+        <a href="/topic/{{ t.slug }}/" class="nav-mega__link">{{ t.name }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
     {% if nav_featured_books %}
     <div class="nav-mega__books">
       <div class="nav-mega__books-h">Featured books</div>
@@ -28,9 +33,9 @@
       </div>
     </div>
     {% endif %}
-    <a href="/categories/" class="nav-mega__all">Browse all genres &rarr;</a>
+    <a href="/genres/" class="nav-mega__all">Browse all genres &rarr;</a>
   </div>
 </div>
 {% else %}
-<a href="/categories/">{{ label|default:"Genres" }}</a>
+<a href="/genres/">{{ label|default:"Genres" }}</a>
 {% endif %}

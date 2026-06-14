@@ -33,22 +33,34 @@ def book_widget_context(product) -> dict[str, Any]:
 
     from plugins.installed.book_product.models import (  # noqa: PLC0415
         BookProduct,
+        Genre,
         PaperType,
         PrintType,
+        Topic,
     )
 
     book = BookProduct.objects.filter(product=product).first()
+    selected_genres = {str(i) for i in book.genres.values_list('id', flat=True)} if book else set()
+    selected_topics = {str(i) for i in book.topics.values_list('id', flat=True)} if book else set()
     return {
         'book': book,
         'print_types': PrintType.choices,
         'paper_types': PaperType.choices,
         'facets': _facets(book, slugify) if book else [],
+        'all_genres': list(Genre.objects.filter(is_active=True)),
+        'all_topics': list(Topic.objects.filter(is_active=True)),
+        'selected_genre_ids': selected_genres,
+        'selected_topic_ids': selected_topics,
     }
 
 
 def _facets(book, slugify) -> list[dict]:
     """The category-style facet pages this book appears on (label, value, url)."""
     out: list[dict] = []
+    for genre in book.genres.all():
+        out.append({'label': 'Genre', 'value': genre.name, 'url': f'/genre/{genre.slug}/'})
+    for topic in book.topics.all():
+        out.append({'label': 'Topic', 'value': topic.name, 'url': f'/topic/{topic.slug}/'})
     if book.author:
         out.append(
             {'label': 'Author', 'value': book.author, 'url': f'/author/{slugify(book.author)}/'}
@@ -116,6 +128,14 @@ def save_book_fields(product, post, files=None) -> None:
         book.cover_pdf = files['cover_pdf']
 
     book.save()
+
+    # Curated taxonomies — only when the book card was submitted, so a plain
+    # product save never clears them. An empty list = the merchant unchecked all.
+    # `getlist` exists on a QueryDict (real request.POST); a plain dict (some
+    # callers/tests) can't carry multi-value fields, so skip M2M for it.
+    if post.get('book_submitted') and hasattr(post, 'getlist'):
+        book.genres.set(post.getlist('genres'))
+        book.topics.set(post.getlist('topics'))
 
 
 def _parse_date(raw: str):

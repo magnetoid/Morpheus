@@ -697,7 +697,7 @@
     {% comment %}Menu-driven (dashboard → CMS → Menus, key "mobile"). Mega kinds collapse to a single link in the drawer. Falls back to the built-in drawer when no mobile menu is configured.{% endcomment %}
     {% if mobile_menu and mobile_menu.items %}
       {% for item in mobile_menu.items %}
-        {% if item.kind == 'mega_categories' %}<a href="{{ item.url|default:'/categories/' }}">{{ item.label|default:"Genres" }}</a>
+        {% if item.kind == 'mega_categories' %}<a href="{{ item.url|default:'/genres/' }}">{{ item.label|default:"Genres" }}</a>
         {% elif item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:"Authors" }}</a>
         {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
       {% endfor %}
@@ -705,10 +705,10 @@
     {% else %}
       <a href="/products/">All books</a>
       <a href="/products/?featured=true">New &amp; notable</a>
-      {% for cat in nav_categories %}
-      <a href="/category/{{ cat.slug }}/">{{ cat.name }}</a>
+      {% for g in nav_genres %}
+      <a href="/genre/{{ g.slug }}/">{{ g.name }}</a>
       {% empty %}
-      <a href="/categories/">Genres</a>
+      <a href="/genres/">Genres</a>
       {% endfor %}
       <a href="/staff-picks/">Staff picks</a>
       <a href="/journal/">Journal</a>
