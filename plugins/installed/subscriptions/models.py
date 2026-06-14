@@ -37,6 +37,11 @@ class Plan(models.Model):
     interval = models.CharField(max_length=10, choices=INTERVAL_CHOICES, default='month')
     interval_count = models.PositiveSmallIntegerField(default=1)
     trial_days = models.PositiveSmallIntegerField(default=0)
+    # Membership perk: percent off the cart for an active subscriber on this
+    # plan (applied at checkout via CART_CALCULATE_BREAKDOWN). 0 = no discount.
+    member_discount_percent = models.PositiveSmallIntegerField(
+        default=0, help_text='Percent off the cart for active subscribers on this plan (0–100).'
+    )
     provider = models.CharField(max_length=10, choices=PROVIDER_CHOICES, default='manual')
     provider_price_id = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)

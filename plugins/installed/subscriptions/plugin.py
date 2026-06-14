@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin
+from morpheus import DashboardPage, Plugin, StorefrontBlock, events
 
 
 class SubscriptionsPlugin(Plugin):
@@ -22,6 +22,29 @@ class SubscriptionsPlugin(Plugin):
             prefix='dashboard/subscriptions/',
             namespace='subscriptions',
         )
+        # Storefront membership page (plans + subscribe) + the member discount.
+        self.register_urls(
+            'plugins.installed.subscriptions.urls_storefront',
+            prefix='',
+            namespace='subscriptions_storefront',
+        )
+        # Apply the member discount at checkout (live CART_CALCULATE_BREAKDOWN
+        # filter — the per-product price hook is dead). Priority 40 = before
+        # tax/shipping handlers that read the discounted total.
+        from plugins.installed.subscriptions.membership import apply_member_discount
+
+        self.register_hook(events.CART_CALCULATE_BREAKDOWN, apply_member_discount, priority=40)
+
+    def contribute_storefront_blocks(self) -> list:
+        # "Membership" link in the footer's "pages" column (footer_extra slot).
+        # Contributed, so it vanishes when the plugin is disabled.
+        return [
+            StorefrontBlock(
+                slot='footer_extra',
+                template='subscriptions/blocks/footer_link.html',
+                priority=50,
+            ),
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         return [
