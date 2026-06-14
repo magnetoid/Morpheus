@@ -1,18 +1,65 @@
-{% load i18n %}<aside class="morpheus-immersive__buybox" data-sticky="{{ settings.sticky_buybox|yesno:'1,0' }}" data-product="{{ product.slug }}">
-  <form class="morpheus-immersive__buybox-form" data-product="{{ product.slug }}">
-    <label>
-      <span>{% trans 'Variant' %}</span>
-      <select name="variant_id" required>
+{% load i18n %}{% load morph %}
+{% if variants %}
+<aside class="immersive-buybox" data-product="{{ product.slug }}">
+  <form class="immersive-buybox__form" data-product="{{ product.slug }}">
+    <input type="hidden" name="product_id" value="{{ product.id }}">
+    <div class="immersive-buybox__info">
+      <span class="immersive-buybox__title">{{ product.name|truncatechars:48 }}</span>
+      {% if product.price %}<span class="immersive-buybox__price">{{ product.price|money }}</span>{% endif %}
+    </div>
+
+    {% if variants|length > 1 %}
+    <label class="immersive-buybox__field">
+      <span class="immersive-buybox__label">{% trans 'Edition' %}</span>
+      <select name="variant_id" required class="immersive-buybox__select">
         {% for v in variants %}<option value="{{ v.id }}">{{ v.name }}</option>{% endfor %}
       </select>
     </label>
-    <label>
-      <span>{% trans 'Quantity' %}</span>
-      <input type="number" name="quantity" min="1" max="99" value="1" />
+    {% else %}
+    {% with variants|first as v %}<input type="hidden" name="variant_id" value="{{ v.id }}">{% endwith %}
+    {% endif %}
+
+    <label class="immersive-buybox__field immersive-buybox__field--qty">
+      <span class="immersive-buybox__label">{% trans 'Qty' %}</span>
+      <input type="number" name="quantity" min="1" max="99" value="1" class="immersive-buybox__qty" />
     </label>
-    <button type="submit" class="morpheus-immersive__buybox-cta">
-      {% trans 'Add to bag' %}
-    </button>
-    <output class="morpheus-immersive__buybox-feedback" aria-live="polite"></output>
+
+    <button type="submit" class="immersive-buybox__cta">{% trans 'Add to bag' %}</button>
+    <output class="immersive-buybox__feedback" aria-live="polite"></output>
   </form>
 </aside>
+<style>
+  .immersive-buybox {
+    position: sticky; bottom: 0; z-index: 40; margin: 2rem 0 0;
+    background: var(--paper, #f6f1e7); border-top: 1px solid var(--rule, #d9d2bf);
+    box-shadow: 0 -8px 24px rgba(0,0,0,.06);
+  }
+  .immersive-buybox__form {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    max-width: 70rem; margin: 0 auto; padding: .85rem clamp(1rem, 4vw, 2rem);
+  }
+  .immersive-buybox__info { display: flex; flex-direction: column; flex: 1 1 12rem; min-width: 0; }
+  .immersive-buybox__title { font-family: var(--sans, system-ui); font-weight: 600; color: var(--ink, #0e0e0e); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .immersive-buybox__price { font-family: var(--serif, Georgia); font-size: 1.15rem; color: var(--ink, #0e0e0e); }
+  .immersive-buybox__field { display: flex; flex-direction: column; gap: .15rem; }
+  .immersive-buybox__field--qty { width: 4.5rem; }
+  .immersive-buybox__label { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted, #62625c); font-weight: 600; }
+  .immersive-buybox__select, .immersive-buybox__qty {
+    border: 1px solid var(--rule, #d9d2bf); border-radius: 8px; padding: .5rem .6rem;
+    font-family: var(--sans, system-ui); background: #fff; color: var(--ink, #0e0e0e);
+  }
+  .immersive-buybox__cta {
+    background: var(--ink, #0e0e0e); color: var(--paper, #f6f1e7); border: 0;
+    border-radius: 999px; padding: .7rem 1.5rem; font-weight: 600; cursor: pointer;
+    font-family: var(--sans, system-ui); transition: background .15s ease;
+  }
+  .immersive-buybox__cta:hover { background: var(--accent-ink, #b62b37); }
+  .immersive-buybox__cta:disabled { opacity: .6; cursor: default; }
+  .immersive-buybox__feedback { flex-basis: 100%; font-size: .85rem; color: var(--muted, #62625c); text-align: right; min-height: 1em; }
+  @media (max-width: 560px) {
+    .immersive-buybox__form { gap: .6rem; padding: .7rem 1rem; }
+    .immersive-buybox__info { flex-basis: 100%; flex-direction: row; align-items: baseline; justify-content: space-between; }
+    .immersive-buybox__cta { flex: 1; }
+  }
+</style>
+{% endif %}

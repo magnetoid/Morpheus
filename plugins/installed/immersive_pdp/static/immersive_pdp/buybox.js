@@ -1,6 +1,6 @@
 /* Morpheus immersive PDP — sticky-buybox runtime.
- * Posts to the existing /graphql/ `mutateAddToCart` mutation.
- * Respects prefers-reduced-motion client-side (skips the loading shimmer). */
+ * Posts to the GraphQL `addToCart` mutation (AddToCartInput needs productId +
+ * quantity, variantId optional). */
 (function () {
   'use strict';
   function getCsrf() {
@@ -11,10 +11,11 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var data = new FormData(form);
-      var variantId = data.get('variant_id');
+      var productId = data.get('product_id');
+      var variantId = data.get('variant_id') || null;
       var qty = parseInt(data.get('quantity') || '1', 10);
-      var feedback = form.querySelector('.morpheus-immersive__buybox-feedback');
-      if (!variantId) { if (feedback) feedback.textContent = 'Pick a variant first.'; return; }
+      var feedback = form.querySelector('.immersive-buybox__feedback');
+      if (!productId) { if (feedback) feedback.textContent = 'Could not identify the product.'; return; }
       var btn = form.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
       if (feedback) feedback.textContent = 'Adding…';
@@ -28,7 +29,7 @@
         },
         body: JSON.stringify({
           query: 'mutation($input:AddToCartInput!){addToCart(input:$input){cart{id itemCount} errors{code message}}}',
-          variables: { input: { variantId: variantId, quantity: qty } }
+          variables: { input: { productId: productId, variantId: variantId, quantity: qty } }
         })
       })
         .then(function (r) { return r.json(); })
@@ -43,7 +44,9 @@
             if (feedback) feedback.textContent = out.errors.map(function (er) { return er.message; }).join(' ');
             return;
           }
-          if (feedback) feedback.textContent = 'Added — count ' + (out.cart && out.cart.itemCount);
+          var n = out.cart && out.cart.itemCount;
+          if (feedback) feedback.textContent = 'Added to bag' + (n ? ' (' + n + ')' : '') + '.';
+          document.dispatchEvent(new CustomEvent('morpheus:cart-updated', { detail: { itemCount: n } }));
         })
         .catch(function () {
           if (btn) btn.disabled = false;
@@ -52,6 +55,6 @@
     });
   }
   document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.morpheus-immersive__buybox-form').forEach(onSubmit);
+    document.querySelectorAll('.immersive-buybox__form').forEach(onSubmit);
   });
 })();
