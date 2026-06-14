@@ -1,0 +1,79 @@
+{% load newsletter_tags %}
+{% active_signup_popup as popup %}
+{% if popup %}
+<div id="nl-popup" data-popup-id="{{ popup.id }}" data-trigger="{{ popup.trigger }}"
+     data-value="{{ popup.trigger_value }}" data-frequency="{{ popup.frequency }}" hidden
+     style="position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);">
+  <div role="dialog" aria-label="Newsletter signup"
+       style="background:#fff;color:#222;max-width:26rem;width:90%;border-radius:14px;padding:1.75rem;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <button type="button" data-nl-close aria-label="Close"
+            style="position:absolute;top:.6rem;right:.75rem;border:0;background:none;font-size:1.4rem;line-height:1;cursor:pointer;color:#999;">&times;</button>
+    <h2 style="margin:0 0 .5rem;font-size:1.4rem;">{{ popup.headline }}</h2>
+    {% if popup.body %}<p style="margin:0 0 1rem;color:#555;">{{ popup.body }}</p>{% endif %}
+    {% if popup.incentive %}<p style="margin:0 0 1rem;font-weight:600;">{{ popup.incentive }}</p>{% endif %}
+    <form data-nl-form style="display:flex;gap:.5rem;flex-wrap:wrap;">
+      <input type="email" name="email" required placeholder="you@example.com"
+             style="flex:1;min-width:12rem;padding:.6rem .75rem;border:1px solid #ccc;border-radius:8px;">
+      <button type="submit"
+              style="padding:.6rem 1.1rem;border:0;border-radius:8px;background:#111;color:#fff;cursor:pointer;">{{ popup.button_label }}</button>
+    </form>
+    <p data-nl-msg style="margin:.75rem 0 0;min-height:1.2rem;font-size:.9rem;"></p>
+  </div>
+</div>
+<script>
+(() => {
+  const el = document.getElementById('nl-popup');
+  if (!el) return;
+  const id = el.dataset.popupId, freq = el.dataset.frequency;
+  const key = 'nl-popup:' + id;
+  // Frequency cap.
+  const seen = (() => { try { return localStorage.getItem(key); } catch { return null; } })();
+  if (freq === 'once' && seen) return;
+  if (freq === 'daily' && seen && (Date.now() - Number(seen)) < 86400000) return;
+
+  let shown = false;
+  function show() {
+    if (shown) return; shown = true;
+    el.hidden = false;
+    try { localStorage.setItem(key, String(Date.now())); } catch {}
+  }
+  function close() { el.hidden = true; }
+
+  const trigger = el.dataset.trigger, val = Number(el.dataset.value) || 0;
+  if (trigger === 'immediate') show();
+  else if (trigger === 'time_delay') setTimeout(show, Math.max(0, val) * 1000);
+  else if (trigger === 'exit_intent') {
+    document.addEventListener('mouseout', (e) => { if (e.clientY <= 0) show(); });
+  } else if (trigger === 'scroll_depth') {
+    window.addEventListener('scroll', () => {
+      const pct = (window.scrollY + window.innerHeight) / document.body.scrollHeight * 100;
+      if (pct >= val) show();
+    }, { passive: true });
+  }
+
+  el.addEventListener('click', (e) => { if (e.target === el || e.target.hasAttribute('data-nl-close')) close(); });
+
+  el.querySelector('[data-nl-form]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = el.querySelector('[data-nl-msg]');
+    const email = e.target.email.value.trim();
+    msg.textContent = 'Subscribing…'; msg.style.color = '#555';
+    try {
+      const res = await fetch('/newsletter/subscribe/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ email, source: 'popup' }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        msg.style.color = '#2a7'; msg.textContent = '{{ popup.success_message|escapejs }}' || 'Thanks — check your inbox!';
+        e.target.reset();
+        setTimeout(close, 2500);
+      } else {
+        msg.style.color = '#c33'; msg.textContent = data.error || 'Something went wrong.';
+      }
+    } catch { msg.style.color = '#c33'; msg.textContent = 'Network error — try again.'; }
+  });
+})();
+</script>
+{% endif %}

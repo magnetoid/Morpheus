@@ -1,0 +1,55 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Edit popup · Newsletter · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <h1 class="text-xl font-semibold tracking-tight">Edit popup</h1>
+
+  <form method="post" class="card card-padded space-y-4">
+    {% csrf_token %}
+    <label class="inline-flex items-center gap-2 text-sm font-medium">
+      <input type="checkbox" name="enabled" {% if popup.enabled %}checked{% endif %}> Live (show on storefront)
+    </label>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Name</label><input class="input" name="name" value="{{ popup.name }}"></div>
+      <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Button label</label><input class="input" name="button_label" value="{{ popup.button_label }}"></div>
+    </div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Headline</label><input class="input" name="headline" value="{{ popup.headline }}"></div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Body</label><textarea class="input" name="body" rows="2">{{ popup.body }}</textarea></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Incentive (optional)</label><input class="input" name="incentive" value="{{ popup.incentive }}" placeholder="10% off your first order"></div>
+      <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Coupon code (optional)</label><input class="input" name="coupon_code" value="{{ popup.coupon_code }}"></div>
+    </div>
+    <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Success message</label><input class="input" name="success_message" value="{{ popup.success_message }}"></div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Trigger</label>
+        <select class="input" name="trigger">
+          {% for v, lbl in TRIGGERS %}<option value="{{ v }}" {% if popup.trigger == v %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Value (s or %)</label><input class="input" type="number" name="trigger_value" value="{{ popup.trigger_value }}" min="0"></div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Frequency</label>
+        <select class="input" name="frequency">
+          {% for v, lbl in FREQUENCIES %}<option value="{{ v }}" {% if popup.frequency == v %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Audience</label>
+        <select class="input" name="audience">
+          {% for v, lbl in AUDIENCES %}<option value="{{ v }}" {% if popup.audience == v %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <a class="btn" href="/dashboard/newsletter/popups/">Cancel</a>
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

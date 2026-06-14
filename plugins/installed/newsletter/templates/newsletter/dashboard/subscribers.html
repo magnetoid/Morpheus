@@ -1,0 +1,51 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Newsletter · Marketing · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div class="flex items-end justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Newsletter</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Your double-opt-in subscriber list. Only <strong>confirmed</strong> subscribers are mailable.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a class="btn" href="/dashboard/newsletter/popups/"><i data-lucide="message-square" class="h-4 w-4"></i> Signup popups</a>
+      <a class="btn" href="?export=csv{% if status %}&status={{ status }}{% endif %}"><i data-lucide="download" class="h-4 w-4"></i> Export CSV</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded"><p class="meta">Total</p><p class="display display-l">{{ total }}</p></div>
+    <div class="card card-padded"><p class="meta">Confirmed</p><p class="display display-l">{{ counts.confirmed|default:0 }}</p></div>
+    <div class="card card-padded"><p class="meta">Pending</p><p class="display display-l">{{ counts.pending|default:0 }}</p></div>
+    <div class="card card-padded"><p class="meta">Unsubscribed</p><p class="display display-l">{{ counts.unsubscribed|default:0 }}</p></div>
+  </div>
+
+  <div class="flex items-center gap-2 text-sm">
+    <span class="text-[color:var(--text-muted)]">Filter:</span>
+    <a class="pill {% if not status %}pill-info{% else %}pill-neutral{% endif %}" href="?">All</a>
+    <a class="pill {% if status == 'confirmed' %}pill-info{% else %}pill-neutral{% endif %}" href="?status=confirmed">Confirmed</a>
+    <a class="pill {% if status == 'pending' %}pill-info{% else %}pill-neutral{% endif %}" href="?status=pending">Pending</a>
+    <a class="pill {% if status == 'unsubscribed' %}pill-info{% else %}pill-neutral{% endif %}" href="?status=unsubscribed">Unsubscribed</a>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>Email</th><th>Status</th><th>Source</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for s in subscribers %}
+        <tr>
+          <td class="font-medium">{{ s.email }}</td>
+          <td><span class="pill {% if s.status == 'confirmed' %}pill-success{% elif s.status == 'pending' %}pill-neutral{% else %}pill-danger{% endif %}">{{ s.status }}</span></td>
+          <td class="text-[color:var(--text-muted)]">{{ s.source }}</td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ s.created_at|date:"M j, Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No subscribers yet. Turn on a signup popup to start collecting.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

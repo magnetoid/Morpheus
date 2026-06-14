@@ -5,12 +5,19 @@ from __future__ import annotations
 
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 
+@csrf_exempt
 @require_http_methods(['POST'])
 def subscribe_view(request):
-    """Capture an email from a popup/form. Returns JSON for the popup JS."""
+    """Capture an email from a popup/form. Returns JSON for the popup JS.
+
+    CSRF-exempt: a public, unauthenticated capture (like the analytics beacon)
+    — it only creates a PENDING row, and nothing is mailable until the
+    double-opt-in link is clicked, so there's no state-changing risk to forge.
+    """
     from plugins.installed.newsletter.services import subscribe
 
     email = (request.POST.get('email') or '').strip()

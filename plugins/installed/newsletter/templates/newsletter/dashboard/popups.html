@@ -1,0 +1,54 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Signup popups · Newsletter · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div class="flex items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Signup popups</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Email-capture popups with exit-intent / timed / scroll triggers. Only one enabled popup shows at a time (most recently edited).</p>
+    </div>
+    <a class="text-sm text-[color:var(--text-muted)] hover:underline" href="/dashboard/newsletter/">&larr; Subscribers</a>
+  </div>
+
+  <form method="post" class="card card-padded flex items-end gap-2 flex-wrap">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div class="flex-1 min-w-0">
+      <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">New popup name</label>
+      <input type="text" name="name" required class="input mt-1" placeholder="e.g. Welcome 10% off">
+    </div>
+    <button class="btn btn-primary" type="submit"><i data-lucide="plus" class="h-4 w-4"></i> Create</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>Name</th><th>Status</th><th>Trigger</th><th>Conv. / Impr.</th><th></th></tr></thead>
+      <tbody>
+        {% for p in popups %}
+        <tr>
+          <td><a class="font-medium hover:underline" href="/dashboard/newsletter/popups/{{ p.id }}/">{{ p.name }}</a></td>
+          <td>{% if p.enabled %}<span class="pill pill-success">Live</span>{% else %}<span class="pill pill-neutral">Off</span>{% endif %}</td>
+          <td class="text-[color:var(--text-muted)]">{{ p.get_trigger_display }}{% if p.trigger == 'time_delay' %} ({{ p.trigger_value }}s){% elif p.trigger == 'scroll_depth' %} ({{ p.trigger_value }}%){% endif %}</td>
+          <td class="text-[color:var(--text-muted)]">{{ p.conversions }} / {{ p.impressions }}</td>
+          <td class="text-right whitespace-nowrap">
+            <form method="post" style="display:inline;">{% csrf_token %}
+              <input type="hidden" name="action" value="toggle"><input type="hidden" name="popup_id" value="{{ p.id }}">
+              <button class="btn text-xs" type="submit">{% if p.enabled %}Turn off{% else %}Turn on{% endif %}</button>
+            </form>
+            <a class="btn text-xs" href="/dashboard/newsletter/popups/{{ p.id }}/">Edit</a>
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this popup?');">{% csrf_token %}
+              <input type="hidden" name="action" value="delete"><input type="hidden" name="popup_id" value="{{ p.id }}">
+              <button class="btn text-xs" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No popups yet — create one above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
