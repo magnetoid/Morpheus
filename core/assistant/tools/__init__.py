@@ -13,6 +13,7 @@ kernel so the runtime treats them uniformly.
 
 from __future__ import annotations
 
+from core.assistant.tools.capabilities import capabilities_tool, plugins_describe_tool
 from core.assistant.tools.database import (
     count_rows_tool,
     list_models_tool,
@@ -152,6 +153,11 @@ def get_default_tools() -> list:
         cms_unpublish_page_tool,
         metafields_set_tool,
         metafields_delete_tool,
+        # Self-awareness — enumerate the full toolset so Linda discovers her
+        # own reach instead of replying "I can't"; introspect any installed
+        # plugin (manifest + models + commands + code path) to learn it.
+        capabilities_tool,
+        plugins_describe_tool,
         # Navigation — surface dashboard deep-links as click-through chips.
         dashboard_navigate_tool,
         # Platform health — circuit breakers, dependency state, "is X down".

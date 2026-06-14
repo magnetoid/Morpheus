@@ -202,6 +202,8 @@ The contribution surfaces an app may use:
 | **Dashboard page** | `contribute_dashboard_pages()` | merchant sidebar (main or settings nav) | ✅ |
 | **Settings panel** | `contribute_settings_panel()` | `/dashboard/settings/<category>/` form | ✅ |
 | **Email template** | `contribute_email_templates()` | central list at Settings → Email templates | ✅ |
+| **Agent command** | `contribute_agent_tools()` | Linda's tool catalogue (the agent runtime + MCP) | ✅ |
+| **Agent skill** | `contribute_skills()` | a named tool bundle Linda opts into | ✅ |
 | **Hook subscriber** | `register_hook(event, handler)` in `ready()` | the `core.hooks` event bus | ✅ (handler isn't re-registered) |
 
 Beyond `ready()`-time imperative registration, plugins **declaratively
@@ -351,6 +353,67 @@ enabled, so disabling the plugin removes its emails from the central list
 (its `templates/emails/` defaults go with the plugin directory). Don't send
 plugin email with a hand-rolled `EmailMultiAlternatives` — that bypasses the
 central editor and the override pipeline.
+
+### 5.3 Giving Linda commands (`contribute_agent_tools`)
+
+**This is how a plugin teaches Linda — the built-in assistant — to operate its
+domain.** When a plugin is enabled it contributes `Tool`s; the registry adds
+them to Linda's catalogue (and the MCP surface); when the plugin is disabled
+the registry drops them. So Linda's power is **plugin-driven and disable-safe** —
+install a plugin and she gains its commands, remove it and they vanish. A tool
+is a plain function + metadata (name, description, JSON-Schema args, **scopes**);
+the runtime enforces scopes before every call, so a command is only as
+privileged as the scopes it declares.
+
+```python
+from morpheus import Plugin
+from core.agents import tool
+from core.agents.tools import ToolResult
+
+@tool(
+    name='loyalty.adjust_points',                 # namespaced: <domain>.<verb>
+    description='Add or remove loyalty points for a customer. Use a negative '
+                'amount to deduct. Confirm with the user before deducting.',
+    scopes=['crm.write'],                          # enforced by the runtime
+    schema={
+        'type': 'object',
+        'properties': {
+            'email': {'type': 'string'},
+            'points': {'type': 'integer'},
+            'reason': {'type': 'string'},
+        },
+        'required': ['email', 'points'],
+    },
+)
+def adjust_points(*, email: str, points: int, reason: str = '') -> ToolResult:
+    ...  # do the work; return a dict or ToolResult
+    return ToolResult(output={'ok': True, 'new_balance': 1234})
+
+class LoyaltyPlugin(Plugin):
+    name = 'loyalty_points'
+    def contribute_agent_tools(self) -> list:
+        return [adjust_points]
+```
+
+Conventions:
+- **Name** `<domain>.<verb>` (`orders.refund`, `seo.set_meta`). The domain
+  prefix is what `platform.capabilities` groups by.
+- **Description** is the prompt the model reads to decide when to call it —
+  write it for the model, and say when to *confirm with the user* for writes.
+- **Scopes** gate it (see [§5.1](#51-modularity-contract-sdk-base) /
+  `agent_mcp/scopes.py`). Read tools can use `scopes=[]` (public).
+- For a related set of tools + a prompt prelude, bundle them with
+  `contribute_skills()` so Linda opts into them as a unit.
+
+**Linda also learns plugins she has *no* tools for.** She ships with
+introspection tools — `plugins.describe(name)` (manifest + models + commands +
+code path), `platform.capabilities` (her whole grouped toolset), the `db.*`
+schema/row tools, and the `fs.*` file/doc readers. So even a plugin that
+contributes nothing is operable: Linda reads its models with `db.*` and its
+code/docs with `fs.*`. **But prefer `contribute_agent_tools`** — a declared,
+scoped command is safer and more reliable than Linda reverse-engineering your
+plugin from its schema. Expose the actions you want her to take; let
+introspection be the fallback.
 
 ### Enable / disable lifecycle
 
