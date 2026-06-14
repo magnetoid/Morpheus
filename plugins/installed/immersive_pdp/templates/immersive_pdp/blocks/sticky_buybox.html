@@ -1,5 +1,6 @@
-{% load i18n %}{% load morph %}
-{% if variants %}
+{% load i18n %}{% load morph %}{% load immersive_pdp %}
+{% sticky_buybox_enabled as buybox_on %}
+{% if variants and buybox_on %}
 <aside class="immersive-buybox" data-product="{{ product.slug }}">
   <form class="immersive-buybox__form" data-product="{{ product.slug }}">
     <input type="hidden" name="product_id" value="{{ product.id }}">

@@ -1,21 +1,19 @@
-"""Immersive PDP — the page every other vibe-coding surface lands on.
+"""Immersive PDP — a sticky, on-page add-to-cart for the product page.
 
-Pieces contributed (via `StorefrontBlock(slot=…)`):
+Contributes (via `StorefrontBlock(slot=…)`):
 
-  * `pdp_above_price`    — video hero (YouTube/Vimeo/RAW MP4) with a
-    `prefers-reduced-motion` aware poster fallback.
-  * `pdp_below_gallery`  — 3D/AR preview slot (consumed by the
-    `media_3d` plugin if enabled; otherwise a graceful "tap to enlarge"
-    fallback).
-  * `pdp_above_long_description` — scroll-snap story blocks (the
-    "tap-to-see-why" pattern from Allbirds/Gymshark), each a small
-    CMS block the merchant authors from the journal.
-  * `pdp_below_form`     — sticky "buy box" with on-page variant picker
-    and a one-tap add-to-cart that posts to the existing
-    `mutateAddToCart` GraphQL.
+  * `pdp_below_form`      — a sticky "buy box" that follows the shopper: product
+    title + price, an edition selector (only when a book has 2+ editions), a
+    quantity field, and a one-tap add-to-cart posting to the GraphQL
+    `addToCart` mutation.
+  * `global_below_body`   — the small JS runtime that wires the buy box up.
 
-No models — pure delivery + UX. Disable it and the existing PDP
-template reverts to its baseline render.
+No models — pure delivery + UX; the `sticky_buybox` setting toggles it.
+
+History: this plugin used to also ship a video hero and "story blocks", but
+both were written against data the storefront never provided and targeted theme
+slots that aren't rendered, so they never appeared. Story blocks now live in the
+real `product_stories` plugin; the dead video hero / story_rail were retired.
 """
 
 from __future__ import annotations
@@ -26,28 +24,16 @@ from morpheus import Plugin, SettingsPanel, StorefrontBlock
 class ImmersivePdpPlugin(Plugin):
     name = 'immersive_pdp'
     label = 'Immersive PDP'
-    version = '1.0.0'
+    version = '1.1.0'
     description = (
-        'Video hero, 3D/AR preview slot, scroll-snap story blocks, sticky '
-        'buy box. Consumes the same catalog + cart + reviews data the '
-        'storefront already renders — wraps it in a vibe-coded layout.'
+        'A sticky, theme-styled add-to-cart bar for the product page — '
+        'edition picker (only when needed), quantity, one-tap add to bag.'
     )
     has_models = False
-    requires = ['catalog', 'orders', 'product_videos']
+    requires = ['catalog', 'orders']
 
     def contribute_storefront_blocks(self) -> list:
         return [
-            StorefrontBlock(
-                slot='pdp_above_price',
-                template='immersive_pdp/blocks/video_hero.html',
-                priority=5,
-                context_keys=['product'],
-            ),
-            # Story blocks moved to the dedicated `product_stories` plugin — a
-            # real content model + editor on the theme-honoured
-            # `pdp_above_long_description` slot. The old data-less story_rail
-            # targeted `pdp_below_gallery`, a slot the dot_books theme never
-            # renders, so it never appeared. Retired.
             StorefrontBlock(
                 slot='pdp_below_form',
                 template='immersive_pdp/blocks/sticky_buybox.html',
@@ -64,7 +50,7 @@ class ImmersivePdpPlugin(Plugin):
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='Immersive PDP',
-            description='Layout density, motion preferences, story-block count.',
+            description='The sticky product-page buy box.',
             category='general',
             schema=self.get_config_schema(),
         )
@@ -73,22 +59,10 @@ class ImmersivePdpPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'story_block_count': {
-                    'type': 'integer',
-                    'minimum': 1,
-                    'maximum': 8,
-                    'default': 3,
-                    'title': 'Scroll-snap story blocks per product',
-                },
                 'sticky_buybox': {
                     'type': 'boolean',
                     'default': True,
                     'title': 'Sticky buy box (mobile + desktop)',
-                },
-                'reduced_motion_default': {
-                    'type': 'boolean',
-                    'default': False,
-                    'title': 'Default to reduced motion (server-side hint; client prefers-reduced-motion always wins)',
                 },
             },
         }

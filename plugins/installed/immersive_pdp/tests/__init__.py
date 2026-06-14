@@ -10,8 +10,15 @@ def test_plugin_metadata():
     assert 'catalog' in ImmersivePdpPlugin.requires
 
 
-def test_block_count_default():
+def test_sticky_buybox_default_on():
     from plugins.installed.immersive_pdp.plugin import ImmersivePdpPlugin
 
     schema = ImmersivePdpPlugin().get_config_schema()
-    assert schema['properties']['story_block_count']['default'] == 3
+    assert schema['properties']['sticky_buybox']['default'] is True
+
+
+def test_only_pdp_buybox_blocks_contributed():
+    from plugins.installed.immersive_pdp.plugin import ImmersivePdpPlugin
+
+    slots = {b.slot for b in ImmersivePdpPlugin().contribute_storefront_blocks()}
+    assert slots == {'pdp_below_form', 'global_below_body'}
