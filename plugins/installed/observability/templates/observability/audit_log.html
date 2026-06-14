@@ -1,0 +1,55 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Audit log · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Audit log</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Everything the platform recorded — AI decisions, self-dev applies, role changes, and more. Filter to review what AI did and who did what.</p>
+  </div>
+
+  <form method="get" class="card card-padded flex items-end gap-2 flex-wrap">
+    <div class="flex items-center gap-2 text-sm">
+      <a class="pill {% if category == 'all' %}pill-info{% else %}pill-neutral{% endif %}" href="?category=all">All</a>
+      <a class="pill {% if category == 'ai' %}pill-info{% else %}pill-neutral{% endif %}" href="?category=ai">AI actions</a>
+      <a class="pill {% if category == 'security' %}pill-info{% else %}pill-neutral{% endif %}" href="?category=security">Security</a>
+    </div>
+    <input type="hidden" name="category" value="{{ category }}">
+    <div class="flex-1 min-w-0">
+      <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Search event / target</label>
+      <input type="text" name="q" value="{{ q }}" class="input mt-1" placeholder="e.g. selfdev, order/1234">
+    </div>
+    <div>
+      <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Severity</label>
+      <select name="severity" class="input mt-1">
+        <option value="">Any</option>
+        <option value="info" {% if severity == 'info' %}selected{% endif %}>info</option>
+        <option value="warning" {% if severity == 'warning' %}selected{% endif %}>warning</option>
+        <option value="error" {% if severity == 'error' %}selected{% endif %}>error</option>
+        <option value="critical" {% if severity == 'critical' %}selected{% endif %}>critical</option>
+      </select>
+    </div>
+    <button class="btn" type="submit">Filter</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>When</th><th>Event</th><th>Actor</th><th>Target</th><th>Severity</th></tr></thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ e.created_at|date:"M j, H:i:s" }}</td>
+          <td><code>{{ e.event_type }}</code></td>
+          <td class="text-[color:var(--text-muted)]">{% if e.actor_label %}{{ e.actor_label }}{% elif e.actor %}{{ e.actor.email }}{% else %}system{% endif %}</td>
+          <td class="text-[color:var(--text-muted)]">{{ e.target|default:"—" }}</td>
+          <td><span class="pill {% if e.severity == 'critical' or e.severity == 'error' %}pill-danger{% elif e.severity == 'warning' %}pill-neutral{% else %}pill-success{% endif %}">{{ e.severity }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No audit events match.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

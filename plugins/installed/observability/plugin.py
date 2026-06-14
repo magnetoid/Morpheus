@@ -4,21 +4,39 @@ from __future__ import annotations
 
 from celery.schedules import crontab
 
-from morpheus import Plugin
+from morpheus import DashboardPage, Plugin
 
 
 class ObservabilityPlugin(Plugin):
     name = 'observability'
     label = 'Observability'
-    version = '0.1.0'
-    description = 'Per-merchant metrics rollups + error log dashboard.'
+    version = '0.2.0'
+    description = 'Per-merchant metrics rollups, error log, and the audit-log surface.'
     has_models = True
 
     def ready(self) -> None:
         self.register_graphql_extension(
             'plugins.installed.observability.graphql.queries',
         )
+        self.register_urls(
+            'plugins.installed.observability.urls',
+            prefix='dashboard/observability/',
+            namespace='observability',
+        )
         self._register_beat_schedule()
+
+    def contribute_dashboard_pages(self) -> list:
+        return [
+            DashboardPage(
+                label='Audit log',
+                slug='audit',
+                view='plugins.installed.observability.views.audit_log_view',
+                icon='scroll-text',
+                section='developer',
+                order=80,
+                url='/dashboard/observability/audit/',
+            ),
+        ]
 
     def _register_beat_schedule(self) -> None:
         from django.conf import settings
