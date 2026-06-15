@@ -47,3 +47,24 @@ class DashboardBoundaryTests(TestCase):
     def test_feed_url_reverses(self):
         # The public feed endpoint is named and mounted at site root.
         self.assertEqual(reverse('google_shopping:feed'), '/feeds/google-merchant.xml')
+
+    def test_oauth_views_are_staff_gated(self):
+        for path in (
+            '/dashboard/apps/google_shopping/connect/',
+            '/dashboard/apps/google_shopping/oauth-callback/',
+        ):
+            self.assertEqual(Client().get(path).status_code, 302, path)
+
+    def test_connect_without_client_redirects_to_settings(self):
+        # No OAuth client configured → connect bounces to the settings panel.
+        r = self._staff().get('/dashboard/apps/google_shopping/connect/')
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/dashboard/settings/channels/', r['Location'])
+
+    def test_oauth_callback_rejects_missing_state(self):
+        # No session state (login-CSRF attempt) → refused, never exchanges.
+        r = self._staff().get(
+            '/dashboard/apps/google_shopping/oauth-callback/?code=abc&state=forged'
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('error=state', r['Location'])

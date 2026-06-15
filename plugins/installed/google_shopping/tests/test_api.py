@@ -85,6 +85,49 @@ class OAuthTests(_Isolation, TestCase):
             self.assertEqual(post.call_count, 1)
 
 
+class OAuthConnectFlowTests(_Isolation, TestCase):
+    def test_no_authorize_url_without_client(self):
+        self.assertIsNone(google_auth.authorize_url('https://x/cb/'))
+
+    def test_authorize_url_has_offline_consent_and_scopes(self):
+        p = _gs_plugin()
+        p.set_config('oauth_client_id', 'cid')
+        p.set_config('oauth_client_secret', 'sec')
+        p.invalidate_config_cache()
+        url = google_auth.authorize_url('https://x/cb/')
+        self.assertIn('access_type=offline', url)
+        self.assertIn('prompt=consent', url)
+        self.assertIn('auth%2Fcontent', url)  # content scope
+        self.assertIn('auth%2Fadwords', url)  # ads scope
+
+    def test_exchange_code_persists_refresh_token(self):
+        p = _gs_plugin()
+        p.set_config('oauth_client_id', 'cid')
+        p.set_config('oauth_client_secret', 'sec')
+        p.invalidate_config_cache()
+        resp = MagicMock()
+        resp.json.return_value = {'refresh_token': 'R3FRESH', 'access_token': 'A'}
+        resp.raise_for_status.return_value = None
+        with patch('requests.post', return_value=resp):
+            res = google_auth.exchange_code('authcode', 'https://x/cb/')
+        self.assertTrue(res['ok'])
+        # Now fully connected — the refresh token was stored.
+        self.assertTrue(google_auth.is_connected())
+
+    def test_exchange_code_without_refresh_token_fails(self):
+        p = _gs_plugin()
+        p.set_config('oauth_client_id', 'cid')
+        p.set_config('oauth_client_secret', 'sec')
+        p.invalidate_config_cache()
+        resp = MagicMock()
+        resp.json.return_value = {'access_token': 'A'}  # no refresh_token
+        resp.raise_for_status.return_value = None
+        with patch('requests.post', return_value=resp):
+            res = google_auth.exchange_code('authcode', 'https://x/cb/')
+        self.assertFalse(res['ok'])
+        self.assertEqual(res['reason'], 'no_refresh_token')
+
+
 class ContentApiTests(_Isolation, TestCase):
     def test_content_product_shape(self):
         item = {

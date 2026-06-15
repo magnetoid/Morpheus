@@ -90,6 +90,19 @@ class GoogleShoppingPlugin(Plugin):
                 order=61,
                 nav='main',
             ),
+            # OAuth connect flow — routed but not shown in nav.
+            DashboardPage(
+                label='Connect Google',
+                slug='connect',
+                view='plugins.installed.google_shopping.views.oauth_start',
+                nav='hidden',
+            ),
+            DashboardPage(
+                label='Google OAuth callback',
+                slug='oauth-callback',
+                view='plugins.installed.google_shopping.views.oauth_callback',
+                nav='hidden',
+            ),
         ]
 
     def contribute_settings_panel(self) -> SettingsPanel:

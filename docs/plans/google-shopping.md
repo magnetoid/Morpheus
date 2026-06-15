@@ -100,6 +100,24 @@ code; contributes, never edits sibling layers; disable-safe).
 authorises BOTH the Content API (Merchant) and the Ads API; Ads also needs a
 developer token + customer id. All in PluginConfig, never settings.py.
 
+### Phase 5 — one-click connect + lifecycle completion (DONE)
+- ✅ **"Connect with Google" OAuth flow** (`google_auth.authorize_url` /
+  `exchange_code` + `views.oauth_start`/`oauth_callback`, hidden dashboard
+  pages): merchant adds only the OAuth client id+secret, clicks Connect, grants
+  Merchant+Ads in one consent (`access_type=offline`, `prompt=consent`), and the
+  refresh token is captured automatically. **Anti-CSRF `state`** stored in
+  session + verified in the callback (blocks login-CSRF). No manual refresh-token
+  dance.
+- ✅ **Shopping campaign creation** (`ads_api.create_shopping_campaign`): budget
+  + campaign mutate, PAUSED by default, tied to the Merchant feed. Create form on
+  the Ads dashboard. → Ads is now full create/read/update.
+- ✅ **Merchant Center diagnostics** (`content_api.product_statuses`): live
+  active/pending/disapproved counts + top item-level issues on the feed
+  dashboard + `google.merchant_diagnostics` agent tool. → the "why is my product
+  disapproved" loop.
+
+Total: 39 tests; 5 agent tools; security-reviewed (+ state-CSRF); all live.
+
 ## House-rule checklist (every phase)
 - Single AppConfig + `plugin.py` manifest; register in
   `MORPHEUS_DEFAULT_PLUGINS`; migration before merge.

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from django.core.cache import cache
 from django.http import HttpResponse
+from django.shortcuts import redirect
 
 from morpheus.views import render, staff_member_required
+
+_OAUTH_CALLBACK_PATH = '/dashboard/apps/google_shopping/oauth-callback/'
 
 FEED_CACHE_KEY = 'google_shopping:feed:v1'
 _FEED_TTL = 60 * 60  # 1h; busted on product change via the cache key bump
@@ -72,6 +75,7 @@ def dashboard(request):
             'sync_msg': sync_msg,
             'content_connected': _content_connected(),
             'diagnostics': diagnostics,
+            'connect': _connect_state(),
         },
     )
 
@@ -81,6 +85,13 @@ def _content_connected() -> bool:
     from plugins.installed.google_shopping.services.settings import raw_config
 
     return bool(is_connected() and (raw_config().get('merchant_id') or '').strip())
+
+
+def _connect_state() -> dict:
+    """Where the merchant is in the connect flow, for the dashboard CTA."""
+    from plugins.installed.google_shopping.services.google_auth import has_client, is_connected
+
+    return {'has_client': has_client(), 'is_connected': is_connected()}
 
 
 @staff_member_required
@@ -137,3 +148,42 @@ def ads_dashboard(request):
             'msg': msg,
         },
     )
+
+
+@staff_member_required
+def oauth_start(request):
+    """Kick off the Google consent flow (Content API + Ads)."""
+    import secrets
+
+    from plugins.installed.google_shopping.services.google_auth import authorize_url
+
+    state = secrets.token_urlsafe(24)
+    request.session['gs_oauth_state'] = state
+    url = authorize_url(request.build_absolute_uri(_OAUTH_CALLBACK_PATH), state=state)
+    if not url:
+        return redirect('/dashboard/settings/channels/')
+    return redirect(url)
+
+
+@staff_member_required
+def oauth_callback(request):
+    """Google redirects here with ?code=… — exchange it for a refresh token.
+
+    The `state` must match the value we stored in the session at oauth_start,
+    or we refuse — this blocks login-CSRF (connecting the store to an
+    attacker-controlled Google account)."""
+    from plugins.installed.google_shopping.services.google_auth import exchange_code
+
+    dest = '/dashboard/apps/google_shopping/overview/'
+    expected = request.session.pop('gs_oauth_state', None)
+    got = request.GET.get('state', '')
+    if not expected or got != expected:
+        return redirect(f'{dest}?connected=0&error=state')
+
+    code = request.GET.get('code', '')
+    res = (
+        exchange_code(code, request.build_absolute_uri(_OAUTH_CALLBACK_PATH))
+        if code
+        else {'ok': False, 'reason': request.GET.get('error', 'no_code')}
+    )
+    return redirect(f'{dest}?connected={"1" if res.get("ok") else "0"}')

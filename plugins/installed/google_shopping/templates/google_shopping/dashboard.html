@@ -11,6 +11,24 @@
 </div>
 
 <div class="card card-padded mb-6">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h2 class="font-semibold">Google connection</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        {% if connect.is_connected %}✅ Connected — Content API push, Merchant diagnostics and Ads are live.
+        {% elif connect.has_client %}OAuth client set. Click connect to grant Merchant + Ads access (one consent).
+        {% else %}Add your OAuth client ID + secret in <a href="/dashboard/settings/channels/" class="underline">Settings → Channels</a>, then connect.{% endif %}
+      </p>
+    </div>
+    {% if connect.has_client and not connect.is_connected %}
+    <a href="/dashboard/apps/google_shopping/connect/" class="btn">Connect with Google</a>
+    {% elif connect.is_connected %}
+    <a href="/dashboard/apps/google_shopping/connect/" class="btn btn-sm">Reconnect</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card card-padded mb-6">
   <p class="text-sm text-[color:var(--text-muted)] mb-1">Merchant Center feed URL — submit this in Google Merchant Center → Products → Feeds.</p>
   <code class="text-sm break-all">{{ feed_url }}</code>
   {% if not settings.enabled %}<p class="text-sm" style="color:#b45309;margin-top:.5rem;">⚠ Feed is currently disabled in settings — the URL returns 404.</p>{% endif %}
