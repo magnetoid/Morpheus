@@ -1,13 +1,13 @@
-{% comment %}Genres mega-menu panel. Params: label (default "Genres"). Reads nav_genres, nav_featured_books from context (book_product plugin). Topics have their own panel (_nav_mega_topics.html).{% endcomment %}
-{% if nav_genres %}
+{% comment %}Topics mega-menu panel. Params: label (default "Topics"). Reads nav_topics, nav_featured_books from context (book_product plugin).{% endcomment %}
+{% if nav_topics %}
 <div class="nav-mega">
-  <a href="/genres/" class="nav-mega__trigger" aria-haspopup="true">{{ label|default:"Genres" }}
+  <a href="/topics/" class="nav-mega__trigger" aria-haspopup="true">{{ label|default:"Topics" }}
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="nav-mega__chev"><path d="m6 9 6 6 6-6"/></svg>
   </a>
   <div class="nav-mega__panel">
     <div class="nav-mega__grid">
-      {% for g in nav_genres %}
-      <a href="/genre/{{ g.slug }}/" class="nav-mega__link">{{ g.name }}</a>
+      {% for t in nav_topics %}
+      <a href="/topic/{{ t.slug }}/" class="nav-mega__link">{{ t.name }}</a>
       {% endfor %}
     </div>
     {% if nav_featured_books %}
@@ -23,9 +23,9 @@
       </div>
     </div>
     {% endif %}
-    <a href="/genres/" class="nav-mega__all">Browse all genres &rarr;</a>
+    <a href="/topics/" class="nav-mega__all">Browse all topics &rarr;</a>
   </div>
 </div>
 {% else %}
-<a href="/genres/">{{ label|default:"Genres" }}</a>
+<a href="/topics/">{{ label|default:"Topics" }}</a>
 {% endif %}
