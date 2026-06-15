@@ -22,7 +22,6 @@
       color: inherit;
   " aria-label="Average rating {{ ts.rating.avg }} out of 5 from {{ ts.rating.count }} reviews">
     <span aria-hidden="true" style="display: inline-flex; gap: 1px; color: var(--accent, #b8732d); letter-spacing: -1px;">
-      {% for _ in ts.rating.stars_filled|make_list:""|default:"" %}{% endfor %}{% comment %} placeholder so range can render below {% endcomment %}
       {% for i in "12345"|make_list %}
         {% if forloop.counter <= ts.rating.stars_filled %}
           <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M7 0.5l1.9 4.2 4.6 0.4-3.5 3.1 1.1 4.5L7 10.4 2.9 12.7l1.1-4.5L0.5 5.1l4.6-0.4z"/></svg>

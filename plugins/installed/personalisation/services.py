@@ -110,8 +110,32 @@ def recompute_copurchases(
     }
 
 
+def _as_product(obj):
+    """Normalize a Product model OR a GraphQL dict to a Product instance (or None).
+
+    Storefront blocks render with a serialized product dict in context, not the
+    model, so callers that touch ``.pk``/``.slug`` would crash on a dict. Resolve
+    it back to the model by id then slug; fail-soft to None.
+    """
+    if obj is None or not isinstance(obj, dict):
+        return obj
+    from plugins.installed.catalog.models import Product  # noqa: PLC0415
+
+    try:
+        pid = obj.get('id') or obj.get('pk')
+        if pid:
+            return Product.objects.filter(pk=pid).first()
+        slug = obj.get('slug')
+        if slug:
+            return Product.objects.filter(slug=slug).first()
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
 def related_to(product, *, k: int = 4) -> list:
     """Return up to k Product instances most-bought-with `product`."""
+    product = _as_product(product)
     if product is None:
         return []
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
@@ -297,6 +321,9 @@ def pairs_with(product, request=None, k: int = 10):
     Aggregate candidates (co-purchase/similar) always show; the per-visitor
     REORDER is consent-gated inside rank_for_visitor (no consent → blended
     default order). Fail-soft throughout."""
+    product = _as_product(product)
+    if product is None:
+        return []
     seen = {str(product.pk)}
     candidates: list = []
 
