@@ -38,6 +38,12 @@ class GoogleShoppingPlugin(Plugin):
         self.register_urls(
             'plugins.installed.google_shopping.urls', prefix='', namespace='google_shopping'
         )
+        self.register_celery_tasks('plugins.installed.google_shopping.tasks')
+        # Periodic Content API push (no-op until Google is connected).
+        self.register_celery_beat(
+            'google_shopping:content_push',
+            {'task': 'google_shopping.push_content_api', 'schedule': 60 * 60 * 6},
+        )
         # Bust the cached feed whenever the catalog changes.
         for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
@@ -75,6 +81,15 @@ class GoogleShoppingPlugin(Plugin):
                 order=60,
                 nav='main',
             ),
+            DashboardPage(
+                label='Google Ads',
+                slug='ads',
+                view='plugins.installed.google_shopping.views.ads_dashboard',
+                icon='megaphone',
+                section='marketing',
+                order=61,
+                nav='main',
+            ),
         ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
@@ -91,12 +106,18 @@ class GoogleShoppingPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.google_shopping.agent_tools import (
+            google_ads_report_tool,
             google_feed_coverage_tool,
             google_feed_url_tool,
             google_rebuild_feed_tool,
         )
 
-        return [google_feed_coverage_tool, google_feed_url_tool, google_rebuild_feed_tool]
+        return [
+            google_feed_coverage_tool,
+            google_feed_url_tool,
+            google_rebuild_feed_tool,
+            google_ads_report_tool,
+        ]
 
     def get_config_schema(self) -> dict:
         return {
@@ -160,6 +181,40 @@ class GoogleShoppingPlugin(Plugin):
                     'type': 'string',
                     'title': 'Google Ads remarketing/conversion ID',
                     'description': 'Format: AW-123456789. Builds Shopping/PMax remarketing audiences. Obeys Consent Mode set by the tracking plugin.',
+                    'default': '',
+                },
+                # ── Google connection (Content API + Ads API). Stored only in
+                #    PluginConfig — never settings.py. OAuth2 refresh-token flow.
+                'oauth_client_id': {'type': 'string', 'title': 'OAuth client ID', 'default': ''},
+                'oauth_client_secret': {
+                    'type': 'string',
+                    'title': 'OAuth client secret',
+                    'format': 'password',
+                    'default': '',
+                },
+                'oauth_refresh_token': {
+                    'type': 'string',
+                    'title': 'OAuth refresh token',
+                    'format': 'password',
+                    'description': 'Authorises Content API (Merchant) + Ads API. Obtain once via the Google OAuth consent screen.',
+                    'default': '',
+                },
+                'ads_developer_token': {
+                    'type': 'string',
+                    'title': 'Google Ads developer token',
+                    'format': 'password',
+                    'default': '',
+                },
+                'ads_customer_id': {
+                    'type': 'string',
+                    'title': 'Google Ads customer ID',
+                    'description': 'The account whose campaigns you manage (digits, dashes ok).',
+                    'default': '',
+                },
+                'ads_login_customer_id': {
+                    'type': 'string',
+                    'title': 'Google Ads login customer ID (MCC)',
+                    'description': 'Optional — your manager (MCC) account ID, if access is via a manager account.',
                     'default': '',
                 },
             },

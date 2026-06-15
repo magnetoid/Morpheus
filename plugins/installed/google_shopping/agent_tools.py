@@ -57,3 +57,25 @@ def google_rebuild_feed_tool() -> ToolResult:
         output=stats,
         display=f'{stats["items"]} items, {stats["skipped"]} skipped',
     )
+
+
+@tool(
+    name='google.ads_report',
+    description='Google Ads campaign performance for the last N days (cost, clicks, conversions, ROAS per campaign). Requires Google Ads to be connected in settings.',
+    scopes=['analytics.read'],
+    schema={
+        'type': 'object',
+        'properties': {'days': {'type': 'integer', 'enum': [7, 14, 30], 'default': 30}},
+    },
+)
+def google_ads_report_tool(*, days: int = 30) -> ToolResult:
+    from plugins.installed.google_shopping.services.ads_api import campaign_report
+
+    rep = campaign_report(days=days)
+    if not rep.get('ok'):
+        return ToolResult(output=rep, display=f'Google Ads not connected ({rep.get("reason")})')
+    t = rep['totals']
+    return ToolResult(
+        output=rep,
+        display=f'{len(rep["campaigns"])} campaigns · cost {t["cost"]} · ROAS {t.get("roas") or "—"}',
+    )

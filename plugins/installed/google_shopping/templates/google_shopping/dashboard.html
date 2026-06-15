@@ -16,6 +16,20 @@
   {% if not settings.enabled %}<p class="text-sm" style="color:#b45309;margin-top:.5rem;">⚠ Feed is currently disabled in settings — the URL returns 404.</p>{% endif %}
 </div>
 
+<div class="card card-padded mb-6">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h2 class="font-semibold">Content API sync</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Push products straight to Merchant Center via the Content API — no manual feed submission. {% if content_connected %}Connected.{% else %}Connect Google in Settings → Channels first.{% endif %}</p>
+    </div>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="content_push">
+      <button type="submit" class="btn"{% if not content_connected %} disabled{% endif %}>Push now</button>
+    </form>
+  </div>
+  {% if sync_msg %}<p class="text-sm mt-2">{{ sync_msg }}</p>{% endif %}
+</div>
+
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
   <div class="card card-padded kpi"><span class="kpi__label">Active products</span><span class="kpi__value">{{ report.total }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Shopping-eligible</span><span class="kpi__value">{{ report.eligible }}</span></div>

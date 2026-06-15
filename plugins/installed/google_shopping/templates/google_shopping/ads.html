@@ -1,0 +1,69 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Google Ads · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Google Ads — campaigns</h1>
+  <form method="get">
+    <select name="days" class="input" style="max-width:130px;" onchange="this.form.submit()">
+      <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+      <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+      <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+    </select>
+  </form>
+</div>
+
+{% if msg %}<div class="card card-padded mb-4"><p class="text-sm">{{ msg }}</p></div>{% endif %}
+
+{% if not connected %}
+<div class="card card-padded">
+  <h2 class="font-semibold mb-1">Connect Google Ads</h2>
+  <p class="text-sm text-[color:var(--text-muted)]">
+    Add your OAuth client ID/secret + refresh token, Ads developer token and customer ID in
+    <a href="/dashboard/settings/channels/" class="underline">Settings → Channels → Google Shopping</a>.
+    Campaign reporting and budget controls appear here once connected.
+  </p>
+</div>
+{% elif not report.ok %}
+<div class="card card-padded"><p class="text-sm">Couldn’t load campaigns: {{ report.reason }}</p></div>
+{% else %}
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+  <div class="card card-padded kpi"><span class="kpi__label">Cost</span><span class="kpi__value">{{ report.totals.cost }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Clicks</span><span class="kpi__value">{{ report.totals.clicks }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Impressions</span><span class="kpi__value">{{ report.totals.impressions }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Conversions</span><span class="kpi__value">{{ report.totals.conversions }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">ROAS</span><span class="kpi__value">{{ report.totals.roas|default:"—" }}</span></div>
+</div>
+
+<div class="card">
+  <table class="morph-table">
+    <thead><tr><th>Campaign</th><th>Status</th><th>Cost</th><th>Clicks</th><th>Conv.</th><th>Value</th><th>ROAS</th><th></th></tr></thead>
+    <tbody>
+      {% for c in report.campaigns %}
+      <tr>
+        <td class="font-medium">{{ c.name }} <span class="text-xs text-[color:var(--text-muted)]">{{ c.channel }}</span></td>
+        <td>{{ c.status }}</td>
+        <td>{{ c.cost }}</td>
+        <td>{{ c.clicks }}</td>
+        <td>{{ c.conversions }}</td>
+        <td>{{ c.value }}</td>
+        <td>{{ c.roas|default:"—" }}</td>
+        <td>
+          <form method="post" style="display:inline">{% csrf_token %}
+            <input type="hidden" name="campaign_id" value="{{ c.id }}">
+            {% if c.status == "ENABLED" %}
+            <button name="action" value="PAUSED" class="btn btn-sm">Pause</button>
+            {% else %}
+            <button name="action" value="ENABLED" class="btn btn-sm">Enable</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-sm text-[color:var(--text-muted)]">No campaigns in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

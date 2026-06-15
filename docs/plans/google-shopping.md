@@ -66,12 +66,16 @@ code; contributes, never edits sibling layers; disable-safe).
   Shopping-eligible and why."
 - Disable-guard test (plugin off → nav/route/feed all gone).
 
-### Phase 3 — Content API for Shopping (push sync)
-- OAuth2 service-account creds (PluginConfig secret refs, never settings.py).
-- `services/content_api.py`: batch upsert products to Merchant Center via the
-  Content API; `register_celery_beat` periodic push; `GoogleSyncLog` rows.
-- Verified-Output rule: confirm `google-api-python-client` (or REST via
-  `requests`) — justify the dep in the commit. Prefer thin REST over a heavy SDK.
+### Phase 3 — Content API for Shopping (push sync)  ✅ DONE
+- `services/google_auth.py`: OAuth2 **refresh-token** flow (client_id/secret/
+  refresh_token → access_token, cached) — thin REST over `requests`, NO
+  google-auth/SDK dep, no JWT signing. Creds in PluginConfig only.
+- `services/content_api.py`: batch-upserts every eligible product to Merchant
+  Center via the Content API v2.1 `products/batch` endpoint; `GoogleSyncLog`
+  rows; "Push now" button on the dashboard; `register_celery_beat` 6-hourly push
+  (`tasks.py`). Graceful no-op when not connected.
+- Verified-Output: `requests` (already a dep) only; request-shaping
+  contract-tested against the real API resource format with mocked HTTP.
 
 ### Phase 4 — Google Ads layer
 - ✅ **Dynamic remarketing tag** (DONE — storefront block `global_below_body`
@@ -82,17 +86,19 @@ code; contributes, never edits sibling layers; disable-safe).
   does NOT duplicate the conversion pixel. XSS-safe: id regex-gated, all values
   json-encoded with `<`/`>`/`&` → `\uXXXX` (security review caught a `</script>`
   break-out via product SKU; fixed + regression-tested).
-- **Google Ads API** (TODO — config-gated): Shopping/Performance Max campaign
-  create + budget + status, and reporting (impressions/clicks/cost/conv/ROAS) on
-  the dashboard. Conversion attribution still flows through `tracking`.
+- ✅ **Google Ads API** (DONE — `services/ads_api.py`, REST v17 over `requests`,
+  shares the OAuth token): campaign **reporting** via GAQL `searchStream`
+  (cost/clicks/impressions/conversions/value/ROAS per campaign + totals) and
+  **management** (pause/enable + set budget via `campaigns:mutate` /
+  `campaignBudgets:mutate`). Surfaced on a `/dashboard/.../ads/` page (date
+  range, KPI row, per-campaign table with pause/enable) + `google.ads_report`
+  agent tool. Config-gated (developer token + customer id + OAuth); renders a
+  "connect Google Ads" state when not connected. Conversion attribution still
+  flows through `tracking`. Request-shaping contract-tested with mocked HTTP.
 
-### Phase 3 status — Content API push (DEFERRED, needs creds + dep)
-Building it now would mean shipping untested code that requires a new heavyweight
-dep (`google-auth` for OAuth2 service-account JWT signing — not currently
-installed) with no Merchant credentials to validate against. Per the
-Verified-Output rule, deferred until creds exist; the feed URL is the
-submission path until then. `requests` is available for a thin REST client when
-we do build it.
+**Connection model:** one OAuth2 refresh token (client_id/secret/refresh_token)
+authorises BOTH the Content API (Merchant) and the Ads API; Ads also needs a
+developer token + customer id. All in PluginConfig, never settings.py.
 
 ## House-rule checklist (every phase)
 - Single AppConfig + `plugin.py` manifest; register in
