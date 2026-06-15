@@ -41,8 +41,8 @@ def campaign_report(*, days: int = 30) -> dict:
         spend = float(row.get('spend', 0) or 0)
         clicks = float(row.get('clicks', 0) or 0)
         impr = float(row.get('impressions', 0) or 0)
-        purch = _action(row.get('actions'), 'purchase')
-        value = _action(row.get('action_values'), 'purchase')
+        purch = _purchase_metric(row.get('actions'))
+        value = _purchase_metric(row.get('action_values'))
         campaigns.append(
             {
                 'id': row.get('campaign_id'),
@@ -71,16 +71,26 @@ def campaign_report(*, days: int = 30) -> dict:
     return {'ok': True, 'campaigns': campaigns, 'totals': totals, 'days': days}
 
 
-def _action(actions, action_type: str) -> float:
-    """Sum the value for a given action_type out of a Meta actions array."""
+_PURCHASE_TYPES = ('omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase')
+
+
+def _purchase_metric(actions) -> float:
+    """The purchase value from a Meta actions/action_values array.
+
+    Meta returns several OVERLAPPING purchase rows (purchase, omni_purchase,
+    offsite_conversion.fb_pixel_purchase) for the same conversions — summing them
+    double/triple-counts. Take a single canonical type per row instead.
+    """
     if not actions:
         return 0.0
-    total = 0.0
+    by: dict[str, float] = {}
     for a in actions:
-        if a.get('action_type', '').endswith(action_type):
-            with contextlib.suppress(TypeError, ValueError):
-                total += float(a.get('value', 0))
-    return total
+        with contextlib.suppress(TypeError, ValueError):
+            by[a.get('action_type', '')] = float(a.get('value', 0))
+    for t in _PURCHASE_TYPES:
+        if t in by:
+            return by[t]
+    return 0.0
 
 
 def set_campaign_status(campaign_id: str, status: str) -> dict:

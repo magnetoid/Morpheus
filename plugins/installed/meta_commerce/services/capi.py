@@ -24,10 +24,20 @@ def _sha256(value: str) -> str:
     return hashlib.sha256((value or '').strip().lower().encode('utf-8')).hexdigest()
 
 
-def _line_items(order):
-    """[(retailer_id, qty, price)] from an order, best-effort."""
+def _line_items(obj):
+    """[(retailer_id, qty)] from an order or cart, best-effort.
+
+    `items`/`lines` is a reverse-FK RelatedManager on real models — NOT directly
+    iterable — so resolve `.all()` before looping. (A plain list, as in tests,
+    has no `.all()` and is used as-is.)
+    """
+    rel = getattr(obj, 'items', None)
+    if rel is None:
+        rel = getattr(obj, 'lines', None)
+    if hasattr(rel, 'all'):
+        rel = list(rel.all())
     out = []
-    for line in getattr(order, 'items', getattr(order, 'lines', None)) or []:
+    for line in rel or []:
         sku = (
             getattr(line, 'sku', '')
             or getattr(getattr(line, 'variant', None), 'sku', '')
@@ -99,16 +109,7 @@ def send_add_to_cart(*, product=None, variant=None, quantity=1) -> dict:
 def send_initiate_checkout(cart) -> dict:
     """Server-side InitiateCheckout from a cart."""
     value, currency = _money(getattr(cart, 'total', None) or getattr(cart, 'subtotal', None))
-    items = []
-    for line in getattr(cart, 'items', getattr(cart, 'lines', None)) or []:
-        sku = (
-            getattr(line, 'sku', '')
-            or getattr(getattr(line, 'variant', None), 'sku', '')
-            or getattr(getattr(line, 'product', None), 'sku', '')
-        )
-        if sku:
-            items.append((sku, getattr(line, 'quantity', 1)))
-    return _send('InitiateCheckout', value=value, currency=currency, items=items)
+    return _send('InitiateCheckout', value=value, currency=currency, items=_line_items(cart))
 
 
 def _log(res: dict, event_name: str = 'Purchase') -> None:

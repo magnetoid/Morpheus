@@ -58,14 +58,15 @@ def _identifiers(product) -> tuple[str, str]:
     return gtin, (str(by['mpn']).strip() if by.get('mpn') else '')
 
 
-def _availability(product, *, include_oos: bool) -> str | None:
+def _availability_for(filter_kwargs: dict, *, include_oos: bool) -> str | None:
+    """Shared in/out-of-stock resolution for a StockLevel filter. None = skip."""
     avail = 'in stock'
     try:
         from django.db.models import F, Sum  # noqa: PLC0415
 
         from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
 
-        qty = StockLevel.objects.filter(variant__product=product).aggregate(
+        qty = StockLevel.objects.filter(**filter_kwargs).aggregate(
             q=Sum(F('quantity') - F('reserved_quantity'))
         )['q']
         if qty is not None and qty <= 0:
@@ -75,6 +76,10 @@ def _availability(product, *, include_oos: bool) -> str | None:
     if avail == 'out of stock' and not include_oos:
         return None
     return avail
+
+
+def _availability(product, *, include_oos: bool) -> str | None:
+    return _availability_for({'variant__product': product}, include_oos=include_oos)
 
 
 def _money(m) -> str:
@@ -156,22 +161,7 @@ def map_product(product, settings) -> dict | None:  # noqa: PLR0912, PLR0915 —
 
 
 def _variant_availability(variant, *, include_oos: bool) -> str | None:
-    avail = 'in stock'
-    try:
-        from django.db.models import F, Sum  # noqa: PLC0415
-
-        from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
-
-        qty = StockLevel.objects.filter(variant=variant).aggregate(
-            q=Sum(F('quantity') - F('reserved_quantity'))
-        )['q']
-        if qty is not None and qty <= 0:
-            avail = 'out of stock'
-    except Exception:  # noqa: BLE001
-        avail = 'in stock'
-    if avail == 'out of stock' and not include_oos:
-        return None
-    return avail
+    return _availability_for({'variant': variant}, include_oos=include_oos)
 
 
 def expand_variants(product, base_item: dict, settings) -> list[dict] | None:  # noqa: PLR0912

@@ -197,6 +197,39 @@ class AdsTests(_Iso, TestCase):
         self.assertEqual(c['purchases'], 4.0)
         self.assertEqual(c['roas'], 4.0)  # 20 / 5
 
+    def test_overlapping_purchase_rows_counted_once(self):
+        # Meta returns purchase + omni_purchase + offsite_conversion.*purchase for
+        # the SAME conversions — must NOT sum them (would 2-3× inflate ROAS).
+        _connect()
+        resp = MagicMock()
+        resp.json.return_value = {
+            'data': [
+                {
+                    'campaign_id': '1',
+                    'campaign_name': 'S',
+                    'spend': '10',
+                    'impressions': '1',
+                    'clicks': '1',
+                    'actions': [
+                        {'action_type': 'purchase', 'value': '5'},
+                        {'action_type': 'omni_purchase', 'value': '5'},
+                        {'action_type': 'offsite_conversion.fb_pixel_purchase', 'value': '5'},
+                    ],
+                    'action_values': [
+                        {'action_type': 'purchase', 'value': '50'},
+                        {'action_type': 'omni_purchase', 'value': '50'},
+                    ],
+                }
+            ]
+        }
+        resp.raise_for_status.return_value = None
+        with patch('requests.get', return_value=resp):
+            rep = ads_api.campaign_report(days=30)
+        c = rep['campaigns'][0]
+        self.assertEqual(c['purchases'], 5.0)  # not 15
+        self.assertEqual(c['value'], 50.0)  # not 100
+        self.assertEqual(c['roas'], 5.0)  # 50 / 10
+
     def test_status_validates(self):
         _connect()
         self.assertEqual(ads_api.set_campaign_status('1', 'BOGUS')['reason'], 'bad_status')
@@ -258,6 +291,38 @@ class CapiTests(_Iso, TestCase):
         # Email is sha256-hashed, never raw.
         self.assertNotIn('BUYER@example.com', json.dumps(ev))
         self.assertEqual(len(ev['user_data']['em'][0]), 64)
+
+    def test_purchase_resolves_related_manager(self):
+        # Regression: order.items is a RelatedManager (not directly iterable) on
+        # real models — must call .all() or the event silently never sends.
+        from decimal import Decimal
+
+        from djmoney.money import Money
+
+        class _Manager:  # mimics a Django reverse-FK manager
+            def __init__(self, rows):
+                self._rows = rows
+
+            def all(self):
+                return self._rows
+
+        _connect()
+        line = MagicMock()
+        line.sku = 'SKU1'
+        line.quantity = 1
+        order = MagicMock()
+        order.total = Money(Decimal('25.00'), 'USD')
+        order.email = 'b@x.test'
+        order.order_number = 'A-1'
+        order.items = _Manager([line])
+        resp = MagicMock()
+        resp.json.return_value = {'events_received': 1}
+        resp.raise_for_status.return_value = None
+        with patch('requests.post', return_value=resp) as post:
+            res = capi.send_purchase(order)
+        self.assertTrue(res['ok'])
+        ev = json.loads(post.call_args.kwargs['data']['data'])[0]
+        self.assertEqual(ev['custom_data']['content_ids'], ['SKU1'])  # not empty!
 
     def test_add_to_cart_event(self):
         from decimal import Decimal
