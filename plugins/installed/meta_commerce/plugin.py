@@ -171,12 +171,6 @@ class MetaCommercePlugin(Plugin):
                     'default': False,
                 },
                 'country': {'type': 'string', 'title': 'Target country (ISO)', 'default': 'US'},
-                'currency': {
-                    'type': 'string',
-                    'title': 'Currency override (ISO)',
-                    'description': "Leave blank to use each product's own currency.",
-                    'default': '',
-                },
                 'default_brand': {'type': 'string', 'title': 'Default brand', 'default': ''},
                 'default_condition': {
                     'type': 'string',

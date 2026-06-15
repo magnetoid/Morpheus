@@ -9,7 +9,6 @@ from dataclasses import dataclass
 class MetaSettings:
     enabled: bool
     country: str
-    currency: str
     default_brand: str
     default_condition: str
     include_out_of_stock: bool
@@ -17,10 +16,13 @@ class MetaSettings:
     pixel_enabled: bool
 
 
+# NOTE: there is intentionally no `currency` override — Meta requires the feed
+# currency to match the actual price currency, and we don't convert, so a
+# label-only override would emit misleading prices. Each item carries the
+# product's own currency (see mapping._money).
 _DEFAULTS = {
     'enabled': True,
     'country': 'US',
-    'currency': '',  # '' → use the product's own currency
     'default_brand': '',
     'default_condition': 'new',
     'include_out_of_stock': True,
