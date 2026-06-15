@@ -1,0 +1,172 @@
+"""Meta Commerce plugin — Meta (Facebook/Instagram) Catalog + Pixel/CAPI + Ads.
+
+Owns the whole Meta surface (clean slate; `tracking` is Google-only): the product
+catalog feed at /feeds/meta-catalog.xml, Catalog API push, the Meta Pixel +
+Conversions API, and the Marketing API (campaign reporting + management).
+Connection is a single long-lived System User access token + IDs in PluginConfig.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
+
+logger = logging.getLogger('morpheus.meta_commerce')
+
+
+class MetaCommercePlugin(Plugin):
+    name = 'meta_commerce'
+    label = 'Meta Commerce'
+    version = '0.1.0'
+    description = (
+        'Meta (Facebook/Instagram) commerce: product catalog feed at '
+        '/feeds/meta-catalog.xml + Catalog API push, the Meta Pixel + '
+        'Conversions API (content_ids matched to the catalog), and the Marketing '
+        'API for campaign reporting + management. Reuses catalog price, images, '
+        'inventory, identifiers and book metadata. Connection via a System User '
+        'access token in settings.'
+    )
+    has_models = True
+    requires = ['catalog']
+
+    def ready(self) -> None:
+        self.register_urls(
+            'plugins.installed.meta_commerce.urls', prefix='', namespace='meta_commerce'
+        )
+        self.register_celery_tasks('plugins.installed.meta_commerce.tasks')
+        self.register_celery_beat(
+            'meta_commerce:catalog_push',
+            {'task': 'meta_commerce.push_catalog', 'schedule': 60 * 60 * 6},
+        )
+        for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
+            self.register_hook(evt, self._bust_feed_cache, priority=80)
+        # Server-side Purchase event (Conversions API) — iOS-safe attribution.
+        self.register_hook(events.ORDER_PAID, self._on_order_paid, priority=90)
+
+    def _bust_feed_cache(self, **_):
+        try:
+            from django.core.cache import cache  # noqa: PLC0415
+
+            from plugins.installed.meta_commerce.views import FEED_CACHE_KEY  # noqa: PLC0415
+
+            cache.delete(FEED_CACHE_KEY)
+        except Exception as e:  # noqa: BLE001
+            logger.debug('meta_commerce: cache bust failed: %s', e)
+
+    def _on_order_paid(self, order=None, **_):
+        if order is None:
+            return
+        try:
+            from plugins.installed.meta_commerce.services.capi import send_purchase  # noqa: PLC0415
+
+            send_purchase(order)
+        except Exception as e:  # noqa: BLE001 — CAPI must never block the order flow
+            logger.debug('meta_commerce: CAPI purchase failed: %s', e)
+
+    def contribute_storefront_blocks(self) -> list:
+        return [
+            StorefrontBlock(
+                slot='global_below_body',
+                template='meta_commerce/blocks/pixel.html',
+                priority=70,
+            ),
+        ]
+
+    def contribute_dashboard_pages(self) -> list:
+        return [
+            DashboardPage(
+                label='Meta Commerce',
+                slug='overview',
+                view='plugins.installed.meta_commerce.views.dashboard',
+                icon='facebook',
+                section='marketing',
+                order=62,
+                nav='main',
+            ),
+            DashboardPage(
+                label='Meta Ads',
+                slug='ads',
+                view='plugins.installed.meta_commerce.views.ads_dashboard',
+                icon='trending-up',
+                section='marketing',
+                order=63,
+                nav='main',
+            ),
+        ]
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Meta Commerce',
+            description=(
+                'Meta catalog feed + Pixel/CAPI + Ads. Add a System User access '
+                'token + IDs from Business Settings. The feed (/feeds/meta-catalog.xml) '
+                'works with no credentials; the API push, Pixel and Ads need the token.'
+            ),
+            schema=self.get_config_schema(),
+            category='channels',
+        )
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.meta_commerce.agent_tools import (
+            meta_ads_report_tool,
+            meta_feed_coverage_tool,
+            meta_feed_url_tool,
+            meta_rebuild_feed_tool,
+        )
+
+        return [
+            meta_feed_coverage_tool,
+            meta_feed_url_tool,
+            meta_rebuild_feed_tool,
+            meta_ads_report_tool,
+        ]
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'enabled': {'type': 'boolean', 'title': 'Catalog feed enabled', 'default': True},
+                'access_token': {
+                    'type': 'string',
+                    'title': 'System User access token',
+                    'format': 'password',
+                    'description': 'Long-lived token from Business Settings → System Users (Catalog + Ads + CAPI).',
+                    'default': '',
+                },
+                'catalog_id': {'type': 'string', 'title': 'Catalog ID', 'default': ''},
+                'ad_account_id': {
+                    'type': 'string',
+                    'title': 'Ad account ID',
+                    'description': 'Digits only or act_… — used by the Marketing API.',
+                    'default': '',
+                },
+                'pixel_id': {'type': 'string', 'title': 'Pixel ID', 'default': ''},
+                'business_id': {'type': 'string', 'title': 'Business ID (optional)', 'default': ''},
+                'pixel_enabled': {
+                    'type': 'boolean',
+                    'title': 'Enable Meta Pixel on the storefront',
+                    'default': False,
+                },
+                'country': {'type': 'string', 'title': 'Target country (ISO)', 'default': 'US'},
+                'currency': {
+                    'type': 'string',
+                    'title': 'Currency override (ISO)',
+                    'description': "Leave blank to use each product's own currency.",
+                    'default': '',
+                },
+                'default_brand': {'type': 'string', 'title': 'Default brand', 'default': ''},
+                'default_condition': {
+                    'type': 'string',
+                    'title': 'Default condition',
+                    'enum': ['new', 'refurbished', 'used'],
+                    'default': 'new',
+                },
+                'include_out_of_stock': {
+                    'type': 'boolean',
+                    'title': 'Include out-of-stock products',
+                    'default': True,
+                },
+                'feed_title': {'type': 'string', 'title': 'Feed title', 'default': 'Dot Books'},
+            },
+        }
