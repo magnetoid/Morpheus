@@ -131,8 +131,11 @@ class GenreTopicStorefrontTests(TestCase):
         self.assertEqual(r['Location'], '/genres/')
 
     def test_nav_genres_context(self):
+        from django.core.cache import cache
+
         from plugins.installed.book_product.context_processors import nav_genres
 
+        cache.clear()  # nav is cached across tests; isolate this assertion
         names = [g['slug'] for g in nav_genres(None)['nav_genres']]
         self.assertIn('fiction', names)
 

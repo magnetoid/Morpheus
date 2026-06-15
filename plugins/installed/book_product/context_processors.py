@@ -23,7 +23,18 @@ def _active_terms(model, cache_key, limit):
         return cached
     data: list[dict] = []
     try:
-        for obj in model.objects.filter(is_active=True)[:limit]:
+        from django.db.models import Count  # noqa: PLC0415
+
+        # Most-stocked first — so the menu surfaces "Love"/"Romance", not the
+        # alphabetically-first long-tail tag. Empty terms are excluded (their
+        # pages would be bare).
+        qs = (
+            model.objects.filter(is_active=True)
+            .annotate(_n=Count('books'))
+            .filter(_n__gt=0)
+            .order_by('-_n', 'name')[:limit]
+        )
+        for obj in qs:
             data.append({'name': obj.name, 'slug': obj.slug})
         cache.set(cache_key, data, _NAV_CACHE_TTL)
     except Exception:  # noqa: BLE001 — nav must never break a page render

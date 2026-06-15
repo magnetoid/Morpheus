@@ -215,20 +215,26 @@ def _taxonomy_root(request, *, key, label):
 
 
 def _curated_root(request, *, model, label, detail_prefix):
-    terms = []
-    for obj in model.objects.filter(is_active=True):
-        count = obj.books.filter(product__status='active').count()
-        if not count:
-            continue
-        terms.append(
-            {
-                'name': obj.name,
-                'slug': obj.slug,
-                'count': count,
-                'url': f'{detail_prefix}{obj.slug}/',
-                'image': obj.image or None,
-            }
-        )
+    from django.db.models import Count, Q  # noqa: PLC0415
+
+    # One annotated query, most-stocked first — not 1500 per-term COUNT()s.
+    # Empty terms are excluded (their detail pages would be bare).
+    rows = (
+        model.objects.filter(is_active=True)
+        .annotate(_n=Count('books', filter=Q(books__product__status='active')))
+        .filter(_n__gt=0)
+        .order_by('-_n', 'name')
+    )
+    terms = [
+        {
+            'name': obj.name,
+            'slug': obj.slug,
+            'count': obj._n,
+            'url': f'{detail_prefix}{obj.slug}/',
+            'image': obj.image or None,
+        }
+        for obj in rows
+    ]
     return render(
         request,
         'storefront/taxonomy_root.html',
