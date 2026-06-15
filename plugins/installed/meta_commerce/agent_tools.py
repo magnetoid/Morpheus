@@ -54,6 +54,25 @@ def meta_rebuild_feed_tool() -> ToolResult:
 
 
 @tool(
+    name='meta.catalog_diagnostics',
+    description='Live Meta catalog review status: approved/pending/rejected counts + top item-level issues (why products are rejected). Requires Meta connected.',
+    scopes=['catalog.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def meta_catalog_diagnostics_tool() -> ToolResult:
+    from plugins.installed.meta_commerce.services.catalog_api import product_diagnostics
+
+    d = product_diagnostics()
+    if not d.get('ok'):
+        return ToolResult(output=d, display=f'Not connected ({d.get("reason")})')
+    c = d['counts']
+    return ToolResult(
+        output=d,
+        display=f'{c["approved"]} approved · {c["rejected"]} rejected · {len(d["issues"])} issue types',
+    )
+
+
+@tool(
     name='meta.ads_report',
     description='Meta Ads campaign performance for the last N days (spend, clicks, purchases, ROAS). Requires Meta Ads connected.',
     scopes=['analytics.read'],

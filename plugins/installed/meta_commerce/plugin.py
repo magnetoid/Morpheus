@@ -110,6 +110,7 @@ class MetaCommercePlugin(Plugin):
     def contribute_agent_tools(self) -> list:
         from plugins.installed.meta_commerce.agent_tools import (
             meta_ads_report_tool,
+            meta_catalog_diagnostics_tool,
             meta_feed_coverage_tool,
             meta_feed_url_tool,
             meta_rebuild_feed_tool,
@@ -119,6 +120,7 @@ class MetaCommercePlugin(Plugin):
             meta_feed_coverage_tool,
             meta_feed_url_tool,
             meta_rebuild_feed_tool,
+            meta_catalog_diagnostics_tool,
             meta_ads_report_tool,
         ]
 

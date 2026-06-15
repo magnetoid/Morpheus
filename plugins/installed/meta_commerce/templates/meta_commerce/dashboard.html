@@ -31,6 +31,25 @@
   </div>
 </div>
 
+{% if diagnostics %}
+<div class="card mb-6">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">Catalog review status</h2>
+    <p class="text-xs text-[color:var(--text-muted)]">Live from Meta — {{ diagnostics.counts.approved }} approved · {{ diagnostics.counts.pending }} pending · {{ diagnostics.counts.rejected }} rejected of {{ diagnostics.counts.total }}.</p>
+  </div>
+  <table class="morph-table">
+    <thead><tr><th>Issue</th><th>Products</th></tr></thead>
+    <tbody>
+      {% for iss in diagnostics.issues %}
+      <tr><td class="font-medium">{{ iss.description }}</td><td>{{ iss.count }}</td></tr>
+      {% empty %}
+      <tr><td colspan="2" class="text-sm text-[color:var(--text-muted)]">No item-level issues. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
   <div class="card card-padded kpi"><span class="kpi__label">Active products</span><span class="kpi__value">{{ report.total }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Catalog-eligible</span><span class="kpi__value">{{ report.eligible }}</span></div>

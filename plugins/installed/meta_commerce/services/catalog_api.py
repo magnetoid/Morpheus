@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import logging
 
-from .graph import catalog_connected, creds, post
+from .graph import catalog_connected, creds, get, post
 from .mapping import map_product
 from .settings import meta_settings
 
@@ -75,6 +75,47 @@ def push_products(*, dry_run: bool = False) -> dict:
     sent, errors = _post_batches(catalog_id, requests_list)
     _log(sent, errors)
     return {'ok': not errors, 'sent': sent, 'errors': errors}
+
+
+def product_diagnostics(*, max_pages: int = 4) -> dict:
+    """Catalog product review status → why items are rejected/limited.
+
+    `GET /{catalog_id}/products?fields=review_status,errors` — summarises
+    approved/pending/rejected counts + the top item-level issues. Graceful no-op
+    when not connected. The Meta parallel of Google Merchant diagnostics.
+    """
+    catalog_id = creds()['catalog_id']
+    if not catalog_connected():
+        return {'ok': False, 'reason': 'not_connected'}
+
+    counts = {'approved': 0, 'pending': 0, 'rejected': 0, 'other': 0, 'total': 0}
+    issues: dict[str, dict] = {}
+    after = None
+    for _ in range(max_pages):
+        params = {'fields': 'review_status,errors', 'limit': 200}
+        if after:
+            params['after'] = after
+        res = get(f'{catalog_id}/products', params)
+        if not res.get('ok'):
+            return {'ok': False, 'reason': res.get('reason')}
+        data = res['data']
+        for prod in data.get('data', []):
+            counts['total'] += 1
+            status = (prod.get('review_status') or '').lower()
+            if status in counts:
+                counts[status] += 1
+            else:
+                counts['other'] += 1
+            for err in prod.get('errors', []) or []:
+                key = err.get('message') or err.get('type') or 'issue'
+                row = issues.setdefault(key, {'description': key, 'count': 0})
+                row['count'] += 1
+        after = (data.get('paging', {}).get('cursors', {}) or {}).get('after')
+        if not after:
+            break
+
+    top = sorted(issues.values(), key=lambda r: r['count'], reverse=True)[:20]
+    return {'ok': True, 'counts': counts, 'issues': top}
 
 
 def _post_batches(catalog_id: str, requests_list: list[dict]) -> tuple[int, list[str]]:

@@ -51,6 +51,13 @@ def dashboard(request):
             else f'Catalog push not run ({stats.get("reason", "error")}).'
         )
 
+    diagnostics = None
+    if catalog_connected():
+        from plugins.installed.meta_commerce.services.catalog_api import product_diagnostics
+
+        d = product_diagnostics()
+        diagnostics = d if d.get('ok') else None
+
     return render(
         request,
         'meta_commerce/dashboard.html',
@@ -63,6 +70,7 @@ def dashboard(request):
             'msg': msg,
             'has_token': has_token(),
             'catalog_connected': catalog_connected(),
+            'diagnostics': diagnostics,
         },
     )
 

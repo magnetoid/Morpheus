@@ -117,6 +117,29 @@ class CatalogPushTests(_Iso, TestCase):
         self.assertEqual(json.loads(body['requests'])[0]['method'], 'UPDATE')
 
 
+class DiagnosticsTests(_Iso, TestCase):
+    def test_not_connected(self):
+        self.assertEqual(catalog_api.product_diagnostics()['reason'], 'not_connected')
+
+    def test_summarises_review_status(self):
+        _connect()
+        resp = MagicMock()
+        resp.json.return_value = {
+            'data': [
+                {'review_status': 'rejected', 'errors': [{'message': 'Missing images'}]},
+                {'review_status': 'approved', 'errors': []},
+            ],
+            'paging': {},
+        }
+        resp.raise_for_status.return_value = None
+        with patch('requests.get', return_value=resp):
+            d = catalog_api.product_diagnostics()
+        self.assertTrue(d['ok'])
+        self.assertEqual(d['counts']['rejected'], 1)
+        self.assertEqual(d['counts']['approved'], 1)
+        self.assertEqual(d['issues'][0]['description'], 'Missing images')
+
+
 class AdsTests(_Iso, TestCase):
     def test_report_parses_insights(self):
         _connect()
