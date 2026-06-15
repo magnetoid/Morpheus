@@ -114,6 +114,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.product_gallery',
     'plugins.installed.product_videos',
     'plugins.installed.tracking',
+    'plugins.installed.google_shopping',
     'plugins.installed.store_bootstrap',
     'plugins.installed.localization',
     'plugins.installed.bookvault',
