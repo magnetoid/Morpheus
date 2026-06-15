@@ -15,6 +15,7 @@ of erroring. Money is micros (1 unit = 1_000_000 micros) per the API.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 from .google_auth import access_token, is_connected
@@ -179,3 +180,48 @@ def set_campaign_budget(budget_id: str, daily_amount: float) -> dict:
         'updateMask': 'amount_micros',
     }
     return _mutate('campaignBudgets', [op])
+
+
+def create_shopping_campaign(
+    *, name: str, daily_budget: float, merchant_id: str, country: str = 'US'
+) -> dict:
+    """Create a (paused) Standard Shopping campaign tied to the Merchant feed.
+
+    Two mutates: a campaign budget, then the campaign referencing it +
+    shoppingSetting{merchantId, salesCountry}. Created PAUSED so nothing spends
+    until the merchant reviews it in Google Ads. Returns {ok, campaign?}.
+    """
+    if not ads_connected():
+        return {'ok': False, 'reason': 'not_connected'}
+    if not (name and merchant_id):
+        return {'ok': False, 'reason': 'missing_name_or_merchant'}
+
+    budget_op = {
+        'create': {
+            'name': f'{name} budget',
+            'amountMicros': str(int(float(daily_budget) * _MICROS)),
+            'deliveryMethod': 'STANDARD',
+        }
+    }
+    budget_res = _mutate('campaignBudgets', [budget_op])
+    if not budget_res.get('ok'):
+        return budget_res
+    try:
+        budget_rn = budget_res['result']['results'][0]['resourceName']
+    except (KeyError, IndexError, TypeError):
+        return {'ok': False, 'reason': 'budget_create_no_resource'}
+
+    campaign_op = {
+        'create': {
+            'name': name,
+            'advertisingChannelType': 'SHOPPING',
+            'status': 'PAUSED',
+            'campaignBudget': budget_rn,
+            'shoppingSetting': {'merchantId': str(merchant_id), 'salesCountry': country or 'US'},
+        }
+    }
+    res = _mutate('campaigns', [campaign_op])
+    if res.get('ok'):
+        with contextlib.suppress(KeyError, IndexError, TypeError):
+            res['campaign'] = res['result']['results'][0]['resourceName']
+    return res

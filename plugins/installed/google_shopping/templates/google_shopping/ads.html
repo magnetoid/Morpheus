@@ -24,7 +24,21 @@
     Campaign reporting and budget controls appear here once connected.
   </p>
 </div>
-{% elif not report.ok %}
+{% else %}
+<div class="card card-padded mb-6">
+  <h2 class="font-semibold mb-2">Create Shopping campaign</h2>
+  <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <label class="block text-sm">Name<br><input type="text" name="name" required class="input" placeholder="DotBooks Shopping"></label>
+    <label class="block text-sm">Daily budget<br><input type="number" name="daily_budget" min="1" step="1" required class="input" style="max-width:120px" placeholder="10"></label>
+    <button type="submit" class="btn">Create (paused)</button>
+  </form>
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">Creates a Standard Shopping campaign tied to your Merchant feed, paused so nothing spends until you review it in Google Ads.</p>
+</div>
+{% endif %}
+
+{% if connected %}
+{% if not report.ok %}
 <div class="card card-padded"><p class="text-sm">Couldn’t load campaigns: {{ report.reason }}</p></div>
 {% else %}
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
@@ -65,5 +79,6 @@
     </tbody>
   </table>
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

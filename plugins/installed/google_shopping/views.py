@@ -54,6 +54,12 @@ def dashboard(request):
             )
 
     report = coverage_report()
+    diagnostics = None
+    if _content_connected():
+        from plugins.installed.google_shopping.services.content_api import product_statuses
+
+        d = product_statuses()
+        diagnostics = d if d.get('ok') else None
     return render(
         request,
         'google_shopping/dashboard.html',
@@ -65,6 +71,7 @@ def dashboard(request):
             'recent_logs': GoogleSyncLog.objects.all()[:10],
             'sync_msg': sync_msg,
             'content_connected': _content_connected(),
+            'diagnostics': diagnostics,
         },
     )
 
@@ -82,16 +89,34 @@ def ads_dashboard(request):
     from plugins.installed.google_shopping.services.ads_api import (
         ads_connected,
         campaign_report,
+        create_shopping_campaign,
         set_campaign_status,
     )
+    from plugins.installed.google_shopping.services.settings import raw_config
 
     msg = ''
     if request.method == 'POST':
-        cid = request.POST.get('campaign_id', '')
         action = request.POST.get('action')
-        if cid and action in ('ENABLED', 'PAUSED'):
-            res = set_campaign_status(cid, action)
-            msg = 'Campaign updated.' if res.get('ok') else f'Failed: {res.get("reason")}'
+        if action == 'create':
+            try:
+                budget = float(request.POST.get('daily_budget') or 0)
+            except (TypeError, ValueError):
+                budget = 0.0
+            res = create_shopping_campaign(
+                name=(request.POST.get('name') or '').strip()[:120],
+                daily_budget=budget,
+                merchant_id=(raw_config().get('merchant_id') or '').strip(),
+            )
+            msg = (
+                'Shopping campaign created (paused — review it in Google Ads).'
+                if res.get('ok')
+                else f'Create failed: {res.get("reason")}'
+            )
+        else:
+            cid = request.POST.get('campaign_id', '')
+            if cid and action in ('ENABLED', 'PAUSED'):
+                res = set_campaign_status(cid, action)
+                msg = 'Campaign updated.' if res.get('ok') else f'Failed: {res.get("reason")}'
 
     try:
         days = int(request.GET.get('days', 30))

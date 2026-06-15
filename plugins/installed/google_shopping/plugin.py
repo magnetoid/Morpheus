@@ -109,6 +109,7 @@ class GoogleShoppingPlugin(Plugin):
             google_ads_report_tool,
             google_feed_coverage_tool,
             google_feed_url_tool,
+            google_merchant_diagnostics_tool,
             google_rebuild_feed_tool,
         )
 
@@ -116,6 +117,7 @@ class GoogleShoppingPlugin(Plugin):
             google_feed_coverage_tool,
             google_feed_url_tool,
             google_rebuild_feed_tool,
+            google_merchant_diagnostics_tool,
             google_ads_report_tool,
         ]
 

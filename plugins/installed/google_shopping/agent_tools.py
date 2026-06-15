@@ -60,6 +60,25 @@ def google_rebuild_feed_tool() -> ToolResult:
 
 
 @tool(
+    name='google.merchant_diagnostics',
+    description='Live Merchant Center product status: active/pending/disapproved counts + the top item-level issues (why products are disapproved). Requires Google to be connected.',
+    scopes=['catalog.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def google_merchant_diagnostics_tool() -> ToolResult:
+    from plugins.installed.google_shopping.services.content_api import product_statuses
+
+    d = product_statuses()
+    if not d.get('ok'):
+        return ToolResult(output=d, display=f'Not connected ({d.get("reason")})')
+    c = d['counts']
+    return ToolResult(
+        output=d,
+        display=f'{c["active"]} active · {c["disapproved"]} disapproved · {len(d["issues"])} issue types',
+    )
+
+
+@tool(
     name='google.ads_report',
     description='Google Ads campaign performance for the last N days (cost, clicks, conversions, ROAS per campaign). Requires Google Ads to be connected in settings.',
     scopes=['analytics.read'],

@@ -18,7 +18,9 @@ from .settings import feed_settings, raw_config
 
 logger = logging.getLogger('morpheus.google_shopping')
 
-_BATCH_URL = 'https://shoppingcontent.googleapis.com/content/v2.1/{mid}/products/batch'
+_BASE = 'https://shoppingcontent.googleapis.com/content/v2.1/{mid}'
+_BATCH_URL = _BASE + '/products/batch'
+_STATUSES_URL = _BASE + '/productstatuses'
 _BATCH_SIZE = 200
 
 
@@ -90,6 +92,66 @@ def push_products(*, dry_run: bool = False) -> dict:
     sent, errors = _post_batches(mid, entries)
     _log(sent, errors)
     return {'ok': not errors, 'sent': sent, 'errors': errors}
+
+
+def product_statuses(*, max_pages: int = 4) -> dict:
+    """Pull Merchant Center product statuses → disapproval/issue diagnostics.
+
+    Summarises `itemLevelIssues` across the catalogue so the dashboard can show
+    WHY products are disapproved (the most valuable Merchant signal beyond the
+    feed). Graceful no-op when not connected.
+    """
+    mid = (raw_config().get('merchant_id', '') or '').strip()
+    if not is_connected() or not mid:
+        return {'ok': False, 'reason': 'not_connected'}
+    token = access_token()
+    if not token:
+        return {'ok': False, 'reason': 'no_access_token'}
+
+    import requests  # noqa: PLC0415
+
+    url = _STATUSES_URL.format(mid=mid)
+    headers = {'Authorization': f'Bearer {token}'}
+    counts = {'active': 0, 'disapproved': 0, 'pending': 0, 'total': 0}
+    issues: dict[str, dict] = {}
+    page_token = None
+    try:
+        for _ in range(max_pages):
+            params = {'maxResults': 250}
+            if page_token:
+                params['pageToken'] = page_token
+            resp = requests.get(url, params=params, headers=headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            for ps in data.get('resources', []):
+                counts['total'] += 1
+                dest = (ps.get('destinationStatuses') or [{}])[0].get('status', '')
+                if dest == 'disapproved':
+                    counts['disapproved'] += 1
+                elif dest == 'pending':
+                    counts['pending'] += 1
+                else:
+                    counts['active'] += 1
+                for issue in ps.get('itemLevelIssues', []):
+                    key = issue.get('description') or issue.get('code') or 'issue'
+                    row = issues.setdefault(
+                        key,
+                        {
+                            'description': key,
+                            'count': 0,
+                            'servability': issue.get('servability', ''),
+                        },
+                    )
+                    row['count'] += 1
+            page_token = data.get('nextPageToken')
+            if not page_token:
+                break
+    except Exception as e:  # noqa: BLE001
+        logger.warning('google_shopping: productstatuses failed: %s', e)
+        return {'ok': False, 'reason': str(e)[:200]}
+
+    top = sorted(issues.values(), key=lambda r: r['count'], reverse=True)[:20]
+    return {'ok': True, 'counts': counts, 'issues': top}
 
 
 def _post_batches(mid: str, entries: list[dict]) -> tuple[int, list[str]]:

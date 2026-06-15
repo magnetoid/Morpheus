@@ -188,3 +188,72 @@ class AdsApiTests(_Isolation, TestCase):
     def test_set_status_validates(self):
         _connect()
         self.assertEqual(ads_api.set_campaign_status('1', 'BOGUS')['reason'], 'bad_status')
+
+    def test_create_shopping_campaign_two_mutates(self):
+        _connect()
+        token_resp = MagicMock()
+        token_resp.json.return_value = {'access_token': 'T'}
+        token_resp.raise_for_status.return_value = None
+        budget_resp = MagicMock()
+        budget_resp.json.return_value = {
+            'results': [{'resourceName': 'customers/111/campaignBudgets/9'}]
+        }
+        budget_resp.raise_for_status.return_value = None
+        camp_resp = MagicMock()
+        camp_resp.json.return_value = {'results': [{'resourceName': 'customers/111/campaigns/8'}]}
+        camp_resp.raise_for_status.return_value = None
+        with patch('requests.post', side_effect=[token_resp, budget_resp, camp_resp]) as post:
+            res = ads_api.create_shopping_campaign(
+                name='Shopping', daily_budget=10, merchant_id='123456'
+            )
+        self.assertTrue(res['ok'])
+        self.assertEqual(res['campaign'], 'customers/111/campaigns/8')
+        # The budget mutate carries the micros amount (10 → 10_000_000).
+        budget_call = post.call_args_list[1]
+        self.assertEqual(
+            budget_call.kwargs['json']['operations'][0]['create']['amountMicros'], '10000000'
+        )
+
+    def test_create_requires_name_and_merchant(self):
+        _connect()
+        self.assertEqual(
+            ads_api.create_shopping_campaign(name='', daily_budget=10, merchant_id='1')['reason'],
+            'missing_name_or_merchant',
+        )
+
+
+class DiagnosticsTests(_Isolation, TestCase):
+    def test_not_connected(self):
+        self.assertEqual(content_api.product_statuses()['reason'], 'not_connected')
+
+    def test_summarises_issues(self):
+        _connect()
+        token_resp = MagicMock()
+        token_resp.json.return_value = {'access_token': 'T'}
+        token_resp.raise_for_status.return_value = None
+        status_resp = MagicMock()
+        status_resp.json.return_value = {
+            'resources': [
+                {
+                    'destinationStatuses': [{'status': 'disapproved'}],
+                    'itemLevelIssues': [
+                        {'description': 'Missing GTIN', 'servability': 'disapproved'}
+                    ],
+                },
+                {
+                    'destinationStatuses': [{'status': 'active'}],
+                    'itemLevelIssues': [],
+                },
+            ]
+        }
+        status_resp.raise_for_status.return_value = None
+        with (
+            patch('requests.get', return_value=status_resp),
+            patch('requests.post', return_value=token_resp),
+        ):
+            d = content_api.product_statuses()
+        self.assertTrue(d['ok'])
+        self.assertEqual(d['counts']['disapproved'], 1)
+        self.assertEqual(d['counts']['active'], 1)
+        self.assertEqual(d['issues'][0]['description'], 'Missing GTIN')
+        self.assertEqual(d['issues'][0]['count'], 1)
