@@ -41,8 +41,11 @@ class MetaCommercePlugin(Plugin):
         )
         for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
-        # Server-side Purchase event (Conversions API) — iOS-safe attribution.
+        # Server-side Conversions API funnel — iOS-safe, ad-blocker-proof signal
+        # that sharpens dynamic-ads / Advantage+ optimisation.
         self.register_hook(events.ORDER_PAID, self._on_order_paid, priority=90)
+        self.register_hook(events.ADD_TO_CART, self._on_add_to_cart, priority=90)
+        self.register_hook(events.BEGIN_CHECKOUT, self._on_begin_checkout, priority=90)
 
     def _bust_feed_cache(self, **_):
         try:
@@ -57,12 +60,29 @@ class MetaCommercePlugin(Plugin):
     def _on_order_paid(self, order=None, **_):
         if order is None:
             return
-        try:
-            from plugins.installed.meta_commerce.services.capi import send_purchase  # noqa: PLC0415
+        self._capi(lambda m: m.send_purchase(order), 'purchase')
 
-            send_purchase(order)
-        except Exception as e:  # noqa: BLE001 — CAPI must never block the order flow
-            logger.debug('meta_commerce: CAPI purchase failed: %s', e)
+    def _on_add_to_cart(self, product=None, variant=None, quantity=1, **_):
+        if product is None and variant is None:
+            return
+        self._capi(
+            lambda m: m.send_add_to_cart(product=product, variant=variant, quantity=quantity),
+            'add_to_cart',
+        )
+
+    def _on_begin_checkout(self, cart=None, **_):
+        if cart is None:
+            return
+        self._capi(lambda m: m.send_initiate_checkout(cart), 'begin_checkout')
+
+    def _capi(self, fn, label: str) -> None:
+        """Run a CAPI send, swallowing every error — must never block the flow."""
+        try:
+            from plugins.installed.meta_commerce.services import capi  # noqa: PLC0415
+
+            fn(capi)
+        except Exception as e:  # noqa: BLE001
+            logger.debug('meta_commerce: CAPI %s failed: %s', label, e)
 
     def contribute_storefront_blocks(self) -> list:
         return [

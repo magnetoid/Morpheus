@@ -227,3 +227,45 @@ class CapiTests(_Iso, TestCase):
         # Email is sha256-hashed, never raw.
         self.assertNotIn('BUYER@example.com', json.dumps(ev))
         self.assertEqual(len(ev['user_data']['em'][0]), 64)
+
+    def test_add_to_cart_event(self):
+        from decimal import Decimal
+
+        from djmoney.money import Money
+
+        _connect()
+        product = MagicMock()
+        product.sku = 'SKU1'
+        product.price = Money(Decimal('9.00'), 'USD')
+        resp = MagicMock()
+        resp.json.return_value = {'events_received': 1}
+        resp.raise_for_status.return_value = None
+        with patch('requests.post', return_value=resp) as post:
+            res = capi.send_add_to_cart(product=product, variant=None, quantity=2)
+        self.assertTrue(res['ok'])
+        ev = json.loads(post.call_args.kwargs['data']['data'])[0]
+        self.assertEqual(ev['event_name'], 'AddToCart')
+        self.assertEqual(ev['custom_data']['content_ids'], ['SKU1'])
+        self.assertEqual(ev['custom_data']['value'], 18.0)  # 9 × 2
+
+    def test_initiate_checkout_event(self):
+        from decimal import Decimal
+
+        from djmoney.money import Money
+
+        _connect()
+        cart = MagicMock()
+        cart.total = Money(Decimal('30.00'), 'USD')
+        line = MagicMock()
+        line.sku = 'SKU1'
+        line.quantity = 1
+        cart.items = [line]
+        resp = MagicMock()
+        resp.json.return_value = {'events_received': 1}
+        resp.raise_for_status.return_value = None
+        with patch('requests.post', return_value=resp) as post:
+            res = capi.send_initiate_checkout(cart)
+        self.assertTrue(res['ok'])
+        ev = json.loads(post.call_args.kwargs['data']['data'])[0]
+        self.assertEqual(ev['event_name'], 'InitiateCheckout')
+        self.assertEqual(ev['custom_data']['value'], 30.0)

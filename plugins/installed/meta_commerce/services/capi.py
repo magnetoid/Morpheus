@@ -38,42 +38,80 @@ def _line_items(order):
     return out
 
 
-def send_purchase(order) -> dict:
-    """Send a server-side Purchase event for `order`. No-op when unconfigured."""
+def _money(m) -> tuple[float, str]:
+    amount = getattr(m, 'amount', None)
+    return (float(amount) if amount is not None else 0.0), str(getattr(m, 'currency', '') or 'USD')
+
+
+def _send(event_name: str, *, value: float, currency: str, items, email='', event_id='') -> dict:
+    """Core CAPI sender. items = [(sku, qty)]. No-op when unconfigured."""
     c = creds()
     if not (has_token() and c['pixel_id']):
         return {'ok': False, 'reason': 'not_connected'}
-
-    total = getattr(order, 'total', None)
-    amount = getattr(total, 'amount', None)
-    currency = str(getattr(total, 'currency', '') or 'USD')
-    email = getattr(order, 'email', '') or ''
-    items = _line_items(order)
-
-    user_data = {}
-    if email:
-        user_data['em'] = [_sha256(email)]
-
+    user_data = {'em': [_sha256(email)]} if email else {}
     event = {
-        'event_name': 'Purchase',
+        'event_name': event_name,
         'event_time': int(time.time()),
         'action_source': 'website',
-        'event_id': str(getattr(order, 'order_number', '') or getattr(order, 'pk', '')),
+        'event_id': str(event_id or ''),
         'user_data': user_data,
         'custom_data': {
             'currency': currency,
-            'value': float(amount) if amount is not None else 0.0,
+            'value': value,
             'content_type': 'product',
             'content_ids': [sku for sku, _ in items],
             'contents': [{'id': sku, 'quantity': qty} for sku, qty in items],
         },
     }
     res = post(f'{c["pixel_id"]}/events', {'data': json.dumps([event])})
-    _log(res)
+    _log(res, event_name)
     return res
 
 
-def _log(res: dict) -> None:
+def send_purchase(order) -> dict:
+    """Server-side Purchase event for `order`."""
+    value, currency = _money(getattr(order, 'total', None))
+    return _send(
+        'Purchase',
+        value=value,
+        currency=currency,
+        items=_line_items(order),
+        email=getattr(order, 'email', '') or '',
+        event_id=str(getattr(order, 'order_number', '') or getattr(order, 'pk', '')),
+    )
+
+
+def send_add_to_cart(*, product=None, variant=None, quantity=1) -> dict:
+    """Server-side AddToCart — sharpens dynamic-ads/Advantage+ optimisation."""
+    target = variant or product
+    sku = getattr(target, 'sku', '') or getattr(product, 'sku', '')
+    if not sku:
+        return {'ok': False, 'reason': 'no_sku'}
+    value, currency = _money(getattr(target, 'price', None) or getattr(product, 'price', None))
+    return _send(
+        'AddToCart',
+        value=value * (quantity or 1),
+        currency=currency,
+        items=[(sku, quantity or 1)],
+    )
+
+
+def send_initiate_checkout(cart) -> dict:
+    """Server-side InitiateCheckout from a cart."""
+    value, currency = _money(getattr(cart, 'total', None) or getattr(cart, 'subtotal', None))
+    items = []
+    for line in getattr(cart, 'items', getattr(cart, 'lines', None)) or []:
+        sku = (
+            getattr(line, 'sku', '')
+            or getattr(getattr(line, 'variant', None), 'sku', '')
+            or getattr(getattr(line, 'product', None), 'sku', '')
+        )
+        if sku:
+            items.append((sku, getattr(line, 'quantity', 1)))
+    return _send('InitiateCheckout', value=value, currency=currency, items=items)
+
+
+def _log(res: dict, event_name: str = 'Purchase') -> None:
     try:
         from plugins.installed.meta_commerce.models import MetaSyncLog  # noqa: PLC0415
 
@@ -82,7 +120,7 @@ def _log(res: dict) -> None:
             status=MetaSyncLog.STATUS_OK if res.get('ok') else MetaSyncLog.STATUS_ERROR,
             item_count=1 if res.get('ok') else 0,
             errors=[] if res.get('ok') else [str(res.get('reason'))[:300]],
-            message='CAPI Purchase',
+            message=f'CAPI {event_name}',
         )
     except Exception as e:  # noqa: BLE001
         logger.debug('meta_commerce: capi log failed: %s', e)
