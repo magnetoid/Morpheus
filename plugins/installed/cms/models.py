@@ -229,7 +229,8 @@ class MenuItem(models.Model):
 
     ``kind`` lets a storefront render dynamic entries, not just static links:
       - ``link``            — a plain label → url (default).
-      - ``mega_categories`` — the Genres mega-menu (driven by nav_categories).
+      - ``mega_categories`` — the Genres mega-menu (driven by nav_genres).
+      - ``mega_topics``     — the Topics mega-menu (driven by nav_topics).
       - ``mega_authors``    — the Authors mega-menu (driven by nav_authors).
     Mega kinds ignore ``url`` (the theme supplies the panel); ``url`` is still
     used as the mega trigger's own href / the mobile-drawer fallback link.
@@ -237,10 +238,12 @@ class MenuItem(models.Model):
 
     KIND_LINK = 'link'
     KIND_MEGA_CATEGORIES = 'mega_categories'
+    KIND_MEGA_TOPICS = 'mega_topics'
     KIND_MEGA_AUTHORS = 'mega_authors'
     KIND_CHOICES = [
         (KIND_LINK, 'Link'),
         (KIND_MEGA_CATEGORIES, 'Genres mega-menu'),
+        (KIND_MEGA_TOPICS, 'Topics mega-menu'),
         (KIND_MEGA_AUTHORS, 'Authors mega-menu'),
     ]
 

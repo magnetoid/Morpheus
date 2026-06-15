@@ -17,7 +17,8 @@ from plugins.installed.cms.models import Menu, MenuItem
 
 _HEADER = [
     ('All books', '/products/', MenuItem.KIND_LINK),
-    ('Genres', '/categories/', MenuItem.KIND_MEGA_CATEGORIES),
+    ('Genres', '/genres/', MenuItem.KIND_MEGA_CATEGORIES),
+    ('Topics', '/topics/', MenuItem.KIND_MEGA_TOPICS),
     ('Authors', '/products/', MenuItem.KIND_MEGA_AUTHORS),
     ('Staff picks', '/staff-picks/', MenuItem.KIND_LINK),
     ('Journal', '/journal/', MenuItem.KIND_LINK),
@@ -25,7 +26,8 @@ _HEADER = [
 _MOBILE = [
     ('All books', '/products/', MenuItem.KIND_LINK),
     ('New & notable', '/products/?featured=true', MenuItem.KIND_LINK),
-    ('Genres', '/categories/', MenuItem.KIND_MEGA_CATEGORIES),
+    ('Genres', '/genres/', MenuItem.KIND_MEGA_CATEGORIES),
+    ('Topics', '/topics/', MenuItem.KIND_MEGA_TOPICS),
     ('Staff picks', '/staff-picks/', MenuItem.KIND_LINK),
     ('Journal', '/journal/', MenuItem.KIND_LINK),
 ]
