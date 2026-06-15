@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from xml.sax.saxutils import escape
 
-from .mapping import map_product
+from .mapping import expand_variants, map_product
 from .settings import feed_settings
 
 logger = logging.getLogger('morpheus.google_shopping')
@@ -58,7 +58,11 @@ def build_feed(*, log: bool = True) -> tuple[str, dict]:
         if item is None:
             skipped += 1
             continue
-        items_xml.append(_item_xml(item))
+        # Variable products → one item per active variant (item_group_id);
+        # simple products → the single product-level item.
+        variant_items = expand_variants(product, item, settings)
+        for it in variant_items or [item]:
+            items_xml.append(_item_xml(it))
 
     title = escape(settings.feed_title or 'Product feed')
     desc = escape(settings.feed_description or '')

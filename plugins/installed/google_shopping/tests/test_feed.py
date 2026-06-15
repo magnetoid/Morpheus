@@ -81,6 +81,56 @@ class MappingTests(TestCase):
         self.assertEqual(item['condition'], 'used')
 
 
+class VariantExpansionTests(TestCase):
+    def test_variable_product_emits_one_item_per_variant(self):
+        from plugins.installed.catalog.models import ProductVariant
+        from plugins.installed.google_shopping.services.mapping import expand_variants
+
+        p = Product.objects.create(
+            name='Anthology',
+            slug='anthology',
+            sku='ANTH',
+            price=Money(Decimal('9.00'), 'USD'),
+            product_type='variable',
+            status='active',
+        )
+        pi = ProductImage(product=p, is_primary=True, sort_order=0)
+        pi.image.save('anth.gif', ContentFile(_GIF), save=True)
+        ProductVariant.objects.create(
+            product=p,
+            name='Paperback',
+            sku='ANTH-PB',
+            price=Money(Decimal('9.00'), 'USD'),
+            barcode='9780000000001',
+        )
+        ProductVariant.objects.create(
+            product=p,
+            name='Hardcover',
+            sku='ANTH-HC',
+            price=Money(Decimal('15.00'), 'USD'),
+        )
+
+        base = map_product(p, feed_settings())
+        items = expand_variants(p, base, feed_settings())
+        self.assertEqual(len(items), 2)
+        ids = {i['id'] for i in items}
+        self.assertEqual(ids, {'ANTH-PB', 'ANTH-HC'})
+        for i in items:
+            self.assertEqual(i['item_group_id'], 'ANTH')  # shared group = product
+        pb = next(i for i in items if i['id'] == 'ANTH-PB')
+        self.assertEqual(pb['gtin'], '9780000000001')  # variant barcode → gtin
+        self.assertNotIn('identifier_exists', pb)  # has a gtin now
+        hc = next(i for i in items if i['id'] == 'ANTH-HC')
+        self.assertEqual(hc['price'], '15.00 USD')  # per-variant price
+        self.assertIn('Hardcover', hc['title'])
+
+    def test_simple_product_not_expanded(self):
+        from plugins.installed.google_shopping.services.mapping import expand_variants
+
+        p = _product('solo', 'SOLO')
+        self.assertIsNone(expand_variants(p, map_product(p, feed_settings()), feed_settings()))
+
+
 class FeedRenderTests(TestCase):
     def test_feed_is_wellformed_and_namespaced(self):
         _product('one', 'O1')

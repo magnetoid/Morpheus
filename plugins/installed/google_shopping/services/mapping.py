@@ -12,6 +12,7 @@ skip, never a feed-breaking error.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 from django.utils.html import strip_tags
@@ -181,6 +182,83 @@ def map_product(product, settings) -> dict | None:  # noqa: PLR0912, PLR0915 —
             item[label] = str(over[label])[:100]
 
     return item
+
+
+def _variant_availability(variant, *, include_oos: bool) -> str | None:
+    avail = 'in_stock'
+    try:
+        from django.db.models import F, Sum  # noqa: PLC0415
+
+        from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
+
+        qty = StockLevel.objects.filter(variant=variant).aggregate(
+            q=Sum(F('quantity') - F('reserved_quantity'))
+        )['q']
+        if qty is not None and qty <= 0:
+            avail = 'out_of_stock'
+    except Exception:  # noqa: BLE001
+        avail = 'in_stock'
+    if avail == 'out_of_stock' and not include_oos:
+        return None
+    return avail
+
+
+def expand_variants(product, base_item: dict, settings) -> list[dict] | None:  # noqa: PLR0912
+    """For a variable product with ≥2 active variants, return one feed item per
+    variant (sharing `item_group_id` = the product id) so each is individually
+    shoppable. Returns None for simple/single-variant products — the caller then
+    uses the product-level `base_item`.
+    """
+    if getattr(product, 'product_type', '') != 'variable':
+        return None
+    try:
+        variants = list(product.variants.filter(is_active=True))
+    except Exception:  # noqa: BLE001
+        return None
+    if len(variants) < 2:
+        return None
+
+    items: list[dict] = []
+    for v in variants:
+        vi = dict(base_item)
+        vi['item_group_id'] = base_item['id']
+        vi['id'] = (getattr(v, 'sku', '') or '').strip() or f'{base_item["id"]}-{v.pk}'
+
+        vprice = getattr(v, 'price', None)
+        vcompare = getattr(v, 'compare_at_price', None)
+        on_sale = bool(vcompare and vprice and vcompare > vprice)
+        if on_sale:
+            vi['price'] = _money(vcompare)
+            vi['sale_price'] = _money(vprice)
+        else:
+            p = _money(vprice)
+            if p:
+                vi['price'] = p
+            vi.pop('sale_price', None)
+        if not vi.get('price'):
+            continue
+
+        suffix = (getattr(v, 'name', '') or getattr(v, 'size', '') or '').strip()
+        if suffix and suffix.lower() not in (base_item.get('title') or '').lower():
+            vi['title'] = f'{base_item["title"]} — {suffix}'[:150]
+
+        barcode = (getattr(v, 'barcode', '') or '').replace('-', '').strip()
+        if barcode:
+            vi['gtin'] = barcode
+            vi.pop('identifier_exists', None)
+
+        vimg = getattr(v, 'image', None)
+        if vimg is not None and getattr(vimg, 'image', None):
+            with contextlib.suppress(Exception):
+                vi['image_link'] = _abs(vimg.image.url)
+
+        av = _variant_availability(v, include_oos=settings.include_out_of_stock)
+        if av is None:
+            continue
+        vi['availability'] = av
+        items.append(vi)
+
+    return items or None
 
 
 def _store_product_type(product, book) -> str:
