@@ -94,3 +94,23 @@ class ActivityFeedModularityTests(TestCase):
         self.assertEqual(len(items), 3)
         whens = [it['when'] for it in items]
         self.assertEqual(whens, sorted(whens, reverse=True))
+
+    def test_item_with_missing_when_is_dropped_not_500(self):
+        # ACTIVITY_FEED is an open plugin contract: a contributed item with a
+        # None timestamp must be dropped, never crash the sort (and the home
+        # page) with a TypeError.
+        from core.hooks import MorpheusEvents, hook_registry
+        from plugins.installed.admin_dashboard.views_split.home import _compute_activity_feed
+
+        def _bad(value, limit=20, **kwargs):
+            value.append({'kind': 'x', 'icon': 'bug', 'label': 'no-when', 'url': '/', 'when': None})
+            return value
+
+        hook_registry.register(MorpheusEvents.ACTIVITY_FEED, _bad, priority=1)
+        try:
+            items = _compute_activity_feed(limit=10)  # must not raise
+        finally:
+            hook_registry._handlers[MorpheusEvents.ACTIVITY_FEED] = [
+                e for e in hook_registry._handlers[MorpheusEvents.ACTIVITY_FEED] if e[1] is not _bad
+            ]
+        self.assertNotIn('no-when', [it['label'] for it in items])

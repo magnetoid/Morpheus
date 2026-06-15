@@ -115,9 +115,13 @@ def _compute_activity_feed(limit: int = 20) -> list:
     items: list[dict] = []
     with _safe_block('activity.feed'):
         items = hook_registry.filter(MorpheusEvents.ACTIVITY_FEED, value=items, limit=limit)
-
-    items.sort(key=lambda it: it['when'], reverse=True)
-    return items[:limit]
+        # Drop entries with no timestamp and sort inside the safe block: a
+        # contributed item with a missing/None `when` (open plugin contract)
+        # must degrade to a hidden tile, never 500 the whole home page.
+        items = [it for it in items if it.get('when') is not None]
+        items.sort(key=lambda it: it['when'], reverse=True)
+        items = items[:limit]
+    return items
 
 
 def _compute_setup_steps() -> list:

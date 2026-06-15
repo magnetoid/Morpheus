@@ -20,6 +20,7 @@ from plugins.installed.analytics.services import (
     get_or_create_session,
     record_event,
     roll_daily,
+    should_track_request,
     trim_old_events,
 )
 
@@ -145,3 +146,50 @@ class TrimTests(TestCase):
         deleted = trim_old_events(keep_days=90)
         self.assertEqual(deleted, 1)
         self.assertTrue(AnalyticsEvent.objects.filter(name='new').exists())
+
+
+class StaffExclusionTests(TestCase):
+    """Staff/admins are excluded from tracking; everyone else is tracked."""
+
+    def setUp(self):
+        self.rf = RequestFactory()
+
+    def test_anonymous_is_tracked(self):
+        from django.contrib.auth.models import AnonymousUser
+
+        req = self.rf.get('/')
+        req.user = AnonymousUser()
+        self.assertTrue(should_track_request(req))
+
+    def test_customer_is_tracked(self):
+        req = self.rf.get('/')
+        req.user = User.objects.create_user(username='c', email='c@example.com', password='x')
+        self.assertTrue(should_track_request(req))
+
+    def test_staff_is_excluded(self):
+        req = self.rf.get('/')
+        req.user = User.objects.create_user(
+            username='s', email='s@example.com', password='x', is_staff=True
+        )
+        self.assertFalse(should_track_request(req))
+
+    def test_superuser_is_excluded(self):
+        req = self.rf.get('/')
+        req.user = User.objects.create_superuser(username='a', email='a@example.com', password='x')
+        self.assertFalse(should_track_request(req))
+
+    def test_beacon_skips_staff(self):
+        from django.test import Client
+
+        c = Client()
+        c.force_login(
+            User.objects.create_user(
+                username='s2', email='s2@example.com', password='x', is_staff=True
+            )
+        )
+        r = c.post(
+            '/api/analytics/track/',
+            data={'name': 'pageview', 'kind': 'pageview'},
+        )
+        self.assertEqual(r.status_code, 204)
+        self.assertEqual(AnalyticsEvent.objects.count(), 0)

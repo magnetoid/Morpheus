@@ -76,20 +76,23 @@ def track_beacon(request):
         from plugins.installed.analytics.services import (  # noqa: PLC0415
             get_or_create_session,
             record_event,
+            should_track_request,
         )
 
         response = JsonResponse({'ok': True}, status=204)
-        session = get_or_create_session(request, response=response)
-        record_event(
-            name=name,
-            kind=kind,
-            request=request,
-            session=session,
-            url=(body.get('url') or '')[:500],
-            product_slug=(body.get('product_slug') or '')[:200],
-            search_query=(body.get('search_query') or '')[:200],
-            payload=payload,
-        )
+        # Skip staff/admin browsing so it doesn't pollute customer analytics.
+        if should_track_request(request):
+            session = get_or_create_session(request, response=response)
+            record_event(
+                name=name,
+                kind=kind,
+                request=request,
+                session=session,
+                url=(body.get('url') or '')[:500],
+                product_slug=(body.get('product_slug') or '')[:200],
+                search_query=(body.get('search_query') or '')[:200],
+                payload=payload,
+            )
         return response
     except Exception as e:  # noqa: BLE001 — beacon must never error
         logger.warning('analytics: beacon failed: %s', e)

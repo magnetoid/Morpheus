@@ -42,6 +42,18 @@ def _device_from_ua(ua: str) -> str:
     return 'desktop' if s else ''
 
 
+def should_track_request(request) -> bool:
+    """Whether this request's visitor should generate analytics events.
+
+    Staff/admins are excluded so the owner's own storefront browsing (they're
+    logged into the dashboard) doesn't pollute customer analytics. Anonymous
+    visitors and logged-in *customers* are still tracked — their funnels and
+    behaviour are the point of the data.
+    """
+    user = getattr(request, 'user', None)
+    return not (user is not None and user.is_authenticated and (user.is_staff or user.is_superuser))
+
+
 def get_or_create_session(request, *, response=None):
     """Resolve the visitor's analytics session. Sets the cookie if missing."""
     from plugins.installed.analytics.models import AnalyticsSession

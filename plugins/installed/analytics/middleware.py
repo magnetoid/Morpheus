@@ -37,8 +37,11 @@ class AnalyticsMiddleware:
             from plugins.installed.analytics.services import (
                 get_or_create_session,
                 record_event,
+                should_track_request,
             )
 
+            if not should_track_request(request):
+                return response  # staff/admin browsing — don't pollute analytics
             session = get_or_create_session(request, response=response)
             record_event(
                 name='pageview',
