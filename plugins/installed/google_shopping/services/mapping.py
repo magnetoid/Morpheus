@@ -157,8 +157,10 @@ def map_product(product, settings) -> dict | None:  # noqa: PLR0912, PLR0915 —
         item['gtin'] = gtin
     if mpn:
         item['mpn'] = mpn
-    if not (gtin or mpn or brand):
-        # Google requires this flag for items with no unique product identifier.
+    if not (gtin or mpn):
+        # No manufacturer identifier (GTIN/MPN). Brand alone doesn't satisfy
+        # Google's unique-identifier requirement, so flag it — without this the
+        # item is disapproved. (Public-domain editions have no ISBN/GTIN.)
         item['identifier_exists'] = 'no'
     if gpc:
         item['google_product_category'] = gpc

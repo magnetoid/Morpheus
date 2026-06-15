@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, events
+from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
 
 logger = logging.getLogger('morpheus.google_shopping')
 
@@ -51,6 +51,18 @@ class GoogleShoppingPlugin(Plugin):
             cache.delete(FEED_CACHE_KEY)
         except Exception as e:  # noqa: BLE001
             logger.debug('google_shopping: cache bust failed: %s', e)
+
+    def contribute_storefront_blocks(self) -> list:
+        # Dynamic remarketing tag on every storefront page (renders nothing
+        # until a remarketing AW- id is configured + enabled). Conversion
+        # pixels stay in the tracking plugin.
+        return [
+            StorefrontBlock(
+                slot='global_below_body',
+                template='google_shopping/blocks/remarketing.html',
+                priority=70,
+            ),
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -138,6 +150,17 @@ class GoogleShoppingPlugin(Plugin):
                     'type': 'string',
                     'title': 'Feed description',
                     'default': 'Product feed for Google Merchant Center.',
+                },
+                'remarketing_enabled': {
+                    'type': 'boolean',
+                    'title': 'Enable Google Ads dynamic remarketing tag',
+                    'default': False,
+                },
+                'remarketing_id': {
+                    'type': 'string',
+                    'title': 'Google Ads remarketing/conversion ID',
+                    'description': 'Format: AW-123456789. Builds Shopping/PMax remarketing audiences. Obeys Consent Mode set by the tracking plugin.',
+                    'default': '',
                 },
             },
         }

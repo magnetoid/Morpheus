@@ -24,6 +24,8 @@ class FeedSettings:
     include_out_of_stock: bool
     feed_title: str
     feed_description: str
+    remarketing_enabled: bool
+    remarketing_id: str
 
 
 _DEFAULTS = {
@@ -39,6 +41,8 @@ _DEFAULTS = {
     'include_out_of_stock': True,
     'feed_title': 'Dot Books',
     'feed_description': 'Product feed for Google Merchant Center.',
+    'remarketing_enabled': False,
+    'remarketing_id': '',
 }
 
 

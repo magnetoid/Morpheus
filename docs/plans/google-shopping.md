@@ -74,13 +74,25 @@ code; contributes, never edits sibling layers; disable-safe).
   `requests`) — justify the dep in the commit. Prefer thin REST over a heavy SDK.
 
 ### Phase 4 — Google Ads layer
-- **Dynamic remarketing tag** (storefront block `global_below_body`): emits
-  `google_tag_params` with `ecomm_prodid/ecomm_pagetype/ecomm_totalvalue` so
-  Shopping/PMax remarketing works. Gated on consent (reuse `consent` plugin
-  signal). Does NOT duplicate the conversion pixel.
-- **Google Ads API** (config-gated): Shopping/Performance Max campaign create +
-  budget + status, and reporting (impressions/clicks/cost/conv/ROAS) on the
-  dashboard. Conversion attribution still flows through `tracking`.
+- ✅ **Dynamic remarketing tag** (DONE — storefront block `global_below_body`
+  + `{% gads_remarketing %}` tag): emits the gtag `page_view` with
+  `ecomm_prodid` (= feed `g:id`/sku) / `ecomm_pagetype` / `ecomm_totalvalue` so
+  Shopping/PMax build remarketing audiences. Renders nothing until an `AW-` id
+  is set + enabled. Obeys Consent Mode v2 set by `tracking` (no extra coupling),
+  does NOT duplicate the conversion pixel. XSS-safe: id regex-gated, all values
+  json-encoded with `<`/`>`/`&` → `\uXXXX` (security review caught a `</script>`
+  break-out via product SKU; fixed + regression-tested).
+- **Google Ads API** (TODO — config-gated): Shopping/Performance Max campaign
+  create + budget + status, and reporting (impressions/clicks/cost/conv/ROAS) on
+  the dashboard. Conversion attribution still flows through `tracking`.
+
+### Phase 3 status — Content API push (DEFERRED, needs creds + dep)
+Building it now would mean shipping untested code that requires a new heavyweight
+dep (`google-auth` for OAuth2 service-account JWT signing — not currently
+installed) with no Merchant credentials to validate against. Per the
+Verified-Output rule, deferred until creds exist; the feed URL is the
+submission path until then. `requests` is available for a thin REST client when
+we do build it.
 
 ## House-rule checklist (every phase)
 - Single AppConfig + `plugin.py` manifest; register in
