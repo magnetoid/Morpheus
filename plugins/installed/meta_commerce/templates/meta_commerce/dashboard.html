@@ -21,6 +21,26 @@
 <div class="card card-padded mb-6">
   <div class="flex items-center justify-between gap-3">
     <div>
+      <h2 class="font-semibold">Connection</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Check that the access token, catalog, ad account and pixel actually work (live Graph calls).</p>
+    </div>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="verify">
+      <button type="submit" class="btn"{% if not has_token %} disabled{% endif %}>Verify connection</button>
+    </form>
+  </div>
+  {% if verify %}
+  <ul class="mt-3 text-sm" style="list-style:none;padding:0;margin:0;display:grid;gap:.35rem;">
+    {% for key, r in verify.items %}
+    <li>{% if r.ok %}✅{% else %}❌{% endif %} <span class="font-medium">{{ key }}</span> — {{ r.detail }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+<div class="card card-padded mb-6">
+  <div class="flex items-center justify-between gap-3">
+    <div>
       <h2 class="font-semibold">Catalog API sync</h2>
       <p class="text-xs text-[color:var(--text-muted)]">Push products straight to your Meta catalog. {% if catalog_connected %}Connected.{% else %}Add an access token + catalog ID in Settings → Channels first.{% endif %}</p>
     </div>

@@ -51,6 +51,12 @@ def dashboard(request):
             else f'Catalog push not run ({stats.get("reason", "error")}).'
         )
 
+    verify = None
+    if request.method == 'POST' and request.POST.get('action') == 'verify':
+        from plugins.installed.meta_commerce.services.graph import verify_connection
+
+        verify = verify_connection()
+
     diagnostics = None
     if catalog_connected():
         from plugins.installed.meta_commerce.services.catalog_api import product_diagnostics
@@ -71,6 +77,7 @@ def dashboard(request):
             'has_token': has_token(),
             'catalog_connected': catalog_connected(),
             'diagnostics': diagnostics,
+            'verify': verify,
         },
     )
 

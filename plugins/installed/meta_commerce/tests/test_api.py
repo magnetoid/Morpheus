@@ -61,6 +61,37 @@ class NotConnectedTests(_Iso, TestCase):
         self.assertEqual(capi.send_purchase(MagicMock())['reason'], 'not_connected')
 
 
+class VerifyConnectionTests(_Iso, TestCase):
+    def test_no_token(self):
+        from plugins.installed.meta_commerce.services.graph import verify_connection
+
+        self.assertFalse(verify_connection()['token']['ok'])
+
+    def test_validates_each_credential(self):
+        from plugins.installed.meta_commerce.services.graph import verify_connection
+
+        _connect()
+        me = MagicMock()
+        me.json.return_value = {'id': '1'}
+        me.raise_for_status.return_value = None
+        cat = MagicMock()
+        cat.json.return_value = {'name': 'My Catalog', 'product_count': 42}
+        cat.raise_for_status.return_value = None
+        acct = MagicMock()
+        acct.json.return_value = {'name': 'Ad Acct', 'currency': 'USD'}
+        acct.raise_for_status.return_value = None
+        px = MagicMock()
+        px.json.return_value = {'name': 'Pixel'}
+        px.raise_for_status.return_value = None
+        with patch('requests.get', side_effect=[me, cat, acct, px]):
+            res = verify_connection()
+        self.assertTrue(res['token']['ok'])
+        self.assertIn('My Catalog', res['catalog']['detail'])
+        self.assertIn('42', res['catalog']['detail'])
+        self.assertTrue(res['ad_account']['ok'])
+        self.assertTrue(res['pixel']['ok'])
+
+
 class CatalogPushTests(_Iso, TestCase):
     def test_catalog_item_shape(self):
         item = {

@@ -77,6 +77,53 @@ def post(path: str, payload: dict) -> dict:
         return {'ok': False, 'reason': _err(e)}
 
 
+def verify_connection() -> dict:
+    """Make real Graph calls to validate each credential — far stronger than the
+    *_connected() presence checks. Returns {token, catalog, ad_account, pixel}
+    where each is {ok, detail}. Only checks the IDs that are actually set.
+    """
+    c = creds()
+    out: dict = {}
+
+    if not c['access_token']:
+        return {'token': {'ok': False, 'detail': 'No access token set.'}}
+    me = get('me', {'fields': 'id'})
+    out['token'] = (
+        {'ok': True, 'detail': 'Token valid.'}
+        if me.get('ok')
+        else {'ok': False, 'detail': me.get('reason', 'invalid')}
+    )
+
+    if c['catalog_id']:
+        r = get(c['catalog_id'], {'fields': 'name,product_count'})
+        out['catalog'] = (
+            {
+                'ok': True,
+                'detail': f'{r["data"].get("name", "?")} · {r["data"].get("product_count", 0)} items',
+            }
+            if r.get('ok')
+            else {'ok': False, 'detail': r.get('reason', 'invalid')}
+        )
+    if c['ad_account_id']:
+        r = get(f'act_{c["ad_account_id"]}', {'fields': 'name,currency'})
+        out['ad_account'] = (
+            {
+                'ok': True,
+                'detail': f'{r["data"].get("name", "?")} ({r["data"].get("currency", "")})',
+            }
+            if r.get('ok')
+            else {'ok': False, 'detail': r.get('reason', 'invalid')}
+        )
+    if c['pixel_id']:
+        r = get(c['pixel_id'], {'fields': 'name'})
+        out['pixel'] = (
+            {'ok': True, 'detail': r['data'].get('name', 'Pixel OK')}
+            if r.get('ok')
+            else {'ok': False, 'detail': r.get('reason', 'invalid')}
+        )
+    return out
+
+
 def _err(e) -> str:
     # Surface Meta's error message body when present (it's the useful part).
     resp = getattr(e, 'response', None)
