@@ -13,7 +13,27 @@ ADR 0003 + 0004.
 
 ## PHASE 1 — Fastest wins, highest revenue impact (DO FIRST)
 
-### 1.1 Product image completeness  ⟵ READY TO BUILD (spec below)
+### 1.1 Product image completeness  ✅ DONE (2026-06-15, commit bca0ec7 — live)
+
+**Shipped:** `plugins/installed/book_product/management/commands/backfill_book_covers.py`
+(NOT catalog as first specced — it reads BookProduct author/genres and writes
+catalog's ProductImage, so it belongs in book_product; catalog must not import
+book_product). Result on prod: **image coverage 55 → 859/859 (100%)**. og_image
+*field* is 93.2% (the command skips already-imaged books) but **effective OG is
+100%**: `seo.services.meta.resolve_meta` falls back to `primary_image.image.url`
+when the og_image field is blank (and self-heals the SeoMeta row on render).
+
+**Data reality (differed from the 2026-06-03 audit):** of 756 cover-less books
+only **8** still carried a `book.gutenberg_id` and **55** an author — the rest
+migrated to BookProduct with sparse fields. So the Gutenberg-download path
+covered 8; the other 728 got Pillow-rendered "DOT BOOKS" classic covers (serif
+title + author + genre label, deterministic slug-seeded palette, Vera fonts via
+reportlab). Verified live: genre grids show covers, PDP emits og:image, webp
+variants serve. Original spec below (kept for history).
+
+---
+
+#### Original spec (pre-build)
 
 **Audit (prod, 2026-06-03):** 859 active products; **55 (6.4%) have a
 ProductImage**; **1 (0.1%) has og_image**. They are Project Gutenberg books
