@@ -54,3 +54,52 @@ def dashboard(request):
             'uet_set': bool((raw_config().get('uet_tag_id') or '').strip()),
         },
     )
+
+
+@staff_member_required
+def ads_dashboard(request):
+    """Microsoft Advertising campaign management (SOAP). Control only — no metrics."""
+    from plugins.installed.microsoft_commerce.services.ads_api import (
+        create_campaign,
+        list_campaigns,
+        set_campaign_status,
+    )
+    from plugins.installed.microsoft_commerce.services.soap import ads_connected
+
+    msg = ''
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'create':
+            try:
+                budget = float(request.POST.get('budget') or 0)
+            except (TypeError, ValueError):
+                budget = 0.0
+            res = create_campaign(
+                name=(request.POST.get('name') or '').strip()[:120], daily_budget=budget
+            )
+            msg = (
+                'Campaign created (paused — finish setup in Microsoft Advertising).'
+                if res.get('ok')
+                else f'Create failed: {res.get("reason")}'
+            )
+        else:
+            cid = request.POST.get('campaign_id', '')
+            if cid and action in ('Active', 'Paused'):
+                res = set_campaign_status(cid, action)
+                msg = 'Campaign updated.' if res.get('ok') else f'Failed: {res.get("reason")}'
+
+    report = (
+        list_campaigns()
+        if ads_connected()
+        else {'ok': False, 'reason': 'not_connected', 'campaigns': []}
+    )
+    return render(
+        request,
+        'microsoft_commerce/ads.html',
+        {
+            'active_nav': 'microsoft_commerce',
+            'connected': ads_connected(),
+            'report': report,
+            'msg': msg,
+        },
+    )

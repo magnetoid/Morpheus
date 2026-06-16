@@ -77,6 +77,15 @@ class MicrosoftCommercePlugin(Plugin):
                 order=68,
                 nav='main',
             ),
+            DashboardPage(
+                label='Microsoft Ads',
+                slug='ads',
+                view='plugins.installed.microsoft_commerce.views.ads_dashboard',
+                icon='target',
+                section='marketing',
+                order=69,
+                nav='main',
+            ),
         ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
@@ -94,11 +103,12 @@ class MicrosoftCommercePlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.microsoft_commerce.agent_tools import (
+            microsoft_campaigns_tool,
             microsoft_feed_coverage_tool,
             microsoft_feed_url_tool,
         )
 
-        return [microsoft_feed_coverage_tool, microsoft_feed_url_tool]
+        return [microsoft_feed_coverage_tool, microsoft_feed_url_tool, microsoft_campaigns_tool]
 
     def get_config_schema(self) -> dict:
         return {
@@ -130,5 +140,27 @@ class MicrosoftCommercePlugin(Plugin):
                     'default': True,
                 },
                 'feed_title': {'type': 'string', 'title': 'Feed title', 'default': 'Dot Books'},
+                # ── Microsoft Advertising API (campaign management, SOAP) ──
+                'oauth_client_id': {'type': 'string', 'title': 'OAuth client ID', 'default': ''},
+                'oauth_client_secret': {
+                    'type': 'string',
+                    'title': 'OAuth client secret',
+                    'format': 'password',
+                    'default': '',
+                },
+                'oauth_refresh_token': {
+                    'type': 'string',
+                    'title': 'OAuth refresh token',
+                    'format': 'password',
+                    'default': '',
+                },
+                'developer_token': {
+                    'type': 'string',
+                    'title': 'Developer token',
+                    'format': 'password',
+                    'default': '',
+                },
+                'customer_id': {'type': 'string', 'title': 'Customer ID', 'default': ''},
+                'account_id': {'type': 'string', 'title': 'Account ID', 'default': ''},
             },
         }

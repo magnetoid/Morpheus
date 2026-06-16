@@ -24,6 +24,21 @@ def microsoft_feed_coverage_tool(*, limit: int | None = None) -> ToolResult:
 
 
 @tool(
+    name='microsoft.campaigns',
+    description='List Microsoft Advertising campaigns (id, name, status, daily budget) for control. Requires Microsoft Ads connected. (No performance metrics — Microsoft reporting is async-SOAP, not built.)',
+    scopes=['analytics.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def microsoft_campaigns_tool() -> ToolResult:
+    from plugins.installed.microsoft_commerce.services.ads_api import list_campaigns
+
+    rep = list_campaigns()
+    if not rep.get('ok'):
+        return ToolResult(output=rep, display=f'Microsoft Ads not connected ({rep.get("reason")})')
+    return ToolResult(output=rep, display=f'{len(rep["campaigns"])} campaigns')
+
+
+@tool(
     name='microsoft.feed_url',
     description='Return the public Microsoft Merchant Center catalog feed URL to add as a feed in Microsoft Merchant Center.',
     scopes=['catalog.read'],

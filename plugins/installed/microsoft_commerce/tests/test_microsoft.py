@@ -131,18 +131,113 @@ class UetTests(TestCase):
         self.assertEqual(uet_tag(Context({'request': RequestFactory().get('/')})), '')
 
 
+class AdsSoapTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        _plugin().invalidate_config_cache()
+
+    def tearDown(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        _plugin().invalidate_config_cache()
+
+    def _connect(self):
+        p = _plugin()
+        for k, v in {
+            'oauth_client_id': 'cid',
+            'oauth_client_secret': 'sec',
+            'oauth_refresh_token': 'ref',
+            'developer_token': 'dev',
+            'customer_id': '111',
+            'account_id': '222',
+        }.items():
+            p.set_config(k, v)
+        p.invalidate_config_cache()
+
+    def test_not_connected(self):
+        from plugins.installed.microsoft_commerce.services.ads_api import list_campaigns
+
+        self.assertEqual(list_campaigns()['reason'], 'not_connected')
+
+    def test_list_campaigns_parses_soap(self):
+        from unittest.mock import MagicMock, patch
+
+        from plugins.installed.microsoft_commerce.services.ads_api import list_campaigns
+
+        self._connect()
+        token = MagicMock()
+        token.json.return_value = {'access_token': 'T'}
+        token.raise_for_status.return_value = None
+        soap = MagicMock()
+        soap.content = (
+            b'<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">'
+            b'<s:Body><GetCampaignsByAccountIdResponse xmlns="https://bingads.microsoft.com/CampaignManagement/v13">'
+            b'<Campaigns><Campaign><Id>123</Id><Name>Shopping</Name><Status>Active</Status>'
+            b'<DailyBudget>20</DailyBudget></Campaign></Campaigns>'
+            b'</GetCampaignsByAccountIdResponse></s:Body></s:Envelope>'
+        )
+        soap.raise_for_status.return_value = None
+        with patch('requests.post', side_effect=[token, soap]) as post:
+            rep = list_campaigns()
+        self.assertTrue(rep['ok'])
+        c = rep['campaigns'][0]
+        self.assertEqual(c['id'], '123')
+        self.assertEqual(c['name'], 'Shopping')
+        self.assertEqual(c['status'], 'Active')
+        self.assertIn('CampaignManagementService', post.call_args.args[0])
+
+    def test_soap_fault_surfaced(self):
+        from unittest.mock import MagicMock, patch
+
+        from plugins.installed.microsoft_commerce.services.ads_api import list_campaigns
+
+        self._connect()
+        token = MagicMock()
+        token.json.return_value = {'access_token': 'T'}
+        token.raise_for_status.return_value = None
+        fault = MagicMock()
+        fault.content = (
+            b'<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body><s:Fault>'
+            b'<faultstring>Invalid developer token</faultstring></s:Fault></s:Body></s:Envelope>'
+        )
+        fault.raise_for_status.return_value = None
+        with patch('requests.post', side_effect=[token, fault]):
+            rep = list_campaigns()
+        self.assertFalse(rep['ok'])
+        self.assertIn('developer token', rep['reason'])
+
+    def test_status_and_id_validation(self):
+        from plugins.installed.microsoft_commerce.services.ads_api import set_campaign_status
+
+        self._connect()
+        self.assertEqual(set_campaign_status('1', 'BOGUS')['reason'], 'bad_status')
+        self.assertEqual(set_campaign_status('../x', 'Active')['reason'], 'bad_campaign_id')
+
+
 class DashboardTests(TestCase):
     def setUp(self):
         self.staff = User.objects.create_user(
             username='s', email='s@x.test', password='pw', is_staff=True
         )
 
+    def _staff(self):
+        c = Client()
+        c.force_login(self.staff)
+        return c
+
     def test_boundary_and_render(self):
         self.assertEqual(
             Client().get('/dashboard/apps/microsoft_commerce/overview/').status_code, 302
         )
-        c = Client()
-        c.force_login(self.staff)
-        r = c.get('/dashboard/apps/microsoft_commerce/overview/')
+        r = self._staff().get('/dashboard/apps/microsoft_commerce/overview/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'microsoft-catalog.xml')
+
+    def test_ads_dashboard_renders_unconnected(self):
+        self.assertEqual(Client().get('/dashboard/apps/microsoft_commerce/ads/').status_code, 302)
+        r = self._staff().get('/dashboard/apps/microsoft_commerce/ads/')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Connect Microsoft Ads')
