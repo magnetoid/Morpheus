@@ -79,6 +79,46 @@ class PixelTests(TestCase):
         self.assertIn('"content_ids": ["SKU-DUNE"]', html)  # matches feed id
         self.assertIn('"value": 12.5', html)
 
+    def test_purchase_fires_on_confirmation_with_dedup_event_id(self):
+        from decimal import Decimal
+
+        from djmoney.money import Money
+
+        _enable()
+
+        class _Mgr:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def all(self):
+                return self._rows
+
+        line = type('L', (), {'sku': 'SKU1', 'quantity': 1})()
+        order = type(
+            'O',
+            (),
+            {
+                'order_number': 'A-100',
+                'total': Money(Decimal('25.00'), 'USD'),
+                'items': _Mgr([line]),
+            },
+        )()
+        ctx = Context(
+            {'request': RequestFactory().get('/order/confirmation/A-100/'), 'order': order}
+        )
+        html = meta_pixel(ctx)
+        self.assertIn('"track","Purchase"', html.replace(' ', ''))
+        self.assertIn('"content_ids": ["SKU1"]', html)
+        self.assertIn('"value": 25.0', html)
+        # eventID = order_number → dedupes against the CAPI Purchase.
+        self.assertIn('"eventID": "A-100"', html)
+
+    def test_purchase_does_not_fire_off_confirmation_path(self):
+        _enable()
+        order = type('O', (), {'order_number': 'A-1', 'total': None, 'items': []})()
+        ctx = Context({'request': RequestFactory().get('/'), 'order': order})
+        self.assertNotIn('Purchase', meta_pixel(ctx))
+
     def test_malicious_sku_cannot_break_out(self):
         _enable()
         p = Product.objects.create(
