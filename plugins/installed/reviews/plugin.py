@@ -48,7 +48,7 @@ class ReviewsPlugin(Plugin):
                     'icon': 'star',
                     'label': f'New review on {r.product.name} ({r.rating}/5)',
                     'hint': f'by {who}',
-                    'url': f'/admin/catalog/review/{r.id}/change/',
+                    'url': '/dashboard/reviews/',
                     'when': r.created_at,
                 }
             )
