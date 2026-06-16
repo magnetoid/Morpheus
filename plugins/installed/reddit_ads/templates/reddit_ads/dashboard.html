@@ -61,9 +61,10 @@
   <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
     <input type="hidden" name="action" value="create">
     <label class="block text-sm">Name<br><input type="text" name="name" required class="input" placeholder="DotBooks Conversions"></label>
-    <label class="block text-sm">Daily budget<br><input type="number" name="budget" min="1" step="1" required class="input" style="max-width:120px" placeholder="20"></label>
+    <label class="block text-sm">Lifetime budget cap<br><input type="number" name="budget" min="1" step="1" required class="input" style="max-width:120px" placeholder="100"></label>
     <button type="submit" class="btn">Create (paused)</button>
   </form>
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">Reddit sets daily budgets at the ad-group level — this is the campaign’s overall spend cap. Add ad groups + community targeting in Reddit Ads, then enable.</p>
 </div>
 
 {% if report.ok %}
