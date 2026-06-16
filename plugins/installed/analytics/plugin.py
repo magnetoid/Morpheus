@@ -203,5 +203,23 @@ class AnalyticsPlugin(Plugin):
                     'default': True,
                     'title': 'Auto-track storefront pageviews',
                 },
+                'exclude_staff': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Exclude staff / admins from analytics',
+                    'description': (
+                        "Don't record the owner's own browsing — they're logged into the "
+                        'dashboard, so their storefront visits would skew customer analytics.'
+                    ),
+                },
+                'exclude_logged_in': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Exclude all logged-in customers from analytics',
+                    'description': (
+                        'Track only anonymous visitors. Off by default — customer funnels '
+                        'are usually the point of the data.'
+                    ),
+                },
             },
         }

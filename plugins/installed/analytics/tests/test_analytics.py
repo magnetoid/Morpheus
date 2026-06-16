@@ -20,11 +20,34 @@ from plugins.installed.analytics.services import (
     get_or_create_session,
     record_event,
     roll_daily,
+    should_track_customer,
     should_track_request,
     trim_old_events,
 )
 
 User = get_user_model()
+
+
+def _set_analytics_config(**kwargs):
+    from plugins.registry import plugin_registry
+
+    p = None
+    for attr in ('get', 'get_plugin'):
+        fn = getattr(plugin_registry, attr, None)
+        if callable(fn):
+            try:
+                p = fn('analytics')
+            except Exception:  # noqa: BLE001
+                p = None
+            if p is not None:
+                break
+    if p is None:
+        from plugins.installed.analytics.plugin import AnalyticsPlugin
+
+        p = AnalyticsPlugin()
+    for k, v in kwargs.items():
+        p.set_config(k, v)
+    p.invalidate_config_cache()
 
 
 class SessionTests(TestCase):
@@ -193,3 +216,32 @@ class StaffExclusionTests(TestCase):
         )
         self.assertEqual(r.status_code, 204)
         self.assertEqual(AnalyticsEvent.objects.count(), 0)
+
+    def test_exclude_staff_toggle_off_tracks_staff(self):
+        _set_analytics_config(exclude_staff=False)
+        self.addCleanup(_set_analytics_config, exclude_staff=True, exclude_logged_in=False)
+        req = self.rf.get('/')
+        req.user = User.objects.create_user(
+            username='s3', email='s3@example.com', password='x', is_staff=True
+        )
+        self.assertTrue(should_track_request(req))
+
+    def test_exclude_logged_in_toggle_excludes_customer(self):
+        _set_analytics_config(exclude_logged_in=True)
+        self.addCleanup(_set_analytics_config, exclude_staff=True, exclude_logged_in=False)
+        req = self.rf.get('/')
+        req.user = User.objects.create_user(username='c2', email='c2@example.com', password='x')
+        self.assertFalse(should_track_request(req))
+
+    def test_hook_path_excludes_staff_customer(self):
+        """A staff member's order/product events (no HttpRequest) are excluded."""
+        staff = User.objects.create_user(
+            username='s4', email='s4@example.com', password='x', is_staff=True
+        )
+        self.assertFalse(should_track_customer(staff))
+        record_event(name='order.placed', kind='order', customer=staff)
+        self.assertEqual(AnalyticsEvent.objects.count(), 0)
+        # A regular customer's event is still recorded.
+        cust = User.objects.create_user(username='c3', email='c3@example.com', password='x')
+        record_event(name='order.placed', kind='order', customer=cust)
+        self.assertEqual(AnalyticsEvent.objects.count(), 1)

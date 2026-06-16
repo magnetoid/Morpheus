@@ -42,16 +42,61 @@ def _device_from_ua(ua: str) -> str:
     return 'desktop' if s else ''
 
 
+def _config() -> dict:
+    """Resolved analytics PluginConfig (cached by the plugin)."""
+    try:
+        from plugins.registry import plugin_registry
+
+        p = None
+        for attr in ('get', 'get_plugin'):
+            fn = getattr(plugin_registry, attr, None)
+            if callable(fn):
+                try:
+                    p = fn('analytics')
+                except Exception:  # noqa: BLE001
+                    p = None
+                if p is not None:
+                    break
+        if p is not None:
+            return p.get_config() or {}
+    except Exception:  # noqa: BLE001, S110
+        pass
+    return {}
+
+
+def _excluded_user(user) -> bool:
+    """Whether the configured exclusions cover this user/customer.
+
+    `exclude_staff` (default on) drops the owner's own browsing so their
+    dashboard-logged-in storefront visits don't pollute customer analytics;
+    `exclude_logged_in` (default off) drops every authenticated customer,
+    leaving only anonymous-visitor data.
+    """
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return False
+    cfg = _config()
+    if cfg.get('exclude_staff', True) and (
+        getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)
+    ):
+        return True
+    return bool(cfg.get('exclude_logged_in', False))
+
+
 def should_track_request(request) -> bool:
     """Whether this request's visitor should generate analytics events.
 
-    Staff/admins are excluded so the owner's own storefront browsing (they're
-    logged into the dashboard) doesn't pollute customer analytics. Anonymous
-    visitors and logged-in *customers* are still tracked — their funnels and
-    behaviour are the point of the data.
+    Staff/admins are excluded by default so the owner's own storefront browsing
+    (they're logged into the dashboard) doesn't pollute customer analytics;
+    anonymous visitors and logged-in *customers* are tracked unless
+    `exclude_logged_in` is set. Both behaviours are configurable.
     """
-    user = getattr(request, 'user', None)
-    return not (user is not None and user.is_authenticated and (user.is_staff or user.is_superuser))
+    return not _excluded_user(getattr(request, 'user', None))
+
+
+def should_track_customer(customer) -> bool:
+    """Request-less equivalent of `should_track_request` for the event-hook
+    path (order/product/customer events carry a customer, not an HttpRequest)."""
+    return not _excluded_user(customer)
 
 
 def get_or_create_session(request, *, response=None):
@@ -120,6 +165,11 @@ def record_event(
         session = get_or_create_session(request)
     if customer is None and session is not None:
         customer = session.customer
+
+    # Exclude staff / (optionally) logged-in customers on the event-hook path
+    # too — these events carry a customer but no HttpRequest to gate upstream.
+    if customer is not None and not should_track_customer(customer):
+        return None
 
     try:
         evt = AnalyticsEvent.objects.create(
