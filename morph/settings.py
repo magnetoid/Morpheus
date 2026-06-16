@@ -121,6 +121,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.microsoft_commerce',
     'plugins.installed.amazon_ads',
     'plugins.installed.reddit_ads',
+    'plugins.installed.snapchat_commerce',
     'plugins.installed.store_bootstrap',
     'plugins.installed.localization',
     'plugins.installed.bookvault',

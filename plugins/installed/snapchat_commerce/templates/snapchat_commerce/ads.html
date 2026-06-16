@@ -1,0 +1,67 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Snapchat Ads · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Snapchat Ads — campaigns</h1>
+  <form method="get">
+    <select name="days" class="input" style="max-width:130px;" onchange="this.form.submit()">
+      <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+      <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+      <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+    </select>
+  </form>
+</div>
+
+{% if msg %}<div class="card card-padded mb-4"><p class="text-sm">{{ msg }}</p></div>{% endif %}
+
+{% if not connected %}
+<div class="card card-padded">
+  <h2 class="font-semibold mb-1">Connect Snapchat Ads</h2>
+  <p class="text-sm text-[color:var(--text-muted)]">Add an OAuth refresh token + ad account ID in
+    <a href="/dashboard/settings/channels/" class="underline">Settings → Channels → Snapchat Commerce</a>.</p>
+</div>
+{% else %}
+<div class="card card-padded mb-6">
+  <h2 class="font-semibold mb-2">Create campaign</h2>
+  <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <label class="block text-sm">Name<br><input type="text" name="name" required class="input" placeholder="DotBooks Sales"></label>
+    <label class="block text-sm">Daily budget<br><input type="number" name="budget" min="1" step="1" class="input" style="max-width:120px" placeholder="20"></label>
+    <button type="submit" class="btn">Create (paused)</button>
+  </form>
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">Creates a paused SALES campaign — Snapchat sets budgets on ad squads, so add the ad squad + creative in Snapchat Ads Manager, then enable.</p>
+</div>
+
+{% if report.ok %}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+  <div class="card card-padded kpi"><span class="kpi__label">Spend</span><span class="kpi__value">{{ report.totals.spend }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Swipes</span><span class="kpi__value">{{ report.totals.clicks }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Impressions</span><span class="kpi__value">{{ report.totals.impressions }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Conversions</span><span class="kpi__value">{{ report.totals.conversions }}</span></div>
+</div>
+{% endif %}
+
+<div class="card">
+  <table class="morph-table">
+    <thead><tr><th>Campaign</th><th>Status</th><th>Objective</th><th></th></tr></thead>
+    <tbody>
+      {% for c in campaigns %}
+      <tr>
+        <td class="font-medium">{{ c.name }}</td><td>{{ c.status }}</td><td>{{ c.objective }}</td>
+        <td>
+          <form method="post" style="display:inline">{% csrf_token %}
+            <input type="hidden" name="campaign_id" value="{{ c.id }}">
+            <button name="action" value="PAUSED" class="btn btn-sm">Pause</button>
+            <button name="action" value="ACTIVE" class="btn btn-sm">Enable</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-sm text-[color:var(--text-muted)]">No campaigns found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
