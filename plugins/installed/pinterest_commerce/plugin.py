@@ -42,6 +42,42 @@ class PinterestCommercePlugin(Plugin):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
         self.register_hook(events.ORDER_PAID, self._on_order_paid, priority=90)
         self.register_hook(events.ADD_TO_CART, self._on_add_to_cart, priority=90)
+        self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=40)
+
+    def _channels_row(self, value, **_):
+        row = {
+            'name': 'pinterest_commerce',
+            'label': 'Pinterest',
+            'icon': 'image',
+            'connected': False,
+            'pixel': 'off',
+            'has_feed': True,
+            'eligible': None,
+            'total': None,
+            'coverage_pct': None,
+            'dashboard_url': '/dashboard/apps/pinterest_commerce/overview/',
+        }
+        try:
+            from plugins.installed.pinterest_commerce.services.api import (  # noqa: PLC0415
+                has_token,
+            )
+            from plugins.installed.pinterest_commerce.services.coverage import (  # noqa: PLC0415
+                coverage_report,
+            )
+            from plugins.installed.pinterest_commerce.services.settings import (  # noqa: PLC0415
+                pinterest_settings,
+            )
+
+            row['connected'] = has_token()
+            row['pixel'] = 'on' if pinterest_settings().tag_enabled else 'off'
+            rep = coverage_report()
+            row['eligible'] = rep.get('eligible')
+            row['total'] = rep.get('total')
+            row['coverage_pct'] = rep.get('eligible_pct')
+        except Exception as e:  # noqa: BLE001
+            logger.debug('pinterest_commerce: channels row failed: %s', e)
+        value.append(row)
+        return value
 
     def _bust_feed_cache(self, **_):
         try:

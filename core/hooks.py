@@ -447,6 +447,17 @@ class MorpheusEvents:
     #   orders and ai_assistant contribute their step (the email step
     #   stays in home.py — it reads core settings, no plugin owns it).
     DASHBOARD_SETUP_STEPS = 'dashboard.setup_steps'  # filter
+    # CHANNELS_OVERVIEW — filter, value=list[dict], no kwargs. The unified
+    #   sales-channels dashboard (channels plugin). Each commerce-channel
+    #   plugin (google_shopping, meta_commerce, tiktok_commerce, …) appends
+    #   ITS OWN status row — {'name': str, 'label': str, 'icon': str,
+    #   'connected': bool, 'pixel': 'on'|'off'|None, 'has_feed': bool,
+    #   'feed_url': str|None, 'eligible': int|None, 'total': int|None,
+    #   'coverage_pct': float|None, 'dashboard_url': str} — using only cheap
+    #   local config/coverage reads (no live API calls). A disabled channel's
+    #   row simply never appears. Fail-soft: the hook bus isolates a broken
+    #   handler so one channel can't break the overview.
+    CHANNELS_OVERVIEW = 'channels.overview'  # filter
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

@@ -30,6 +30,33 @@ class RedditAdsPlugin(Plugin):
 
     def ready(self) -> None:
         self.register_hook(events.ORDER_PAID, self._on_order_paid, priority=90)
+        self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=60)
+
+    def _channels_row(self, value, **_):
+        row = {
+            'name': 'reddit_ads',
+            'label': 'Reddit',
+            'icon': 'message-circle',
+            'connected': False,
+            'pixel': 'off',
+            'has_feed': False,
+            'eligible': None,
+            'total': None,
+            'coverage_pct': None,
+            'dashboard_url': '/dashboard/apps/reddit_ads/ads/',
+        }
+        try:
+            from plugins.installed.reddit_ads.services.oauth import is_connected  # noqa: PLC0415
+            from plugins.installed.reddit_ads.services.settings import (  # noqa: PLC0415
+                pixel_enabled,
+            )
+
+            row['connected'] = is_connected()
+            row['pixel'] = 'on' if pixel_enabled() else 'off'
+        except Exception as e:  # noqa: BLE001
+            logger.debug('reddit_ads: channels row failed: %s', e)
+        value.append(row)
+        return value
 
     def _on_order_paid(self, order=None, **_):
         if order is None:

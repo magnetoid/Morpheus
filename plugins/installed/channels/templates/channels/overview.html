@@ -1,0 +1,45 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Sales Channels · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">Sales Channels</h1>
+    <p class="text-xs text-[color:var(--text-muted)]">Connection, product feed and pixel status across every commerce channel.</p>
+  </div>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="refresh">
+    <button type="submit" class="btn">Refresh</button>
+  </form>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+  <div class="card card-padded kpi"><span class="kpi__label">Channels</span><span class="kpi__value">{{ totals.channels }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Connected</span><span class="kpi__value">{{ totals.connected }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Product feeds</span><span class="kpi__value">{{ totals.feeds }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Pixels live</span><span class="kpi__value">{{ totals.pixels }}</span></div>
+</div>
+
+<div class="card">
+  <table class="morph-table">
+    <thead><tr><th>Channel</th><th>Connection</th><th>Feed coverage</th><th>Pixel</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="font-medium">{{ r.label }}</td>
+        <td>{% if r.connected %}✅ Connected{% else %}<span class="text-[color:var(--text-muted)]">— Not connected</span>{% endif %}</td>
+        <td>
+          {% if r.has_feed %}
+            {% if r.total %}{{ r.eligible }}/{{ r.total }} <span class="text-xs text-[color:var(--text-muted)]">({{ r.coverage_pct }}%)</span>{% else %}<span class="text-xs text-[color:var(--text-muted)]">feed ready</span>{% endif %}
+          {% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}
+        </td>
+        <td>{% if r.pixel == 'on' %}✅ On{% elif r.pixel == 'off' %}<span class="text-[color:var(--text-muted)]">Off</span>{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+        <td><a href="{{ r.dashboard_url }}" class="btn btn-sm">Open</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-sm text-[color:var(--text-muted)]">No commerce channels enabled. Enable a channel plugin to see it here.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

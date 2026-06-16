@@ -47,6 +47,38 @@ class GoogleShoppingPlugin(Plugin):
         # Bust the cached feed whenever the catalog changes.
         for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
+        self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=10)
+
+    def _channels_row(self, value, **_):
+        row = {
+            'name': 'google_shopping',
+            'label': 'Google',
+            'icon': 'shopping-bag',
+            'connected': False,
+            'pixel': None,
+            'has_feed': True,
+            'eligible': None,
+            'total': None,
+            'coverage_pct': None,
+            'dashboard_url': '/dashboard/apps/google_shopping/overview/',
+        }
+        try:
+            from plugins.installed.google_shopping.services.coverage import (  # noqa: PLC0415
+                coverage_report,
+            )
+            from plugins.installed.google_shopping.services.google_auth import (  # noqa: PLC0415
+                is_connected,
+            )
+
+            row['connected'] = is_connected()
+            rep = coverage_report()
+            row['eligible'] = rep.get('eligible')
+            row['total'] = rep.get('total')
+            row['coverage_pct'] = rep.get('eligible_pct')
+        except Exception as e:  # noqa: BLE001
+            logger.debug('google_shopping: channels row failed: %s', e)
+        value.append(row)
+        return value
 
     def _bust_feed_cache(self, **_):
         try:

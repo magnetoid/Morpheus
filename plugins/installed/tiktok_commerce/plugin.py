@@ -43,6 +43,40 @@ class TiktokCommercePlugin(Plugin):
         self.register_hook(events.ORDER_PAID, self._on_order_paid, priority=90)
         self.register_hook(events.ADD_TO_CART, self._on_add_to_cart, priority=90)
         self.register_hook(events.BEGIN_CHECKOUT, self._on_begin_checkout, priority=90)
+        self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=30)
+
+    def _channels_row(self, value, **_):
+        row = {
+            'name': 'tiktok_commerce',
+            'label': 'TikTok',
+            'icon': 'music',
+            'connected': False,
+            'pixel': 'off',
+            'has_feed': True,
+            'eligible': None,
+            'total': None,
+            'coverage_pct': None,
+            'dashboard_url': '/dashboard/apps/tiktok_commerce/overview/',
+        }
+        try:
+            from plugins.installed.tiktok_commerce.services.api import has_token  # noqa: PLC0415
+            from plugins.installed.tiktok_commerce.services.coverage import (  # noqa: PLC0415
+                coverage_report,
+            )
+            from plugins.installed.tiktok_commerce.services.settings import (  # noqa: PLC0415
+                tiktok_settings,
+            )
+
+            row['connected'] = has_token()
+            row['pixel'] = 'on' if tiktok_settings().pixel_enabled else 'off'
+            rep = coverage_report()
+            row['eligible'] = rep.get('eligible')
+            row['total'] = rep.get('total')
+            row['coverage_pct'] = rep.get('eligible_pct')
+        except Exception as e:  # noqa: BLE001
+            logger.debug('tiktok_commerce: channels row failed: %s', e)
+        value.append(row)
+        return value
 
     def _bust_feed_cache(self, **_):
         try:

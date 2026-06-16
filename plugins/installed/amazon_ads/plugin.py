@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel
+from morpheus import DashboardPage, Plugin, SettingsPanel, events
 
 logger = logging.getLogger('morpheus.amazon_ads')
 
@@ -36,6 +36,29 @@ class AmazonAdsPlugin(Plugin):
             'amazon_ads:fetch_report',
             {'task': 'amazon_ads.fetch_report', 'schedule': 60 * 60 * 24},
         )
+        self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=70)
+
+    def _channels_row(self, value, **_):
+        row = {
+            'name': 'amazon_ads',
+            'label': 'Amazon',
+            'icon': 'shopping-cart',
+            'connected': False,
+            'pixel': None,
+            'has_feed': False,
+            'eligible': None,
+            'total': None,
+            'coverage_pct': None,
+            'dashboard_url': '/dashboard/apps/amazon_ads/ads/',
+        }
+        try:
+            from plugins.installed.amazon_ads.services.oauth import is_connected  # noqa: PLC0415
+
+            row['connected'] = is_connected()
+        except Exception as e:  # noqa: BLE001
+            logger.debug('amazon_ads: channels row failed: %s', e)
+        value.append(row)
+        return value
 
     def contribute_dashboard_pages(self) -> list:
         return [

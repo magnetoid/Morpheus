@@ -51,6 +51,38 @@ class MicrosoftCommercePlugin(Plugin):
         )
         for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
+        self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=50)
+
+    def _channels_row(self, value, **_):
+        row = {
+            'name': 'microsoft_commerce',
+            'label': 'Microsoft',
+            'icon': 'search',
+            'connected': False,
+            'pixel': None,
+            'has_feed': True,
+            'eligible': None,
+            'total': None,
+            'coverage_pct': None,
+            'dashboard_url': '/dashboard/apps/microsoft_commerce/overview/',
+        }
+        try:
+            from plugins.installed.microsoft_commerce.services.coverage import (  # noqa: PLC0415
+                coverage_report,
+            )
+            from plugins.installed.microsoft_commerce.services.oauth import (  # noqa: PLC0415
+                is_connected,
+            )
+
+            row['connected'] = is_connected()
+            rep = coverage_report()
+            row['eligible'] = rep.get('eligible')
+            row['total'] = rep.get('total')
+            row['coverage_pct'] = rep.get('eligible_pct')
+        except Exception as e:  # noqa: BLE001
+            logger.debug('microsoft_commerce: channels row failed: %s', e)
+        value.append(row)
+        return value
 
     def _bust_feed_cache(self, **_):
         try:
