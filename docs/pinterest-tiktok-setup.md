@@ -32,3 +32,18 @@ need the connection.
 
 Per-product overrides: `tiktok.*` / `pinterest.*` metafield namespaces
 (condition, brand, custom_label_*, excluded). See `docs/plans/tiktok-pinterest.md`.
+
+## Microsoft / Bing Commerce
+1. **Feed** — Microsoft Merchant Center (ads.microsoft.com → Tools → Merchant
+   Center) → Feeds → Create feed → scheduled URL → paste
+   `https://<domain>/feeds/microsoft-catalog.xml`.
+2. **UET tag** — Microsoft Advertising → Conversion tracking → UET tag → copy the
+   numeric **Tag ID** → settings `UET tag ID`, then enable the tag. It fires
+   pageLoad everywhere + a purchase event (revenue + order id) on order
+   confirmation.
+3. Per-product overrides: `microsoft.*` metafield namespace.
+
+**Note:** campaign reporting/management is NOT in this plugin — the Microsoft
+Advertising API is SOAP with async reporting, which isn't reliably buildable over
+REST. Manage campaigns in Microsoft Advertising; this plugin handles the feed +
+conversion tag (the parts that need the storefront).

@@ -1,0 +1,36 @@
+"""Microsoft Commerce agent tools — feed audit for Linda."""
+
+from __future__ import annotations
+
+from core.agents import ToolResult, tool
+
+
+@tool(
+    name='microsoft.feed_coverage',
+    description='Audit Microsoft Merchant Center feed eligibility: how many active products are catalog-eligible and what attributes are missing.',
+    scopes=['catalog.read'],
+    schema={
+        'type': 'object',
+        'properties': {'limit': {'type': 'integer', 'minimum': 1, 'maximum': 5000}},
+    },
+)
+def microsoft_feed_coverage_tool(*, limit: int | None = None) -> ToolResult:
+    from plugins.installed.microsoft_commerce.services.coverage import coverage_report
+
+    rep = coverage_report(limit=limit)
+    return ToolResult(
+        output=rep, display=f'{rep["eligible"]}/{rep["total"]} eligible ({rep["eligible_pct"]}%)'
+    )
+
+
+@tool(
+    name='microsoft.feed_url',
+    description='Return the public Microsoft Merchant Center catalog feed URL to add as a feed in Microsoft Merchant Center.',
+    scopes=['catalog.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def microsoft_feed_url_tool() -> ToolResult:
+    from core.utils.site import site_base_url
+
+    url = site_base_url().rstrip('/') + '/feeds/microsoft-catalog.xml'
+    return ToolResult(output={'url': url}, display=url)

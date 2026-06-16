@@ -1,0 +1,62 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Microsoft / Bing Commerce · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Microsoft / Bing Commerce</h1>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="rebuild">
+    <button type="submit" class="btn">Rebuild feed</button>
+  </form>
+</div>
+
+<div class="card card-padded mb-6">
+  <p class="text-sm text-[color:var(--text-muted)] mb-1">Merchant Center feed URL — add it in Microsoft Merchant Center → Feeds → Create feed (scheduled URL).</p>
+  <code class="text-sm break-all">{{ feed_url }}</code>
+  {% if not settings.enabled %}<p class="text-sm" style="color:#b45309;margin-top:.5rem;">⚠ Feed disabled in settings — the URL returns 404.</p>{% endif %}
+</div>
+
+<div class="card card-padded mb-6">
+  <h2 class="font-semibold">Conversion tracking (UET)</h2>
+  <p class="text-xs text-[color:var(--text-muted)]">
+    {% if settings.uet_enabled and uet_set %}✅ UET tag active — pageLoad everywhere + purchase on order confirmation.
+    {% elif uet_set %}UET tag ID set but the tag is disabled — enable it in settings.
+    {% else %}Add your UET tag ID in <a href="/dashboard/settings/channels/" class="underline">Settings → Channels</a> and enable it.{% endif %}
+  </p>
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">Campaign reporting + management stay in Microsoft Advertising (its API is SOAP — not built here).</p>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+  <div class="card card-padded kpi"><span class="kpi__label">Active products</span><span class="kpi__value">{{ report.total }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Catalog-eligible</span><span class="kpi__value">{{ report.eligible }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Coverage</span><span class="kpi__value">{{ report.eligible_pct }}%</span></div>
+</div>
+
+<div class="card mb-6">
+  <div class="card-padded border-b border-[color:var(--border)]"><h2 class="font-semibold">Attribute gaps</h2></div>
+  <table class="morph-table">
+    <thead><tr><th>Missing attribute</th><th>Products</th><th>Examples</th></tr></thead>
+    <tbody>
+      {% for gap in report.gaps %}
+      <tr><td class="font-medium">{{ gap.attribute }}</td><td>{{ gap.count }}</td><td class="text-xs text-[color:var(--text-muted)]">{% for ex in gap.examples %}{{ ex.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-padded border-b border-[color:var(--border)]"><h2 class="font-semibold">Recent feed builds</h2></div>
+  <table class="morph-table">
+    <thead><tr><th>When</th><th>Status</th><th>Items</th><th>Skipped</th></tr></thead>
+    <tbody>
+      {% for log in recent_logs %}
+      <tr><td>{{ log.created_at|date:"M j, H:i" }}</td><td>{{ log.get_status_display }}</td><td>{{ log.item_count }}</td><td>{{ log.skipped_count }}</td></tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-sm text-[color:var(--text-muted)]">No feed builds yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
