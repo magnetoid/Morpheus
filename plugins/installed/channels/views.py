@@ -1,6 +1,7 @@
 """Unified sales-channels overview — one operator page across every commerce
 channel. Pure aggregator: collects a status row from each channel plugin via the
-CHANNELS_OVERVIEW filter (no sibling-plugin imports, no live API calls)."""
+CHANNELS_OVERVIEW filter (cheap, per-page) and merges cached ads KPIs from the
+daily channels.refresh_metrics task (no live API calls on page load)."""
 
 from __future__ import annotations
 
@@ -9,6 +10,7 @@ import logging
 from django.core.cache import cache
 
 from morpheus.views import render, staff_member_required
+from plugins.installed.channels.tasks import METRICS_CACHE_KEY
 
 logger = logging.getLogger('morpheus.channels')
 
@@ -35,24 +37,78 @@ def _rows(*, refresh: bool = False) -> list[dict]:
     return rows
 
 
+def _merge_metrics(rows: list[dict]) -> bool:
+    """Fold the daily-cached ads KPIs into each row. Returns True if KPIs exist."""
+    metrics = cache.get(METRICS_CACHE_KEY)
+    if not metrics:
+        return False
+    by_name = {m['name']: m for m in metrics if isinstance(m, dict) and m.get('name')}
+    for r in rows:
+        m = by_name.get(r['name'])
+        if not m:
+            continue
+        spend = m.get('spend')
+        revenue = m.get('revenue')
+        roas = m.get('roas')
+        if roas is None and revenue and spend:
+            roas = round(revenue / spend, 2)
+        r['metrics'] = {
+            'spend': spend,
+            'clicks': m.get('clicks'),
+            'conversions': m.get('conversions'),
+            'revenue': revenue,
+            'roas': roas,
+        }
+    return True
+
+
 @staff_member_required
 def overview(request):
-    refresh = request.method == 'POST' and request.POST.get('action') == 'refresh'
-    rows = _rows(refresh=refresh)
+    msg = ''
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'refresh_metrics':
+            from plugins.installed.channels.tasks import refresh_metrics  # noqa: PLC0415
+
+            refresh_metrics.delay()
+            msg = 'Refreshing channel KPIs in the background — check back shortly.'
+        rows = _rows(refresh=action == 'refresh')
+    else:
+        rows = _rows()
+
+    has_metrics = _merge_metrics(rows)
     connected = sum(1 for r in rows if r.get('connected'))
     feeds = sum(1 for r in rows if r.get('has_feed'))
     pixels = sum(1 for r in rows if r.get('pixel') == 'on')
+
+    spend = _sum(rows, 'spend')
+    conversions = _sum(rows, 'conversions')
+    revenue = _sum(rows, 'revenue')
     return render(
         request,
         'channels/overview.html',
         {
             'active_nav': 'channels',
             'rows': rows,
+            'has_metrics': has_metrics,
+            'msg': msg,
             'totals': {
                 'channels': len(rows),
                 'connected': connected,
                 'feeds': feeds,
                 'pixels': pixels,
+                'spend': round(spend, 2),
+                'conversions': round(conversions, 1),
+                'roas': round(revenue / spend, 2) if spend else None,
             },
         },
     )
+
+
+def _sum(rows: list[dict], key: str) -> float:
+    total = 0.0
+    for r in rows:
+        v = (r.get('metrics') or {}).get(key)
+        if isinstance(v, int | float):
+            total += v
+    return total

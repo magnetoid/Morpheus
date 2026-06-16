@@ -31,6 +31,7 @@ class RedditAdsPlugin(Plugin):
     def ready(self) -> None:
         self.register_hook(events.ORDER_PAID, self._on_order_paid, priority=90)
         self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=60)
+        self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=60)
 
     def _channels_row(self, value, **_):
         row = {
@@ -56,6 +57,29 @@ class RedditAdsPlugin(Plugin):
         except Exception as e:  # noqa: BLE001
             logger.debug('reddit_ads: channels row failed: %s', e)
         value.append(row)
+        return value
+
+    def _channels_metrics(self, value, **_):
+        try:
+            from plugins.installed.reddit_ads.services.ads_api import (  # noqa: PLC0415
+                campaign_report,
+            )
+
+            rep = campaign_report(days=30)
+            if rep.get('ok'):
+                t = rep.get('totals') or {}
+                value.append(
+                    {
+                        'name': 'reddit_ads',
+                        'spend': t.get('spend'),
+                        'clicks': t.get('clicks'),
+                        'conversions': t.get('conversions'),
+                        'revenue': t.get('value') or t.get('revenue'),
+                        'roas': t.get('roas'),
+                    }
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('reddit_ads: channels metrics failed: %s', e)
         return value
 
     def _on_order_paid(self, order=None, **_):

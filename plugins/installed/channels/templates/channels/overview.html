@@ -5,24 +5,42 @@
 <div class="flex items-center justify-between mb-4">
   <div>
     <h1 class="text-xl font-semibold">Sales Channels</h1>
-    <p class="text-xs text-[color:var(--text-muted)]">Connection, product feed and pixel status across every commerce channel.</p>
+    <p class="text-xs text-[color:var(--text-muted)]">Connection, product feed, pixel and 30-day ad performance across every commerce channel.</p>
   </div>
-  <form method="post">{% csrf_token %}
-    <input type="hidden" name="action" value="refresh">
-    <button type="submit" class="btn">Refresh</button>
-  </form>
+  <div class="flex items-center gap-2">
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="refresh_metrics">
+      <button type="submit" class="btn">Refresh KPIs</button>
+    </form>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="refresh">
+      <button type="submit" class="btn">Refresh status</button>
+    </form>
+  </div>
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+{% if msg %}<div class="card card-padded mb-4"><p class="text-sm">{{ msg }}</p></div>{% endif %}
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
   <div class="card card-padded kpi"><span class="kpi__label">Channels</span><span class="kpi__value">{{ totals.channels }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Connected</span><span class="kpi__value">{{ totals.connected }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Product feeds</span><span class="kpi__value">{{ totals.feeds }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Pixels live</span><span class="kpi__value">{{ totals.pixels }}</span></div>
 </div>
 
+{% if has_metrics %}
+<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+  <div class="card card-padded kpi"><span class="kpi__label">Ad spend (30d)</span><span class="kpi__value">{{ totals.spend }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Conversions (30d)</span><span class="kpi__value">{{ totals.conversions }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Blended ROAS</span><span class="kpi__value">{% if totals.roas %}{{ totals.roas }}×{% else %}—{% endif %}</span></div>
+</div>
+{% else %}
+<div class="card card-padded mb-6"><p class="text-sm text-[color:var(--text-muted)]">Ad KPIs not computed yet. Click <strong>Refresh KPIs</strong> to pull 30-day performance from each connected channel (also refreshed daily in the background).</p></div>
+{% endif %}
+
 <div class="card">
   <table class="morph-table">
-    <thead><tr><th>Channel</th><th>Connection</th><th>Feed coverage</th><th>Pixel</th><th></th></tr></thead>
+    <thead><tr><th>Channel</th><th>Connection</th><th>Feed coverage</th><th>Pixel</th><th>Spend</th><th>Conv.</th><th>ROAS</th><th></th></tr></thead>
     <tbody>
       {% for r in rows %}
       <tr>
@@ -34,10 +52,13 @@
           {% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}
         </td>
         <td>{% if r.pixel == 'on' %}✅ On{% elif r.pixel == 'off' %}<span class="text-[color:var(--text-muted)]">Off</span>{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+        <td>{% if r.metrics.spend != None %}{{ r.metrics.spend }}{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+        <td>{% if r.metrics.conversions != None %}{{ r.metrics.conversions }}{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+        <td>{% if r.metrics.roas %}{{ r.metrics.roas }}×{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
         <td><a href="{{ r.dashboard_url }}" class="btn btn-sm">Open</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="5" class="text-sm text-[color:var(--text-muted)]">No commerce channels enabled. Enable a channel plugin to see it here.</td></tr>
+      <tr><td colspan="8" class="text-sm text-[color:var(--text-muted)]">No commerce channels enabled. Enable a channel plugin to see it here.</td></tr>
       {% endfor %}
     </tbody>
   </table>

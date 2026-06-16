@@ -48,6 +48,7 @@ class GoogleShoppingPlugin(Plugin):
         for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
         self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=10)
+        self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=10)
 
     def _channels_row(self, value, **_):
         row = {
@@ -78,6 +79,29 @@ class GoogleShoppingPlugin(Plugin):
         except Exception as e:  # noqa: BLE001
             logger.debug('google_shopping: channels row failed: %s', e)
         value.append(row)
+        return value
+
+    def _channels_metrics(self, value, **_):
+        try:
+            from plugins.installed.google_shopping.services.ads_api import (  # noqa: PLC0415
+                campaign_report,
+            )
+
+            rep = campaign_report(days=30)
+            if rep.get('ok'):
+                t = rep.get('totals') or {}
+                value.append(
+                    {
+                        'name': 'google_shopping',
+                        'spend': t.get('spend') or t.get('cost'),
+                        'clicks': t.get('clicks'),
+                        'conversions': t.get('conversions'),
+                        'revenue': t.get('value') or t.get('revenue') or t.get('sales'),
+                        'roas': t.get('roas'),
+                    }
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('google_shopping: channels metrics failed: %s', e)
         return value
 
     def _bust_feed_cache(self, **_):

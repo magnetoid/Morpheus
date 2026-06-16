@@ -52,6 +52,7 @@ class MicrosoftCommercePlugin(Plugin):
         for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
         self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=50)
+        self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=50)
 
     def _channels_row(self, value, **_):
         row = {
@@ -82,6 +83,31 @@ class MicrosoftCommercePlugin(Plugin):
         except Exception as e:  # noqa: BLE001
             logger.debug('microsoft_commerce: channels row failed: %s', e)
         value.append(row)
+        return value
+
+    def _channels_metrics(self, value, **_):
+        try:
+            from plugins.installed.microsoft_commerce.services.reporting import (  # noqa: PLC0415
+                cached_metrics,
+            )
+
+            cached = cached_metrics()
+            if cached and cached.get('ok'):
+                m = (cached.get('metrics') or {}).values()
+                spend = sum(c.get('spend') or 0 for c in m)
+                revenue = sum(c.get('revenue') or 0 for c in m)
+                value.append(
+                    {
+                        'name': 'microsoft_commerce',
+                        'spend': round(spend, 2),
+                        'clicks': sum(c.get('clicks') or 0 for c in m),
+                        'conversions': round(sum(c.get('conversions') or 0 for c in m), 1),
+                        'revenue': round(revenue, 2),
+                        'roas': round(revenue / spend, 2) if spend else None,
+                    }
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('microsoft_commerce: channels metrics failed: %s', e)
         return value
 
     def _bust_feed_cache(self, **_):

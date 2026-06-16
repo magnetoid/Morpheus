@@ -23,6 +23,14 @@ class ChannelsPlugin(Plugin):
     )
     has_models = False
 
+    def ready(self) -> None:
+        self.register_celery_tasks('plugins.installed.channels.tasks')
+        # Refresh cross-channel ads KPIs once a day (cached for the overview).
+        self.register_celery_beat(
+            'channels:refresh_metrics',
+            {'task': 'channels.refresh_metrics', 'schedule': 60 * 60 * 24},
+        )
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(

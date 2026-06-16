@@ -37,6 +37,7 @@ class AmazonAdsPlugin(Plugin):
             {'task': 'amazon_ads.fetch_report', 'schedule': 60 * 60 * 24},
         )
         self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=70)
+        self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=70)
 
     def _channels_row(self, value, **_):
         row = {
@@ -58,6 +59,31 @@ class AmazonAdsPlugin(Plugin):
         except Exception as e:  # noqa: BLE001
             logger.debug('amazon_ads: channels row failed: %s', e)
         value.append(row)
+        return value
+
+    def _channels_metrics(self, value, **_):
+        try:
+            from plugins.installed.amazon_ads.services.reporting import (  # noqa: PLC0415
+                cached_metrics,
+            )
+
+            cached = cached_metrics()
+            if cached and cached.get('ok'):
+                m = (cached.get('metrics') or {}).values()
+                spend = sum(c.get('cost') or 0 for c in m)
+                revenue = sum(c.get('sales') or 0 for c in m)
+                value.append(
+                    {
+                        'name': 'amazon_ads',
+                        'spend': round(spend, 2),
+                        'clicks': sum(c.get('clicks') or 0 for c in m),
+                        'conversions': round(sum(c.get('purchases') or 0 for c in m), 1),
+                        'revenue': round(revenue, 2),
+                        'roas': round(revenue / spend, 2) if spend else None,
+                    }
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('amazon_ads: channels metrics failed: %s', e)
         return value
 
     def contribute_dashboard_pages(self) -> list:

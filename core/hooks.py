@@ -458,6 +458,15 @@ class MorpheusEvents:
     #   row simply never appears. Fail-soft: the hook bus isolates a broken
     #   handler so one channel can't break the overview.
     CHANNELS_OVERVIEW = 'channels.overview'  # filter
+    # CHANNELS_METRICS — filter, value=list[dict], no kwargs. EXPENSIVE: each
+    #   channel plugin appends ITS OWN 30-day ads totals — {'name': str,
+    #   'spend': float|None, 'clicks': float|None, 'conversions': float|None,
+    #   'revenue': float|None, 'roas': float|None} — by calling its live ads
+    #   report (or reading its already-cached async report). Because of the
+    #   live API calls this filter is run ONLY by the channels.refresh_metrics
+    #   daily task (which caches the result under channels:metrics:v1); the
+    #   overview PAGE never triggers it. Fail-soft per channel.
+    CHANNELS_METRICS = 'channels.metrics'  # filter
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

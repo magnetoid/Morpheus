@@ -53,3 +53,33 @@ class OverviewTests(TestCase):
         self.assertContains(r, 'Sales Channels')
         self.assertContains(r, 'Snapchat')
         self.assertContains(r, 'Google')
+
+    def test_metrics_merge_and_blended_roas(self):
+        from plugins.installed.channels.tasks import METRICS_CACHE_KEY
+        from plugins.installed.channels.views import _merge_metrics, _rows
+
+        cache.set(
+            METRICS_CACHE_KEY,
+            [
+                {'name': 'meta_commerce', 'spend': 100.0, 'revenue': 400.0, 'conversions': 10},
+                {'name': 'tiktok_commerce', 'spend': 50.0, 'conversions': 3},  # no revenue
+            ],
+            60,
+        )
+        rows = _rows(refresh=True)
+        self.assertTrue(_merge_metrics(rows))
+        by_name = {r['name']: r for r in rows}
+        # roas computed from revenue/spend when the channel didn't supply it
+        self.assertEqual(by_name['meta_commerce']['metrics']['roas'], 4.0)
+        # no revenue → no roas, but spend still present
+        self.assertIsNone(by_name['tiktok_commerce']['metrics']['roas'])
+        self.assertEqual(by_name['tiktok_commerce']['metrics']['spend'], 50.0)
+
+    def test_refresh_metrics_task_caches_rows(self):
+        from plugins.installed.channels.tasks import METRICS_CACHE_KEY, refresh_metrics
+
+        cache.delete(METRICS_CACHE_KEY)
+        refresh_metrics()
+        # Filter ran; with no channels connected every contributor no-ops to an
+        # empty list, which is still a valid cached value (not None).
+        self.assertIsNotNone(cache.get(METRICS_CACHE_KEY))

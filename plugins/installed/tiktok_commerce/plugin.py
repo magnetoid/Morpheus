@@ -44,6 +44,7 @@ class TiktokCommercePlugin(Plugin):
         self.register_hook(events.ADD_TO_CART, self._on_add_to_cart, priority=90)
         self.register_hook(events.BEGIN_CHECKOUT, self._on_begin_checkout, priority=90)
         self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=30)
+        self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=30)
 
     def _channels_row(self, value, **_):
         row = {
@@ -76,6 +77,29 @@ class TiktokCommercePlugin(Plugin):
         except Exception as e:  # noqa: BLE001
             logger.debug('tiktok_commerce: channels row failed: %s', e)
         value.append(row)
+        return value
+
+    def _channels_metrics(self, value, **_):
+        try:
+            from plugins.installed.tiktok_commerce.services.ads_api import (  # noqa: PLC0415
+                campaign_report,
+            )
+
+            rep = campaign_report(days=30)
+            if rep.get('ok'):
+                t = rep.get('totals') or {}
+                value.append(
+                    {
+                        'name': 'tiktok_commerce',
+                        'spend': t.get('spend'),
+                        'clicks': t.get('clicks'),
+                        'conversions': t.get('conversions'),
+                        'revenue': t.get('value') or t.get('revenue'),
+                        'roas': t.get('roas'),
+                    }
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('tiktok_commerce: channels metrics failed: %s', e)
         return value
 
     def _bust_feed_cache(self, **_):
