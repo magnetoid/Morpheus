@@ -64,6 +64,34 @@ def set_campaign_status(campaign_id: str, state: str) -> dict:
     return {'ok': res.get('ok'), 'reason': res.get('reason')}
 
 
+def set_campaign_budget(campaign_id: str, daily_budget: float) -> dict:
+    """PUT /sp/campaigns — update an existing campaign's daily budget."""
+    if not re.fullmatch(r'\d{1,30}', str(campaign_id) or ''):
+        return {'ok': False, 'reason': 'bad_campaign_id'}
+    try:
+        amount = float(daily_budget)
+    except (TypeError, ValueError):
+        amount = 0.0
+    if amount <= 0:
+        return {'ok': False, 'reason': 'bad_budget'}
+    if not ads_connected():
+        return {'ok': False, 'reason': 'not_connected'}
+    res = request(
+        'PUT',
+        '/sp/campaigns',
+        json_body={
+            'campaigns': [
+                {
+                    'campaignId': str(campaign_id),
+                    'budget': {'budget': amount, 'budgetType': 'DAILY'},
+                }
+            ]
+        },
+        headers_extra={'Content-Type': _SP_V3, 'Accept': _SP_V3},
+    )
+    return {'ok': res.get('ok'), 'reason': res.get('reason')}
+
+
 def create_campaign(*, name: str, daily_budget: float) -> dict:
     """POST /sp/campaigns — a PAUSED auto-targeted Sponsored Products campaign."""
     if not ads_connected():

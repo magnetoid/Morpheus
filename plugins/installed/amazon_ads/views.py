@@ -10,6 +10,7 @@ def ads_dashboard(request):
     from plugins.installed.amazon_ads.services.ads_api import (
         create_campaign,
         list_campaigns,
+        set_campaign_budget,
         set_campaign_status,
     )
     from plugins.installed.amazon_ads.services.api import ads_connected
@@ -45,6 +46,14 @@ def ads_dashboard(request):
             from plugins.installed.amazon_ads.services.api import verify_connection
 
             verify = verify_connection()
+        elif action == 'set_budget':
+            cid = request.POST.get('campaign_id', '')
+            try:
+                budget = float(request.POST.get('budget') or 0)
+            except (TypeError, ValueError):
+                budget = 0.0
+            res = set_campaign_budget(cid, budget)
+            msg = 'Budget updated.' if res.get('ok') else f'Failed: {res.get("reason")}'
         else:
             cid = request.POST.get('campaign_id', '')
             if cid and action in ('ENABLED', 'PAUSED'):

@@ -109,6 +109,27 @@ class CampaignTests(_Iso, TestCase):
             ads_api.set_campaign_status('../x', 'ENABLED')['reason'], 'bad_campaign_id'
         )
 
+    def test_set_budget_validation_and_payload(self):
+        self._connect()
+        self.assertEqual(ads_api.set_campaign_budget('../x', 10)['reason'], 'bad_campaign_id')
+        self.assertEqual(ads_api.set_campaign_budget('1', 0)['reason'], 'bad_budget')
+        token = MagicMock()
+        token.json.return_value = {'access_token': 'T'}
+        token.raise_for_status.return_value = None
+        ok = MagicMock()
+        ok.content = b'{}'
+        ok.json.return_value = {}
+        ok.raise_for_status.return_value = None
+        with (
+            patch('requests.post', return_value=token),
+            patch('requests.request', return_value=ok) as req,
+        ):
+            res = ads_api.set_campaign_budget('111', 25)
+        self.assertTrue(res['ok'])
+        body = req.call_args.kwargs['json']['campaigns'][0]
+        self.assertEqual(body['campaignId'], '111')
+        self.assertEqual(body['budget'], {'budget': 25.0, 'budgetType': 'DAILY'})
+
 
 class ReportingTests(_Iso, TestCase):
     def test_gzip_json_parse_keyed_by_campaign(self):

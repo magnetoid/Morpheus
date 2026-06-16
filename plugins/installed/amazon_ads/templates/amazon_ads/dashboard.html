@@ -62,7 +62,14 @@
       <tr>
         <td class="font-medium">{{ c.name }}</td>
         <td>{{ c.state }}</td>
-        <td>{{ c.budget|default:"—" }}</td>
+        <td>
+          <form method="post" style="display:inline-flex;gap:.25rem;align-items:center;">{% csrf_token %}
+            <input type="hidden" name="action" value="set_budget">
+            <input type="hidden" name="campaign_id" value="{{ c.id }}">
+            <input type="number" name="budget" min="1" step="1" value="{{ c.budget|default:'' }}" class="input" style="max-width:90px" aria-label="Daily budget">
+            <button type="submit" class="btn btn-sm">Save</button>
+          </form>
+        </td>
         {% if has_metrics %}<td>{{ c.metrics.cost|default:"—" }}</td><td>{{ c.metrics.clicks|default:"—" }}</td><td>{{ c.metrics.purchases|default:"—" }}</td><td>{{ c.metrics.sales|default:"—" }}</td>{% endif %}
         <td>
           <form method="post" style="display:inline">{% csrf_token %}
