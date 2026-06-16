@@ -78,10 +78,11 @@ class RedditAdsPlugin(Plugin):
     def contribute_agent_tools(self) -> list:
         from plugins.installed.reddit_ads.agent_tools import (
             reddit_ads_report_tool,
+            reddit_book_communities_tool,
             reddit_campaigns_tool,
         )
 
-        return [reddit_campaigns_tool, reddit_ads_report_tool]
+        return [reddit_campaigns_tool, reddit_book_communities_tool, reddit_ads_report_tool]
 
     def get_config_schema(self) -> dict:
         return {

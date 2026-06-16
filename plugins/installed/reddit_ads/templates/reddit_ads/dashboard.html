@@ -35,6 +35,20 @@
   {% endif %}
 </div>
 
+<div class="card mb-6">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">📚 Recommended book communities to target</h2>
+    <p class="text-xs text-[color:var(--text-muted)]">Add these subreddits as <em>Communities</em> in your Reddit ad groups — that's where book buyers are.</p>
+  </div>
+  <div class="card-padded" style="display:grid;gap:.6rem;">
+    {% for genre, subs in book_communities.items %}
+    <div class="text-sm"><span class="font-medium">{{ genre }}:</span>
+      {% for s in subs %}<a href="https://www.reddit.com/r/{{ s }}/" target="_blank" rel="noopener" class="underline">r/{{ s }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
 {% if not connected %}
 <div class="card card-padded">
   <h2 class="font-semibold mb-1">Connect Reddit Ads</h2>

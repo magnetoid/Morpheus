@@ -174,6 +174,24 @@ class AdsTests(_Iso, TestCase):
         )
 
 
+class BookCommunitiesTests(TestCase):
+    def test_flat_list_dedups(self):
+        from plugins.installed.reddit_ads.services.book_communities import all_communities
+
+        subs = all_communities()
+        self.assertIn('books', subs)
+        self.assertIn('RomanceBooks', subs)
+        self.assertEqual(len(subs), len(set(subs)))  # de-duplicated
+
+    def test_genre_match_and_fallback(self):
+        from plugins.installed.reddit_ads.services.book_communities import communities_for
+
+        self.assertIn('RomanceBooks', communities_for('romance'))
+        self.assertIn('printSF', communities_for('Sci-fi'))
+        # Unknown genre → general readers.
+        self.assertIn('books', communities_for('cookbooks-zzz'))
+
+
 class DashboardTests(TestCase):
     def setUp(self):
         self.staff = User.objects.create_user(
@@ -187,3 +205,4 @@ class DashboardTests(TestCase):
         r = c.get('/dashboard/apps/reddit_ads/ads/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'Connect Reddit Ads')
+        self.assertContains(r, 'r/books')  # book-community targeting guide

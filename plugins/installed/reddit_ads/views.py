@@ -52,6 +52,8 @@ def ads_dashboard(request):
     )
     campaigns = list_campaigns() if ads_connected() else {'ok': False, 'campaigns': []}
 
+    from plugins.installed.reddit_ads.services.book_communities import BOOK_COMMUNITIES
+
     return render(
         request,
         'reddit_ads/dashboard.html',
@@ -64,5 +66,6 @@ def ads_dashboard(request):
             'days': days,
             'msg': msg,
             'verify': verify,
+            'book_communities': BOOK_COMMUNITIES,
         },
     )
