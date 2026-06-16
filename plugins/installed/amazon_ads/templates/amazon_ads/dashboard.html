@@ -1,0 +1,83 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Amazon Ads · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Amazon Ads — campaigns</h1>
+  {% if connected %}
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="refresh_metrics">
+    <button type="submit" class="btn">Refresh metrics</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if msg %}<div class="card card-padded mb-4"><p class="text-sm">{{ msg }}</p></div>{% endif %}
+
+<div class="card card-padded mb-6">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h2 class="font-semibold">Connection</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Sponsored Products campaign control + metrics via the Amazon Advertising API. Metrics are fetched async + cached. <em>Best-effort until validated with live credentials.</em></p>
+    </div>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="verify">
+      <button type="submit" class="btn"{% if not has_token %} disabled{% endif %}>Verify connection</button>
+    </form>
+  </div>
+  {% if verify %}
+  <ul class="mt-3 text-sm" style="list-style:none;padding:0;margin:0;display:grid;gap:.35rem;">
+    {% for key, r in verify.items %}
+    <li>{% if r.ok %}✅{% else %}❌{% endif %} <span class="font-medium">{{ key }}</span> — {{ r.detail }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+{% if not connected %}
+<div class="card card-padded">
+  <h2 class="font-semibold mb-1">Connect Amazon Ads</h2>
+  <p class="text-sm text-[color:var(--text-muted)]">Add a Login-with-Amazon client + refresh token, profile ID and region in
+    <a href="/dashboard/settings/channels/" class="underline">Settings → Channels → Amazon Ads</a>.</p>
+</div>
+{% else %}
+<div class="card card-padded mb-6">
+  <h2 class="font-semibold mb-2">Create Sponsored Products campaign</h2>
+  <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <label class="block text-sm">Name<br><input type="text" name="name" required class="input" placeholder="DotBooks SP"></label>
+    <label class="block text-sm">Daily budget<br><input type="number" name="budget" min="1" step="1" required class="input" style="max-width:120px" placeholder="20"></label>
+    <button type="submit" class="btn">Create (paused, auto)</button>
+  </form>
+</div>
+
+{% if not report.ok %}
+<div class="card card-padded"><p class="text-sm">Couldn’t load campaigns: {{ report.reason }}</p></div>
+{% else %}
+<div class="card">
+  <table class="morph-table">
+    <thead><tr><th>Campaign</th><th>State</th><th>Daily budget</th>{% if has_metrics %}<th>Cost</th><th>Clicks</th><th>Purch.</th><th>Sales</th>{% endif %}<th></th></tr></thead>
+    <tbody>
+      {% for c in report.campaigns %}
+      <tr>
+        <td class="font-medium">{{ c.name }}</td>
+        <td>{{ c.state }}</td>
+        <td>{{ c.budget|default:"—" }}</td>
+        {% if has_metrics %}<td>{{ c.metrics.cost|default:"—" }}</td><td>{{ c.metrics.clicks|default:"—" }}</td><td>{{ c.metrics.purchases|default:"—" }}</td><td>{{ c.metrics.sales|default:"—" }}</td>{% endif %}
+        <td>
+          <form method="post" style="display:inline">{% csrf_token %}
+            <input type="hidden" name="campaign_id" value="{{ c.id }}">
+            <button name="action" value="PAUSED" class="btn btn-sm">Pause</button>
+            <button name="action" value="ENABLED" class="btn btn-sm">Enable</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-sm text-[color:var(--text-muted)]">No campaigns found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
