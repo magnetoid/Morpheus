@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/marketing/apps.py
 
 Symbols in `plugins/installed/marketing/apps.py`.
 
-- L3 `MarketingConfig` (class)
-- L8 `ready(self)` (method)
+- L4 `MarketingConfig` (class)
+- L9 `ready(self)` (method)

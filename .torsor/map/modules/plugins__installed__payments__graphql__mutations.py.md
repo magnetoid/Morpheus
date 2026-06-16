@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/payments/graphql/mutations.py
 
 Symbols in `plugins/installed/payments/graphql/mutations.py`.
 
-- L6 `PaymentResult` (class)
-- L13 `PaymentsMutationExtension` (class)
-- L15 `create_payment_intent(self, order_id: str, gateway: str | None=None)` (method)
+- L8 `PaymentResult` (class)
+- L16 `PaymentsMutationExtension` (class)
+- L18 `create_payment_intent(self, order_id: str, gateway: str | None=None)` (method)

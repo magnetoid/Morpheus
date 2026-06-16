@@ -4,20 +4,20 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:48'
-updated: '2026-06-10T20:08:48'
+created: '2026-06-13T00:49:56'
+updated: '2026-06-13T00:49:56'
 ---
 
 # api/rest.py
 
 Symbols in `api/rest.py`.
 
-- L18 `CategorySerializer` (class)
-- L24 `ProductSerializer` (class)
-- L35 `get_price(self, obj: Product)` (method)
-- L41 `OrderSerializer` (class)
-- L49 `ProductViewSet` (class) — Public storefront: anyone can list/read active products.
-- L63 `get_queryset(self)` (method)
-- L76 `CategoryViewSet` (class) — Public storefront: anyone can list/read active categories.
-- L85 `OrderViewSet` (class) — Authenticated customers see only their own orders.
-- L93 `get_queryset(self)` (method)
+- L19 `CategorySerializer` (class)
+- L25 `ProductSerializer` (class)
+- L43 `get_price(self, obj: Product)` (method)
+- L49 `OrderSerializer` (class)
+- L58 `ProductViewSet` (class) — Public storefront: anyone can list/read active products.
+- L73 `get_queryset(self)` (method)
+- L86 `CategoryViewSet` (class) — Public storefront: anyone can list/read active categories.
+- L96 `OrderViewSet` (class) — Authenticated customers see only their own orders.
+- L105 `get_queryset(self)` (method)

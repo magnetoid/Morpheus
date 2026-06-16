@@ -4,16 +4,16 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/cloudflare/models.py
 
 Symbols in `plugins/installed/cloudflare/models.py`.
 
-- L16 `CloudflareAccount` (class)
-- L31 `__str__(self)` (method)
-- L35 `CloudflareZone` (class)
-- L58 `__str__(self)` (method)
-- L62 `CacheInvalidation` (class) — One row per purge call. The merchant sees this in the observability dashboard.
+- L17 `CloudflareAccount` (class)
+- L32 `__str__(self)` (method)
+- L36 `CloudflareZone` (class)
+- L63 `__str__(self)` (method)
+- L67 `CacheInvalidation` (class) — One row per purge call. The merchant sees this in the observability dashboard.

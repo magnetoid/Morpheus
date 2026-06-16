@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/analytics/apps.py
 
 Symbols in `plugins/installed/analytics/apps.py`.
 
-- L3 `AnalyticsConfig` (class)
-- L8 `ready(self)` (method)
+- L4 `AnalyticsConfig` (class)
+- L9 `ready(self)` (method)

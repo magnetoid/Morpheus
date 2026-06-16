@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/observability.py
 
 Symbols in `core/observability.py`.
 
-- L25 `_hash_token(match: re.Match)` (function)
-- L30 `scrub_pii(text: str)` (function) — Replace email/phone/IPv4 occurrences in ``text`` with stable hashes.
-- L41 `init_observability()` (function)
+- L26 `_hash_token(match: re.Match)` (function)
+- L31 `scrub_pii(text: str)` (function) — Replace email/phone/IPv4 occurrences in ``text`` with stable hashes.
+- L42 `init_observability()` (function)

@@ -4,17 +4,17 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/admin_dashboard/forms/settings.py
 
 Symbols in `plugins/installed/admin_dashboard/forms/settings.py`.
 
-- L9 `StoreGeneralForm` (class) — Editable subset of `core.StoreSettings` shown under Settings → General.
-- L20 `__init__(self, *args, instance=None, **kwargs)` (method)
-- L32 `save(self)` (method)
-- L41 `StoreNotificationsForm` (class) — SMTP / outbound email — under Settings → Notifications.
-- L50 `__init__(self, *args, instance=None, **kwargs)` (method)
-- L59 `save(self)` (method)
+- L10 `StoreGeneralForm` (class) — Editable subset of `core.StoreSettings` shown under Settings → General.
+- L21 `__init__(self, *args, instance=None, **kwargs)` (method)
+- L38 `save(self)` (method)
+- L48 `StoreNotificationsForm` (class) — SMTP / outbound email — under Settings → Notifications.
+- L59 `__init__(self, *args, instance=None, **kwargs)` (method)
+- L74 `save(self)` (method)

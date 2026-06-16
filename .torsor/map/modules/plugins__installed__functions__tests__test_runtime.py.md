@@ -4,15 +4,15 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/functions/tests/test_runtime.py
 
 Symbols in `plugins/installed/functions/tests/test_runtime.py`.
 
-- L13 `FunctionsRuntimeTests` (class)
+- L14 `FunctionsRuntimeTests` (class)
 - L15 `test_simple_function(self)` (method)
 - L22 `test_must_define_run(self)` (method)
 - L26 `test_rejects_import(self)` (method)
@@ -24,4 +24,4 @@ Symbols in `plugins/installed/functions/tests/test_runtime.py`.
 - L57 `test_oversized_source_rejected(self)` (method)
 - L62 `FunctionsDispatchTests` (class) — Verify dispatch_filter wires through to enabled rows.
 - L65 `test_dispatch_filter_with_no_rows_returns_value_unchanged(self)` (method)
-- L70 `test_dispatch_filter_pipes_value_through_function(self)` (method)
+- L71 `test_dispatch_filter_pipes_value_through_function(self)` (method)

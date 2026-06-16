@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:48'
-updated: '2026-06-10T20:08:48'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/agents/registry.py
@@ -13,14 +13,14 @@ updated: '2026-06-10T20:08:48'
 Symbols in `core/agents/registry.py`.
 
 - L19 `AgentRegistry` (class)
-- L21 `__init__(self)` (method)
-- L29 `register_agent(self, agent: MorpheusAgent, *, plugin: str='')` (method)
-- L40 `register_tool(self, tool: Tool, *, plugin: str='')` (method)
-- L53 `drop_plugin(self, plugin_name: str)` (method) — Remove every agent + tool contributed by `plugin_name`.
-- L64 `get_agent(self, name: str)` (method)
-- L67 `get_tool(self, name: str)` (method)
-- L70 `all_agents(self)` (method)
-- L73 `agents_for_audience(self, audience: str)` (method)
-- L76 `platform_tools(self)` (method)
-- L79 `tools_for_scopes(self, scopes: list[str])` (method)
-- L86 `__repr__(self)` (method)
+- L20 `__init__(self)` (method)
+- L28 `register_agent(self, agent: MorpheusAgent, *, plugin: str='')` (method)
+- L43 `register_tool(self, tool: Tool, *, plugin: str='')` (method)
+- L60 `drop_plugin(self, plugin_name: str)` (method) — Remove every agent + tool contributed by `plugin_name`.
+- L71 `get_agent(self, name: str)` (method)
+- L74 `get_tool(self, name: str)` (method)
+- L77 `all_agents(self)` (method)
+- L80 `agents_for_audience(self, audience: str)` (method)
+- L83 `platform_tools(self)` (method)
+- L86 `tools_for_scopes(self, scopes: list[str])` (method)
+- L92 `__repr__(self)` (method)

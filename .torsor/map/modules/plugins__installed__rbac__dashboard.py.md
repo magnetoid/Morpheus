@@ -4,12 +4,12 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/rbac/dashboard.py
 
 Symbols in `plugins/installed/rbac/dashboard.py`.
 
-- L9 `roles_page(request)` (function)
+- L10 `roles_page(request)` (function)

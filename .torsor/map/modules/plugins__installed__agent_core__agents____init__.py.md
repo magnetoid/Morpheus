@@ -4,12 +4,12 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/agent_core/agents/__init__.py
 
 Symbols in `plugins/installed/agent_core/agents/__init__.py`.
 
-- L16 `all_builtin_agents()` (function)
+- L17 `all_builtin_agents()` (function)

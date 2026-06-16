@@ -4,52 +4,52 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/catalog/graphql/mutations.py
 
 Symbols in `plugins/installed/catalog/graphql/mutations.py`.
 
-- L22 `ProductMutationResult` (class)
-- L36 `CategoryMutationResult` (class)
-- L45 `ProductImageMutationResult` (class)
-- L56 `PublishDigitalProductResult` (class)
-- L65 `_is_staff(info)` (function)
-- L73 `_check_scope(info, required: list[str])` (function) — Return '' when the request is authorised for the given scope(s),
-- L94 `_err_publish(msg: str)` (function)
-- L100 `_err_product(msg: str)` (function)
-- L107 `_err_category(msg: str)` (function)
-- L113 `_from_product_dict(d: dict)` (function)
-- L122 `_from_category_dict(d: dict)` (function)
-- L129 `_err_image(msg: str)` (function)
-- L136 `_from_image_dict(d: dict)` (function)
-- L150 `PublishDigitalProductInput` (class)
-- L166 `CreateProductInput` (class) — Create a new product. Generic — for digital/PDF books prefer
-- L201 `UpdateProductInput` (class) — Update a product by slug. Every field is optional — only fields
-- L242 `CreateCategoryInput` (class)
-- L250 `CreateVariantInput` (class)
-- L269 `UpdateVariantInput` (class)
-- L286 `VariantMutationResult` (class)
-- L303 `_err_variant(msg: str)` (function)
-- L313 `_from_variant_dict(d: dict)` (function)
-- L329 `UpdateDigitalPdfInput` (class)
-- L335 `AddProductImageInput` (class)
-- L344 `UpdateCategoryInput` (class)
-- L356 `CatalogMutationExtension` (class)
-- L363 `publish_digital_product(self, info: strawberry.Info, input: PublishDigitalProductInput)` (method)
-- L399 `create_product(self, info: strawberry.Info, input: CreateProductInput)` (method)
-- L444 `update_product(self, info: strawberry.Info, input: UpdateProductInput)` (method)
-- L488 `archive_product(self, info: strawberry.Info, slug: str)` (method)
-- L499 `restore_product(self, info: strawberry.Info, slug: str, status: str='active')` (method)
-- L514 `delete_product(self, info: strawberry.Info, slug: str)` (method)
-- L527 `create_variant(self, info: strawberry.Info, input: CreateVariantInput)` (method)
-- L558 `update_variant(self, info: strawberry.Info, input: UpdateVariantInput)` (method)
-- L591 `update_digital_pdf(self, info: strawberry.Info, input: UpdateDigitalPdfInput)` (method)
-- L609 `add_product_image(self, info: strawberry.Info, input: AddProductImageInput)` (method)
-- L626 `remove_product_image(self, info: strawberry.Info, image_id: strawberry.ID)` (method)
-- L641 `set_primary_image(self, info: strawberry.Info, image_id: strawberry.ID)` (method)
-- L656 `create_category(self, info: strawberry.Info, input: CreateCategoryInput)` (method)
-- L672 `update_category(self, info: strawberry.Info, input: UpdateCategoryInput)` (method)
-- L693 `archive_category(self, info: strawberry.Info, slug: str)` (method)
+- L20 `ProductMutationResult` (class)
+- L34 `CategoryMutationResult` (class)
+- L43 `ProductImageMutationResult` (class)
+- L54 `PublishDigitalProductResult` (class)
+- L63 `_is_staff(info)` (function)
+- L71 `_check_scope(info, required: list[str])` (function) — Return '' when the request is authorised for the given scope(s),
+- L93 `_err_publish(msg: str)` (function)
+- L104 `_err_product(msg: str)` (function)
+- L119 `_err_category(msg: str)` (function)
+- L129 `_from_product_dict(d: dict)` (function)
+- L144 `_from_category_dict(d: dict)` (function)
+- L154 `_err_image(msg: str)` (function)
+- L166 `_from_image_dict(d: dict)` (function)
+- L182 `PublishDigitalProductInput` (class)
+- L198 `CreateProductInput` (class) — Create a new product. Generic — for digital/PDF books prefer
+- L234 `UpdateProductInput` (class) — Update a product by slug. Every field is optional — only fields
+- L276 `CreateCategoryInput` (class)
+- L284 `CreateVariantInput` (class)
+- L303 `UpdateVariantInput` (class)
+- L320 `VariantMutationResult` (class)
+- L337 `_err_variant(msg: str)` (function)
+- L356 `_from_variant_dict(d: dict)` (function)
+- L376 `UpdateDigitalPdfInput` (class)
+- L382 `AddProductImageInput` (class)
+- L391 `UpdateCategoryInput` (class)
+- L403 `CatalogMutationExtension` (class)
+- L409 `publish_digital_product(self, info: strawberry.Info, input: PublishDigitalProductInput)` (method)
+- L455 `create_product(self, info: strawberry.Info, input: CreateProductInput)` (method)
+- L510 `update_product(self, info: strawberry.Info, input: UpdateProductInput)` (method)
+- L562 `archive_product(self, info: strawberry.Info, slug: str)` (method)
+- L574 `restore_product(self, info: strawberry.Info, slug: str, status: str='active')` (method)
+- L593 `delete_product(self, info: strawberry.Info, slug: str)` (method)
+- L607 `create_variant(self, info: strawberry.Info, input: CreateVariantInput)` (method)
+- L646 `update_variant(self, info: strawberry.Info, input: UpdateVariantInput)` (method)
+- L684 `update_digital_pdf(self, info: strawberry.Info, input: UpdateDigitalPdfInput)` (method)
+- L705 `add_product_image(self, info: strawberry.Info, input: AddProductImageInput)` (method)
+- L729 `remove_product_image(self, info: strawberry.Info, image_id: strawberry.ID)` (method)
+- L747 `set_primary_image(self, info: strawberry.Info, image_id: strawberry.ID)` (method)
+- L765 `create_category(self, info: strawberry.Info, input: CreateCategoryInput)` (method)
+- L788 `update_category(self, info: strawberry.Info, input: UpdateCategoryInput)` (method)
+- L814 `archive_category(self, info: strawberry.Info, slug: str)` (method)

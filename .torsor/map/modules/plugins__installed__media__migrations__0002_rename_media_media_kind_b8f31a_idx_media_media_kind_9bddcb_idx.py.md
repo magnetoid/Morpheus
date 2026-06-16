@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/media/migrations/0002_rename_media_media_kind_b8f31a_idx_media_media_kind_9bddcb_idx.py

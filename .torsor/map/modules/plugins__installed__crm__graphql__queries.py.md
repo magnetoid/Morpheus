@@ -4,19 +4,19 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/crm/graphql/queries.py
 
 Symbols in `plugins/installed/crm/graphql/queries.py`.
 
-- L10 `CrmLeadType` (class)
-- L22 `CrmInteractionType` (class)
-- L32 `CrmTaskType` (class)
-- L41 `_is_staff(info)` (function)
-- L50 `CrmQueryExtension` (class)
-- L53 `crm_leads(self, info: strawberry.Info, first: int=25, status: Optional[str]=None)` (method)
-- L78 `customer_timeline(self, info: strawberry.Info, email: str, first: int=50)` (method)
-- L105 `crm_open_tasks(self, info: strawberry.Info, first: int=50)` (method)
+- L9 `CrmLeadType` (class)
+- L21 `CrmInteractionType` (class)
+- L31 `CrmTaskType` (class)
+- L40 `_is_staff(info)` (function)
+- L49 `CrmQueryExtension` (class)
+- L51 `crm_leads(self, info: strawberry.Info, first: int=25, status: str | None=None)` (method)
+- L80 `customer_timeline(self, info: strawberry.Info, email: str, first: int=50)` (method)
+- L110 `crm_open_tasks(self, info: strawberry.Info, first: int=50)` (method)

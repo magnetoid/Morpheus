@@ -4,19 +4,19 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/marketing/models.py
 
 Symbols in `plugins/installed/marketing/models.py`.
 
-- L11 `Coupon` (class)
-- L54 `__str__(self)` (method)
-- L58 `is_valid(self)` (method)
-- L71 `CouponUsage` (class)
-- L82 `Redirect` (class) — 301/302 URL redirects for SEO migrations.
-- L97 `__str__(self)` (method)
-- L101 `EmailCampaign` (class)
-- L127 `__str__(self)` (method)
+- L14 `Coupon` (class)
+- L57 `__str__(self)` (method)
+- L61 `is_valid(self)` (method)
+- L74 `CouponUsage` (class)
+- L85 `Redirect` (class) — 301/302 URL redirects for SEO migrations.
+- L101 `__str__(self)` (method)
+- L105 `EmailCampaign` (class)
+- L131 `__str__(self)` (method)

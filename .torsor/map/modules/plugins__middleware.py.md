@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:51'
-updated: '2026-06-10T20:08:51'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/middleware.py
 
 Symbols in `plugins/middleware.py`.
 
-- L5 `PluginMiddleware` (class)
-- L6 `__init__(self, get_response)` (method)
-- L9 `__call__(self, request)` (method)
+- L4 `PluginMiddleware` (class)
+- L5 `__init__(self, get_response)` (method)
+- L8 `__call__(self, request)` (method)

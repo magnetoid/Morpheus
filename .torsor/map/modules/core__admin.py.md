@@ -4,16 +4,16 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:48'
-updated: '2026-06-10T20:08:48'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/admin.py
 
 Symbols in `core/admin.py`.
 
-- L5 `StoreSettingsAdmin` (class)
-- L25 `has_add_permission(self, request)` (method)
-- L32 `StoreChannelAdmin` (class)
-- L37 `APIKeyAdmin` (class)
-- L42 `WebhookEndpointAdmin` (class)
+- L7 `StoreSettingsAdmin` (class)
+- L42 `has_add_permission(self, request)` (method)
+- L50 `StoreChannelAdmin` (class)
+- L56 `APIKeyAdmin` (class)
+- L62 `WebhookEndpointAdmin` (class)

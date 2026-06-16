@@ -4,12 +4,12 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/subscriptions/views.py
 
 Symbols in `plugins/installed/subscriptions/views.py`.
 
-- L14 `subscriptions_dashboard(request)` (function)
+- L15 `subscriptions_dashboard(request)` (function)

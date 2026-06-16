@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/gift_cards/views.py
 
 Symbols in `plugins/installed/gift_cards/views.py`.
 
-- L19 `gift_cards_list(request: HttpRequest)` (function)
-- L39 `gift_card_new(request: HttpRequest)` (function)
-- L71 `gift_card_detail(request: HttpRequest, card_id)` (function)
+- L20 `gift_cards_list(request: HttpRequest)` (function)
+- L44 `gift_card_new(request: HttpRequest)` (function)
+- L80 `gift_card_detail(request: HttpRequest, card_id)` (function)

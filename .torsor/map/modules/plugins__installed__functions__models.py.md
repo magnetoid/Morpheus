@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/functions/models.py
 
 Symbols in `plugins/installed/functions/models.py`.
 
-- L16 `Function` (class) — A merchant-defined function that runs at a specific extension point.
-- L73 `__str__(self)` (method)
-- L77 `FunctionInvocation` (class) — Audit record for every Function execution.
+- L17 `Function` (class) — A merchant-defined function that runs at a specific extension point.
+- L75 `__str__(self)` (method)
+- L79 `FunctionInvocation` (class) — Audit record for every Function execution.

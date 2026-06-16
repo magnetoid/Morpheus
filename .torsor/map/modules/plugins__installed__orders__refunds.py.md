@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/orders/refunds.py
@@ -13,14 +13,14 @@ updated: '2026-06-10T20:08:50'
 Symbols in `plugins/installed/orders/refunds.py`.
 
 - L33 `ReturnRequest` (class) — Customer- or staff-initiated return.
-- L93 `__str__(self)` (method)
-- L96 `save(self, *args, **kwargs)` (method)
-- L103 `RefundService` (class) — Process refunds against the underlying payment provider.
-- L108 `process(cls, *, order, amount: Money, reason: str='customer_request', notes: str='', actor=None)` (method) — Create a Refund row and call the provider. Idempotent on
-- L148 `_provider_refund(*, order, amount: Money, refund)` (method) — Best-effort: call Stripe if a charge exists; otherwise success-with-log.
-- L181 `ReturnService` (class) — Lifecycle of a `ReturnRequest`.
-- L185 `create_request(cls, *, order, items: list[dict], reason: str='other', customer_note: str='', requested_by=None)` (method)
-- L210 `approve(cls, rr: ReturnRequest, *, decided_by=None, refund_amount: Money | None=None)` (method)
-- L223 `reject(cls, rr: ReturnRequest, *, decided_by=None, staff_note: str='')` (method)
-- L235 `mark_received_and_refund(cls, rr: ReturnRequest, *, actor=None, as_store_credit: bool=False)` (method) — Close out a return.
-- L298 `_compute_refund(rr: ReturnRequest)` (method)
+- L108 `__str__(self)` (method)
+- L111 `save(self, *args, **kwargs)` (method)
+- L118 `RefundService` (class) — Process refunds against the underlying payment provider.
+- L123 `process(cls, *, order, amount: Money, reason: str='customer_request', notes: str='', actor=None)` (method) — Create a Refund row and call the provider. Idempotent on
+- L173 `_provider_refund(*, order, amount: Money, refund)` (method) — Best-effort: call Stripe if a charge exists; otherwise success-with-log.
+- L215 `ReturnService` (class) — Lifecycle of a `ReturnRequest`.
+- L219 `create_request(cls, *, order, items: list[dict], reason: str='other', customer_note: str='', requested_by=None)` (method)
+- L253 `approve(cls, rr: ReturnRequest, *, decided_by=None, refund_amount: Money | None=None)` (method)
+- L268 `reject(cls, rr: ReturnRequest, *, decided_by=None, staff_note: str='')` (method)
+- L280 `mark_received_and_refund(cls, rr: ReturnRequest, *, actor=None, as_store_credit: bool=False)` (method) — Close out a return.
+- L346 `_compute_refund(rr: ReturnRequest)` (method)

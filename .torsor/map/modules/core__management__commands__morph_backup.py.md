@@ -4,17 +4,17 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/management/commands/morph_backup.py
 
 Symbols in `core/management/commands/morph_backup.py`.
 
-- L32 `Command` (class)
-- L35 `add_arguments(self, parser)` (method)
-- L40 `handle(self, *args, **options)` (method)
-- L62 `_dump_database(self, workdir: Path)` (method)
-- L83 `_snapshot_media(self, workdir: Path)` (method)
-- L92 `_prune(self, dest: Path, *, keep: int)` (method)
+- L33 `Command` (class)
+- L36 `add_arguments(self, parser)` (method)
+- L46 `handle(self, *args, **options)` (method)
+- L68 `_dump_database(self, workdir: Path)` (method)
+- L96 `_snapshot_media(self, workdir: Path)` (method)
+- L105 `_prune(self, dest: Path, *, keep: int)` (method)

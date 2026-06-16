@@ -4,16 +4,16 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:48'
-updated: '2026-06-10T20:08:48'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/db_router.py
 
 Symbols in `core/db_router.py`.
 
-- L3 `PrimaryReplicaRouter` (class) — Database router for Enterprise scale Morpheus.
-- L10 `db_for_read(self, model, **hints)` (method) — Reads go to a randomly selected replica, if available.
-- L20 `db_for_write(self, model, **hints)` (method) — Writes always go to the primary database.
-- L26 `allow_relation(self, obj1, obj2, **hints)` (method) — Relations between objects are allowed if they are both in primary/replica pool.
-- L35 `allow_migrate(self, db, app_label, model_name=None, **hints)` (method) — Migrations are only ever applied to the primary database.
+- L1 `PrimaryReplicaRouter` (class) — Database router for Enterprise scale Morpheus.
+- L8 `db_for_read(self, model, **hints)` (method) — Reads go to a randomly selected replica, if available.
+- L19 `db_for_write(self, model, **hints)` (method) — Writes always go to the primary database.
+- L25 `allow_relation(self, obj1, obj2, **hints)` (method) — Relations between objects are allowed if they are both in primary/replica pool.
+- L34 `allow_migrate(self, db, app_label, model_name=None, **hints)` (method) — Migrations are only ever applied to the primary database.

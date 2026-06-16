@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:48'
-updated: '2026-06-10T20:08:48'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/audit/models.py
 
 Symbols in `core/audit/models.py`.
 
-- L10 `AuditEvent` (class) — One immutable audit row.
-- L53 `__str__(self)` (method)
+- L11 `AuditEvent` (class) — One immutable audit row.
+- L61 `__str__(self)` (method)

@@ -4,12 +4,12 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/admin_dashboard/views_split/account.py
 
 Symbols in `plugins/installed/admin_dashboard/views_split/account.py`.
 
-- L18 `my_account(request: HttpRequest)` (function) — Personal account page for the signed-in staff user.
+- L19 `my_account(request: HttpRequest)` (function) — Personal account page for the signed-in staff user.

@@ -4,17 +4,17 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:48'
-updated: '2026-06-10T20:08:48'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/agents/prompts.py
 
 Symbols in `core/agents/prompts.py`.
 
-- L14 `Prompt` (class)
-- L20 `render(self, **vars: object)` (method)
-- L27 `PromptRegistry` (class)
+- L15 `Prompt` (class)
+- L21 `render(self, **vars: object)` (method)
+- L28 `PromptRegistry` (class)
 - L29 `__init__(self)` (method)
 - L33 `register(self, prompt: Prompt)` (method)
 - L38 `get(self, name: str, version: int | None=None)` (method)

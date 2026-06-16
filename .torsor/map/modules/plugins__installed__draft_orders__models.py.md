@@ -4,16 +4,16 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/draft_orders/models.py
 
 Symbols in `plugins/installed/draft_orders/models.py`.
 
-- L17 `DraftOrder` (class)
-- L66 `__str__(self)` (method)
-- L69 `save(self, *args, **kwargs)` (method)
-- L76 `DraftOrderLine` (class)
-- L92 `line_total(self)` (method)
+- L19 `DraftOrder` (class)
+- L77 `__str__(self)` (method)
+- L80 `save(self, *args, **kwargs)` (method)
+- L89 `DraftOrderLine` (class)
+- L108 `line_total(self)` (method)

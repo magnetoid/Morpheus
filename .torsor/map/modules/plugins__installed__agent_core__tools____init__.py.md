@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/agent_core/tools/__init__.py
 
 Symbols in `plugins/installed/agent_core/tools/__init__.py`.
 
-- L65 `_diagnostics_tools()` (function) — Pull diagnostics tool objects from core.assistant.tools.*.
-- L95 `all_builtin_tools()` (function)
+- L66 `_diagnostics_tools()` (function) — Pull diagnostics tool objects from core.assistant.tools.*.
+- L97 `all_builtin_tools()` (function)

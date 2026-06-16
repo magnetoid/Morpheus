@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/embeddings.py
 
 Symbols in `core/embeddings.py`.
 
-- L29 `_hash_embedding(text: str)` (function)
-- L35 `embed(text: str)` (function)
-- L63 `cosine_similarity(a: Sequence[float], b: Sequence[float])` (function)
+- L30 `_hash_embedding(text: str)` (function)
+- L36 `embed(text: str)` (function)
+- L70 `cosine_similarity(a: Sequence[float], b: Sequence[float])` (function)

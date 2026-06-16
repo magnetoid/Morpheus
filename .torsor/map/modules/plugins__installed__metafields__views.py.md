@@ -4,22 +4,22 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/metafields/views.py
 
 Symbols in `plugins/installed/metafields/views.py`.
 
-- L32 `index(request: HttpRequest)` (function)
-- L79 `create_form(request: HttpRequest)` (function)
-- L91 `edit_form(request: HttpRequest, metafield_id)` (function)
-- L104 `delete(request: HttpRequest, metafield_id)` (function)
-- L112 `_save_from_form(request: HttpRequest, *, metafield)` (function)
-- L152 `_resolve_target(request: HttpRequest)` (function) — Helper: pull `(model, object_id)` from request and validate.
-- L179 `api_list(request: HttpRequest)` (function)
-- L202 `api_set(request: HttpRequest)` (function)
-- L235 `api_delete(request: HttpRequest)` (function)
-- L243 `_content_type_choices()` (function) — Curated content-type list — only the high-value targets.
-- L270 `panel_save(request: HttpRequest)` (function) — Save handler for the {% metafields_panel %} auto-rendered form.
+- L33 `index(request: HttpRequest)` (function)
+- L85 `create_form(request: HttpRequest)` (function)
+- L101 `edit_form(request: HttpRequest, metafield_id)` (function)
+- L118 `delete(request: HttpRequest, metafield_id)` (function)
+- L126 `_save_from_form(request: HttpRequest, *, metafield)` (function)
+- L166 `_resolve_target(request: HttpRequest)` (function) — Helper: pull `(model, object_id)` from request and validate.
+- L193 `api_list(request: HttpRequest)` (function)
+- L220 `api_set(request: HttpRequest)` (function)
+- L258 `api_delete(request: HttpRequest)` (function)
+- L266 `_content_type_choices()` (function) — Curated content-type list — only the high-value targets.
+- L297 `panel_save(request: HttpRequest)` (function) — Save handler for the {% metafields_panel %} auto-rendered form.

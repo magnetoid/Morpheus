@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/ai_assistant/apps.py
 
 Symbols in `plugins/installed/ai_assistant/apps.py`.
 
-- L3 `AIAssistantConfig` (class)
-- L8 `ready(self)` (method)
+- L4 `AIAssistantConfig` (class)
+- L9 `ready(self)` (method)

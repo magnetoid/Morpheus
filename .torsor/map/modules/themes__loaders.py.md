@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:51'
-updated: '2026-06-10T20:08:51'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # themes/loaders.py
 
 Symbols in `themes/loaders.py`.
 
-- L6 `ThemeLoader` (class) — Resolves templates from the active theme directory first.
-- L9 `get_dirs(self)` (method)
+- L8 `ThemeLoader` (class) — Resolves templates from the active theme directory first.
+- L11 `get_dirs(self)` (method)

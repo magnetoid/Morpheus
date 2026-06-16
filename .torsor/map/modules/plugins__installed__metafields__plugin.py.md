@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/metafields/plugin.py
 
 Symbols in `plugins/installed/metafields/plugin.py`.
 
-- L11 `MetafieldsPlugin` (class)
-- L23 `ready(self)` (method)
-- L30 `contribute_dashboard_pages(self)` (method)
+- L12 `MetafieldsPlugin` (class)
+- L24 `ready(self)` (method)
+- L31 `contribute_dashboard_pages(self)` (method)

@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/product_videos/plugin.py
 
 Symbols in `plugins/installed/product_videos/plugin.py`.
 
-- L7 `ProductVideosPlugin` (class)
-- L19 `contribute_storefront_blocks(self)` (method)
+- L8 `ProductVideosPlugin` (class)
+- L20 `contribute_storefront_blocks(self)` (method)

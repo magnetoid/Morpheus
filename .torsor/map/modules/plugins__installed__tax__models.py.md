@@ -4,19 +4,19 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:50'
-updated: '2026-06-10T20:08:50'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/installed/tax/models.py
 
 Symbols in `plugins/installed/tax/models.py`.
 
-- L22 `TaxCategory` (class) — Reduced-rate categories (e.g. books, food, children's clothing).
-- L35 `__str__(self)` (method)
-- L39 `TaxRegion` (class) — A taxable region — typically (country, region) pair.
-- L55 `__str__(self)` (method)
-- L59 `TaxRate` (class) — A tax rate scoped to (region × optional category).
-- L82 `__str__(self)` (method)
-- L86 `fraction(self)` (method)
-- L90 `TaxConfiguration` (class) — Singleton-style configuration row.
+- L23 `TaxCategory` (class) — Reduced-rate categories (e.g. books, food, children's clothing).
+- L37 `__str__(self)` (method)
+- L41 `TaxRegion` (class) — A taxable region — typically (country, region) pair.
+- L58 `__str__(self)` (method)
+- L62 `TaxRate` (class) — A tax rate scoped to (region × optional category).
+- L90 `__str__(self)` (method)
+- L94 `fraction(self)` (method)
+- L98 `TaxConfiguration` (class) — Singleton-style configuration row.

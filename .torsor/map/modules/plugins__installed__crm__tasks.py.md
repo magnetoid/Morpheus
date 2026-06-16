@@ -4,12 +4,12 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/crm/tasks.py
 
 Symbols in `plugins/installed/crm/tasks.py`.
 
-- L12 `poll_mailboxes()` (function) — Walk every active MailAccount and import new mail.
+- L13 `poll_mailboxes()` (function) — Walk every active MailAccount and import new mail.

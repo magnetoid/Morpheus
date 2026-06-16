@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/cart_abandonment/tasks.py
 
 Symbols in `plugins/installed/cart_abandonment/tasks.py`.
 
-- L24 `_config()` (function) — Read plugin config with sensible defaults if the DB row is absent.
-- L40 `_cart_email(cart)` (function) — Best-effort reach: customer's email, or any session-bound shipping email.
-- L51 `scan_abandoned_carts(self)` (function) — Emit ``events.CART_ABANDONED`` once per newly-stale cart.
+- L25 `_config()` (function) — Read plugin config with sensible defaults if the DB row is absent.
+- L42 `_cart_email(cart)` (function) — Best-effort reach: customer's email, or any session-bound shipping email.
+- L53 `scan_abandoned_carts(self)` (function) — Emit ``events.CART_ABANDONED`` once per newly-stale cart.

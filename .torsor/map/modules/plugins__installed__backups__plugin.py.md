@@ -4,15 +4,15 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/backups/plugin.py
 
 Symbols in `plugins/installed/backups/plugin.py`.
 
-- L24 `BackupsPlugin` (class)
-- L34 `ready(self)` (method)
-- L44 `contribute_settings_panel(self)` (method)
-- L52 `get_config_schema(self)` (method)
+- L26 `BackupsPlugin` (class)
+- L36 `ready(self)` (method)
+- L46 `contribute_settings_panel(self)` (method)
+- L54 `get_config_schema(self)` (method)

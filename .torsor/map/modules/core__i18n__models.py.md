@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # core/i18n/models.py
 
 Symbols in `core/i18n/models.py`.
 
-- L11 `Translation` (class) — Translation overlay on any model field.
-- L34 `__str__(self)` (method)
+- L12 `Translation` (class) — Translation overlay on any model field.
+- L36 `__str__(self)` (method)

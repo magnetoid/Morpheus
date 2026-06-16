@@ -4,12 +4,12 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:51'
-updated: '2026-06-10T20:08:51'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # plugins/urls.py
 
 Symbols in `plugins/urls.py`.
 
-- L4 `get_urlpatterns()` (function)
+- L1 `get_urlpatterns()` (function)

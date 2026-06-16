@@ -4,15 +4,15 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:51'
-updated: '2026-06-10T20:08:51'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # services/sdk_python/morph_sdk/errors.py
 
 Symbols in `services/sdk_python/morph_sdk/errors.py`.
 
-- L5 `MorphError` (class) — Base class for SDK errors.
-- L9 `PermissionDeniedError` (class) — Raised when the server returns a PERMISSION_DENIED extension.
-- L13 `AgentBudgetError` (class) — Raised when an intent would exceed the agent's configured budget.
-- L17 `TransportError` (class) — Raised on HTTP-layer failures (timeouts, 5xx, etc).
+- L6 `MorphError` (class) — Base class for SDK errors.
+- L10 `PermissionDeniedError` (class) — Raised when the server returns a PERMISSION_DENIED extension.
+- L14 `AgentBudgetError` (class) — Raised when an intent would exceed the agent's configured budget.
+- L18 `TransportError` (class) — Raised on HTTP-layer failures (timeouts, 5xx, etc).

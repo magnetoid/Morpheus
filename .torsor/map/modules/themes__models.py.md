@@ -4,14 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:51'
-updated: '2026-06-10T20:08:51'
+created: '2026-06-13T00:49:58'
+updated: '2026-06-13T00:49:58'
 ---
 
 # themes/models.py
 
 Symbols in `themes/models.py`.
 
-- L8 `ThemeConfig` (class)
-- L19 `__str__(self)` (method)
-- L22 `save(self, *args, **kwargs)` (method)
+- L10 `ThemeConfig` (class)
+- L21 `__str__(self)` (method)
+- L24 `save(self, *args, **kwargs)` (method)

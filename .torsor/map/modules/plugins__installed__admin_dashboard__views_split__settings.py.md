@@ -4,8 +4,8 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # plugins/installed/admin_dashboard/views_split/settings.py
@@ -20,6 +20,6 @@ Symbols in `plugins/installed/admin_dashboard/views_split/settings.py`.
 - L239 `settings_caching(request: HttpRequest)` (function) — Unified caching dashboard — Django cache backend status, Redis
 - L583 `settings_ai(request: HttpRequest)` (function) — Custom AI providers settings page — card per provider.
 - L698 `settings_category(request: HttpRequest, category: str)` (function) — Render every plugin SettingsPanel that belongs to one category.
-- L818 `_filesystem_default(key: str)` (function) — Read the shipped default body so the editor can show / restore it.
-- L842 `email_templates_list(request: HttpRequest)` (function) — Show every transactional email template, edited or not.
-- L871 `email_template_edit(request: HttpRequest, key: str)` (function) — Edit one template. Reset = delete the row → falls back to filesystem default.
+- L865 `_filesystem_default(key: str)` (function) — Read the shipped default body so the editor can show / restore it.
+- L889 `email_templates_list(request: HttpRequest)` (function) — Show every transactional email template, edited or not.
+- L918 `email_template_edit(request: HttpRequest, key: str)` (function) — Edit one template. Reset = delete the row → falls back to filesystem default.

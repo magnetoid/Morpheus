@@ -4,12 +4,12 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-10T20:08:49'
-updated: '2026-06-10T20:08:49'
+created: '2026-06-13T00:49:57'
+updated: '2026-06-13T00:49:57'
 ---
 
 # manage.py
 
 Symbols in `manage.py`.
 
-- L7 `main()` (function) — Run administrative tasks.
+- L8 `main()` (function) — Run administrative tasks.
