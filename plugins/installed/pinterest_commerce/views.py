@@ -46,6 +46,15 @@ def dashboard(request):
 
         verify = verify_connection()
 
+    diagnostics = None
+    from plugins.installed.pinterest_commerce.services.api import creds
+
+    if has_token() and creds().get('catalog_feed_id'):
+        from plugins.installed.pinterest_commerce.services.diagnostics import feed_diagnostics
+
+        d = feed_diagnostics()
+        diagnostics = d if d.get('ok') else None
+
     return render(
         request,
         'pinterest_commerce/dashboard.html',
@@ -57,6 +66,7 @@ def dashboard(request):
             'recent_logs': PinterestSyncLog.objects.all()[:10],
             'has_token': has_token(),
             'verify': verify,
+            'diagnostics': diagnostics,
         },
     )
 

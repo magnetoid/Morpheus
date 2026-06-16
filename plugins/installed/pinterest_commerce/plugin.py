@@ -119,10 +119,16 @@ class PinterestCommercePlugin(Plugin):
         from plugins.installed.pinterest_commerce.agent_tools import (
             pinterest_ads_report_tool,
             pinterest_feed_coverage_tool,
+            pinterest_feed_diagnostics_tool,
             pinterest_feed_url_tool,
         )
 
-        return [pinterest_feed_coverage_tool, pinterest_feed_url_tool, pinterest_ads_report_tool]
+        return [
+            pinterest_feed_coverage_tool,
+            pinterest_feed_url_tool,
+            pinterest_feed_diagnostics_tool,
+            pinterest_ads_report_tool,
+        ]
 
     def get_config_schema(self) -> dict:
         return {

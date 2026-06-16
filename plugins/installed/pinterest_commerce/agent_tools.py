@@ -37,6 +37,23 @@ def pinterest_feed_url_tool() -> ToolResult:
 
 
 @tool(
+    name='pinterest.feed_diagnostics',
+    description='Live Pinterest catalog feed processing status: product counts + top item-level errors (why feed items fail). Requires Pinterest connected with a catalog feed ID.',
+    scopes=['catalog.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def pinterest_feed_diagnostics_tool() -> ToolResult:
+    from plugins.installed.pinterest_commerce.services.diagnostics import feed_diagnostics
+
+    d = feed_diagnostics()
+    if not d.get('ok'):
+        return ToolResult(output=d, display=f'Not connected ({d.get("reason")})')
+    return ToolResult(
+        output=d, display=f'{len(d["issues"])} issue types · counts {d.get("counts")}'
+    )
+
+
+@tool(
     name='pinterest.ads_report',
     description='Pinterest Ads campaign performance for the last N days (spend, clicks, checkouts). Requires Pinterest Ads connected.',
     scopes=['analytics.read'],

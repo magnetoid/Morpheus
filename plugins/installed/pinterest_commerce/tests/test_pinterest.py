@@ -179,6 +179,41 @@ class CapiTests(_Iso, TestCase):
         self.assertIn('ad_accounts/549/events', post.call_args.args[0])
 
 
+class DiagnosticsTests(_Iso, TestCase):
+    def test_not_connected(self):
+        from plugins.installed.pinterest_commerce.services.diagnostics import feed_diagnostics
+
+        # No catalog_feed_id set → not_connected.
+        self.assertEqual(feed_diagnostics()['reason'], 'not_connected')
+
+    def test_parses_processing_results(self):
+        from plugins.installed.pinterest_commerce.services.diagnostics import feed_diagnostics
+
+        p = _plugin()
+        for k, v in {'access_token': 'TOK', 'catalog_feed_id': '777'}.items():
+            p.set_config(k, v)
+        p.invalidate_config_cache()
+        resp = MagicMock()
+        resp.json.return_value = {
+            'items': [
+                {
+                    'status': 'COMPLETED',
+                    'product_counts': {'original': 1064, 'ingested': 1060},
+                    'validation_details': {
+                        'errors': {'IMAGE_LINK_INVALID': {'message': 'Bad image', 'count': 4}}
+                    },
+                }
+            ]
+        }
+        resp.raise_for_status.return_value = None
+        with patch('requests.get', return_value=resp):
+            d = feed_diagnostics()
+        self.assertTrue(d['ok'])
+        self.assertEqual(d['counts']['ingested'], 1060)
+        self.assertEqual(d['issues'][0]['description'], 'Bad image')
+        self.assertEqual(d['issues'][0]['count'], 4)
+
+
 class AdsTests(_Iso, TestCase):
     def test_not_connected(self):
         self.assertEqual(ads_api.campaign_report()['reason'], 'not_connected')

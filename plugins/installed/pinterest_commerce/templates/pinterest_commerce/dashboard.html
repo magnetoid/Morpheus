@@ -36,6 +36,25 @@
   {% endif %}
 </div>
 
+{% if diagnostics %}
+<div class="card mb-6">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">Catalog feed status</h2>
+    <p class="text-xs text-[color:var(--text-muted)]">Live from Pinterest{% if diagnostics.status %} — {{ diagnostics.status }}{% endif %}{% for k, v in diagnostics.counts.items %} · {{ k }}: {{ v }}{% endfor %}.</p>
+  </div>
+  <table class="morph-table">
+    <thead><tr><th>Issue</th><th>Items</th></tr></thead>
+    <tbody>
+      {% for iss in diagnostics.issues %}
+      <tr><td class="font-medium">{{ iss.description }}</td><td>{{ iss.count }}</td></tr>
+      {% empty %}
+      <tr><td colspan="2" class="text-sm text-[color:var(--text-muted)]">No feed errors. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
   <div class="card card-padded kpi"><span class="kpi__label">Active products</span><span class="kpi__value">{{ report.total }}</span></div>
   <div class="card card-padded kpi"><span class="kpi__label">Catalog-eligible</span><span class="kpi__value">{{ report.eligible }}</span></div>
