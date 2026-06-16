@@ -10,14 +10,6 @@ from .api import ads_connected, creds, get, post
 logger = logging.getLogger('morpheus.tiktok_commerce')
 
 _PRESETS = {7: 'LAST_7_DAYS', 14: 'LAST_14_DAYS', 30: 'LAST_30_DAYS'}
-_METRICS = [
-    'spend',
-    'impressions',
-    'clicks',
-    'conversion',
-    'complete_payment',
-    'total_complete_payment_rate',
-]
 
 
 def campaign_report(*, days: int = 30) -> dict:

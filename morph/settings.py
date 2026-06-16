@@ -117,6 +117,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.google_shopping',
     'plugins.installed.meta_commerce',
     'plugins.installed.tiktok_commerce',
+    'plugins.installed.pinterest_commerce',
     'plugins.installed.store_bootstrap',
     'plugins.installed.localization',
     'plugins.installed.bookvault',
