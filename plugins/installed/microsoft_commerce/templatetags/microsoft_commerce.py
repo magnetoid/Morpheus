@@ -20,9 +20,49 @@ register = template.Library()
 
 _TAG_RE = re.compile(r'^\d{5,20}$')
 
+# Ordered prefix → ecomm_pagetype (Microsoft dynamic-remarketing page types).
+_PAGETYPE_RULES = (
+    ('/products/', 'product'),
+    ('/products', 'category'),
+    ('/genre/', 'category'),
+    ('/topic/', 'category'),
+    ('/cart', 'cart'),
+    ('/checkout', 'purchase'),
+    ('/search', 'searchresults'),
+)
+
 
 def _js(value) -> str:
     return json.dumps(value).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+
+
+def _pagetype(request) -> str:
+    path = getattr(request, 'path', '') or ''
+    if path == '/':
+        return 'home'
+    for prefix, kind in _PAGETYPE_RULES:
+        if path.startswith(prefix):
+            return kind
+    return 'other'
+
+
+def _remarketing_js(context, request) -> str:
+    """UET dynamic-remarketing params — ecomm_pagetype everywhere, plus
+    ecomm_prodid/totalvalue on a product page (ids match the catalog feed)."""
+    import contextlib  # noqa: PLC0415
+
+    params = {'ecomm_pagetype': _pagetype(request)}
+    product = context.get('product')
+    if product is not None:
+        pid = getattr(product, 'sku', '') or str(getattr(product, 'id', '') or '')
+        if pid:
+            params['ecomm_prodid'] = str(pid)
+        price = getattr(product, 'display_price', None) or getattr(product, 'price', None)
+        amount = getattr(price, 'amount', None)
+        if amount is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                params['ecomm_totalvalue'] = float(amount)
+    return f'window.uetq.push("event","",{_js(params)});'
 
 
 def _purchase_js(order, request) -> str:
@@ -60,7 +100,9 @@ def uet_tag(context):
     if not _TAG_RE.match(tag_id):
         return ''
 
-    purchase = _purchase_js(context.get('order'), context.get('request'))
+    request = context.get('request')
+    remarketing = _remarketing_js(context, request)
+    purchase = _purchase_js(context.get('order'), request)
     snippet = (
         '<script>(function(w,d,t,r,u){var f,n,i;w[u]=w[u]||[],f=function(){'
         f'var o={{ti:{_js(tag_id)},enableAutoSpaTracking:!0}};'
@@ -69,7 +111,7 @@ def uet_tag(context):
         's&&"loaded"!==s&&"complete"!==s||(f(),n.onload=n.onreadystatechange=null)},'
         'i=d.getElementsByTagName(t)[0],i.parentNode.insertBefore(n,i)})'
         '(window,document,"script","//bat.bing.com/bat.js","uetq");'
-        f'{purchase}</script>'
+        f'{remarketing}{purchase}</script>'
         f'<noscript><img src="//bat.bing.com/action/0?ti={tag_id}&amp;Ver=2" '
         'height="0" width="0" style="display:none;visibility:hidden"/></noscript>'
     )

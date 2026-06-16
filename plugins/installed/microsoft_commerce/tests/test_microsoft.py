@@ -111,6 +111,20 @@ class UetTests(TestCase):
         ctx = Context({'request': RequestFactory().get('/'), 'order': order})
         self.assertNotIn('purchase', uet_tag(ctx))
 
+    def test_remarketing_pagetype_home(self):
+        self._enable()
+        html = uet_tag(Context({'request': RequestFactory().get('/')}))
+        self.assertIn('"ecomm_pagetype": "home"', html)
+
+    def test_remarketing_product_page_carries_prodid_and_value(self):
+        self._enable()
+        p = _product('dune', 'SKU-D')
+        ctx = Context({'request': RequestFactory().get('/products/dune/'), 'product': p})
+        html = uet_tag(ctx)
+        self.assertIn('"ecomm_pagetype": "product"', html)
+        self.assertIn('"ecomm_prodid": "SKU-D"', html)  # matches feed id
+        self.assertIn('"ecomm_totalvalue": 9.0', html)
+
     def test_xss_safe_tag_id(self):
         # Non-numeric ids are rejected by the regex; nothing renders.
         self._enable(tag_id='1"/></script><script>alert(1)</script>')
