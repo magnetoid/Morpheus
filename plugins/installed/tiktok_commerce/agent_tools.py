@@ -37,6 +37,25 @@ def tiktok_feed_url_tool() -> ToolResult:
 
 
 @tool(
+    name='tiktok.catalog_diagnostics',
+    description='Live TikTok catalog review status: approved/pending/rejected counts + top reject reasons. Requires TikTok connected with a catalog ID.',
+    scopes=['catalog.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def tiktok_catalog_diagnostics_tool() -> ToolResult:
+    from plugins.installed.tiktok_commerce.services.diagnostics import catalog_diagnostics
+
+    d = catalog_diagnostics()
+    if not d.get('ok'):
+        return ToolResult(output=d, display=f'Not connected ({d.get("reason")})')
+    c = d['counts']
+    return ToolResult(
+        output=d,
+        display=f'{c["approved"]} approved · {c["rejected"]} rejected · {len(d["issues"])} issue types',
+    )
+
+
+@tool(
     name='tiktok.ads_report',
     description='TikTok Ads campaign performance for the last N days (spend, clicks, conversions). Requires TikTok Ads connected.',
     scopes=['analytics.read'],

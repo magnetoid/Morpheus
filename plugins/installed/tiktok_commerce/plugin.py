@@ -123,11 +123,17 @@ class TiktokCommercePlugin(Plugin):
     def contribute_agent_tools(self) -> list:
         from plugins.installed.tiktok_commerce.agent_tools import (
             tiktok_ads_report_tool,
+            tiktok_catalog_diagnostics_tool,
             tiktok_feed_coverage_tool,
             tiktok_feed_url_tool,
         )
 
-        return [tiktok_feed_coverage_tool, tiktok_feed_url_tool, tiktok_ads_report_tool]
+        return [
+            tiktok_feed_coverage_tool,
+            tiktok_feed_url_tool,
+            tiktok_catalog_diagnostics_tool,
+            tiktok_ads_report_tool,
+        ]
 
     def get_config_schema(self) -> dict:
         return {
@@ -143,6 +149,12 @@ class TiktokCommercePlugin(Plugin):
                 },
                 'advertiser_id': {'type': 'string', 'title': 'Advertiser ID', 'default': ''},
                 'catalog_id': {'type': 'string', 'title': 'Catalog ID', 'default': ''},
+                'bc_id': {
+                    'type': 'string',
+                    'title': 'Business Center ID (optional)',
+                    'description': 'Needed by the catalog diagnostics API for some catalog types.',
+                    'default': '',
+                },
                 'pixel_code': {'type': 'string', 'title': 'Pixel code', 'default': ''},
                 'pixel_enabled': {
                     'type': 'boolean',

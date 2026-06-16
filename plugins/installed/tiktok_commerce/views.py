@@ -46,6 +46,15 @@ def dashboard(request):
 
         verify = verify_connection()
 
+    diagnostics = None
+    from plugins.installed.tiktok_commerce.services.api import catalog_connected
+
+    if catalog_connected():
+        from plugins.installed.tiktok_commerce.services.diagnostics import catalog_diagnostics
+
+        d = catalog_diagnostics()
+        diagnostics = d if d.get('ok') else None
+
     return render(
         request,
         'tiktok_commerce/dashboard.html',
@@ -57,6 +66,7 @@ def dashboard(request):
             'recent_logs': TiktokSyncLog.objects.all()[:10],
             'has_token': has_token(),
             'verify': verify,
+            'diagnostics': diagnostics,
         },
     )
 

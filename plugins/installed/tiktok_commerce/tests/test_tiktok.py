@@ -235,6 +235,52 @@ class AdsTests(_Iso, TestCase):
         self.assertEqual(ads_api.set_campaign_status('../x', 'ENABLE')['reason'], 'bad_campaign_id')
 
 
+class DiagnosticsTests(_Iso, TestCase):
+    def test_not_connected(self):
+        from plugins.installed.tiktok_commerce.services.diagnostics import catalog_diagnostics
+
+        self.assertEqual(catalog_diagnostics()['reason'], 'not_connected')
+
+    def test_defensive_parse_of_product_status(self):
+        from plugins.installed.tiktok_commerce.services.diagnostics import catalog_diagnostics
+
+        self._connect()
+        resp = MagicMock()
+        resp.json.return_value = {
+            'code': 0,
+            'data': {
+                'products': [
+                    {'status': 'REJECTED', 'reject_reason': ['Missing GTIN']},
+                    {'status': 'APPROVED', 'reject_reason': []},
+                    {'audit_status': 'pending_review'},
+                ],
+                'page_info': {'total_page': 1},
+            },
+        }
+        resp.raise_for_status.return_value = None
+        with patch('requests.get', return_value=resp):
+            d = catalog_diagnostics()
+        self.assertTrue(d['ok'])
+        self.assertEqual(d['counts']['rejected'], 1)
+        self.assertEqual(d['counts']['approved'], 1)
+        self.assertEqual(d['counts']['pending'], 1)
+        self.assertEqual(d['issues'][0]['description'], 'Missing GTIN')
+
+    def test_unexpected_shape_degrades_gracefully(self):
+        from plugins.installed.tiktok_commerce.services.diagnostics import catalog_diagnostics
+
+        self._connect()
+        resp = MagicMock()
+        resp.json.return_value = {'code': 0, 'data': {'something_else': True}}
+        resp.raise_for_status.return_value = None
+        with patch('requests.get', return_value=resp):
+            d = catalog_diagnostics()
+        # No crash, no false data — just zero counts.
+        self.assertTrue(d['ok'])
+        self.assertEqual(d['counts']['total'], 0)
+        self.assertEqual(d['issues'], [])
+
+
 class DashboardTests(TestCase):
     def setUp(self):
         self.staff = User.objects.create_user(

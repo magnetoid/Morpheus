@@ -23,6 +23,7 @@ def creds() -> dict:
         'access_token': (cfg.get('access_token') or '').strip(),
         'advertiser_id': (cfg.get('advertiser_id') or '').strip(),
         'catalog_id': (cfg.get('catalog_id') or '').strip(),
+        'bc_id': (cfg.get('bc_id') or '').strip(),
         'pixel_code': (cfg.get('pixel_code') or '').strip(),
     }
 
