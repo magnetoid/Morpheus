@@ -1,0 +1,73 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}TikTok Commerce · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">TikTok Commerce</h1>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="rebuild">
+    <button type="submit" class="btn">Rebuild feed</button>
+  </form>
+</div>
+
+<div class="card card-padded mb-6">
+  <p class="text-sm text-[color:var(--text-muted)] mb-1">Catalog feed URL — add it in TikTok Catalog Manager → Add catalog → Data feed.</p>
+  <code class="text-sm break-all">{{ feed_url }}</code>
+  {% if not settings.enabled %}<p class="text-sm" style="color:#b45309;margin-top:.5rem;">⚠ Feed disabled in settings — the URL returns 404.</p>{% endif %}
+</div>
+
+<div class="card card-padded mb-6">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h2 class="font-semibold">Connection</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Check the access token + advertiser work (live API call).</p>
+    </div>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="verify">
+      <button type="submit" class="btn"{% if not has_token %} disabled{% endif %}>Verify connection</button>
+    </form>
+  </div>
+  {% if verify %}
+  <ul class="mt-3 text-sm" style="list-style:none;padding:0;margin:0;display:grid;gap:.35rem;">
+    {% for key, r in verify.items %}
+    <li>{% if r.ok %}✅{% else %}❌{% endif %} <span class="font-medium">{{ key }}</span> — {{ r.detail }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+  <div class="card card-padded kpi"><span class="kpi__label">Active products</span><span class="kpi__value">{{ report.total }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Catalog-eligible</span><span class="kpi__value">{{ report.eligible }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Coverage</span><span class="kpi__value">{{ report.eligible_pct }}%</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Pixel</span><span class="kpi__value" style="font-size:1.1rem;">{% if settings.pixel_enabled %}On{% else %}Off{% endif %}</span></div>
+</div>
+
+<div class="card mb-6">
+  <div class="card-padded border-b border-[color:var(--border)]"><h2 class="font-semibold">Attribute gaps</h2></div>
+  <table class="morph-table">
+    <thead><tr><th>Missing attribute</th><th>Products</th><th>Examples</th></tr></thead>
+    <tbody>
+      {% for gap in report.gaps %}
+      <tr><td class="font-medium">{{ gap.attribute }}</td><td>{{ gap.count }}</td><td class="text-xs text-[color:var(--text-muted)]">{% for ex in gap.examples %}{{ ex.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-padded border-b border-[color:var(--border)]"><h2 class="font-semibold">Recent syncs</h2></div>
+  <table class="morph-table">
+    <thead><tr><th>When</th><th>Kind</th><th>Status</th><th>Items</th></tr></thead>
+    <tbody>
+      {% for log in recent_logs %}
+      <tr><td>{{ log.created_at|date:"M j, H:i" }}</td><td>{{ log.get_kind_display }}</td><td>{{ log.get_status_display }}</td><td>{{ log.item_count }}</td></tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-sm text-[color:var(--text-muted)]">No syncs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
