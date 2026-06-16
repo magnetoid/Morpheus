@@ -217,6 +217,87 @@ class AdsSoapTests(TestCase):
         self.assertEqual(set_campaign_status('../x', 'Active')['reason'], 'bad_campaign_id')
 
 
+class ReportingTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        _plugin().invalidate_config_cache()
+
+    def tearDown(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        _plugin().invalidate_config_cache()
+
+    def _connect(self):
+        p = _plugin()
+        for k, v in {
+            'oauth_client_id': 'cid',
+            'oauth_client_secret': 'sec',
+            'oauth_refresh_token': 'ref',
+            'developer_token': 'dev',
+            'customer_id': '111',
+            'account_id': '222',
+        }.items():
+            p.set_config(k, v)
+        p.invalidate_config_cache()
+
+    def test_not_connected(self):
+        from plugins.installed.microsoft_commerce.services.reporting import fetch_metrics
+
+        self.assertEqual(fetch_metrics()['reason'], 'not_connected')
+
+    def test_csv_parser_skips_metadata_and_keys_by_campaign(self):
+        import io
+        import zipfile
+
+        from plugins.installed.microsoft_commerce.services.reporting import _download_and_parse
+
+        csv_text = (
+            'Report metadata row,,,\n'
+            ',,,,\n'
+            'CampaignId,Spend,Impressions,Clicks,Conversions,Revenue\n'
+            '123,"1,250.50",1000,40,4,"99.00"\n'
+            '456,10,50,2,0,0\n'
+        )
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as zf:
+            zf.writestr('report.csv', csv_text)
+        from unittest.mock import MagicMock, patch
+
+        resp = MagicMock()
+        resp.content = buf.getvalue()
+        resp.raise_for_status.return_value = None
+        with patch('requests.get', return_value=resp):
+            out = _download_and_parse('https://download/x')
+        self.assertEqual(out['123']['spend'], 1250.5)  # commas/units stripped
+        self.assertEqual(out['123']['clicks'], 40.0)
+        self.assertEqual(out['123']['revenue'], 99.0)
+        self.assertEqual(out['456']['impressions'], 50.0)
+
+    def test_orchestration_fail_soft_on_submit(self):
+        from plugins.installed.microsoft_commerce.services.reporting import fetch_metrics
+
+        self._connect()
+        # Token OK, but the SOAP submit returns a fault → submit_failed, no crash.
+        from unittest.mock import MagicMock, patch
+
+        token = MagicMock()
+        token.json.return_value = {'access_token': 'T'}
+        token.raise_for_status.return_value = None
+        fault = MagicMock()
+        fault.content = (
+            b'<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body><s:Fault>'
+            b'<faultstring>bad</faultstring></s:Fault></s:Body></s:Envelope>'
+        )
+        fault.raise_for_status.return_value = None
+        with patch('requests.post', side_effect=[token, fault]):
+            res = fetch_metrics(days=30)
+        self.assertFalse(res['ok'])
+        self.assertEqual(res['reason'], 'submit_failed')
+
+
 class DashboardTests(TestCase):
     def setUp(self):
         self.staff = User.objects.create_user(

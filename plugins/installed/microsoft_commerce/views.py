@@ -58,12 +58,17 @@ def dashboard(request):
 
 @staff_member_required
 def ads_dashboard(request):
-    """Microsoft Advertising campaign management (SOAP). Control only — no metrics."""
+    """Microsoft Advertising campaign management + performance metrics (SOAP).
+
+    Campaign control is live (single-request SOAP); metrics come from the async
+    Reporting service, fetched in a background task and cached (merged onto the
+    rows here). Best-effort until validated with live credentials."""
     from plugins.installed.microsoft_commerce.services.ads_api import (
         create_campaign,
         list_campaigns,
         set_campaign_status,
     )
+    from plugins.installed.microsoft_commerce.services.reporting import cached_metrics
     from plugins.installed.microsoft_commerce.services.soap import ads_connected
 
     msg = ''
@@ -82,6 +87,14 @@ def ads_dashboard(request):
                 if res.get('ok')
                 else f'Create failed: {res.get("reason")}'
             )
+        elif action == 'refresh_metrics':
+            from plugins.installed.microsoft_commerce.tasks import fetch_ads_report
+
+            try:
+                fetch_ads_report.delay(30)
+                msg = 'Fetching performance metrics in the background — refresh in a minute.'
+            except Exception:  # noqa: BLE001 — celery may be down; offer sync fallback note
+                msg = 'Could not queue the metrics fetch (background worker unavailable).'
         else:
             cid = request.POST.get('campaign_id', '')
             if cid and action in ('Active', 'Paused'):
@@ -93,6 +106,14 @@ def ads_dashboard(request):
         if ads_connected()
         else {'ok': False, 'reason': 'not_connected', 'campaigns': []}
     )
+    # Merge cached performance metrics (fetched async) onto the campaign rows.
+    metrics = cached_metrics() if ads_connected() else None
+    by_id = (metrics or {}).get('metrics', {}) if metrics else {}
+    for c in report.get('campaigns', []):
+        m = by_id.get(str(c.get('id')))
+        if m:
+            c['metrics'] = m
+
     return render(
         request,
         'microsoft_commerce/ads.html',
@@ -101,5 +122,6 @@ def ads_dashboard(request):
             'connected': ads_connected(),
             'report': report,
             'msg': msg,
+            'has_metrics': bool(by_id),
         },
     )

@@ -44,6 +44,11 @@ class MicrosoftCommercePlugin(Plugin):
             'microsoft_commerce:rebuild_feed',
             {'task': 'microsoft_commerce.rebuild_feed', 'schedule': 60 * 60 * 6},
         )
+        # Refresh Ads performance metrics daily (no-op until connected).
+        self.register_celery_beat(
+            'microsoft_commerce:fetch_ads_report',
+            {'task': 'microsoft_commerce.fetch_ads_report', 'schedule': 60 * 60 * 24},
+        )
         for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
 

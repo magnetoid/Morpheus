@@ -4,12 +4,18 @@
 {% block content %}
 <div class="flex items-center justify-between mb-4">
   <h1 class="text-xl font-semibold">Microsoft Ads — campaigns</h1>
+  {% if connected %}
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="refresh_metrics">
+    <button type="submit" class="btn">Refresh metrics</button>
+  </form>
+  {% endif %}
 </div>
 
 {% if msg %}<div class="card card-padded mb-4"><p class="text-sm">{{ msg }}</p></div>{% endif %}
 
 <div class="card card-padded mb-4">
-  <p class="text-xs text-[color:var(--text-muted)]">Campaign <strong>control</strong> (pause/enable/create) via the Microsoft Advertising API. Performance metrics (spend/ROAS) stay in Microsoft Advertising — its reporting API is async-SOAP and isn’t built here.</p>
+  <p class="text-xs text-[color:var(--text-muted)]">Campaign control + performance metrics via the Microsoft Advertising API. Metrics are fetched in the background (async SOAP Reporting) and cached — hit <strong>Refresh metrics</strong>, then reload. <em>Best-effort until validated with live credentials.</em></p>
 </div>
 
 {% if not connected %}
@@ -34,13 +40,14 @@
 {% else %}
 <div class="card">
   <table class="morph-table">
-    <thead><tr><th>Campaign</th><th>Status</th><th>Daily budget</th><th></th></tr></thead>
+    <thead><tr><th>Campaign</th><th>Status</th><th>Daily budget</th>{% if has_metrics %}<th>Spend</th><th>Clicks</th><th>Conv.</th><th>Revenue</th>{% endif %}<th></th></tr></thead>
     <tbody>
       {% for c in report.campaigns %}
       <tr>
         <td class="font-medium">{{ c.name }}</td>
         <td>{{ c.status }}</td>
         <td>{{ c.budget|default:"—" }}</td>
+        {% if has_metrics %}<td>{{ c.metrics.spend|default:"—" }}</td><td>{{ c.metrics.clicks|default:"—" }}</td><td>{{ c.metrics.conversions|default:"—" }}</td><td>{{ c.metrics.revenue|default:"—" }}</td>{% endif %}
         <td>
           <form method="post" style="display:inline">{% csrf_token %}
             <input type="hidden" name="campaign_id" value="{{ c.id }}">

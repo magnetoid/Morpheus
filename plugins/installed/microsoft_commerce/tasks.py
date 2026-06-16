@@ -27,3 +27,21 @@ def rebuild_feed():
     except Exception as e:  # noqa: BLE001
         logger.warning('microsoft_commerce: rebuild_feed task failed: %s', e)
         return {'ok': False, 'reason': str(e)[:200]}
+
+
+@app.task(
+    name='microsoft_commerce.fetch_ads_report',
+    ignore_result=True,
+    time_limit=120,
+    soft_time_limit=110,
+)
+def fetch_ads_report(days=30):
+    """Run the async Microsoft Ads report and cache it (the dashboard reads the
+    cache; this keeps the report fetch off the request path)."""
+    try:
+        from plugins.installed.microsoft_commerce.services.reporting import fetch_and_cache
+
+        return fetch_and_cache(days=int(days or 30))
+    except Exception as e:  # noqa: BLE001
+        logger.warning('microsoft_commerce: fetch_ads_report task failed: %s', e)
+        return {'ok': False, 'reason': str(e)[:200]}

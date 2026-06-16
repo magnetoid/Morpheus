@@ -44,9 +44,9 @@ def _strip_ns(tag: str) -> str:
     return tag.rsplit('}', 1)[-1] if '}' in tag else tag
 
 
-def call(action: str, body_inner_xml: str) -> dict:
-    """POST a Campaign Management SOAP action. body_inner_xml is the inner XML of
-    the <{action}Request> element. Returns {ok, root} (namespace-stripped
+def call(action: str, body_inner_xml: str, *, url: str = CAMPAIGN_MGMT_URL, ns: str = _NS) -> dict:
+    """POST a SOAP action (default: Campaign Management). `url`/`ns` switch
+    services (e.g. the Reporting service). Returns {ok, root} (namespace-stripped
     ElementTree) or {ok: False, reason}."""
     if not ads_connected():
         return {'ok': False, 'reason': 'not_connected'}
@@ -57,14 +57,14 @@ def call(action: str, body_inner_xml: str) -> dict:
 
     envelope = (
         '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">'
-        f'<s:Header xmlns="{_NS}">'
+        f'<s:Header xmlns="{ns}">'
         f'<Action mustUnderstand="1">{action}</Action>'
         f'<AuthenticationToken>{escape(token)}</AuthenticationToken>'
         f'<CustomerAccountId>{escape(c["account_id"])}</CustomerAccountId>'
         f'<CustomerId>{escape(c["customer_id"])}</CustomerId>'
         f'<DeveloperToken>{escape(c["developer_token"])}</DeveloperToken>'
         '</s:Header><s:Body>'
-        f'<{action}Request xmlns="{_NS}" '
+        f'<{action}Request xmlns="{ns}" '
         'xmlns:i="http://www.w3.org/2001/XMLSchema-instance">'
         f'{body_inner_xml}'
         f'</{action}Request>'
@@ -74,9 +74,7 @@ def call(action: str, body_inner_xml: str) -> dict:
     try:
         import requests  # noqa: PLC0415
 
-        resp = requests.post(
-            CAMPAIGN_MGMT_URL, data=envelope.encode('utf-8'), headers=headers, timeout=30
-        )
+        resp = requests.post(url, data=envelope.encode('utf-8'), headers=headers, timeout=30)
         resp.raise_for_status()
         from xml.etree import ElementTree as ET  # noqa: PLC0415
 
