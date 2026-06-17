@@ -25,7 +25,12 @@ verified against the code on 2026-06-17.
 
 ## Remaining work — real gaps, prioritized
 
-### Tier A — small, safe, high-clarity (quick wins)
+### Tier A — small, safe, high-clarity (quick wins) — ✅ DONE (2026-06-17)
+
+> Shipped: A1 (`llm.py` parse_error surfacing + runtime `_tool_back`), A2
+> (`RevertTests` + non-superuser apply/reject/revert boundary tests), A3
+> (stale provider-config import fixed). 55 tests green.
+
 
 **A1. Surface malformed tool-arg JSON (P4.4).** `core/agents/llm.py:213-216`
 (OpenAI provider) silently falls back to `{}` on `JSONDecodeError`, so the LLM
