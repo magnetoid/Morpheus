@@ -211,7 +211,7 @@ class AgentRuntime:
 
     # ── Internals ──────────────────────────────────────────────────────────────
 
-    def _dispatch_tool(
+    def _dispatch_tool(  # noqa: PLR0911 — flat tool-dispatch guard chain
         self,
         *,
         tc: LLMToolCall,
@@ -221,6 +221,10 @@ class AgentRuntime:
         context: dict[str, Any],
         run_id: str,
     ) -> None:
+        if tc.parse_error:
+            self._tool_back(trace, messages, tc, error=tc.parse_error)
+            return
+
         tool = tools_by_name.get(tc.name)
         if tool is None:
             self._tool_back(trace, messages, tc, error=f'Unknown tool: {tc.name}')

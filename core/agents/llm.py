@@ -111,6 +111,10 @@ class LLMToolCall:
     id: str
     name: str
     arguments: dict[str, Any]
+    # Set when the provider could not parse the model's raw arguments (e.g.
+    # malformed JSON). The runtime surfaces this back to the model as a tool
+    # error so it can retry, instead of silently invoking the tool with {}.
+    parse_error: str = ''
 
 
 @dataclass(slots=True)
@@ -210,11 +214,18 @@ class OpenAIProvider(LLMProvider):
         msg = choice.message
         tool_calls: list[LLMToolCall] = []
         for tc in getattr(msg, 'tool_calls', None) or []:
+            parse_error = ''
             try:
                 args = json.loads(tc.function.arguments or '{}')
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 args = {}
-            tool_calls.append(LLMToolCall(id=tc.id, name=tc.function.name, arguments=args))
+                parse_error = f'malformed JSON arguments: {e}'
+                logger.warning('llm: tool %s sent unparseable arguments: %s', tc.function.name, e)
+            tool_calls.append(
+                LLMToolCall(
+                    id=tc.id, name=tc.function.name, arguments=args, parse_error=parse_error
+                )
+            )
         return LLMResponse(
             text=msg.content or '',
             tool_calls=tool_calls,

@@ -104,6 +104,33 @@ class AgentRuntimeTests(TestCase):
         errs = [s for s in res.trace.steps if s.metadata.get('failed')]
         self.assertTrue(errs and 'Unknown tool' in errs[0].content)
 
+    def test_malformed_args_surface_as_tool_error(self):
+        """A tool call the provider couldn't parse (parse_error set) is fed back
+        as an error so the model can retry — never invoked with silent {}."""
+        invoked = []
+        tool = _tool(handler=lambda **kw: invoked.append(kw) or {'ok': True})
+        provider = MockLLMProvider(
+            [
+                LLMResponse(
+                    tool_calls=[
+                        LLMToolCall(
+                            id='c1',
+                            name='do_thing',
+                            arguments={},
+                            parse_error='malformed JSON arguments: x',
+                        )
+                    ]
+                ),
+                LLMResponse(text='retried'),
+            ]
+        )
+        res = self._run(_agent(tools=[tool]), provider)
+        self.assertEqual(res.state, 'completed')
+        self.assertEqual(res.text, 'retried')
+        self.assertEqual(invoked, [])  # tool never ran with empty args
+        failed = [s for s in res.trace.steps if s.metadata.get('failed')]
+        self.assertTrue(any('malformed JSON' in s.content for s in failed))
+
     def test_scope_denied_feeds_error_not_crash(self):
         tool = _tool(scopes=['catalog.write'])  # agent only holds catalog.read
         provider = MockLLMProvider(

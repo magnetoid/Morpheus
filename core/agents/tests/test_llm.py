@@ -60,7 +60,9 @@ class MockProviderTests(SimpleTestCase):
 
 
 class OpenAIArgParsingTests(SimpleTestCase):
-    """The provider silently falls back to {} on malformed tool-call JSON.
+    """Malformed tool-call JSON falls back to {} AND records a parse_error so the
+    runtime can surface it back to the model (instead of silently invoking the
+    tool with empty args).
 
     Built with object.__new__ to skip __init__ (no SDK key / network needed);
     we inject a fake client.
@@ -85,12 +87,14 @@ class OpenAIArgParsingTests(SimpleTestCase):
         p = self._provider_with_args('{"x": 1}')
         resp = p.respond(messages=[LLMMessage(role='user', content='hi')])
         self.assertEqual(resp.tool_calls[0].arguments, {'x': 1})
+        self.assertEqual(resp.tool_calls[0].parse_error, '')
         self.assertEqual(resp.prompt_tokens, 5)
 
-    def test_malformed_json_falls_back_to_empty(self):
+    def test_malformed_json_falls_back_to_empty_and_records_error(self):
         p = self._provider_with_args('{not valid json')
         resp = p.respond(messages=[LLMMessage(role='user', content='hi')])
         self.assertEqual(resp.tool_calls[0].arguments, {})
+        self.assertIn('malformed JSON', resp.tool_calls[0].parse_error)
 
 
 class ProviderResolutionTests(SimpleTestCase):
