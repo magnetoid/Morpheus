@@ -34,8 +34,6 @@ from core.assistant.tools.ecommerce import (
     markets_list_tool,
     media_search_tool,
     metafields_list_for_tool,
-    orders_get_tool,
-    orders_search_tool,
     products_get_tool,
     products_search_tool,
     settings_list_tool,
@@ -99,14 +97,13 @@ def get_default_tools() -> list:
         skills_record_outcome_tool,
     )
 
-    return [
+    tools = [
         # Database — schema introspection
         list_models_tool,
         count_rows_tool,
         db_describe_model_tool,
-        # Ecommerce — orders / products / customers
-        orders_search_tool,
-        orders_get_tool,
+        # Ecommerce — products / customers (orders.search/get migrated to the
+        # orders plugin; sourced by name from the registry below).
         recent_orders_tool,
         products_search_tool,
         products_get_tool,
@@ -179,3 +176,14 @@ def get_default_tools() -> list:
         wait_for_workers_tool,
         invoke_agent_tool,
     ]
+
+    # Tools migrated out of core into their owning plugins (D3): sourced by name
+    # from the agent registry so the query layer lives in the plugin while
+    # Linda's curated catalogue keeps the exact same tool names. A name that
+    # isn't registered (plugin disabled) is simply skipped — disabling the
+    # owning plugin correctly removes the tool from Linda.
+    from core.agents import agent_registry
+
+    _migrated_names = ['orders.search', 'orders.get']
+    tools += [t for t in (agent_registry.get_tool(n) for n in _migrated_names) if t is not None]
+    return tools

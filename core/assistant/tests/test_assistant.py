@@ -76,6 +76,35 @@ class _RecordingProvider:
         return _Resp(text='ok')
 
 
+class ToolMigrationTests(TestCase):
+    """D3: orders.search / orders.get moved to the orders plugin but stay in
+    Linda's catalogue under the same names (sourced from the agent registry)."""
+
+    def test_orders_read_tools_contributed_by_plugin(self):
+        from plugins.installed.orders.plugin import OrdersPlugin
+
+        names = {t.name for t in OrdersPlugin().contribute_agent_tools()}
+        self.assertIn('orders.search', names)
+        self.assertIn('orders.get', names)
+
+    def test_linda_still_exposes_orders_read_tools_by_name(self):
+        names = {t.name for t in get_default_tools()}
+        self.assertIn('orders.search', names)
+        self.assertIn('orders.get', names)
+
+    def test_not_imported_from_core_ecommerce_anymore(self):
+        import core.assistant.tools.ecommerce as ec
+
+        self.assertFalse(hasattr(ec, 'orders_search_tool'))
+        self.assertFalse(hasattr(ec, 'orders_get_tool'))
+
+    def test_migrated_orders_search_queries_real_orders(self):
+        tool = next(t for t in get_default_tools() if t.name == 'orders.search')
+        result = tool.invoke({'limit': 5})
+        self.assertIn('orders', result.output)
+        self.assertIsInstance(result.output['orders'], list)
+
+
 class HistoryCompactionTests(TestCase):
     def test_summarize_history_returns_provider_text(self):
         a = Assistant(provider=MockAssistantProvider(), tools=[])

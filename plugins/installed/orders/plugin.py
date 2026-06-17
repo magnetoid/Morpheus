@@ -135,7 +135,15 @@ class OrdersPlugin(Plugin):
         from plugins.installed.orders.agent_tools import (  # noqa: PLC0415
             approve_return_tool,
             list_returns_tool,
+            orders_get_tool,
+            orders_search_tool,
             refund_order_tool,
         )
 
-        return [refund_order_tool, list_returns_tool, approve_return_tool]
+        return [
+            refund_order_tool,
+            list_returns_tool,
+            approve_return_tool,
+            orders_search_tool,
+            orders_get_tool,
+        ]
