@@ -86,6 +86,18 @@ class AIAssistantPlugin(Plugin):
         self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=30)
         self.register_hook(events.DASHBOARD_SETUP_STEPS, self.on_setup_steps, priority=30)
 
+        # Autonomy gate: answer the background-agent scheduler's AUTONOMY_ENABLED
+        # filter from the `enable_autonomous_operator` flag (Settings → AI). This
+        # is the master switch for PROACTIVE background-agent runs; off by default
+        # (autonomy is opt-in). agent_core consults the filter — it never imports
+        # this plugin, and with this plugin disabled the filter stays False.
+        from core.agents.events import AgentEvents
+
+        self.register_hook(AgentEvents.AUTONOMY_ENABLED, self._autonomy_gate, priority=50)
+
+    def _autonomy_gate(self, value, **_):
+        return bool(value or self.get_config_value('enable_autonomous_operator', False))
+
     def _register_pulse_schedule(self) -> None:
         from django.conf import settings
         from celery.schedules import crontab
@@ -440,6 +452,12 @@ class AIAssistantPlugin(Plugin):
                     'type': 'boolean',
                     'default': False,
                     'title': 'Enable autonomous operator',
+                    'description': (
+                        'Master switch for PROACTIVE background-agent runs. Off → the '
+                        'scheduler never auto-runs background agents (manual “run now” '
+                        'still works). Turn on only when you want Linda’s background '
+                        'agents to act on their schedule.'
+                    ),
                 },
                 'enable_synthetic_testing': {
                     'type': 'boolean',

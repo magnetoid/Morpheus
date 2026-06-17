@@ -28,3 +28,10 @@ class AgentEvents:
     # Memory
     MEMORY_WRITTEN = 'agent.memory.written'
     MEMORY_READ = 'agent.memory.read'
+
+    # Autonomy gate — filter, value=bool (starts False). The background-agent
+    # scheduler consults this before any PROACTIVE run; a subscriber flips it
+    # True to enable autonomy. With no subscriber (e.g. ai_assistant disabled)
+    # it stays False, so proactive runs are opt-in / fail-safe-off. Manual
+    # "run now" (scheduler.fire) is NOT gated — it's an explicit human action.
+    AUTONOMY_ENABLED = 'agent.autonomy_enabled'  # filter

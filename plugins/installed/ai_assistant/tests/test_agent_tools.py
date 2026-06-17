@@ -111,6 +111,27 @@ class ZeroShotToolGatingTests(TestCase):
         self.assertIn('no product', result.output['error'])
 
 
+class AutonomyGateTests(TestCase):
+    """ai_assistant answers the scheduler's AUTONOMY_ENABLED filter from the
+    enable_autonomous_operator flag (OR-preserving so it never vetoes another
+    enabler)."""
+
+    def setUp(self):
+        self.plugin = AIAssistantPlugin()
+
+    def test_gate_off_by_default(self):
+        self.plugin.set_config('enable_autonomous_operator', False)
+        self.assertFalse(self.plugin._autonomy_gate(False))
+
+    def test_gate_on_when_flag_set(self):
+        self.plugin.set_config('enable_autonomous_operator', True)
+        self.assertTrue(self.plugin._autonomy_gate(False))
+
+    def test_gate_preserves_upstream_true(self):
+        self.plugin.set_config('enable_autonomous_operator', False)
+        self.assertTrue(self.plugin._autonomy_gate(True))
+
+
 class ZeroShotServiceTests(TestCase):
     def test_empty_inputs_short_circuit_without_calling_llm(self):
         from plugins.installed.ai_assistant.services import zero_shot

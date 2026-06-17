@@ -86,7 +86,18 @@ def tick() -> int:
     """Run every active BackgroundAgent whose next_run_at <= now.
 
     Returns the number of agents fired. Designed to be called every minute.
+
+    Proactive runs are gated by the AUTONOMY_ENABLED filter — autonomy is
+    opt-in (fail-safe off when no subscriber enables it). Manual "run now"
+    (`fire`) is unaffected.
     """
+    from core.agents.events import AgentEvents
+    from core.hooks import hook_registry
+
+    if not hook_registry.filter(AgentEvents.AUTONOMY_ENABLED, value=False):
+        logger.debug('background_agent: tick skipped — autonomy disabled')
+        return 0
+
     from plugins.installed.agent_core.models import BackgroundAgent
 
     now = timezone.now()
