@@ -52,7 +52,13 @@ instead of `core.agents.provider_registry`. One-line fix. *Risk: none.*
 
 ### Tier B — capability wiring (Phase 3), one flag per PR
 
-**B1. `enable_zero_shot_catalog`.** `services/zero_shot.py` is an **empty stub**
+**B1. `enable_zero_shot_catalog`. — ✅ DONE (2026-06-17).** `services/zero_shot.py`
+implemented (fail-soft generic classifier + `classify_product`); exposed as the
+flag-gated `catalog.classify_product` tool; schema text updated; 9 tests.
+
+**B2/B3 — still open, need a decision (see below).**
+
+**B1 (original spec).** `services/zero_shot.py` is an **empty stub**
 (`# zero_shot service`); flag is defined but never read. Note: `book_product`
 already shipped an AI `classify_books` command (git `2a22856`) — reuse that
 classifier rather than build new. Implement the service, gate it in
@@ -74,11 +80,9 @@ is provider-connectivity probing, not store smoke tests. Needs a scope decision
 
 ### Tier C — reliability + UX (medium)
 
-**C1. Compaction in Linda's loop (P4.2c).** The agent runtime compacts, but
-`core/assistant/runtime.py` (`Assistant.stream`, ~30-msg history) does **not** —
-long Linda chats grow unbounded toward context overflow. Wire `compact(...)` into
-that loop with a summarizer. *Verify:* a test that a long history is summarized.
-*Risk: medium (hot path) — careful token accounting.*
+**C1. Compaction in Linda's loop (P4.2c). — ✅ DONE (2026-06-17).** `Assistant.stream`
+now runs `compact(...)` at the top of each step with a provider-backed
+`_summarize_history` summarizer (guarded against a kernel-import failure). 2 tests.
 
 **C2. LindaMemory editor (P5.3).** `LindaMemory` model exists
 (`core/assistant/models.py:78`) but is tool-write / turn-start-read only — no UI.
