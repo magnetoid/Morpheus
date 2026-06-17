@@ -66,12 +66,11 @@ classifier rather than build new. Implement the service, gate it in
 plugin.py:479), expose as a flag-gated tool. *Verify:* off → tool absent; on →
 callable against real catalog. *Risk: low (default-off).*
 
-**B2. `enable_autonomous_operator`.** `services/operator.py` is a back-compat
-shim, unreachable; flag never read. **Decide activation model first** —
-recommend gating proactive `BackgroundAgent` execution in
-`agent_core/scheduler.py:85` (the operator concept = autonomous background runs),
-NOT a new tool. Wire the flag as the master enable for proactive runs. *Risk:
-medium — touches the autonomous loop; default-off, draft/observe before act.*
+**B2. `enable_autonomous_operator`. — ✅ DONE (2026-06-17).** New `AUTONOMY_ENABLED`
+hook filter gates `scheduler.tick()` (proactive runs); ai_assistant answers it
+from the flag (decoupled via the bus, never imported). Manual `fire`/"run now"
+ungated. **Behaviour change:** scheduled background runs are now opt-in
+(default off). 5 tests.
 
 **B3. `enable_synthetic_testing`.** DORMANT **and mis-scoped**: `services/probe.py`
 is provider-connectivity probing, not store smoke tests. Needs a scope decision
