@@ -428,11 +428,12 @@ class AIAssistantPlugin(Plugin):
                 'enable_zero_shot_catalog': {
                     'type': 'boolean',
                     'default': False,
-                    'title': 'Enable zero-shot catalog (coming soon)',
+                    'title': 'Enable zero-shot catalog classification',
                     'description': (
-                        'Not yet implemented — no classifier service is wired behind '
-                        'this toggle. Reserved for zero-shot product categorisation; '
-                        'leave off.'
+                        'Gives Linda the catalog.classify_product tool: zero-shot '
+                        'classification of a product into your categories (or custom '
+                        'labels) via the LLM, no training data. Off → the tool is '
+                        'absent from the agent catalogue.'
                     ),
                 },
                 'enable_autonomous_operator': {
@@ -480,4 +481,8 @@ class AIAssistantPlugin(Plugin):
             from plugins.installed.ai_assistant.agent_tools import semantic_search_tool
 
             tools.append(semantic_search_tool)
+        if self.get_config_value('enable_zero_shot_catalog'):
+            from plugins.installed.ai_assistant.agent_tools import zero_shot_classify_tool
+
+            tools.append(zero_shot_classify_tool)
         return tools
