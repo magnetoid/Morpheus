@@ -60,6 +60,62 @@ class AssistantRunTests(TestCase):
         self.assertEqual(roles.count('user'), 2)
 
 
+class _RecordingProvider:
+    """Records the message list passed to each respond() call."""
+
+    name = 'rec'
+    model = 'rec'
+
+    def __init__(self):
+        self.calls: list = []
+
+    def respond(self, *, messages, tools=None, temperature=0.3, max_tokens=1024):
+        from core.assistant._mock_provider import _Resp
+
+        self.calls.append(list(messages))
+        return _Resp(text='ok')
+
+
+class HistoryCompactionTests(TestCase):
+    def test_summarize_history_returns_provider_text(self):
+        a = Assistant(provider=MockAssistantProvider(), tools=[])
+        out = a._summarize_history('user: hi\nassistant: hello')
+        self.assertIn('Got:', out)  # MockAssistantProvider echoes the transcript
+
+    def test_long_history_is_compacted_before_the_provider_call(self):
+        from core.assistant.persistence import StoredMessage
+
+        prov = _RecordingProvider()
+        a = Assistant(provider=prov, tools=[])
+        key = 'test:compact'
+        # Seed a history that comfortably exceeds the ~6000-token soft limit
+        # (10 messages × ~3000 chars ≈ 7.5k tokens).
+        for i in range(10):
+            a.store.append(
+                conversation_key=key,
+                message=StoredMessage(
+                    role='user' if i % 2 == 0 else 'assistant', content='x' * 3000
+                ),
+            )
+        a.run(message='now', conversation_key=key)
+
+        # The actual turn call (the one carrying the recent 'now' message) must
+        # be compacted: a rolling-summary system message replaces the old middle.
+        turn_calls = [
+            ms for ms in prov.calls if any(getattr(m, 'content', '') == 'now' for m in ms)
+        ]
+        self.assertTrue(turn_calls, 'no turn call recorded')
+        turn = turn_calls[-1]
+        self.assertTrue(
+            any(
+                'Summary of earlier conversation' in (getattr(m, 'content', '') or '') for m in turn
+            ),
+            'expected a rolling summary in the compacted turn',
+        )
+        # And it is shorter than the raw history would have been (10 + system + user).
+        self.assertLess(len(turn), 12)
+
+
 class FilesystemToolTests(TestCase):
     def test_list_dir_returns_entries(self):
         from core.assistant.tools.filesystem import list_dir_tool

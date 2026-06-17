@@ -198,6 +198,18 @@ def _to_llm_messages(
     return msgs
 
 
+def _compact(msgs: list[Any], summarizer) -> list[Any]:
+    """Keep Linda's message list under a soft token budget by replacing the
+    oldest turns with a rolling summary. No-op for short conversations; falls
+    back to the uncompacted list if the agents kernel isn't importable (same
+    defensive posture as ``_to_llm_messages``)."""
+    try:
+        from core.agents.compaction import compact
+    except Exception:  # noqa: BLE001
+        return msgs
+    return compact(msgs, summarizer=summarizer)
+
+
 class Assistant:
     """Linda — the hardcoded staff AI assistant.
 
@@ -252,6 +264,34 @@ class Assistant:
                 result = event['result']
         return result
 
+    def _summarize_history(self, transcript: str) -> str:
+        """Provider-backed summarizer for context compaction. A terse, low-cost
+        call; on any failure `compact` falls back to truncation. Mirrors the
+        agent runtime's summarizer so Linda and agents compact the same way."""
+        try:
+            from core.agents.llm import LLMMessage
+
+            resp = self.provider.respond(
+                messages=[
+                    LLMMessage(
+                        role='system',
+                        content=(
+                            'Summarize the following assistant conversation in a few '
+                            'sentences. Preserve facts established, decisions made, and '
+                            'tasks still pending. Be concise.'
+                        ),
+                    ),
+                    LLMMessage(role='user', content=transcript[:12000]),
+                ],
+                tools=None,
+                temperature=0.0,
+                max_tokens=300,
+            )
+            return resp.text or ''
+        except Exception as e:  # noqa: BLE001 — compaction must never break a turn
+            logger.warning('assistant: history summarization failed: %s', e)
+            return ''
+
     def stream(  # noqa: PLR0915
         self,
         *,
@@ -304,6 +344,12 @@ class Assistant:
         tool_calls = 0
 
         for _step in range(max(1, self.max_steps)):
+            # Context compaction — keep `msgs` under a soft token budget by
+            # summarizing the oldest turns (tool outputs accumulate across steps
+            # within a turn, and history is only count-capped, not token-capped).
+            # No-op for short conversations.
+            msgs = _compact(msgs, self._summarize_history)
+
             resp = None
             err: str = ''
             for attempt in (0, 1):  # one retry for transient errors
