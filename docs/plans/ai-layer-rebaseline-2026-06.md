@@ -102,11 +102,17 @@ Add a **draft-only**, dev-mode-gated trigger in Linda's runtime; apply stays
 owner + `MORPHEUS_SELF_UPDATE_ENABLED` gated. *Risk: med — keep strictly
 draft-only.*
 
-**D3. Tool migration (cross-cutting).** `core/assistant/tools/ecommerce.py` +
-`ecommerce_writes.py` still query catalog/orders models directly (wrong layer).
-Migrate to `orders`/`catalog` `contribute_agent_tools()`; **tool names must stay
-stable** so Linda's prompts/skills keep resolving. Slot opportunistically when a
-domain plugin is already being touched. *Risk: med — behavior-preserving refactor.*
+**D3. Tool migration (cross-cutting). — ◑ IN PROGRESS.** Pattern established
+(2026-06-17): move a tool's impl into its plugin's `contribute_agent_tools()`,
+and have core's curated `get_default_tools()` source it BY NAME from
+`agent_registry.get_tool(...)` (no core→plugin import; names stay stable;
+disabling the plugin removes it from Linda). **Slice 1 done:** `orders.search`,
+`orders.get` → orders plugin. **Remaining (~24):** the rest of `ecommerce.py`
+(products/customers/cms/email/media/metafields/markets/analytics/db.describe) +
+all of `ecommerce_writes.py` (write tools — carry approval/audit logic, migrate
+carefully). Each is a mechanical follow-up slice using the same pattern.
+NOTE: the imports are lazy-guarded today (Phase-0 "acceptable"), so this is
+purity/correct-layering work, not a bug fix — low urgency, do opportunistically.
 
 ---
 
