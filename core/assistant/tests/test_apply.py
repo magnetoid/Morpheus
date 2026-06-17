@@ -192,3 +192,85 @@ class ApplyHappyPathTests(TestCase):
         self.assertEqual(p.status, 'applied')
         self.assertEqual(p.applied_branch, branch)
         self.assertIsNotNone(p.applied_at)
+
+
+class RevertTests(TestCase):
+    """revert_branch deletes the selfdev/* branch and resets the row to
+    'approved' so it can be re-applied — never touching main/HEAD/the worktree."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix='selfdev-revert-')
+        self.root = Path(self.tmp)
+        env = {
+            **os.environ,
+            'GIT_AUTHOR_NAME': 't',
+            'GIT_AUTHOR_EMAIL': 't@t',
+            'GIT_COMMITTER_NAME': 't',
+            'GIT_COMMITTER_EMAIL': 't@t',
+        }
+
+        def git(*a):
+            subprocess.run(
+                ['git', *a], cwd=self.root, check=True, capture_output=True, text=True, env=env
+            )
+
+        git('init', '-q')
+        (self.root / 'README.md').write_text('seed\n')
+        git('add', '.')
+        git('commit', '-q', '-m', 'seed')
+        git('branch', '-M', 'main')
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _branch_exists(self, branch) -> bool:
+        return (
+            subprocess.run(
+                ['git', 'rev-parse', '--verify', '--quiet', f'refs/heads/{branch}'],
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+            ).returncode
+            == 0
+        )
+
+    @mock.patch.dict(os.environ, _ENABLED)
+    def test_apply_then_revert_deletes_branch_and_resets_status(self):
+        p = _make_proposal()
+        with mock.patch.object(apply_mod, 'REPO_ROOT', self.root):
+            applied = apply_mod.apply_proposal(p)
+            self.assertTrue(applied['applied'], applied)
+            branch = applied['branch']
+            self.assertTrue(self._branch_exists(branch))
+
+            reverted = apply_mod.revert_branch(p)
+
+            self.assertTrue(reverted['reverted'], reverted)
+            self.assertEqual(reverted['branch'], branch)
+            self.assertFalse(self._branch_exists(branch))  # branch gone
+            head = subprocess.run(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        self.assertEqual(head, 'main')
+
+        p.refresh_from_db()
+        self.assertEqual(p.status, 'approved')  # re-appliable after another review
+        self.assertEqual(p.applied_branch, '')
+        self.assertIsNone(p.applied_at)
+
+    def test_revert_without_applied_branch_is_noop(self):
+        p = _make_proposal(status='approved', applied_branch='')
+        res = apply_mod.revert_branch(p)
+        self.assertFalse(res['reverted'])
+        self.assertIn('no applied branch', res['reason'])
+
+    def test_revert_refuses_non_selfdev_branch(self):
+        p = _make_proposal(status='applied', applied_branch='main')
+        res = apply_mod.revert_branch(p)
+        self.assertFalse(res['reverted'])
+        self.assertIn('non-selfdev', res['reason'])
+        p.refresh_from_db()
+        self.assertEqual(p.status, 'applied')  # untouched — refused

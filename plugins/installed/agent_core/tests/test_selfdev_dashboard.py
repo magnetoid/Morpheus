@@ -87,6 +87,32 @@ class SelfdevDashboardRbacTests(TestCase):
         r = c.post(self._action('consensus'))
         self.assertEqual(r.status_code, 302)
 
+    def test_apply_forbidden_for_non_superuser(self):
+        p = _proposal(name='approved_tool', status='approved')
+        c = Client()
+        c.force_login(self.staff)
+        r = c.post(self._action('apply', p))
+        self.assertEqual(r.status_code, 403)
+        p.refresh_from_db()
+        self.assertEqual(p.status, 'approved')  # unchanged
+
+    def test_reject_forbidden_for_non_superuser(self):
+        c = Client()
+        c.force_login(self.staff)
+        r = c.post(self._action('reject'))
+        self.assertEqual(r.status_code, 403)
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.status, 'draft')  # unchanged
+
+    def test_revert_forbidden_for_non_superuser(self):
+        p = _proposal(name='applied_tool', status='applied', applied_branch='selfdev/applied_tool')
+        c = Client()
+        c.force_login(self.staff)
+        r = c.post(self._action('revert', p))
+        self.assertEqual(r.status_code, 403)
+        p.refresh_from_db()
+        self.assertEqual(p.status, 'applied')  # unchanged — branch not touched
+
     # ── Apply stays gated by the env master-switch ──────────────────────────
     def test_apply_blocked_when_flag_unset(self):
         p = _proposal(name='approved_tool', status='approved')

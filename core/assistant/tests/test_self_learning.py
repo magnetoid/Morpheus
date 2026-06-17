@@ -6,6 +6,7 @@ from __future__ import annotations
 from django.test import SimpleTestCase, TestCase
 
 from core.agents.llm import _PROVIDER_CLASSES, HermesProvider, OpenAIProvider
+from core.agents.provider_registry import get_provider_config
 from core.agents.skills import Skill, skill_registry
 from core.agents.tools import ToolError
 from core.assistant.models import LearnedSkill
@@ -17,7 +18,6 @@ from core.assistant.tools.skills import (
     skills_list_tool,
     skills_record_outcome_tool,
 )
-from plugins.installed.ai_assistant.services.config import get_provider_config
 
 
 class HermesProviderTests(SimpleTestCase):
