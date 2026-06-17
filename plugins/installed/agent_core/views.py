@@ -595,3 +595,82 @@ def selfdev_action_view(request, proposal_id: str, action: str):
     level, msg = handler(request, p)
     getattr(messages, level)(request, msg)
     return redirect(here)
+
+
+# ── Linda memory editor ──────────────────────────────────────────────────────
+# LindaMemory is written by the memory.remember tool and read at the top of every
+# turn. This gives the owner a dashboard to see + curate those facts. Reading is
+# staff (informational); mutating is superuser-only (it shapes Linda's behaviour).
+
+_MEMORY_SCOPES = ['merchant', 'customer-segment', 'seasonal']
+
+
+@staff_member_required
+def memory_list_view(request):
+    from core.assistant.models import LindaMemory
+
+    rows = list(LindaMemory.objects.all().order_by('scope', '-updated_at'))
+    groups: dict[str, list] = {s: [] for s in _MEMORY_SCOPES}
+    for m in rows:
+        groups.setdefault(m.scope, []).append(m)
+    grouped = [{'scope': s, 'rows': groups[s]} for s in _MEMORY_SCOPES if groups.get(s)]
+    return render(
+        request,
+        'agent_core/dashboard/memory.html',
+        {
+            'grouped': grouped,
+            'scopes': _MEMORY_SCOPES,
+            'total': len(rows),
+            'can_edit': request.user.is_superuser,
+            'active_nav': 'agents',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Linda', 'url': '/dashboard/assistant/'},
+                {'label': 'Memory'},
+            ],
+        },
+    )
+
+
+@staff_member_required
+def memory_action_view(request):
+    """POST-only create/edit/delete of LindaMemory rows. Superuser-only — editing
+    Linda's remembered facts changes how she behaves."""
+    from django.contrib import messages
+    from django.http import HttpResponseForbidden
+
+    from core.assistant.models import LindaMemory
+    from morpheus.views import redirect
+
+    here = '/dashboard/agents/memory/'
+    if request.method != 'POST':
+        return redirect(here)
+    if not request.user.is_superuser:
+        return HttpResponseForbidden('Only the owner (a superuser) may edit Linda’s memory.')
+
+    action = (request.POST.get('action') or '').strip()
+    if action == 'delete':
+        LindaMemory.objects.filter(id=request.POST.get('memory_id') or '').delete()
+        messages.success(request, 'Memory deleted.')
+        return redirect(here)
+
+    if action in ('create', 'edit'):
+        scope = (request.POST.get('scope') or 'merchant').strip()
+        key = (request.POST.get('key') or '').strip()[:160]
+        value = (request.POST.get('value') or '').strip()
+        if scope not in _MEMORY_SCOPES or not key or not value:
+            messages.error(request, 'Scope, key and value are all required.')
+            return redirect(here)
+        # unique_together (scope, key): update_or_create keeps create + edit idempotent.
+        LindaMemory.objects.update_or_create(
+            scope=scope,
+            key=key,
+            defaults={
+                'value': value,
+                'source': (request.POST.get('source') or 'owner-edited')[:40],
+            },
+        )
+        messages.success(request, f'Memory “{key}” saved.')
+        return redirect(here)
+
+    return redirect(here)

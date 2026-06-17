@@ -225,6 +225,19 @@ class AgentCorePlugin(Plugin):
                 nav='main',
                 url='/dashboard/agents/selfdev/',
             ),
+            # Linda memory editor: the owner curates the cross-session facts
+            # Linda reads at the top of every turn. Read = staff; edits =
+            # superuser (they shape Linda's behaviour).
+            DashboardPage(
+                label='Linda memory',
+                slug='memory',
+                view='plugins.installed.agent_core.views.memory_list_view',
+                icon='brain',
+                section='ai',
+                order=55,
+                nav='main',
+                url='/dashboard/agents/memory/',
+            ),
         ]
 
     # No SettingsPanel — agent_core is a system component, not a

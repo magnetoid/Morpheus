@@ -1,0 +1,80 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Linda memory · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Linda memory</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">The cross-session facts Linda reads at the top of every turn ({{ total }} stored). Linda writes these via her <code>memory.remember</code> tool; here you can curate them.</p>
+  </div>
+
+  {% if not can_edit %}
+  <div class="card card-padded" style="border-left: 3px solid var(--warn);">
+    <p class="text-sm">You can view Linda's memory. <strong>Editing requires owner (superuser) access.</strong></p>
+  </div>
+  {% else %}
+  <div class="card card-padded">
+    <h2 class="font-semibold text-sm mb-2">Add a memory</h2>
+    <form method="post" action="{% url 'agent_core_dash:memory_action' %}" class="flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <label class="text-sm">Scope<br>
+        <select name="scope" class="input">
+          {% for s in scopes %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="text-sm">Key<br><input type="text" name="key" required maxlength="160" class="input" placeholder="prefers_audiobooks"></label>
+      <label class="text-sm flex-1" style="min-width:14rem;">Value<br><input type="text" name="value" required class="input" style="width:100%;" placeholder="Customer prefers audiobooks over print"></label>
+      <button type="submit" class="btn">Add</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% for grp in grouped %}
+  <div class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-muted)]">
+      <h2 class="font-semibold text-sm">{{ grp.scope }} <span class="text-[color:var(--text-muted)] font-normal">({{ grp.rows|length }})</span></h2>
+    </div>
+    <table class="morph-table">
+      <thead><tr><th>Key</th><th>Value</th><th>Source</th><th>Updated</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for m in grp.rows %}
+        <tr>
+          <td class="font-medium align-top">{{ m.key }}</td>
+          <td class="align-top">
+            {% if can_edit %}
+            <form method="post" action="{% url 'agent_core_dash:memory_action' %}" class="flex items-start gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="edit">
+              <input type="hidden" name="scope" value="{{ m.scope }}">
+              <input type="hidden" name="key" value="{{ m.key }}">
+              <input type="text" name="value" value="{{ m.value }}" class="input" style="width:100%;">
+              <button type="submit" class="btn text-xs">Save</button>
+            </form>
+            {% else %}{{ m.value }}{% endif %}
+          </td>
+          <td class="text-[color:var(--text-muted)] align-top">{{ m.source|default:"—" }}</td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap align-top">{{ m.updated_at|date:"M j, H:i" }}</td>
+          {% if can_edit %}
+          <td class="text-right align-top">
+            <form method="post" action="{% url 'agent_core_dash:memory_action' %}" onsubmit="return confirm('Delete this memory?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="memory_id" value="{{ m.id }}">
+              <button type="submit" class="btn btn-danger text-xs">Delete</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% empty %}
+  <div class="card card-padded text-center text-[color:var(--text-muted)]">
+    <p>Linda hasn't remembered anything yet. She'll store facts here as you chat (or add one above).</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

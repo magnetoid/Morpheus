@@ -26,5 +26,8 @@ urlpatterns = [
         views.selfdev_action_view,
         name='selfdev_action',
     ),
+    # Linda memory editor (owner curates Linda's cross-session facts).
+    path('memory/', views.memory_list_view, name='memory'),
+    path('memory/action/', views.memory_action_view, name='memory_action'),
     path('<uuid:run_id>/', views.run_detail_view, name='run_detail'),
 ]
