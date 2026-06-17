@@ -84,10 +84,10 @@ is provider-connectivity probing, not store smoke tests. Needs a scope decision
 now runs `compact(...)` at the top of each step with a provider-backed
 `_summarize_history` summarizer (guarded against a kernel-import failure). 2 tests.
 
-**C2. LindaMemory editor (P5.3).** `LindaMemory` model exists
-(`core/assistant/models.py:78`) but is tool-write / turn-start-read only — no UI.
-Add superuser-gated CRUD (list/edit/delete) as an `agent_core` (or ai_assistant)
-dashboard page contribution. *Risk: low — new views, no migration.*
+**C2. LindaMemory editor (P5.3). — ✅ DONE (2026-06-17).** `/dashboard/agents/memory/`
+(contributed DashboardPage): staff-read list grouped by scope; superuser-only
+create/edit/delete (update_or_create on scope+key). 8 tests. (Also fixed
+pre-existing drift found en route: Worker missing the `orders.cancel` scope.)
 
 ### Tier D — larger / riskier (own PR + design care)
 
