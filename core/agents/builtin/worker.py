@@ -103,6 +103,7 @@ class Worker(MorpheusAgent):
         'gift_cards.write',
         'inventory.read',
         'inventory.write',
+        'orders.cancel',
         'orders.read',
         'orders.write',
         'promotions.read',
