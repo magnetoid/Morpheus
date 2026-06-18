@@ -27,15 +27,11 @@ from core.assistant.tools.ecommerce import (
     analytics_summary_tool,
     analytics_top_products_tool,
     cms_pages_tool,
-    customers_get_tool,
-    customers_search_tool,
     db_describe_model_tool,
     email_templates_tool,
     markets_list_tool,
     media_search_tool,
     metafields_list_for_tool,
-    products_get_tool,
-    products_search_tool,
     settings_list_tool,
 )
 from core.assistant.tools.ecommerce_writes import (
@@ -105,10 +101,6 @@ def get_default_tools() -> list:
         # Ecommerce — products / customers (orders.search/get migrated to the
         # orders plugin; sourced by name from the registry below).
         recent_orders_tool,
-        products_search_tool,
-        products_get_tool,
-        customers_search_tool,
-        customers_get_tool,
         # Analytics
         analytics_summary_tool,
         analytics_top_products_tool,
@@ -184,6 +176,13 @@ def get_default_tools() -> list:
     # owning plugin correctly removes the tool from Linda.
     from core.agents import agent_registry
 
-    _migrated_names = ['orders.search', 'orders.get']
+    _migrated_names = [
+        'orders.search',
+        'orders.get',
+        'products.search',
+        'products.get',
+        'customers.search',
+        'customers.get',
+    ]
     tools += [t for t in (agent_registry.get_tool(n) for n in _migrated_names) if t is not None]
     return tools

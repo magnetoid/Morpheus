@@ -80,23 +80,50 @@ class ToolMigrationTests(TestCase):
     """D3: orders.search / orders.get moved to the orders plugin but stay in
     Linda's catalogue under the same names (sourced from the agent registry)."""
 
-    def test_orders_read_tools_contributed_by_plugin(self):
+    MIGRATED = [
+        'orders.search',
+        'orders.get',
+        'products.search',
+        'products.get',
+        'customers.search',
+        'customers.get',
+    ]
+
+    def test_read_tools_contributed_by_their_plugins(self):
+        from plugins.installed.catalog.plugin import CatalogPlugin
+        from plugins.installed.customers.plugin import CustomersPlugin
         from plugins.installed.orders.plugin import OrdersPlugin
 
-        names = {t.name for t in OrdersPlugin().contribute_agent_tools()}
-        self.assertIn('orders.search', names)
-        self.assertIn('orders.get', names)
+        self.assertGreaterEqual(
+            {t.name for t in OrdersPlugin().contribute_agent_tools()},
+            {'orders.search', 'orders.get'},
+        )
+        self.assertGreaterEqual(
+            {t.name for t in CatalogPlugin().contribute_agent_tools()},
+            {'products.search', 'products.get'},
+        )
+        self.assertGreaterEqual(
+            {t.name for t in CustomersPlugin().contribute_agent_tools()},
+            {'customers.search', 'customers.get'},
+        )
 
-    def test_linda_still_exposes_orders_read_tools_by_name(self):
+    def test_linda_still_exposes_migrated_tools_by_name(self):
         names = {t.name for t in get_default_tools()}
-        self.assertIn('orders.search', names)
-        self.assertIn('orders.get', names)
+        for n in self.MIGRATED:
+            self.assertIn(n, names)
 
     def test_not_imported_from_core_ecommerce_anymore(self):
         import core.assistant.tools.ecommerce as ec
 
-        self.assertFalse(hasattr(ec, 'orders_search_tool'))
-        self.assertFalse(hasattr(ec, 'orders_get_tool'))
+        for sym in (
+            'orders_search_tool',
+            'orders_get_tool',
+            'products_search_tool',
+            'products_get_tool',
+            'customers_search_tool',
+            'customers_get_tool',
+        ):
+            self.assertFalse(hasattr(ec, sym), sym)
 
     def test_migrated_orders_search_queries_real_orders(self):
         tool = next(t for t in get_default_tools() if t.name == 'orders.search')

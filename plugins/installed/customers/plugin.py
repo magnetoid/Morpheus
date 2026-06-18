@@ -21,6 +21,14 @@ class CustomersPlugin(Plugin):
 
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=20)
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.customers.agent_tools import (  # noqa: PLC0415
+            customers_get_tool,
+            customers_search_tool,
+        )
+
+        return [customers_search_tool, customers_get_tool]
+
     def on_order_paid(self, order, **kwargs):
         from plugins.installed.customers.services import update_cdp_metrics
 
