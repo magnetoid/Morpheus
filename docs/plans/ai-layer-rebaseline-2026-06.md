@@ -106,11 +106,13 @@ draft-only.*
 (2026-06-17): move a tool's impl into its plugin's `contribute_agent_tools()`,
 and have core's curated `get_default_tools()` source it BY NAME from
 `agent_registry.get_tool(...)` (no core→plugin import; names stay stable;
-disabling the plugin removes it from Linda). **Slice 1 done:** `orders.search`,
-`orders.get` → orders plugin. **Remaining (~24):** the rest of `ecommerce.py`
-(products/customers/cms/email/media/metafields/markets/analytics/db.describe) +
-all of `ecommerce_writes.py` (write tools — carry approval/audit logic, migrate
-carefully). Each is a mechanical follow-up slice using the same pattern.
+disabling the plugin removes it from Linda). **Slices 1-2 done:** `orders.search/get` → orders plugin; `products.search/get`
+→ catalog; `customers.search/get` → customers. **Remaining (~20):** the rest of
+`ecommerce.py` (cms.pages/email.templates → cms; media.search → media;
+metafields.list_for → metafields; markets.list → markets; analytics.* →
+analytics; settings.list + db.describe_model stay core — generic, no plugin
+model) + all of `ecommerce_writes.py` (write tools — carry approval/audit logic,
+migrate carefully). Each is a mechanical follow-up slice using the same pattern.
 NOTE: the imports are lazy-guarded today (Phase-0 "acceptable"), so this is
 purity/correct-layering work, not a bug fix — low urgency, do opportunistically.
 
