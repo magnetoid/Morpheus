@@ -257,3 +257,64 @@ def delete_page_tool(*, slug: str) -> ToolResult:
     title = page.title
     page.delete()
     return ToolResult(output={'deleted': slug}, display=f'Deleted page "{title}"')
+
+
+@tool(
+    name='cms.pages',
+    description='List CMS pages with title, slug, state, and updated date.',
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'state': {'type': 'string'},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100, 'default': 50},
+        },
+    },
+)
+def cms_pages_tool(*, state: str = '', limit: int = 50) -> ToolResult:
+    from plugins.installed.cms.models import Page
+
+    qs = Page.objects.all()
+    if state:
+        qs = qs.filter(state=state)
+    qs = qs.order_by('-updated_at')[: max(1, min(int(limit or 50), 100))]
+    rows = [
+        {
+            'id': str(p.pk),
+            'title': getattr(p, 'title', ''),
+            'slug': getattr(p, 'slug', ''),
+            'state': getattr(p, 'state', ''),
+            'updated_at': p.updated_at.isoformat() if getattr(p, 'updated_at', None) else '',
+            'published_at': (
+                p.published_at.isoformat() if getattr(p, 'published_at', None) else ''
+            ),
+        }
+        for p in qs
+    ]
+    return ToolResult(output={'pages': rows, 'count': len(rows)}, display=f'{len(rows)} page(s)')
+
+
+@tool(
+    name='email.templates',
+    description=(
+        'List email templates: key, subject, whether the merchant has '
+        'customised the default. Read-only — does not return body HTML '
+        'because it can be very long; use db.find on EmailTemplate for '
+        'a single full record.'
+    ),
+    scopes=['system.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def email_templates_tool() -> ToolResult:
+    from plugins.installed.cms.models import EmailTemplate
+
+    rows = [
+        {
+            'key': getattr(t, 'key', ''),
+            'subject': getattr(t, 'subject', ''),
+            'is_customised': bool(getattr(t, 'is_customised', False)),
+            'updated_at': t.updated_at.isoformat() if getattr(t, 'updated_at', None) else '',
+        }
+        for t in EmailTemplate.objects.all().order_by('key')
+    ]
+    return ToolResult(output={'templates': rows, 'count': len(rows)})

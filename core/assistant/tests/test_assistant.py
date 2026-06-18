@@ -90,6 +90,10 @@ class ToolMigrationTests(TestCase):
         'media.search',
         'metafields.list_for',
         'markets.list',
+        'analytics.summary',
+        'analytics.top_products',
+        'cms.pages',
+        'email.templates',
     ]
 
     def test_read_tools_contributed_by_their_plugins(self):

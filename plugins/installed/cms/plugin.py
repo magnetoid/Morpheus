@@ -111,8 +111,10 @@ class CmsPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.cms.agent_tools import (
+            cms_pages_tool,
             create_page_tool,
             delete_page_tool,
+            email_templates_tool,
             get_page_tool,
             list_pages_tool,
             recent_submissions_tool,
@@ -128,6 +130,8 @@ class CmsPlugin(Plugin):
             delete_page_tool,
             upsert_block_tool,
             recent_submissions_tool,
+            cms_pages_tool,
+            email_templates_tool,
         ]
 
     def contribute_dashboard_pages(self) -> list:

@@ -133,6 +133,8 @@ class OrdersPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.orders.agent_tools import (  # noqa: PLC0415
+            analytics_summary_tool,
+            analytics_top_products_tool,
             approve_return_tool,
             list_returns_tool,
             orders_get_tool,
@@ -146,4 +148,6 @@ class OrdersPlugin(Plugin):
             approve_return_tool,
             orders_search_tool,
             orders_get_tool,
+            analytics_summary_tool,
+            analytics_top_products_tool,
         ]

@@ -307,3 +307,116 @@ def approve_return_tool(*, rma_number: str, refund_amount: float | None = None) 
         },
         display=f'Approved {rr.rma_number}',
     )
+
+
+# ── Analytics (order-derived) ───────────────────────────────────────────────
+# analytics.summary / analytics.top_products were migrated here from
+# core/assistant/tools/ecommerce.py: they aggregate the Order / OrderItem models,
+# so the orders plugin is their correct home. Tool names unchanged.
+
+
+@tool(
+    name='analytics.summary',
+    description=(
+        'Sales summary for the last `days_back` days: revenue, orders, '
+        'AOV, new customers. Default 7 days. Use this before drilling '
+        'into specifics — gives the LLM the right framing.'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'days_back': {'type': 'integer', 'minimum': 1, 'maximum': 365, 'default': 7},
+        },
+    },
+)
+def analytics_summary_tool(*, days_back: int = 7) -> ToolResult:
+    from django.contrib.auth import get_user_model
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    from plugins.installed.orders.models import Order
+
+    days = max(1, min(int(days_back or 7), 365))
+    since = timezone.now() - timedelta(days=days)
+    prev_since = since - timedelta(days=days)
+    cur = Order.objects.filter(placed_at__gte=since)
+    prev = Order.objects.filter(placed_at__gte=prev_since, placed_at__lt=since)
+    cur_count = cur.count()
+    cur_rev = cur.aggregate(t=Sum('total'))['t'] or Decimal('0')
+    prev_count = prev.count()
+    prev_rev = prev.aggregate(t=Sum('total'))['t'] or Decimal('0')
+    aov = (cur_rev / cur_count) if cur_count else Decimal('0')
+    User = get_user_model()
+    new_customers = User.objects.filter(date_joined__gte=since).count()
+
+    def pct(now, before):
+        if not before:
+            return None
+        return float(
+            ((Decimal(now) - Decimal(before)) / Decimal(before) * Decimal('100')).quantize(
+                Decimal('0.01')
+            )
+        )
+
+    return ToolResult(
+        output={
+            'window_days': days,
+            'orders': cur_count,
+            'orders_prev': prev_count,
+            'orders_pct_change': pct(cur_count, prev_count),
+            'revenue': str(cur_rev),
+            'revenue_prev': str(prev_rev),
+            'revenue_pct_change': pct(cur_rev, prev_rev),
+            'avg_order_value': str(aov),
+            'new_customers': new_customers,
+        }
+    )
+
+
+@tool(
+    name='analytics.top_products',
+    description=(
+        'Top-N products by revenue or units sold over the last `days_back` '
+        'days. Default 30 days, sort by revenue.'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'days_back': {'type': 'integer', 'minimum': 1, 'maximum': 365, 'default': 30},
+            'by': {'type': 'string', 'enum': ['revenue', 'units'], 'default': 'revenue'},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 10},
+        },
+    },
+)
+def analytics_top_products_tool(
+    *, days_back: int = 30, by: str = 'revenue', limit: int = 10
+) -> ToolResult:
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    from plugins.installed.orders.models import OrderItem
+
+    days = max(1, min(int(days_back or 30), 365))
+    since = timezone.now() - timedelta(days=days)
+    qs = (
+        OrderItem.objects.filter(order__placed_at__gte=since)
+        .values('product_id', 'product_name')
+        .annotate(units=Sum('quantity'), revenue=Sum('total_price'))
+    )
+    sort_key = '-revenue' if by != 'units' else '-units'
+    qs = qs.order_by(sort_key)[: max(1, min(int(limit or 10), 50))]
+    rows = [
+        {
+            'product_id': str(r['product_id']) if r['product_id'] else '',
+            'name': r['product_name'] or '',
+            'units': int(r['units'] or 0),
+            'revenue': str(r['revenue'] or 0),
+        }
+        for r in qs
+    ]
+    return ToolResult(
+        output={'window_days': days, 'sort': by, 'products': rows},
+        display=f'top {len(rows)} by {by}',
+    )

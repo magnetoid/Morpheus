@@ -24,11 +24,7 @@ from core.assistant.tools.delegate import (
     list_available_agents_tool,
 )
 from core.assistant.tools.ecommerce import (
-    analytics_summary_tool,
-    analytics_top_products_tool,
-    cms_pages_tool,
     db_describe_model_tool,
-    email_templates_tool,
     settings_list_tool,
 )
 from core.assistant.tools.ecommerce_writes import (
@@ -98,12 +94,6 @@ def get_default_tools() -> list:
         # Ecommerce — products / customers (orders.search/get migrated to the
         # orders plugin; sourced by name from the registry below).
         recent_orders_tool,
-        # Analytics
-        analytics_summary_tool,
-        analytics_top_products_tool,
-        # Content
-        cms_pages_tool,
-        email_templates_tool,
         # Configuration
         settings_list_tool,
         # Memory — cross-session preferences
@@ -179,6 +169,10 @@ def get_default_tools() -> list:
         'media.search',
         'metafields.list_for',
         'markets.list',
+        'analytics.summary',
+        'analytics.top_products',
+        'cms.pages',
+        'email.templates',
     ]
     tools += [t for t in (agent_registry.get_tool(n) for n in _migrated_names) if t is not None]
     return tools
