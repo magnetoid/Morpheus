@@ -87,6 +87,9 @@ class ToolMigrationTests(TestCase):
         'products.get',
         'customers.search',
         'customers.get',
+        'media.search',
+        'metafields.list_for',
+        'markets.list',
     ]
 
     def test_read_tools_contributed_by_their_plugins(self):
@@ -122,6 +125,9 @@ class ToolMigrationTests(TestCase):
             'products_get_tool',
             'customers_search_tool',
             'customers_get_tool',
+            'media_search_tool',
+            'metafields_list_for_tool',
+            'markets_list_tool',
         ):
             self.assertFalse(hasattr(ec, sym), sym)
 

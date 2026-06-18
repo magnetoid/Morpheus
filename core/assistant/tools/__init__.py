@@ -29,9 +29,6 @@ from core.assistant.tools.ecommerce import (
     cms_pages_tool,
     db_describe_model_tool,
     email_templates_tool,
-    markets_list_tool,
-    media_search_tool,
-    metafields_list_for_tool,
     settings_list_tool,
 )
 from core.assistant.tools.ecommerce_writes import (
@@ -107,12 +104,8 @@ def get_default_tools() -> list:
         # Content
         cms_pages_tool,
         email_templates_tool,
-        media_search_tool,
-        # Metafields — schema-less custom data
-        metafields_list_for_tool,
         # Configuration
         settings_list_tool,
-        markets_list_tool,
         # Memory — cross-session preferences
         memory_recall_tool,
         memory_remember_tool,
@@ -183,6 +176,9 @@ def get_default_tools() -> list:
         'products.get',
         'customers.search',
         'customers.get',
+        'media.search',
+        'metafields.list_for',
+        'markets.list',
     ]
     tools += [t for t in (agent_registry.get_tool(n) for n in _migrated_names) if t is not None]
     return tools

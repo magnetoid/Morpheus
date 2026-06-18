@@ -28,6 +28,13 @@ class MetafieldsPlugin(Plugin):
             namespace='metafields',
         )
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.metafields.agent_tools import (  # noqa: PLC0415
+            metafields_list_for_tool,
+        )
+
+        return [metafields_list_for_tool]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(

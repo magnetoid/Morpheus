@@ -1,4 +1,5 @@
 """media plugin manifest."""
+
 from __future__ import annotations
 
 import logging
@@ -27,6 +28,11 @@ class MediaPlugin(Plugin):
             prefix='dashboard/media/',
             namespace='media',
         )
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.media.agent_tools import media_search_tool  # noqa: PLC0415
+
+        return [media_search_tool]
 
     def contribute_dashboard_pages(self) -> list:
         # Assets is a core surface — wired directly into the sidebar

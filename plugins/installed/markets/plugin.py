@@ -27,6 +27,11 @@ class MarketsPlugin(Plugin):
             namespace='markets',
         )
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.markets.agent_tools import markets_list_tool  # noqa: PLC0415
+
+        return [markets_list_tool]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
