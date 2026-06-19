@@ -542,6 +542,16 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 OLLAMA_BASE_URL = config('OLLAMA_BASE_URL', default='http://localhost:11434')
 AI_EMBEDDING_MODEL = config('AI_EMBEDDING_MODEL', default='text-embedding-3-small')
 
+# Tests must NEVER hit a real LLM/embeddings API. A developer's `.env` usually
+# has a real OPENAI_API_KEY, and AI tasks run eagerly (CELERY_TASK_ALWAYS_EAGER)
+# from product/order hooks during tests — without this they'd POST to
+# api.openai.com (slow, flaky, and it polluted OpenAIArgParsingTests). Blanking
+# the provider + keys forces every provider factory to the offline mock.
+if _RUNNING_TESTS:
+    AI_PROVIDER = ''
+    OPENAI_API_KEY = ''
+    ANTHROPIC_API_KEY = ''
+
 # ── Email ──────────────────────────────────────────────────────────────────────
 # Always use the Morpheus Custom backend so admins can configure via dashboard
 EMAIL_BACKEND = 'core.email.MorpheusEmailBackend'

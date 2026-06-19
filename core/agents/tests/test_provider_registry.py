@@ -71,3 +71,16 @@ class ProviderRegistryTests(SimpleTestCase):
         cfg = get_provider_config('openai')
         self.assertEqual(cfg.provider, 'openai')
         self.assertEqual(cfg.model, 'gpt-4o-mini')
+
+
+class TestModeAINeutralizedTests(SimpleTestCase):
+    """Tests must never hit a real LLM/embeddings API (morph/settings.py blanks
+    the provider + keys under _RUNNING_TESTS). Locks that so a dev .env key can't
+    leak into the suite and POST to api.openai.com."""
+
+    def test_provider_and_keys_blank_in_tests(self):
+        from django.conf import settings
+
+        self.assertEqual(settings.AI_PROVIDER, '')
+        self.assertEqual(settings.OPENAI_API_KEY, '')
+        self.assertEqual(settings.ANTHROPIC_API_KEY, '')
