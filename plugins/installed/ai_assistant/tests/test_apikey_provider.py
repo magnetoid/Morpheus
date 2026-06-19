@@ -21,12 +21,14 @@ class ApikeyFunProviderTests(TestCase):
         self.assertIs(_GATEWAYS['apikey'], ApikeyFunGateway)
         self.assertTrue(issubclass(ApikeyFunGateway, OpenAIGateway))
 
-    @patch('plugins.installed.ai_assistant.services.llm._openai_client')
+    @patch('core.agents.llm._openai_client')
     def test_defaults_to_apikey_base_url(self, mock_client):
         from plugins.installed.ai_assistant.services.llm import ApikeyFunGateway
 
         ApikeyFunGateway(
-            ProviderConfig(provider='apikey', api_key='k', base_url='', model='', embedding_model='')
+            ProviderConfig(
+                provider='apikey', api_key='k', base_url='', model='', embedding_model=''
+            )
         )
         _, kwargs = mock_client.call_args
         self.assertEqual(kwargs.get('base_url'), 'https://api.apikey.fun/v1')
