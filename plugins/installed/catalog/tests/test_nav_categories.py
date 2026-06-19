@@ -13,6 +13,10 @@ from plugins.installed.catalog.models import Category
 class NavCategoriesTests(TestCase):
     def setUp(self):
         cache.clear()  # the processor caches; isolate each test
+        # book_product migration 0006 (categories→genres) seeds a 'Books'
+        # category into the migrated test DB; these tests assert exact category
+        # lists, so start from a clean Category table (rolled back after each).
+        Category.objects.all().delete()
 
     def test_returns_roots_with_active_children_ordered(self):
         fiction = Category.objects.create(name='Fiction', slug='fiction', sort_order=0)
