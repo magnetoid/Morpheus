@@ -60,7 +60,22 @@ process boundary that needs IPC:
   scope enforcement) and writes the result back. Only if a real use-case needs
   in-script tool calls.
 
-Decide A vs B explicitly in the PR; default to **A**.
+Decide A vs B explicitly in the PR; ~~default to **A**~~ — see update below.
+
+> **UPDATE (2026-06-19) — Option A is NOT viable; Option B is required.**
+> Verified against the code: the `run_python` tool (`core/assistant/tools/code.py:111`)
+> injects a live `call` bridge — `extra_globals={'call': call, 'list_tools':
+> list_tools, 'json': _json}` — and `core/agents/tests/test_sandbox.py` locks it
+> with ~6 tests, including **scope enforcement** and **approval gating** on
+> in-script `call("orders.cancel")`-style callbacks. Dropping the bridge (Option
+> A) would delete a used, tested capability. So the subprocess migration MUST
+> implement Option B: a line-delimited JSON-RPC bridge over an extra pipe where
+> the **parent** invokes the tool (re-running the same scope/approval
+> enforcement `code.py`'s `call` does today) and writes the result back. This
+> makes D1 a larger, security-critical PR than the "default to A" framing
+> implied — the parent-side `call` handler must preserve `enforce_policy` + the
+> approval gate exactly, or the sandbox becomes a scope-escalation hole. Scope
+> it as its own focused, adversarially-reviewed PR; do not bundle it.
 
 ## Reuse
 The existing AST validator + `CURATED` builtins map (verbatim — this is the
