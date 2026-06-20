@@ -25,6 +25,21 @@ class MorpheusBrainPlugin(Plugin):
     )
     has_models = False
 
+    def ready(self) -> None:
+        # The Brain *engine* lives in core/brain/ (core, non-disableable). This
+        # surface schedules its continuous AI analysis (Celery beat) and imports
+        # the task so Celery discovers it. No cost when no AI is configured.
+        from django.conf import settings
+
+        import core.brain.tasks  # noqa: F401 — registers @shared_task
+
+        schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
+        if isinstance(schedule, dict):
+            schedule.setdefault(
+                'brain.refresh_analysis',
+                {'task': 'core.brain.refresh_analysis', 'schedule': 60 * 60 * 6},
+            )
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(

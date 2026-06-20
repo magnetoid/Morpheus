@@ -8,179 +8,119 @@
       <h1 class="text-xl font-semibold tracking-tight flex items-center gap-2">
         <i data-lucide="brain" class="h-5 w-5"></i> Morpheus Brain
       </h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Everything the platform evaluates about itself — plugins, code, content, storefront, and what to improve next.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">A core capability — continuously analyzes the platform's code, errors, content and storefront, and uses your configured AI to recommend what to improve next.</p>
     </div>
+  </div>
+
+  {# ── AI analysis headline ────────────────────────────────────────── #}
+  <div class="card card-padded" style="border-color:var(--accent,#2563eb);">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <i data-lucide="sparkles" class="h-4 w-4 text-[color:var(--accent,#2563eb)]"></i>
+        <span class="font-semibold text-sm">AI analysis</span>
+        {% if analysis.provider %}<code class="text-xs pill pill-neutral">{{ analysis.provider }}{% if analysis.model %} · {{ analysis.model }}{% endif %}</code>{% endif %}
+      </div>
+      <form method="post" action="{{ request.path }}" style="margin:0;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="refresh_analysis">
+        <button class="btn btn-primary text-xs" type="submit"><i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> Refresh analysis</button>
+      </form>
+    </div>
+    {% if analysis %}
+      {% if analysis.configured == False %}
+        <p class="text-sm text-[color:var(--text-muted)] mt-3">{{ analysis.message }}</p>
+      {% elif analysis.error %}
+        <p class="text-sm text-[color:var(--danger,#dc2626)] mt-3">{{ analysis.error }}</p>
+      {% else %}
+        {% if analysis.summary %}<p class="text-sm mt-3">{{ analysis.summary }}</p>{% endif %}
+        {% if analysis.recommendations %}
+        <ul class="mt-3 space-y-2">
+          {% for r in analysis.recommendations %}
+          <li class="text-sm border-l-2 pl-3" style="border-color:{% if r.priority == 'high' %}var(--danger,#dc2626){% elif r.priority == 'medium' %}var(--warn,#d97706){% else %}var(--border){% endif %};">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-medium">{{ r.title }}</span>
+              {% if r.area %}<span class="pill pill-neutral text-xs">{{ r.area }}</span>{% endif %}
+              {% if r.priority %}<span class="pill {% if r.priority == 'high' %}pill-danger{% elif r.priority == 'medium' %}pill-warn{% else %}pill-info{% endif %} text-xs">{{ r.priority }}</span>{% endif %}
+            </div>
+            {% if r.why %}<div class="text-[color:var(--text-muted)] mt-0.5">{{ r.why }}</div>{% endif %}
+            {% if r.action %}<div class="mt-0.5">→ {{ r.action }}</div>{% endif %}
+          </li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% if analysis.generated_at %}<div class="text-xs text-[color:var(--text-muted)] mt-3">Generated {{ analysis.generated_at }}{% if analysis.tokens %} · {{ analysis.tokens }} tokens{% endif %}</div>{% endif %}
+      {% endif %}
+    {% else %}
+      <p class="text-sm text-[color:var(--text-muted)] mt-3">No analysis yet. Click <strong>Refresh analysis</strong> to have your configured AI read the current signals and recommend improvements. (Runs automatically every few hours.)</p>
+    {% endif %}
   </div>
 
   {# ── Tab bar ─────────────────────────────────────────────────────── #}
   <div class="flex flex-wrap gap-1 border-b border-[color:var(--border)]">
     <button class="brain-tab is-active" data-tab="overview" type="button">Overview</button>
     <button class="brain-tab" data-tab="plugins" type="button">Plugins</button>
-    <button class="brain-tab" data-tab="code" type="button">Code &amp; self-improvement</button>
+    <button class="brain-tab" data-tab="code" type="button">Code</button>
+    <button class="brain-tab" data-tab="errors" type="button">Errors</button>
     <button class="brain-tab" data-tab="content" type="button">Content &amp; SEO</button>
     <button class="brain-tab" data-tab="storefront" type="button">Storefront</button>
     <button class="brain-tab" data-tab="improve" type="button">Improvements</button>
   </div>
 
   {# ── Overview ────────────────────────────────────────────────────── #}
-  <section data-panel="overview" class="space-y-4">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div class="card card-padded">
-        <div class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Plugins active</div>
-        <div class="text-2xl font-semibold mt-1">{{ plugins.active_count|default:"—" }}<span class="text-sm text-[color:var(--text-muted)]">/{{ plugins.total|default:"—" }}</span></div>
-        {% if plugins.errors %}<div class="text-xs text-[color:var(--danger,#dc2626)] mt-1">{{ plugins.errors|length }} validation issue{{ plugins.errors|length|pluralize }}</div>{% endif %}
-      </div>
-      <div class="card card-padded">
-        <div class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Code recs open</div>
-        <div class="text-2xl font-semibold mt-1">{{ code.rec_total|default:0 }}</div>
-        <div class="text-xs text-[color:var(--text-muted)] mt-1">{{ code.proposal_total|default:0 }} Linda proposal{{ code.proposal_total|default:0|pluralize }}</div>
-      </div>
-      <div class="card card-padded">
-        <div class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">SEO avg score</div>
-        <div class="text-2xl font-semibold mt-1">{% if content.seo_total %}{{ content.seo_avg }}{% else %}—{% endif %}</div>
-        <div class="text-xs text-[color:var(--text-muted)] mt-1">{{ content.seo_low_count|default:0 }} below 50</div>
-      </div>
-      <div class="card card-padded">
-        <div class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Content gaps</div>
-        <div class="text-2xl font-semibold mt-1">{{ content.catalog.missing_desc|default:0 }}</div>
-        <div class="text-xs text-[color:var(--text-muted)] mt-1">products missing a description</div>
-      </div>
-    </div>
-    <div class="card card-padded text-sm text-[color:var(--text-muted)]">
-      <i data-lucide="info" class="h-4 w-4" style="vertical-align:-2px;"></i>
-      Each tab reads live from the platform's own engines. Empty sections just mean that engine hasn't produced data yet (e.g. run an SEO audit, or let Core Web Vitals collect samples).
-    </div>
+  <section data-panel="overview" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Plugins active</div><div class="text-2xl font-semibold mt-1">{{ plugins.active_count|default:"—" }}<span class="text-sm text-[color:var(--text-muted)]">/{{ plugins.total|default:"—" }}</span></div>{% if plugins.errors %}<div class="text-xs text-[color:var(--danger,#dc2626)] mt-1">{{ plugins.errors|length }} issue{{ plugins.errors|length|pluralize }}</div>{% endif %}</div>
+    <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Recent errors</div><div class="text-2xl font-semibold mt-1">{{ errors.total|default:0 }}</div><div class="text-xs text-[color:var(--text-muted)] mt-1">{{ code.rec_total|default:0 }} code rec{{ code.rec_total|default:0|pluralize }}</div></div>
+    <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">SEO avg</div><div class="text-2xl font-semibold mt-1">{% if content.seo_total %}{{ content.seo_avg }}{% else %}—{% endif %}</div><div class="text-xs text-[color:var(--text-muted)] mt-1">{{ content.seo_low_count|default:0 }} below 50</div></div>
+    <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Content gaps</div><div class="text-2xl font-semibold mt-1">{{ content.catalog.missing_desc|default:0 }}</div><div class="text-xs text-[color:var(--text-muted)] mt-1">missing descriptions</div></div>
   </section>
 
   {# ── Plugins ─────────────────────────────────────────────────────── #}
   <section data-panel="plugins" hidden class="space-y-3">
+    {% if plugins.errors %}<div class="card card-padded" style="border-color:var(--danger,#dc2626);"><div class="font-medium text-sm mb-1">Validation issues</div><ul class="text-sm text-[color:var(--text-muted)] list-disc pl-5">{% for e in plugins.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
     {% if plugins.available %}
-      {% if plugins.errors %}
-      <div class="card card-padded" style="border-color:var(--danger,#dc2626);">
-        <div class="font-medium text-sm mb-1">Validation issues</div>
-        <ul class="text-sm text-[color:var(--text-muted)] list-disc pl-5">{% for e in plugins.errors %}<li>{{ e }}</li>{% endfor %}</ul>
-      </div>
-      {% endif %}
-      <div class="card overflow-hidden">
-        <table class="morph-table morph-table-zebra">
-          <thead><tr><th>Plugin</th><th>Version</th><th>Status</th><th>Models</th><th>Requires</th></tr></thead>
-          <tbody>
-            {% for p in plugins.rows %}
-            <tr>
-              <td><span class="font-medium">{{ p.label }}</span> <code class="text-xs text-[color:var(--text-muted)]">{{ p.name }}</code></td>
-              <td class="text-xs">{{ p.version }}</td>
-              <td>{% if p.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Off</span>{% endif %}</td>
-              <td class="text-xs text-[color:var(--text-muted)]">{% if p.has_models %}yes{% else %}—{% endif %}</td>
-              <td class="text-xs text-[color:var(--text-muted)]">{{ p.requires|join:", " }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="card overflow-hidden"><table class="morph-table morph-table-zebra"><thead><tr><th>Plugin</th><th>Version</th><th>Status</th><th>Requires</th></tr></thead><tbody>
+      {% for p in plugins.rows %}<tr><td><span class="font-medium">{{ p.label }}</span> <code class="text-xs text-[color:var(--text-muted)]">{{ p.name }}</code></td><td class="text-xs">{{ p.version }}</td><td>{% if p.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Off</span>{% endif %}</td><td class="text-xs text-[color:var(--text-muted)]">{{ p.requires|join:", " }}</td></tr>{% endfor %}
+    </tbody></table></div>
     {% else %}<div class="card card-padded text-sm text-[color:var(--text-muted)]">Plugin registry unavailable.</div>{% endif %}
   </section>
 
-  {# ── Code & self-improvement ─────────────────────────────────────── #}
+  {# ── Code ────────────────────────────────────────────────────────── #}
   <section data-panel="code" hidden class="space-y-3">
     <div class="card card-padded">
-      <div class="font-medium text-sm mb-2">Self-improvement recommendations <span class="text-[color:var(--text-muted)]">({{ code.rec_total|default:0 }} open)</span></div>
-      {% if code.recommendations %}
-        <ul class="space-y-2 text-sm">
-          {% for r in code.recommendations %}
-          <li class="flex items-center justify-between gap-2">
-            <span>{{ r.title }} <code class="text-xs text-[color:var(--text-muted)]">{{ r.class_name }}</code></span>
-            <span class="pill pill-info text-xs">impact {{ r.impact }}</span>
-          </li>{% endfor %}
-        </ul>
-      {% else %}<div class="text-sm text-[color:var(--text-muted)]">No open recommendations{% if code.drift_count %} · {{ code.drift_count }} tracked customization{{ code.drift_count|pluralize }}{% endif %}.</div>{% endif %}
+      <div class="font-medium text-sm mb-2">Code-quality findings</div>
+      {% if code.quality %}<ul class="space-y-1 text-sm">{% for q in code.quality %}<li class="flex justify-between gap-2"><span class="text-[color:var(--text-muted)]">{{ q.summary }}</span><span class="pill {% if q.severity >= 70 %}pill-danger{% elif q.severity >= 40 %}pill-warn{% else %}pill-neutral{% endif %} text-xs">sev {{ q.severity }}</span></li>{% endfor %}</ul>{% else %}<div class="text-sm text-[color:var(--text-muted)]">No code-quality findings recorded yet (the immune-system scanner populates these).</div>{% endif %}
     </div>
     <div class="card card-padded">
-      <div class="font-medium text-sm mb-2">Linda code proposals <span class="text-[color:var(--text-muted)]">({{ code.proposal_total|default:0 }} draft)</span></div>
-      {% if code.proposals %}
-        <ul class="space-y-2 text-sm">
-          {% for p in code.proposals %}
-          <li class="flex items-center justify-between gap-2">
-            <span>{{ p.name }} <code class="text-xs text-[color:var(--text-muted)]">{{ p.kind }}</code></span>
-            <span>{% if p.passed %}<span class="pill pill-success text-xs">scan ok</span>{% else %}<span class="pill pill-warn text-xs">{{ p.findings }} finding{{ p.findings|pluralize }}</span>{% endif %}</span>
-          </li>{% endfor %}
-        </ul>
-      {% else %}<div class="text-sm text-[color:var(--text-muted)]">No pending proposals.</div>{% endif %}
+      <div class="font-medium text-sm mb-2">Engine recommendations <span class="text-[color:var(--text-muted)]">({{ code.rec_total|default:0 }})</span></div>
+      {% if code.recommendations %}<ul class="space-y-2 text-sm">{% for r in code.recommendations %}<li><div class="flex items-center justify-between gap-2"><span>{{ r.title }} <code class="text-xs text-[color:var(--text-muted)]">{{ r.class_name }}</code></span><span class="pill pill-info text-xs">impact {{ r.impact }}</span></div>{% if r.rationale %}<div class="text-xs text-[color:var(--text-muted)]">{{ r.rationale }}</div>{% endif %}</li>{% endfor %}</ul>{% else %}<div class="text-sm text-[color:var(--text-muted)]">No open recommendations{% if code.drift_count %} · {{ code.drift_count }} tracked customization{{ code.drift_count|pluralize }}{% endif %}.</div>{% endif %}
+    </div>
+    {% if code.proposals %}<div class="card card-padded"><div class="font-medium text-sm mb-2">Linda code proposals</div><ul class="space-y-1 text-sm">{% for p in code.proposals %}<li class="flex justify-between gap-2"><span>{{ p.name }}</span>{% if p.passed %}<span class="pill pill-success text-xs">scan ok</span>{% else %}<span class="pill pill-warn text-xs">{{ p.findings }} finding{{ p.findings|pluralize }}</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+  </section>
+
+  {# ── Errors ──────────────────────────────────────────────────────── #}
+  <section data-panel="errors" hidden class="space-y-3">
+    <div class="card card-padded">
+      <div class="font-medium text-sm mb-2">Recent error-log signals <span class="text-[color:var(--text-muted)]">({{ errors.total|default:0 }})</span></div>
+      {% if errors.recent %}<ul class="space-y-1 text-sm">{% for e in errors.recent %}<li class="flex justify-between gap-2"><span class="text-[color:var(--text-muted)]">{{ e.summary }}</span><span class="pill {% if e.severity >= 70 %}pill-danger{% elif e.severity >= 40 %}pill-warn{% else %}pill-neutral{% endif %} text-xs">×{{ e.seen_count }}</span></li>{% endfor %}</ul>{% else %}<div class="text-sm text-[color:var(--text-muted)]">No error signals recorded — the error-log collector feeds this as exceptions occur.</div>{% endif %}
     </div>
   </section>
 
   {# ── Content & SEO ───────────────────────────────────────────────── #}
   <section data-panel="content" hidden class="space-y-3">
-    {% if content.catalog %}
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-      <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Active products</div><div class="text-xl font-semibold mt-1">{{ content.catalog.total }}</div></div>
-      <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Missing description</div><div class="text-xl font-semibold mt-1">{{ content.catalog.missing_desc }}</div></div>
-      <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">SEO audited</div><div class="text-xl font-semibold mt-1">{{ content.seo_total|default:0 }}</div></div>
-    </div>
-    {% endif %}
-    <div class="card card-padded">
-      <div class="font-medium text-sm mb-2">Lowest SEO scores</div>
-      {% if content.low_seo %}
-        <ul class="space-y-2 text-sm">
-          {% for a in content.low_seo %}
-          <li class="flex items-start justify-between gap-3">
-            <span class="text-[color:var(--text-muted)]">{% for i in a.issues %}{{ i.message|default:i.code|default:i }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if not a.issues %}—{% endif %}</span>
-            <span class="pill {% if a.score < 40 %}pill-danger{% elif a.score < 60 %}pill-warn{% else %}pill-neutral{% endif %} text-xs">{{ a.score }}</span>
-          </li>{% endfor %}
-        </ul>
-      {% else %}<div class="text-sm text-[color:var(--text-muted)]">No SEO audit results yet — run the SEO audit to populate scores.</div>{% endif %}
-    </div>
-    {% if content.notfound %}
-    <div class="card card-padded">
-      <div class="font-medium text-sm mb-2">Top unresolved 404s</div>
-      <ul class="space-y-1 text-sm">{% for n in content.notfound %}<li class="flex justify-between gap-2"><code class="text-xs">{{ n.path }}</code><span class="text-[color:var(--text-muted)]">{{ n.hits }} hit{{ n.hits|pluralize }}</span></li>{% endfor %}</ul>
-    </div>
-    {% endif %}
+    {% if content.catalog %}<div class="grid grid-cols-2 md:grid-cols-3 gap-3"><div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Active products</div><div class="text-xl font-semibold mt-1">{{ content.catalog.total }}</div></div><div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Missing description</div><div class="text-xl font-semibold mt-1">{{ content.catalog.missing_desc }}</div></div><div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">SEO audited</div><div class="text-xl font-semibold mt-1">{{ content.seo_total|default:0 }}</div></div></div>{% endif %}
+    <div class="card card-padded"><div class="font-medium text-sm mb-2">Lowest SEO scores</div>{% if content.low_seo %}<ul class="space-y-1 text-sm">{% for a in content.low_seo %}<li class="flex items-start justify-between gap-3"><span class="text-[color:var(--text-muted)]">{% for i in a.issues %}{{ i.message|default:i.code|default:i }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if not a.issues %}—{% endif %}</span><span class="pill {% if a.score < 40 %}pill-danger{% elif a.score < 60 %}pill-warn{% else %}pill-neutral{% endif %} text-xs">{{ a.score }}</span></li>{% endfor %}</ul>{% else %}<div class="text-sm text-[color:var(--text-muted)]">No SEO audit results yet — run the SEO audit to populate scores.</div>{% endif %}</div>
+    {% if content.notfound %}<div class="card card-padded"><div class="font-medium text-sm mb-2">Top unresolved 404s</div><ul class="space-y-1 text-sm">{% for n in content.notfound %}<li class="flex justify-between gap-2"><code class="text-xs">{{ n.path }}</code><span class="text-[color:var(--text-muted)]">{{ n.hits }} hit{{ n.hits|pluralize }}</span></li>{% endfor %}</ul></div>{% endif %}
   </section>
 
   {# ── Storefront ──────────────────────────────────────────────────── #}
   <section data-panel="storefront" hidden class="space-y-3">
-    {% if storefront.cwv %}
-    <div class="grid grid-cols-3 gap-3">
-      <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">LCP (p75)</div><div class="text-xl font-semibold mt-1">{{ storefront.cwv.lcp|default:"—" }}</div></div>
-      <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">INP (p75)</div><div class="text-xl font-semibold mt-1">{{ storefront.cwv.inp|default:"—" }}</div></div>
-      <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">CLS (p75)</div><div class="text-xl font-semibold mt-1">{{ storefront.cwv.cls|default:"—" }}</div></div>
-    </div>
-    {% else %}<div class="card card-padded text-sm text-[color:var(--text-muted)]">Core Web Vitals collect from real visitors — no samples yet.</div>{% endif %}
-    {% if storefront.seo_flags %}
-    <div class="card card-padded">
-      <div class="font-medium text-sm mb-2">Discovery &amp; structured data</div>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-        {% for label, on in storefront.seo_flags.items %}
-        <div class="flex items-center gap-2">{% if on %}<i data-lucide="check-circle-2" class="h-4 w-4 text-[color:var(--success,#16a34a)]"></i>{% else %}<i data-lucide="circle" class="h-4 w-4 text-[color:var(--text-muted)]"></i>{% endif %}<span>{{ label }}</span></div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
+    {% if storefront.cwv %}<div class="grid grid-cols-3 gap-3"><div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">LCP p75</div><div class="text-xl font-semibold mt-1">{{ storefront.cwv.lcp|default:"—" }}</div></div><div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">INP p75</div><div class="text-xl font-semibold mt-1">{{ storefront.cwv.inp|default:"—" }}</div></div><div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">CLS p75</div><div class="text-xl font-semibold mt-1">{{ storefront.cwv.cls|default:"—" }}</div></div></div>{% else %}<div class="card card-padded text-sm text-[color:var(--text-muted)]">Core Web Vitals collect from real visitors — no samples yet.</div>{% endif %}
+    {% if storefront.seo_flags %}<div class="card card-padded"><div class="font-medium text-sm mb-2">Discovery &amp; structured data</div><div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">{% for label, on in storefront.seo_flags.items %}<div class="flex items-center gap-2">{% if on %}<i data-lucide="check-circle-2" class="h-4 w-4 text-[color:var(--success,#16a34a)]"></i>{% else %}<i data-lucide="circle" class="h-4 w-4 text-[color:var(--text-muted)]"></i>{% endif %}<span>{{ label }}</span></div>{% endfor %}</div></div>{% endif %}
   </section>
 
   {# ── Improvements ────────────────────────────────────────────────── #}
   <section data-panel="improve" hidden class="space-y-3">
-    <div class="card card-padded">
-      <div class="font-medium text-sm mb-2">AI insights</div>
-      {% if improvements.insights %}
-        <ul class="space-y-2 text-sm">
-          {% for i in improvements.insights %}
-          <li class="flex items-start justify-between gap-3">
-            <span>{{ i.title }}{% if i.impact %} <span class="text-xs text-[color:var(--text-muted)]">· {{ i.impact }}</span>{% endif %}</span>
-            {% if i.priority %}<span class="pill pill-info text-xs">{{ i.priority }}</span>{% endif %}
-          </li>{% endfor %}
-        </ul>
-      {% else %}<div class="text-sm text-[color:var(--text-muted)]">No unread insights right now.</div>{% endif %}
-    </div>
-    {% if improvements.setup %}
-    <div class="card card-padded">
-      <div class="font-medium text-sm mb-2">Setup checklist</div>
-      <ul class="space-y-1 text-sm">{% for s in improvements.setup %}<li class="flex items-center gap-2">{% if s.done %}<i data-lucide="check-circle-2" class="h-4 w-4 text-[color:var(--success,#16a34a)]"></i>{% else %}<i data-lucide="circle" class="h-4 w-4 text-[color:var(--text-muted)]"></i>{% endif %}<span>{{ s.label }}</span></li>{% endfor %}</ul>
-    </div>
-    {% endif %}
-    {% for panel in extensions %}
-    <div class="card card-padded"><div class="font-medium text-sm mb-1">{{ panel.title }}</div><div class="text-sm text-[color:var(--text-muted)]">{{ panel.body }}</div></div>
-    {% endfor %}
+    <div class="card card-padded"><div class="font-medium text-sm mb-2">AI insights</div>{% if improvements.insights %}<ul class="space-y-2 text-sm">{% for i in improvements.insights %}<li class="flex items-start justify-between gap-3"><span>{{ i.title }}{% if i.impact %} <span class="text-xs text-[color:var(--text-muted)]">· {{ i.impact }}</span>{% endif %}</span>{% if i.priority %}<span class="pill pill-info text-xs">{{ i.priority }}</span>{% endif %}</li>{% endfor %}</ul>{% else %}<div class="text-sm text-[color:var(--text-muted)]">No unread insights right now.</div>{% endif %}</div>
+    {% if improvements.setup %}<div class="card card-padded"><div class="font-medium text-sm mb-2">Setup checklist</div><ul class="space-y-1 text-sm">{% for s in improvements.setup %}<li class="flex items-center gap-2">{% if s.done %}<i data-lucide="check-circle-2" class="h-4 w-4 text-[color:var(--success,#16a34a)]"></i>{% else %}<i data-lucide="circle" class="h-4 w-4 text-[color:var(--text-muted)]"></i>{% endif %}<span>{{ s.label }}</span></li>{% endfor %}</ul></div>{% endif %}
   </section>
 </div>
 

@@ -177,6 +177,10 @@ PROTECTED_PLUGINS = frozenset(
         # inventory tool Linda can call — chat keeps working, every
         # answer becomes "I can't access that".
         'agent_core',
+        # Morpheus Brain is a core capability (engine in core/brain/): the
+        # AI-driven self-analysis console. The surface plugin is protected so
+        # the Brain is always on, like the self-improvement loop it reads from.
+        'morpheus_brain',
     }
 )
 

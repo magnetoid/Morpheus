@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.1.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.2.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -628,8 +628,50 @@ LOGGING = {
             'propagate': False,
             'filters': ['request_id'],
         },
+        # Comprehensive error + warning capture so the self-improvement
+        # error-log collector (and Morpheus Brain) sees the full picture:
+        # request 5xx/4xx, DB issues, security events, deprecations, task
+        # failures — all at WARNING so nothing important is silently dropped.
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+            'filters': ['request_id'],
+        },
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+            'filters': ['request_id'],
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+            'filters': ['request_id'],
+        },
+        'celery': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+            'filters': ['request_id'],
+        },
+        # Surface Python deprecation/runtime warnings through logging too.
+        'py.warnings': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+            'filters': ['request_id'],
+        },
     },
 }
+
+# Route Python's warnings module through logging (py.warnings logger above),
+# so deprecations + runtime warnings land in the same stream the error-log
+# collector + Morpheus Brain read.
+import logging as _logging  # noqa: E402
+
+_logging.captureWarnings(True)
 
 # ── Self-improvement engine ────────────────────────────────────────────────────
 # Configure the autonomic loop. None of these settings are required —

@@ -10,6 +10,27 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.0 — 2026-06-20
+
+### Core
+- **Morpheus Brain** is now a **core capability** (`core/brain/`), not an app —
+  always on (the surface plugin is protected from disable). It continuously
+  reads the platform's own signals (code-quality + error-log findings from the
+  self-improvement immune system, plugin health, SEO/content audits, storefront
+  Core Web Vitals) and uses your **configured AI provider** to synthesize a
+  prioritized list of fixes, improvements, and feature ideas. Refreshes on a
+  6-hour beat and on demand; degrades cleanly when no AI is configured.
+- **More comprehensive error/warning logging** — `django.request`,
+  `django.security`, `django.db.backends`, `celery`, and Python `warnings` now
+  flow through the log stream the error-log collector + Brain read.
+
+### Plugins
+- **Morpheus Brain** surface (Settings → Morpheus Brain): tabbed console for the
+  above (Overview, Plugins, Code, Errors, Content & SEO, Storefront,
+  Improvements) with a one-click **Refresh analysis**.
+
+---
+
 ## v0.1.0 — 2026-06-20
 
 The current foundation release. Highlights since the platform came together:

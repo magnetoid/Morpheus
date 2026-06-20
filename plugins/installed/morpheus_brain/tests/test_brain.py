@@ -1,31 +1,47 @@
-"""Morpheus Brain page — renders, staff-gated, and degrades gracefully."""
+"""Morpheus Brain — core engine signals/analyst + the protected surface page."""
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from plugins.installed.morpheus_brain.views import (
-    _code_tab,
-    _content_tab,
-    _improvements_tab,
-    _plugins_tab,
-    _storefront_tab,
-)
+from core.brain import analyst, signals
 
 
-class TabHelpersTests(TestCase):
-    def test_helpers_never_raise(self):
-        # Empty DB / some engines absent → each helper returns a dict, no error.
-        for fn in (_plugins_tab, _code_tab, _content_tab, _storefront_tab, _improvements_tab):
-            out = fn()
-            self.assertIsInstance(out, dict)
-            self.assertIn('available', out)
+class SignalsTests(TestCase):
+    def test_gather_all_never_raises(self):
+        data = signals.gather_all()
+        for key in ('plugins', 'errors', 'code', 'content', 'storefront', 'improvements'):
+            self.assertIn(key, data)
+            self.assertIsInstance(data[key], dict)
 
-    def test_plugins_tab_lists_registry(self):
-        out = _plugins_tab()
+    def test_plugins_health_lists_registry(self):
+        out = signals.plugins_health()
         self.assertTrue(out['available'])
-        # The registry has many plugins active in tests.
         self.assertGreater(out['total'], 0)
-        self.assertGreater(out['active_count'], 0)
+
+
+class AnalystTests(TestCase):
+    def test_unconfigured_ai_degrades_gracefully(self):
+        # No real provider in tests → analyze() reports not-configured, no crash.
+        out = analyst.analyze(
+            {'code': {}, 'errors': {}, 'content': {}, 'storefront': {}, 'plugins': {}}
+        )
+        self.assertIn('configured', out)
+        self.assertIsInstance(out.get('recommendations'), list)
+
+    def test_summarize_signals_compacts(self):
+        text = analyst._summarize_signals(
+            {
+                'errors': {'recent': [{'severity': 80, 'seen_count': 3, 'summary': 'boom'}]},
+                'code': {'quality': [{'severity': 50, 'summary': 'big file'}]},
+            }
+        )
+        self.assertIn('boom', text)
+        self.assertIn('big file', text)
+
+    def test_parse_json_lenient(self):
+        self.assertEqual(analyst._parse_json('```json\n{"a":1}\n```'), {'a': 1})
+        self.assertEqual(analyst._parse_json('noise {"a": 2} trailing'), {'a': 2})
+        self.assertIsNone(analyst._parse_json('not json at all'))
 
 
 class BrainPageTests(TestCase):
@@ -40,8 +56,13 @@ class BrainPageTests(TestCase):
         resp = self.client.get('/dashboard/apps/morpheus_brain/brain/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Morpheus Brain')
-        self.assertContains(resp, 'Plugins')
+        self.assertContains(resp, 'AI analysis')
 
     def test_anon_blocked(self):
         resp = self.client.get('/dashboard/apps/morpheus_brain/brain/')
         self.assertIn(resp.status_code, (301, 302, 403))
+
+    def test_protected_from_disable(self):
+        from plugins.installed.admin_dashboard.views_split.apps import PROTECTED_PLUGINS
+
+        self.assertIn('morpheus_brain', PROTECTED_PLUGINS)

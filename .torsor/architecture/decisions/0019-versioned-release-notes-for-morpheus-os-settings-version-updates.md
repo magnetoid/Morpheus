@@ -1,11 +1,11 @@
 ---
 type: decision
-status: accepted
+status: superseded
 tags:
 - adr
 links: []
 created: '2026-06-20T22:50:48'
-updated: '2026-06-20T22:50:48'
+updated: '2026-06-20T23:31:13'
 rules:
 - id: release-notes-on-version-bump
   description: "Any change to MORPHEUS_VERSION must add a matching `## vX.Y.Z \u2014\
@@ -20,6 +20,7 @@ rules:
   applies_to:
   - plugins/installed/release_notes
   severity: warn
+superseded_by: 0020-every-push-to-main-is-a-new-morpheus-version-release-notes-cover-only-core-plugin-updates
 ---
 
 # ADR 0019: Versioned release notes for Morpheus OS (Settings → Version & updates)
