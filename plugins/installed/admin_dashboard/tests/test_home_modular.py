@@ -108,3 +108,29 @@ class DashboardHomeModularityTests(TestCase):
         # No products/orders exist → first two steps undone.
         self.assertFalse(steps[0]['done'])
         self.assertFalse(steps[1]['done'])
+
+
+class RecentOrdersEmailCellTests(TestCase):
+    """Regression: the recent-orders email cell must not 500 on a guest order
+    (no customer + empty email). `default:o.customer.email` resolved the arg
+    eagerly → None.email → VariableDoesNotExist (filter args aren't swallowed).
+    firstof swallows the failed lookup."""
+
+    def test_guest_order_no_customer_renders_dash(self):
+        from django.template import Context, Template
+
+        t = Template("{% firstof o.email o.customer.email '—' %}")
+
+        class _Guest:
+            email = ''
+            customer = None
+
+        class _Cust:
+            email = 'c@x.test'
+
+        class _WithCust:
+            email = ''
+            customer = _Cust()
+
+        self.assertEqual(t.render(Context({'o': _Guest()})), '—')  # the 500 case
+        self.assertEqual(t.render(Context({'o': _WithCust()})), 'c@x.test')

@@ -294,7 +294,7 @@
           <td>
             <a href="{% url 'admin_dashboard:order_detail' o.order_number %}" class="font-medium hover:underline">#{{ o.order_number }}</a>
           </td>
-          <td class="text-[color:var(--text-muted)]">{{ o.email|default:o.customer.email|default:"—" }}</td>
+          <td class="text-[color:var(--text-muted)]">{% firstof o.email o.customer.email "—" %}</td>
           <td>
             {% if o.status == 'paid' or o.status == 'fulfilled' or o.status == 'delivered' %}<span class="pill pill-success">{{ o.get_status_display }}</span>
             {% elif o.status == 'pending' or o.status == 'processing' %}<span class="pill pill-warn">{{ o.get_status_display }}</span>
