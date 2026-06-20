@@ -40,7 +40,7 @@ _RULES = [
     (re.compile(r'^/search/?'), 'search', 30),
 ]
 _GLOBAL_BUCKET = 'global'
-_DEFAULT_GLOBAL_PER_MINUTE = 120
+_DEFAULT_GLOBAL_PER_MINUTE = 300
 
 # Paths that must never be rate-limited.
 _BYPASS = (
@@ -55,6 +55,14 @@ _BYPASS = (
 
 
 def _client_id(request) -> str:
+    # Behind Cloudflare the real client IP is CF-Connecting-IP (the payments +
+    # cloudflare plugins resolve it the same way). The XFF first-hop can collapse
+    # to a single shared proxy IP through the Cloudflare→Plesk→Traefik chain,
+    # which would funnel EVERY visitor into one 'global' bucket and trip the
+    # limit under normal traffic. Prefer CF-Connecting-IP, then XFF, then peer.
+    cf = request.META.get('HTTP_CF_CONNECTING_IP', '')
+    if cf:
+        return cf.strip()
     xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
     if xff:
         return xff.split(',')[0].strip()
@@ -84,6 +92,16 @@ class RateLimitMiddleware:
 
     def __call__(self, request):
         if not self.enabled or _is_bypassed(request.path):
+            return self.get_response(request)
+
+        # Trusted operators (staff/admin) are never IP-rate-limited — their
+        # dashboard usage is legitimately bursty (htmx polls, multi-widget
+        # pages) and was tripping the global bucket. Auth middleware runs before
+        # this one, so request.user is resolved.
+        user = getattr(request, 'user', None)
+        if user is not None and (
+            getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)
+        ):
             return self.get_response(request)
 
         bucket, limit = _rule_for(request.path)
