@@ -828,6 +828,17 @@
        class="nav-link {% if active_settings_category == cat.slug %}active{% endif %}">
       <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> {{ cat.label }}
     </a>
+    {% if cat.slug == 'general' %}
+    {# Core platform pages pinned under General; guarded so they vanish if disabled. #}
+    {% plugin_enabled "morpheus_brain" as brain_nav_on %}{% if brain_nav_on %}
+    <a href="/dashboard/apps/morpheus_brain/brain/" class="nav-link {% if active_apps_slug == 'morpheus_brain/brain' %}active{% endif %}">
+      <i data-lucide="brain" class="h-4 w-4"></i> Morpheus Brain
+    </a>{% endif %}
+    {% plugin_enabled "release_notes" as version_nav_on %}{% if version_nav_on %}
+    <a href="/dashboard/apps/release_notes/version/" class="nav-link {% if active_apps_slug == 'release_notes/version' %}active{% endif %}">
+      <i data-lucide="git-commit-horizontal" class="h-4 w-4"></i> Version &amp; updates
+    </a>{% endif %}
+    {% endif %}
     {% endfor %}
 
     {# ── Operational admin tools — below the configuration categories. ── #}
@@ -839,12 +850,12 @@
     {% comment %}Tracking / Errors / Updates / Caching now live as cards in
     the Developers hub (settings → Developer) — core pages, still always
     reachable through the hub, which is itself core.{% endcomment %}
-    {% for section in settings_sections %}{% for page in section.pages %}
+    {% for section in settings_sections %}{% for page in section.pages %}{% if page.plugin != 'morpheus_brain' and page.plugin != 'release_notes' %}
     <a href="{% if page.url %}{{ page.url }}{% else %}/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/{% endif %}"
        class="nav-link {% if page.url and request.path == page.url %}active{% elif active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
       <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
     </a>
-    {% endfor %}{% endfor %}
+    {% endif %}{% endfor %}{% endfor %}
 
     <div style="margin-top:auto;"></div>
   </nav>

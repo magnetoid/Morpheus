@@ -10,6 +10,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.3 — 2026-06-21
+
+### Plugins
+- **Fixed:** the *Version & updates* page rendered blank in production — it
+  depended on a markdown library that isn't installed there. Replaced with a
+  small built-in renderer (no external dependency), so the release notes now
+  show. (If this page was empty for you, that's why.)
+- Settings nav: **Morpheus Brain** and **Version & updates** are now pinned
+  right under **General** instead of buried at the bottom of the settings list.
+
+---
+
 ## v0.2.2 — 2026-06-21
 
 ### Core

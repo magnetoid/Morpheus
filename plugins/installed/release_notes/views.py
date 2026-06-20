@@ -1,11 +1,15 @@
 """Version & updates page — renders docs/RELEASE_NOTES.md.
 
-The markdown is a repo-controlled doc (not user input), so rendering it to HTML
-and marking it safe is fine. `parse_releases` is pure + tested.
+Dependency-free: the release notes use a small, fixed subset of markdown (###/####
+headings, - lists, **bold**, `code`, [links], paragraphs), so we render it with a
+tiny built-in converter rather than pulling in a markdown library that isn't used
+anywhere else in the platform. Everything is HTML-escaped first, so marking the
+result safe is sound. `parse_releases` is pure + tested.
 """
 
 from __future__ import annotations
 
+import html as _html
 import re
 from pathlib import Path
 
@@ -16,10 +20,67 @@ from django.utils.safestring import mark_safe
 
 _HEADING = re.compile(r'^##\s+(.*)$', re.MULTILINE)
 _VERSION = re.compile(r'(v[\w.\-]+)\s*[—\-–(]*\s*([\d]{4}-[\d]{2}-[\d]{2})?')
+_LINK = re.compile(r'\[([^\]]+)\]\((https?://[^)\s]+)\)')
+_BOLD = re.compile(r'\*\*([^*]+)\*\*')
+_CODE = re.compile(r'`([^`]+)`')
 
 
 def _release_notes_path() -> Path:
     return Path(settings.BASE_DIR) / 'docs' / 'RELEASE_NOTES.md'
+
+
+def _inline(text: str) -> str:
+    """Escape, then apply safe inline formatting (links / bold / code)."""
+    t = _html.escape(text)
+    t = _LINK.sub(r'<a href="\2" rel="noopener" target="_blank">\1</a>', t)
+    t = _BOLD.sub(r'<strong>\1</strong>', t)
+    t = _CODE.sub(r'<code>\1</code>', t)
+    return t
+
+
+def _md_to_html(body: str) -> str:
+    """Minimal markdown → HTML for the release-notes subset. Input is escaped."""
+    out: list[str] = []
+    para: list[str] = []
+    in_list = False
+
+    def flush_para():
+        if para:
+            out.append('<p>' + ' '.join(para) + '</p>')
+            para.clear()
+
+    def close_list():
+        nonlocal in_list
+        if in_list:
+            out.append('</ul>')
+            in_list = False
+
+    for raw in body.split('\n'):
+        line = raw.strip()
+        if not line:
+            flush_para()
+            close_list()
+            continue
+        h = re.match(r'^(#{3,4})\s+(.*)', line)
+        if h:
+            flush_para()
+            close_list()
+            level = len(h.group(1))
+            out.append(f'<h{level}>{_inline(h.group(2))}</h{level}>')
+            continue
+        b = re.match(r'^[-*]\s+(.*)', line)
+        if b:
+            flush_para()
+            if not in_list:
+                out.append('<ul>')
+                in_list = True
+            out.append('<li>' + _inline(b.group(1)) + '</li>')
+            continue
+        close_list()
+        para.append(_inline(line))
+    flush_para()
+    close_list()
+    return '\n'.join(out)
 
 
 def parse_releases(raw: str) -> list[dict]:
@@ -29,8 +90,6 @@ def parse_releases(raw: str) -> list[dict]:
     A `## ` section whose heading isn't a version still renders, keyed by its
     raw heading.
     """
-    import markdown  # noqa: PLC0415
-
     out: list[dict] = []
     matches = list(_HEADING.finditer(raw))
     for i, m in enumerate(matches):
@@ -39,10 +98,14 @@ def parse_releases(raw: str) -> list[dict]:
         vm = _VERSION.match(heading)
         version = vm.group(1) if vm else ''
         date = vm.group(2) if (vm and vm.group(2)) else ''
-        html = markdown.markdown(body.strip(), extensions=['extra', 'sane_lists', 'nl2br'])
         out.append(
-            # Repo-controlled doc (not user input) → safe to render as HTML.
-            {'version': version, 'date': date, 'title': heading, 'html': mark_safe(html)}  # noqa: S308
+            # All content is HTML-escaped inside _md_to_html → safe to mark.
+            {
+                'version': version,
+                'date': date,
+                'title': heading,
+                'html': mark_safe(_md_to_html(body.strip())),  # noqa: S308
+            }
         )
     return out
 
