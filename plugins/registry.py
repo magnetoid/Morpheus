@@ -77,11 +77,20 @@ class PluginRegistry:
     # ── Validation ────────────────────────────────────────────────────────────
 
     def validate(self) -> list[str]:
+        from django.apps import apps as _django_apps
+
         errors: list[str] = []
         for name, cls in self._classes.items():
             for dep in cls.requires:
-                if dep not in self._classes:
-                    errors.append(f"Plugin '{name}' requires '{dep}' which is not installed.")
+                if dep in self._classes:
+                    continue
+                # A `core.*` dependency is a core Django app, not a plugin —
+                # it's satisfied when it's in INSTALLED_APPS (core apps always
+                # are). Without this, `requires=['core.audit']` falsely reports
+                # 'not installed' on every boot even though it's present.
+                if dep.startswith('core.') and _django_apps.is_installed(dep):
+                    continue
+                errors.append(f"Plugin '{name}' requires '{dep}' which is not installed.")
             for conflict in cls.conflicts:
                 if conflict in self._classes:
                     errors.append(

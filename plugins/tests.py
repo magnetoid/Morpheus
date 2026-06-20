@@ -229,3 +229,46 @@ class StorefrontBlocksTagTests(SimpleTestCase):
 
         out = Template("{% load morph %}{% storefront_blocks 'no_such_slot' %}").render(Context({}))
         self.assertEqual(out.strip(), '')
+
+
+class ValidateCoreDependencyTests(SimpleTestCase):
+    """validate() must treat a `core.*` requires entry as a core Django app
+    (satisfied when in INSTALLED_APPS), not a plugin name — else a real core
+    dependency like core.audit falsely reports 'not installed' on every boot.
+    """
+
+    def _registry(self, **classes):
+        from plugins.registry import PluginRegistry
+
+        r = PluginRegistry()
+        r._classes = dict(classes)
+        return r
+
+    def test_core_app_dependency_satisfied(self):
+        class P(MorpheusPlugin):
+            name = 'needs_audit'
+            label = 'X'
+            version = '1.0.0'
+            requires = ['core.audit']
+
+        self.assertEqual(self._registry(needs_audit=P).validate(), [])
+
+    def test_missing_plugin_dependency_still_errors(self):
+        class P(MorpheusPlugin):
+            name = 'needs_ghost'
+            label = 'X'
+            version = '1.0.0'
+            requires = ['nonexistent_plugin']
+
+        errs = self._registry(needs_ghost=P).validate()
+        self.assertTrue(any('nonexistent_plugin' in e for e in errs))
+
+    def test_unknown_core_app_still_errors(self):
+        class P(MorpheusPlugin):
+            name = 'needs_fake'
+            label = 'X'
+            version = '1.0.0'
+            requires = ['core.does_not_exist']
+
+        errs = self._registry(needs_fake=P).validate()
+        self.assertTrue(any('core.does_not_exist' in e for e in errs))

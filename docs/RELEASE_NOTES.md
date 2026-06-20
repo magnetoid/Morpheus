@@ -10,6 +10,22 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.4 — 2026-06-21
+
+### Core
+- **Fixed: CSP violation flood (~2,500/day).** The storefront Content-Security-
+  Policy (report-only) didn't allow `cdn.ampproject.org`, which the webstories
+  plugin's `<amp-story-player>` PDP embed loads (amp-story-player + amp-loader +
+  v0). Added it to `script-src`/`style-src`, silencing the reports. (Report-only,
+  so nothing was broken — just noise the self-improvement engine kept flagging.)
+- **Fixed: false plugin-validation error on every boot.** `validate()` checked a
+  plugin's `requires` only against other plugin names, so a `core.*` dependency
+  (e.g. `ai_stylist` → `core.audit`) wrongly logged "not installed" even though
+  the core app is always present. `core.*` deps now resolve against
+  `INSTALLED_APPS`; the `ai_stylist`/`core.audit` boot error is gone.
+
+---
+
 ## v0.2.3 — 2026-06-21
 
 ### Plugins
