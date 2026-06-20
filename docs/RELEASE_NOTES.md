@@ -10,6 +10,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.1 — 2026-06-21
+
+### Storefront
+- Author page: the author image now spans the full content width instead of a
+  cramped 160px thumbnail.
+
+---
+
 ## v0.2.0 — 2026-06-20
 
 ### Core

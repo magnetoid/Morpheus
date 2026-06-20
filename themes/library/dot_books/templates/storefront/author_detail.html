@@ -21,7 +21,7 @@
       {{ author_name }}<span class="text-accent">.</span>
     </h1>
     {% if book_term.description %}
-      {% if book_term.image %}<img src="{{ book_term.image.url }}" alt="{{ author_name }}" style="max-width:160px; border-radius:8px; margin:0 0 1.25rem;">{% endif %}
+      {% if book_term.image %}<img src="{{ book_term.image.url }}" alt="{{ author_name }}" style="width:100%; height:auto; display:block; border-radius:8px; margin:0 0 1.25rem;">{% endif %}
       <div class="lede">{{ book_term.description|linebreaks }}</div>
     {% elif bio_page %}
       {% if bio_page.excerpt %}<p class="lede">{{ bio_page.excerpt }}</p>{% endif %}
