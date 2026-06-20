@@ -439,6 +439,49 @@ class SeoPlugin(Plugin):
                     'title': 'Book action platforms',
                     'description': 'Comma-separated platforms the buy/read link works on: any of desktop, android, ios.',
                 },
+                # ── Organization contact + address (knowledge panel) ──
+                'org_email': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Public contact email',
+                    'description': 'Shown to Google as the Organization ContactPoint (customer service). Leave blank to omit.',
+                },
+                'org_phone': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Public contact phone',
+                    'description': 'E.164 preferred (e.g. +1-800-555-0199). Emitted as the Organization ContactPoint telephone.',
+                },
+                'org_street': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Street address',
+                    'description': 'Organization PostalAddress streetAddress. Fill the address fields for a richer brand/knowledge panel.',
+                },
+                'org_city': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'City',
+                    'description': 'Organization PostalAddress addressLocality.',
+                },
+                'org_region': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'State / region',
+                    'description': 'Organization PostalAddress addressRegion (e.g. CA).',
+                },
+                'org_postal': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Postal code',
+                    'description': 'Organization PostalAddress postalCode.',
+                },
+                'org_country': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Country',
+                    'description': 'Organization PostalAddress addressCountry (ISO 3166-1 alpha-2, e.g. US).',
+                },
                 # ── Crawl + indexability ──────────────────────────────
                 'noindex_thin_pdp_below_words': {
                     'type': 'integer',

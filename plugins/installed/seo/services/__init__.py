@@ -61,6 +61,7 @@ from .jsonld import (
     product_jsonld,
     qa_page_jsonld,
     speakable_jsonld,
+    video_jsonld,
     website_jsonld,
 )
 
@@ -150,6 +151,7 @@ __all__ = [
     'product_jsonld',
     'qa_page_jsonld',
     'speakable_jsonld',
+    'video_jsonld',
     'website_jsonld',
     # sitemaps
     '_sitemap_max_urls',

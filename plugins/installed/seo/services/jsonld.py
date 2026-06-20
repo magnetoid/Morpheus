@@ -65,6 +65,32 @@ def organization_jsonld() -> dict | None:
         out['logo'] = s.organization_logo_url
     if same_as:
         out['sameAs'] = same_as
+
+    # Contact + postal address from PluginConfig (no migration) — powers the
+    # merchant/brand knowledge panel. All optional; emitted only when set.
+    cfg = _seo_plugin_cfg()
+    email = (cfg.get('org_email') or '').strip()
+    phone = (cfg.get('org_phone') or '').strip()
+    if email or phone:
+        cp = {'@type': 'ContactPoint', 'contactType': 'customer service'}
+        if email:
+            cp['email'] = email
+        if phone:
+            cp['telephone'] = phone
+        out['contactPoint'] = cp
+    addr = {}
+    for cfg_key, schema_key in (
+        ('org_street', 'streetAddress'),
+        ('org_city', 'addressLocality'),
+        ('org_region', 'addressRegion'),
+        ('org_postal', 'postalCode'),
+        ('org_country', 'addressCountry'),
+    ):
+        val = (cfg.get(cfg_key) or '').strip()
+        if val:
+            addr[schema_key] = val
+    if addr:
+        out['address'] = {'@type': 'PostalAddress', **addr}
     return out
 
 
@@ -101,11 +127,16 @@ def breadcrumb_jsonld(items: list[dict]) -> dict:
     }
 
 
-def product_jsonld(product, *, base_url: str = '') -> dict:
+def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) -> dict:
     """Rich Product structured data.
 
     `product` may be a Django model instance (SSR path) OR a dict (when
     fed by GraphQL via a template tag). Accessor helper normalises both.
+
+    `extra` carries enrichments the caller assembled from SAFE sources (the
+    PDP view) — image / aggregateRating / brand / review — so they render even
+    on the dict path, where the ORM-only blocks below are skipped. Never reads
+    a deferred field; it's pre-resolved plain data.
     """
     base = base_url or _site_base_url()
 
@@ -555,6 +586,43 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         except Exception:  # noqa: BLE001
             pass
 
+    # Caller-supplied enrichments (PDP view) — fill what the dict path can't
+    # reach on its own. Only set when absent so an ORM run keeps its richer
+    # values. Google review-snippet + image + brand recommendations.
+    if extra:
+        if extra.get('image') and 'image' not in out:
+            out['image'] = _abs(extra['image'])
+        rating = extra.get('aggregate_rating') or {}
+        if rating.get('count') and 'aggregateRating' not in out:
+            out['aggregateRating'] = {
+                '@type': 'AggregateRating',
+                'ratingValue': str(rating.get('value')),
+                'reviewCount': int(rating['count']),
+            }
+        if extra.get('brand') and 'brand' not in out:
+            out['brand'] = {'@type': 'Brand', 'name': str(extra['brand'])}
+        reviews = []
+        for r in extra.get('reviews') or []:
+            if not r.get('rating'):
+                continue
+            rev = {
+                '@type': 'Review',
+                'reviewRating': {
+                    '@type': 'Rating',
+                    'ratingValue': str(r['rating']),
+                    'bestRating': '5',
+                },
+                'author': {'@type': 'Person', 'name': r.get('author') or 'Anonymous'},
+            }
+            dt = r.get('date')
+            if dt:
+                rev['datePublished'] = dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+            if r.get('body'):
+                rev['reviewBody'] = str(r['body'])[:1000]
+            reviews.append(rev)
+        if reviews and 'review' not in out:
+            out['review'] = reviews
+
     return out
 
 
@@ -868,3 +936,35 @@ def book_jsonld(data: dict, *, base_url: str = '') -> dict:
 
     work['workExample'] = edition
     return work
+
+
+def video_jsonld(videos: list[dict]) -> list[dict]:
+    """VideoObject blocks for product videos (Google Video rich result).
+
+    `videos` = pre-assembled dicts (the PDP view, from ProductVideo rows):
+      {name, description, thumbnail_url, upload_date, content_url, embed_url}.
+    Google requires name + thumbnailUrl + uploadDate + description; a video
+    missing any of those is skipped rather than emitted invalid.
+    """
+    out: list[dict] = []
+    for v in videos or []:
+        name = str(v.get('name') or '').strip()
+        desc = str(v.get('description') or '').strip()
+        thumb = v.get('thumbnail_url')
+        upload = v.get('upload_date')
+        if not (name and desc and thumb and upload):
+            continue
+        block = {
+            '@context': 'https://schema.org',
+            '@type': 'VideoObject',
+            'name': name,
+            'description': desc[:500],
+            'thumbnailUrl': thumb,
+            'uploadDate': upload.isoformat() if hasattr(upload, 'isoformat') else str(upload),
+        }
+        if v.get('content_url'):
+            block['contentUrl'] = v['content_url']
+        if v.get('embed_url'):
+            block['embedUrl'] = v['embed_url']
+        out.append(block)
+    return out

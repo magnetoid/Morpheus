@@ -340,20 +340,41 @@ def seo_website_jsonld():
 
 
 @register.simple_tag
-def seo_product_jsonld(product):
+def seo_product_jsonld(product, extra=None):
     """Emit Product JSON-LD with offer / availability / aggregateRating.
 
-    Returns nothing when the merchant has turned Product structured data
-    off in SEO settings (``product_jsonld`` then returns an empty dict).
+    `extra` (optional) carries enrichments the PDP view assembled from safe
+    sources — image / aggregateRating / brand / review — so they render on the
+    dict path. Returns nothing when Product structured data is turned off.
     """
     if product is None:
         return ''
-    from plugins.installed.seo.services import product_jsonld, _jsonld_dump
+    from plugins.installed.seo.services import _jsonld_dump, product_jsonld
 
-    data = product_jsonld(product)
+    data = product_jsonld(product, extra=extra or None)
     if not data:
         return ''
     return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(data)}</script>')
+
+
+@register.simple_tag
+def seo_video_jsonld(videos):
+    """Emit a VideoObject block per product video (Google Video rich result).
+
+    `videos` is the PDP view's pre-assembled list of plain dicts. One
+    ``<script>`` per valid video (needs name + description + thumbnail +
+    uploadDate); returns nothing when there are none.
+    """
+    if not videos:
+        return ''
+    from plugins.installed.seo.services import _jsonld_dump, video_jsonld
+
+    blocks = video_jsonld(videos)
+    if not blocks:
+        return ''
+    return mark_safe(
+        ''.join(f'<script type="application/ld+json">{_jsonld_dump(b)}</script>' for b in blocks)
+    )
 
 
 @register.simple_tag

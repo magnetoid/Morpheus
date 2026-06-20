@@ -475,7 +475,12 @@ def product_detail(request, slug):
             out_of_stock = False
 
     product_codes = _product_codes(product_row)
+    reviews_list = _published_reviews(slug, product_row=product_row)
     book_jsonld_data = _book_jsonld_data(product_row, product, product_codes, out_of_stock)
+    product_seo_extra = _product_seo_extra(
+        product_row, primary_image, hero_image, review_summary, reviews_list
+    )
+    video_seo = _video_seo_data(videos, product)
 
     return render(
         request,
@@ -483,6 +488,8 @@ def product_detail(request, slug):
         {
             'product': product,
             'book_jsonld_data': book_jsonld_data,
+            'product_seo_extra': product_seo_extra,
+            'video_seo': video_seo,
             'pdp_vendor': pdp_vendor,
             'review_summary': review_summary,
             'images': images,
@@ -493,7 +500,7 @@ def product_detail(request, slug):
             'related_products': related,
             'book_specs': _book_specs(slug),
             'product_codes': product_codes,
-            'reviews': _published_reviews(slug, product_row=product_row),
+            'reviews': reviews_list,
             'pdp_faqs': _pdp_faqs(slug, product_row=product_row),
             'breadcrumb_items': breadcrumb_items,
             'last_reviewed': last_reviewed,
@@ -603,6 +610,65 @@ def _product_codes(product_row) -> list[dict]:
         return product_identifiers(product_row)
     except Exception:  # noqa: BLE001
         return []
+
+
+def _product_seo_extra(product_row, primary_image, hero_image, review_summary, reviews):
+    """SAFE-assembled Product JSON-LD enrichments (image / aggregateRating /
+    brand / review) for the dict path. Reads aggregates + relations + the
+    GraphQL image dict only — never the product's deferred price field.
+    """
+    extra: dict = {}
+    img = primary_image or hero_image or {}
+    if isinstance(img, dict) and img.get('url'):
+        extra['image'] = img['url']
+    if review_summary and review_summary.get('count'):
+        extra['aggregate_rating'] = {
+            'value': review_summary.get('avg'),
+            'count': review_summary['count'],
+        }
+        extra['reviews'] = [
+            {
+                'rating': r.get('stars'),
+                'author': r.get('author_name'),
+                'body': r.get('body'),
+                'date': r.get('created_at'),
+            }
+            for r in (reviews or [])[:5]
+            if r.get('stars')
+        ]
+    if product_row is not None:
+        try:
+            from plugins.installed.book_product.compat import book_attrs
+
+            pub = (book_attrs(product_row) or {}).get('publisher')
+            if pub:
+                extra['brand'] = str(pub)
+        except Exception:  # noqa: BLE001
+            pass
+    return extra or None
+
+
+def _video_seo_data(videos, product):
+    """Plain dicts for VideoObject JSON-LD from ProductVideo rows. Needs a
+    poster (Google requires a thumbnail); description falls back to the title
+    or product name so the required field is never empty."""
+    fallback_name = (product.get('name') if isinstance(product, dict) else '') or 'Video'
+    out = []
+    for v in videos or []:
+        poster = getattr(v, 'poster_url', '') or ''
+        if not poster:
+            continue
+        title = (getattr(v, 'title', '') or '').strip()
+        out.append(
+            {
+                'name': title or fallback_name,
+                'description': title or fallback_name,
+                'thumbnail_url': poster,
+                'upload_date': getattr(v, 'created_at', None),
+                'content_url': getattr(v, 'url', '') or '',
+            }
+        )
+    return out
 
 
 def _book_jsonld_data(product_row, product, product_codes, out_of_stock):

@@ -125,3 +125,23 @@ Two things shipped together (both per Google's structured-data rules):
    the title and is a prerequisite, but the Book Actions / knowledge-panel
    *rich result* is a gated program (feed + enrollment) — the markup alone
    doesn't guarantee the actionable result.
+
+## Update — 2026-06-20b: richer Product + VideoObject + Organization
+
+More rich-result coverage, all via the safe view-assembly pattern (no deferred
+field touched), guarded by `seo/tests/test_richresults_extra.py`:
+
+- **Product now completes on the live dict path.** `product_jsonld(..., extra=)`
+  merges enrichments the PDP view assembles from safe sources
+  (`catalog._product_seo_extra`): absolute `image`, `aggregateRating`
+  (ratingValue + reviewCount, from `review_summary`), `review[]` (top 5, with
+  reviewRating/author/datePublished/reviewBody), and `brand` (book publisher).
+  These were ORM-only before, so the live Product had no stars/image/brand.
+- **VideoObject** auto-emits per product video (`{% seo_video_jsonld %}` ←
+  `catalog._video_seo_data`, from ProductVideo rows): name/description/
+  thumbnailUrl(poster)/uploadDate(created_at)/contentUrl(url). Skips any video
+  missing a required field rather than emitting invalid markup.
+- **Organization** gained `contactPoint` (email/phone) + `address`
+  (PostalAddress) from new `PluginConfig['seo']` keys (`org_email`, `org_phone`,
+  `org_street/city/region/postal/country`) — feeds the brand/knowledge panel.
+  No migration.
