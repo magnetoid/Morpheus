@@ -38,5 +38,11 @@ The current foundation release. Highlights since the platform came together:
 
 ### Platform
 - **Version & updates** page in Settings (this page), backed by this document.
+- **Morpheus Brain** (Settings → Morpheus Brain) — a tabbed intelligence console
+  that aggregates plugin health, code analysis & self-improvement, content &
+  SEO, storefront Core Web Vitals, and improvement recommendations, read-only
+  from the platform's own engines.
+- **Book identifiers** — ISBN-13 / OCLC / Open Library fields on the product
+  form, plus the `backfill_book_identifiers` bulk reconciliation command.
 
 _Earlier engineering history (PR-level) lives in [`CHANGELOG.md`](../CHANGELOG.md)._
