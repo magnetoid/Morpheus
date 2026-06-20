@@ -236,26 +236,15 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
         return {}
     cls_name = type(obj).__name__
     if cls_name == 'Product':
-        try:
-            price_amount = str(obj.price.amount) if obj.price else ''
-            price_currency = str(obj.price.currency) if obj.price else 'USD'
-        except Exception:  # noqa: BLE001 — degrade gracefully on price-field oddities
-            price_amount = ''
-            price_currency = 'USD'
-        return {
-            '@context': 'https://schema.org',
-            '@type': 'Product',
-            'name': title or getattr(obj, 'name', ''),
-            'description': description or strip_html(getattr(obj, 'short_description', '')),
-            'image': [image] if image else [],
-            'sku': getattr(obj, 'sku', ''),
-            'offers': {
-                '@type': 'Offer',
-                'price': price_amount,
-                'priceCurrency': price_currency,
-                'availability': 'https://schema.org/InStock',
-            },
-        }
+        # No Product block here by design: the PDP emits the single canonical
+        # Product graph via `{% seo_product_jsonld %}` → `product_jsonld()`
+        # (gallery images, brand, Book subtype, offer with shipping/return/
+        # aggregateRating). Emitting a stripped-down second Product here just
+        # duplicated every PDP's <head> with two `@type: Product` scripts —
+        # and this one had an empty price + relative image, which invalidated
+        # the rich result. SeoMeta.structured_data overrides still merge in
+        # below, so a merchant can still hand-author additions.
+        return {}
     if cls_name in ('Category', 'Collection'):
         return {
             '@context': 'https://schema.org',

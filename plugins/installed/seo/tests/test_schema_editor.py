@@ -73,7 +73,9 @@ class EmissionTests(TestCase):
             },
         )
         html = resolve_meta(obj=product).to_html()
-        self.assertEqual(html.count('<script type="application/ld+json">'), 3)  # auto Product + 2
+        # The two schema-editor blocks. seo_meta no longer auto-emits a Product
+        # (the PDP owns that via seo_product_jsonld), so there's no third script.
+        self.assertEqual(html.count('<script type="application/ld+json">'), 2)
         self.assertIn('FAQPage', html)
         self.assertIn('"Launch"', html)
 
@@ -82,8 +84,8 @@ class EmissionTests(TestCase):
 
         product = _product('no-schema', 'NS-1')
         html = resolve_meta(obj=product).to_html()
-        # Only the auto-generated Product block, no editor blocks.
-        self.assertEqual(html.count('<script type="application/ld+json">'), 1)
+        # No editor blocks and no auto Product → seo_meta emits no JSON-LD here.
+        self.assertEqual(html.count('<script type="application/ld+json">'), 0)
 
 
 class EditorViewTests(TestCase):

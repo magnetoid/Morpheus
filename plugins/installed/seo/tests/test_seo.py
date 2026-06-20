@@ -53,8 +53,15 @@ class ResolveMetaTests(TestCase):
         self.assertEqual(out.title, 'Custom Title')
         self.assertEqual(out.description, 'Custom Description')
         self.assertEqual(out.og_image, 'https://example.com/cover.jpg')
-        # JSON-LD includes Product schema
-        self.assertEqual(out.structured_data.get('@type'), 'Product')
+        # Product JSON-LD is no longer auto-emitted by seo_meta (that produced a
+        # duplicate, stripped-down Product); the single canonical Product graph
+        # comes from product_jsonld, emitted on the PDP via seo_product_jsonld.
+        from plugins.installed.seo.services import product_jsonld
+
+        pj = product_jsonld(product)
+        self.assertEqual(pj['@type'], 'Product')
+        self.assertTrue(pj['offers']['price'])
+        self.assertEqual(pj['offers']['itemCondition'], 'https://schema.org/NewCondition')
 
     def test_to_html_emits_required_tags(self):
         out = resolve_meta(

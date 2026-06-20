@@ -83,7 +83,7 @@ def website_jsonld() -> dict | None:
     if s.enable_sitelinks_search:
         out['potentialAction'] = {
             '@type': 'SearchAction',
-            'target': f'{base}/search/?q={{search_term_string}}',
+            'target': f'{base.rstrip("/")}/search/?q={{search_term_string}}',
             'query-input': 'required name=search_term_string',
         }
     return out
@@ -108,6 +108,13 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
     fed by GraphQL via a template tag). Accessor helper normalises both.
     """
     base = base_url or _site_base_url()
+
+    def _abs(u: str) -> str:
+        # Google requires absolute image URLs; model .url is site-relative.
+        u = u or ''
+        if not u or u.startswith(('http://', 'https://')):
+            return u
+        return base.rstrip('/') + '/' + u.lstrip('/')
 
     def g(name, default=None):
         if isinstance(product, dict):
@@ -200,7 +207,7 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
     if not isinstance(product, dict):
         try:
             for pi in product.images.order_by('-is_primary', 'sort_order')[:8]:
-                u = getattr(getattr(pi, 'image', None), 'url', '') or ''
+                u = _abs(getattr(getattr(pi, 'image', None), 'url', '') or '')
                 if u and u not in images:
                     images.append(u)
         except Exception:  # noqa: BLE001
@@ -211,11 +218,11 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
         primary = g('primary_image')
         if primary:
             if isinstance(primary, dict):
-                out['image'] = primary.get('url') or primary.get('image_url') or ''
+                out['image'] = _abs(primary.get('url') or primary.get('image_url') or '')
             elif getattr(primary, 'image', None):
-                out['image'] = primary.image.url
+                out['image'] = _abs(primary.image.url)
         elif g('primary_image_url'):
-            out['image'] = g('primary_image_url')
+            out['image'] = _abs(g('primary_image_url'))
 
     # Category: model has .category.name; dict has .category as nested.
     cat = g('category')
@@ -256,7 +263,21 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
             'priceCurrency': offer_curr,
             'availability': avail,
             'url': url,
+            # New goods; Google recommends itemCondition for merchant listings.
+            'itemCondition': 'https://schema.org/NewCondition',
         }
+        # priceValidUntil — Google emits a "missing field" warning without it.
+        # Roll a year forward from today so the offer never reads as expired.
+        try:
+            from datetime import timedelta
+
+            from django.utils import timezone
+
+            out['offers']['priceValidUntil'] = (
+                timezone.now().date() + timedelta(days=365)
+            ).isoformat()
+        except Exception:  # noqa: BLE001
+            pass
         # MerchantReturnPolicy + OfferShippingDetails — 2026 Required
         # for Merchant free listings + AI shopping comparisons. Values
         # live in the SEO plugin's PluginConfig JSON so no migration.
