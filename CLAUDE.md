@@ -299,6 +299,7 @@ relevant Markdown *in the same commit* — not "later." Which doc:
 | a house rule, landmine, or convention | this file (`CLAUDE.md`) |
 | the public API / MCP / GraphQL surface | `docs/MORPHEUS_API.md`, `docs/MCP_SERVER.md` |
 | a skill's behaviour | `docs/SKILLS.md` + the skill's `SKILL.md` |
+| **`MORPHEUS_VERSION` (any version bump)** | **`docs/RELEASE_NOTES.md`** — add a dated `## vX.Y.Z — YYYY-MM-DD` entry (newest first); it's the source of truth for **Settings → Version & updates** (`release_notes` plugin). Torsor ADR 0019. |
 
 Prefer pointing at the source of truth over hard-coding volatile facts:
 a plugin *count* in prose rots (it drifted to 47/49/54 across three docs

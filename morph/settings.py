@@ -65,6 +65,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.functions',
     'plugins.installed.importers',
     'plugins.installed.observability',
+    'plugins.installed.release_notes',
     'plugins.installed.environments',
     'plugins.installed.affiliates',
     'plugins.installed.marketplace',

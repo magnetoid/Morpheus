@@ -1,0 +1,54 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Version & updates · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Version &amp; updates</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Detailed updates to the Morpheus OS core.</p>
+    </div>
+    <span class="pill pill-info" style="font-size:.95rem;padding:.4rem .8rem;">
+      <i data-lucide="git-commit-horizontal" class="h-4 w-4" style="vertical-align:-2px;"></i>
+      {{ version }}
+    </span>
+  </div>
+
+  {% if latest %}
+  <div class="card card-padded">
+    <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+      <i data-lucide="sparkles" class="h-4 w-4"></i>
+      <span>Latest release{% if latest.date %} · {{ latest.date }}{% endif %}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if releases %}
+    <div class="space-y-5">
+      {% for r in releases %}
+      <div class="card overflow-hidden">
+        <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3">
+          <h2 class="font-semibold tracking-tight">{{ r.title }}</h2>
+          {% if r.version %}<code class="text-xs pill pill-neutral">{{ r.version }}</code>{% endif %}
+        </div>
+        <div class="card-padded prose-dashboard text-sm">{{ r.html }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card card-padded text-sm text-[color:var(--text-muted)]">
+      No release notes yet. Add an entry to <code>docs/RELEASE_NOTES.md</code>.
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .prose-dashboard h3 { font-weight: 600; margin: 1rem 0 .35rem; font-size: .95rem; }
+  .prose-dashboard h4 { font-weight: 600; margin: .75rem 0 .25rem; color: var(--text-muted); }
+  .prose-dashboard ul { list-style: disc; padding-left: 1.25rem; margin: .35rem 0; }
+  .prose-dashboard li { margin: .2rem 0; }
+  .prose-dashboard p { margin: .5rem 0; }
+  .prose-dashboard code { background: var(--surface-2, rgba(0,0,0,.05)); padding: 0 .3em; border-radius: 3px; }
+  .prose-dashboard a { color: var(--accent, #2563eb); text-decoration: underline; }
+</style>
+{% endblock %}
