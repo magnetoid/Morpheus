@@ -365,3 +365,58 @@ class CapiTests(_Iso, TestCase):
         ev = json.loads(post.call_args.kwargs['data']['data'])[0]
         self.assertEqual(ev['event_name'], 'InitiateCheckout')
         self.assertEqual(ev['custom_data']['value'], 30.0)
+
+
+class AudienceTests(_Iso, TestCase):
+    def test_not_connected(self):
+        from plugins.installed.meta_commerce.services.audiences import sync_audience
+
+        self.assertEqual(sync_audience('all_customers')['reason'], 'not_connected')
+
+    def test_unknown_segment(self):
+        from plugins.installed.meta_commerce.services.audiences import sync_audience
+
+        self.assertEqual(sync_audience('bogus')['reason'], 'unknown_segment')
+
+    def test_empty_segment(self):
+        _connect()
+        from plugins.installed.meta_commerce.services.audiences import sync_audience
+
+        self.assertEqual(sync_audience('all_customers')['reason'], 'empty_segment')
+
+    def test_sync_uploads_hashed_emails_only(self):
+        import hashlib
+
+        from django.contrib.auth import get_user_model
+
+        _connect()
+        get_user_model().objects.create_user(username='c1', email='Buyer@X.test', password='x')
+        from plugins.installed.meta_commerce.services import audiences
+
+        posts = []
+
+        def fake_get(path, params=None):
+            return {'ok': True, 'data': {'data': []}}  # no existing audience by name
+
+        def fake_post(path, payload):
+            posts.append((path, payload))
+            if path.endswith('/customaudiences'):
+                return {'ok': True, 'data': {'id': 'AUD1'}}
+            return {'ok': True, 'data': {}}  # /users upload
+
+        with (
+            patch.object(audiences, 'get', fake_get),
+            patch.object(audiences, 'post', fake_post),
+        ):
+            res = audiences.sync_audience('all_customers')
+
+        self.assertTrue(res['ok'], res)
+        self.assertEqual(res['uploaded'], 1)
+        self.assertEqual(res['audience_id'], 'AUD1')
+        users_post = next(p for p in posts if p[0] == 'AUD1/users')
+        payload = json.loads(users_post[1]['payload'])
+        self.assertEqual(payload['schema'], ['EMAIL_SHA256'])
+        self.assertEqual(
+            payload['data'][0][0], hashlib.sha256(b'buyer@x.test').hexdigest()
+        )  # normalised + hashed
+        self.assertNotIn('Buyer@X.test', users_post[1]['payload'])  # never plaintext

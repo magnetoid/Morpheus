@@ -33,6 +33,23 @@
   <p class="text-xs text-[color:var(--text-muted)] mt-2">Creates a paused Sales campaign — add the ad set + catalog ad in Ads Manager, then activate.</p>
 </div>
 
+<div class="card card-padded mb-6">
+  <h2 class="font-semibold mb-1">Custom Audiences</h2>
+  <p class="text-xs text-[color:var(--text-muted)] mb-2">Push a customer segment to Meta as a hashed-email Custom Audience for retargeting + lookalike seeding. Only SHA-256 hashes are sent — never plaintext.</p>
+  <div class="flex flex-wrap items-center gap-2">
+    <form method="post" style="display:inline">{% csrf_token %}
+      <input type="hidden" name="action" value="sync_audience">
+      <input type="hidden" name="segment" value="all_customers">
+      <button type="submit" class="btn btn-sm">Sync all customers</button>
+    </form>
+    <form method="post" style="display:inline">{% csrf_token %}
+      <input type="hidden" name="action" value="sync_audience">
+      <input type="hidden" name="segment" value="purchasers">
+      <button type="submit" class="btn btn-sm">Sync purchasers (180d)</button>
+    </form>
+  </div>
+</div>
+
 {% if not report.ok %}
 <div class="card card-padded"><p class="text-sm">Couldn’t load campaigns: {{ report.reason }}</p></div>
 {% else %}

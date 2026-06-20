@@ -192,6 +192,7 @@ class MetaCommercePlugin(Plugin):
             meta_feed_coverage_tool,
             meta_feed_url_tool,
             meta_rebuild_feed_tool,
+            meta_sync_audience_tool,
         )
 
         return [
@@ -200,6 +201,7 @@ class MetaCommercePlugin(Plugin):
             meta_rebuild_feed_tool,
             meta_catalog_diagnostics_tool,
             meta_ads_report_tool,
+            meta_sync_audience_tool,
         ]
 
     def get_config_schema(self) -> dict:

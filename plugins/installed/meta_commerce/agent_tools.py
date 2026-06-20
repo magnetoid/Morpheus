@@ -92,3 +92,28 @@ def meta_ads_report_tool(*, days: int = 30) -> ToolResult:
         output=rep,
         display=f'{len(rep["campaigns"])} campaigns · spend {t["spend"]} · ROAS {t.get("roas") or "—"}',
     )
+
+
+@tool(
+    name='meta.sync_audience',
+    description=(
+        'Push a customer segment to a Meta Custom Audience (hashed emails) for '
+        'retargeting / lookalike seeding. segment is "all_customers" or '
+        '"purchasers". Requires Meta Ads connected. Returns how many were uploaded.'
+    ),
+    scopes=['analytics.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'segment': {'type': 'string', 'enum': ['all_customers', 'purchasers']},
+        },
+        'required': ['segment'],
+    },
+)
+def meta_sync_audience_tool(*, segment: str) -> ToolResult:
+    from plugins.installed.meta_commerce.services.audiences import sync_audience
+
+    res = sync_audience(segment)
+    if not res.get('ok'):
+        return ToolResult(output=res, display=f'Audience sync failed: {res.get("reason")}')
+    return ToolResult(output=res, display=f'{res["uploaded"]} hashed emails → {segment} audience')

@@ -108,6 +108,15 @@ def ads_dashboard(request):
                 if res.get('ok')
                 else f'Create failed: {res.get("reason")}'
             )
+        elif action == 'sync_audience':
+            from plugins.installed.meta_commerce.services.audiences import sync_audience
+
+            res = sync_audience(request.POST.get('segment', ''))
+            msg = (
+                f'Synced {res["uploaded"]} hashed emails to the {res["segment"]} audience.'
+                if res.get('ok')
+                else f'Audience sync failed: {res.get("reason")}'
+            )
         else:
             cid = request.POST.get('campaign_id', '')
             if cid and action in ('ACTIVE', 'PAUSED'):
