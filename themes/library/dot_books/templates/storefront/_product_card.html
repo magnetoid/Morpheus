@@ -1,4 +1,4 @@
-{% load morph %}{% load caching %}{% load i18n %}{% load seo %}
+{% load morph %}{% load caching %}{% load i18n %}{% load seo %}{% load book_extras %}
 {% comment %}
 Shared product card. Cover + title link to the PDP; an inline Add-to-cart
 form (the global cart-drawer JS in _cart_drawer.html intercepts any
@@ -34,6 +34,8 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
       <p class="title">{{ product.name }}</p>
       {% if product.author_name %}<p class="author">{{ product.author_name }}</p>{% endif %}
     </a>
+    {% firstof product.short_description product.shortDescription "" as shortdesc %}
+    {% if shortdesc %}<p class="book__excerpt">{{ shortdesc|first_sentence }}</p>{% endif %}
     <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if product.display_price %}{{ product.display_price|money }}{% elif product.price %}{{ product.price|money }}{% endif %}</p>
     <div class="book__actions">
       <form method="post" action="/cart/add/{{ product.id }}/" class="book__add">

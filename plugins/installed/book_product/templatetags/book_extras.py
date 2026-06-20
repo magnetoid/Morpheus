@@ -7,9 +7,26 @@ slug/id. Fail-soft: returns None on any miss so a block never breaks the page.
 
 from __future__ import annotations
 
+import re
+
 from django import template
 
 register = template.Library()
+
+_SENTENCE_END = re.compile(r'[.!?](\s|$)')
+
+
+@register.filter
+def first_sentence(text) -> str:
+    """First sentence of `text` — up to the first . ! or ?, trimmed. Used on the
+    product card to show a one-line pitch under the title. Falls back to the
+    whole (capped) string when there's no sentence break."""
+    s = (str(text) or '').strip()
+    if not s:
+        return ''
+    m = _SENTENCE_END.search(s)
+    out = s[: m.start() + 1] if m else s
+    return out.strip()[:180]
 
 
 def _attr(product, name):

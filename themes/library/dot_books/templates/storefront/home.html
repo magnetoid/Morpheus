@@ -43,18 +43,22 @@
       </div>
 
       <div>
-        {% with featured_products|first as pick %}
-        {% if pick %}
-        <a href="/products/{{ pick.slug }}/" class="book" style="max-width: 380px; margin: 0 auto;">
-          <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
-            {% if pick.primaryImage and pick.primaryImage.url %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 380px, 90vw" priority=True %}
-            {% else %}
-              <div class="placeholder">{{ pick.name }}</div>
-            {% endif %}
-            <span class="ribbon">Editor's pick</span>
+        {% with picks=featured_products|slice:":8" %}
+        {% if picks %}
+        <div class="pick-spinner" data-pick-spinner aria-label="This month's featured books — slowly turning">
+          <div class="pick-spinner__stage" style="--n: {{ picks|length }};">
+            {% for p in picks %}
+            <a class="pick-spinner__card{% if forloop.first %} is-pick{% endif %}" href="/products/{{ p.slug }}/" style="--i: {{ forloop.counter0 }};" aria-label="{{ p.name }}">
+              {% if p.primaryImage and p.primaryImage.url %}
+                <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async">
+              {% else %}
+                <span class="pick-spinner__ph">{{ p.name }}</span>
+              {% endif %}
+              {% if forloop.first %}<span class="ribbon">Editor's pick</span>{% endif %}
+            </a>
+            {% endfor %}
           </div>
-        </a>
+        </div>
         {% endif %}
         {% endwith %}
       </div>
@@ -65,6 +69,39 @@
 <style>
 @media (min-width: 900px) {
   .picks-grid { grid-template-columns: 1.1fr 0.9fr !important; gap: 5rem !important; }
+}
+
+/* Editor's-pick book carousel — a slowly turning 3D ring of this month's covers. */
+.pick-spinner { perspective: 1200px; height: 440px; display: grid; place-items: center; }
+.pick-spinner__stage {
+  position: relative; width: 210px; height: 315px;       /* 2:3 cover */
+  transform-style: preserve-3d;
+  animation: pick-spin 34s linear infinite;
+  will-change: transform;
+}
+.pick-spinner:hover .pick-spinner__stage,
+.pick-spinner:focus-within .pick-spinner__stage { animation-play-state: paused; }
+.pick-spinner__card {
+  position: absolute; inset: 0;
+  transform: rotateY(calc(var(--i) * 360deg / var(--n))) translateZ(270px);
+  border-radius: 5px; overflow: hidden; background: var(--paper-2);
+  box-shadow: 0 26px 50px -20px rgba(14,14,14,0.55);
+  backface-visibility: hidden;            /* far-side covers hide (no mirrored backs) */
+  text-decoration: none; color: inherit;
+}
+.pick-spinner__card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pick-spinner__card.is-pick { box-shadow: 0 26px 60px -16px rgba(14,14,14,0.6), 0 0 0 2px var(--accent); }
+.pick-spinner__card .ribbon { position: absolute; top: 0.65rem; left: 0.65rem; }
+.pick-spinner__ph { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+  font-family: var(--serif); font-style: italic; font-size: 1.05rem; color: var(--muted); text-align: center; padding: 1rem; }
+@keyframes pick-spin { to { transform: rotateY(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .pick-spinner__stage { animation: none; transform: rotateY(-22deg) rotateX(4deg); }  /* a still, angled fan */
+}
+@media (max-width: 640px) {
+  .pick-spinner { height: 360px; perspective: 850px; }
+  .pick-spinner__stage { width: 160px; height: 240px; }
+  .pick-spinner__card { transform: rotateY(calc(var(--i) * 360deg / var(--n))) translateZ(195px); }
 }
 </style>
 
