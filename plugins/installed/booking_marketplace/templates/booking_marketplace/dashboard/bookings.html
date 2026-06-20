@@ -1,0 +1,39 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Bookings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Bookings</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">{{ service_count }} bookable service{{ service_count|pluralize }} · {{ pending_count }} pending</p>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if bookings %}
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>When</th><th>Service</th><th>Vendor</th><th>Customer</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for b in bookings %}
+        <tr>
+          <td class="whitespace-nowrap">{{ b.start_at|date:"M j, Y H:i" }}</td>
+          <td class="font-medium">{{ b.service.name }}</td>
+          <td class="text-[color:var(--text-muted)]">{{ b.service.vendor.name }}</td>
+          <td><div>{{ b.customer_name }}</div><code class="text-xs text-[color:var(--text-muted)]">{{ b.customer_email }}</code></td>
+          <td>
+            {% if b.status == 'confirmed' %}<span class="pill pill-success">Confirmed</span>
+            {% elif b.status == 'pending' %}<span class="pill pill-warn">Pending</span>
+            {% elif b.status == 'cancelled' %}<span class="pill pill-danger">Cancelled</span>
+            {% else %}<span class="pill pill-neutral">{{ b.get_status_display }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No bookings yet. Add a BookableService + availability for a vendor, then customers can book at <code>/bookings/</code>.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

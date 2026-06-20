@@ -349,19 +349,31 @@ class PluginRegistry:
         existing_names = {name for name, _ in existing_rows}
         enabled = {name for name, is_enabled in existing_rows if is_enabled}
 
-        # Newly discovered plugins (not yet in DB) default to enabled. Write a
-        # row so they show up in the merchant admin and can be toggled later.
+        # Newly discovered plugins (not yet in DB) default to enabled UNLESS the
+        # manifest opts out (enabled_by_default=False → installed-but-OFF). Write
+        # a row either way so the plugin shows up in the merchant admin and can
+        # be toggled later.
         new_names = set(self._classes.keys()) - existing_names
         if new_names:
             try:
                 from plugins.models import PluginConfig
 
-                PluginConfig.objects.bulk_create(
-                    [PluginConfig(plugin_name=n, is_enabled=True) for n in new_names],
-                    ignore_conflicts=True,
+                rows = []
+                for n in new_names:
+                    default_on = getattr(self._classes[n], 'enabled_by_default', True)
+                    rows.append(PluginConfig(plugin_name=n, is_enabled=default_on))
+                    if default_on:
+                        enabled.add(n)
+                PluginConfig.objects.bulk_create(rows, ignore_conflicts=True)
+                logger.info(
+                    'plugins: registered %s on first run (enabled: %s)',
+                    sorted(new_names),
+                    sorted(
+                        n
+                        for n in new_names
+                        if getattr(self._classes[n], 'enabled_by_default', True)
+                    ),
                 )
-                enabled |= new_names
-                logger.info('plugins: auto-enabled %s on first run', sorted(new_names))
             except DatabaseError as e:
                 logger.warning('plugins: could not register new PluginConfig rows: %s', e)
 

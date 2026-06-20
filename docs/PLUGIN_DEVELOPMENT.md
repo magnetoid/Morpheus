@@ -161,6 +161,7 @@ The exception is logged with a full traceback (see `plugins/registry.py:_activat
 | `url` | `str` | optional | Plugin homepage / docs. |
 | `requires` | `list[str]` | optional | Plugin names this depends on (topological order). |
 | `conflicts` | `list[str]` | optional | Plugins this cannot coexist with. |
+| `enabled_by_default` | `bool` | optional (default `True`) | `False` ships the plugin **installed-but-OFF** — the merchant opts in from Dashboard → Apps. Only affects the first run (when no `PluginConfig` row exists); after that the DB flag wins. Example: `booking_marketplace`. |
 | `has_models` | `bool` | ✅ if you have models | If True, the plugin needs to be in `INSTALLED_APPS`. |
 
 The base class **validates** all metadata at class-definition time — typos

@@ -1,0 +1,30 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}Book a service — dot books{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 860px;">
+    <p class="eyebrow">Bookings</p>
+    <h1 class="display display-l" style="margin: 1rem 0;">Book a service<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2.5rem;">Sessions, appointments and rentals from the makers on our shelf.</p>
+
+    {% if services %}
+    <div style="display:grid; gap:1.25rem;">
+      {% for s in services %}
+      <a href="/bookings/{{ s.slug }}/" style="display:block; padding:1.5rem; border:1px solid var(--rule); border-radius:10px; text-decoration:none; color:inherit;">
+        <div style="display:flex; justify-content:space-between; gap:1rem; align-items:baseline; flex-wrap:wrap;">
+          <h2 style="font-family:var(--serif); font-size:1.4rem;">{{ s.name }}</h2>
+          <span style="font-family:var(--serif); font-size:1.2rem;">{{ s.price|money }}</span>
+        </div>
+        <p class="meta" style="margin-top:.35rem;">{{ s.vendor.name }} · {{ s.duration_minutes }} min</p>
+        {% if s.description %}<p style="margin-top:.75rem; color:var(--ink-2); line-height:1.6;">{{ s.description|truncatewords:30 }}</p>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lede">No bookable services yet. Check back soon.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

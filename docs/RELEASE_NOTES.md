@@ -10,6 +10,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.2 — 2026-06-21
+
+### Core
+- Plugin contract gains `enabled_by_default` — a plugin can ship
+  **installed-but-OFF**, opting in from Dashboard → Apps (default stays on, so
+  existing plugins are unchanged).
+
+### Plugins
+- **Booking marketplace** (new, **off by default**): a multivendor *services*
+  marketplace alongside the product one. Vendors offer time-slot
+  `BookableService`s with weekly availability; customers book a slot at
+  `/bookings/`. Manage at Dashboard → Bookings. Enable it from Dashboard → Apps.
+
+---
+
 ## v0.2.1 — 2026-06-21
 
 ### Storefront

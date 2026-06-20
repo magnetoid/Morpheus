@@ -91,6 +91,12 @@ class MorpheusPlugin:
     requires: list[str] = []  # plugin names this depends on
     conflicts: list[str] = []  # plugins this cannot coexist with
 
+    # First-run activation: True (default) auto-enables the plugin the first
+    # time it's discovered; False ships it installed-but-OFF so the merchant
+    # opts in from Dashboard → Apps. Only affects the very first run (when no
+    # PluginConfig row exists yet); after that the DB flag wins.
+    enabled_by_default: bool = True
+
     # ── Capabilities ──────────────────────────────────────────────────────────
     has_models: bool = False  # True if plugin defines Django models
 
