@@ -42,7 +42,7 @@
             <div class="font-medium">{{ a.business_name }}</div>
             {% if a.description %}<div class="text-xs text-[color:var(--text-muted)] truncate" style="max-width:280px;">{{ a.description }}</div>{% endif %}
           </td>
-          <td>{{ a.user.email|default:a.user.username }}</td>
+          <td>{% firstof a.user.email a.user.username "—" %}</td>
           <td><code class="text-xs">{{ a.contact_email }}</code></td>
           <td class="text-xs text-[color:var(--text-muted)]">{{ a.submitted_at|date:"Y-m-d" }}</td>
           <td>
