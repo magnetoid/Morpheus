@@ -42,4 +42,13 @@ class ChannelsPlugin(Plugin):
                 order=60,
                 nav='main',
             ),
+            DashboardPage(
+                label='Channel ROAS',
+                slug='attribution',
+                view='plugins.installed.channels.views.attribution_view',
+                icon='trending-up',
+                section='marketing',
+                order=61,
+                nav='main',
+            ),
         ]

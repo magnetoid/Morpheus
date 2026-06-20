@@ -1,0 +1,67 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Channel ROAS · Morpheus{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">Channel ROAS &amp; attribution</h1>
+    <p class="text-xs text-[color:var(--text-muted)]">Blended efficiency across all ad channels, with each platform's <em>claimed</em> revenue next to <em>last-touch</em> revenue (the converting session's source). Platforms over-claim — the gap is the point.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <form method="get">
+      <select name="days" class="input" style="max-width:130px;" onchange="this.form.submit()">
+        <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+        <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+        <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+        <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+      </select>
+    </form>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="refresh_metrics">
+      <button type="submit" class="btn">Refresh spend</button>
+    </form>
+  </div>
+</div>
+
+{% if msg %}<div class="card card-padded mb-4"><p class="text-sm">{{ msg }}</p></div>{% endif %}
+
+{% if not data.has_metrics %}
+<div class="card card-padded mb-4"><p class="text-sm text-[color:var(--text-muted)]">No ad-spend metrics cached yet — click <strong>Refresh spend</strong> (or wait for the daily job). Last-touch revenue below still works from analytics.</p></div>
+{% endif %}
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+  <div class="card card-padded kpi"><span class="kpi__label">Ad spend ({{ data.days }}d)</span><span class="kpi__value">{{ data.total_spend }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Store revenue</span><span class="kpi__value">{{ data.total_revenue }}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Blended ROAS (MER)</span><span class="kpi__value">{% if data.blended_roas %}{{ data.blended_roas }}×{% else %}—{% endif %}</span></div>
+  <div class="card card-padded kpi"><span class="kpi__label">Direct / organic rev</span><span class="kpi__value">{{ data.direct_revenue }}</span></div>
+</div>
+
+<div class="card">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">Per channel</h2>
+    <p class="text-xs text-[color:var(--text-muted)]">Spend + conversions/ROAS are <em>platform-reported</em> (they overlap and won't sum to store revenue). Last-touch revenue is from your own analytics (the session's <code>utm_source</code> at purchase).</p>
+  </div>
+  <table class="morph-table">
+    <thead><tr><th>Channel</th><th>Spend</th><th>Platform conv.</th><th>Platform ROAS</th><th>Last-touch rev</th><th>Last-touch ROAS</th></tr></thead>
+    <tbody>
+      {% for r in data.rows %}
+      <tr>
+        <td class="font-medium">{{ r.label }}</td>
+        <td>{{ r.spend }}</td>
+        <td>{% if r.conversions != None %}{{ r.conversions }}{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+        <td>{% if r.platform_roas %}{{ r.platform_roas }}×{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+        <td>{% if r.lasttouch_revenue %}{{ r.lasttouch_revenue }}{% else %}<span class="text-xs text-[color:var(--text-muted)]">0</span>{% endif %}</td>
+        <td>{% if r.lasttouch_roas %}<strong>{{ r.lasttouch_roas }}×</strong>{% else %}<span class="text-xs text-[color:var(--text-muted)]">—</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-sm text-[color:var(--text-muted)]">No channel spend or attributed revenue in this window. Tag your ad links with <code>utm_source</code> (google/meta/tiktok/…) so purchases attribute here.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="text-xs text-[color:var(--text-muted)] mt-3">
+  <strong>Blended ROAS (MER)</strong> = store revenue ÷ total ad spend — the trustworthy top-line. Last-touch credits the whole order to the final source (no multi-touch split yet).
+  {% if data.other_attributed %}<br>{{ data.other_attributed }} of revenue came from other tagged sources (email, affiliates, etc.).{% endif %}
+</p>
+{% endblock %}

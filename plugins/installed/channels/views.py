@@ -112,3 +112,35 @@ def _sum(rows: list[dict], key: str) -> float:
         if isinstance(v, int | float):
             total += v
     return total
+
+
+@staff_member_required
+def attribution_view(request):
+    """Cross-channel attribution: blended MER + platform-claimed vs last-touch
+    revenue per channel. Reads the daily-cached ads metrics + analytics."""
+    from plugins.installed.channels.attribution import build_attribution
+
+    try:
+        days = int(request.GET.get('days', 30))
+    except (TypeError, ValueError):
+        days = 30
+    if days not in (7, 14, 30, 90):
+        days = 30
+
+    msg = ''
+    if request.method == 'POST' and request.POST.get('action') == 'refresh_metrics':
+        from plugins.installed.channels.tasks import refresh_metrics
+
+        refresh_metrics.delay()
+        msg = 'Refreshing channel ad metrics in the background — check back shortly.'
+
+    return render(
+        request,
+        'channels/attribution.html',
+        {
+            'active_nav': 'channels',
+            'data': build_attribution(days=days),
+            'days': days,
+            'msg': msg,
+        },
+    )

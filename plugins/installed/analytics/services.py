@@ -315,6 +315,41 @@ def summary_for(*, days: int = 7) -> dict:
     }
 
 
+def revenue_by_source(*, days: int = 30) -> dict:
+    """Last-touch purchase revenue grouped by the converting session's
+    ``utm_source`` over the last ``days``.
+
+    Returns ``{'by_source': {source: float}, 'direct': float, 'total': float,
+    'days': int}``. ``direct`` = purchases with no utm_source (organic / direct /
+    untagged). Used by the channels plugin's blended-ROAS / attribution view.
+    """
+    from plugins.installed.analytics.models import AnalyticsEvent
+
+    since = timezone.now() - timedelta(days=max(1, int(days)))
+    purchases = AnalyticsEvent.objects.filter(kind='purchase', created_at__gte=since)
+
+    by_source: dict[str, float] = {}
+    for row in (
+        purchases.exclude(session__isnull=True)
+        .exclude(session__utm_source='')
+        .values('session__utm_source')
+        .annotate(rev=Sum('revenue'))
+    ):
+        amt = row['rev']
+        src = (row['session__utm_source'] or '').strip().lower()
+        by_source[src] = float(getattr(amt, 'amount', amt) or 0)
+
+    total_agg = purchases.aggregate(t=Sum('revenue'))['t']
+    total = float(getattr(total_agg, 'amount', total_agg) or 0)
+    direct = round(total - sum(by_source.values()), 2)
+    return {
+        'by_source': by_source,
+        'direct': max(0.0, direct),
+        'total': round(total, 2),
+        'days': int(days),
+    }
+
+
 def funnel_for(*, steps: list[str], days: int = 30) -> list[dict]:
     """Walk the funnel: count distinct sessions hitting step1, then those
     that hit both step1 and step2, etc. (loose ordering — not strict path)."""
