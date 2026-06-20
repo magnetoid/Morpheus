@@ -14,156 +14,59 @@
 {% block content %}
 {% storefront_blocks "home_above_grid" %}
 
-<!-- Editor's picks — immersive synchronized book slider -->
+<!-- Editor's pick -->
 <section id="editors-pick">
-  <div class="wrap">
-    {% with picks=featured_products|slice:":6" %}
-    {% if picks %}
-    <div class="bookslider" data-bookslider>
-      <span class="bookslider__progress" aria-hidden="true"><span data-bar></span></span>
-
-      <div class="bookslider__head">
-        <div>
-          <p class="eyebrow">Editor's picks</p>
-          <h2 class="bookslider__kicker">The books that moved this month<span class="text-accent">.</span></h2>
-        </div>
-        {% if picks|length > 1 %}
-        <div class="bookslider__dots" data-dots role="tablist" aria-label="Choose a book">
-          {% for p in picks %}<button class="bookslider__dot" type="button" data-dot="{{ forloop.counter0 }}" aria-label="Book {{ forloop.counter }}"></button>{% endfor %}
+  <div class="wrap" style="display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: center;">
+    <div style="display:grid; gap:3rem; grid-template-columns: 1fr; align-items:center;" class="picks-grid">
+      <div>
+        <p class="eyebrow">Editor's pick</p>
+        <h2 class="display display-l" style="margin: 1rem 0;">
+          The book that<br>moved this month<span class="text-accent">.</span>
+        </h2>
+        <p class="lede" style="margin-bottom: 2rem;">
+          Each month we choose one title that, in our minds, says something the rest of the shelf hasn't yet found a way to say. April's pick is below.
+        </p>
+        {% with featured_products|first as pick %}
+        {% if pick %}
+        <div class="stack-3">
+          <p style="font-family: var(--serif); font-size: 1.5rem; line-height: 1.15;"><em>{{ pick.name }}</em></p>
+          <p class="meta">{{ pick.category.name|default:"" }}</p>
+          <p style="margin-top: 1rem; max-width: 50ch; color: var(--ink-2); line-height: 1.6;">{{ pick.shortDescription|default:""|striptags|truncatewords:36 }}</p>
+          <p style="font-family: var(--serif); font-size: 1.4rem; margin-top: 1.25rem;">{% if pick.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ pick.price|money }}</p>
+          <div style="margin-top: 1.25rem; display:flex; gap: 0.75rem; align-items:center; flex-wrap: wrap;">
+            <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop this book</a>
+            <a href="/products/" class="btn btn-ghost">Browse all books</a>
+          </div>
         </div>
         {% endif %}
+        {% endwith %}
       </div>
 
-      <div class="bookslider__track" data-track>
-        {% for p in picks %}
-        <article class="bookslide{% if forloop.first %} is-active{% endif %}" role="group" aria-roledescription="slide" aria-label="{{ forloop.counter }} of {{ picks|length }}">
-          {% if p.primaryImage and p.primaryImage.url %}<div class="bookslide__bg" style="background-image:url('{{ p.primaryImage.url }}')" aria-hidden="true"></div>{% endif %}
-          <div class="bookslide__inner">
-            <div class="bookslide__text">
-              <span class="bookslide__index">{{ forloop.counter|stringformat:"02d" }}<span class="bookslide__indextot"> / {{ picks|length|stringformat:"02d" }}</span></span>
-              <p class="bookslide__cat">{% if forloop.first %}This month's pick · {% endif %}{{ p.category.name|default:"New &amp; notable" }}</p>
-              <h3 class="bookslide__title">{{ p.name }}</h3>
-              <p class="bookslide__blurb">{{ p.shortDescription|default:""|striptags|truncatewords:28 }}</p>
-              <p class="bookslide__price">{% if p.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ p.price|money }}</p>
-              <div class="bookslide__cta">
-                <a href="/products/{{ p.slug }}/" class="btn btn-primary">Shop this book</a>
-                <a href="/products/" class="btn btn-ghost">Browse all</a>
-              </div>
-            </div>
-            <a class="bookslide__cover" href="/products/{{ p.slug }}/" aria-label="{{ p.name }}">
-              {% if p.primaryImage and p.primaryImage.url %}
-                <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async">
-              {% else %}
-                <span class="bookslide__ph">{{ p.name }}</span>
-              {% endif %}
-              {% if forloop.first %}<span class="ribbon">Editor's pick</span>{% endif %}
-            </a>
+      <div>
+        {% with featured_products|first as pick %}
+        {% if pick %}
+        <a href="/products/{{ pick.slug }}/" class="book" style="max-width: 380px; margin: 0 auto;">
+          <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
+            {% if pick.primaryImage and pick.primaryImage.url %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 380px, 90vw" priority=True %}
+            {% else %}
+              <div class="placeholder">{{ pick.name }}</div>
+            {% endif %}
+            <span class="ribbon">Editor's pick</span>
           </div>
-        </article>
-        {% endfor %}
+        </a>
+        {% endif %}
+        {% endwith %}
       </div>
-
-      {% if picks|length > 1 %}
-      <button class="bookslider__arrow bookslider__arrow--prev" data-prev type="button" aria-label="Previous book">&lsaquo;</button>
-      <button class="bookslider__arrow bookslider__arrow--next" data-next type="button" aria-label="Next book">&rsaquo;</button>
-      {% endif %}
     </div>
-    {% endif %}
-    {% endwith %}
   </div>
 </section>
 
 <style>
-.bookslider { position: relative; border-radius: 16px; overflow: hidden; background: var(--paper-2); border: 1px solid var(--rule); isolation: isolate; }
-.bookslider__progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(0,0,0,0.06); z-index: 4; }
-.bookslider__progress span { display: block; height: 100%; width: 0; background: var(--accent); }
-.bookslider__progress span.run { width: 100%; transition: width var(--dur, 6s) linear; }
-.bookslider__head { position: relative; z-index: 3; display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; padding: 2.25rem 2.25rem 0; }
-.bookslider__kicker { font-family: var(--serif); font-size: clamp(1.4rem, 2.6vw, 2rem); font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; margin-top: 0.5rem; }
-.bookslider__dots { display: flex; gap: 0.5rem; padding-bottom: 0.4rem; }
-.bookslider__dot { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 999px; background: var(--rule); cursor: pointer; transition: width .35s ease, background .35s ease; }
-.bookslider__dot.is-active { width: 26px; background: var(--accent); }
-
-.bookslider__track { display: grid; }
-.bookslide { grid-area: 1 / 1; position: relative; opacity: 0; visibility: hidden; transition: opacity .8s ease, visibility .8s; }
-.bookslide.is-active { opacity: 1; visibility: visible; }
-.bookslide__bg { position: absolute; inset: -12%; z-index: 0; background-size: cover; background-position: center; filter: blur(46px) saturate(1.35); opacity: 0.20; transform: scale(1.12); }
-.bookslide::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(100deg, var(--paper-2) 18%, rgba(244,241,234,0.55) 52%, rgba(244,241,234,0.1) 100%); }
-.bookslide__inner { position: relative; z-index: 2; display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: center; padding: 2rem 2.25rem 2.75rem; }
-.bookslide__text { display: flex; flex-direction: column; align-items: flex-start; }
-.bookslide__index { font-family: var(--serif); font-size: 1.6rem; font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
-.bookslide__indextot { color: var(--muted); font-size: 1.05rem; }
-.bookslide__cat { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 0.85rem; }
-.bookslide__title { font-family: var(--serif); font-size: clamp(2.1rem, 5.4vw, 3.6rem); line-height: 1.03; font-weight: 600; letter-spacing: -0.025em; margin: 0.5rem 0 1rem; }
-.bookslide__blurb { color: var(--ink-2); line-height: 1.62; max-width: 46ch; font-size: 1.02rem; }
-.bookslide__price { font-family: var(--serif); font-size: 1.5rem; margin-top: 1.2rem; }
-.bookslide__cta { margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.bookslide__cover { order: -1; display: block; justify-self: center; width: min(280px, 62vw); aspect-ratio: 2/3; border-radius: 7px; overflow: hidden; position: relative; background: var(--paper); box-shadow: 0 40px 70px -26px rgba(14,14,14,0.55), 0 8px 20px -10px rgba(14,14,14,0.3); }
-.bookslide.is-active .bookslide__cover { animation: bookfloat 6s ease-in-out infinite; }
-.bookslide__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.bookslide__cover .ribbon { position: absolute; top: 0.7rem; left: 0.7rem; }
-.bookslide__ph { display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-family: var(--serif); font-style: italic; color: var(--muted); padding: 1rem; text-align: center; }
-
-.bookslider__arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 46px; height: 46px; border-radius: 999px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); font-size: 1.5rem; line-height: 1; cursor: pointer; display: grid; place-items: center; transition: background .2s, box-shadow .2s; box-shadow: 0 6px 18px -8px rgba(14,14,14,0.35); }
-.bookslider__arrow:hover { background: var(--paper-2); }
-.bookslider__arrow--prev { left: 1rem; }
-.bookslider__arrow--next { right: 1rem; }
-
-@keyframes bookfloat { 50% { transform: translateY(-12px) rotate(-0.6deg); } }
-
-@media (min-width: 860px) {
-  .bookslide__inner { grid-template-columns: 1.12fr 0.88fr; gap: 4rem; padding: 2.5rem 3.5rem 3.5rem; }
-  .bookslide__cover { order: 0; justify-self: end; width: min(330px, 32vw); }
-  .bookslider__kicker { font-size: clamp(1.8rem, 2.6vw, 2.4rem); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .bookslide { transition: opacity .25s linear; }
-  .bookslide.is-active .bookslide__cover { animation: none; }
+@media (min-width: 900px) {
+  .picks-grid { grid-template-columns: 1.1fr 0.9fr !important; gap: 5rem !important; }
 }
 </style>
-
-<script>
-(function () {
-  document.querySelectorAll('[data-bookslider]').forEach(function (root) {
-    var slides = Array.prototype.slice.call(root.querySelectorAll('.bookslide'));
-    var n = slides.length;
-    var dots = Array.prototype.slice.call(root.querySelectorAll('[data-dot]'));
-    var bar = root.querySelector('[data-bar]');
-    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var DUR = 6000, i = 0, timer = null;
-
-    function paintBar() {
-      if (!bar) return;
-      bar.classList.remove('run');
-      void bar.offsetWidth;
-      if (reduce || n < 2) return;
-      bar.style.setProperty('--dur', (DUR / 1000) + 's');
-      bar.classList.add('run');
-    }
-    function show(k) {
-      i = (k + n) % n;
-      slides.forEach(function (s, j) { s.classList.toggle('is-active', j === i); });
-      dots.forEach(function (d, j) { d.classList.toggle('is-active', j === i); });
-      paintBar();
-    }
-    function start() { if (reduce || n < 2) return; stop(); timer = setInterval(function () { show(i + 1); }, DUR); paintBar(); }
-    function stop() { if (timer) { clearInterval(timer); timer = null; } }
-
-    var prev = root.querySelector('[data-prev]'), next = root.querySelector('[data-next]');
-    if (next) next.addEventListener('click', function () { show(i + 1); start(); });
-    if (prev) prev.addEventListener('click', function () { show(i - 1); start(); });
-    dots.forEach(function (d) { d.addEventListener('click', function () { show(+d.dataset.dot); start(); }); });
-    root.addEventListener('mouseenter', stop);
-    root.addEventListener('mouseleave', start);
-    root.addEventListener('focusin', stop);
-    root.addEventListener('focusout', start);
-
-    if (dots[0]) dots[0].classList.add('is-active');
-    paintBar();
-    start();
-  });
-})();
-</script>
 
 <hr class="rule">
 
