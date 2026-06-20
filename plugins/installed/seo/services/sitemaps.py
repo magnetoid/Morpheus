@@ -46,10 +46,10 @@ def _iter_author_entries(base: str) -> Iterable[dict]:
 
 
 def _iter_webstory_entries(base: str) -> Iterable[dict]:
-    """One ``/story/<slug>/`` URL per published WebStory. The webstories
-    plugin owns its own canonical link from PDP via ``rel='amphtml'``,
-    but listing the URLs in the main sitemap is what gets them into
-    Google's Web Stories surface."""
+    """One ``/story/<slug>/`` URL per published WebStory. Stories are
+    standalone + self-canonical (no ``rel='amphtml'`` pairing from the PDP),
+    so listing their URLs in the main sitemap is what gets them discovered and
+    into Google's Web Stories surface."""
     try:
         from plugins.installed.webstories.models import WebStory
 

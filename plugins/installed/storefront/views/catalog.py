@@ -444,7 +444,7 @@ def product_detail(request, slug):
     # installed and has a row. Resolved here (not in the template) because
     # `product` is a GraphQL dict, so dotted access can't traverse the
     # OneToOne reverse relation. Template uses `web_story` as the gate for
-    # the <link rel="amphtml"> tag and the <amp-story-player> block.
+    # the <amp-story-player> embed block (no rel=amphtml — stories self-canonical).
     web_story = None
     if product_row is not None:
         try:

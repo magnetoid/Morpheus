@@ -12,7 +12,10 @@
 {% endif %}
 {% if pdp_faqs %}{% seo_faq_jsonld items=pdp_faqs %}{% endif %}
 {% if pdp_faqs %}{% seo_qa_jsonld qa=pdp_faqs name=product.name %}{% endif %}
-{% if web_story %}<link rel="amphtml" href="/story/{{ product.slug }}/">{% endif %}
+{% comment %}Web Stories are standalone + self-canonical (Google's current guidance),
+so the PDP must NOT declare them as its rel=amphtml pairing — that contradicts the
+story's self-canonical and triggers the GSC "amp-story canonical error". The story
+stays discoverable via its own embed block + the sitemap.{% endcomment %}
 {% dl_view_item product %}
 {% endblock %}
 

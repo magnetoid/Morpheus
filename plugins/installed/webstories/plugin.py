@@ -4,10 +4,13 @@ Generates a Google Web Stories AMP document per Product
 (``/story/<slug>/``) from the product's images + metafields, and
 embeds an ``<amp-story-player>`` thumbnail on the PDP.
 
-Discovery surfaces:
+Stories are **standalone + self-canonical** (Google's current Web Stories
+guidance) — the PDP must NOT declare them via ``rel="amphtml"`` (that pairs an
+article with its AMP twin and contradicts a self-canonical story, which is what
+triggered the GSC "amp-story canonical error"). Discovery instead comes from:
   * Google Discover carousel
   * Google search 'Visual Stories'
-  * ``<link rel="amphtml">`` from the PDP
+  * the ``<amp-story-player>`` embed on the PDP (a normal link, not a pairing)
   * Story URLs in the main sitemap
 
 V1 is auto-only — every Product save triggers a fresh build via
