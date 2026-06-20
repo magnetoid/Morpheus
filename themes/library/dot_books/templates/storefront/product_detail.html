@@ -3,8 +3,7 @@
 
 {% block extra_head %}
 {% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
-{# Feed the ORM instance (seo_object=product_row) not the dict → rich Product path. #}
-{% seo_product_jsonld seo_object %}
+{% seo_product_jsonld product %}
 {% seo_product_og product %}
 {% seo_product_md_link product.slug %}
 {% seo_speakable_jsonld %}

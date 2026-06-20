@@ -119,7 +119,13 @@ def product_jsonld(product, *, base_url: str = '') -> dict:
     def g(name, default=None):
         if isinstance(product, dict):
             return product.get(name, default)
-        return getattr(product, name, default)
+        # getattr's default only catches AttributeError; a djmoney/deferred
+        # field raises KeyError when the instance was loaded with .only()/
+        # .defer() and that field wasn't selected — guard so JSON-LD never 500s.
+        try:
+            return getattr(product, name, default)
+        except Exception:  # noqa: BLE001
+            return default
 
     slug = g('slug') or ''
     if not slug:
