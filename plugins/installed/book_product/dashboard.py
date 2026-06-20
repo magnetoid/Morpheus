@@ -51,7 +51,47 @@ def book_widget_context(product) -> dict[str, Any]:
         'all_topics': list(Topic.objects.filter(is_active=True)),
         'selected_genre_ids': selected_genres,
         'selected_topic_ids': selected_topics,
+        'identifiers': _book_identifiers(product),
     }
+
+
+def _book_identifiers(product) -> dict[str, str]:
+    """Current ISBN / OCLC / Open Library values for the edit form. ISBN-13
+    lives in the 'identifiers' metafield namespace (the canonical store read by
+    the storefront + Product JSON-LD); OCLC + Open Library work id live in
+    'book' (reconciliation signals for the Book graph)."""
+    from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+    out = {'isbn13': '', 'oclc': '', 'openlibrary': ''}
+    try:
+        ident = Metafield.objects.for_obj(product, ns='identifiers') or {}
+        out['isbn13'] = str(ident.get('identifiers.isbn13') or ident.get('isbn13') or '')
+        book_ns = Metafield.objects.for_obj(product, ns='book') or {}
+        out['oclc'] = str(book_ns.get('book.oclc') or book_ns.get('oclc') or '')
+        out['openlibrary'] = str(
+            book_ns.get('book.openlibrary') or book_ns.get('openlibrary') or ''
+        )
+    except Exception:  # noqa: BLE001, S110 — metafields optional; blank form is fine
+        pass
+    return out
+
+
+def _save_book_identifiers(product, post) -> None:
+    """Persist ISBN-13 / OCLC / Open Library work id from the book card.
+
+    ISBN-13 → 'identifiers' (canonical, drives Product JSON-LD); OCLC + Open
+    Library → 'book' (Book-graph reconciliation). Blank clears the value.
+    """
+    from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+    for ns, key in (('identifiers', 'isbn13'), ('book', 'oclc'), ('book', 'openlibrary')):
+        if key not in post:
+            continue
+        val = (post.get(key) or '').strip()
+        if val:
+            Metafield.objects.set(product, namespace=ns, key=key, value=val)
+        else:
+            Metafield.objects.delete_for(product, namespace=ns, key=key)
 
 
 def _facets(book, slugify) -> list[dict]:
@@ -128,6 +168,9 @@ def save_book_fields(product, post, files=None) -> None:
         book.cover_pdf = files['cover_pdf']
 
     book.save()
+
+    if post.get('book_submitted'):
+        _save_book_identifiers(product, post)
 
     # Curated taxonomies — only when the book card was submitted, so a plain
     # product save never clears them. An empty list = the merchant unchecked all.

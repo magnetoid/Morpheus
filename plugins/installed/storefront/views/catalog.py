@@ -692,12 +692,21 @@ def _book_jsonld_data(product_row, product, product_codes, out_of_stock):
         return None
     codes = {c.get('key'): c.get('value') for c in (product_codes or [])}
     price = product.get('price') if isinstance(product.get('price'), dict) else {}
+    # Reconciliation identifiers for public-domain works (no own ISBN): the
+    # Open Library work id → sameAs, and the OCLC number → edition identifier.
+    # Both live in the 'book' metafield namespace (surfaced by book_attrs).
+    olid = str(ba.get('openlibrary') or '').strip()
+    same_as = []
+    if olid:
+        same_as.append(f'https://openlibrary.org/works/{olid}' if olid.startswith('OL') else olid)
     return {
         'name': product.get('name') or '',
         'path': f'/products/{product.get("slug") or product_row.slug}/',
         'authors': [a.strip() for a in author.replace(';', ',').split(',') if a.strip()],
         'isbn13': codes.get('isbn13'),
         'isbn10': codes.get('isbn10'),
+        'oclc': ba.get('oclc'),
+        'same_as': same_as,
         'book_format': ba.get('format'),
         'language': ba.get('language'),
         'date_published': ba.get('published_year'),

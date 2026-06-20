@@ -1095,6 +1095,20 @@
           <input type="text" name="imprint" class="input" value="{{ book_widget.book.imprint|default:'' }}">
         </div>
         <div>
+          <label class="block text-sm font-medium mb-1">ISBN-13</label>
+          <input type="text" name="isbn13" class="input" value="{{ book_widget.identifiers.isbn13|default:'' }}" placeholder="978…" inputmode="numeric">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Drives the Product rich result. Public-domain reissue with no ISBN? Leave blank and use OCLC / Open Library below.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">OCLC number</label>
+          <input type="text" name="oclc" class="input" value="{{ book_widget.identifiers.oclc|default:'' }}" placeholder="e.g. 34042251" inputmode="numeric">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Open Library work ID</label>
+          <input type="text" name="openlibrary" class="input" value="{{ book_widget.identifiers.openlibrary|default:'' }}" placeholder="e.g. OL1418187W">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Reconciles the Book (sameAs → openlibrary.org). Backfilled in bulk by <code>backfill_book_identifiers</code>.</p>
+        </div>
+        <div>
           <label class="block text-sm font-medium mb-1">Print type</label>
           <select name="print_type" class="input">
             {% for val, lbl in book_widget.print_types %}<option value="{{ val }}" {% if book_widget.book.print_type == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}

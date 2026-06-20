@@ -145,3 +145,24 @@ field touched), guarded by `seo/tests/test_richresults_extra.py`:
   (PostalAddress) from new `PluginConfig['seo']` keys (`org_email`, `org_phone`,
   `org_street/city/region/postal/country`) — feeds the brand/knowledge panel.
   No migration.
+
+## Update — 2026-06-20c: book identifiers (dashboard field + Open Library backfill)
+
+The catalog is ~859 public-domain works; their DotBooks editions have no own
+ISBN (each work has 10s–100s of *other* publishers' ISBNs). So instead of
+fabricating an ISBN we reconcile via signals Google's Book spec accepts:
+
+- **Book JSON-LD now emits** `sameAs` (Open Library work URL) on the Work and an
+  OCLC `identifier` (PropertyValue OCLC_NUMBER) on the edition — eligibility
+  without a wrong ISBN. Wired through `catalog._book_jsonld_data` (reads
+  `book.oclc` / `book.openlibrary` metafields via `book_attrs`) → `book_jsonld`.
+- **Dashboard field:** the product-edit Book card gained **ISBN-13 / OCLC /
+  Open Library work ID** inputs (`book_product.dashboard` —
+  `_book_identifiers` reads, `_save_book_identifiers` writes; ISBN-13 →
+  `identifiers` namespace, OCLC + OL → `book` namespace).
+- **Bulk backfill:** `manage.py backfill_book_identifiers [--dry-run] [--limit N]`
+  looks each book up on Open Library by title+author with **conservative
+  matching** (author surname must match + title equal/containment; picks the
+  highest edition_count) and writes `book.openlibrary` + `book.oclc`. A wrong id
+  is worse than none, so non-matches are skipped and reported. `pick_work` is a
+  pure, tested function (`test_identifier_backfill.py`); no network in tests.

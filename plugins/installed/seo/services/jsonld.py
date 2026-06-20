@@ -911,6 +911,14 @@ def book_jsonld(data: dict, *, base_url: str = '') -> dict:
         edition['datePublished'] = str(data['date_published'])
     if data.get('edition'):
         edition['bookEdition'] = str(data['edition'])
+    # OCLC — Google accepts it as an edition `identifier` when there's no ISBN
+    # (the public-domain case: the work has many editions' ISBNs but none is
+    # ours, so OCLC + the Work's sameAs is the correct reconciliation signal).
+    oclc = str(data.get('oclc') or '').strip()
+    if oclc:
+        edition['identifier'] = [
+            {'@type': 'PropertyValue', 'propertyID': 'OCLC_NUMBER', 'value': oclc}
+        ]
 
     platforms = _book_platforms(cfg.get('book_action_platforms'))
     region = str(cfg.get('book_eligible_region') or cfg.get('shipping_country') or 'US').upper()
