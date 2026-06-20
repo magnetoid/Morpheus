@@ -474,11 +474,15 @@ def product_detail(request, slug):
         except Exception:  # noqa: BLE001
             out_of_stock = False
 
+    product_codes = _product_codes(product_row)
+    book_jsonld_data = _book_jsonld_data(product_row, product, product_codes, out_of_stock)
+
     return render(
         request,
         'storefront/product_detail.html',
         {
             'product': product,
+            'book_jsonld_data': book_jsonld_data,
             'pdp_vendor': pdp_vendor,
             'review_summary': review_summary,
             'images': images,
@@ -488,7 +492,7 @@ def product_detail(request, slug):
             'videos': videos,
             'related_products': related,
             'book_specs': _book_specs(slug),
-            'product_codes': _product_codes(product_row),
+            'product_codes': product_codes,
             'reviews': _published_reviews(slug, product_row=product_row),
             'pdp_faqs': _pdp_faqs(slug, product_row=product_row),
             'breadcrumb_items': breadcrumb_items,
@@ -599,6 +603,42 @@ def _product_codes(product_row) -> list[dict]:
         return product_identifiers(product_row)
     except Exception:  # noqa: BLE001
         return []
+
+
+def _book_jsonld_data(product_row, product, product_codes, out_of_stock):
+    """Assemble the plain dict for ``{% seo_book_jsonld %}`` from SAFE sources.
+
+    Book attributes + identifiers come from relation queries keyed on the
+    product PK (never the product's *deferred* Money/price field, which would
+    KeyError); price comes from the GraphQL ``product`` dict. Returns None when
+    there's no author — a Book Work needs a title + author to be valid.
+    """
+    if product_row is None or not isinstance(product, dict):
+        return None
+    try:
+        from plugins.installed.book_product.compat import book_attrs
+
+        ba = book_attrs(product_row)
+    except Exception:  # noqa: BLE001
+        return None
+    author = str(ba.get('author') or '').strip()
+    if not author:
+        return None
+    codes = {c.get('key'): c.get('value') for c in (product_codes or [])}
+    price = product.get('price') if isinstance(product.get('price'), dict) else {}
+    return {
+        'name': product.get('name') or '',
+        'path': f'/products/{product.get("slug") or product_row.slug}/',
+        'authors': [a.strip() for a in author.replace(';', ',').split(',') if a.strip()],
+        'isbn13': codes.get('isbn13'),
+        'isbn10': codes.get('isbn10'),
+        'book_format': ba.get('format'),
+        'language': ba.get('language'),
+        'date_published': ba.get('published_year'),
+        'edition': ba.get('edition'),
+        'price': price.get('amount'),
+        'currency': price.get('currency') or 'USD',
+    }
 
 
 def _book_specs(slug: str) -> list[dict]:

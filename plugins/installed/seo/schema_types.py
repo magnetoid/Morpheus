@@ -127,9 +127,37 @@ SCHEMA_TYPES: list[dict[str, Any]] = [
         'help': 'Editorial article / blog post (beyond the auto Article schema).',
         'fields': [
             {'name': 'headline', 'label': 'Headline', 'kind': 'text', 'required': True},
+            {'name': 'description', 'label': 'Summary', 'kind': 'textarea'},
             {'name': 'author', 'label': 'Author name', 'kind': 'text'},
+            {'name': 'publisher', 'label': 'Publisher name', 'kind': 'text'},
             {'name': 'date_published', 'label': 'Published', 'kind': 'date'},
+            {'name': 'date_modified', 'label': 'Last updated', 'kind': 'date'},
             {'name': 'image', 'label': 'Image URL', 'kind': 'url'},
+            {'name': 'url', 'label': 'Canonical URL', 'kind': 'url'},
+        ],
+    },
+    {
+        'key': 'Book',
+        'type': 'Book',
+        'label': 'Book',
+        'icon': 'book-open',
+        'help': 'Describe a book for Google Book rich results. Format must be one '
+        'of: Hardcover, Paperback, EBook, AudiobookFormat. Language is a 2-letter '
+        'ISO 639-1 code (en, fr, de). ISBN-13 preferred.',
+        'fields': [
+            {'name': 'name', 'label': 'Title', 'kind': 'text', 'required': True},
+            {'name': 'author', 'label': 'Author', 'kind': 'text', 'required': True},
+            {'name': 'isbn', 'label': 'ISBN-13', 'kind': 'text'},
+            {
+                'name': 'book_format',
+                'label': 'Format (Hardcover/Paperback/EBook/AudiobookFormat)',
+                'kind': 'text',
+            },
+            {'name': 'in_language', 'label': 'Language (ISO 639-1, e.g. en)', 'kind': 'text'},
+            {'name': 'date_published', 'label': 'Published', 'kind': 'date'},
+            {'name': 'book_edition', 'label': 'Edition', 'kind': 'text'},
+            {'name': 'url', 'label': 'Book URL', 'kind': 'url'},
+            {'name': 'same_as', 'label': 'Reference URL (Wikipedia / Wikidata)', 'kind': 'url'},
         ],
     },
     {
@@ -303,12 +331,41 @@ def _build_recipe(d: dict) -> dict:
 
 def _build_article(d: dict) -> dict:
     author = _s(d, 'author')
+    publisher = _s(d, 'publisher')
     return {
         '@type': 'Article',
         'headline': _s(d, 'headline'),
+        'description': _s(d, 'description'),
         'author': {'@type': 'Person', 'name': author} if author else '',
+        'publisher': {'@type': 'Organization', 'name': publisher} if publisher else '',
         'datePublished': _s(d, 'date_published'),
+        'dateModified': _s(d, 'date_modified'),
         'image': _s(d, 'image'),
+        'url': _s(d, 'url'),
+    }
+
+
+def _build_book(d: dict) -> dict:
+    fmt = _s(d, 'book_format')
+    fmt_map = {
+        'hardcover': 'https://schema.org/Hardcover',
+        'paperback': 'https://schema.org/Paperback',
+        'ebook': 'https://schema.org/EBook',
+        'audiobook': 'https://schema.org/AudiobookFormat',
+        'audiobookformat': 'https://schema.org/AudiobookFormat',
+    }
+    author = _s(d, 'author')
+    return {
+        '@type': 'Book',
+        'name': _s(d, 'name'),
+        'author': {'@type': 'Person', 'name': author} if author else '',
+        'isbn': _s(d, 'isbn'),
+        'bookFormat': fmt_map.get(fmt.lower().replace(' ', ''), '') if fmt else '',
+        'inLanguage': _s(d, 'in_language'),
+        'datePublished': _s(d, 'date_published'),
+        'bookEdition': _s(d, 'book_edition'),
+        'url': _s(d, 'url'),
+        'sameAs': _s(d, 'same_as'),
     }
 
 
@@ -349,6 +406,7 @@ _BUILDERS = {
     'Event': _build_event,
     'Recipe': _build_recipe,
     'Article': _build_article,
+    'Book': _build_book,
     'VideoObject': _build_video,
     'Course': _build_course,
     'Custom': _build_custom,

@@ -412,6 +412,33 @@ class SeoPlugin(Plugin):
                     'title': 'Preferred GTIN field',
                     'description': "Which barcode property to emit in Product JSON-LD. 'auto' picks the right one from the variant.barcode length.",
                 },
+                # ── Google Book structured data ───────────────────────
+                # developers.google.com/search/docs/appearance/structured-data/book
+                'book_structured_data': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Emit Book structured data',
+                    'description': 'Add Google Book JSON-LD (Work → Edition → ReadAction) on book product pages, alongside the Product graph, so titles can qualify for Book rich results / Book Actions. Needs an author; an ISBN on the book makes it eligible to surface.',
+                },
+                'book_offer_category': {
+                    'type': 'string',
+                    'enum': ['purchase', 'rental', 'free', 'subscription', 'nologinrequired'],
+                    'default': 'purchase',
+                    'title': 'Book action type',
+                    'description': "How a reader obtains the book through the Book ReadAction offer. 'purchase' for a normal store; price is only emitted for purchase/rental.",
+                },
+                'book_eligible_region': {
+                    'type': 'string',
+                    'default': 'US',
+                    'title': 'Book offer region',
+                    'description': 'ISO 3166-1 alpha-2 country the Book offer applies to (e.g. US, GB). Falls back to the shipping country.',
+                },
+                'book_action_platforms': {
+                    'type': 'string',
+                    'default': 'desktop,android,ios',
+                    'title': 'Book action platforms',
+                    'description': 'Comma-separated platforms the buy/read link works on: any of desktop, android, ios.',
+                },
                 # ── Crawl + indexability ──────────────────────────────
                 'noindex_thin_pdp_below_words': {
                     'type': 'integer',

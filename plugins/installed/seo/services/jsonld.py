@@ -729,3 +729,142 @@ def faq_jsonld(qa: list[dict]) -> dict:
             for item in qa
         ],
     }
+
+
+# ── Google Book structured data ──────────────────────────────────────────
+# https://developers.google.com/search/docs/appearance/structured-data/book
+# Model: Book (Work) → workExample → Book (Edition) → potentialAction
+# (ReadAction → EntryPoint + Offer). Distinct from the Product graph: Product
+# drives shopping rich results; Book describes the *title* for Book knowledge
+# results / Book Actions. Built from a plain dict the caller assembles, so it
+# never touches a deferred ORM field (the price-KeyError landmine).
+
+_BOOK_FORMAT_MAP = {
+    'hardcover': 'https://schema.org/Hardcover',
+    'board_book': 'https://schema.org/Hardcover',
+    'leather': 'https://schema.org/Hardcover',
+    'spiral': 'https://schema.org/Hardcover',
+    'paperback': 'https://schema.org/Paperback',
+    'mass_market': 'https://schema.org/Paperback',
+    'ebook': 'https://schema.org/EBook',
+    'audiobook': 'https://schema.org/AudiobookFormat',
+    'audio': 'https://schema.org/AudiobookFormat',
+}
+_BOOK_PLATFORM_MAP = {
+    'desktop': 'https://schema.org/DesktopWebPlatform',
+    'android': 'https://schema.org/AndroidPlatform',
+    'ios': 'https://schema.org/IOSPlatform',
+}
+
+
+def _book_platforms(raw) -> list[str]:
+    """Parse the merchant's platform config → schema.org EntryPoint platforms."""
+    if isinstance(raw, str):
+        keys = [k.strip().lower() for k in raw.split(',') if k.strip()]
+    elif isinstance(raw, (list, tuple)):
+        keys = [str(k).strip().lower() for k in raw]
+    else:
+        keys = []
+    out = [_BOOK_PLATFORM_MAP[k] for k in keys if k in _BOOK_PLATFORM_MAP]
+    return out or list(_BOOK_PLATFORM_MAP.values())
+
+
+def _to_isbn13(isbn13, isbn10) -> str | None:
+    """Google requires ISBN-13 on the edition; convert ISBN-10 when needed."""
+    import re
+
+    if isbn13:
+        digits = re.sub(r'[^0-9]', '', str(isbn13))
+        if len(digits) == 13:
+            return digits
+    if isbn10:
+        core = re.sub(r'[^0-9X]', '', str(isbn10).upper())
+        if len(core) == 10:
+            base = '978' + core[:9]
+            s = sum((1 if i % 2 == 0 else 3) * int(d) for i, d in enumerate(base))
+            check = (10 - (s % 10)) % 10
+            return base + str(check)
+    return None
+
+
+def book_jsonld(data: dict, *, base_url: str = '') -> dict:
+    """Google Book (Work → Edition → ReadAction) JSON-LD.
+
+    `data` is a plain dict assembled by the caller (pure in/out — no ORM):
+      name (required), path|url, authors (list[str], >=1 required),
+      isbn13, isbn10, book_format, language, date_published, edition,
+      same_as (list[str]), price, currency.
+    Returns {} when disabled, or when there's no title/author to form a Work.
+    """
+    if not isinstance(data, dict):
+        return {}
+    cfg = _seo_plugin_cfg()
+    if not cfg.get('book_structured_data', True):
+        return {}
+    name = (data.get('name') or '').strip()
+    authors = [str(a).strip() for a in (data.get('authors') or []) if str(a).strip()]
+    if not name or not authors:
+        return {}
+
+    base = base_url or _site_base_url()
+    url = data.get('url') or ''
+    if url and not url.startswith(('http://', 'https://')):
+        url = base.rstrip('/') + '/' + url.lstrip('/')
+    elif not url:
+        path = data.get('path') or ''
+        url = (base.rstrip('/') + '/' + path.lstrip('/')) if path else base.rstrip('/') + '/'
+
+    def _person(n):
+        return {'@type': 'Person', 'name': str(n)}
+
+    work: dict = {
+        '@context': 'https://schema.org',
+        '@type': 'Book',
+        '@id': f'{url}#work',
+        'name': name,
+        'author': _person(authors[0]) if len(authors) == 1 else [_person(a) for a in authors],
+        'url': url,
+    }
+    same_as = [str(s).strip() for s in (data.get('same_as') or []) if str(s).strip()]
+    if same_as:
+        work['sameAs'] = same_as if len(same_as) > 1 else same_as[0]
+
+    edition: dict = {'@type': 'Book', '@id': f'{url}#edition', 'url': url}
+    isbn13 = _to_isbn13(data.get('isbn13'), data.get('isbn10'))
+    if isbn13:
+        edition['isbn'] = isbn13
+    fmt = _BOOK_FORMAT_MAP.get(str(data.get('book_format') or '').strip().lower())
+    if fmt:
+        edition['bookFormat'] = fmt
+    lang = str(data.get('language') or '').strip().lower()
+    if lang:
+        edition['inLanguage'] = lang[:2]
+    if data.get('date_published'):
+        edition['datePublished'] = str(data['date_published'])
+    if data.get('edition'):
+        edition['bookEdition'] = str(data['edition'])
+
+    platforms = _book_platforms(cfg.get('book_action_platforms'))
+    region = str(cfg.get('book_eligible_region') or cfg.get('shipping_country') or 'US').upper()
+    category = str(cfg.get('book_offer_category') or 'purchase')
+    offer: dict = {
+        '@type': 'Offer',
+        'category': category,
+        'eligibleRegion': {'@type': 'Country', 'name': region},
+    }
+    price = data.get('price')
+    if price not in (None, '') and category in ('purchase', 'rental'):
+        offer['price'] = str(price)
+        offer['priceCurrency'] = str(data.get('currency') or 'USD')
+    edition['potentialAction'] = {
+        '@type': 'ReadAction',
+        'target': {
+            '@type': 'EntryPoint',
+            'urlTemplate': url,
+            'actionPlatform': platforms,
+        },
+        'expectsAcceptanceOf': offer,
+    }
+
+    work['workExample'] = edition
+    return work

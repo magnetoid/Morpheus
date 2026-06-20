@@ -34,6 +34,33 @@ class RegistryTests(TestCase):
         self.assertEqual(block['mainEntity'][0]['@type'], 'Question')
         self.assertEqual(block['mainEntity'][0]['acceptedAnswer']['text'], 'A1.')
 
+    def test_book_block_shape(self):
+        block = build_block(
+            'Book',
+            {
+                'name': 'Utopia',
+                'author': 'Thomas More',
+                'isbn': '9780140449105',
+                'book_format': 'Paperback',
+                'in_language': 'en',
+                'same_as': 'https://en.wikipedia.org/wiki/Utopia_(book)',
+            },
+        )
+        self.assertEqual(block['@type'], 'Book')
+        self.assertEqual(block['author'], {'@type': 'Person', 'name': 'Thomas More'})
+        self.assertEqual(block['isbn'], '9780140449105')
+        self.assertEqual(block['bookFormat'], 'https://schema.org/Paperback')
+        self.assertEqual(block['inLanguage'], 'en')
+        self.assertEqual(block['sameAs'], 'https://en.wikipedia.org/wiki/Utopia_(book)')
+
+    def test_article_block_enriched(self):
+        block = build_block(
+            'Article',
+            {'headline': 'Hi', 'publisher': 'Dot Books', 'date_modified': '2026-06-20'},
+        )
+        self.assertEqual(block['publisher'], {'@type': 'Organization', 'name': 'Dot Books'})
+        self.assertEqual(block['dateModified'], '2026-06-20')
+
     def test_howto_duration_iso8601(self):
         block = build_block(
             'HowTo', {'name': 'X', 'total_time_min': '90', 'steps': [{'text': 'go'}]}

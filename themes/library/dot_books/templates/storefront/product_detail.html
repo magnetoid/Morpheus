@@ -4,6 +4,7 @@
 {% block extra_head %}
 {% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
 {% seo_product_jsonld product %}
+{% if book_jsonld_data %}{% seo_book_jsonld book_jsonld_data %}{% endif %}
 {% seo_product_og product %}
 {% seo_product_md_link product.slug %}
 {% seo_speakable_jsonld %}

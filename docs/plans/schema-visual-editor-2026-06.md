@@ -88,3 +88,40 @@ Helpers: `build_block(type_key, form_data) -> dict` (validate + shape JSON-LD),
 
 `DATABASE_URL=sqlite … test seo`, ruff, `manage.py check`, makemigrations --check,
 disable-guards. Hold push until user says "ship" (batch rule).
+
+---
+
+## Update — 2026-06-20: Book type + Google Book structured data
+
+Two things shipped together (both per Google's structured-data rules):
+
+1. **Schema editor gained a `Book` type** and **Article was enriched**
+   (`schema_types.py`): Book fields = name, author, isbn, book_format
+   (→ schema.org Hardcover/Paperback/EBook/AudiobookFormat), in_language,
+   date_published, book_edition, url, same_as. Article now also emits
+   description, publisher (Organization), dateModified, url. Builders +
+   `_BUILDERS` registration; covered by `test_schema_editor.py`.
+
+2. **On-PDP Google Book structured data** — the Work → `workExample`
+   (Edition) → `potentialAction` (ReadAction → EntryPoint + Offer) model
+   from developers.google.com/.../structured-data/book. This is **separate
+   from the Product graph** (Product drives shopping; Book describes the
+   title). Built by `jsonld.book_jsonld(data)` — a *pure* dict-in/dict-out
+   function (`test_book_jsonld.py`); the PDP view assembles the dict in
+   `catalog._book_jsonld_data()` from `book_attrs()` + identifier metafields
+   (relation queries by PK) + the GraphQL dict's price — **never** the
+   product's deferred `price` field (the djmoney-KeyError 500 landmine;
+   guarded by `storefront/tests/test_pdp_book_jsonld.py`, which loads the row
+   with the same `.only()` the view uses). Emitted via
+   `{% seo_book_jsonld book_jsonld_data %}`.
+
+   Merchant knobs live in `PluginConfig['seo']` (no migration):
+   `book_structured_data` (toggle), `book_offer_category`
+   (purchase/rental/free/subscription/nologinrequired), `book_eligible_region`
+   (ISO-3166 alpha-2, falls back to shipping country), `book_action_platforms`
+   (desktop,android,ios). ISBN-10 is auto-converted to ISBN-13.
+
+   **Eligibility caveat:** valid on-page Book markup helps Google understand
+   the title and is a prerequisite, but the Book Actions / knowledge-panel
+   *rich result* is a gated program (feed + enrollment) — the markup alone
+   doesn't guarantee the actionable result.

@@ -357,6 +357,25 @@ def seo_product_jsonld(product):
 
 
 @register.simple_tag
+def seo_book_jsonld(book_data):
+    """Emit Google Book structured data (Work → Edition → ReadAction).
+
+    `book_data` is the plain dict the PDP view assembles from the book's
+    metafields + identifiers (never an ORM instance — keeps the builder clear
+    of the deferred-field hazard). Returns nothing when the book has no
+    title/author or the merchant turned Book structured data off.
+    """
+    if not book_data:
+        return ''
+    from plugins.installed.seo.services import _jsonld_dump, book_jsonld
+
+    data = book_jsonld(book_data)
+    if not data:
+        return ''
+    return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(data)}</script>')
+
+
+@register.simple_tag
 def seo_product_md_link(slug):
     """<link rel="alternate" type="text/markdown" …> pointing at the
     LLM-friendly markdown view of this product. Used by ChatGPT /

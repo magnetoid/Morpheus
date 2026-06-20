@@ -53,6 +53,7 @@ from .meta import (
 # JSON-LD generators.
 from .jsonld import (
     article_jsonld,
+    book_jsonld,
     breadcrumb_jsonld,
     collection_page_jsonld,
     faq_jsonld,
@@ -141,6 +142,7 @@ __all__ = [
     'resolve_meta',
     # jsonld
     'article_jsonld',
+    'book_jsonld',
     'breadcrumb_jsonld',
     'collection_page_jsonld',
     'faq_jsonld',
