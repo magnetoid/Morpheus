@@ -12,6 +12,11 @@ from __future__ import annotations
 from contextlib import suppress
 from typing import Any
 
+from django.core.cache import cache
+
+_SIGNALS_CACHE_KEY = 'brain:signals:v1'
+_SIGNALS_TTL = 90  # seconds — the raw signals change slowly; the page GET is hot
+
 
 def plugins_health() -> dict:
     try:
@@ -196,8 +201,8 @@ def insights() -> dict:
     return out
 
 
-def gather_all() -> dict[str, Any]:
-    """Everything the Brain knows, in one call."""
+def _gather_all_uncached() -> dict[str, Any]:
+    """Everything the Brain knows, in one (DB-heavy) pass."""
     return {
         'plugins': plugins_health(),
         'errors': errors_signal(),
@@ -206,3 +211,19 @@ def gather_all() -> dict[str, Any]:
         'storefront': storefront(),
         'improvements': insights(),
     }
+
+
+def gather_all() -> dict[str, Any]:
+    """Cached signal snapshot — ~18 DB queries collapse to one cache hit on a hot
+    page GET. Refreshed when the Refresh-analysis action calls
+    invalidate_signals_cache(). Redis IGNORE_EXCEPTIONS=True → safe degrade to
+    uncached on an outage."""
+    data = cache.get(_SIGNALS_CACHE_KEY)
+    if data is None:
+        data = _gather_all_uncached()
+        cache.set(_SIGNALS_CACHE_KEY, data, _SIGNALS_TTL)
+    return data
+
+
+def invalidate_signals_cache() -> None:
+    cache.delete(_SIGNALS_CACHE_KEY)

@@ -17,6 +17,9 @@ def brain(request):
     from core.brain import analyst, signals
 
     if request.method == 'POST' and request.POST.get('action') == 'refresh_analysis':
+        # Refresh reads fresh signals: clear the snapshot cache so the forced
+        # analysis (and the page's subsequent GET) sees current data.
+        signals.invalidate_signals_cache()
         result = analyst.get_analysis(force=True)
         if result.get('configured') is False:
             messages.warning(request, result.get('message', 'No AI provider configured.'))

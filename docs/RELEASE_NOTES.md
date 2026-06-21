@@ -10,6 +10,22 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.5 — 2026-06-21
+
+### Core
+- **Morpheus Brain now actually sees application errors.** A fail-soft, loop-safe
+  logging handler routes ERROR-level app logs into the error pipeline
+  (`ErrorEvent` → error_log collector → `SiSignal`), so the Brain's **Errors tab**
+  and AI analysis reflect real exceptions — completing the "analyze error logs"
+  capability (previously those logs only hit the console).
+- **Brain correctness fixes:** merchant insights are now fed to the AI digest
+  (they were gathered + shown but never sent to the model); a transient AI-provider
+  failure no longer pins a stale error banner for 24h (only successful analyses are
+  cached); and the signal snapshot is cached ~90s (was ~18 DB queries on every page
+  load), refreshed on demand when you click *Refresh analysis*.
+
+---
+
 ## v0.2.4 — 2026-06-21
 
 ### Core

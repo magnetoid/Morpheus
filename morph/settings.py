@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.2.4')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.2.5')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -673,6 +673,21 @@ LOGGING = {
 import logging as _logging  # noqa: E402
 
 _logging.captureWarnings(True)
+
+# Bridge ERROR-level app logs into the Morpheus Brain's signal pipeline
+# (observability.ErrorEvent → error_log collector → SiSignal → Brain). Skipped
+# under tests (no DB writes from log lines in the suite). The handler is
+# fail-soft + loop-safe; see core/brain/log_handler.py. Attached to the app +
+# request/security/celery loggers, NOT db.backends (its own writes log there)
+# nor py.warnings (deprecations aren't errors).
+if not _RUNNING_TESTS:
+    LOGGING['handlers']['error_event'] = {
+        'class': 'core.brain.log_handler.ErrorEventLogHandler',
+        'level': 'ERROR',
+        'filters': ['request_id'],
+    }
+    for _brain_logger in ('morph', 'morpheus', 'django.request', 'django.security', 'celery'):
+        LOGGING['loggers'][_brain_logger]['handlers'].append('error_event')
 
 # ── Self-improvement engine ────────────────────────────────────────────────────
 # Configure the autonomic loop. None of these settings are required —

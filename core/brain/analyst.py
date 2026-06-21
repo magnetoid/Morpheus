@@ -82,6 +82,18 @@ def _summarize_signals(signals: dict) -> str:
         )
     if plugins.get('total'):
         lines.append(f'PLUGINS: {plugins.get("active_count")}/{plugins["total"]} active.')
+    improvements = signals.get('improvements') or {}
+    if improvements.get('insights'):
+        lines.append('MERCHANT INSIGHTS (unread):')
+        lines += [
+            f'- [{i.get("priority") or "?"}/{i.get("type") or "?"}] {i["title"]}'
+            f'{" — impact: " + str(i["impact"]) if i.get("impact") else ""}'
+            for i in improvements['insights'][:8]
+            if i.get('title')
+        ]
+    if improvements.get('setup'):
+        lines.append('SETUP STEPS STILL PENDING:')
+        lines += [f'- {s.get("title") or s.get("label") or s}' for s in improvements['setup'][:8]]
     return '\n'.join(lines) or 'No signals available yet.'
 
 
@@ -159,11 +171,18 @@ def get_analysis(*, force: bool = False) -> dict[str, Any]:
         if cached:
             return cached
     result = analyze()
-    # Stamp + cache only successful or clearly-actionable results.
     from django.utils import timezone
 
     result['generated_at'] = timezone.now().isoformat()
-    cache.set(_CACHE_KEY, result, _TTL)
+    # Cache only successful, actionable results — a transient provider failure or
+    # an unparseable reply is returned to the caller (the page still shows it) but
+    # NOT cached, so it can't pin a stale error for the full TTL.
+    if (
+        result.get('configured')
+        and not result.get('error')
+        and (result.get('recommendations') or result.get('summary'))
+    ):
+        cache.set(_CACHE_KEY, result, _TTL)
     return result
 
 
