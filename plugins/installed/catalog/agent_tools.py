@@ -27,8 +27,11 @@ def _money_str(value) -> str:
     name='products.search',
     description=(
         'Search products. Filter by status (active/draft/archived), name '
-        '(substring), sku (substring), category slug or vendor slug. '
-        'Returns up to `limit` products, newest first.'
+        '(substring), sku (substring), category slug or vendor slug. Returns '
+        '`total` (the real number of matching products in the catalogue) plus a '
+        'sample of up to `limit` of them in `products` (newest first). To answer '
+        '"how many products/books" use `total`, NOT the length of `products` — '
+        'for an exact count without the sample, use products.count.'
     ),
     scopes=['system.read'],
     schema={
@@ -67,7 +70,11 @@ def products_search_tool(
         )
     if vendor:
         qs = qs.filter(vendor__slug__iexact=vendor) | qs.filter(vendor__name__icontains=vendor)
-    qs = qs.order_by('-created_at')[: max(1, min(int(limit or 20), 50))]
+    # Total matching the filters — counted BEFORE the limit, so the agent
+    # reports the real catalogue size (e.g. 859), not the page size. The old
+    # `count: len(rows)` made Linda say "20 books" for an 859-product store.
+    total = qs.count()
+    page = qs.order_by('-created_at')[: max(1, min(int(limit or 20), 50))]
     rows = [
         {
             'id': str(p.id),
@@ -81,10 +88,50 @@ def products_search_tool(
             'vendor': getattr(p.vendor, 'name', '') if p.vendor_id else '',
             'product_type': getattr(p, 'product_type', ''),
         }
-        for p in qs
+        for p in page
     ]
     return ToolResult(
-        output={'products': rows, 'count': len(rows)}, display=f'{len(rows)} product(s)'
+        output={'products': rows, 'returned': len(rows), 'total': total},
+        display=f'{len(rows)} of {total} product(s)',
+    )
+
+
+@tool(
+    name='products.count',
+    description=(
+        'Count products in the catalogue, optionally filtered by status '
+        '(active/draft/archived), category slug, or vendor slug. Returns the '
+        'exact total. Use this to answer "how many products/books are there".'
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'status': {'type': 'string'},
+            'category': {'type': 'string'},
+            'vendor': {'type': 'string'},
+        },
+    },
+)
+def products_count_tool(*, status: str = '', category: str = '', vendor: str = '') -> ToolResult:
+    from django.db.models import Count
+
+    from plugins.installed.catalog.models import Product
+
+    qs = Product.objects.all()
+    if status:
+        qs = qs.filter(status=status)
+    if category:
+        qs = qs.filter(category__slug__iexact=category) | qs.filter(
+            category__name__icontains=category
+        )
+    if vendor:
+        qs = qs.filter(vendor__slug__iexact=vendor) | qs.filter(vendor__name__icontains=vendor)
+    total = qs.count()
+    by_status = dict(Product.objects.values_list('status').annotate(n=Count('id')))
+    return ToolResult(
+        output={'total': total, 'by_status': by_status},
+        display=f'{total} product(s)',
     )
 
 

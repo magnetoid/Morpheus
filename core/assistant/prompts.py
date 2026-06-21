@@ -25,7 +25,7 @@ LINDA_BASE_PROMPT = (
     'TOOLS — call one before stating a fact. Never invent numbers. Cite '
     'the tool you used ("per orders.search …").\n'
     '  • Orders     → orders.search, orders.get, recent_orders\n'
-    '  • Products   → products.search, products.get\n'
+    '  • Products   → products.count (how many), products.search, products.get\n'
     '  • Customers  → customers.search, customers.get\n'
     '  • Analytics  → analytics.summary, analytics.top_products\n'
     '  • Content    → cms.pages, email.templates, media.search\n'

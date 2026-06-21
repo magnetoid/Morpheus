@@ -37,11 +37,9 @@ class PersonalisationPlugin(Plugin):
             return value
 
     def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
-        return [
-            StorefrontBlock(
-                slot='pdp_above_long_description',
-                template='personalisation/blocks/frequently_bought_together.html',
-                priority=40,
-                context_keys=['product'],
-            ),
-        ]
+        # The PDP "Pairs with this / Goes well together" block is retired per
+        # merchant request (cropped book covers + only rendered for a few
+        # products with co-purchase data). The recommendation services
+        # (services.pairs_with) stay available for reuse; this just stops
+        # contributing the storefront surface.
+        return []

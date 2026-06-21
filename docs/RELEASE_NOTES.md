@@ -10,6 +10,20 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.6 — 2026-06-21
+
+### Plugins
+- **Linda now reports the real product count.** Her `products.search` tool
+  returned `count = page size` (capped at 20–50), so she'd say "there are ~40
+  books" for an 859-product catalogue. It now returns `total` (the true number
+  of matching products) alongside the sample, and a new **`products.count`** tool
+  answers "how many products/books" exactly. Linda's prompt points at it.
+- Retired the PDP **"Pairs with this / Goes well together"** recommendation block
+  (cropped book covers; only rendered for the few products with co-purchase
+  data). The recommendation service stays available for reuse.
+
+---
+
 ## v0.2.5 — 2026-06-21
 
 ### Core

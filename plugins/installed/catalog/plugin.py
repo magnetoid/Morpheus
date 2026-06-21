@@ -125,11 +125,12 @@ class CatalogPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.catalog.agent_tools import (  # noqa: PLC0415
+            products_count_tool,
             products_get_tool,
             products_search_tool,
         )
 
-        return [products_search_tool, products_get_tool]
+        return [products_search_tool, products_count_tool, products_get_tool]
 
     def contribute_settings_panel(self):
         return SettingsPanel(
