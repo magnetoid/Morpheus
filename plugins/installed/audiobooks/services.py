@@ -63,6 +63,25 @@ def source_text(audiobook) -> str:
     return '. '.join(p for p in parts if p).strip()
 
 
+def get_or_create_audiobook_edition(product, *, sku: str):
+    """Return the product's Audiobook edition, creating its digital
+    ``ProductVariant`` + ``Audiobook`` row when absent. Callers compute the SKU."""
+    from plugins.installed.audiobooks.models import Audiobook
+    from plugins.installed.catalog.models import ProductVariant
+
+    ab = Audiobook.for_product(product)
+    if ab is None:
+        variant = ProductVariant.objects.create(
+            product=product,
+            name='Audiobook',
+            sku=sku[:100],
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        ab = Audiobook.objects.create(variant=variant)
+    return ab
+
+
 def _chunks(text: str, size: int = _MAX_CHARS):
     """Split into <=size pieces at sentence boundaries."""
     buf = ''

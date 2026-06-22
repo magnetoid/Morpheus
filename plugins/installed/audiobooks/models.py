@@ -51,6 +51,11 @@ class Audiobook(models.Model):
     def __str__(self) -> str:
         return f'Audiobook({self.variant_id}/{self.status})'
 
+    @classmethod
+    def for_product(cls, product):
+        """The audiobook edition attached to a product (any status), or None."""
+        return cls.objects.filter(variant__product=product).select_related('variant').first()
+
     @property
     def is_ready(self) -> bool:
         """True when there's a playable full track — gates the storefront player."""

@@ -40,7 +40,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from plugins.installed.audiobooks.models import Audiobook
+        from plugins.installed.audiobooks.services import get_or_create_audiobook_edition
         from plugins.installed.catalog.models import Product, ProductVariant
 
         dry = options['dry_run']
@@ -55,15 +55,14 @@ class Command(BaseCommand):
         if limit:
             qs = qs[:limit]
 
-        ebooks = audiobooks = 0
+        processed = 0
         for product in qs.iterator():
             pdf_name = product.digital_file.name
             base = (product.sku or str(product.id))[:90]
 
             if dry:
                 self.stdout.write(f'  would set up: {product.name!r} (PDF {pdf_name})')
-                ebooks += 1
-                audiobooks += 1
+                processed += 1
                 continue
 
             with transaction.atomic():
@@ -82,31 +81,17 @@ class Command(BaseCommand):
                     ebook.variant_type = 'digital'
                     ebook.requires_shipping = False
                     ebook.save(update_fields=['digital_file', 'variant_type', 'requires_shipping'])
-                ebooks += 1
 
                 # 2. Audiobook edition + narration source.
-                ab = (
-                    Audiobook.objects.filter(variant__product=product)
-                    .select_related('variant')
-                    .first()
-                )
-                if ab is None:
-                    variant = ProductVariant.objects.create(
-                        product=product,
-                        name='Audiobook',
-                        sku=f'{base}-AUDIO',
-                        variant_type='digital',
-                        requires_shipping=False,
-                    )
-                    ab = Audiobook.objects.create(variant=variant)
+                ab = get_or_create_audiobook_edition(product, sku=f'{base}-AUDIO')
                 if not ab.source_pdf:
                     ab.source_pdf.name = pdf_name
                     ab.save(update_fields=['source_pdf', 'updated_at'])
-                audiobooks += 1
+                processed += 1
 
         verb = 'Would create/update' if dry else 'Created/updated'
         self.stdout.write(
             self.style.SUCCESS(
-                f'{verb} {ebooks} e-book variant(s) and {audiobooks} audiobook edition(s).'
+                f'{verb} {processed} e-book variant(s) and {processed} audiobook edition(s).'
             )
         )
