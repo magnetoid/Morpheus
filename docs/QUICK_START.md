@@ -48,9 +48,10 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Dev mode runs against SQLite, drops the Redis/Celery dependency
-(`CELERY_TASK_ALWAYS_EAGER=True`), and skips pgvector — semantic
-search falls back to keyword. Everything else works.
+Dev mode runs against SQLite and skips pgvector — semantic search falls
+back to keyword. Note `CELERY_TASK_ALWAYS_EAGER` is on **only** under the
+test suite (`settings._RUNNING_TESTS`), so locally a queued task
+(`.delay(...)`) still needs Redis running to fire. Everything else works.
 
 ## What you get on first boot
 

@@ -97,34 +97,28 @@ disable; `admin_dashboard/tests/test_disable_guards.py` fails the build if a
 plugin link is added unguarded. (loyalty's `/account/points/` and the
 payments settings panel — the old known debt — are now properly contributed.)
 
-**Known debt to repay (still fails the disable test):**
-the storefront account *summary* is fixed — `_account_summary` is now
-assembled entirely by `ACCOUNT_SUMMARY_FIELDS` subscribers (orders,
-loyalty, gift_cards, digital_products) — but the dedicated account
-sub-pages (orders list, credits, downloads) still query plugin models
-directly. The dashboard *home page* is fixed — KPIs, panels and the
-setup checklist are assembled via the `DASHBOARD_KPIS` /
-`DASHBOARD_HOME_PANELS` / `DASHBOARD_SETUP_STEPS` filters and the
-activity feed via `ACTIVITY_FEED` (guarded by
+**Known debt to repay (still fails the disable test):** the storefront
+account *summary* is fixed — `_account_summary` is assembled entirely by
+`ACCOUNT_SUMMARY_FIELDS` subscribers — but the account *sub-pages* (orders
+list, credits, downloads) still query plugin models directly. The
+dashboard *home page* is fixed — KPIs, panels and the setup checklist via
+the `DASHBOARD_KPIS` / `DASHBOARD_HOME_PANELS` / `DASHBOARD_SETUP_STEPS`
+filters, the activity feed via `ACTIVITY_FEED` (guarded by
 `admin_dashboard/tests/test_home_modular.py` +
-`test_activity_feed_modular.py`; design in
-`docs/plans/dashboard-home-modular.md`), and the pulse routes now live
-in ai_assistant via `register_urls` — `home.py` imports no sibling
-plugin at all.
+`test_activity_feed_modular.py`), and the pulse routes now live in
+ai_assistant via `register_urls` — `home.py` imports no sibling plugin.
 
 **Core → plugin imports (wrong direction; core should never import
-`plugins.installed.*`):** `core/emails` is fixed (cms's EmailTemplate now
-arrives via the `EMAIL_TEMPLATE_OVERRIDE` filter; the site base URL moved
-to `core/utils/site.py` and seo delegates to it). The **provider-config
-coupling is fixed** too: `core/agents/llm.py` + `core/assistant/consensus.py`
-now resolve through `core/agents/provider_registry.py` (env/settings-only
-default; ai_assistant's `ready()` registers its dashboard-aware resolver) —
-core no longer imports the plugin. Still leaking: `core/assistant/tools/*`
-queries catalog/orders/cms/metafields/… models directly — the right fix
-is migrating those tools to each plugin's `contribute_agent_tools()`;
-and `core/context_processors.cart_context` imports orders.Cart
-(`Plugin.register_context_processor` exists but nothing consumes the
-registry's list yet, so it can't move until that API is wired up).
+`plugins.installed.*`):** *fixed* — `core/emails` (cms's EmailTemplate
+arrives via the `EMAIL_TEMPLATE_OVERRIDE` filter; site base URL moved to
+`core/utils/site.py`), and the provider-config coupling
+(`core/agents/llm.py` + `core/assistant/consensus.py` resolve through
+`core/agents/provider_registry.py`; ai_assistant's `ready()` registers the
+dashboard-aware resolver). *Still leaking:* `core/assistant/tools/*`
+queries catalog/orders/cms/metafields/… models directly (fix: migrate each
+to the owning plugin's `contribute_agent_tools()`); and
+`core/context_processors.cart_context` imports `orders.Cart` (can't move
+until something consumes `Plugin.register_context_processor`).
 
 ---
 
@@ -148,12 +142,21 @@ means:
 1. Make the change.
 2. Compile / syntax check (`python -m py_compile <files>` for Python,
    tag balance for Django templates).
-3. Deploy + smoke (rsync → `docker build` on tetra → `docker compose up
-   -d --no-build --force-recreate web` → `migrate` → curl the public URL).
-4. Honest report: what shipped, what didn't, what's left.
+3. Smoke locally before reaching for prod. `docker compose up` boots the
+   full stack (postgres + redis + worker + beat) at `localhost:8000`; the
+   no-Docker `runserver` path (SQLite, in [`docs/QUICK_START.md`](docs/QUICK_START.md))
+   covers sync request/response paths but **not** async ones —
+   `CELERY_TASK_ALWAYS_EAGER` is on *only* under tests
+   (`settings._RUNNING_TESTS`), so `.delay()` work needs Redis or the
+   compose stack to actually fire.
+4. Deploy + smoke prod *when the change warrants it* (rsync → `docker
+   build` on tetra → `docker compose up -d --no-build --force-recreate
+   web` → `migrate` → curl the public URL). Merging to `main` is itself a
+   prod deploy — see the landmine below.
+5. Honest report: what shipped, what didn't, what's left.
 
 A passing type/lint/syntax check is *necessary*, not *sufficient*.
-Smoke against the live URL.
+Smoke the real behaviour — locally first, then the live URL.
 
 **Landmine — running tests locally.** Bare `python manage.py test` reads
 `DATABASE_URL` from `.env` and tries to reach the Docker `db` host, so it
