@@ -104,6 +104,8 @@ class AudiobooksPlugin(Plugin):
                 ab.status = 'ready'
             if files and files.get('audiobook_sample'):
                 ab.sample_file = files['audiobook_sample']
+            if files and files.get('audiobook_source_pdf'):
+                ab.source_pdf = files['audiobook_source_pdf']
             ab.save()
         except Exception as exc:  # noqa: BLE001
             import logging

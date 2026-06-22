@@ -31,6 +31,12 @@ class Audiobook(models.Model):
     )
     audio_file = models.FileField(upload_to='audiobooks/', null=True, blank=True)
     sample_file = models.FileField(upload_to='audiobooks/samples/', null=True, blank=True)
+    source_pdf = models.FileField(
+        upload_to='audiobooks/source/',
+        null=True,
+        blank=True,
+        help_text='Book PDF used as the narration source for ElevenLabs generation.',
+    )
     narrator = models.CharField(max_length=200, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     source = models.CharField(max_length=12, choices=SOURCE_CHOICES, default='uploaded')

@@ -45,6 +45,13 @@
     <input type="file" name="audiobook_sample" accept="audio/*" class="input">
   </div>
 
+  <div>
+    <label class="block text-sm font-medium mb-1">Source PDF (narration script)</label>
+    <input type="file" name="audiobook_source_pdf" accept="application/pdf,.pdf" class="input">
+    {% if audiobook and audiobook.source_pdf %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: {{ audiobook.source_pdf.name }}</p>{% endif %}
+    <p class="text-xs text-[color:var(--text-muted)] mt-1">The book PDF to narrate. Falls back to the product&rsquo;s digital file when empty.</p>
+  </div>
+
   {% if audiobook %}
   <div class="flex items-center gap-2 flex-wrap">
     <button type="button" class="btn btn-secondary text-xs"
@@ -53,7 +60,7 @@
     </button>
     <span class="text-xs text-[color:var(--text-muted)]">Status: {{ audiobook.get_status_display }}</span>
   </div>
-  <p class="text-xs text-[color:var(--text-muted)]">Narrates the title, author, synopsis &amp; description with your configured ElevenLabs voice. Set the key + voice in Settings &rarr; Product Types &rarr; Audiobooks.</p>
+  <p class="text-xs text-[color:var(--text-muted)]">Narrates the <strong>source PDF</strong> (the book itself) with your configured ElevenLabs voice — or the title, author, synopsis &amp; description when no PDF is set. Set the key + voice in Settings &rarr; Product Types &rarr; Audiobooks.</p>
   {% else %}
   <p class="text-xs text-[color:var(--text-muted)]">Save the audiobook edition first, then ElevenLabs can generate the narration here.</p>
   {% endif %}

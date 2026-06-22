@@ -35,6 +35,7 @@ dj-database-url>=3.1
 python-decouple>=3.8
 django-import-export>=4.4
 reportlab>=4.4
+pypdf>=4.0
 qrcode>=8.0
 nats-py>=2.9.0
 gunicorn>=23.0

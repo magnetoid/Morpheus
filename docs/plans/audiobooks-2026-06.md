@@ -86,3 +86,17 @@ everyone else. (Compose, don't duplicate.)
 - An audiobook variant with an uploaded file shows a working modal player on the PDP.
 - ElevenLabs key lives only in the audiobooks settings panel (redacted).
 - No new cart/checkout code — the audiobook is a real, purchasable digital variant.
+
+## 2026-06-22 — narrate the book PDF + "audiobook on demand"
+Generation now sources the **actual book** instead of the marketing blurb:
+- `Audiobook.source_pdf` (migration `0002`) holds the narration-source PDF —
+  uploadable on the product-form card, kept **separate** from the delivered audio
+  so buyers still receive the MP3, not the PDF.
+- `pdf_text.extract_pdf_text()` (pypdf, fail-soft → `''` on encrypted/scanned/corrupt)
+  pulls the text; `services.source_text()` prefers `source_pdf` → `Product.digital_file`
+  → the title/synopsis/description blurb.
+- `manage.py backfill_book_formats [--dry-run] [--limit N]` turns every book with a
+  `Product.digital_file` PDF into an *audiobook-on-demand* product: an **"E-book"**
+  digital variant carrying the PDF **+** the **Audiobook** edition with `source_pdf`
+  set. Idempotent; reuses the stored file (no duplication); generates no audio —
+  that stays on-demand via the Generate button. New dep: `pypdf`.

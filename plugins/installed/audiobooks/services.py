@@ -36,8 +36,21 @@ def _strip_html(text: str) -> str:
 
 
 def source_text(audiobook) -> str:
-    """The narration script: title + author + synopsis + long description."""
+    """The narration script.
+
+    Prefer the *actual book*: the audiobook's uploaded ``source_pdf``, else the
+    product-level ``digital_file`` PDF, narrated in full via ``pypdf``. Falls
+    back to the title + author + synopsis + description blurb when no readable
+    PDF is present (so a book with only marketing copy still narrates).
+    """
     product = audiobook.variant.product
+    pdf = getattr(audiobook, 'source_pdf', None) or getattr(product, 'digital_file', None)
+    if pdf:
+        from plugins.installed.audiobooks.pdf_text import extract_pdf_text
+
+        body = extract_pdf_text(pdf)
+        if body:
+            return body
     parts = [product.name or '']
     book = getattr(product, 'book', None)
     if book is not None:
