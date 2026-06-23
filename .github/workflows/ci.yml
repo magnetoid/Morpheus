@@ -38,6 +38,23 @@ jobs:
         # B308/B703 (mark_safe) are covered per-site by ruff S308 noqa review.
         run: bandit -q -r . -x ./venv,./tests,./.venv,./db.sqlite3 -ll -s B308,B703
 
+  audit:
+    # Dependency CVE scan (pip-audit) over requirements.txt.
+    # Report-only for now (continue-on-error) so a pre-existing transitive CVE
+    # doesn't block every PR on day one — triage the initial findings, then drop
+    # continue-on-error to make this an enforcing gate. Pairs with dependabot.yml.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install pip-audit
+      - name: pip-audit (dependency CVEs)
+        run: pip-audit -r requirements.txt
+
   migrations:
     # Apply every migration against real Postgres — sqlite (used by the test job)
     # types loosely and silently accepts e.g. a bigint->uuid AlterField cast that
