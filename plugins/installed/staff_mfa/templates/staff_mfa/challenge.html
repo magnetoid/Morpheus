@@ -1,0 +1,28 @@
+{% extends "account/base.html" %}
+
+{% block head_title %}Two-factor verification{% endblock %}
+{% block heading %}Enter your authenticator code{% endblock %}
+{% block subheading %}<p class="text-sm" style="color:var(--text-muted);">Open your authenticator app and enter the current 6-digit code. Lost your device? Enter one of your recovery codes instead.</p>{% endblock %}
+
+{% block content %}
+<form method="post" class="space-y-3">
+  {% csrf_token %}
+
+  {% if error %}
+  <div style="border:1px solid var(--danger); color:var(--danger); padding:.55rem .65rem; border-radius:6px; font-size:.85rem;">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <div>
+    <label for="id_code">Authenticator or recovery code</label>
+    <input id="id_code" name="code" inputmode="text" autocomplete="one-time-code"
+           maxlength="32" required autofocus
+           placeholder="000000"
+           style="font-family: Menlo, monospace; font-size: 1.4rem; letter-spacing: .25em; text-align: center;">
+    <p class="text-xs" style="color: var(--text-muted); margin-top:.35rem;">Codes refresh every 30 seconds.</p>
+  </div>
+
+  <button type="submit" class="w-full" style="padding:.6rem; border-radius:6px; background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer;">Verify</button>
+</form>
+{% endblock %}

@@ -1,6 +1,9 @@
 # Staff MFA (two-factor authentication) — spec
 
-Status: **draft for review** (no code yet). Owner decision pending on the forks marked **[CHOICE]**.
+Status: **implemented in v0.2.7** (`plugins/installed/staff_mfa/` + the one core
+hook). Both forks resolved as recommended: **`pyotp`** for TOTP, and **opt-in**
+rollout (`require_for_staff=False`). As-built deltas from the draft are noted
+inline below (secret-at-rest posture; soft vs hard enforcement).
 
 ## Problem
 Staff/admin sign-in is **single-factor**: a one-time code emailed to the address
@@ -31,13 +34,12 @@ Disable the plugin → the hook has no subscriber → login proceeds exactly as 
 - MFA for storefront customers (scope to staff first).
 - SMS factor (phishable / SIM-swap — skip).
 
-## [CHOICE] Second factor library: `pyotp` (recommended) vs `allauth.mfa`
-- **Recommend `pyotp`** in the plugin: tiny, ubiquitous, RFC-6238; standalone, so
-  it fits the custom email-OTP flow with no allauth-flow assumptions. New dep,
-  justified per the Verified-Output rule (real, widely-used PyPI package).
-- **Alternative `allauth.mfa`**: already bundled (allauth 65.x → **no new dep**),
-  but it hooks allauth's *password* login, not our parallel email-OTP flow, so
-  wiring it into our `otp_verify` is awkward. Pick this only to avoid the dep.
+## Second factor library: `pyotp` (chosen)
+**Resolved → `pyotp` (`>=2.9`, added to `requirements.txt`).** Tiny, ubiquitous,
+RFC-6238; standalone, so it fits the custom email-OTP flow with no allauth-flow
+assumptions. The contract test hits its real interface (not a mock).
+`allauth.mfa` was rejected: it hooks allauth's *password* login, not our parallel
+email-OTP flow, so wiring it into `otp_verify` would have been awkward.
 
 ## Core extension point (the only `core` change)
 In `core/auth/views.py:otp_verify`, at the success branch (today `login(request,
@@ -55,10 +57,15 @@ Register `AUTH_SECOND_FACTOR` in `core.hooks`. ~6 lines in core; **all** MFA log
 lives in the plugin. With no subscriber the behaviour is byte-identical to today.
 
 ## Plugin: `plugins/installed/staff_mfa/`
-- **models.py**: `MfaDevice(user OneToOne, secret, confirmed_at, created_at)` and
-  `RecoveryCode(user FK, code_hash, used_at)`. TOTP secret is **encrypted at rest**
-  and redacted from the assistant (mirror the ElevenLabs-key pattern); recovery
-  codes are **hashed**, never stored plaintext.
+- **models.py**: `StaffMfaDevice(user OneToOne, secret, confirmed_at, last_used_at,
+  created_at)` and `MfaRecoveryCode(device FK, code_hash, used_at, created_at)`.
+  Recovery codes are **SHA-256 hashed**, never stored plaintext (single-use).
+  **As-built — TOTP secret at rest:** the platform has *no* field-encryption helper
+  (API keys live plaintext in `PluginConfig` today), so to match that posture the
+  base32 seed is stored as a plain model field — but it is **never exposed to the
+  assistant** (the plugin contributes no agent tool over these models), nor to the
+  public API, logs, or webhooks. At-rest *encryption* of the seed is a documented
+  follow-up, deliberately not invented here (simplicity-first / match-existing).
 - **AUTH_SECOND_FACTOR subscriber** (`apps.py:ready()`): if `user.is_staff` and
   (a confirmed device exists OR enforcement requires one) → stash pending user id +
   `next` in the session and return `redirect()` to the challenge view; else return
@@ -87,9 +94,14 @@ lives in the plugin. With no subscriber the behaviour is byte-identical to today
 - **Phase A** — plugin enabled, opt-in: staff may enroll; unenrolled staff log in
   as today.
 - **Phase B** — flip `require_for_staff=True`: unenrolled staff are routed to
-  enrollment before dashboard access. **First-admin grace**: enforcement applies
-  only once ≥1 device exists org-wide (or via a documented `reset_mfa` management
-  command), so the first admin can't lock everyone out.
+  enrollment **at sign-in**. **First-admin grace**: enforcement applies only once
+  ≥1 device exists org-wide, so the first admin can't lock everyone out; the
+  `reset_mfa` management command is the break-glass.
+  **As-built — enforcement is currently login-time (soft).** Enrolled staff are
+  *hard*-gated (login cannot complete without TOTP). Unenrolled-but-required staff
+  are redirected to enrollment at the sign-in boundary; hard per-request gating of
+  every dashboard URL (so they can't navigate away unenrolled) needs a plugin
+  middleware and is the documented Phase-B follow-up.
 
 ## Phases (each with a verify step)
 1. **Core hook** — add `AUTH_SECOND_FACTOR` filter + fire it in `otp_verify`.
@@ -116,16 +128,18 @@ lives in the plugin. With no subscriber the behaviour is byte-identical to today
 - **Bricking the only admin** → enforcement needs the first-device grace + a reset
   path (management command) before Phase B flips.
 - **TOTP brute force** → rate-limit the challenge (6 digits = 1e6 space).
-- **Secret at rest** → encrypt the TOTP secret; never log it; redact from the assistant.
+- **Secret at rest** → never logged, never exposed to the assistant/API/webhooks;
+  stored as a plain field matching the platform's existing secret posture
+  (at-rest encryption is a documented follow-up — see models.py note above).
 - Don't regress the email-OTP lockout — the second factor is **additive**, after
   OTP success.
 - **Migration** → nullable additions only; no cross-type FK retarget (the
   sqlite-masks-Postgres landmine).
 
-## [CHOICE] Ship enabled or OFF-by-default?
-Recommend registering `staff_mfa` in `MORPHEUS_DEFAULT_PLUGINS` but **opt-in**
-(`require_for_staff=False`) so it's present and enrollable without forcing a flow
-change on existing staff; flip enforcement deliberately in Phase B.
+## Rollout: registered + opt-in (chosen)
+**Resolved →** `staff_mfa` is registered in `MORPHEUS_DEFAULT_PLUGINS` and ships
+**opt-in** (`require_for_staff=False`): present and enrollable without forcing a
+flow change on existing staff. Enforcement is flipped deliberately in Phase B.
 
 ## Success criteria
 - A staff user can enroll TOTP and is then required to provide it at every login.
