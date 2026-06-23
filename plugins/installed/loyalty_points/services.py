@@ -59,7 +59,10 @@ def _on_order_paid(order=None, **_kwargs):
     if order is None:
         return
     customer = getattr(order, 'customer', None) or getattr(order, 'user', None)
-    if customer is None or not getattr(customer, 'is_authenticated', True):
+    # Default False (matching get_balance): a guest customer object without an
+    # is_authenticated attribute must NOT earn points — points require an account
+    # to redeem against later (see the docstring above).
+    if customer is None or not getattr(customer, 'is_authenticated', False):
         return
     total_money = getattr(order, 'total', None) or getattr(order, 'grand_total', None)
     amount = getattr(total_money, 'amount', total_money)

@@ -245,10 +245,21 @@ class HookRegistry:
             return
 
         try:
+            from django.db import transaction
+
             endpoints = WebhookEndpoint.objects.filter(is_active=True)
             for endpoint in endpoints:
                 if event in endpoint.events or '*' in endpoint.events:
-                    dispatch_webhook.delay(endpoint.url, endpoint.secret, event, payload)
+                    # Defer the Celery enqueue until the surrounding DB transaction
+                    # commits, so a request that rolls back can't emit a phantom
+                    # webhook. on_commit runs the callback immediately when no atomic
+                    # block is open, so the non-transactional path is unchanged. Bind
+                    # url/secret as defaults to dodge the late-binding closure trap.
+                    transaction.on_commit(
+                        lambda url=endpoint.url, secret=endpoint.secret: dispatch_webhook.delay(
+                            url, secret, event, payload
+                        )
+                    )
         except Exception as e:  # noqa: BLE001 — DB outage must not break local handlers
             logger.warning('Webhook dispatch failed for %s: %s', event, e, exc_info=True)
 
