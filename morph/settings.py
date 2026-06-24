@@ -178,6 +178,10 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.post_checkout_upsell',
     'plugins.installed.drops',
     'plugins.installed.motion',
+    # Agentic Commerce Protocol (ACP 2026-04-17). Agent-driven discovery +
+    # checkout backed by our Cart. Ships OFF by default — the money path
+    # (Stripe Shared Payment Token) is gated until a merchant enrolls.
+    'plugins.installed.agentic_checkout',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

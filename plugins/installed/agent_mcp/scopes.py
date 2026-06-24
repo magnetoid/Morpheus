@@ -86,6 +86,18 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
         'Content · write',
         'AI content generation (product descriptions, etc.).',
     ),
+    # Agentic Commerce Protocol (ACP) — consumed by the agentic_checkout plugin.
+    # NOTE: unlike every other scope, acp.checkout is NOT granted by the
+    # wildcard. The agentic_checkout surface is payment-adjacent, so its auth
+    # layer (agentic_checkout/auth.py:_acp_granted) requires an explicit
+    # `acp_scopes` list on the token containing this value — a legacy/raw or
+    # wildcard token gets NO ACP access. Grant it deliberately per token.
+    'acp.checkout': (
+        'ACP · checkout',
+        'Create + read + cancel Agentic Commerce Protocol checkout sessions. '
+        "Must be granted explicitly via the token's acp_scopes list — the "
+        'wildcard does not confer it.',
+    ),
     # Diagnostics — sensitive, opt-in
     'diagnostics.read': (
         'Diagnostics · read (sensitive)',
