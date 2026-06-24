@@ -10,6 +10,25 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.7 — 2026-06-24
+
+### Security
+- **Staff two-factor authentication (MFA).** New `staff_mfa` plugin adds a TOTP
+  second factor (authenticator apps — Google Authenticator, 1Password, Authy)
+  on top of the existing email sign-in code for staff accounts. Self-service
+  enrollment lives at **Settings → Two-factor authentication** (scan a QR,
+  confirm a code, save one-time recovery codes). Lost your device? A recovery
+  code gets you in; an admin can run `python manage.py reset_mfa <email>` as a
+  break-glass (audited). **Enrolled** staff are always challenged at sign-in.
+  Enforcement for *un*enrolled staff is **opt-in**: turn on **Require MFA for all
+  staff** in **Settings → Developer → Staff two-factor** to prompt them to enroll
+  at sign-in (a first-admin grace prevents locking the org out before anyone has
+  enrolled; hard per-page gating lands in a follow-up). Email-OTP stays factor
+  one and is unchanged; disabling the plugin reverts sign-in to single-factor
+  exactly. Customers are unaffected.
+
+---
+
 ## v0.2.6 — 2026-06-21
 
 ### Plugins

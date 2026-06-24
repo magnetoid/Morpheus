@@ -24,6 +24,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from core.auth.services import consume_otp, issue_otp, send_otp_email
+from core.hooks import MorpheusEvents, hook_registry
 from core.utils.rate_limit import RateLimitExceeded, check_and_consume
 
 logger = logging.getLogger('morpheus.core.auth.views')
@@ -162,6 +163,20 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
             # Required when the project has multiple auth backends —
             # allauth registers more than one. Pin to the model backend.
             user.backend = 'django.contrib.auth.backends.ModelBackend'
+            # Second-factor extension point. Email-OTP is factor one; a
+            # plugin (staff_mfa) may interpose a second factor here by
+            # returning an HttpResponse (a redirect to its challenge view).
+            # With no subscriber the value stays None and login proceeds
+            # exactly as before — single-factor email-OTP.
+            second_factor = hook_registry.filter(
+                MorpheusEvents.AUTH_SECOND_FACTOR,
+                value=None,
+                request=request,
+                user=user,
+                next=nxt,
+            )
+            if second_factor is not None:
+                return second_factor
             login(request, user)
             request.session.pop('morph_otp_email', None)
             request.session.pop('morph_otp_next', None)

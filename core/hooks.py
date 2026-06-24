@@ -496,6 +496,18 @@ class MorpheusEvents:
     CUSTOMER_REGISTERED = 'customer.registered'
     CUSTOMER_LOGIN = 'customer.login'
 
+    # ── Auth (filter) ─────────────────────────────────────────────────────
+    # AUTH_SECOND_FACTOR — filter, value=None|HttpResponse, kwargs:
+    #   request=HttpRequest, user=Customer, next=str. Fired by core/auth
+    #   otp_verify AFTER the email-OTP (first factor) succeeds but BEFORE
+    #   login() establishes the session. A subscriber that needs a second
+    #   factor (the staff_mfa plugin) stashes the pending user + next in the
+    #   session and returns an HttpResponse — a redirect to its challenge
+    #   view — and the filter short-circuits login with that response. With
+    #   no subscriber the value stays None and login proceeds unchanged, so
+    #   disabling the plugin reverts to single-factor email-OTP exactly.
+    AUTH_SECOND_FACTOR = 'auth.second_factor'  # filter
+
     # ── Inventory (fire) ──────────────────────────────────────────────────
     PRODUCT_LOW_STOCK = 'product.low_stock'
     PRODUCT_OUT_OF_STOCK = 'product.out_of_stock'
