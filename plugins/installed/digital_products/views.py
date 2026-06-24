@@ -58,18 +58,19 @@ def download(request, token: str) -> HttpResponse:
         )
         raise Http404('File missing')
 
-    # Increment usage BEFORE streaming so a network blip + retry doesn't
-    # let one click count as two.
-    tok.downloads_used += 1
-    tok.last_downloaded_at = timezone.now()
-    tok.last_downloaded_ip = _client_ip(request)
-    tok.save(
-        update_fields=[
-            'downloads_used',
-            'last_downloaded_at',
-            'last_downloaded_ip',
-        ]
+    # Atomically claim a download slot: increment only while still under the
+    # cap, so concurrent requests on one token can't exceed max_downloads (a
+    # plain read-modify-write here races past the limit). Done BEFORE streaming
+    # so a network blip + retry doesn't let one click count as two.
+    from django.db.models import F  # noqa: PLC0415
+
+    claimed = DownloadToken.objects.filter(pk=tok.pk, downloads_used__lt=F('max_downloads')).update(
+        downloads_used=F('downloads_used') + 1,
+        last_downloaded_at=timezone.now(),
+        last_downloaded_ip=_client_ip(request),
     )
+    if not claimed:
+        return _refuse('Download limit reached.', status=410)
 
     # Streaming serve. For S3 / external storage, prefer redirect to
     # the storage's signed URL — but the FileField API gives us .url.
