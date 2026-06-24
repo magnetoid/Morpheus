@@ -27,6 +27,41 @@ surfaced in **Dashboard → Settings → Version & updates**.
   one and is unchanged; disabling the plugin reverts sign-in to single-factor
   exactly. Customers are unaffected.
 
+### Agentic commerce
+- **ACP (Agentic Commerce Protocol) — Phase 1, OFF by default.** New
+  `agentic_checkout` plugin lets AI shopping agents discover products and build a
+  checkout session against the platform — a discovery manifest at
+  `/.well-known/acp.json`, an ACP product feed, and the `checkout_sessions`
+  create/read/update/cancel endpoints (Bearer-scoped via `acp.checkout`), backed
+  by the existing cart. Conformant to the real ACP `2026-04-17` spec. The payment
+  path (Stripe Shared Payment Token) is **Phase 2** and intentionally returns
+  "unsupported" until a merchant enrols — so nothing charges yet. Ships disabled;
+  enable from Dashboard → Apps.
+
+### Plugins
+- **Abandoned-cart recovery is now one consent-checked drip — and the
+  double-send is fixed.** Previously *two* recovery emails went out per abandoned
+  cart (a core handler and a marketing task both fired). Consolidated into a
+  single multi-step sequence owned by the `cart_abandonment` plugin: configurable
+  send delays (default 1h / 24h / 72h), merchant-editable templates
+  (**Settings → Notifications**), a marketing-consent check, and a guard that
+  stops once the cart converts. Disabling the plugin now removes recovery email
+  entirely.
+
+### Fixes
+- **Loyalty points no longer accrue to guest checkouts** (the guard compared
+  against the wrong default, so guest orders could mint points with no account to
+  hold them).
+- **Digital downloads can't exceed their limit under a race** — the
+  download-count claim is now atomic, closing a window where a rapid double-click
+  could grant an extra download.
+- **Webhooks dispatch only after the transaction commits** (and are suppressed on
+  rollback), so a subscriber never sees an event for a change that didn't land.
+
+### Developer
+- **Supply-chain scanning:** weekly Dependabot PRs (grouped) plus a `pip-audit`
+  CVE check in CI (advisory).
+
 ---
 
 ## v0.2.6 — 2026-06-21
