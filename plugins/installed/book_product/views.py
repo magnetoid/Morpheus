@@ -45,11 +45,27 @@ def _render(request, label, value, products, *, term=None, index_url=None):
             MorpheusEvents.PRODUCT_LIST_REORDER, value=products, request=request, surface='facet'
         )
     seo_title = term.meta_title if (term and term.meta_title) else f'{value} — {label} — dot books'
+    # Staff admin-bar deep-link: edit this curated taxonomy term in the dashboard.
+    active_edit_url = ''
+    if (
+        term is not None
+        and label in ('Genre', 'Topic')
+        and request.user.is_authenticated
+        and request.user.is_staff
+    ):
+        from django.urls import reverse  # noqa: PLC0415
+
+        active_edit_url = reverse(
+            'book_product_dashboard:curated_edit',
+            kwargs={'kind': label.lower(), 'slug': term.slug},
+        )
     return render(
         request,
         'storefront/book_facet.html',
         {
             'facet_label': label,
+            'active_edit_url': active_edit_url,
+            'active_edit_label': f'Edit {label.lower()}' if active_edit_url else '',
             'facet_value': value,
             # When this facet kind has an index page (publisher/series/imprint),
             # link the breadcrumb label up to it (e.g. "Publisher" → /publishers/).
