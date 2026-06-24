@@ -1,0 +1,11 @@
+Hi{% if cart.customer.first_name %} {{ cart.customer.first_name }}{% endif %},
+
+Your cart is still here, but popular items can sell out. We'd hate for
+you to miss something you were excited about. Still in your cart:
+
+{% for item in cart.items.all %}- {{ item.quantity }}× {{ item.product.name }}{% if item.variant %} ({{ item.variant.name }}){% endif %} — {{ item.unit_price }}
+{% endfor %}
+Complete your order here:
+  {{ cart_url }}
+
+— The team

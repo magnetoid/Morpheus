@@ -35,7 +35,8 @@ def register_handlers() -> None:
     hook_registry.register(events.ORDER_CANCELLED, on_order_cancelled, priority=70)
     hook_registry.register(events.PAYMENT_REFUNDED, on_payment_refunded, priority=70)
     hook_registry.register(events.CUSTOMER_REGISTERED, on_customer_registered, priority=70)
-    hook_registry.register(events.CART_ABANDONED, on_cart_abandoned, priority=70)
+    # NOTE: cart-recovery email is owned solely by the cart_abandonment plugin's
+    # consent-checked drip — core no longer sends on CART_ABANDONED.
     hook_registry.register('digital.tokens_issued', on_digital_tokens_issued, priority=70)
     _REGISTERED = True
 
@@ -115,20 +116,6 @@ def on_digital_tokens_issued(order: Any = None, tokens: Any = None, **kwargs: An
         subject=f'Your downloads — order #{order.order_number}',
         to=to,
         ctx={'order': order, 'links': download_links},
-    )
-
-
-def on_cart_abandoned(cart: Any = None, email: Any = None, **kwargs: Any) -> None:
-    if cart is None:
-        return
-    to = email or getattr(getattr(cart, 'customer', None), 'email', None)
-    if not to:
-        return
-    _send(
-        template_base='emails/cart_abandoned',
-        subject='You left items in your cart',
-        to=to,
-        ctx={'cart': cart},
     )
 
 
