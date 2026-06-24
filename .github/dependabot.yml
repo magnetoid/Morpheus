@@ -1,0 +1,26 @@
+# Dependabot — weekly dependency + GitHub-Actions update PRs.
+#
+# Why: requirements.txt pins most deps with `>=`, so security patches resolve
+# silently on the next Docker build with no review trail. Dependabot turns those
+# upgrades into reviewable PRs instead. Pairs with the `audit` job in ci.yml
+# (pip-audit CVE scan). See docs/analysis/platform_improvement_report_2026.md
+# (supply-chain hardening) — flagged P0 by the audit fact-check.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    # One grouped PR per week keeps the noise down; security updates still
+    # come through as their own PRs.
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
