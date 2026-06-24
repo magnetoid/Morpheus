@@ -80,6 +80,11 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
                     saved.append(key)
                 continue
             raw = request.POST[key]
+            # Write-only secret: a blank submit means "leave it unchanged" —
+            # never wipe the stored secret. Mirrors the SMTP-password handling
+            # in admin_dashboard/forms/settings.py (skip clobbering on empty).
+            if prop.get('format') == 'password' and not (raw or '').strip():
+                continue
             value: Any = raw
             if ptype == 'boolean':
                 value = raw in ('on', 'true', '1', 'yes')
@@ -109,10 +114,17 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
     fields = []
     for key, prop in (panel.schema.get('properties') or {}).items():
         ptype = prop.get('type', 'string')
-        kind = 'enum' if 'enum' in prop else ptype
+        # `format: password` → write-only field: never echo the stored secret,
+        # blank submit preserves it (handled in the POST branch above).
+        if prop.get('format') == 'password':
+            kind = 'password'
+        else:
+            kind = 'enum' if 'enum' in prop else ptype
         value = config.get(key, prop.get('default', ''))
         if kind == 'boolean':
             value = bool(value)
+        elif kind == 'password':
+            value = ''
         fields.append(
             {
                 'key': key,
@@ -121,6 +133,7 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
                 'kind': kind,
                 'enum': prop.get('enum') or [],
                 'value': value,
+                'has_value': bool(config.get(key)),
             }
         )
     return render(

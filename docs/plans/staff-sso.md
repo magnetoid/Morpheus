@@ -1,9 +1,20 @@
 # Staff SSO (SAML / OIDC) — spec
 
-Status: **draft for review** (grounded in the codebase; no code yet). Owner
-decision pending on the forks marked **[CHOICE]**. Sibling to staff MFA
-(`docs/plans/staff-mfa.md`) — same "auth stays simple in core; SSO ships as a
-plugin" policy.
+Status: **Phases 1–3 implemented** on `feat/staff-sso` (plugin
+`plugins/installed/staff_sso/`, OFF by default). Forks decided: **OIDC first**
+(no SAML this build), **email-domain allowlist + optional group claim**
+staff-gating, **dashboard settings panel** for provider config. Phase 4 (SAML
+provider + login-button UI + further `sso.*` audit polish) remains open.
+Sibling to staff MFA (`docs/plans/staff-mfa.md`) — same "auth stays simple in
+core; SSO ships as a plugin" policy.
+
+Settings.py edits this build required (Django's app registry is frozen after
+settings import, so the provider app cannot be added from `ready()`):
+`plugins.installed.staff_sso` added to `MORPHEUS_DEFAULT_PLUGINS`, and
+`allauth.socialaccount.providers.openid_connect` added to `THIRD_PARTY_APPS`
+(inert without a configured `SocialApp`). The OIDC provider hard-imports
+`pyjwt[crypto]` (allauth's `[socialaccount]` extra) at app load, so that dep was
+added to `requirements.txt` — without it the provider app crashes boot.
 
 ## Problem
 Staff sign-in is email-OTP only. Enterprise buyers require federated SSO

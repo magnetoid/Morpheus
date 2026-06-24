@@ -23,7 +23,11 @@ django-redis>=6.0
 django-storages>=1.14
 boto3>=1.42
 psycopg2-binary>=2.9
-django-allauth>=65.0
+django-allauth[socialaccount]>=65.0
+# pyjwt[crypto] is allauth's [socialaccount] extra — required by the
+# openid_connect provider (staff_sso); it is hard-imported at app load, so its
+# absence crashes boot once the provider app is in INSTALLED_APPS.
+pyjwt[crypto]>=2.0,<3
 django-crispy-forms>=2.6
 crispy-bootstrap5>=2026.3
 django-mptt>=0.18
