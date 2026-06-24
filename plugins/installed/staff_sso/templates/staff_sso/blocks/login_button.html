@@ -1,0 +1,8 @@
+{% load staff_sso %}{% staff_sso_login_url as sso_url %}{% if sso_url %}
+<div style="border-top:1px solid var(--border); padding-top:.85rem; margin-top:.85rem; text-align:center;">
+  <a href="{{ sso_url }}?process=login{% if redirect_field_value %}&next={{ redirect_field_value|urlencode:"" }}{% elif next %}&next={{ next|urlencode:"" }}{% else %}&next=/dashboard/{% endif %}"
+     class="text-sm" style="color: var(--text);">
+    Sign in with SSO →
+  </a>
+</div>
+{% endif %}

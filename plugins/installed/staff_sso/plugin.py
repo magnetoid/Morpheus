@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel
+from morpheus import Plugin, SettingsPanel, StorefrontBlock
 
 logger = logging.getLogger('morpheus.staff_sso')
 
@@ -75,6 +75,19 @@ class StaffSsoPlugin(Plugin):
             services.sync_social_app({})  # blank config → SocialApp removed
         except Exception as exc:  # noqa: BLE001
             logger.warning('staff_sso: provider teardown skipped (%s)', exc)
+
+    def contribute_storefront_blocks(self) -> list:
+        # An "Sign in with SSO" button on the staff sign-in pages. The button
+        # template self-gates on enabled+configured via the {% staff_sso_login_url %}
+        # tag, so it renders nothing until an IdP is wired up — and disappears
+        # entirely when the plugin is disabled (the slot stops being rendered).
+        return [
+            StorefrontBlock(
+                slot='auth_login_extra',
+                template='staff_sso/blocks/login_button.html',
+                priority=10,
+            ),
+        ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(

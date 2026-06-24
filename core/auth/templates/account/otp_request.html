@@ -1,5 +1,5 @@
 {% extends "account/base.html" %}
-{% load i18n %}
+{% load i18n morph %}
 
 {% block head_title %}Sign in with email code{% endblock %}
 {% block heading %}Sign in with a code{% endblock %}
@@ -30,5 +30,7 @@
     <a href="{% url 'account_login' %}{% if next %}?next={{ next }}{% endif %}">Use password instead</a>
     <a href="{% url 'account_signup' %}">Create account</a>
   </div>
+
+  {% storefront_blocks "auth_login_extra" %}
 </form>
 {% endblock %}
