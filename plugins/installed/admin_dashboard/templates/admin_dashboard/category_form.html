@@ -1,0 +1,72 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ category.name }} · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h1 class="text-xl font-semibold tracking-tight">Edit category</h1>
+    <a href="/category/{{ category.slug }}/" target="_blank" rel="noopener" class="btn btn-ghost text-sm"><i data-lucide="external-link" class="h-4 w-4"></i> View on storefront</a>
+  </div>
+
+  {% if form.non_field_errors %}<div class="card card-padded form-error-banner">{{ form.non_field_errors }}</div>{% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="space-y-4">
+    {% csrf_token %}
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Details</h2>
+      <div>
+        <label class="block text-sm font-medium mb-1">Name</label>
+        {{ form.name }}
+        {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">URL slug</label>
+        {{ form.slug }}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Leave blank to auto-generate from the name. Powers <code>/category/&lt;slug&gt;/</code>.</p>
+        {% if form.slug.errors %}<p class="field-error">{{ form.slug.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Parent category</label>
+        {{ form.parent }}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Leave empty for a top-level category. A category can't be nested under itself or one of its own sub-categories.</p>
+        {% if form.parent.errors %}<p class="field-error">{{ form.parent.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Description</label>
+        {{ form.description }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Image</label>
+        {% if category.image %}<img src="{{ category.image.url }}" alt="" style="max-height:80px;border-radius:6px;margin-bottom:.5rem;">{% endif %}
+        {{ form.image }}
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <label class="flex items-center gap-2 text-sm">{{ form.is_active }} Active</label>
+        <div>
+          <label class="block text-sm font-medium mb-1">Sort order</label>
+          {{ form.sort_order }}
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">SEO</h2>
+      <div>
+        <label class="block text-sm font-medium mb-1">Meta title</label>
+        {{ form.meta_title }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Meta description</label>
+        {{ form.meta_description }}
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

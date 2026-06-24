@@ -1042,11 +1042,21 @@ def category_detail(request, slug):
         }
         for p in products[:30]
     ]
+    # Staff admin-bar deep-link: edit this category in the dashboard.
+    active_edit_url = ''
+    if request.user.is_authenticated and request.user.is_staff:
+        from django.urls import reverse  # noqa: PLC0415
+
+        active_edit_url = reverse(
+            'admin_dashboard:category_edit', kwargs={'category_id': category.pk}
+        )
     return render(
         request,
         'storefront/category_detail.html',
         {
             'category': category,
+            'active_edit_url': active_edit_url,
+            'active_edit_label': 'Edit category',
             'products': products,
             'page_obj': page_obj,
             'sort': sort,
@@ -1118,11 +1128,21 @@ def collection_detail(request, slug):
         }
         for p in products[:30]
     ]
+    # Staff admin-bar deep-link: edit this collection in the dashboard.
+    active_edit_url = ''
+    if request.user.is_authenticated and request.user.is_staff:
+        from django.urls import reverse  # noqa: PLC0415
+
+        active_edit_url = reverse(
+            'admin_dashboard:collection_edit', kwargs={'collection_id': collection.pk}
+        )
     return render(
         request,
         'storefront/category_detail.html',
         {
             'category': collection,
+            'active_edit_url': active_edit_url,
+            'active_edit_label': 'Edit collection',
             'products': products,
             'page_obj': page_obj,
             'sort': sort,

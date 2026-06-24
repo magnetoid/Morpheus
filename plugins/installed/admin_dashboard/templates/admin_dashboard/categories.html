@@ -49,7 +49,7 @@
           <td>
             <span style="display: inline-block; width: {{ row.level }}em;"></span>
             {% if row.level %}<span class="text-[color:var(--text-subtle)]">└─ </span>{% endif %}
-            <a href="/admin/catalog/category/{{ row.id }}/change/" class="font-medium hover:underline">{{ row.name }}</a>
+            <a href="{% url 'admin_dashboard:category_edit' category_id=row.id %}" class="font-medium hover:underline">{{ row.name }}</a>
           </td>
           <td class="text-[color:var(--text-muted)] font-mono text-xs">{{ row.slug }}</td>
           <td class="text-[color:var(--text-muted)]">{{ row.parent_name|default:"—" }}</td>
@@ -64,7 +64,10 @@
             {% endif %}
           </td>
           <td class="text-[color:var(--text-muted)] text-xs">{{ row.updated_at|date:"Y-m-d H:i" }}</td>
-          <td class="text-right">
+          <td class="text-right whitespace-nowrap">
+            <a href="{% url 'admin_dashboard:category_edit' category_id=row.id %}" class="btn btn-ghost text-xs" title="Edit category">
+              <i data-lucide="pencil" class="h-3.5 w-3.5"></i> Edit
+            </a>
             <a href="/category/{{ row.slug }}/" target="_blank" rel="noopener" class="btn btn-ghost text-xs" title="View on storefront">
               <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
             </a>
