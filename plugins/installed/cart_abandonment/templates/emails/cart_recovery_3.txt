@@ -1,0 +1,11 @@
+Hi{% if cart.customer.first_name %} {{ cart.customer.first_name }}{% endif %},
+
+This is the last reminder about your cart. We won't keep emailing you —
+but the items below are still ready to check out right now:
+
+{% for item in cart.items.all %}- {{ item.quantity }}× {{ item.product.name }}{% if item.variant %} ({{ item.variant.name }}){% endif %} — {{ item.unit_price }}
+{% endfor %}
+Check out now:
+  {{ cart_url }}
+
+— The team

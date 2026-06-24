@@ -11,12 +11,8 @@ class MarketingPlugin(Plugin):
     def ready(self):
         self.register_graphql_extension('plugins.installed.marketing.graphql.queries')
         self.register_graphql_extension('plugins.installed.marketing.graphql.mutations')
-        self.register_hook('cart.abandoned', self.on_cart_abandoned, priority=30)
-
-    def on_cart_abandoned(self, cart, **kwargs):
-        from plugins.installed.marketing.tasks import trigger_cart_recovery_sequence
-
-        trigger_cart_recovery_sequence.delay(str(cart.id))
+        # Cart-recovery email is owned solely by the cart_abandonment plugin's
+        # consent-checked drip — marketing no longer subscribes to cart.abandoned.
 
     def contribute_dashboard_pages(self) -> list:
         return [

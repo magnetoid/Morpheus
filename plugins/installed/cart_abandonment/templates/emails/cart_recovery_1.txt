@@ -5,7 +5,7 @@ whenever you want to come back:
 
 {% for item in cart.items.all %}- {{ item.quantity }}× {{ item.product.name }}{% if item.variant %} ({{ item.variant.name }}){% endif %} — {{ item.unit_price }}
 {% endfor %}
-
-Head back to your cart to pick up where you left off.
+Head back to your cart to pick up where you left off:
+  {{ cart_url }}
 
 — The team
