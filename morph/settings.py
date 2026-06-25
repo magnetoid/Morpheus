@@ -220,6 +220,12 @@ THIRD_PARTY_APPS = [
     # staff_sso plugin (OFF by default) creates that row only when an IdP is
     # set up, so no provider button renders and email-OTP is unaffected.
     'allauth.socialaccount.providers.openid_connect',
+    # SAML 2.0 provider machinery for staff_sso (Phase 4b), alongside OIDC.
+    # Same posture: loaded at settings-import (the app registry is frozen after,
+    # so a plugin's ready() can't add it), inert without a configured SocialApp.
+    # staff_sso (OFF by default) creates the SAML SocialApp only when an IdP is
+    # wired up. Hard-imports python3-saml (onelogin.saml2) at app load.
+    'allauth.socialaccount.providers.saml',
     'crispy_forms',
     'crispy_bootstrap5',
     'import_export',

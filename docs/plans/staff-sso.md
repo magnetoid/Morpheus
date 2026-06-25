@@ -1,10 +1,15 @@
 # Staff SSO (SAML / OIDC) — spec
 
-Status: **Phases 1–3 implemented** on `feat/staff-sso` (plugin
-`plugins/installed/staff_sso/`, OFF by default). Forks decided: **OIDC first**
-(no SAML this build), **email-domain allowlist + optional group claim**
-staff-gating, **dashboard settings panel** for provider config. Phase 4 (SAML
-provider + login-button UI + further `sso.*` audit polish) remains open.
+Status: **Phases 1–4 implemented** on `feat/staff-sso` (plugin
+`plugins/installed/staff_sso/`, OFF by default). Forks decided:
+**email-domain allowlist + optional group claim** staff-gating, **dashboard
+settings panel** for provider config. **OIDC + SAML 2.0 both ship** — Phase 4b
+added the `allauth.socialaccount.providers.saml` provider (`python3-saml` dep)
+alongside OIDC: the same `StaffSsoAdapter` runs the verified-email guard,
+fail-closed staff gate, JIT/link, is_staff promotion, and the MFA no-bypass for
+both protocols (`services.OUR_PROVIDERS`). SAML email-trust rests on the
+signature-validated assertion (no `email_verified` flag); the login page offers
+"Sign in with SSO (SAML)" when enabled+configured.
 Sibling to staff MFA (`docs/plans/staff-mfa.md`) — same "auth stays simple in
 core; SSO ships as a plugin" policy.
 

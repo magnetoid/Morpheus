@@ -138,3 +138,80 @@ class DisabledRendersNothing(TestCase):
         plugin_registry._active.discard('staff_sso')
         html = _render_block(_request()).strip()
         self.assertEqual(html, '')
+
+
+# ── SAML (Phase 4b) login-button surface ─────────────────────────────────────
+def _configure_saml(*, enabled=True, saml_enabled=True):
+    """Write config with the SAML section populated + sync the SAML SocialApp +
+    drive registry state, matching how ready() wires the SAML provider in prod."""
+    from plugins.models import PluginConfig
+
+    PluginConfig.objects.update_or_create(
+        plugin_name='staff_sso',
+        defaults={
+            'is_enabled': enabled,
+            'config': {
+                'allowed_domains': 'acme.com',
+                'saml_enabled': saml_enabled,
+                'saml_org_slug': 'staff_sso_saml',
+                'saml_idp_entity_id': 'https://idp.example/entity',
+                'saml_idp_sso_url': 'https://idp.example/sso',
+                'saml_idp_x509cert': 'MIICert==',
+            },
+        },
+    )
+    plugin = plugin_registry.get('staff_sso')
+    if plugin is not None:
+        plugin.invalidate_config_cache()
+    services.sync_saml_app(services.get_saml_settings(plugin) if plugin else {})
+
+    if enabled:
+        plugin_registry._active.add('staff_sso')
+    else:
+        plugin_registry._active.discard('staff_sso')
+    return plugin
+
+
+def _render_saml_tag(request):
+    tmpl = Template('{% load staff_sso %}{% staff_sso_saml_login_url as u %}{{ u }}')
+    return tmpl.render(Context({'request': request})).strip()
+
+
+class SamlButtonRenders(TestCase):
+    """SAML enabled + configured → the SAML tag returns a URL and the block
+    renders the 'Sign in with SSO (SAML)' link."""
+
+    def setUp(self):
+        _configure_saml(enabled=True, saml_enabled=True)
+
+    def test_saml_tag_returns_login_url(self):
+        url = _render_saml_tag(_request())
+        self.assertTrue(url, 'expected a non-empty SAML provider login URL')
+        # allauth reverses saml_login off the org slug.
+        self.assertIn('staff_sso_saml', url)
+        self.assertIn('/saml/', url)
+
+    def test_block_renders_saml_link(self):
+        html = _render_block(_request())
+        self.assertIn('Sign in with SSO (SAML)', html)
+        self.assertIn('process=login', html)
+
+
+class SamlButtonDisableSafe(TestCase):
+    """(4) disable-safe — SAML disabled / plugin disabled → no SAML SocialApp,
+    no SAML button."""
+
+    def test_saml_disabled_no_app_no_button(self):
+        from allauth.socialaccount.models import SocialApp
+
+        _configure_saml(enabled=True, saml_enabled=False)
+        # SAML turned off → no SAML SocialApp synced.
+        self.assertFalse(SocialApp.objects.filter(provider_id=services.SAML_PROVIDER_ID).exists())
+        self.assertEqual(_render_saml_tag(_request()), '')
+        self.assertNotIn('SAML', _render_block(_request()))
+
+    def test_plugin_disabled_no_saml_button(self):
+        _configure_saml(enabled=True, saml_enabled=True)
+        plugin_registry._active.discard('staff_sso')
+        self.assertEqual(_render_saml_tag(_request()), '')
+        self.assertEqual(_render_block(_request()).strip(), '')

@@ -28,13 +28,13 @@ _DEFAULT_ADAPTER = 'allauth.socialaccount.adapter.DefaultSocialAccountAdapter'
 
 class StaffSsoPlugin(Plugin):
     name = 'staff_sso'
-    label = 'Staff SSO (OIDC)'
-    version = '1.0.0'
+    label = 'Staff SSO (OIDC / SAML)'
+    version = '1.1.0'
     description = (
-        'Federated staff sign-in via your OIDC identity provider (Okta, '
-        'Entra, Google Workspace). JIT-provisions a staff account on first '
-        'login, staff-gates by email domain or group claim, and honours the '
-        'staff MFA second factor — no SSO bypass.'
+        'Federated staff sign-in via your OIDC or SAML 2.0 identity provider '
+        '(Okta, Entra, Google Workspace). JIT-provisions a staff account on '
+        'first login, staff-gates by email domain or group claim, and honours '
+        'the staff MFA second factor — no SSO bypass.'
     )
     enabled_by_default = False
     has_models = False
@@ -54,12 +54,17 @@ class StaffSsoPlugin(Plugin):
         # while enabled — disabling restores allauth's DefaultSocialAccountAdapter.
         settings.SOCIALACCOUNT_ADAPTER = _ADAPTER
 
-        # Mirror the saved config into an allauth SocialApp (or remove it when
-        # blank). Safe + idempotent; swallows DB-not-ready at boot (migrations).
+        # Mirror the saved config into allauth SocialApp rows (or remove them
+        # when blank) — one per protocol (OIDC + SAML). Safe + idempotent;
+        # swallows DB-not-ready at boot (migrations).
         try:
             services.sync_social_app(cfg)
         except Exception as exc:  # noqa: BLE001 — never block boot on provider sync
-            logger.warning('staff_sso: provider sync skipped (%s)', exc)
+            logger.warning('staff_sso: OIDC provider sync skipped (%s)', exc)
+        try:
+            services.sync_saml_app(services.get_saml_settings(self))
+        except Exception as exc:  # noqa: BLE001 — never block boot on provider sync
+            logger.warning('staff_sso: SAML provider sync skipped (%s)', exc)
 
     def on_disable(self) -> None:
         """Tear down the provider AND restore allauth's default adapter so
@@ -71,10 +76,15 @@ class StaffSsoPlugin(Plugin):
         # Revert SOCIALACCOUNT_ADAPTER so our staff-gate/MFA logic stops running.
         settings.SOCIALACCOUNT_ADAPTER = _DEFAULT_ADAPTER
 
+        # Tear down BOTH provider apps (OIDC + SAML) — blank config removes each.
         try:
-            services.sync_social_app({})  # blank config → SocialApp removed
+            services.sync_social_app({})
         except Exception as exc:  # noqa: BLE001
-            logger.warning('staff_sso: provider teardown skipped (%s)', exc)
+            logger.warning('staff_sso: OIDC provider teardown skipped (%s)', exc)
+        try:
+            services.sync_saml_app({})
+        except Exception as exc:  # noqa: BLE001
+            logger.warning('staff_sso: SAML provider teardown skipped (%s)', exc)
 
     def contribute_storefront_blocks(self) -> list:
         # An "Sign in with SSO" button on the staff sign-in pages. The button
@@ -91,8 +101,8 @@ class StaffSsoPlugin(Plugin):
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
-            label='Staff SSO (OIDC)',
-            description='Sign staff in through your OIDC identity provider.',
+            label='Staff SSO (OIDC / SAML)',
+            description='Sign staff in through your OIDC or SAML 2.0 identity provider.',
             category='developer',
             schema=self.get_config_schema(),
         )
@@ -140,7 +150,90 @@ class StaffSsoPlugin(Plugin):
                     'description': (
                         'Comma-separated IdP group/role names. A user whose '
                         'groups claim intersects this list is admitted even if '
-                        'their domain is not allowlisted.'
+                        'their domain is not allowlisted. Shared by OIDC + SAML.'
+                    ),
+                },
+                # ── SAML 2.0 (Phase 4b) — alternative to OIDC above. ──────────
+                'saml_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Enable SAML 2.0 sign-in',
+                    'description': (
+                        'Offer a SAML login alongside (or instead of) OIDC. '
+                        'Requires the IdP descriptors below.'
+                    ),
+                },
+                'saml_org_slug': {
+                    'type': 'string',
+                    'default': 'staff_sso_saml',
+                    'title': 'SAML organization slug',
+                    'description': (
+                        'URL-safe slug used in the SAML callback path '
+                        '(/auth/saml/<slug>/acs/). Give the IdP this ACS URL.'
+                    ),
+                },
+                'saml_idp_metadata_url': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'IdP metadata URL (preferred)',
+                    'description': (
+                        "The IdP's SAML metadata URL — entity ID, SSO URL and "
+                        'signing cert are fetched from it. Leave blank to enter '
+                        'them manually below.'
+                    ),
+                },
+                'saml_idp_entity_id': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'IdP entity ID',
+                    'description': 'Required if no metadata URL is set.',
+                },
+                'saml_idp_sso_url': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'IdP SSO (SingleSignOn) URL',
+                    'description': 'Required if no metadata URL is set.',
+                },
+                'saml_idp_x509cert': {
+                    'type': 'string',
+                    'default': '',
+                    'format': 'password',
+                    'title': 'IdP signing certificate (X.509)',
+                    'description': (
+                        'PEM body of the IdP signing cert. Required if no '
+                        'metadata URL is set. Stored server-side, masked.'
+                    ),
+                },
+                'saml_email_attr': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'SAML email attribute',
+                    'description': (
+                        'Assertion attribute name carrying the email. Blank keeps '
+                        "allauth's built-in defaults (standard OID/SAML email "
+                        'attrs + emailAddress NameID); a value only overrides the '
+                        'email mapping, leaving the other defaults intact.'
+                    ),
+                },
+                'saml_first_name_attr': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'SAML first-name attribute',
+                },
+                'saml_last_name_attr': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'SAML last-name attribute',
+                },
+                'saml_groups_attr': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'SAML groups attribute',
+                    'description': (
+                        'Assertion attribute name carrying group/role values, '
+                        'matched against the staff group claims above. Read from '
+                        "the raw assertion by name — not part of allauth's "
+                        'attribute mapping.'
                     ),
                 },
             },
