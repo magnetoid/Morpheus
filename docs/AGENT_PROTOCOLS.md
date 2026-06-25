@@ -93,11 +93,31 @@ UCP-aware agents discover Morpheus through Google's verifier, then
 fall back to the MCP cluster for actual transactions. No code
 changes required on your side.
 
-## 3. ACP (OpenAI Agentic Commerce Protocol)
+## 3. ACP (OpenAI/Stripe Agentic Commerce Protocol)
 
-*Status — deferred.* Spec is in flux; we wait for v1.0 before
-implementing endpoints. ChatGPT-Operator shoppers already work
-through the MCP cluster's `/mcp/checkout/v1/`.
+The `agentic_checkout` plugin (OFF by default — enable it from
+**Dashboard → Apps** once enrolled) serves Phase 1 of the Agentic
+Commerce Protocol, spec version `2026-04-17`:
+
+- `/.well-known/acp.json` — discovery manifest (protocol version,
+  checkout base URL, feed URL, payment handlers, Bearer auth).
+- `/acp/feed.json` — product feed (reuses the `google_shopping` mapping).
+- `/acp/checkout_sessions` — `create` / `get` / `update` / `cancel` /
+  `complete`, backed by the existing `Cart`.
+
+```bash
+curl https://your-morpheus/.well-known/acp.json
+```
+
+Auth is Bearer-scoped with a dedicated `acp.checkout` scope. Unlike the
+MCP cluster, this payment-adjacent surface does **not** inherit the
+wildcard: a token reaches `/acp/` only when granted `acp.checkout`
+explicitly. Tokens are minted under `/dashboard/apps/agent_mcp/tokens/`.
+
+`completeCheckoutSession` returns a conformant `MessageError` with code
+`unsupported` — the money path (Stripe Shared Payment Token redemption)
+is Phase 2 and deferred. ChatGPT-Operator shoppers can also still
+transact through the MCP cluster's `/mcp/checkout/v1/`.
 
 ## 4. Visa TAP / Mastercard VI (Trusted Agents)
 

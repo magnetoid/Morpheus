@@ -47,6 +47,8 @@ Saleor, Medusa, and Vendure are excellent self-hostable platforms. Morpheus's be
 | MCP server cluster (storefront / cart / checkout / admin) | ✅ | — | — | — |
 | Universal Commerce Protocol (`/.well-known/ucp.json`) | ✅ | — | — | — |
 | Visa TAP + Mastercard VI acceptance (`/.well-known/agent.json`) | ✅ | — | — | — |
+| Agentic Commerce Protocol (`/.well-known/acp.json`, OpenAI/Stripe) | ✅ | — | — | — |
+| Staff SSO (OIDC + SAML 2.0) **that cannot bypass MFA** | ✅ | — | — | — |
 | Always-on hard-coded merchant assistant (Linda) | ✅ | — | — | — |
 | Self-improving agent (skills from experience + gated self-written tools) | ✅ | — | — | — |
 | Hybrid retrieval (BM25 + dense + RRF) on storefront search | ✅ | — | — | — |
@@ -74,7 +76,8 @@ What you get:
 | **Central media library** | A dedicated [`media`](plugins/installed/media/) plugin: one `MediaAsset` model, sharded uploads, kind tabs, embeddable picker — used everywhere a file ID is needed. |
 | **Hard-coded Assistant in core** | A single Morpheus Assistant lives in [`core/assistant/`](core/assistant/) — never a plugin. **50+ first-class tools** (source: [`get_default_tools`](core/assistant/tools/__init__.py)) spanning DB introspection, ecommerce reads (orders / products / customers / analytics / content / settings / media / metafields), gated writes (orders.cancel, products.update_price, metafields.set, …), cross-session memory, self-learning skills, sandboxed `run_python` composition, and a gated self-development pipeline. JSONL fallback persistence so the chat works even when the DB is unreachable. |
 | **Kernel agent layer** | [`core/agents/`](core/agents/) is a peer of `core/hooks` and `plugins/`. Real LLM tool-use loop, provider abstraction (OpenAI / Anthropic / Gemini / OpenRouter / Grok / Ollama / Mock), versioned prompts, capability scopes, lossless trace, **Skills** (reusable tool bundles), background scheduling, **brand-voice-aware system prompts**. |
-| **Agentic-commerce ready** | A first-class **MCP server cluster** exposes audience-scoped surfaces (storefront / cart / checkout / admin) to external AI clients via JSON-RPC 2.0, plus UCP + Trusted-Agent discovery at `/.well-known/`. Bearer-token auth on the admin surface, public reads everywhere else. |
+| **Agentic-commerce ready** | A first-class **MCP server cluster** exposes audience-scoped surfaces (storefront / cart / checkout / admin) to external AI clients via JSON-RPC 2.0, plus UCP + Trusted-Agent + **ACP** (Agentic Commerce Protocol, OpenAI/Stripe) discovery at `/.well-known/`. Bearer-token auth on the admin surface, public reads everywhere else. |
+| **Hardened staff sign-in** | Staff auth is plugin-modular too: [`staff_mfa`](plugins/installed/staff_mfa/) adds a TOTP second factor (recovery codes, opt-in enforcement, a break-glass `reset_mfa` command) by interposing on the `AUTH_SECOND_FACTOR` hook; [`staff_sso`](plugins/installed/staff_sso/) (off by default) federates sign-in to your OIDC / SAML 2.0 IdP with JIT provisioning and email-domain gating. **SSO does not bypass MFA** — the SSO adapter runs the *same* second-factor gate, so a configured IdP can't sidestep two-factor. Disable either and sign-in reverts cleanly. |
 | **AI-first discoverability** | A dedicated [`seo`](plugins/installed/seo/) plugin closes the **2026 SEO + AEO** loop end-to-end: 15-bot AI crawler matrix, per-object meta + JSON-LD (Product/Book/Review/Article/FAQ/QA/Breadcrumb/Organization), markdown export, `/llms.txt`, IndexNow, RSS+Atom journal feeds, hreflang, security.txt, sitemap index + image/news sub-sitemaps, paste-a-slug **SEO inspector**, sitemap truncation banner, 404→redirect manager. |
 | **Google Web Stories** | A dedicated [`webstories`](plugins/installed/webstories/) plugin auto-generates a valid AMP `<amp-story>` document per product from images + book metafields. Embedded on the PDP via `<amp-story-player>`, surfaced to Google via `<link rel="amphtml">` + sitemap. Rebuilt automatically on product/image save. |
 
@@ -478,6 +481,19 @@ GET /.well-known/agent.json   — Visa Trusted Agent Protocol + Mastercard
 
 The `TrustedAgentMiddleware` reads `X-Verified-Agent-*` headers (set by Cloudflare's Web Bot Auth at the edge), attaches `request.trusted_agent`, and stamps `Order.metadata.agent_id` at checkout — so merchants get an auditable trail of which agent placed which order.
 
+### Agentic Commerce Protocol (ACP)
+
+The [`agentic_checkout`](plugins/installed/agentic_checkout/) plugin (OFF by default) serves the [Agentic Commerce Protocol](https://www.agenticcommerce.dev/) (OpenAI / Stripe, spec `2026-04-17`) — the surface a ChatGPT-style agent uses to buy through your store:
+
+```text
+GET  /.well-known/acp.json     — ACP discovery manifest
+GET  /acp/feed.json            — ACP product feed
+POST /acp/checkout_sessions    — create / get / update / cancel / complete
+                                 (Bearer-scoped, backed by the existing Cart)
+```
+
+Bearer auth is gated by a dedicated `acp.checkout` scope (explicit-grant only — it does **not** inherit the wildcard). Phase 1 ships read/quote: `complete` returns an `unsupported` `MessageError` until Phase 2 wires the Stripe Shared Payment Token money path. Complements — does not replace — the MCP cluster and UCP / Trusted-Agent discovery above.
+
 **Curated tool surface (legacy `/mcp/v1/`).** Only read tools safe for a public AI agent (search/fetch products, orders, analytics, content). Write tools and admin reads are **never** reachable here.
 
 **Resources.** Three pre-defined entry-point URIs MCP clients can hit without learning the tool catalog:
@@ -527,6 +543,7 @@ The discovery surface a 2026 commerce platform actually needs. Built primarily b
 | `/.well-known/security.txt` | RFC 9116 contact/Expires/Policy | Security scanners stop flagging absence |
 | `/.well-known/ucp.json` | Universal Commerce Protocol manifest | Discovered by Google + Shopify + Stripe + Etsy + Walmart |
 | `/.well-known/agent.json` | Visa Trusted Agent + Mastercard Verifiable Intent acceptance | Identifies which AI agent placed which order |
+| `/.well-known/acp.json` | Agentic Commerce Protocol manifest (OpenAI / Stripe; via `agentic_checkout`, off by default) | Lets ChatGPT-style agents discover the checkout surface |
 | `/.well-known/indexnow-*.txt` | IndexNow verification keyfile | Powers same-second crawler push to Bing/Yandex/Naver/Seznam/Yep |
 | `/manifest.webmanifest` + `/sw.js` | PWA manifest + service worker (cache-first static, network-first pages, offline fallback) | Storefront is installable + offline-capable |
 
@@ -936,8 +953,9 @@ See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
 
 Apache 2.0 — see [LICENSE](LICENSE). Build whatever you want with it.
 
-Morpheus is open-core: the platform you see in this repo is Apache 2.0.
-Future enterprise plugins (advanced AI, multi-store, SSO/SCIM) may ship
+Morpheus is open-core: the platform you see in this repo is Apache 2.0 —
+including staff SSO (OIDC + SAML 2.0) and staff MFA. Future enterprise
+plugins (advanced AI, multi-store, SCIM provisioning) may ship
 under separate licensing in their own repos. Contributions to this repo
 are always Apache 2.0 — see [CONTRIBUTING.md](CONTRIBUTING.md) and
 [SECURITY.md](SECURITY.md).

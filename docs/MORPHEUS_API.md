@@ -232,6 +232,40 @@ morpheus check
 The `bin/morpheus` script wraps `manage.py morpheus`, so either form
 works. Inside CI just call `python manage.py morpheus check`.
 
+## ACP HTTP surface (Agentic Commerce Protocol)
+
+The `agentic_checkout` plugin exposes the **Agentic Commerce Protocol**
+(OpenAI/Stripe, spec version `2026-04-17`) so AI agents can discover the
+catalog and build a priced checkout session against the existing `Cart`.
+It is **OFF by default** (`enabled_by_default = False`) and registered in
+`MORPHEUS_DEFAULT_PLUGINS`; a merchant enables it from the dashboard once
+enrolled in Stripe ACP. This is distinct from — and complements — the MCP
+server and the UCP/A2A `/.well-known/` discovery served by `agent_mcp`.
+
+Every checkout-session endpoint is Bearer-authenticated and scoped to a new
+`acp.checkout` scope. Unlike the MCP/GraphQL surfaces, ACP does **not**
+inherit the wildcard: a token is granted access **only** when it carries an
+explicit `acp_scopes` list containing `acp.checkout` (explicit grant from
+**Settings → Developer → API tokens**). Each response echoes the
+`API-Version: 2026-04-17` header.
+
+| Method + path                                 | operationId            | Notes                                            |
+| --------------------------------------------- | ---------------------- | ------------------------------------------------ |
+| `GET /.well-known/acp.json`                   | —                      | Discovery manifest (no auth).                    |
+| `GET /acp/feed.json`                          | —                      | Product feed; requires the `catalog.read` scope. |
+| `POST /acp/checkout_sessions`                 | createCheckoutSession  | New `Cart` from `line_items` + `currency`.       |
+| `GET /acp/checkout_sessions/{id}`             | getCheckoutSession     | Read the session.                                |
+| `POST /acp/checkout_sessions/{id}`            | updateCheckoutSession  | Mutate line items / buyer / fulfillment.         |
+| `POST /acp/checkout_sessions/{id}/cancel`     | cancelCheckoutSession  | Release the cart; status `canceled`.             |
+| `POST /acp/checkout_sessions/{id}/complete`   | completeCheckoutSession | Phase 1 (`unsupported`) — see below.            |
+
+The session `id` is the `Cart` id. Responses are conformant ACP
+`CheckoutSession` JSON (status, currency, `line_items[]`, `totals[]`,
+`capabilities`, `messages[]`, `links[]`) with amounts as integer minor
+units. **Phase 1 ships read/quote only:** `complete` returns a `422` with a
+`MessageError` whose code is `unsupported` — the money path (Stripe Shared
+Payment Token redemption) is deferred to Phase 2.
+
 ## When to import from Django directly
 
 `morpheus` covers the common case. If you need something not exposed

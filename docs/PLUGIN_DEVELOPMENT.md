@@ -161,7 +161,7 @@ The exception is logged with a full traceback (see `plugins/registry.py:_activat
 | `url` | `str` | optional | Plugin homepage / docs. |
 | `requires` | `list[str]` | optional | Plugin names this depends on (topological order). |
 | `conflicts` | `list[str]` | optional | Plugins this cannot coexist with. |
-| `enabled_by_default` | `bool` | optional (default `True`) | `False` ships the plugin **installed-but-OFF** — the merchant opts in from Dashboard → Apps. Only affects the first run (when no `PluginConfig` row exists); after that the DB flag wins. Example: `booking_marketplace`. |
+| `enabled_by_default` | `bool` | optional (default `True`) | `False` ships the plugin **installed-but-OFF** — the merchant opts in from Dashboard → Apps. Only affects the first run (when no `PluginConfig` row exists); after that the DB flag wins. Use it for anything that's inert without operator setup — an external integration that needs credentials/an IdP (`staff_sso`), or a protocol surface a merchant opts into (`agentic_checkout`) — as well as merchant-specific features (`booking_marketplace`). |
 | `has_models` | `bool` | ✅ if you have models | If True, the plugin needs to be in `INSTALLED_APPS`. |
 
 The base class **validates** all metadata at class-definition time — typos
@@ -635,6 +635,38 @@ table, which the Celery `process_outbox` task drains to NATS / webhooks.
 That gives you exactly-once side-effect delivery for free.
 
 See [LAW 4 in RULES.md](../RULES.md#law-4--plugins-communicate-via-hooks--outbox).
+
+### Sign-in plugins must respect the second-factor gate
+
+`MorpheusEvents.AUTH_SECOND_FACTOR` (`'auth.second_factor'`) is a **filter**
+fired in `core/auth/views.py:otp_verify` *after* the email-OTP succeeds and
+*before* `login()` — it lets a plugin interpose a second factor by returning an
+`HttpResponse` (with no subscriber the value stays `None` and login proceeds as
+single-factor email-OTP). `staff_mfa` subscribes to it and redirects an enrolled
+staffer to its TOTP challenge.
+
+**If your plugin adds a new way to sign in (SSO/OIDC/SAML, magic links,
+passkeys), it must route staff through the same gate** — otherwise the
+alternate path silently bypasses MFA. Email-OTP fires the filter for you, but
+flows that complete `login()` themselves (e.g. allauth's social login) do **not**
+fire it. In that case call the single decision point directly and interpose its
+response:
+
+```python
+from plugins.registry import plugin_registry
+
+if plugin_registry.is_active('staff_mfa'):
+    from plugins.installed.staff_mfa.services import second_factor_response
+    mfa = plugin_registry.get('staff_mfa')
+    resp = second_factor_response(mfa, request, user, next_url)
+    if resp is not None:
+        return resp   # redirect to the TOTP challenge before login completes
+```
+
+`staff_sso` does exactly this in its allauth adapter (raising
+`ImmediateHttpResponse(resp)` from `pre_social_login`). Reuse
+`staff_mfa.services.second_factor_response` — don't re-implement the policy —
+and keep email-OTP available as the break-glass path.
 
 ---
 

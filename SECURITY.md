@@ -77,6 +77,27 @@ Out of scope:
   obvious AI-generated landmines: `f"..."` SQL interpolation,
   `mark_safe` on untrusted input, missing `@require_http_methods`,
   hallucinated `requirements.txt` lines.
+- Staff sign-in can require a second factor (`staff_mfa` plugin):
+  TOTP after the email-OTP succeeds, via the `AUTH_SECOND_FACTOR`
+  core hook. Recovery codes are SHA-256 hashed and single-use,
+  enforcement is opt-in (`require_for_staff`), the challenge is
+  rate-limited, and resets are audited (`mfa.*`). Disabling the
+  plugin reverts sign-in to single-factor email-OTP.
+- Federated staff SSO (`staff_sso` plugin, OFF by default): OIDC +
+  SAML 2.0 via `django-allauth`, with email-domain allowlist /
+  group-claim staff-gating and JIT provisioning that links existing
+  customers only on a *verified* IdP email. **SSO does not bypass
+  MFA** — the adapter runs the same `staff_mfa` second-factor gate
+  on the SSO path (allauth's `login()` doesn't fire
+  `AUTH_SECOND_FACTOR`, so the adapter calls into `staff_mfa` and
+  redirects to the TOTP challenge). SAML trusts email only from a
+  signature-validated (signed) assertion; email-OTP stays available
+  as the break-glass path.
+- Plugin settings-panel secrets (API keys, the SSO client secret,
+  etc.) are write-only: the shared panel renderer masks
+  `format: password` JSON-schema fields, never pre-fills the stored
+  value, and a blank submit preserves the existing secret rather
+  than echoing it back in cleartext.
 - Server / TLS configuration is documented for self-hosters in
   `docs/`.
 
