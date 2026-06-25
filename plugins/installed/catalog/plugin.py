@@ -30,6 +30,7 @@ class CatalogPlugin(Plugin):
                 'trend': 'flat',
                 'icon': 'package',
                 'series': None,
+                'hint': 'Number of products currently visible on the storefront.',
             }
         )
         return value

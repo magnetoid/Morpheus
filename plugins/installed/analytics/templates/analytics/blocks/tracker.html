@@ -1,16 +1,51 @@
-{# Storefront analytics beacon — emits product views, search queries, cart adds. #}
+{# Storefront analytics beacon — emits product views, search queries, cart adds, scroll depth, and custom no-code events. #}
 <script>
 (function() {
   var TRACK_URL = '/api/analytics/track/';
+  var startTime = Date.now();
+  var maxScrollDepth = 0;
+  var sessionCookie = document.cookie.match(/morph_aid=([^;]+)/);
+  // Simple UUID v4 for idempotency
+  function uuidv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
 
-  function send(name, kind, extra) {
+  function send(name, kind, extra, isRealtime) {
     try {
-      var payload = Object.assign({name: name, kind: kind, url: location.pathname + location.search}, extra || {});
+      var payload = Object.assign({
+        name: name, 
+        kind: kind, 
+        url: location.pathname + location.search,
+        duration_ms: Date.now() - startTime,
+        scroll_depth: maxScrollDepth,
+        is_realtime: !!isRealtime,
+        idempotency_key: uuidv4()
+      }, extra || {});
       var blob = new Blob([JSON.stringify(payload)], {type: 'application/json'});
-      if (navigator.sendBeacon) navigator.sendBeacon(TRACK_URL, blob);
-      else fetch(TRACK_URL, {method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'}});
+      if (navigator.sendBeacon && !isRealtime) {
+        navigator.sendBeacon(TRACK_URL, blob);
+      } else {
+        fetch(TRACK_URL, {method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'}});
+      }
     } catch (e) {}
   }
+
+  // Scroll depth tracking
+  window.addEventListener('scroll', function() {
+    var h = document.documentElement, b = document.body, st = 'scrollTop', sh = 'scrollHeight';
+    var percent = Math.round((h[st]||b[st]) / ((h[sh]||b[sh]) - h.clientHeight) * 100);
+    if (percent > maxScrollDepth) maxScrollDepth = percent;
+  }, {passive: true});
+
+  // Track JS Errors
+  window.addEventListener('error', function(e) {
+    send('frontend.error', 'error', {
+      error_context: {message: e.message, filename: e.filename, lineno: e.lineno, colno: e.colno}
+    }, true);
+  });
 
   // Auto-detect product detail pages: /products/<slug>/
   var m = location.pathname.match(/^\/products\/([\w-]+)\/?$/);
@@ -29,6 +64,36 @@
       send('cart.add', 'cart');
     }
   }, true);
+
+  // Before unload event (tracks session duration and final scroll depth)
+  window.addEventListener('visibilitychange', function(e) {
+    if (document.visibilityState === 'hidden') {
+      send('page.leave', 'pageview', {}, false);
+    }
+  });
+
+  // Load custom no-code event configurations from the server
+  fetch('/api/analytics/custom-events/')
+    .then(r => r.json())
+    .then(data => {
+      var events = data.events || [];
+      events.forEach(function(evt) {
+        // If URL pattern matches (or is empty)
+        if (!evt.url_pattern || new RegExp(evt.url_pattern).test(location.pathname)) {
+          if (evt.css_selector) {
+            // Attach click listeners to matching elements
+            document.querySelectorAll(evt.css_selector).forEach(function(el) {
+              el.addEventListener('click', function() {
+                send(evt.name, evt.event_kind, {payload: {text: el.innerText}}, true);
+              });
+            });
+          } else {
+            // Just a URL match event
+            send(evt.name, evt.event_kind, {}, false);
+          }
+        }
+      });
+    }).catch(e => {});
 
   // Expose a helper for plugins to fire custom events.
   window.morpheusTrack = send;

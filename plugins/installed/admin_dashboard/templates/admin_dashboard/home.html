@@ -87,7 +87,15 @@
     {% for m in metrics %}
     <div class="card card-padded kpi">
       <div class="flex items-center justify-between">
-        <span class="kpi__label">{{ m.label }}</span>
+        <span class="kpi__label flex items-center">
+          {{ m.label }}
+          {% if m.hint %}
+          <span class="context-help" aria-label="{{ m.hint }}">
+            <i data-lucide="help-circle" class="h-3.5 w-3.5"></i>
+            <span class="context-help-tooltip" style="text-transform: none; letter-spacing: normal;">{{ m.hint }}</span>
+          </span>
+          {% endif %}
+        </span>
         <i data-lucide="{{ m.icon }}" class="h-4 w-4 text-[color:var(--text-muted)]" aria-hidden="true"></i>
       </div>
       <div class="flex items-end justify-between gap-2">

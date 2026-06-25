@@ -59,10 +59,15 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% for field in core_card.form %}
         <div class="space-y-1 {% if field.field.widget.input_type == 'textarea' or field.name == 'store_description' %}md:col-span-2{% endif %}">
-          <label for="{{ field.id_for_label }}" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
+          <label for="{{ field.id_for_label }}" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] flex items-center">
             {{ field.label }}
+            {% if field.help_text %}
+            <span class="context-help" aria-label="{{ field.help_text }}">
+              <i data-lucide="help-circle" class="h-3.5 w-3.5"></i>
+              <span class="context-help-tooltip">{{ field.help_text }}</span>
+            </span>
+            {% endif %}
           </label>
-          {% if field.help_text %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.help_text }}</p>{% endif %}
           {{ field }}
           {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
         </div>
@@ -95,10 +100,15 @@
         {% for field in c.fields %}
         <div class="space-y-1{% if field.kind == 'string' and field.description|length > 80 %} md:col-span-2{% endif %}">
           <label for="f-{{ c.plugin_name }}-{{ field.key }}"
-                 class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
+                 class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] flex items-center">
             {{ field.title }}
+            {% if field.description %}
+            <span class="context-help" aria-label="{{ field.description }}">
+              <i data-lucide="help-circle" class="h-3.5 w-3.5"></i>
+              <span class="context-help-tooltip">{{ field.description }}</span>
+            </span>
+            {% endif %}
           </label>
-          {% if field.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.description }}</p>{% endif %}
 
           {% if field.kind == 'boolean' %}
           <label class="inline-flex items-center gap-2">

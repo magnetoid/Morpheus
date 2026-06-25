@@ -104,9 +104,11 @@ def get_or_create_session(request, *, response=None):
     from plugins.installed.analytics.models import AnalyticsSession
 
     cookie_id = (request.COOKIES.get(COOKIE_NAME) or '').strip()
+    is_consented = request.COOKIES.get('cookie_consent') == 'true'
+
     if not cookie_id:
         cookie_id = secrets.token_urlsafe(24)[:48]
-        if response is not None:
+        if response is not None and is_consented:
             response.set_cookie(
                 COOKIE_NAME,
                 cookie_id,
@@ -118,14 +120,35 @@ def get_or_create_session(request, *, response=None):
 
     customer = getattr(request, 'user', None)
     customer = customer if (customer is not None and customer.is_authenticated) else None
+    
+    # Anonymized cross-device ID
+    cross_device_id = ''
+    if customer:
+        cross_device_id = hashlib.sha256(f"customer_{customer.id}".encode('utf-8')).hexdigest()[:32]
+    else:
+        cross_device_id = hashlib.sha256(cookie_id.encode('utf-8')).hexdigest()[:32]
+
+    # Geolocation and Device specs tracking
+    ip_addr = request.META.get('REMOTE_ADDR', '')
+    geo_location = {
+        'country': request.META.get('HTTP_CF_IPCOUNTRY', ''),
+        'city': request.headers.get('x-city', ''),
+    }
+    device_specs = {
+        'os': request.headers.get('sec-ch-ua-platform', ''),
+        'mobile': request.headers.get('sec-ch-ua-mobile', ''),
+        'browser': request.META.get('HTTP_USER_AGENT', '')[:100],
+    }
 
     try:
         session, created = AnalyticsSession.objects.get_or_create(
             cookie_id=cookie_id,
             defaults={
                 'user_agent': (request.META.get('HTTP_USER_AGENT', '') or '')[:300],
-                'ip_hash': _hash_ip(request.META.get('REMOTE_ADDR', '')),
+                'ip_hash': _hash_ip(ip_addr),
                 'device': _device_from_ua(request.META.get('HTTP_USER_AGENT', '')),
+                'device_specs': device_specs,
+                'geo_location': geo_location,
                 'referrer': (request.META.get('HTTP_REFERER', '') or '')[:500],
                 'landing_url': (request.path or '')[:500],
                 'utm_source': (request.GET.get('utm_source') or '')[:80],
@@ -133,11 +156,20 @@ def get_or_create_session(request, *, response=None):
                 'utm_campaign': (request.GET.get('utm_campaign') or '')[:120],
                 'utm_content': (request.GET.get('utm_content') or '')[:120],
                 'customer': customer,
+                'cross_device_id': cross_device_id,
+                'is_consented': is_consented,
             },
         )
-        if not created and customer is not None and session.customer_id != customer.id:
-            session.customer = customer
-            session.save(update_fields=['customer', 'last_seen_at'])
+        if not created:
+            update_fields = ['last_seen_at']
+            if customer is not None and session.customer_id != customer.id:
+                session.customer = customer
+                session.cross_device_id = cross_device_id
+                update_fields.extend(['customer', 'cross_device_id'])
+            if is_consented != session.is_consented:
+                session.is_consented = is_consented
+                update_fields.append('is_consented')
+            session.save(update_fields=update_fields)
     except DatabaseError as e:
         logger.warning('analytics: session resolution failed: %s', e)
         return None
@@ -157,6 +189,11 @@ def record_event(
     revenue: Money | None = None,
     agent_name: str = '',
     payload: dict[str, Any] | None = None,
+    scroll_depth: int | None = None,
+    duration_ms: int | None = None,
+    error_context: dict | None = None,
+    is_realtime: bool = False,
+    idempotency_key: str = '',
 ):
     """The single entry-point for recording an event."""
     from plugins.installed.analytics.models import AnalyticsEvent, AnalyticsSession
@@ -171,6 +208,11 @@ def record_event(
     if customer is not None and not should_track_customer(customer):
         return None
 
+    # Deduplication logic
+    if idempotency_key:
+        if AnalyticsEvent.objects.filter(idempotency_key=idempotency_key).exists():
+            return None
+
     try:
         evt = AnalyticsEvent.objects.create(
             name=name[:120],
@@ -183,6 +225,11 @@ def record_event(
             revenue=revenue,
             agent_name=agent_name[:100],
             payload=payload or {},
+            scroll_depth=scroll_depth,
+            duration_ms=duration_ms,
+            error_context=error_context or {},
+            is_realtime=is_realtime,
+            idempotency_key=idempotency_key,
         )
         if session is not None:
             AnalyticsSession.objects.filter(pk=session.pk).update(
@@ -434,6 +481,34 @@ def real_time(*, minutes: int = 30) -> dict:
                 'created_at',
             )[:30]
         ),
+    }
+
+def predictive_trends(*, days: int = 30) -> dict:
+    """Predictive trend forecasting using simple moving average and linear projection."""
+    from plugins.installed.analytics.models import DailyMetric
+    since = timezone.now().date() - timedelta(days=days)
+    
+    # Fetch historical revenue
+    historical = list(DailyMetric.objects.filter(metric='revenue', day__gte=since).order_by('day'))
+    if not historical or len(historical) < 3:
+        return {'forecast_next_7d': 0.0, 'trend_direction': 'flat', 'confidence': 'low'}
+        
+    values = [float(h.value_money.amount) for h in historical if h.value_money]
+    
+    # Calculate simple moving average and slope
+    if len(values) >= 7:
+        recent_avg = sum(values[-7:]) / 7
+        older_avg = sum(values[:-7][-7:]) / 7 if len(values) >= 14 else sum(values[:-7]) / len(values[:-7])
+        daily_growth = (recent_avg - older_avg) / 7 if older_avg > 0 else 0
+    else:
+        daily_growth = (values[-1] - values[0]) / len(values)
+        
+    forecast_next_7d = sum(max(0, values[-1] + (daily_growth * i)) for i in range(1, 8))
+    
+    return {
+        'forecast_next_7d': round(forecast_next_7d, 2),
+        'trend_direction': 'up' if daily_growth > 0 else ('down' if daily_growth < 0 else 'flat'),
+        'confidence': 'high' if len(values) >= 14 else 'medium'
     }
 
 

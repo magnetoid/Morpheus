@@ -8,7 +8,10 @@
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold tracking-tight">Orders</h1>
+      <div class="flex items-center gap-2">
+        <h1 class="text-xl font-semibold tracking-tight">Orders</h1>
+        <span class="context-help" aria-label="Manage, refund, and fulfill all customer orders"><i data-lucide="help-circle" class="h-4 w-4"></i></span>
+      </div>
       {% if page_obj %}<p class="text-sm text-[color:var(--text-muted)]">{{ page_obj.paginator.count }} order{{ page_obj.paginator.count|pluralize }}.</p>{% endif %}
     </div>
     <div class="flex items-center gap-2">

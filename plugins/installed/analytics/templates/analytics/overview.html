@@ -2,30 +2,61 @@
 {% block title %}Analytics overview · Morpheus{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-xl font-semibold">Analytics — last {{ days }} days</h1>
-  <form method="get" style="display:inline-flex; gap:.5rem;">
-    <select name="days" class="input" style="max-width:120px;" onchange="this.form.submit()">
-      <option value="1" {% if days == 1 %}selected{% endif %}>Today</option>
-      <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
-      <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
-      <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
-    </select>
-  </form>
+<div class="flex flex-wrap items-center justify-between mb-4 gap-3">
+  <h1 class="text-xl font-semibold">Analytics Overview</h1>
+  <div style="display:inline-flex; gap:.5rem;">
+    <form method="get" style="display:inline-flex; gap:.5rem;">
+      <select name="days" class="input" style="max-width:120px;" onchange="this.form.submit()">
+        <option value="1" {% if days == 1 %}selected{% endif %}>Today</option>
+        <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
+        <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+        <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
+      </select>
+    </form>
+    <a href="{% url 'analytics_dash:export_data' %}?days={{ days }}&format=csv" class="btn btn-secondary">
+      <i data-lucide="download" class="h-4 w-4"></i> Export CSV
+    </a>
+  </div>
 </div>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-  <div class="card card-padded kpi"><span class="kpi__label">Sessions</span><span class="kpi__value">{{ summary.sessions }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Pageviews</span><span class="kpi__value">{{ summary.pageviews }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Orders</span><span class="kpi__value">{{ summary.orders }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Revenue</span><span class="kpi__value">{% if summary.revenue %}{{ summary.revenue }}{% else %}—{% endif %}</span></div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Sessions 
+      <span class="context-help" aria-label="Total unique visits to your storefront"><i data-lucide="help-circle" class="h-3.5 w-3.5"></i></span>
+    </span>
+    <span class="kpi__value">{{ summary.sessions }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Pageviews</span>
+    <span class="kpi__value">{{ summary.pageviews }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Orders</span>
+    <span class="kpi__value">{{ summary.orders }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Revenue</span>
+    <span class="kpi__value">{% if summary.revenue %}{{ summary.revenue }}{% else %}—{% endif %}</span>
+  </div>
 </div>
 
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-  <div class="card card-padded kpi"><span class="kpi__label">Product views</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.product_views }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Cart adds</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.cart_adds }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Checkouts started</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.checkouts_started }}</span></div>
-  <div class="card card-padded kpi"><span class="kpi__label">Searches</span><span class="kpi__value" style="font-size:1.35rem;">{{ summary.searches }}</span></div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Product views</span>
+    <span class="kpi__value" style="font-size:1.35rem;">{{ summary.product_views }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Cart adds</span>
+    <span class="kpi__value" style="font-size:1.35rem;">{{ summary.cart_adds }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Checkouts started</span>
+    <span class="kpi__value" style="font-size:1.35rem;">{{ summary.checkouts_started }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Searches</span>
+    <span class="kpi__value" style="font-size:1.35rem;">{{ summary.searches }}</span>
+  </div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
@@ -38,12 +69,24 @@
     {% empty %}<p class="text-sm text-[color:var(--text-muted)]">No data yet.</p>{% endfor %}
   </div>
   <div class="card card-padded">
-    <h3 class="font-semibold mb-3">Top searches</h3>
-    {% for r in top_searches %}
-    <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);">
-      <span>{{ r.query }}</span><strong>{{ r.count }}</strong>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">Predictive Trend Forecasting</h3>
+      <span class="pill pill-neutral">Next 7 Days</span>
     </div>
-    {% empty %}<p class="text-sm text-[color:var(--text-muted)]">No searches yet.</p>{% endfor %}
+    <div class="kpi mb-4">
+      <span class="kpi__label">Forecasted Revenue</span>
+      <span class="kpi__value flex items-center gap-2">
+        ${{ forecast.forecast_next_7d|floatformat:2 }}
+        {% if forecast.trend_direction == 'up' %}
+        <i data-lucide="trending-up" class="h-5 w-5 text-[color:var(--success)]"></i>
+        {% elif forecast.trend_direction == 'down' %}
+        <i data-lucide="trending-down" class="h-5 w-5 text-[color:var(--danger)]"></i>
+        {% else %}
+        <i data-lucide="minus" class="h-5 w-5 text-[color:var(--text-muted)]"></i>
+        {% endif %}
+      </span>
+    </div>
+    <p class="text-xs text-[color:var(--text-muted)]">Confidence: {{ forecast.confidence|title }}</p>
   </div>
 </div>
 

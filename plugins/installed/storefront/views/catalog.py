@@ -124,8 +124,9 @@ def product_list(request):
     qs = qs.distinct()
 
     # Sort
-    sort = (request.GET.get('sort') or 'newest').strip()
+    sort = (request.GET.get('sort') or 'for_you').strip()
     sort_map = {
+        'for_you': '-created_at',  # Base sort, dynamically reordered later
         'newest': '-created_at',
         'oldest': 'created_at',
         'price_asc': 'price',
@@ -172,6 +173,14 @@ def product_list(request):
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.page(1)
     products = list(page_obj.object_list)
+
+    # Advanced Personalization: Reorder the page dynamically if 'for_you' intent sort is active
+    if sort == 'for_you':
+        try:
+            from plugins.installed.personalisation.services import rank_for_visitor
+            products = rank_for_visitor(request, products, surface='catalog_plp')
+        except Exception:
+            pass
 
     # Query-string base for pagination links — drops `page` so the template
     # can append it cleanly while preserving every active filter (search,
@@ -1002,15 +1011,16 @@ def category_detail(request, slug):
     # etc.).
     from django.db.models import Q  # noqa: PLC0415
 
-    sort = (request.GET.get('sort') or 'featured').strip()
+    sort = (request.GET.get('sort') or 'for_you').strip()
     sort_map = {
+        'for_you': ('-is_featured', '-created_at'),
         'featured': ('-is_featured', '-created_at'),
         'newest': ('-created_at',),
         'price_asc': ('price',),
         'price_desc': ('-price',),
         'name': ('name',),
     }
-    order = sort_map.get(sort, sort_map['featured'])
+    order = sort_map.get(sort, sort_map['for_you'])
     from django.core.paginator import Paginator  # noqa: PLC0415
 
     qs = (
@@ -1023,6 +1033,14 @@ def category_detail(request, slug):
     )
     page_obj = Paginator(qs, 24).get_page(request.GET.get('page') or 1)
     products = list(page_obj.object_list)
+
+    if sort == 'for_you':
+        try:
+            from plugins.installed.personalisation.services import rank_for_visitor
+            products = rank_for_visitor(request, products, surface='category_plp')
+        except Exception:
+            pass
+
     _attach_book_authors(products)
     intro = _CATEGORY_INTROS.get(slug, {})
     breadcrumb_items = [
@@ -1061,6 +1079,7 @@ def category_detail(request, slug):
             'page_obj': page_obj,
             'sort': sort,
             'sort_options': [
+                ('for_you', 'For You'),
                 ('featured', 'Featured'),
                 ('newest', 'Newest'),
                 ('price_asc', 'Price: low to high'),
@@ -1092,8 +1111,9 @@ def collection_detail(request, slug):
     collection = Collection.objects.filter(slug=slug, is_active=True).first()
     if collection is None:
         raise Http404
-    sort = (request.GET.get('sort') or 'featured').strip()
+    sort = (request.GET.get('sort') or 'for_you').strip()
     sort_map = {
+        'for_you': ('-is_featured', '-created_at'),
         'featured': ('-is_featured', '-created_at'),
         'newest': ('-created_at',),
         'price_asc': ('price',),
@@ -1106,10 +1126,18 @@ def collection_detail(request, slug):
         Product.objects.filter(status='active', collections=collection)
         .select_related('category')
         .prefetch_related('images')
-        .order_by(*sort_map.get(sort, sort_map['featured']))
+        .order_by(*sort_map.get(sort, sort_map['for_you']))
     )
     page_obj = Paginator(qs, 24).get_page(request.GET.get('page') or 1)
     products = list(page_obj.object_list)
+    
+    if sort == 'for_you':
+        try:
+            from plugins.installed.personalisation.services import rank_for_visitor
+            products = rank_for_visitor(request, products, surface='collection_plp')
+        except Exception:
+            pass
+
     _attach_book_authors(products)
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
@@ -1147,6 +1175,7 @@ def collection_detail(request, slug):
             'page_obj': page_obj,
             'sort': sort,
             'sort_options': [
+                ('for_you', 'For You'),
                 ('featured', 'Featured'),
                 ('newest', 'Newest'),
                 ('price_asc', 'Price: low to high'),

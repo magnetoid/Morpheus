@@ -29,20 +29,36 @@ _ALLOWED_KINDS = {
     'signup',
     'login',
     'custom',
+    'click',
+    'form_submit',
+    'scroll',
+    'error',
 }
 
 # Hard caps on beacon shape — anyone can POST to this endpoint, so we
 # refuse to ingest oversized garbage rather than let a single visitor
 # fill the events table with 10MB blobs.
-_MAX_BODY_BYTES = 4096
-_MAX_PAYLOAD_KEYS = 20
-_MAX_PAYLOAD_VALUE_LEN = 500
+_MAX_BODY_BYTES = 8192
+_MAX_PAYLOAD_KEYS = 30
+_MAX_PAYLOAD_VALUE_LEN = 1000
 
+
+@csrf_exempt
+def custom_events_config(request):
+    """Returns the list of active CustomEventConfig items for the frontend JS to attach listeners."""
+    from plugins.installed.analytics.models import CustomEventConfig
+    try:
+        events = list(CustomEventConfig.objects.filter(is_active=True).values(
+            'name', 'css_selector', 'url_pattern', 'event_kind'
+        ))
+        return JsonResponse({'events': events})
+    except Exception:
+        return JsonResponse({'events': []})
 
 @csrf_exempt
 @require_http_methods(['POST'])
 def track_beacon(request):
-    """Storefront JS calls this with `{name, kind?, url?, product_slug?, search_query?}`.
+    """Storefront JS calls this with `{name, kind?, url?, product_slug?, search_query?, scroll_depth?, duration_ms?, error_context?}`.
 
     Always returns 204 quickly. Recording is best-effort; never raises to caller.
     """
@@ -67,7 +83,7 @@ def track_beacon(request):
     payload = {
         k: (v[:_MAX_PAYLOAD_VALUE_LEN] if isinstance(v, str) else v)
         for k, v in body.items()
-        if k not in ('name', 'kind', 'url', 'product_slug', 'search_query')
+        if k not in ('name', 'kind', 'url', 'product_slug', 'search_query', 'scroll_depth', 'duration_ms', 'error_context', 'is_realtime')
     }
     if len(payload) > _MAX_PAYLOAD_KEYS:
         return HttpResponseBadRequest('Too many payload keys')
@@ -83,6 +99,25 @@ def track_beacon(request):
         # Skip staff/admin browsing so it doesn't pollute customer analytics.
         if should_track_request(request):
             session = get_or_create_session(request, response=response)
+            
+            # Extract new metrics
+            scroll_depth = None
+            if body.get('scroll_depth') is not None:
+                try: scroll_depth = int(body.get('scroll_depth'))
+                except ValueError: pass
+                
+            duration_ms = None
+            if body.get('duration_ms') is not None:
+                try: duration_ms = int(body.get('duration_ms'))
+                except ValueError: pass
+                
+            error_context = body.get('error_context') or {}
+            if isinstance(error_context, str):
+                try: error_context = json.loads(error_context)
+                except json.JSONDecodeError: error_context = {'raw': error_context}
+            
+            is_realtime = bool(body.get('is_realtime', False))
+            
             record_event(
                 name=name,
                 kind=kind,
@@ -92,6 +127,10 @@ def track_beacon(request):
                 product_slug=(body.get('product_slug') or '')[:200],
                 search_query=(body.get('search_query') or '')[:200],
                 payload=payload,
+                scroll_depth=scroll_depth,
+                duration_ms=duration_ms,
+                error_context=error_context,
+                is_realtime=is_realtime,
             )
         return response
     except Exception as e:  # noqa: BLE001 — beacon must never error
@@ -99,9 +138,42 @@ def track_beacon(request):
         return JsonResponse({'ok': False}, status=204)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Dashboard pages
-# ─────────────────────────────────────────────────────────────────────────────
+@staff_member_required
+def export_data(request):
+    """Export analytics data in CSV/JSON format."""
+    import csv
+    from plugins.installed.analytics.services import summary_for, top_products, top_searches, agent_activity
+    
+    format_type = request.GET.get('format', 'csv')
+    days = int(request.GET.get('days', 30))
+    
+    summary = summary_for(days=days)
+    products = top_products(days=days, limit=100)
+    
+    if format_type == 'json':
+        response = JsonResponse({
+            'summary': summary,
+            'top_products': products
+        })
+        response['Content-Disposition'] = f'attachment; filename="analytics_export_{days}d.json"'
+        return response
+        
+    # CSV Default
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="analytics_export_{days}d.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Metric', 'Value'])
+    for key, value in summary.items():
+        writer.writerow([key, str(value)])
+        
+    writer.writerow([])
+    writer.writerow(['Top Products'])
+    writer.writerow(['Product Slug', 'Views'])
+    for p in products:
+        writer.writerow([p['product_slug'], p['views']])
+        
+    return response
 
 
 @staff_member_required
@@ -111,6 +183,7 @@ def overview(request):
         summary_for,
         top_products,
         top_searches,
+        predictive_trends,
     )
 
     days = int(request.GET.get('days', 7) or 7)
@@ -122,6 +195,7 @@ def overview(request):
             'top_products': top_products(days=days, limit=10),
             'top_searches': top_searches(days=days, limit=10),
             'agent_activity': agent_activity(days=days),
+            'forecast': predictive_trends(days=days),
             'days': days,
             'active_nav': 'analytics',
         },

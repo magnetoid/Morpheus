@@ -31,6 +31,19 @@ def home(request):
     )
     # Templates use snake_case; GraphQL returns camelCase. Normalise.
     data.setdefault('featured_products', data.get('featuredProducts', []) or [])
+    
+    # Advanced Personalization: Reorder home page products for the individual visitor
+    # This turns the static featured grid into a hyper-personalized storefront.
+    try:
+        from plugins.installed.personalisation.services import rank_for_visitor
+        data['featured_products'] = rank_for_visitor(
+            request, 
+            data['featured_products'], 
+            surface='home_featured'
+        )
+    except Exception:
+        pass
+        
     data.setdefault('seasonal_products', data.get('featured_products', []))
 
     # Staff picks rail — same fallback chain as the dedicated /staff-picks/ page.

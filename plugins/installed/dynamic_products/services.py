@@ -59,6 +59,7 @@ def recommend(block, *, request=None, customer=None, context_product=None) -> li
         'related': _related,
         'bought_together': _bought_together,
         'for_you': _for_you,
+        'probability_grid': _probability_grid,
     }
     fn = dispatch.get(strategy, _for_you)
 
@@ -178,6 +179,101 @@ def _for_you(block, *, request, customer, context_product, limit, **_) -> list:
 
     return ranked
 
+
+def _probability_grid(block, *, request, customer, limit, **_) -> list:
+    """Returns products sorted by real-time purchase probability score for dynamic grid layout."""
+    try:
+        from plugins.installed.dynamic_products.models import DynamicGridItem
+    except Exception:
+        return []
+
+    # Get items sorted by highest probability
+    grid_items = DynamicGridItem.objects.all().select_related('product').order_by('-purchase_probability')
+    
+    # We may want to apply block filters (like categories/tags)
+    product_qs = _base_active_qs()
+    product_qs = _apply_filters(product_qs, block)
+    allowed_pids = set(product_qs.values_list('pk', flat=True))
+
+    ranked_pids = []
+    for item in grid_items:
+        if item.product_id in allowed_pids:
+            ranked_pids.append(item.product_id)
+            if len(ranked_pids) >= limit * 2:
+                break
+                
+    # Fallback to _for_you if grid items are empty
+    if not ranked_pids:
+        return _for_you(block, request=request, customer=customer, context_product=None, limit=limit)
+        
+    return ranked_pids
+
+def calculate_grid_probabilities() -> dict:
+    """
+    Recalculate purchase probabilities for all active products.
+    Integrates historical sales, inventory levels, popularity, and trends.
+    This should be run periodically via a background task (e.g., Celery beat)
+    or updated in real-time via signals.
+    """
+    from plugins.installed.catalog.models import Product
+    from plugins.installed.dynamic_products.models import DynamicGridItem
+    
+    # Weights for different factors
+    W_SALES = 0.4
+    W_POPULARITY = 0.3
+    W_INVENTORY = 0.2
+    W_TREND = 0.1
+    
+    active_products = Product.objects.filter(status='active').prefetch_related('images', 'category')
+    
+    updated_count = 0
+    for product in active_products:
+        # Mock calculation variables (in a real system, these come from analytics/orders models)
+        # e.g. recent_sales = OrderItem.objects.filter(product=product, created_at__gte=...)...
+        sales_score = getattr(product, 'recent_sales_score', 0.5) 
+        popularity_score = getattr(product, 'view_count_score', 0.5)
+        trend_score = getattr(product, 'trend_velocity', 0.5)
+        
+        # Inventory factor: slightly penalize if low stock, heavily if out of stock
+        inventory_score = 1.0
+        if getattr(product, 'track_inventory', False):
+            stock = product.total_stock if hasattr(product, 'total_stock') else 10
+            if stock == 0:
+                inventory_score = 0.0
+            elif stock < 5:
+                inventory_score = 0.5
+                
+        # Calculate final probability (0.0 to 1.0)
+        probability = (
+            (sales_score * W_SALES) + 
+            (popularity_score * W_POPULARITY) + 
+            (trend_score * W_TREND)
+        ) * inventory_score
+        
+        # Normalize and cap
+        probability = max(0.0, min(1.0, probability))
+        
+        # Extract metadata
+        primary_image = product.primary_image
+        cover_url = primary_image.image.url if primary_image and primary_image.image else ""
+        price_val = product.price.amount if product.price else 0.00
+        category_name = product.category.name if product.category else ""
+        
+        # Update or create the grid item
+        DynamicGridItem.objects.update_or_create(
+            product=product,
+            defaults={
+                'title': product.name,
+                'author': getattr(product, 'author_name', ''), # Fallback metadata
+                'cover_image_url': cover_url,
+                'price': price_val,
+                'genre': category_name,
+                'purchase_probability': probability
+            }
+        )
+        updated_count += 1
+        
+    return {'updated': updated_count}
 
 # ---------------------------------------------------------------------------
 # Signal helpers (each optional / lazy / fail-soft)

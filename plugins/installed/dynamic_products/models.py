@@ -45,6 +45,7 @@ STRATEGY_CHOICES = [
     ('recently_viewed', 'Recently viewed'),
     ('related', 'Related to this product'),
     ('bought_together', 'Frequently bought together'),
+    ('probability_grid', 'Dynamic Probability Grid'),
 ]
 
 # Strategies that only make sense on a product page (need context_product).
@@ -135,3 +136,32 @@ class DynamicBlock(models.Model):
     @property
     def is_pdp_only(self) -> bool:
         return self.strategy in PDP_ONLY_STRATEGIES
+
+
+class DynamicGridItem(models.Model):
+    """Stores all book metadata and a real-time calculated purchase probability score
+    for dynamic grid layout rendering.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.OneToOneField(
+        'catalog.Product',
+        on_delete=models.CASCADE,
+        related_name='dynamic_grid_item'
+    )
+    title = models.CharField(max_length=255)
+    author = models.CharField(max_length=255, blank=True)
+    cover_image_url = models.URLField(blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    genre = models.CharField(max_length=100, blank=True)
+    
+    # Real-time calculated purchase probability score (0.0 to 1.0)
+    purchase_probability = models.FloatField(default=0.0, db_index=True)
+    
+    last_calculated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-purchase_probability']
+
+    def __str__(self) -> str:
+        return f"{self.title} (Probability: {self.purchase_probability:.2f})"
+

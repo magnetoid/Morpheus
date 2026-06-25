@@ -31,6 +31,12 @@ class StoreSettings(models.Model):
     social_links = models.JSONField(default=dict)
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)
+    
+    # Advanced UX Settings
+    guided_ux_mode = models.BooleanField(
+        default=True, 
+        help_text='Enable enhanced micro-animations and highly visible contextual explanations across the dashboard.'
+    )
 
     # Custom SMTP Overrides
     smtp_host = models.CharField(max_length=200, blank=True, help_text='e.g. smtp.resend.com')

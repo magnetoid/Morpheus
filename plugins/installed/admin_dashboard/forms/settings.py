@@ -21,6 +21,11 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
         required=False,
         help_text='Shown on the storefront when a product has no image of its own.',
     )
+    guided_ux_mode = forms.BooleanField(
+        required=False,
+        label='Guided UX & Micro-animations',
+        help_text='Enable enhanced micro-animations and highly visible contextual explanations across the dashboard.'
+    )
 
     def __init__(self, *args, instance=None, **kwargs):
         self.instance = instance
@@ -36,6 +41,7 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
                     'contact_email',
                     'support_phone',
                     'product_placeholder_image',
+                    'guided_ux_mode',
                 )
             }
         super().__init__(*args, **kwargs)

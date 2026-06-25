@@ -1,0 +1,177 @@
+{% comment %}
+A dynamic masonry-style probability grid for products.
+Inputs: `heading`, `products`.
+Adjusts cell size and prominence based on the `purchase_probability` score 
+from the `DynamicGridItem` model. High probability items get larger spans.
+{% endcomment %}
+{% if products %}
+<style>
+.probability-grid-section {
+  padding: 3rem 0;
+  background-color: var(--color-bg-secondary, #fafafa);
+}
+.probability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-auto-rows: 280px;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+.probability-grid .book-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+.probability-grid .book-card:hover,
+.probability-grid .book-card:focus-within {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+  outline: 2px solid var(--color-accent, #000);
+}
+.probability-grid .cover-wrap {
+  flex-grow: 1;
+  background: #eee;
+  overflow: hidden;
+  position: relative;
+}
+.probability-grid .cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.probability-grid .book-card:hover .cover-wrap img {
+  transform: scale(1.05);
+}
+.probability-grid .book-info {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.probability-grid .book-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.probability-grid .book-author {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0 0 0.5rem 0;
+}
+.probability-grid .book-price {
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Prominence classes based on probability */
+.prominence-high {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.prominence-high .book-title {
+  font-size: 1.25rem;
+}
+.prominence-medium {
+  grid-column: span 1;
+  grid-row: span 2;
+}
+.prominence-low {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+
+@media (max-width: 768px) {
+  .probability-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 220px;
+    gap: 1rem;
+  }
+  .prominence-high {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  .prominence-medium {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  .prominence-low {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+}
+@media (max-width: 480px) {
+  .probability-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: min-content;
+  }
+  .prominence-high, .prominence-medium, .prominence-low {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  .probability-grid .cover-wrap {
+    height: 300px;
+  }
+}
+</style>
+
+<section class="probability-grid-section" aria-labelledby="dynamic-grid-heading">
+  <div class="wrap">
+    {% if heading %}
+    <div style="display:flex; align-items:end; justify-content:space-between; gap:1rem;">
+      <h2 id="dynamic-grid-heading" class="display display-m" style="margin:0;">{{ heading }}<span class="text-accent">.</span></h2>
+    </div>
+    {% endif %}
+    
+    <div class="probability-grid" role="list">
+      {% for product in products %}
+        {% comment %}
+        Determine prominence based on the attached dynamic_grid_item score.
+        If missing (e.g. not calculated yet), default to low.
+        {% endcomment %}
+        {% with prob=product.dynamic_grid_item.purchase_probability|default:0.0 %}
+        <a href="/products/{{ product.slug }}/" 
+           class="book-card {% if prob >= 0.8 %}prominence-high{% elif prob >= 0.5 %}prominence-medium{% else %}prominence-low{% endif %}"
+           role="listitem"
+           aria-label="{{ product.name }} by {{ product.dynamic_grid_item.author|default:'Unknown' }} - {{ product.display_price|default:'' }}">
+          
+          <div class="cover-wrap">
+            {% if product.primary_image %}
+              <img src="{{ product.primary_image.image.url }}" 
+                   alt="Cover of {{ product.name }}" 
+                   loading="lazy" 
+                   width="400" height="600"
+                   decoding="async">
+            {% else %}
+              <div class="placeholder" aria-hidden="true">{{ product.name|truncatewords:3 }}</div>
+            {% endif %}
+          </div>
+          
+          <div class="book-info">
+            <div>
+              <p class="book-title">{{ product.name }}</p>
+              {% if product.dynamic_grid_item.author %}
+              <p class="book-author">{{ product.dynamic_grid_item.author }}</p>
+              {% endif %}
+            </div>
+            <p class="book-price">
+              {% if product.price_starts_from %}From {% endif %}{{ product.display_price }}
+            </p>
+          </div>
+        </a>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

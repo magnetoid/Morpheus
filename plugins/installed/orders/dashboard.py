@@ -90,6 +90,7 @@ def on_dashboard_kpis(value, date_range=None, **kwargs):
                 'trend': _trend(revenue, prev_revenue),
                 'icon': 'dollar-sign',
                 'series': rev_series,
+                'hint': 'Gross revenue from all placed orders (before refunds).',
             },
             {
                 'label': 'Orders',
@@ -98,6 +99,7 @@ def on_dashboard_kpis(value, date_range=None, **kwargs):
                 'trend': _trend(order_count, prev_count),
                 'icon': 'shopping-bag',
                 'series': cnt_series,
+                'hint': 'Total number of completed checkout sessions.',
             },
             {
                 'label': 'Average order',
@@ -106,6 +108,7 @@ def on_dashboard_kpis(value, date_range=None, **kwargs):
                 'trend': 'flat',
                 'icon': 'trending-up',
                 'series': aov_series,
+                'hint': 'Average revenue per placed order (Total sales ÷ Orders).',
             },
         ]
     )

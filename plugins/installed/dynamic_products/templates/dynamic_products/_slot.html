@@ -4,5 +4,9 @@
 {% load dynamic_products %}
 {% dynamic_blocks_for block.slot request product as rendered_blocks %}
 {% for entry in rendered_blocks %}
-  {% include "dynamic_products/_carousel.html" with heading=entry.block.heading products=entry.products %}
+  {% if entry.block.strategy == 'probability_grid' %}
+    {% include "dynamic_products/_probability_grid.html" with heading=entry.block.heading products=entry.products %}
+  {% else %}
+    {% include "dynamic_products/_carousel.html" with heading=entry.block.heading products=entry.products %}
+  {% endif %}
 {% endfor %}

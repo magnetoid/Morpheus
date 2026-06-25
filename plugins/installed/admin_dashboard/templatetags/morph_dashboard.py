@@ -266,6 +266,14 @@ def customer_row_actions(context, customer):
     return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
 
 
+@register.simple_tag
+def get_guided_ux_mode():
+    try:
+        from core.models import StoreSettings
+        return StoreSettings.get('guided_ux_mode', True)
+    except Exception:
+        return True
+
 @register.inclusion_tag('admin_dashboard/_filter_chips.html', takes_context=True)
 def filter_chips(context, **labels):
     """Render chips for any request.GET param that has a non-empty value.
