@@ -201,6 +201,30 @@ def insights() -> dict:
     return out
 
 
+def daily_reports() -> dict:
+    """Daily curated AI reports covering Code Optimization, Feature Enhancements, and E-commerce Advancements."""
+    out: dict = {'available': True, 'reports': []}
+    with suppress(Exception):
+        from plugins.installed.morpheus_brain.models import DailyReport
+        # Get the latest 10 reports, grouped by category
+        reports = DailyReport.objects.filter(is_published=True).order_by('-published_at')[:10]
+        out['reports'] = [
+            {
+                'id': str(r.id),
+                'title': r.title,
+                'category': r.get_category_display(),
+                'summary': r.summary,
+                'content': r.content,
+                'published_at': r.published_at,
+                'references': [
+                    {'title': ref.title, 'url': ref.url}
+                    for ref in r.references.all()
+                ]
+            }
+            for r in reports
+        ]
+    return out
+
 def _gather_all_uncached() -> dict[str, Any]:
     """Everything the Brain knows, in one (DB-heavy) pass."""
     return {
@@ -210,6 +234,7 @@ def _gather_all_uncached() -> dict[str, Any]:
         'content': content_seo(),
         'storefront': storefront(),
         'improvements': insights(),
+        'reports': daily_reports(),
     }
 
 

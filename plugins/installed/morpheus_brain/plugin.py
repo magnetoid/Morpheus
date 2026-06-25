@@ -19,11 +19,10 @@ class MorpheusBrainPlugin(Plugin):
     label = 'Morpheus Brain'
     version = '1.0.0'
     description = (
-        'Settings → Morpheus Brain: a unified, tabbed view of plugin health, '
-        'code analysis, content & SEO, storefront performance, and improvement '
-        'recommendations — aggregated read-only from existing engines.'
+        'The central intelligence console for the platform. Aggregates code '
+        'quality, system errors, SEO health, and daily AI-driven industry reports into one view.'
     )
-    has_models = False
+    has_models = True
 
     def ready(self) -> None:
         # The Brain *engine* lives in core/brain/ (core, non-disableable). This

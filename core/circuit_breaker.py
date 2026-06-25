@@ -203,13 +203,24 @@ class CircuitBreaker(ContextDecorator):
 
 # ── A few named breakers the core wires by default. Plugins import + reuse. ──
 
-# OpenAI / LLM calls — usual outage profile is ~5 min before they're back.
-# Fail fast after 5 in a row to avoid stacking up 30s timeouts.
+# Fallback/default LLM breaker
 LLM_BREAKER = CircuitBreaker(
     name='llm',
     failure_threshold=5,
     cooldown_seconds=30,
 )
+
+def get_llm_breaker(provider_name: str) -> CircuitBreaker:
+    """Get or create a circuit breaker specific to an LLM provider."""
+    name = f'llm_{provider_name}'
+    breaker = CircuitBreaker.get(name)
+    if not breaker:
+        breaker = CircuitBreaker(
+            name=name,
+            failure_threshold=5,
+            cooldown_seconds=30,
+        )
+    return breaker
 
 # Outbound HTTP to merchant-defined webhooks. Higher tolerance — webhook
 # endpoints flap more than commercial APIs.

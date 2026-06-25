@@ -57,6 +57,7 @@
   {# ── Tab bar ─────────────────────────────────────────────────────── #}
   <div class="flex flex-wrap gap-1 border-b border-[color:var(--border)]">
     <button class="brain-tab is-active" data-tab="overview" type="button">Overview</button>
+    <button class="brain-tab" data-tab="reports" type="button">Daily Reports</button>
     <button class="brain-tab" data-tab="plugins" type="button">Plugins</button>
     <button class="brain-tab" data-tab="code" type="button">Code</button>
     <button class="brain-tab" data-tab="errors" type="button">Errors</button>
@@ -71,6 +72,97 @@
     <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Recent errors</div><div class="text-2xl font-semibold mt-1">{{ errors.total|default:0 }}</div><div class="text-xs text-[color:var(--text-muted)] mt-1">{{ code.rec_total|default:0 }} code rec{{ code.rec_total|default:0|pluralize }}</div></div>
     <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">SEO avg</div><div class="text-2xl font-semibold mt-1">{% if content.seo_total %}{{ content.seo_avg }}{% else %}—{% endif %}</div><div class="text-xs text-[color:var(--text-muted)] mt-1">{{ content.seo_low_count|default:0 }} below 50</div></div>
     <div class="card card-padded"><div class="text-xs text-[color:var(--text-muted)] uppercase">Content gaps</div><div class="text-2xl font-semibold mt-1">{{ content.catalog.missing_desc|default:0 }}</div><div class="text-xs text-[color:var(--text-muted)] mt-1">missing descriptions</div></div>
+  </section>
+
+  {# ── Plugins ─────────────────────────────────────────────────────── #}
+  <section data-panel="reports" hidden class="space-y-4">
+    {% if reports.available %}
+      {% if reports.reports %}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Code Optimization Reports -->
+          <div class="space-y-3">
+            <h2 class="font-semibold text-lg border-b border-[color:var(--border)] pb-1">Code Optimization</h2>
+            {% for r in reports.reports %}
+              {% if r.category == 'Code Optimization' %}
+                <div class="card card-padded">
+                  <div class="text-xs text-[color:var(--text-muted)] mb-1">{{ r.published_at|date:"M j, Y" }}</div>
+                  <h3 class="font-medium text-sm mb-1">{{ r.title }}</h3>
+                  <p class="text-xs text-[color:var(--text-muted)] mb-3">{{ r.summary }}</p>
+                  <div class="text-sm prose ProseMirror prose-sm max-w-none">{{ r.content|safe }}</div>
+                  {% if r.references %}
+                  <div class="mt-3 pt-2 border-t border-[color:var(--border)]">
+                    <div class="text-xs font-semibold mb-1">References:</div>
+                    <ul class="text-xs space-y-1">
+                    {% for ref in r.references %}
+                      <li><a href="{{ ref.url }}" target="_blank" class="text-[color:var(--brand)] hover:underline">{{ ref.title }}</a></li>
+                    {% endfor %}
+                    </ul>
+                  </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          
+          <!-- Feature Enhancements Reports -->
+          <div class="space-y-3">
+            <h2 class="font-semibold text-lg border-b border-[color:var(--border)] pb-1">Feature Enhancements</h2>
+            {% for r in reports.reports %}
+              {% if r.category == 'Feature Enhancements' %}
+                <div class="card card-padded">
+                  <div class="text-xs text-[color:var(--text-muted)] mb-1">{{ r.published_at|date:"M j, Y" }}</div>
+                  <h3 class="font-medium text-sm mb-1">{{ r.title }}</h3>
+                  <p class="text-xs text-[color:var(--text-muted)] mb-3">{{ r.summary }}</p>
+                  <div class="text-sm prose ProseMirror prose-sm max-w-none">{{ r.content|safe }}</div>
+                  {% if r.references %}
+                  <div class="mt-3 pt-2 border-t border-[color:var(--border)]">
+                    <div class="text-xs font-semibold mb-1">References:</div>
+                    <ul class="text-xs space-y-1">
+                    {% for ref in r.references %}
+                      <li><a href="{{ ref.url }}" target="_blank" class="text-[color:var(--brand)] hover:underline">{{ ref.title }}</a></li>
+                    {% endfor %}
+                    </ul>
+                  </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          
+          <!-- E-commerce Advancements Reports -->
+          <div class="space-y-3">
+            <h2 class="font-semibold text-lg border-b border-[color:var(--border)] pb-1">E-commerce Advancements</h2>
+            {% for r in reports.reports %}
+              {% if r.category == 'E-commerce Advancements' %}
+                <div class="card card-padded">
+                  <div class="text-xs text-[color:var(--text-muted)] mb-1">{{ r.published_at|date:"M j, Y" }}</div>
+                  <h3 class="font-medium text-sm mb-1">{{ r.title }}</h3>
+                  <p class="text-xs text-[color:var(--text-muted)] mb-3">{{ r.summary }}</p>
+                  <div class="text-sm prose ProseMirror prose-sm max-w-none">{{ r.content|safe }}</div>
+                  {% if r.references %}
+                  <div class="mt-3 pt-2 border-t border-[color:var(--border)]">
+                    <div class="text-xs font-semibold mb-1">References:</div>
+                    <ul class="text-xs space-y-1">
+                    {% for ref in r.references %}
+                      <li><a href="{{ ref.url }}" target="_blank" class="text-[color:var(--brand)] hover:underline">{{ ref.title }}</a></li>
+                    {% endfor %}
+                    </ul>
+                  </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <div class="card card-padded text-sm text-[color:var(--text-muted)] text-center py-10">
+          <i data-lucide="book-open" class="h-8 w-8 mx-auto mb-3 opacity-50"></i>
+          <p>No daily reports generated yet. Reports are synthesized automatically based on 2027 market trends.</p>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="card card-padded text-sm text-[color:var(--text-muted)]">Reports service unavailable.</div>
+    {% endif %}
   </section>
 
   {# ── Plugins ─────────────────────────────────────────────────────── #}
