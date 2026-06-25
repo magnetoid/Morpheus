@@ -97,6 +97,24 @@ disable; `admin_dashboard/tests/test_disable_guards.py` fails the build if a
 plugin link is added unguarded. (loyalty's `/account/points/` and the
 payments settings panel — the old known debt — are now properly contributed.)
 
+**Landmine — a new sign-in path silently bypasses MFA.** Staff second factor
+(staff_mfa) hangs off the `AUTH_SECOND_FACTOR` filter, fired in
+`core/auth/views.py:otp_verify` *after* email-OTP and *before* `login()`. Any
+**other** login path — an allauth/SSO/social provider — does NOT fire that hook
+(allauth calls its own `login()`), so it logs the user in single-factor. A new
+sign-in path MUST itself run the gate (`staff_mfa.services.second_factor_response`
+→ `ImmediateHttpResponse` to the TOTP challenge), which is exactly why staff_sso
+interposes in its `SocialAccountAdapter.pre_social_login`. Don't add a login route
+without it.
+
+**Convention — `format: password` settings fields are write-only.** In the
+shared dashboard settings-panel renderer
+(`admin_dashboard/views_split/settings.py` + `urls.py`), a JSON-schema
+`format: password` property renders masked, is never pre-filled with the stored
+value, and a blank submit preserves the existing secret. Never echo a stored
+secret (API key, SSO client secret) back as cleartext; mark secret fields
+`format: password` (guarded by `test_settings_secret_masking.py`).
+
 **Known debt to repay (still fails the disable test):**
 the storefront account *summary* is fixed — `_account_summary` is now
 assembled entirely by `ACCOUNT_SUMMARY_FIELDS` subscribers (orders,
@@ -177,6 +195,15 @@ of dotbooks.store. There is no separate "ship" step — treat a merge as
 a deploy (and don't land several merges in rapid succession; Coolify
 thrashes). A broken migration or boot error on `main` is a live 503
 until hot-fixed.
+
+**Landmine — a native dep that loads at settings-import is deploy-critical.**
+A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`
+for staff_sso) hard-imports its package — `pyjwt[crypto]`, `python3-saml`
+(native `xmlsec`/`lxml`) — at *settings import*, before any plugin toggle runs.
+Ship the `requirements.txt` pin in the same commit or the deploy boots 503
+(not a crash — the build just hasn't pip-installed it). Such deploys also have
+a *longer* 503 window while the image rebuilds the native wheels; wait it out,
+don't mistake the gap for a boot failure.
 
 CI gates a change with `ruff check .`, `ruff format --check .`,
 `python manage.py check` (blocking — fails on model-relation errors like

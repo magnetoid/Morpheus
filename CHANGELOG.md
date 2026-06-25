@@ -4,6 +4,71 @@ All notable changes to Morpheus. Loose [Keep a Changelog](https://keepachangelog
 
 ## [Unreleased]
 
+### Staff identity, agentic checkout + hardening (2026-06-25)
+
+#### Added
+
+- **Staff MFA — TOTP second factor** (`v0.2.7`)
+  New `staff_mfa` plugin. The one core change is a `core.hooks` filter
+  `AUTH_SECOND_FACTOR`, fired in `core/auth/views.py:otp_verify` *after*
+  the email-OTP succeeds and *before* `login()`; `staff_mfa` subscribes and
+  interposes a TOTP challenge for enrolled staff. Hashed single-use recovery
+  codes, opt-in enforcement (`require_for_staff`), audited `mfa.*` events,
+  and a break-glass `python manage.py reset_mfa <email>`. Disabling the
+  plugin reverts sign-in to single-factor email-OTP exactly.
+- **Staff SSO — OIDC + SAML 2.0** (`v0.2.8`)
+  New `staff_sso` plugin over `django-allauth`, **OFF by default**
+  (`enabled_by_default=False`). One `StaffSsoAdapter` does JIT provisioning,
+  email-domain-allowlist + optional group-claim staff-gating, links existing
+  Customers by verified email, and renders a "Sign in with SSO" button when
+  configured (Settings → Developer → Staff SSO). **SSO does not bypass MFA:**
+  allauth's `login()` doesn't fire `AUTH_SECOND_FACTOR`, so the adapter calls
+  `staff_mfa.services.second_factor_response` and raises `ImmediateHttpResponse`
+  to the TOTP gate; SAML requires signed assertions; email-OTP stays as a
+  break-glass path. Adds deploy-critical native deps — `pyjwt[crypto]` (OIDC)
+  + `python3-saml`/`xmlsec`/`lxml` (SAML) — and
+  `allauth.socialaccount.providers.openid_connect` / `.saml` in
+  `INSTALLED_APPS` (loaded at settings-import; inert until an IdP is set up).
+- **ACP — agentic checkout, Phase 1** (`v0.2.7`)
+  New `agentic_checkout` plugin implementing the Agentic Commerce Protocol
+  (OpenAI/Stripe, spec `2026-04-17`), **OFF by default**. Serves
+  `/.well-known/acp.json` discovery, `/acp/feed.json` product feed, and the
+  `/acp/checkout_sessions` create/get/update/cancel/complete endpoints backed
+  by the existing `Cart`. Bearer-scoped via a new `acp.checkout` scope
+  (explicit-grant only — does **not** inherit the wildcard). `complete`
+  returns a `MessageError` unsupported until Phase 2 (the Stripe Shared
+  Payment Token money path, deferred). Distinct from and complementary to the
+  MCP server + UCP/A2A `/.well-known/` discovery.
+- **Storefront admin-bar Edit buttons + category edit page** (`v0.2.8`)
+  When signed in as staff, the storefront admin bar shows an Edit link that
+  deep-links to the dashboard editor for the current object — product,
+  category (a **new** dashboard category edit page), collection, genre, topic,
+  or CMS page. Staff-only; customers see nothing.
+
+#### Fixed
+
+- **Cart-recovery double-send** (`v0.2.7`)
+  `cart_abandonment` now owns a single consent-checked, multi-step recovery
+  email **drip** (default 1h/24h/72h, merchant-editable templates), replacing
+  two overlapping single-send recovery emails (a `core/emails` handler + a
+  marketing task) that previously double-emailed every abandoned cart.
+  Disabling the plugin removes all recovery email.
+- **Settings-panel secret leak** (`v0.2.8`)
+  The shared dashboard settings-panel renderer now masks JSON-schema
+  `format: password` fields (write-only: masked input, never pre-filled, a
+  blank submit preserves the stored secret). Previously it echoed stored
+  secrets (API keys, the SSO client secret, …) as cleartext. Applies to every
+  plugin settings panel.
+
+#### Changed
+
+- Active-by-default plugin set grows by `staff_mfa` (see
+  `MORPHEUS_DEFAULT_PLUGINS`); `staff_sso` and `agentic_checkout` ship OFF.
+- **Supply-chain** (`v0.2.7`) — weekly Dependabot + a `pip-audit` CVE job
+  added to CI.
+
+---
+
 ### Phase 5 — Saleor parity + agent layer maturation (2026-04-26)
 
 #### Added

@@ -66,6 +66,26 @@ process that fired them. For async fanout, the
 Outbox row in the same DB transaction and ships it via Celery with
 HMAC-SHA256 signing + exponential backoff + DLQ.
 
+### Core extension point: the second-factor auth gate
+
+Sign-in stays passwordless email-OTP in core — that is **factor one**,
+always. The one place auth opens for extension is the
+`AUTH_SECOND_FACTOR` **filter**
+([core/hooks.py](../core/hooks.py)), fired by
+[`core/auth/views.py:otp_verify`](../core/auth/views.py) *after* the
+email-OTP first factor succeeds but *before* `login()` establishes the
+session. A subscriber returns an `HttpResponse` (a redirect to its own
+challenge view) to interpose a second factor; with no subscriber the
+value stays `None` and login proceeds exactly as before.
+
+This single core change is what lets the **`staff_mfa`** plugin add a
+TOTP second factor for staff sign-in, and **`staff_sso`** (OIDC / SAML
+via allauth, off by default) reuses the *same* gate from its login
+adapter — allauth's `login()` doesn't fire `AUTH_SECOND_FACTOR`, so the
+adapter calls `staff_mfa`'s `second_factor_response` directly, so SSO
+logins honour MFA too. MFA and SSO are plugins; disabling them reverts
+sign-in to single-factor email-OTP.
+
 ## The agent layer
 
 ```
