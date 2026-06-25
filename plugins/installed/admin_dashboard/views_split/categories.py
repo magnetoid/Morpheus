@@ -1,19 +1,26 @@
-"""Category list view for the admin dashboard.
+"""Category list + edit views for the admin dashboard.
 
 Hierarchical (MPTT) listing of `catalog.Category` rows with product
-counts and parent/child indentation. Filters: active/inactive + search
-by name. Pagination via the shared `paginate_and_sort` helper.
-
-Edit / create flows are TODO — the merchant can still edit categories
-via the Django admin or via the category select on the product form;
-this view is read-only for now so the nav link has a real destination.
+counts and parent/child indentation, plus a full edit form (mirroring
+the collection-edit flow) so a merchant can change a category's name,
+slug, parent, image and SEO without dropping to the Django admin.
 """
+
+# ruff: noqa: PLC0415, I001
+# Inline imports match the views_split convention (avoid app-load-order deps).
 
 from __future__ import annotations
 
 from typing import Any
 
-from morpheus.views import HttpRequest, HttpResponse, render, staff_member_required
+from morpheus.views import (
+    HttpRequest,
+    HttpResponse,
+    messages,
+    redirect,
+    render,
+    staff_member_required,
+)
 from plugins.installed.admin_dashboard.views_split._shared import logger
 
 
@@ -78,6 +85,40 @@ def categories_list(request: HttpRequest) -> HttpResponse:
                 {'label': 'Dashboard', 'url': '/dashboard/'},
                 {'label': 'Products', 'url': '/dashboard/products/'},
                 {'label': 'Categories'},
+            ],
+        },
+    )
+
+
+@staff_member_required
+def category_edit(request: HttpRequest, category_id: str) -> HttpResponse:
+    from django.shortcuts import get_object_or_404
+
+    from plugins.installed.admin_dashboard.forms.categories import CategoryForm
+    from plugins.installed.catalog.models import Category
+
+    category = get_object_or_404(Category, pk=category_id)
+    if request.method == 'POST':
+        form = CategoryForm(request.POST, files=request.FILES, instance=category)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Category saved.')
+            return redirect('admin_dashboard:category_edit', category_id=category.id)
+    else:
+        form = CategoryForm(instance=category)
+    return render(
+        request,
+        'admin_dashboard/category_form.html',
+        {
+            'form': form,
+            'category': category,
+            'is_new': False,
+            'active_nav': 'categories',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Products', 'url': '/dashboard/products/'},
+                {'label': 'Categories', 'url': '/dashboard/categories/'},
+                {'label': category.name[:50]},
             ],
         },
     )

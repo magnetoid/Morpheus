@@ -19,7 +19,17 @@ def page_view(request, slug: str):
     page = get_live_page(slug)
     if page is None:
         raise Http404
-    return render(request, 'cms/page.html', {'page': page})
+    # Staff admin-bar deep-link: edit this page in the dashboard.
+    active_edit_url = ''
+    if request.user.is_authenticated and request.user.is_staff:
+        from django.urls import reverse
+
+        active_edit_url = reverse('cms_dashboard:page_edit', kwargs={'page_id': page.pk})
+    return render(
+        request,
+        'cms/page.html',
+        {'page': page, 'active_edit_url': active_edit_url, 'active_edit_label': 'Edit page'},
+    )
 
 
 @csrf_protect
