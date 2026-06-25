@@ -10,6 +10,38 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.8 — 2026-06-25
+
+### Security
+- **Staff SSO (SAML 2.0 + OIDC), OFF by default.** New `staff_sso` plugin lets
+  staff sign in through your identity provider (Okta, Entra/Azure AD, Google
+  Workspace) via **OIDC** or **SAML**, configured at **Settings → Developer →
+  Staff SSO** (issuer/client or IdP metadata, plus an email-domain allowlist and
+  optional group claim). First sign-in just-in-time provisions the staff account;
+  a "Sign in with SSO" button appears on the staff login page once configured.
+  Crucially, **SSO does not bypass MFA** — an enrolled staffer is still required
+  to pass their authenticator code, whether they came in by email-OTP, OIDC, or
+  SAML. SAML assertions must be signed. Email-OTP stays as the break-glass path;
+  disabling the plugin reverts sign-in to email-OTP exactly.
+- **Fixed: dashboard settings panels echoed stored secrets in clear text.** The
+  shared settings renderer ignored password fields, so saved secrets (API keys,
+  the new SSO client secret, etc.) were rendered into the page as readable values.
+  Secret fields are now **write-only** — masked, never pre-filled, and a blank
+  submit preserves the stored value. Applies to every plugin's settings panel.
+
+### Storefront
+- **Admin "Edit" button on the storefront.** When you're signed in as staff, the
+  top admin bar now shows an **Edit** link that deep-links to the dashboard editor
+  for whatever you're viewing — product, **category** (a new category edit page),
+  **collection**, **genre**, **topic**, or **CMS page**. Customers see nothing.
+
+> **Operator note:** this release adds two native Python dependencies
+> (`pyjwt[crypto]` for OIDC, `python3-saml`/`xmlsec` for SAML). They ship as
+> prebuilt wheels, but the deploy image must reinstall `requirements.txt` on this
+> release. Both SSO providers are inert until an IdP is configured.
+
+---
+
 ## v0.2.7 — 2026-06-24
 
 ### Security
