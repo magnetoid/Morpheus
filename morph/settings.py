@@ -170,6 +170,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.brand_kit',
     'plugins.installed.discovery_quiz',
     'plugins.installed.staff_mfa',
+    'plugins.installed.staff_sso',
     'plugins.installed.save_for_later',
     'plugins.installed.referrals',
     'plugins.installed.smart_shipping',
@@ -213,6 +214,18 @@ THIRD_PARTY_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    # OIDC provider machinery for staff_sso. Always loaded (Django's app
+    # registry is frozen after settings import, so it can't be added from a
+    # plugin's ready()), but inert without a configured SocialApp — the
+    # staff_sso plugin (OFF by default) creates that row only when an IdP is
+    # set up, so no provider button renders and email-OTP is unaffected.
+    'allauth.socialaccount.providers.openid_connect',
+    # SAML 2.0 provider machinery for staff_sso (Phase 4b), alongside OIDC.
+    # Same posture: loaded at settings-import (the app registry is frozen after,
+    # so a plugin's ready() can't add it), inert without a configured SocialApp.
+    # staff_sso (OFF by default) creates the SAML SocialApp only when an IdP is
+    # wired up. Hard-imports python3-saml (onelogin.saml2) at app load.
+    'allauth.socialaccount.providers.saml',
     'crispy_forms',
     'crispy_bootstrap5',
     'import_export',

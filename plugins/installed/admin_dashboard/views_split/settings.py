@@ -45,10 +45,22 @@ def _build_panel_fields(plugin_instance, schema: dict) -> list[dict]:
     fields = []
     for key, prop in (schema.get('properties') or {}).items():
         ptype = prop.get('type', 'string')
-        kind = 'enum' if 'enum' in prop else ptype
+        # A JSON-schema `format: password` field renders write-only: it never
+        # echoes the stored secret back into page source (credential-disclosure
+        # guard) and a blank submit preserves the saved value (see the POST
+        # handler in admin_dashboard/urls.py:plugin_settings_view).
+        if prop.get('format') == 'password':
+            kind = 'password'
+        else:
+            kind = 'enum' if 'enum' in prop else ptype
         value = config.get(key, prop.get('default', ''))
         if kind == 'boolean':
             value = bool(value)
+        elif kind == 'password':
+            # Never surface the secret; the template shows a placeholder and
+            # a blank input means "unchanged". Carry a boolean so the UI can
+            # hint whether a secret is already stored.
+            value = ''
         fields.append(
             {
                 'key': key,
@@ -57,6 +69,7 @@ def _build_panel_fields(plugin_instance, schema: dict) -> list[dict]:
                 'kind': kind,
                 'enum': prop.get('enum') or [],
                 'value': value,
+                'has_value': bool(config.get(key)),
             }
         )
     return fields

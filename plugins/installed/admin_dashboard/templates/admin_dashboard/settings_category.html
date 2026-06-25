@@ -112,6 +112,11 @@
               <option value="{{ option }}" {% if option == field.value %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
           </select>
+          {% elif field.kind == 'password' %}
+          {# Write-only secret: no pre-filled value; blank submit keeps the stored secret. #}
+          <input type="password" autocomplete="new-password"
+                 id="f-{{ c.plugin_name }}-{{ field.key }}" name="{{ field.key }}" class="input"
+                 placeholder="{% if field.has_value %}••••••• (unchanged){% endif %}">
           {% else %}
           <input type="{% if field.kind == 'number' or field.kind == 'integer' %}number{% else %}text{% endif %}"
                  id="f-{{ c.plugin_name }}-{{ field.key }}" name="{{ field.key }}" class="input"

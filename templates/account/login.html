@@ -1,5 +1,5 @@
 {% extends "account/base.html" %}
-{% load i18n account %}
+{% load i18n account morph %}
 
 {% block head_title %}{% trans "Sign in" %}{% endblock %}
 {% block heading %}{% trans "Sign in" %}{% endblock %}
@@ -45,6 +45,7 @@
        class="text-sm" style="color: var(--text);">
       {% trans "Email me a code instead" %} →
     </a>
+    {% storefront_blocks "auth_login_extra" %}
   </div>
 </form>
 {% endblock %}

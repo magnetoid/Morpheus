@@ -1,0 +1,15 @@
+{% extends "account/base.html" %}
+
+{% block head_title %}Sign-in not permitted{% endblock %}
+{% block heading %}Sign-in not permitted{% endblock %}
+{% block subheading %}<p class="text-sm" style="color:var(--text-muted);">Your identity provider authenticated you, but this account is not allowed to sign in here.</p>{% endblock %}
+
+{% block content %}
+<div style="border:1px solid var(--danger); color:var(--danger); padding:.65rem .75rem; border-radius:6px; font-size:.9rem;">
+  {{ message|default:"This account is not permitted to sign in." }}
+</div>
+<p class="text-sm" style="color:var(--text-muted); margin-top:1rem;">
+  If you believe this is a mistake, contact your administrator. You can also
+  <a href="/auth/otp/">sign in with an email code</a>.
+</p>
+{% endblock %}

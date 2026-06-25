@@ -23,7 +23,17 @@ django-redis>=6.0
 django-storages>=1.14
 boto3>=1.42
 psycopg2-binary>=2.9
-django-allauth>=65.0
+django-allauth[socialaccount]>=65.0
+# pyjwt[crypto] is allauth's [socialaccount] extra — required by the
+# openid_connect provider (staff_sso); it is hard-imported at app load, so its
+# absence crashes boot once the provider app is in INSTALLED_APPS.
+pyjwt[crypto]>=2.0,<3
+# python3-saml powers allauth's `saml` provider (staff_sso SAML path). It pulls
+# native xmlsec/lxml; ships manylinux + macOS wheels so `pip install` resolves
+# binary wheels (no system libxmlsec build needed). Hard-imported at app load
+# once `allauth.socialaccount.providers.saml` is in INSTALLED_APPS, so its
+# absence crashes boot — DEPLOY-CRITICAL.
+python3-saml>=1.16
 django-crispy-forms>=2.6
 crispy-bootstrap5>=2026.3
 django-mptt>=0.18

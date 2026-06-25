@@ -1,0 +1,16 @@
+{% load staff_sso %}{% staff_sso_login_url as sso_url %}{% staff_sso_saml_login_url as saml_url %}{% if sso_url or saml_url %}
+<div style="border-top:1px solid var(--border); padding-top:.85rem; margin-top:.85rem; text-align:center;">
+  {% if sso_url %}
+  <a href="{{ sso_url }}?process=login{% if redirect_field_value %}&next={{ redirect_field_value|urlencode:"" }}{% elif next %}&next={{ next|urlencode:"" }}{% else %}&next=/dashboard/{% endif %}"
+     class="text-sm" style="color: var(--text); display:block;">
+    Sign in with SSO →
+  </a>
+  {% endif %}
+  {% if saml_url %}
+  <a href="{{ saml_url }}?process=login{% if redirect_field_value %}&next={{ redirect_field_value|urlencode:"" }}{% elif next %}&next={{ next|urlencode:"" }}{% else %}&next=/dashboard/{% endif %}"
+     class="text-sm" style="color: var(--text); display:block;{% if sso_url %} margin-top:.5rem;{% endif %}">
+    Sign in with SSO (SAML) →
+  </a>
+  {% endif %}
+</div>
+{% endif %}
