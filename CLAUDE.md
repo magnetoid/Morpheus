@@ -210,8 +210,13 @@ CI gates a change with `ruff check .`, `ruff format --check .`,
 `fields.E301/E300/E307` that crash the prod boot; PR #62 once 503'd prod
 because this step was `|| true`'d), `python manage.py makemigrations
 --check --dry-run` (fails every prod boot if you ship a model without
-one), and the `migrations` job (applies every migration on real
-Postgres — catches casts sqlite silently accepts).
+one), the `migrations` job (applies every migration on real
+Postgres — catches casts sqlite silently accepts), the **core-boundary
+guard** (`scripts/check_core_boundary.py` — baseline-and-ratchet: blocks any
+*new* `core/ → plugins.installed.*` import and any *stale* allowlist entry, so
+the wrong-direction-coupling debt in `scripts/core_boundary_baseline.json` can
+only shrink; also a PostToolUse hook), and the **disable-test gate** (runs
+`admin_dashboard/tests/test_disable_guards.py` as its own fast step).
 
 ---
 

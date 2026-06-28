@@ -1,0 +1,101 @@
+{
+  "_comment": "Baseline allowlist for scripts/check_core_boundary.py. These are the KNOWN core->plugin imports being retired phase by phase. Only ever remove entries (as the import is removed); never add. Regenerate with `python scripts/check_core_boundary.py --save` ONLY for a deliberate, reviewed change.",
+  "allowed": [
+    {
+      "file": "core/agents/base.py",
+      "imports": "plugins.installed.ai_content.services"
+    },
+    {
+      "file": "core/assistant/prompts.py",
+      "imports": "plugins.installed.ai_content.services"
+    },
+    {
+      "file": "core/assistant/tools/admin_ops.py",
+      "imports": "plugins.installed.orders.models"
+    },
+    {
+      "file": "core/assistant/tools/admin_ops.py",
+      "imports": "plugins.installed.orders.refunds"
+    },
+    {
+      "file": "core/assistant/tools/admin_ops.py",
+      "imports": "plugins.installed.seo.services"
+    },
+    {
+      "file": "core/assistant/tools/admin_ops.py",
+      "imports": "plugins.installed.workflows.engine"
+    },
+    {
+      "file": "core/assistant/tools/admin_ops.py",
+      "imports": "plugins.installed.workflows.models"
+    },
+    {
+      "file": "core/assistant/tools/database.py",
+      "imports": "plugins.installed.orders.models"
+    },
+    {
+      "file": "core/assistant/tools/ecommerce_writes.py",
+      "imports": "plugins.installed.agent_core.models"
+    },
+    {
+      "file": "core/assistant/tools/ecommerce_writes.py",
+      "imports": "plugins.installed.catalog.models"
+    },
+    {
+      "file": "core/assistant/tools/ecommerce_writes.py",
+      "imports": "plugins.installed.cms.models"
+    },
+    {
+      "file": "core/assistant/tools/ecommerce_writes.py",
+      "imports": "plugins.installed.metafields.models"
+    },
+    {
+      "file": "core/assistant/tools/ecommerce_writes.py",
+      "imports": "plugins.installed.orders.models"
+    },
+    {
+      "file": "core/assistant/tools/logs.py",
+      "imports": "plugins.installed.observability.models"
+    },
+    {
+      "file": "core/assistant/tools/spawn.py",
+      "imports": "plugins.installed.agent_core.models"
+    },
+    {
+      "file": "core/brain/log_handler.py",
+      "imports": "plugins.installed.observability.services"
+    },
+    {
+      "file": "core/brain/signals.py",
+      "imports": "plugins.installed.ai_assistant.models"
+    },
+    {
+      "file": "core/brain/signals.py",
+      "imports": "plugins.installed.catalog.models"
+    },
+    {
+      "file": "core/brain/signals.py",
+      "imports": "plugins.installed.morpheus_brain.models"
+    },
+    {
+      "file": "core/brain/signals.py",
+      "imports": "plugins.installed.seo.models"
+    },
+    {
+      "file": "core/brain/signals.py",
+      "imports": "plugins.installed.seo.services"
+    },
+    {
+      "file": "core/brain/signals.py",
+      "imports": "plugins.installed.seo.views"
+    },
+    {
+      "file": "core/context_processors.py",
+      "imports": "plugins.installed.orders.models"
+    },
+    {
+      "file": "core/i18n/agent_tools.py",
+      "imports": "plugins.installed.catalog.models"
+    }
+  ]
+}

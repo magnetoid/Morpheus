@@ -37,6 +37,10 @@ jobs:
       - name: bandit (security)
         # B308/B703 (mark_safe) are covered per-site by ruff S308 noqa review.
         run: bandit -q -r . -x ./venv,./tests,./.venv,./db.sqlite3 -ll -s B308,B703
+      - name: core boundary (no new core -> plugins.installed imports)
+        # Baseline-and-ratchet: blocks NEW wrong-direction imports and stale
+        # allowlist entries. Shrinks phase by phase. See CLAUDE.md compass.
+        run: python scripts/check_core_boundary.py
 
   audit:
     # Dependency CVE scan (pip-audit) over requirements.txt.
@@ -121,6 +125,11 @@ jobs:
         run: python manage.py check --deploy --fail-level WARNING || true
       - name: Migrations are present
         run: python manage.py makemigrations --check --dry-run
+      - name: Disable-test guard (plugin surfaces must vanish on disable)
+        # Fast, distinctly-named gate so a hard-coded plugin surface (nav link,
+        # settings panel, storefront block) that survives a disable fails loudly
+        # before the full suite. See CLAUDE.md "Disable-test enforcement".
+        run: python manage.py test plugins.installed.admin_dashboard.tests.test_disable_guards --noinput
       - name: Tests with coverage
         run: |
           coverage run --source='.' manage.py test --noinput

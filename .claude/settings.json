@@ -13,7 +13,8 @@
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {"type": "command", "command": ".claude/hooks/ruff_changed.sh"},
-          {"type": "command", "command": ".claude/hooks/verify_deps.sh"}
+          {"type": "command", "command": ".claude/hooks/verify_deps.sh"},
+          {"type": "command", "command": ".claude/hooks/core_boundary.sh"}
         ]
       }
     ]
