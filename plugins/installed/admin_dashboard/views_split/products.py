@@ -344,8 +344,16 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
                 from plugins.installed.book_product.dashboard import save_book_fields
 
                 save_book_fields(product, request.POST, request.FILES)
-            except Exception:  # noqa: BLE001 — book_product optional/disabled
-                pass
+            except ImportError:
+                pass  # book_product not installed/disabled — nothing to save
+            except Exception:  # noqa: BLE001
+                # The plugin IS present but its save failed — don't lose the
+                # merchant's book fields silently; log so it's visible.
+                import logging
+
+                logging.getLogger('morpheus.admin').exception(
+                    'save_book_fields failed for product %s', product.id
+                )
             # Let plugins persist their own product-form fields (their contributed
             # cards) — the modular path; the hook bus isolates a broken handler.
             from core.hooks import MorpheusEvents, hook_registry

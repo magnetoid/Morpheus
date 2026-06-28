@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 
 from django import template
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 
 register = template.Library()
 
@@ -67,16 +67,23 @@ def morph_ask(context, context_label: str = '', prefill: str = '', label: str = 
     label = label or 'Ask Linda'
 
     # The button posts a custom event the floating widget listens for.
-    return mark_safe(  # noqa: S308
+    # format_html auto-escapes the three dynamic values — today the only call
+    # site is the no-arg `{% morph_ask %}` (values come from the regex-safe
+    # _auto_prefill), but a future variable-arg caller must not be able to
+    # break out of the attributes. Literal JS braces are doubled for str.format.
+    return format_html(
         '<button type="button" class="morph-ask-btn" '
-        f'data-prefill="{prefill}" data-label="{context_label}" '
+        'data-prefill="{prefill}" data-label="{context_label}" '
         "onclick=\"window.dispatchEvent(new CustomEvent('morph:ask', "
-        '{detail:{prefill: this.dataset.prefill, label: this.dataset.label}}))" '
+        '{{detail:{{prefill: this.dataset.prefill, label: this.dataset.label}}}}))" '
         'style="display:inline-flex;align-items:center;gap:.4rem;'
         'padding:.35rem .7rem;border:1px solid var(--border);border-radius:999px;'
         'background:var(--surface-2);font-size:.78rem;font-weight:500;cursor:pointer;'
         'color:var(--text);">'
         '<span style="font-size:.85rem;">✦</span> '
-        f'{label} <span style="opacity:.6;">about {context_label}</span>'
-        '</button>'
+        '{label} <span style="opacity:.6;">about {context_label}</span>'
+        '</button>',
+        prefill=prefill,
+        context_label=context_label,
+        label=label,
     )
