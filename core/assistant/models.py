@@ -105,6 +105,10 @@ class LindaMemory(models.Model):
         default='',
         help_text="Free-text source tag — 'user-told' / 'inferred' / etc.",
     )
+    # Semantic vector of "key: value" (core.embeddings.embed). Enables
+    # similarity recall beyond substring matching; empty until embedded
+    # (write path + backfill_memory_embeddings). Recall falls back to keyword.
+    embedding = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
 

@@ -18,6 +18,11 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 
 _VALID_SCOPES = ('merchant', 'customer-segment', 'seasonal')
 
+# A stored fact is included by semantic similarity only above this cosine floor,
+# so an unrelated query never floods the result with weakly-related rows. (With
+# the hash-fallback embedding, unrelated text scores ~0, so keyword carries.)
+_SEMANTIC_FLOOR = 0.25
+
 
 @tool(
     name='memory.remember',
@@ -52,11 +57,19 @@ def memory_remember_tool(
     if not key or not value:
         raise ToolError('key and value are both required')
     from core.assistant.models import LindaMemory
+    from core.embeddings import embed
 
+    value = value[:5000]
     obj, created = LindaMemory.objects.update_or_create(
         scope=scope,
         key=key,
-        defaults={'value': value[:5000], 'source': source[:40]},
+        defaults={
+            'value': value,
+            'source': source[:40],
+            # Embed "key: value" so recall can match by meaning, not just
+            # substring. Hash-fallback when no provider is configured.
+            'embedding': embed(f'{key}: {value}'),
+        },
     )
     return ToolResult(
         output={
@@ -86,8 +99,6 @@ def memory_remember_tool(
     },
 )
 def memory_recall_tool(*, query: str = '', scope: str = '', limit: int = 50) -> ToolResult:
-    from django.db.models import Q
-
     from core.assistant.models import LindaMemory
 
     qs = LindaMemory.objects.all()
@@ -95,8 +106,29 @@ def memory_recall_tool(*, query: str = '', scope: str = '', limit: int = 50) -> 
         if scope not in _VALID_SCOPES:
             raise ToolError(f'invalid scope: {scope}')
         qs = qs.filter(scope=scope)
+
+    limit = max(1, min(100, int(limit or 50)))
+
     if query:
-        qs = qs.filter(Q(key__icontains=query) | Q(value__icontains=query))
+        # Rank by keyword hit + embedding similarity. Substring matches always
+        # win (precise); semantic matches above the floor are added so Linda
+        # recalls a fact phrased differently from how it was stored. Bounded
+        # candidate scan keeps the in-Python sort cheap.
+        from core.embeddings import cosine_similarity, embed
+
+        qvec = embed(query)
+        ql = query.lower()
+        scored: list[tuple[float, object]] = []
+        for r in qs[:1000]:
+            keyword = 1.0 if (ql in (r.key or '').lower() or ql in (r.value or '').lower()) else 0.0
+            semantic = cosine_similarity(qvec, r.embedding) if r.embedding else 0.0
+            if keyword or semantic >= _SEMANTIC_FLOOR:
+                scored.append((keyword + semantic, r))
+        scored.sort(key=lambda t: t[0], reverse=True)
+        result_rows = [r for _, r in scored[:limit]]
+    else:
+        result_rows = list(qs[:limit])
+
     rows = [
         {
             'scope': r.scope,
@@ -105,7 +137,7 @@ def memory_recall_tool(*, query: str = '', scope: str = '', limit: int = 50) -> 
             'source': r.source,
             'updated_at': r.updated_at.isoformat(),
         }
-        for r in qs[: max(1, min(100, int(limit or 50)))]
+        for r in result_rows
     ]
     return ToolResult(output={'memories': rows, 'count': len(rows)})
 
