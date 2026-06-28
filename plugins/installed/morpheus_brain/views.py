@@ -62,6 +62,7 @@ def brain(request):
             'content': data['content'],
             'storefront': data['storefront'],
             'improvements': data['improvements'],
+            'reports': data['reports'],
             'analysis': analysis,
             'briefing': briefing,
         },
