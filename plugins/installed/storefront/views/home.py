@@ -32,18 +32,21 @@ def home(request):
     )
     # Templates use snake_case; GraphQL returns camelCase. Normalise.
     data.setdefault('featured_products', data.get('featuredProducts', []) or [])
-    
-    # Advanced Personalization: Reorder home page products for the individual visitor
-    # This turns the static featured grid into a hyper-personalized storefront.
+    # Advanced personalisation: reorder featured products for the individual
+    # visitor — turns the static grid into a per-visitor shelf. Optional: if the
+    # personalisation plugin is absent or errors, fall back to the default order.
     try:
         from plugins.installed.personalisation.services import rank_for_visitor
+
         data['featured_products'] = rank_for_visitor(
-            request, 
-            data['featured_products'], 
-            surface='home_featured'
+            request, data['featured_products'], surface='home_featured'
         )
-    except Exception:
-        pass
+    except Exception:  # noqa: BLE001 — optional personalisation, never break home
+        import logging
+
+        logging.getLogger('morpheus.storefront').debug(
+            'home personalisation skipped', exc_info=True
+        )
 
     data['hero_products'] = list(data['featured_products'][:4])
     data.setdefault('seasonal_products', data.get('featured_products', []))
