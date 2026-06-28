@@ -80,10 +80,15 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
                     saved.append(key)
                 continue
             raw = request.POST[key]
-            # Write-only secret: a blank submit means "leave it unchanged" —
-            # never wipe the stored secret. Mirrors the SMTP-password handling
-            # in admin_dashboard/forms/settings.py (skip clobbering on empty).
-            if prop.get('format') == 'password' and not (raw or '').strip():
+            # Write-only secret: a blank OR masked ("********") submit means
+            # "leave it unchanged" — never wipe the stored secret. Covers
+            # `format: password` AND `*_api_key` fields (the AI settings page
+            # masks a saved key as "********" and tells the user to leave it as
+            # such to keep it). Mirrors the SMTP-password handling in
+            # admin_dashboard/forms/settings.py (skip clobbering on empty).
+            if (
+                prop.get('format') == 'password' or key.endswith('_api_key') or key == 'api_key'
+            ) and (raw or '').strip() in ('', '********'):
                 continue
             value: Any = raw
             if ptype == 'boolean':

@@ -54,13 +54,13 @@ def _build_panel_fields(plugin_instance, schema: dict) -> list[dict]:
         else:
             kind = 'enum' if 'enum' in prop else ptype
         value = config.get(key, prop.get('default', ''))
-        if kind == 'boolean':
-            value = bool(value)
-        elif kind == 'password':
+        if key.endswith('_api_key') or key == 'api_key' or kind == 'password':
             # Never surface the secret; the template shows a placeholder and
             # a blank input means "unchanged". Carry a boolean so the UI can
             # hint whether a secret is already stored.
             value = ''
+        elif kind == 'boolean':
+            value = bool(value)
         fields.append(
             {
                 'key': key,
@@ -649,7 +649,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         cards.append(
             {
                 **p,
-                'api_key': api_key,
+                'api_key': '********' if api_key else '',
                 'base_url': base_url,
                 'model': model,
                 'configured': configured,

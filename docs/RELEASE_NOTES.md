@@ -10,6 +10,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.9 — 2026-06-28
+
+### Fixes
+- **Restored the staff dashboard.** A recent change used the `get_guided_ux_mode`
+  template tag in the dashboard base template without loading its library, which
+  could 500 every dashboard page. Now loads `morph_dashboard`.
+- **Added missing migrations** for the analytics-tracking, guided-UX, and
+  dynamic-products grid models that had shipped without them (additive only —
+  new columns/tables), so those features work in production and the migration
+  gate is green again.
+- **AI provider API keys are now write-only in settings.** The provider key shows
+  as `********` and a blank/unchanged submit preserves the stored key instead of
+  overwriting it — previously, saving AI settings without re-typing the key would
+  have wiped it.
+
 ## v0.2.8 — 2026-06-25
 
 ### Security

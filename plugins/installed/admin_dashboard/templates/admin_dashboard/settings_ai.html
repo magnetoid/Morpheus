@@ -15,8 +15,20 @@
       <i data-lucide="sparkles" class="h-5 w-5"></i>
     </div>
     <div class="flex-1 min-w-0">
-      <h1 class="text-xl font-semibold tracking-tight">AI providers</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Configure provider API keys, default models, and which one the kernel agent calls.</p>
+      <h1 class="text-xl font-semibold tracking-tight flex items-center gap-2">
+        AI providers
+        <span class="context-help" aria-label="Connect Morpheus to LLM providers (OpenAI, Anthropic, Gemini, etc.) and configure API keys to power the platform's AI agents."><i data-lucide="help-circle" class="h-4 w-4"></i></span>
+      </h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Configure provider API keys, default models, and which one the kernel agent calls.</p>
+    </div>
+  </div>
+  
+  <div class="card card-padded mb-4 border-l-4" style="border-left-color: var(--brand);">
+    <h3 class="font-medium text-sm mb-1">Quick Navigation</h3>
+    <div class="flex flex-wrap gap-2 mt-2">
+      <a href="/dashboard/assistant/" class="btn btn-secondary text-xs"><i data-lucide="message-square" class="h-3.5 w-3.5"></i> Linda Assistant</a>
+      <a href="/dashboard/agents/" class="btn btn-secondary text-xs"><i data-lucide="bot" class="h-3.5 w-3.5"></i> Agents Activity</a>
+      <a href="/dashboard/ai-insights/" class="btn btn-secondary text-xs"><i data-lucide="lightbulb" class="h-3.5 w-3.5"></i> AI Insights</a>
     </div>
   </div>
 
@@ -111,9 +123,10 @@
             API key{% if c.api_key_optional %} <span class="font-normal text-[color:var(--text-subtle)] normal-case tracking-normal">— optional for self-hosted</span>{% endif %}
           </label>
           <input type="password" name="{{ c.slug }}_api_key" class="input mt-1 font-mono"
-                 value="{{ c.api_key }}"
+                 {% if c.api_key %}value="********"{% else %}value=""{% endif %}
                  autocomplete="off" spellcheck="false"
                  placeholder="{% if c.slug == 'openai' %}sk-...{% elif c.slug == 'anthropic' %}sk-ant-...{% elif c.slug == 'gemini' %}AIza...{% elif c.slug == 'openrouter' %}sk-or-...{% elif c.slug == 'packy' %}sk-...{% elif c.slug == 'ollama' %}leave blank if self-hosted{% endif %}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Leave as ******** to keep the existing key, or type a new one to replace it.</p>
         </div>
         {% endif %}
 
@@ -163,7 +176,10 @@
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="card-padded border-b border-[color:var(--border)]">
-      <h2 class="font-semibold">AI features</h2>
+      <h2 class="font-semibold flex items-center gap-2">
+        AI features
+        <span class="context-help" aria-label="Toggle autonomous capabilities. Some features require active billing or specific plugin installations."><i data-lucide="help-circle" class="h-3.5 w-3.5"></i></span>
+      </h2>
       <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
         Switch individual AI behaviours on or off. Off-by-default
         features (dynamic pricing, autonomous operator) only act after
