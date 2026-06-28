@@ -4,6 +4,41 @@
 {% block title %}{{ seo_title }}{% endblock %}
 {% block meta_description %}{{ seo_description }}{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Browse-axis tiles (genres / topics / authors / publishers). Each tile is a
+     full-card link to its segment; hover + focus make the affordance explicit. */
+  .tax-grid { list-style:none; margin:0; padding:0; display:grid; gap:.9rem;
+    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); }
+  .tax-tile { display:flex; align-items:center; gap:.9rem; padding:.9rem 1rem;
+    border:1px solid var(--rule); border-radius:12px; background:var(--paper);
+    text-decoration:none; color:inherit; position:relative;
+    transition: transform var(--motion-fast) var(--ease-out),
+                border-color var(--motion-fast) var(--ease-out),
+                box-shadow var(--motion-med) var(--ease-out),
+                background var(--motion-fast) var(--ease-out); }
+  .tax-tile:hover { transform:translateY(-2px); border-color:var(--accent);
+    background:var(--paper-2); box-shadow:0 14px 30px -18px rgba(14,14,14,.4); }
+  .tax-tile:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .tax-tile__img { width:56px; height:56px; object-fit:cover; border-radius:9px;
+    flex:none; background:var(--paper-2); }
+  .tax-tile__img--ph { display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-style:italic; font-size:1.5rem; color:var(--muted);
+    transition:color var(--motion-fast) var(--ease-out); }
+  .tax-tile:hover .tax-tile__img--ph { color:var(--accent-ink); }
+  .tax-tile__body { min-width:0; flex:1; }
+  .tax-tile__name { display:block; font-family:var(--sans); font-weight:600;
+    font-size:1rem; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; transition:color var(--motion-fast) var(--ease-out); }
+  .tax-tile:hover .tax-tile__name { color:var(--accent-ink); }
+  .tax-tile__count { display:block; color:var(--muted); font-size:.82rem; margin-top:.1rem; }
+  .tax-tile__go { flex:none; color:var(--rule); font-size:1.1rem; line-height:1;
+    transition: transform var(--motion-fast) var(--ease-out),
+                color var(--motion-fast) var(--ease-out); }
+  .tax-tile:hover .tax-tile__go { color:var(--accent); transform:translateX(3px); }
+</style>
+{% endblock %}
+
 {% block content %}
 {# Auto structured data: CollectionPage + ItemList of every term on this index. #}
 {% seo_collection_jsonld items=jsonld_items name=root_label description=seo_description %}
@@ -18,15 +53,20 @@
     {% if root.description %}<div class="lede" style="max-width:60ch; margin:0 0 2.25rem;">{{ root.description|linebreaks }}</div>{% endif %}
 
     {% if terms %}
-    <ul style="list-style:none; margin:0; padding:0; display:grid; gap:.75rem; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));">
+    <ul class="tax-grid">
       {% for t in terms %}
       <li>
-        <a href="{{ t.url }}" style="display:flex; align-items:center; gap:.85rem; padding:.85rem 1rem; border:1px solid var(--rule); border-radius:10px; text-decoration:none; color:inherit;">
-          {% if t.image %}<img src="{{ t.image.url }}" alt="" style="width:48px; height:48px; object-fit:cover; border-radius:6px; flex:none;">{% endif %}
-          <span style="min-width:0;">
-            <span style="display:block; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ t.name }}</span>
-            <span style="display:block; color:var(--muted); font-size:.85rem;">{{ t.count }} book{{ t.count|pluralize }}</span>
+        <a href="{{ t.url }}" class="tax-tile" aria-label="{{ t.name }} — {{ t.count }} book{{ t.count|pluralize }}">
+          {% if t.image %}
+            <img src="{{ t.image.url }}" alt="" class="tax-tile__img" loading="lazy" decoding="async">
+          {% else %}
+            <span class="tax-tile__img tax-tile__img--ph" aria-hidden="true">{{ t.name|first|upper }}</span>
+          {% endif %}
+          <span class="tax-tile__body">
+            <span class="tax-tile__name">{{ t.name }}</span>
+            <span class="tax-tile__count">{{ t.count }} book{{ t.count|pluralize }}</span>
           </span>
+          <span class="tax-tile__go" aria-hidden="true">&rarr;</span>
         </a>
       </li>
       {% endfor %}

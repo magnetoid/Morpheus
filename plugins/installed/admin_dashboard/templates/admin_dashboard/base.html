@@ -525,10 +525,20 @@
   .card:hover { transform: translateY(-1px); box-shadow: var(--shadow-pop); }
   /* Subtle press feedback on buttons — matches storefront. */
   .btn:active, button:not(.input):active { transform: scale(0.97); transition: transform 80ms var(--ease-out); }
-  /* View Transitions on htmx swaps — adds a quick crossfade between
-     server-rendered partials when the browser supports it. */
+  /* Seamless page swaps — one fast cross-fade + subtle rise on the main
+     content via the View Transitions API (htmx globalViewTransitions). This
+     is the ONLY entrance animation; do not also add a JS .fadein on the
+     swapped node — two opacity animations stacked caused a visible flicker. */
   @supports (view-transition-name: none) {
     #main-content { view-transition-name: dashboard-main; }
+    ::view-transition-old(dashboard-main) { animation: mc-vt-out 110ms var(--ease-out) both; }
+    ::view-transition-new(dashboard-main) { animation: mc-vt-in 170ms var(--ease-out) both; }
+  }
+  @keyframes mc-vt-out { to { opacity: 0; } }
+  @keyframes mc-vt-in  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(dashboard-main),
+    ::view-transition-new(dashboard-main) { animation: none; }
   }
   /* Body class toggled by Morph.dirty so the sticky save bar doesn't
      overlap the last form rows when it's visible. */
@@ -703,7 +713,7 @@
 </script>
 <div id="htmx-progress" aria-hidden="true"></div>
 <div id="sidebar-backdrop" class="drawer-backdrop lg:hidden"></div>
-<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full lg:translate-x-0 lg:static transition-transform duration-200 ease-out" hx-boost="false">
+<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full lg:translate-x-0 lg:static transition-transform duration-200 ease-out">
   <div class="h-12 flex items-center justify-between px-3 border-b border-[color:var(--border)]">
     <a href="{% url 'admin_dashboard:home' %}" class="flex items-center gap-2 font-semibold tracking-tight">
       <i data-lucide="hexagon" class="h-5 w-5"></i>
@@ -1177,7 +1187,6 @@
     const navMain = document.getElementById('nav-main');
     const navSettings = document.getElementById('nav-settings');
     const settingsBackRow = document.getElementById('settings-back-row');
-    const path = location.pathname;
     const norm = (p) => (p || '').replace(/\/+$/, '') || '/';
     // Any page the settings sub-nav links to should KEEP settings mode —
     // otherwise a settings page whose URL isn't in the allow-list below
@@ -1186,12 +1195,15 @@
         ? Array.from(navSettings.querySelectorAll('a[href]')).map(
             a => norm(new URL(a.href, location.origin).pathname))
         : [];
-    const inSettings = path.startsWith('/dashboard/settings/')
+    function computeInSettings() {
+      const path = location.pathname;
+      return path.startsWith('/dashboard/settings/')
         || path === '/dashboard/apps/' || path === '/dashboard/apps'
         || path.startsWith('/dashboard/tracking/')
         || path.startsWith('/dashboard/errors/')
         || /^\/dashboard\/apps\/[^/]+\/settings\/?$/.test(path)
         || settingsHrefs.includes(norm(path));
+    }
     function showSettingsNav() {
       if (!navMain || !navSettings) return;
       navMain.style.display = 'none';
@@ -1200,11 +1212,21 @@
     }
     function showMainNav() {
       if (!navMain || !navSettings) return;
+      // Clear any lingering exit-animation class — under boosted nav the
+      // sidebar DOM persists, so a stale slide-out-left would blank the menu.
+      navMain.classList.remove('slide-out-left');
       navSettings.style.display = 'none';
       navMain.style.display = 'block';
       if (settingsBackRow) settingsBackRow.style.display = 'none';
     }
-    if (inSettings) showSettingsNav(); else showMainNav();
+    // Exposed so htmx:afterSwap can re-evaluate settings-mode after a boosted
+    // partial nav — the sidebar DOM persists across swaps, so the menu must be
+    // re-toggled from the new URL rather than re-rendered by the server.
+    window.Morph = window.Morph || {};
+    window.Morph.syncSidebarMode = function () {
+      if (computeInSettings()) showSettingsNav(); else showMainNav();
+    };
+    window.Morph.syncSidebarMode();
 
     // Animate the swap when clicking the Settings link without a full page nav.
     document.getElementById('settings-link')?.addEventListener('click', e => {
@@ -1281,6 +1303,17 @@
     try {
       if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
       if (window.Morph && typeof window.Morph.reinit === 'function') window.Morph.reinit(e.detail.target);
+      // Sidebar is now boosted: re-evaluate main↔settings menu mode for the
+      // new URL (the sidebar DOM persists, so the server can't switch it).
+      if (window.Morph && typeof window.Morph.syncSidebarMode === 'function') window.Morph.syncSidebarMode();
+      // Close the mobile drawer after navigating — a boosted link no longer
+      // triggers the full reload that used to close it implicitly.
+      var _sb = document.getElementById('sidebar');
+      if (_sb && window.matchMedia && window.matchMedia('(max-width: 1023px)').matches) {
+        _sb.classList.add('-translate-x-full');
+        var _bd = document.getElementById('sidebar-backdrop');
+        if (_bd) _bd.classList.remove('open', 'show');
+      }
     } catch (_) { /* swallow — never break navigation over a polish failure */ }
     syncSidebarActive();
   });
@@ -1302,9 +1335,9 @@
       e.detail.shouldSwap = false;
       return;
     }
-    if (e.detail.target && e.detail.target.id === 'main-content') {
-      e.detail.target.classList.add('fadein');
-    }
+    // Entrance animation is handled entirely by the View Transition on
+    // #main-content (see the dashboard-main keyframes). Adding .fadein here
+    // too stacked a second opacity animation and caused the page flicker.
   });
 })();
 </script>
