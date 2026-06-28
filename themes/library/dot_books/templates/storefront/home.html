@@ -6,7 +6,7 @@
 {% block seo %}{% seo_meta object=seo_object|default:None fallback_title="Dot Books — an independent bookshop" fallback_description="A quieter shelf for louder books. New and rare titles from independent presses — curated, modern, independent." og_type="website" %}{% endblock %}
 
 {% block extra_head %}
-{% with featured_products|first as pick %}
+{% with hero_products|first as pick %}
 {% if pick.primaryImage and pick.primaryImage.url %}{% caching_preload_lcp pick.primaryImage.url %}{% endif %}
 {% endwith %}
 {% endblock %}
@@ -14,59 +14,467 @@
 {% block content %}
 {% storefront_blocks "home_above_grid" %}
 
+{% if hero_products %}
 <!-- Editor's pick -->
-<section id="editors-pick">
-  <div class="wrap" style="display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: center;">
-    <div style="display:grid; gap:3rem; grid-template-columns: 1fr; align-items:center;" class="picks-grid">
-      <div>
-        <p class="eyebrow">Editor's pick</p>
-        <h2 class="display display-l" style="margin: 1rem 0;">
-          The book that<br>moved this month<span class="text-accent">.</span>
+<section id="editors-pick" class="hero-feature" data-home-hero aria-roledescription="carousel" aria-label="Featured books">
+  <div class="wrap">
+    <div class="hero-feature__shell">
+      <div class="hero-feature__copy">
+        <div class="hero-feature__topline">
+          <p class="eyebrow">Editor's picks</p>
+          {% if hero_products|length > 1 %}
+          <p class="hero-feature__count" aria-live="polite">
+            <span data-home-hero-current>1</span>
+            <span aria-hidden="true">/</span>
+            <span>{{ hero_products|length }}</span>
+          </p>
+          {% endif %}
+        </div>
+        <h2 class="display display-l hero-feature__headline">
+          A moving shelf of the books we want in your hands<span class="text-accent">.</span>
         </h2>
-        <p class="lede" style="margin-bottom: 2rem;">
-          Each month we choose one title that, in our minds, says something the rest of the shelf hasn't yet found a way to say. April's pick is below.
+        <p class="lede hero-feature__intro">
+          The hero now rotates through the strongest titles in your featured selection, so every visit surfaces more of the shelf without sacrificing clarity.
         </p>
-        {% with featured_products|first as pick %}
-        {% if pick %}
-        <div class="stack-3">
-          <p style="font-family: var(--serif); font-size: 1.5rem; line-height: 1.15;"><em>{{ pick.name }}</em></p>
-          <p class="meta">{{ pick.category.name|default:"" }}</p>
-          <p style="margin-top: 1rem; max-width: 50ch; color: var(--ink-2); line-height: 1.6;">{{ pick.shortDescription|default:""|striptags|truncatewords:36 }}</p>
-          <p style="font-family: var(--serif); font-size: 1.4rem; margin-top: 1.25rem;">{% if pick.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ pick.price|money }}</p>
-          <div style="margin-top: 1.25rem; display:flex; gap: 0.75rem; align-items:center; flex-wrap: wrap;">
-            <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop this book</a>
-            <a href="/products/" class="btn btn-ghost">Browse all books</a>
+
+        <div class="hero-feature__copy-stage">
+          {% for pick in hero_products %}
+          <article
+            class="hero-feature__copy-panel{% if forloop.first %} is-active{% endif %}"
+            data-home-hero-copy
+            data-index="{{ forloop.counter0 }}"
+            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+          >
+            <div class="hero-feature__copy-stack">
+              <p class="meta hero-feature__copy-item" style="--hero-delay: 40ms;">
+                {% if pick.category.name %}{{ pick.category.name }}{% else %}Featured title{% endif %}
+                {% if pick.isOnSale %}
+                <span class="hero-feature__pill">-{{ pick.discountPercentage }}%</span>
+                {% endif %}
+              </p>
+              <h3 class="display display-l hero-feature__title hero-feature__copy-item" style="--hero-delay: 110ms;">
+                <em>{{ pick.name }}</em><span class="text-accent">.</span>
+              </h3>
+              <p class="hero-feature__description hero-feature__copy-item" style="--hero-delay: 180ms;">
+                {{ pick.shortDescription|default:"A sharp, current read from the top of the shelf."|striptags|truncatewords:36 }}
+              </p>
+              <p class="hero-feature__price hero-feature__copy-item" style="--hero-delay: 250ms;">
+                {% if pick.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ pick.price|money }}
+              </p>
+              <div class="hero-feature__actions hero-feature__copy-item" style="--hero-delay: 320ms;">
+                <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop this book</a>
+                <a href="/products/" class="btn btn-ghost">Browse all books</a>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+
+        {% if hero_products|length > 1 %}
+        <div class="hero-feature__controls">
+          <div class="hero-feature__nav-buttons">
+            <button type="button" class="hero-feature__nav-btn" data-home-hero-prev aria-label="Previous featured book">
+              <span aria-hidden="true">←</span>
+            </button>
+            <button type="button" class="hero-feature__nav-btn" data-home-hero-next aria-label="Next featured book">
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+          <div class="hero-feature__dots" role="tablist" aria-label="Choose a featured book">
+            {% for pick in hero_products %}
+            <button
+              type="button"
+              class="hero-feature__dot{% if forloop.first %} is-active{% endif %}"
+              data-home-hero-dot
+              data-index="{{ forloop.counter0 }}"
+              role="tab"
+              aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+              aria-label="Show {{ pick.name }}"
+            >
+              <span class="sr-only">{{ pick.name }}</span>
+            </button>
+            {% endfor %}
           </div>
         </div>
         {% endif %}
-        {% endwith %}
       </div>
 
-      <div>
-        {% with featured_products|first as pick %}
-        {% if pick %}
-        <a href="/products/{{ pick.slug }}/" class="book" style="max-width: 380px; margin: 0 auto;">
-          <div class="cover-wrap" style="aspect-ratio: 2/3; box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);">
-            {% if pick.primaryImage and pick.primaryImage.url %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 380px, 90vw" priority=True %}
-            {% else %}
-              <div class="placeholder">{{ pick.name }}</div>
-            {% endif %}
-            <span class="ribbon">Editor's pick</span>
-          </div>
-        </a>
-        {% endif %}
-        {% endwith %}
+      <div class="hero-feature__media">
+        <div class="hero-feature__media-stage">
+          {% for pick in hero_products %}
+          <a
+            href="/products/{{ pick.slug }}/"
+            class="hero-feature__media-panel book{% if forloop.first %} is-active{% endif %}"
+            data-home-hero-media
+            data-index="{{ forloop.counter0 }}"
+            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+            tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+          >
+            <div class="cover-wrap hero-feature__cover">
+              {% if pick.primaryImage and pick.primaryImage.url %}
+                {% if forloop.first %}
+                  {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 420px, 90vw" priority=True %}
+                {% else %}
+                  {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 420px, 90vw" %}
+                {% endif %}
+              {% else %}
+                <div class="placeholder">{{ pick.name }}</div>
+              {% endif %}
+              <span class="hero-feature__ribbon">Editor's pick</span>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>
 </section>
 
 <style>
-@media (min-width: 900px) {
-  .picks-grid { grid-template-columns: 1.1fr 0.9fr !important; gap: 5rem !important; }
-}
+  .hero-feature {
+    padding: clamp(2.5rem, 5vw, 4rem) 0;
+  }
+  .hero-feature__shell {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+  .hero-feature__copy {
+    min-width: 0;
+  }
+  .hero-feature__topline,
+  .hero-feature__controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .hero-feature__count {
+    margin: 0;
+    color: var(--muted);
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-feature__headline {
+    max-width: 12ch;
+    margin: 1rem 0 0;
+  }
+  .hero-feature__intro {
+    max-width: 56ch;
+    margin: 1rem 0 0;
+    color: var(--ink-2);
+  }
+  .hero-feature__copy-stage,
+  .hero-feature__media-stage {
+    display: grid;
+    margin-top: 1.75rem;
+  }
+  .hero-feature__copy-panel,
+  .hero-feature__media-panel {
+    grid-area: 1 / 1;
+  }
+  .hero-feature__copy-panel {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(0, 8px, 0);
+    transition:
+      opacity var(--motion-slow) var(--ease-out),
+      transform var(--motion-slow) var(--ease-out);
+  }
+  .hero-feature__copy-panel.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate3d(0, 0, 0);
+  }
+  .hero-feature__copy-stack {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+  }
+  .hero-feature__copy-item {
+    margin: 0;
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+    transition:
+      opacity 420ms var(--ease-out),
+      transform 420ms var(--ease-out);
+    will-change: opacity, transform;
+  }
+  .hero-feature__copy-panel.is-active .hero-feature__copy-item {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition-delay: var(--hero-delay, 0ms);
+  }
+  .hero-feature__title {
+    margin: 0;
+    max-width: 11ch;
+  }
+  .hero-feature__description {
+    max-width: 52ch;
+    color: var(--ink-2);
+    line-height: 1.65;
+  }
+  .hero-feature__price {
+    font-family: var(--serif);
+    font-size: clamp(1.2rem, 1.2vw + 1rem, 1.5rem);
+  }
+  .hero-feature__actions {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .hero-feature__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    margin-left: .5rem;
+    padding: .2rem .5rem;
+    border-radius: 999px;
+    background: rgba(230, 57, 70, 0.1);
+    color: var(--accent-ink);
+    font-size: .7rem;
+    font-weight: 700;
+  }
+  .hero-feature__nav-buttons,
+  .hero-feature__dots {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+  .hero-feature__nav-btn,
+  .hero-feature__dot {
+    border: 1px solid var(--rule);
+    background: rgba(255, 255, 255, 0.5);
+    color: var(--ink);
+  }
+  .hero-feature__nav-btn {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      transform var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out),
+      background var(--motion-fast) var(--ease-out);
+  }
+  .hero-feature__nav-btn:hover,
+  .hero-feature__dot:hover {
+    border-color: var(--ink);
+    background: rgba(255, 255, 255, 0.9);
+  }
+  .hero-feature__dot {
+    width: .8rem;
+    height: .8rem;
+    padding: 0;
+    border-radius: 999px;
+    transition:
+      transform var(--motion-fast) var(--ease-out),
+      opacity var(--motion-fast) var(--ease-out),
+      background var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out);
+  }
+  .hero-feature__dot.is-active {
+    background: var(--ink);
+    border-color: var(--ink);
+    transform: scale(1.15);
+  }
+  .hero-feature__media {
+    min-width: 0;
+  }
+  .hero-feature__media-stage {
+    max-width: min(100%, 420px);
+    margin: 0 auto;
+  }
+  .hero-feature__media-panel {
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(0, 10px, 0) scale(0.985);
+    transition:
+      opacity 540ms var(--ease-out),
+      transform 540ms var(--ease-out);
+    will-change: opacity, transform;
+  }
+  .hero-feature__media-panel.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  .hero-feature__cover {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);
+  }
+  .hero-feature__cover img,
+  .hero-feature__cover picture {
+    width: 100%;
+    height: 100%;
+  }
+  .hero-feature__cover img {
+    object-fit: cover;
+  }
+  .hero-feature__ribbon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1;
+  }
+  .hero-feature__media-panel.is-active .hero-feature__cover img {
+    transform: scale(1.01);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  @media (min-width: 900px) {
+    .hero-feature__shell {
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      gap: 5rem;
+    }
+  }
+  @media (max-width: 699px) {
+    .hero-feature__controls {
+      align-items: flex-start;
+    }
+    .hero-feature__dots {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-feature__copy-panel,
+    .hero-feature__copy-item,
+    .hero-feature__media-panel,
+    .hero-feature__nav-btn,
+    .hero-feature__dot,
+    .hero-feature__media-panel.is-active .hero-feature__cover img {
+      transition: none !important;
+      transform: none !important;
+    }
+  }
 </style>
+
+<script>
+  (function () {
+    document.querySelectorAll('[data-home-hero]').forEach(function (root) {
+      var copyPanels = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-copy]'));
+      var mediaPanels = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-media]'));
+      var dots = Array.prototype.slice.call(root.querySelectorAll('.hero-feature__dot'));
+      var prev = root.querySelector('[data-home-hero-prev]');
+      var next = root.querySelector('[data-home-hero-next]');
+      var currentLabel = root.querySelector('[data-home-hero-current]');
+      var prefersReduced =
+        window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var timer = null;
+      var count = Math.min(copyPanels.length, mediaPanels.length);
+      var current = 0;
+
+      if (!count) return;
+
+      function setActive(nodes, idx, extra) {
+        nodes.forEach(function (node, nodeIndex) {
+          var active = nodeIndex === idx;
+          node.classList.toggle('is-active', active);
+          node.setAttribute('aria-hidden', active ? 'false' : 'true');
+          if (extra) extra(node, active);
+        });
+      }
+
+      function show(idx) {
+        idx = (idx + count) % count;
+        setActive(copyPanels, idx);
+        setActive(mediaPanels, idx, function (node, active) {
+          node.tabIndex = active ? 0 : -1;
+        });
+        dots.forEach(function (dot, dotIndex) {
+          var active = dotIndex === idx;
+          dot.classList.toggle('is-active', active);
+          dot.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        if (currentLabel) currentLabel.textContent = String(idx + 1);
+        current = idx;
+      }
+
+      function stopAuto() {
+        if (timer) {
+          window.clearTimeout(timer);
+          timer = null;
+        }
+      }
+
+      function startAuto() {
+        stopAuto();
+        if (prefersReduced || count < 2 || document.hidden) return;
+        timer = window.setTimeout(function () {
+          show(current + 1);
+          startAuto();
+        }, 5600);
+      }
+
+      if (prev) {
+        prev.addEventListener('click', function () {
+          show(current - 1);
+          startAuto();
+        });
+      }
+      if (next) {
+        next.addEventListener('click', function () {
+          show(current + 1);
+          startAuto();
+        });
+      }
+      dots.forEach(function (dot) {
+        dot.addEventListener('click', function () {
+          show(parseInt(dot.getAttribute('data-index') || '0', 10));
+          startAuto();
+        });
+      });
+
+      root.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          show(current - 1);
+          startAuto();
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          show(current + 1);
+          startAuto();
+        }
+      });
+
+      root.addEventListener('mouseenter', stopAuto);
+      root.addEventListener('mouseleave', startAuto);
+      root.addEventListener('focusin', stopAuto);
+      root.addEventListener('focusout', function (event) {
+        if (root.contains(event.relatedTarget)) return;
+        startAuto();
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) stopAuto();
+        else startAuto();
+      });
+
+      show(0);
+      startAuto();
+    });
+  })();
+</script>
+{% endif %}
 
 <hr class="rule">
 

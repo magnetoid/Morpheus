@@ -12,7 +12,8 @@ def home(request):
             """
         query Home {
           featuredProducts: products(first: 8, featured: true) {
-            id name slug productType
+            id name slug productType shortDescription
+            category { name slug }
             price { amount currency } priceStartsFrom
             primaryImage { url altText }
             isOnSale discountPercentage
@@ -43,7 +44,8 @@ def home(request):
         )
     except Exception:
         pass
-        
+
+    data['hero_products'] = list(data['featured_products'][:4])
     data.setdefault('seasonal_products', data.get('featured_products', []))
 
     # Staff picks rail — same fallback chain as the dedicated /staff-picks/ page.
