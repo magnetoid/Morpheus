@@ -20,7 +20,8 @@ class MorpheusBrainPlugin(Plugin):
     version = '1.0.0'
     description = (
         'The central intelligence console for the platform. Aggregates code '
-        'quality, system errors, SEO health, and daily AI-driven industry reports into one view.'
+        'quality, system errors, SEO health, and daily AI-driven industry reports '
+        'into one view, plus a long-form AI advisory briefing on the whole site.'
     )
     has_models = True
 
@@ -31,12 +32,20 @@ class MorpheusBrainPlugin(Plugin):
         from django.conf import settings
 
         import core.brain.tasks  # noqa: F401 — registers @shared_task
+        import plugins.installed.morpheus_brain.tasks  # noqa: F401 — registers @shared_task
 
         schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', None)
         if isinstance(schedule, dict):
             schedule.setdefault(
                 'brain.refresh_analysis',
                 {'task': 'core.brain.refresh_analysis', 'schedule': 60 * 60 * 6},
+            )
+            # Long-form advisory briefing — once daily (it's a heavier LLM call
+            # than the structured analysis and doesn't need 6-hour freshness;
+            # the "Regenerate briefing" button covers on-demand).
+            schedule.setdefault(
+                'brain.generate_briefing',
+                {'task': 'morpheus_brain.generate_briefing', 'schedule': 60 * 60 * 24},
             )
 
     def contribute_dashboard_pages(self) -> list:

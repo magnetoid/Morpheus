@@ -32,8 +32,26 @@ def brain(request):
             )
         return redirect(request.path)
 
+    if request.method == 'POST' and request.POST.get('action') == 'refresh_briefing':
+        # The long-form briefing is a heavier LLM call than the structured
+        # analysis, so it has its own button. Generation lives in the plugin.
+        from plugins.installed.morpheus_brain.services import generate_briefing
+
+        signals.invalidate_signals_cache()
+        result = generate_briefing()
+        if result.get('configured') is False:
+            messages.warning(request, result.get('message', 'No AI provider configured.'))
+        elif result.get('error'):
+            messages.error(request, f'Briefing failed: {result["error"]}')
+        else:
+            messages.success(request, 'Advisory briefing regenerated.')
+        return redirect(f'{request.path}#advisory')
+
+    from plugins.installed.morpheus_brain.models import BrainBriefing
+
     data = signals.gather_all()
     analysis = analyst.cached_analysis()
+    briefing = BrainBriefing.objects.order_by('-generated_at').first()
     return render(
         request,
         'morpheus_brain/index.html',
@@ -45,5 +63,6 @@ def brain(request):
             'storefront': data['storefront'],
             'improvements': data['improvements'],
             'analysis': analysis,
+            'briefing': briefing,
         },
     )

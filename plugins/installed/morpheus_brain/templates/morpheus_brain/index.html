@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph %}
 {% block title %}Morpheus Brain · Morpheus{% endblock %}
 
 {% block content %}
@@ -64,6 +65,7 @@
     <button class="brain-tab" data-tab="content" type="button">Content &amp; SEO</button>
     <button class="brain-tab" data-tab="storefront" type="button">Storefront</button>
     <button class="brain-tab" data-tab="improve" type="button">Improvements</button>
+    <button class="brain-tab" data-tab="advisory" type="button">Advisory</button>
   </div>
 
   {# ── Overview ────────────────────────────────────────────────────── #}
@@ -214,12 +216,47 @@
     <div class="card card-padded"><div class="font-medium text-sm mb-2">AI insights</div>{% if improvements.insights %}<ul class="space-y-2 text-sm">{% for i in improvements.insights %}<li class="flex items-start justify-between gap-3"><span>{{ i.title }}{% if i.impact %} <span class="text-xs text-[color:var(--text-muted)]">· {{ i.impact }}</span>{% endif %}</span>{% if i.priority %}<span class="pill pill-info text-xs">{{ i.priority }}</span>{% endif %}</li>{% endfor %}</ul>{% else %}<div class="text-sm text-[color:var(--text-muted)]">No unread insights right now.</div>{% endif %}</div>
     {% if improvements.setup %}<div class="card card-padded"><div class="font-medium text-sm mb-2">Setup checklist</div><ul class="space-y-1 text-sm">{% for s in improvements.setup %}<li class="flex items-center gap-2">{% if s.done %}<i data-lucide="check-circle-2" class="h-4 w-4 text-[color:var(--success,#16a34a)]"></i>{% else %}<i data-lucide="circle" class="h-4 w-4 text-[color:var(--text-muted)]"></i>{% endif %}<span>{{ s.label }}</span></li>{% endfor %}</ul></div>{% endif %}
   </section>
+
+  {# ── Advisory briefing — long-form AI narrative about the whole platform ── #}
+  <section data-panel="advisory" hidden class="space-y-3">
+    <div class="card card-padded" style="border-color:var(--accent,#2563eb);">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="clipboard-list" class="h-4 w-4 text-[color:var(--accent,#2563eb)]"></i>
+          <span class="font-semibold text-sm">AI advisory briefing</span>
+          {% if briefing.generated_by %}<code class="text-xs pill pill-neutral">{{ briefing.generated_by }}</code>{% endif %}
+        </div>
+        <form method="post" action="{{ request.path }}" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="refresh_briefing">
+          <button class="btn btn-primary text-xs" type="submit"><i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> Regenerate briefing</button>
+        </form>
+      </div>
+      {% if briefing %}
+        <h2 class="font-semibold text-lg mt-4">{{ briefing.title }}</h2>
+        <div class="brain-briefing mt-2">{{ briefing.content|md }}</div>
+        <div class="text-xs text-[color:var(--text-muted)] mt-4 pt-2 border-t border-[color:var(--border)]">Generated {{ briefing.generated_at|date:"M j, Y H:i" }}{% if briefing.tokens_used %} · {{ briefing.tokens_used }} tokens{% endif %}</div>
+      {% else %}
+        <p class="text-sm text-[color:var(--text-muted)] mt-3">No briefing yet. Click <strong>Regenerate briefing</strong> to have your configured AI write a comprehensive advisory about the whole platform — what's healthy, what needs attention, and the improvements, patches and changes to make next. (Also runs automatically every few hours.)</p>
+      {% endif %}
+    </div>
+  </section>
 </div>
 
 <style>
   .brain-tab { padding:.55rem .9rem; font-size:.85rem; font-weight:500; color:var(--text-muted); border:0; background:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
   .brain-tab.is-active { color:var(--text); border-bottom-color:var(--accent,#2563eb); }
   .brain-tab:hover { color:var(--text); }
+  /* Long-form briefing prose — styled directly so it reads well regardless of
+     whether the Tailwind typography plugin is present. Output comes from the
+     core `md` filter (escaped, then h2/h3/p/strong/em/a). */
+  .brain-briefing { font-size:.9rem; line-height:1.6; color:var(--text); }
+  .brain-briefing h2 { font-size:1.05rem; font-weight:600; margin:1.4rem 0 .5rem; padding-bottom:.25rem; border-bottom:1px solid var(--border); }
+  .brain-briefing h3 { font-size:.95rem; font-weight:600; margin:1.1rem 0 .35rem; }
+  .brain-briefing h2:first-child, .brain-briefing h3:first-child { margin-top:0; }
+  .brain-briefing p { margin:.6rem 0; }
+  .brain-briefing a { color:var(--brand); text-decoration:underline; }
+  .brain-briefing code { font-size:.85em; background:var(--surface-2); padding:.05rem .3rem; border-radius:4px; }
 </style>
 <script>
 (function () {
@@ -227,13 +264,30 @@
   if (!root) return;
   var tabs = root.querySelectorAll('.brain-tab');
   var panels = root.querySelectorAll('[data-panel]');
+  function show(key) {
+    var matched = false;
+    tabs.forEach(function (x) {
+      var on = x.getAttribute('data-tab') === key;
+      x.classList.toggle('is-active', on);
+      if (on) matched = true;
+    });
+    if (!matched) return false;
+    panels.forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== key; });
+    if (window.lucide) window.lucide.createIcons();
+    return true;
+  }
   tabs.forEach(function (t) {
     t.addEventListener('click', function () {
-      tabs.forEach(function (x) { x.classList.toggle('is-active', x === t); });
-      panels.forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== t.getAttribute('data-tab'); });
-      if (window.lucide) window.lucide.createIcons();
+      var key = t.getAttribute('data-tab');
+      show(key);
+      // Keep the open tab in the URL hash so a refresh (e.g. after regenerating
+      // the briefing, which redirects to #advisory) lands on the same tab.
+      if (history.replaceState) history.replaceState(null, '', '#' + key);
     });
   });
+  // On load, honour #<tab> from the URL (post-action redirect or a shared link).
+  var initial = (location.hash || '').replace(/^#/, '');
+  if (initial) show(initial);
 })();
 </script>
 {% endblock %}

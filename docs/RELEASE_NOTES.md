@@ -10,6 +10,39 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.10 — 2026-06-28
+
+### Morpheus Brain
+- **New "Advisory" tab — a long-form AI briefing on your whole site.** Beyond the
+  short prioritized recommendation list, the Brain now writes a comprehensive,
+  readable advisory in prose: what's healthy, what needs attention, and the
+  concrete improvements, patches and changes to make next — grounded in the live
+  platform signals (errors, code quality, SEO/content, storefront performance,
+  plugin health). It regenerates automatically once a day and on demand via
+  **Regenerate briefing**, and degrades cleanly to a prompt when no AI provider
+  is configured.
+
+### Dashboard
+- **Seamless navigation.** Moving between dashboard pages no longer flashes —
+  the sidebar now does an in-place content swap (with a quick, intentional
+  cross-fade) instead of a full reload, and a double-animation flicker on every
+  page change was removed. Respects "reduce motion".
+
+### Storefront
+- **Nicer browse tiles.** The Genres / Topics / Authors index tiles got a visual
+  pass — clearer hover, an affordance arrow, designed placeholders, focus rings.
+
+### Fixes & hardening
+- AI "Ask Linda" buttons now HTML-escape their values (defense-in-depth); a
+  dashboard settings-load failure is now logged instead of silently masked; the
+  nav cart-count is resolved in one query instead of two; and a book-product save
+  error now surfaces in logs instead of being dropped under a false "Saved".
+
+### Developer
+- **Architecture guard-rails.** CI now blocks any *new* wrong-direction
+  `core/ → plugins.installed` import (baseline-and-ratchet, so the debt can only
+  shrink) and runs the plugin disable-test as its own gate.
+
 ## v0.2.9 — 2026-06-28
 
 ### Fixes
