@@ -102,9 +102,10 @@ _CSP_DASHBOARD_ENFORCE = '; '.join(
         # storefront report-only CSP already permits 'unsafe-eval', so this is
         # a consistency fix, not a new relaxation. Dashboard is staff-only.
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh",
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net",
         "img-src 'self' data: blob: https:",
-        "font-src 'self' data:",
+        # cdn.jsdelivr.net — Remix Icon webfont (remixicon.css + .woff2 glyphs).
+        "font-src 'self' data: https://cdn.jsdelivr.net",
         # esm.sh is in script-src (TipTap); allow its module/sourcemap fetches too.
         # unpkg.com fetches: PDF.js module + worker for the book_product 3D
         # cover preview (three.js + pdf.js). connect-src covers the worker/wasm

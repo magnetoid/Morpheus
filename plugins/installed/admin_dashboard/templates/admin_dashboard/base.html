@@ -25,7 +25,139 @@
      browser block it outright — leave it bare. unpkg.com does serve CORS,
      so its scripts keep the attribute. -->
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest" crossorigin="anonymous"></script>
+<!-- Remix Icon webfont (https://remixicon.com) — richer, more expressive iconography
+     than Lucide. We keep every existing `<i data-lucide="name">` in the templates
+     untouched and shim `lucide.createIcons()` to convert each into the matching Remix
+     glyph via the map below — so the swap is zero template churn. Unmapped (config-
+     driven) names fall back to a neutral dot. -->
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet">
+<script>
+(function () {
+  var MAP = {
+    'home':'ri-home-5-line','search':'ri-search-line','search-x':'ri-search-line',
+    'bell':'ri-notification-3-line','settings':'ri-settings-3-line','cog':'ri-settings-3-line',
+    'user':'ri-user-line','users':'ri-group-line','package':'ri-box-3-line','package-check':'ri-checkbox-circle-line',
+    'shopping-bag':'ri-shopping-bag-line','shopping-cart':'ri-shopping-cart-line','truck':'ri-truck-line',
+    'credit-card':'ri-bank-card-line','database':'ri-database-2-line','brain':'ri-brain-line','bot':'ri-robot-2-line',
+    'sparkles':'ri-sparkling-2-line','wand-2':'ri-magic-line','zap':'ri-flashlight-line','flame':'ri-fire-line','star':'ri-star-line',
+    'chevron-down':'ri-arrow-down-s-line','chevron-left':'ri-arrow-left-s-line','chevron-right':'ri-arrow-right-s-line',
+    'arrow-left':'ri-arrow-left-line','arrow-right':'ri-arrow-right-line',
+    'trending-up':'ri-arrow-right-up-line','trending-down':'ri-arrow-right-down-line',
+    'check':'ri-check-line','check-circle':'ri-checkbox-circle-line','check-circle-2':'ri-checkbox-circle-line',
+    'circle':'ri-checkbox-blank-circle-line','dot':'ri-checkbox-blank-circle-fill',
+    'x':'ri-close-line','x-circle':'ri-close-circle-line','plus':'ri-add-line','minus':'ri-subtract-line',
+    'menu':'ri-menu-line','more-horizontal':'ri-more-line','panel-left':'ri-side-bar-line',
+    'grid-3x3':'ri-layout-grid-line','grip-vertical':'ri-draggable',
+    'calendar':'ri-calendar-line','clock':'ri-time-line','history':'ri-history-line','activity':'ri-pulse-line',
+    'alert-triangle':'ri-error-warning-line','info':'ri-information-line','help-circle':'ri-question-line',
+    'lightbulb':'ri-lightbulb-line','shield':'ri-shield-line','key':'ri-key-2-line','eye':'ri-eye-line',
+    'download':'ri-download-2-line','upload':'ri-upload-2-line','upload-cloud':'ri-upload-cloud-2-line',
+    'save':'ri-save-3-line','pencil':'ri-pencil-line','trash-2':'ri-delete-bin-line',
+    'refresh-cw':'ri-refresh-line','refresh-ccw':'ri-refresh-line','loader':'ri-loader-4-line',
+    'link':'ri-links-line','external-link':'ri-external-link-line','mail':'ri-mail-line','message-square':'ri-chat-3-line',
+    'file':'ri-file-line','file-text':'ri-file-text-line','clipboard-list':'ri-file-list-3-line','book-open':'ri-book-open-line',
+    'image':'ri-image-line','image-off':'ri-image-2-line','image-plus':'ri-image-add-line','type':'ri-text',
+    'play-circle':'ri-play-circle-line','pause-circle':'ri-pause-circle-line','cloud':'ri-cloud-line',
+    'hard-drive':'ri-hard-drive-2-line','smartphone':'ri-smartphone-line','laptop':'ri-computer-line','cpu':'ri-cpu-line',
+    'git-commit-horizontal':'ri-git-commit-line','github':'ri-github-line','hexagon':'ri-hexagon-line',
+    'log-out':'ri-logout-box-r-line','sun':'ri-sun-line','moon':'ri-moon-line',
+    'folder':'ri-folder-line','inbox':'ri-inbox-line','square':'ri-checkbox-blank-line',
+    'heart':'ri-heart-line','tag':'ri-price-tag-3-line','gift':'ri-gift-line','percent':'ri-percent-line',
+    'globe':'ri-global-line','map-pin':'ri-map-pin-line','phone':'ri-phone-line','filter':'ri-filter-3-line',
+    'list':'ri-list-unordered','layers':'ri-stack-line','bar-chart':'ri-bar-chart-line','bar-chart-2':'ri-bar-chart-line',
+    'pie-chart':'ri-pie-chart-line','dollar-sign':'ri-money-dollar-circle-line','line-chart':'ri-line-chart-line',
+    'store':'ri-store-2-line'
+  };
+  var FALLBACK = 'ri-checkbox-blank-circle-line';
+  function renderIcons(root) {
+    var scope = (root && root.querySelectorAll) ? root : document;
+    var els = scope.querySelectorAll('[data-lucide]');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var cls = MAP[el.getAttribute('data-lucide')] || FALLBACK;
+      if (el.getAttribute('data-ri') === cls) continue;        // already this glyph
+      el.className = el.className.replace(/\bri-[a-z0-9-]+\b/g, '').replace(/\s+/g, ' ').trim();
+      el.classList.add(cls);
+      el.setAttribute('data-ri', cls);
+    }
+  }
+  // Shim the lucide global so every existing `lucide.createIcons()` call (24 sites)
+  // renders Remix glyphs instead — no other lucide API is used anywhere.
+  window.lucide = { createIcons: renderIcons };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { renderIcons(document); });
+  } else { renderIcons(document); }
+})();
+</script>
+<style>
+  /* Remix glyphs sized to match the Tailwind h-*/w-* the existing markup uses.
+     Font icons size by font-size, so we DON'T override `display` (that would beat
+     Tailwind's `hidden`/`md:inline` utilities and wrongly reveal hidden icons). */
+  i[data-lucide] { font-style:normal; line-height:1; vertical-align:middle; }
+  i[data-lucide].h-3,  i[data-lucide].w-3  { font-size:.75rem; }
+  i[data-lucide].h-3\.5, i[data-lucide].w-3\.5 { font-size:.9rem; }
+  i[data-lucide].h-4,  i[data-lucide].w-4  { font-size:1rem; }
+  i[data-lucide].h-5,  i[data-lucide].w-5  { font-size:1.2rem; }
+  i[data-lucide].h-6,  i[data-lucide].w-6  { font-size:1.45rem; }
+  i[data-lucide].h-8,  i[data-lucide].w-8  { font-size:1.8rem; }
+
+  /* ── Micro-interaction flows ──────────────────────────────────────────
+     Tasteful, GPU-cheap (transform/opacity only), fully disabled under
+     reduce-motion. The new Remix glyphs come alive on interaction. */
+  @media (prefers-reduced-motion: no-preference) {
+    :is(.nav-link, .btn, a, button) i[data-lucide] {
+      transition: transform .18s var(--ease-out, cubic-bezier(.2,.8,.2,1)), color .15s ease;
+      will-change: transform;
+    }
+    :is(.nav-link, .btn):hover i[data-lucide] { transform: scale(1.15); }
+    .nav-link.active i[data-lucide] { transform: scale(1.06); }
+
+    /* Glyph-specific character */
+    :is(a, button, .btn, .nav-link):hover > i[data-lucide="bell"] {
+      animation: mi-swing .6s ease; transform-origin: 50% 10%;
+    }
+    @keyframes mi-swing { 0%,100%{transform:rotate(0)} 20%{transform:rotate(14deg)}
+      40%{transform:rotate(-10deg)} 60%{transform:rotate(6deg)} 80%{transform:rotate(-3deg)} }
+
+    :is(a, button, .btn):hover > i[data-lucide="refresh-cw"],
+    :is(a, button, .btn):hover > i[data-lucide="refresh-ccw"] { animation: mi-spin .7s ease; }
+    /* keep spinning while an htmx request fired from this control is in flight */
+    .htmx-request i[data-lucide="refresh-cw"], .htmx-request i[data-lucide="refresh-ccw"],
+    .htmx-request i[data-lucide="loader"] { animation: mi-spin .8s linear infinite; }
+    @keyframes mi-spin { to { transform: rotate(360deg); } }
+
+    :is(a, button, .btn, .nav-link):hover > i[data-lucide="sparkles"],
+    :is(a, button, .btn, .nav-link):hover > i[data-lucide="brain"],
+    :is(a, button, .btn):hover > i[data-lucide="wand-2"],
+    :is(a, button, .btn):hover > i[data-lucide="zap"] { animation: mi-pulse 1s ease infinite; }
+    @keyframes mi-pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.2);opacity:.85} }
+
+    :is(a, button, .btn):hover > i[data-lucide="trash-2"] { animation: mi-shake .5s ease; transform-origin:50% 0; }
+    @keyframes mi-shake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-12deg)} 75%{transform:rotate(12deg)} }
+
+    :is(a, button, .btn):hover > i[data-lucide="arrow-right"],
+    :is(a, button, .btn):hover > i[data-lucide="external-link"] { transform: translateX(2px); }
+    :is(a, button, .btn):hover > i[data-lucide="arrow-left"] { transform: translateX(-2px); }
+    :is(a, button, .btn):hover > i[data-lucide="download"],
+    :is(a, button, .btn):hover > i[data-lucide="upload"] { animation: mi-bob .6s ease; }
+    @keyframes mi-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px)} }
+
+    /* Nav rows nudge in on hover */
+    .nav-link { transition: background var(--motion-fast,.14s) ease, color var(--motion-fast,.14s) ease, padding-left .16s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
+    .nav-link:hover { padding-left: calc(.65rem + 4px); }
+
+    /* Content settles in as a staggered flow on each page render */
+    #main-content .card { animation: mi-rise .44s var(--ease-out, cubic-bezier(.2,.8,.2,1)) both; }
+    #main-content .card:nth-child(2){animation-delay:.05s} #main-content .card:nth-child(3){animation-delay:.1s}
+    #main-content .card:nth-child(4){animation-delay:.15s} #main-content .card:nth-child(5){animation-delay:.2s}
+    #main-content .card:nth-child(6){animation-delay:.25s} #main-content .card:nth-child(n+7){animation-delay:.3s}
+    @keyframes mi-rise { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+
+    /* Reusable success pop (add .mi-pop to an element to play it once) */
+    @keyframes mi-pop { 0%{transform:scale(.5);opacity:0} 60%{transform:scale(1.18)} 100%{transform:scale(1);opacity:1} }
+    .mi-pop { animation: mi-pop .35s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
+  }
+</style>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
 <script src="{% static 'admin_dashboard/media-uploader.js' %}" defer></script>
 <!-- Catch unhandled JS errors + unhandledrejection → /api/errors/client/. -->
