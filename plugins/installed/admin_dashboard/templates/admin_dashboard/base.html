@@ -740,7 +740,7 @@
     routes every objective through delegate.spawn_workers internally.
     {% endcomment %}
     {% with agents_active=request.path|slice:":17" %}
-    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}active{% endif %}"><i data-lucide="sparkles" class="h-4 w-4"></i> Linda<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
+    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}active{% endif %}"><img src="{% static 'assistant/linda-avatar.jpg' %}" alt="" class="h-4 w-4" style="border-radius:50%;object-fit:cover;flex-shrink:0;"> Linda<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
     <div class="nav-children {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}open{% endif %}">
       <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}">Chat</a>
       <a href="/dashboard/agents/" class="nav-link {% if request.path == '/dashboard/agents/' %}active{% endif %}">Activity</a>

@@ -6,7 +6,7 @@
       border-radius: 999px; padding: .75rem 1.1rem; font-size: .85rem; font-weight: 500;
       box-shadow: 0 8px 24px rgba(0,0,0,.18); cursor: pointer; display: inline-flex;
       align-items: center; gap: .5rem;">
-    <i data-lucide="sparkles" style="width:14px;height:14px;"></i> Linda
+    <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="" style="width:22px;height:22px;border-radius:50%;object-fit:cover;margin:-.3rem 0;"> Linda
   </button>
   <div id="morph-assistant-panel" style="
       display: none; position: absolute; right: 0; bottom: 3.5rem;
@@ -16,6 +16,7 @@
       flex-direction: column; overflow: hidden;">
     <div style="padding: .55rem .75rem .55rem 1rem; border-bottom: 1px solid var(--border, #e3e3e3); display: flex; justify-content: space-between; align-items: center; gap: .5rem;">
       <div style="display:flex; align-items:center; gap:.45rem; min-width: 0;">
+        <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;">
         <strong style="font-size: .9rem;">Linda</strong>
         <select id="morph-assistant-mode" aria-label="Linda mode"
                 style="font-size:.7rem; background:transparent; border:1px solid var(--border,#e3e3e3); border-radius:999px; padding:.1rem .45rem; color:var(--text-muted,#6b7280); cursor:pointer; max-width:9rem;">
@@ -104,6 +105,7 @@
   const form = document.getElementById('morph-assistant-form');
   const log = document.getElementById('morph-assistant-log');
   const modeSelect = document.getElementById('morph-assistant-mode');
+  const LINDA_AVATAR = "{% static 'assistant/linda-avatar.jpg' %}";
   const getCsrf = () => (document.querySelector('[name=csrfmiddlewaretoken]')?.value
                         || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '');
 
@@ -164,7 +166,10 @@
     const label = isTool ? `🔧 ${toolName || 'tool'}` : isUser ? 'You' : 'Linda';
     const body = role === 'assistant' ? renderMarkdown(text || '') :
       (text || '').replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[m]);
-    div.innerHTML = `<strong style="font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#6b7280);">${label}</strong>
+    const avatar = role === 'assistant'
+      ? `<img src="${LINDA_AVATAR}" alt="" style="width:16px;height:16px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:.25rem;">`
+      : '';
+    div.innerHTML = `<strong style="font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#6b7280);">${avatar}${label}</strong>
       <div class="morph-msg-body" style="margin-top:.2rem;">${body}</div>`;
     log.appendChild(div); log.scrollTop = log.scrollHeight;
     return div;
@@ -176,7 +181,7 @@
     if (log.querySelector('.morph-thinking')) return;
     var t = document.createElement('div');
     t.className = 'morph-thinking';
-    t.innerHTML = '<span>Linda is thinking</span><span class="morph-thinking__dots"><span></span><span></span><span></span></span>';
+    t.innerHTML = '<img src="' + LINDA_AVATAR + '" alt="" style="width:16px;height:16px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:.3rem;"><span>Linda is thinking</span><span class="morph-thinking__dots"><span></span><span></span><span></span></span>';
     log.appendChild(t); log.scrollTop = log.scrollHeight;
   }
   function hideThinking() {

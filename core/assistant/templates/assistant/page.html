@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load static %}
 {% block title %}Linda · Morpheus admin{% endblock %}
 
 {% block content %}
@@ -7,6 +8,7 @@
   <div id="linda-log" class="linda-log">
     {% comment %}Empty state — always rendered on page load. Previous-session messages are reachable via the history API; the page itself opens clean.{% endcomment %}
     <div class="linda-empty">
+      <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="Linda" style="width:84px;height:84px;border-radius:50%;object-fit:cover;margin:0 auto 1rem;display:block;box-shadow:0 6px 20px rgba(0,0,0,.18);">
       <h1>How can I help?</h1>
       <p class="linda-empty-lede">Linda knows the store. Ask, and she'll act — explicit approval first.</p>
       {% if memories %}
@@ -343,10 +345,17 @@
         el.hidden = false;
       }).catch(function () {});
   }
+  var LINDA_AVATAR = "{% static 'assistant/linda-avatar.jpg' %}";
   function pushLine(role, text) {
     clearEmpty();
     var wrap = document.createElement('div');
     wrap.className = 'linda-msg linda-msg-' + role;
+    if (role === 'assistant') {
+      var av = document.createElement('img');
+      av.src = LINDA_AVATAR; av.alt = '';
+      av.style.cssText = 'width:26px;height:26px;border-radius:50%;object-fit:cover;margin-bottom:.35rem;display:block;';
+      wrap.appendChild(av);
+    }
     var body = document.createElement('div');
     body.className = 'linda-msg-body';
     if (role === 'assistant') {
@@ -423,7 +432,8 @@
     var t = document.createElement('div');
     t.className = 'linda-thinking';
     t.innerHTML =
-      '<span>Linda is thinking</span>'
+      '<img src="' + LINDA_AVATAR + '" alt="" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:.4rem;">'
+      + '<span>Linda is thinking</span>'
       + '<span class="linda-thinking__dots"><span></span><span></span><span></span></span>';
     log.appendChild(t);
     log.scrollTop = log.scrollHeight;
