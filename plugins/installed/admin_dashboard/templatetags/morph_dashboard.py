@@ -267,21 +267,19 @@ def customer_row_actions(context, customer):
 
 
 @register.simple_tag
-def get_guided_ux_mode():
+def get_ai_page_help():
     try:
         from core.models import StoreSettings
 
-        return StoreSettings.get('guided_ux_mode', True)
+        return StoreSettings.get('ai_page_help', False)
     except Exception:
-        # Keep the safe default (guided), but don't swallow a real failure
-        # (migration crash, settings load error) — log it so it's visible.
         import logging
 
         logging.getLogger('morpheus.admin').warning(
-            'get_guided_ux_mode: StoreSettings load failed; defaulting to guided',
+            'get_ai_page_help: StoreSettings load failed; defaulting off',
             exc_info=True,
         )
-        return True
+        return False
 
 
 @register.inclusion_tag('admin_dashboard/_filter_chips.html', takes_context=True)
