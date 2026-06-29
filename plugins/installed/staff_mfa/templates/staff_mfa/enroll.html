@@ -37,12 +37,12 @@
     <form method="post" onsubmit="return confirm('Turn off two-factor for your account?');">
       {% csrf_token %}
       <input type="hidden" name="action" value="disable">
-      <button type="submit" style="padding:.5rem .85rem; border-radius:6px; background:transparent; color:var(--danger); border:1px solid var(--danger); font-weight:600; cursor:pointer;">Turn off two-factor</button>
+      <button type="submit" class="btn btn-danger">Turn off two-factor</button>
     </form>
   </div>
 
   {% else %}
-  <div style="border:1px solid var(--border); border-radius:8px; padding:1rem;">
+  <div class="card card-padded">
     <h2 class="font-semibold" style="margin-bottom:.6rem;">Set up two-factor</h2>
     <ol class="text-sm" style="color:var(--text-muted); padding-left:1.1rem; margin:0 0 1rem;">
       <li style="margin-bottom:.35rem;">Scan this QR code with your authenticator app.</li>
@@ -63,7 +63,7 @@
                  pattern="[0-9 \-]*" maxlength="12" required
                  placeholder="000000"
                  style="font-family:Menlo,monospace; font-size:1.2rem; letter-spacing:.3em; text-align:center; width:100%; margin:.25rem 0 .65rem;">
-          <button type="submit" style="padding:.5rem .85rem; border-radius:6px; background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer;">Confirm &amp; turn on</button>
+          <button type="submit" class="btn btn-primary">Confirm &amp; turn on</button>
         </form>
       </div>
     </div>

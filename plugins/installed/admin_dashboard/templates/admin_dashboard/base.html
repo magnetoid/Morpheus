@@ -25,64 +25,87 @@
      browser block it outright — leave it bare. unpkg.com does serve CORS,
      so its scripts keep the attribute. -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- Remix Icon webfont (https://remixicon.com) — richer, more expressive iconography
-     than Lucide. We keep every existing `<i data-lucide="name">` in the templates
-     untouched and shim `lucide.createIcons()` to convert each into the matching Remix
-     glyph via the map below — so the swap is zero template churn. Unmapped (config-
-     driven) names fall back to a neutral dot. -->
-<link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet">
+<!-- Font Awesome Free (https://fontawesome.com) — one consistent Solid weight across
+     the whole dashboard. We keep every existing `<i data-lucide="name">` in the
+     templates untouched and shim `lucide.createIcons()` to convert each into the
+     matching FA glyph via the map below — so the swap is zero template churn. Each
+     map value is the FULL class string (style + glyph, e.g. "fa-solid fa-house");
+     a few brand marks use "fa-brands". Unmapped (config-driven) names fall back to a
+     neutral dot. Loaded from jsdelivr (already in the dashboard CSP style/font-src). -->
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" rel="stylesheet">
 <script>
 (function () {
   var MAP = {
-    'home':'ri-home-5-line','search':'ri-search-line','search-x':'ri-search-line',
-    'bell':'ri-notification-3-line','settings':'ri-settings-3-line','cog':'ri-settings-3-line',
-    'user':'ri-user-line','users':'ri-group-line','package':'ri-box-3-line','package-check':'ri-checkbox-circle-line',
-    'shopping-bag':'ri-shopping-bag-line','shopping-cart':'ri-shopping-cart-line','truck':'ri-truck-line',
-    'credit-card':'ri-bank-card-line','database':'ri-database-2-line','brain':'ri-brain-line','bot':'ri-robot-2-line',
-    'sparkles':'ri-sparkling-2-line','wand-2':'ri-magic-line','zap':'ri-flashlight-line','flame':'ri-fire-line','star':'ri-star-line',
-    'chevron-down':'ri-arrow-down-s-line','chevron-left':'ri-arrow-left-s-line','chevron-right':'ri-arrow-right-s-line',
-    'arrow-left':'ri-arrow-left-line','arrow-right':'ri-arrow-right-line',
-    'trending-up':'ri-arrow-right-up-line','trending-down':'ri-arrow-right-down-line',
-    'check':'ri-check-line','check-circle':'ri-checkbox-circle-line','check-circle-2':'ri-checkbox-circle-line',
-    'circle':'ri-checkbox-blank-circle-line','dot':'ri-checkbox-blank-circle-fill',
-    'x':'ri-close-line','x-circle':'ri-close-circle-line','plus':'ri-add-line','minus':'ri-subtract-line',
-    'menu':'ri-menu-line','more-horizontal':'ri-more-line','panel-left':'ri-side-bar-line',
-    'grid-3x3':'ri-layout-grid-line','grip-vertical':'ri-draggable',
-    'calendar':'ri-calendar-line','clock':'ri-time-line','history':'ri-history-line','activity':'ri-pulse-line',
-    'alert-triangle':'ri-error-warning-line','info':'ri-information-line','help-circle':'ri-question-line',
-    'lightbulb':'ri-lightbulb-line','shield':'ri-shield-line','key':'ri-key-2-line','eye':'ri-eye-line',
-    'download':'ri-download-2-line','upload':'ri-upload-2-line','upload-cloud':'ri-upload-cloud-2-line',
-    'save':'ri-save-3-line','pencil':'ri-pencil-line','trash-2':'ri-delete-bin-line',
-    'refresh-cw':'ri-refresh-line','refresh-ccw':'ri-refresh-line','loader':'ri-loader-4-line',
-    'link':'ri-links-line','external-link':'ri-external-link-line','mail':'ri-mail-line','message-square':'ri-chat-3-line',
-    'file':'ri-file-line','file-text':'ri-file-text-line','clipboard-list':'ri-file-list-3-line','book-open':'ri-book-open-line',
-    'image':'ri-image-line','image-off':'ri-image-2-line','image-plus':'ri-image-add-line','type':'ri-text',
-    'play-circle':'ri-play-circle-line','pause-circle':'ri-pause-circle-line','cloud':'ri-cloud-line',
-    'hard-drive':'ri-hard-drive-2-line','smartphone':'ri-smartphone-line','laptop':'ri-computer-line','cpu':'ri-cpu-line',
-    'git-commit-horizontal':'ri-git-commit-line','github':'ri-github-line','hexagon':'ri-hexagon-line',
-    'log-out':'ri-logout-box-r-line','sun':'ri-sun-line','moon':'ri-moon-line',
-    'folder':'ri-folder-line','inbox':'ri-inbox-line','square':'ri-checkbox-blank-line',
-    'heart':'ri-heart-line','tag':'ri-price-tag-3-line','gift':'ri-gift-line','percent':'ri-percent-line',
-    'globe':'ri-global-line','map-pin':'ri-map-pin-line','phone':'ri-phone-line','filter':'ri-filter-3-line',
-    'list':'ri-list-unordered','layers':'ri-stack-line','bar-chart':'ri-bar-chart-line','bar-chart-2':'ri-bar-chart-line',
-    'pie-chart':'ri-pie-chart-line','dollar-sign':'ri-money-dollar-circle-line','line-chart':'ri-line-chart-line',
-    'store':'ri-store-2-line'
+    // navigation / chrome
+    'home':'fa-solid fa-house','search':'fa-solid fa-magnifying-glass','search-x':'fa-solid fa-magnifying-glass',
+    'bell':'fa-solid fa-bell','settings':'fa-solid fa-gear','cog':'fa-solid fa-gear',
+    'menu':'fa-solid fa-bars','more-horizontal':'fa-solid fa-ellipsis','panel-left':'fa-solid fa-table-columns',
+    'grid-3x3':'fa-solid fa-table-cells','grip-vertical':'fa-solid fa-grip-vertical','sliders-horizontal':'fa-solid fa-sliders',
+    'filter':'fa-solid fa-filter','list':'fa-solid fa-list','layers':'fa-solid fa-layer-group',
+    // people / accounts
+    'user':'fa-solid fa-user','users':'fa-solid fa-users','user-plus':'fa-solid fa-user-plus',
+    'log-in':'fa-solid fa-right-to-bracket','log-out':'fa-solid fa-right-from-bracket',
+    'lock':'fa-solid fa-lock','key':'fa-solid fa-key','key-round':'fa-solid fa-key','shield':'fa-solid fa-shield','eye':'fa-solid fa-eye',
+    // commerce
+    'package':'fa-solid fa-box','package-check':'fa-solid fa-box-archive',
+    'shopping-bag':'fa-solid fa-bag-shopping','shopping-cart':'fa-solid fa-cart-shopping','truck':'fa-solid fa-truck',
+    'credit-card':'fa-solid fa-credit-card','dollar-sign':'fa-solid fa-dollar-sign','percent':'fa-solid fa-percent',
+    'tag':'fa-solid fa-tag','gift':'fa-solid fa-gift','store':'fa-solid fa-store','heart':'fa-solid fa-heart','star':'fa-solid fa-star',
+    // AI / intelligence
+    'brain':'fa-solid fa-brain','bot':'fa-solid fa-robot','sparkles':'fa-solid fa-wand-magic-sparkles','wand-2':'fa-solid fa-wand-magic-sparkles',
+    'zap':'fa-solid fa-bolt','flame':'fa-solid fa-fire','lightbulb':'fa-solid fa-lightbulb','flask-conical':'fa-solid fa-flask',
+    // data / infra
+    'database':'fa-solid fa-database','server':'fa-solid fa-server','hard-drive':'fa-solid fa-hard-drive','cpu':'fa-solid fa-microchip',
+    'cloud':'fa-solid fa-cloud','plug':'fa-solid fa-plug','unplug':'fa-solid fa-plug','terminal':'fa-solid fa-terminal',
+    'code-2':'fa-solid fa-code','git-branch':'fa-solid fa-code-branch','git-commit-horizontal':'fa-solid fa-code-commit',
+    'github':'fa-brands fa-github','laptop':'fa-solid fa-laptop','smartphone':'fa-solid fa-mobile-screen',
+    // arrows / chevrons
+    'chevron-down':'fa-solid fa-chevron-down','chevron-left':'fa-solid fa-chevron-left','chevron-right':'fa-solid fa-chevron-right',
+    'arrow-left':'fa-solid fa-arrow-left','arrow-right':'fa-solid fa-arrow-right',
+    'trending-up':'fa-solid fa-arrow-trend-up','trending-down':'fa-solid fa-arrow-trend-down',
+    'undo-2':'fa-solid fa-rotate-left','maximize-2':'fa-solid fa-maximize','send':'fa-solid fa-paper-plane','share-2':'fa-solid fa-share-nodes',
+    // status / feedback
+    'check':'fa-solid fa-check','check-check':'fa-solid fa-check-double',
+    'check-circle':'fa-solid fa-circle-check','check-circle-2':'fa-solid fa-circle-check',
+    'circle':'fa-solid fa-circle','dot':'fa-solid fa-circle','square':'fa-solid fa-square',
+    'x':'fa-solid fa-xmark','x-circle':'fa-solid fa-circle-xmark',
+    'plus':'fa-solid fa-plus','plus-circle':'fa-solid fa-circle-plus','minus':'fa-solid fa-minus',
+    'alert-triangle':'fa-solid fa-triangle-exclamation','alert-circle':'fa-solid fa-circle-exclamation',
+    'info':'fa-solid fa-circle-info','help-circle':'fa-solid fa-circle-question',
+    // time / activity
+    'calendar':'fa-solid fa-calendar','clock':'fa-solid fa-clock','history':'fa-solid fa-clock-rotate-left','activity':'fa-solid fa-wave-square',
+    'refresh-cw':'fa-solid fa-arrows-rotate','refresh-ccw':'fa-solid fa-arrows-rotate','loader':'fa-solid fa-spinner',
+    'play-circle':'fa-solid fa-circle-play','pause-circle':'fa-solid fa-circle-pause',
+    // files / content / media
+    'download':'fa-solid fa-download','upload':'fa-solid fa-upload','upload-cloud':'fa-solid fa-cloud-arrow-up',
+    'save':'fa-solid fa-floppy-disk','pencil':'fa-solid fa-pencil','trash-2':'fa-solid fa-trash','copy':'fa-solid fa-copy',
+    'file':'fa-solid fa-file','file-text':'fa-solid fa-file-lines','clipboard-list':'fa-solid fa-clipboard-list','book-open':'fa-solid fa-book-open',
+    'image':'fa-solid fa-image','image-off':'fa-solid fa-image','image-plus':'fa-solid fa-image','type':'fa-solid fa-font',
+    'link':'fa-solid fa-link','link-2':'fa-solid fa-link','external-link':'fa-solid fa-arrow-up-right-from-square',
+    'mail':'fa-solid fa-envelope','message-square':'fa-solid fa-comment','headphones':'fa-solid fa-headphones',
+    // charts
+    'bar-chart':'fa-solid fa-chart-column','bar-chart-2':'fa-solid fa-chart-column','bar-chart-3':'fa-solid fa-chart-column',
+    'pie-chart':'fa-solid fa-chart-pie','line-chart':'fa-solid fa-chart-line',
+    // misc / geography / theme
+    'globe':'fa-solid fa-globe','map':'fa-solid fa-map','map-pin':'fa-solid fa-location-dot','phone':'fa-solid fa-phone',
+    'languages':'fa-solid fa-language','folder':'fa-solid fa-folder','inbox':'fa-solid fa-inbox',
+    'sun':'fa-solid fa-sun','moon':'fa-solid fa-moon','hexagon':'fa-solid fa-cube'
   };
-  var FALLBACK = 'ri-checkbox-blank-circle-line';
+  var FALLBACK = 'fa-solid fa-circle';
   function renderIcons(root) {
     var scope = (root && root.querySelectorAll) ? root : document;
     var els = scope.querySelectorAll('[data-lucide]');
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
       var cls = MAP[el.getAttribute('data-lucide')] || FALLBACK;
-      if (el.getAttribute('data-ri') === cls) continue;        // already this glyph
-      el.className = el.className.replace(/\bri-[a-z0-9-]+\b/g, '').replace(/\s+/g, ' ').trim();
-      el.classList.add(cls);
-      el.setAttribute('data-ri', cls);
+      if (el.getAttribute('data-fa') === cls) continue;        // already this glyph
+      el.className = el.className.replace(/\bfa-[a-z0-9-]+\b/g, '').replace(/\s+/g, ' ').trim();
+      cls.split(' ').forEach(function (c) { if (c) el.classList.add(c); });
+      el.setAttribute('data-fa', cls);
     }
   }
   // Shim the lucide global so every existing `lucide.createIcons()` call (24 sites)
-  // renders Remix glyphs instead — no other lucide API is used anywhere.
+  // renders Font Awesome glyphs instead — no other lucide API is used anywhere.
   window.lucide = { createIcons: renderIcons };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { renderIcons(document); });
@@ -90,9 +113,10 @@
 })();
 </script>
 <style>
-  /* Remix glyphs sized to match the Tailwind h-*/w-* the existing markup uses.
-     Font icons size by font-size, so we DON'T override `display` (that would beat
-     Tailwind's `hidden`/`md:inline` utilities and wrongly reveal hidden icons). */
+  /* FA glyphs sized to match the Tailwind h-*/w-* the existing markup uses.
+     Font icons size by font-size. FA's base class forces `display:inline-block`,
+     which would beat Tailwind's `hidden`/`md:inline` utilities and wrongly reveal
+     hidden icons — so re-assert those display utilities for our icons below. */
   i[data-lucide] { font-style:normal; line-height:1; vertical-align:middle; }
   i[data-lucide].h-3,  i[data-lucide].w-3  { font-size:.75rem; }
   i[data-lucide].h-3\.5, i[data-lucide].w-3\.5 { font-size:.9rem; }
@@ -100,6 +124,8 @@
   i[data-lucide].h-5,  i[data-lucide].w-5  { font-size:1.2rem; }
   i[data-lucide].h-6,  i[data-lucide].w-6  { font-size:1.45rem; }
   i[data-lucide].h-8,  i[data-lucide].w-8  { font-size:1.8rem; }
+  i[data-lucide].hidden { display: none; }
+  @media (min-width:768px) { i[data-lucide].md\:inline { display: inline; } }
 
   /* ── Micro-interaction flows ──────────────────────────────────────────
      Tasteful, GPU-cheap (transform/opacity only), fully disabled under
@@ -217,6 +243,9 @@
     --shadow-card:  0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04), 0 1px 0 rgba(255,255,255,.6) inset;
     --shadow-card-hover: 0 0 0 1px rgba(0,0,0,.06), 0 4px 12px -4px rgba(0,0,0,.08);
     --shadow-pop:   0 12px 24px -8px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+    /* Off-canvas drawer: cast the shadow evenly toward the content (right),
+       not pooling below — left-anchored panel, so no vertical offset. */
+    --shadow-drawer: 4px 0 24px -6px rgba(0,0,0,.12), 1px 0 4px rgba(0,0,0,.05);
     --motion-fast:  140ms;
     --motion-med:   240ms;
     --motion-slow:  420ms;
@@ -265,6 +294,7 @@
     --shadow-card:  0 0 0 1px rgba(255,255,255,.04), 0 1px 2px rgba(0,0,0,.4);
     --shadow-card-hover: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px -8px rgba(0,0,0,.6);
     --shadow-pop:   0 16px 32px -10px rgba(0,0,0,.65), 0 4px 10px rgba(0,0,0,.45);
+    --shadow-drawer: 4px 0 28px -6px rgba(0,0,0,.55), 1px 0 6px rgba(0,0,0,.4);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]):not([data-theme="dark"]) {
@@ -604,7 +634,7 @@
       width: 18rem; max-width: 80vw;
       transform: translateX(-100%);
       transition: transform var(--motion-med) var(--ease-out);
-      box-shadow: var(--shadow-pop);
+      box-shadow: var(--shadow-drawer);
     }
     .sidebar.sidebar-open { transform: translateX(0); }
     #sidebar-backdrop {
@@ -848,7 +878,7 @@
 <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full lg:translate-x-0 lg:static transition-transform duration-200 ease-out">
   <div class="h-12 flex items-center justify-between px-3 border-b border-[color:var(--border)]">
     <a href="{% url 'admin_dashboard:home' %}" class="flex items-center gap-2 font-semibold tracking-tight">
-      <i data-lucide="hexagon" class="h-5 w-5"></i>
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
       <span>Morpheus</span>
       <span style="font-size:.65rem; font-weight:500; color:var(--text-muted); margin-left:.15rem; padding:.05rem .35rem; border:1px solid var(--border); border-radius:4px;">{{ MORPHEUS_VERSION|default:"v0.1.0" }}</span>
     </a>
