@@ -94,6 +94,10 @@
       .then(function (d) { try { sessionStorage.setItem(key, JSON.stringify(d)); } catch (_) {} render(d); })
       .catch(function () { body.innerHTML = '<em>Linda is unavailable right now.</em>'; });
   }
+  // Re-runs on every boosted navigation because this partial lives INSIDE
+  // #main-content (the htmx hx-swap target), so htmx re-executes this inline
+  // <script> on each swap; the data-bound guard above stops double-binding.
+  // Do NOT hoist this partial out of #main-content or per-page refresh breaks.
   load();
 })();
 </script>
