@@ -198,3 +198,62 @@ class GenerationTests(TestCase):
         self.assertFalse(result['ok'])
         ab.refresh_from_db()
         self.assertEqual(ab.status, 'failed')
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class PdfNarrationSourceTests(TestCase):
+    """source_text() narrates the book PDF when present, else the blurb."""
+
+    def _audiobook(self, *, synopsis=''):
+        from plugins.installed.audiobooks.models import Audiobook
+        from plugins.installed.book_product.models import BookProduct
+        from plugins.installed.catalog.models import Product, ProductVariant
+
+        product = Product.objects.create(
+            name='A Book',
+            slug='ab-pdf',
+            sku='ABP-1',
+            status='active',
+            price=Money(Decimal('9.99'), 'USD'),
+        )
+        BookProduct.objects.create(product=product, author='An Author', synopsis=synopsis)
+        variant = ProductVariant.objects.create(
+            product=product,
+            name='Audiobook',
+            sku='ABP-1-A',
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        return Audiobook.objects.create(variant=variant)
+
+    def _pdf_bytes(self, text):
+        import io
+
+        from reportlab.pdfgen import canvas
+
+        buf = io.BytesIO()
+        c = canvas.Canvas(buf)
+        c.drawString(72, 720, text)
+        c.showPage()
+        c.save()
+        return buf.getvalue()
+
+    def test_source_text_prefers_pdf_over_blurb(self):
+        from django.core.files.base import ContentFile
+
+        from plugins.installed.audiobooks.services import source_text
+
+        ab = self._audiobook(synopsis='Marketing blurb only.')
+        ab.source_pdf.save(
+            'book.pdf', ContentFile(self._pdf_bytes('The real book body text.')), save=True
+        )
+        text = source_text(ab)
+        self.assertIn('real book body text', text)
+        self.assertNotIn('Marketing blurb', text)
+
+    def test_source_text_falls_back_to_blurb_without_pdf(self):
+        from plugins.installed.audiobooks.services import source_text
+
+        ab = self._audiobook(synopsis='A short tale.')
+        text = source_text(ab)
+        self.assertIn('short tale', text)

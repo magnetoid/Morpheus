@@ -2,7 +2,7 @@
 
 Adds an audiobook EDITION to a book as a real, purchasable digital
 ``catalog.ProductVariant``, attaches the narration audio + a modal player to it,
-and (next step) generates the narration with ElevenLabs. Requires book_product;
+and generates the narration with ElevenLabs. Requires book_product;
 disable it and the player + generation + settings vanish while the variant stays
 a plain digital edition. See docs/plans/audiobooks-2026-06.md.
 """
@@ -29,7 +29,7 @@ class AudiobooksPlugin(Plugin):
     def ready(self) -> None:
         # Contribute the "Audiobook edition" card into the dashboard product form
         # (modular extension point) and persist it on save. Only book products
-        # show the card. The storefront PDP player block is the next phase.
+        # show the card.
         self.register_hook(events.PRODUCT_FORM_CARDS, self.on_product_form_cards, priority=50)
         self.register_hook(events.PRODUCT_FORM_SAVED, self.on_product_form_saved, priority=50)
         # ElevenLabs narration: the dashboard "Generate" button enqueues a task.
@@ -48,9 +48,7 @@ class AudiobooksPlugin(Plugin):
         try:
             from plugins.installed.audiobooks.models import Audiobook
 
-            ab = (
-                Audiobook.objects.filter(variant__product=product).select_related('variant').first()
-            )
+            ab = Audiobook.for_product(product)
         except Exception:  # noqa: BLE001
             ab = None
         value.append(
@@ -73,22 +71,12 @@ class AudiobooksPlugin(Plugin):
 
             from djmoney.money import Money
 
-            from plugins.installed.audiobooks.models import Audiobook
-            from plugins.installed.catalog.models import ProductVariant
+            from plugins.installed.audiobooks.services import get_or_create_audiobook_edition
 
-            ab = (
-                Audiobook.objects.filter(variant__product=product).select_related('variant').first()
+            fallback_sku = f'{product.sku or product.id}-AUDIO'
+            ab = get_or_create_audiobook_edition(
+                product, sku=(post.get('audiobook_sku') or fallback_sku)
             )
-            if ab is None:
-                fallback_sku = f'{product.sku or product.id}-AUDIO'
-                variant = ProductVariant.objects.create(
-                    product=product,
-                    name='Audiobook',
-                    sku=(post.get('audiobook_sku') or fallback_sku)[:100],
-                    variant_type='digital',
-                    requires_shipping=False,
-                )
-                ab = Audiobook.objects.create(variant=variant)
             variant = ab.variant
 
             price = (post.get('audiobook_price') or '').strip()
@@ -98,12 +86,15 @@ class AudiobooksPlugin(Plugin):
                 variant.save(update_fields=['price'])
 
             ab.narrator = (post.get('audiobook_narrator') or '')[:200]
-            if files and files.get('audiobook_audio'):
+            files = files or {}
+            if files.get('audiobook_audio'):
                 ab.audio_file = files['audiobook_audio']
                 ab.source = 'uploaded'
                 ab.status = 'ready'
-            if files and files.get('audiobook_sample'):
+            if files.get('audiobook_sample'):
                 ab.sample_file = files['audiobook_sample']
+            if files.get('audiobook_source_pdf'):
+                ab.source_pdf = files['audiobook_source_pdf']
             ab.save()
         except Exception as exc:  # noqa: BLE001
             import logging
