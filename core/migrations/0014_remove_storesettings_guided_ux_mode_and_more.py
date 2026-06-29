@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('core', '0013_storesettings_guided_ux_mode'),
     ]
@@ -17,6 +16,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='storesettings',
             name='ai_page_help',
-            field=models.BooleanField(default=False, help_text='Show Linda on every dashboard page to explain what you are looking at and advise what to do. Uses your configured AI provider.'),
+            field=models.BooleanField(
+                default=False,
+                help_text='Show Linda on every dashboard page to explain what you are looking at and advise what to do. Uses your configured AI provider.',
+            ),
         ),
     ]
