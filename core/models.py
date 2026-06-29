@@ -31,11 +31,12 @@ class StoreSettings(models.Model):
     social_links = models.JSONField(default=dict)
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)
-    
-    # Advanced UX Settings
-    guided_ux_mode = models.BooleanField(
-        default=True, 
-        help_text='Enable enhanced micro-animations and highly visible contextual explanations across the dashboard.'
+
+    # AI-assisted tips & help — when on, Linda explains each dashboard page.
+    ai_page_help = models.BooleanField(
+        default=False,
+        help_text='Show Linda on every dashboard page to explain what you are '
+        'looking at and advise what to do. Uses your configured AI provider.',
     )
 
     # Custom SMTP Overrides
