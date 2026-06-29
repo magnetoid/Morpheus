@@ -15,6 +15,7 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
+from core.assistant.page_help import build_page_help
 from core.assistant.persistence import get_default_store
 from core.assistant.runtime import Assistant
 
@@ -254,3 +255,41 @@ def _conversation_cost_summary(key: str) -> dict:
         return conv.cost_summary() if conv else {}
     except Exception:  # noqa: BLE001, S110 — cost display must never break history
         return {}
+
+
+@staff_member_required
+@csrf_protect
+@require_http_methods(['POST'])
+def assistant_page_help(request):
+    """POST page context → JSON {ok, summary, numbers, actions, message}.
+    Always responds 200 with JSON (dashboard AJAX contract)."""
+    try:
+        body = (
+            json.loads(request.body or b'{}')
+            if request.content_type == 'application/json'
+            else dict(request.POST.items())
+        )
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest('Invalid JSON.')
+
+    context = {
+        'page_title': (body.get('page_title') or '')[:200],
+        'page_url': (body.get('page_url') or '')[:512],
+        'page_text': (body.get('page_text') or '')[:8000],
+        'structured': body.get('structured') if isinstance(body.get('structured'), dict) else None,
+    }
+    try:
+        result = build_page_help(context)
+    except Exception as e:  # noqa: BLE001 — last-resort safety net
+        logger.error('assistant: page_help crashed: %s', e, exc_info=True)
+        return JsonResponse(
+            {
+                'ok': False,
+                'summary': '',
+                'numbers': [],
+                'actions': [],
+                'message': 'Linda is unavailable right now.',
+            },
+            status=200,
+        )
+    return JsonResponse(result, status=200)
