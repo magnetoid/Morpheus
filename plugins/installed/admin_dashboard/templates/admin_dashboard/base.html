@@ -1163,6 +1163,8 @@
       {% endfor %}
     </script>
     {% endif %}
+    {% get_ai_page_help as ai_help %}
+    {% if ai_help %}{% include "assistant/_page_helper.html" %}{% endif %}
     {% block content %}{% endblock %}
    </div>
   </main>

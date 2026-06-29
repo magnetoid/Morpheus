@@ -1,0 +1,99 @@
+{# core/assistant/templates/assistant/_page_helper.html #}
+{% load static %}
+<section id="linda-page-helper" class="card card-padded" data-endpoint="/dashboard/assistant/page-help/"
+         style="margin-bottom:1rem; display:flex; gap:.85rem; align-items:flex-start;">
+  <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="Linda" width="36" height="36"
+       style="border-radius:50%; object-fit:cover; flex-shrink:0;">
+  <div style="flex:1; min-width:0;">
+    <div style="display:flex; align-items:center; gap:.5rem;">
+      <strong style="font-size:.875rem;">Linda's take on this page</strong>
+      <button type="button" id="linda-help-toggle" class="btn btn-ghost p-1"
+              style="margin-left:auto; font-size:.75rem;" aria-expanded="true">Hide</button>
+    </div>
+    <div id="linda-help-body" style="font-size:.8125rem; color:var(--text-muted); margin-top:.35rem;">
+      <div class="skeleton" style="height:1rem; width:60%; border-radius:4px;"></div>
+    </div>
+  </div>
+</section>
+<script>
+(function () {
+  var root = document.getElementById('linda-page-helper');
+  if (!root || root.dataset.bound) return;
+  root.dataset.bound = '1';
+  var body = document.getElementById('linda-help-body');
+  var toggle = document.getElementById('linda-help-toggle');
+
+  function hash(s) { var h = 5381, i = s.length; while (i) h = (h * 33) ^ s.charCodeAt(--i); return (h >>> 0).toString(36); }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  toggle.addEventListener('click', function () {
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    toggle.textContent = open ? 'Show' : 'Hide';
+    toggle.setAttribute('aria-expanded', String(!open));
+    try { localStorage.setItem('linda-help-collapsed', open ? '1' : '0'); } catch (_) {}
+  });
+  if (localStorage.getItem('linda-help-collapsed') === '1') {
+    body.style.display = 'none'; toggle.textContent = 'Show'; toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  function render(d) {
+    if (!d || !d.ok || (!d.summary && !(d.actions || []).length)) {
+      body.innerHTML = '<em>' + esc((d && d.message) || 'Nothing to explain here.') + '</em>';
+      return;
+    }
+    var h = '';
+    if (d.summary) h += '<p style="margin:0 0 .4rem; color:var(--text);">' + esc(d.summary) + '</p>';
+    if ((d.numbers || []).length) {
+      h += '<ul style="margin:.2rem 0 .4rem; padding-left:1rem;">';
+      d.numbers.forEach(function (n) {
+        h += '<li><strong>' + esc(n.label) + ':</strong> ' + esc(n.reading) + '</li>';
+      });
+      h += '</ul>';
+    }
+    if ((d.actions || []).length) {
+      h += '<div style="font-weight:600; color:var(--text); margin-top:.3rem;">What to do next</div><ul style="margin:.2rem 0 0; padding-left:1rem;">';
+      d.actions.forEach(function (a) { h += '<li>' + esc(a) + '</li>'; });
+      h += '</ul>';
+    }
+    body.innerHTML = h;
+  }
+
+  function collectText() {
+    var main = document.getElementById('main-content');
+    var t = main ? (main.innerText || '') : '';
+    return t.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '').replace(/\s+/g, ' ').trim().slice(0, 4000);
+  }
+  function structured() {
+    var el = document.getElementById('page-context');
+    if (!el) return null;
+    try { return JSON.parse(el.textContent || 'null'); } catch (_) { return null; }
+  }
+
+  function load() {
+    var text = collectText();
+    var ctx = {
+      page_title: document.title || '',
+      page_url: location.pathname,
+      page_text: text,
+      structured: structured(),
+    };
+    var sig = location.pathname + '|' + hash(text);
+    var key = 'linda-help:' + sig;
+    try {
+      var cached = sessionStorage.getItem(key);
+      if (cached) { render(JSON.parse(cached)); return; }
+    } catch (_) {}
+    var csrf = (document.cookie.split(';').map(function (c) { return c.trim(); })
+      .find(function (c) { return c.indexOf('csrftoken=') === 0; }) || '').split('=')[1];
+    fetch(root.dataset.endpoint, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+      body: JSON.stringify(ctx),
+    }).then(function (r) { return r.json(); })
+      .then(function (d) { try { sessionStorage.setItem(key, JSON.stringify(d)); } catch (_) {} render(d); })
+      .catch(function () { body.innerHTML = '<em>Linda is unavailable right now.</em>'; });
+  }
+  load();
+})();
+</script>
