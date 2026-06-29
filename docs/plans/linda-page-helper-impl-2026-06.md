@@ -457,7 +457,7 @@ class PageHelpViewTests(TestCase):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `DATABASE_username='' DATABASE_URL='sqlite:///:memory:' python manage.py test core.assistant.tests.test_page_help_view -v 2`
+Run: `DATABASE_URL='sqlite:///:memory:' python manage.py test core.assistant.tests.test_page_help_view -v 2`
 Expected: FAIL — `NoReverseMatch: 'page_help'`.
 
 - [ ] **Step 3: Add the view**
