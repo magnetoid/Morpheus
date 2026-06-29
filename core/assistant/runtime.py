@@ -292,7 +292,7 @@ class Assistant:
             logger.warning('assistant: history summarization failed: %s', e)
             return ''
 
-    def stream(  # noqa: PLR0915
+    def stream(  # noqa: PLR0915, PLR0912
         self,
         *,
         message: str,
@@ -342,6 +342,7 @@ class Assistant:
         prompt_tokens = 0
         completion_tokens = 0
         tool_calls = 0
+        consecutive_tool_errors = 0  # Phase 1b: trip a replan nudge at 2 in a row
 
         for _step in range(max(1, self.max_steps)):
             # Context compaction — keep `msgs` under a soft token budget by
@@ -465,6 +466,27 @@ class Assistant:
                     'output': tool_output,
                     'error': tool_error,
                 }
+                # Phase 1b: if tools keep failing, nudge the model to step back and
+                # replan instead of grinding through identical retries to max_steps.
+                if tool_error:
+                    consecutive_tool_errors += 1
+                    if consecutive_tool_errors >= 2:
+                        from core.agents.llm import LLMMessage as _ReplanMsg
+
+                        msgs.append(
+                            _ReplanMsg(
+                                role='system',
+                                content=(
+                                    'Two tool calls failed in a row. Stop and restate the '
+                                    'goal in one sentence, then choose a DIFFERENT tool or '
+                                    'approach — or ask the user for the missing detail '
+                                    'rather than retrying the same call.'
+                                ),
+                            )
+                        )
+                        consecutive_tool_errors = 0
+                else:
+                    consecutive_tool_errors = 0
 
         # Loop exhausted.
         self.store.append(
@@ -483,6 +505,39 @@ class Assistant:
                 duration_ms=int((time.monotonic() - started) * 1000),
             ),
         }
+
+    def _repair_tool_args(self, tool, args, err):
+        """One bounded LLM re-ask to correct malformed tool arguments — returns a
+        corrected args dict, or None if repair fails (Phase 1b self-correction).
+
+        A TypeError means the model sent wrong/missing kwargs; rather than just
+        echoing the raw Python error back, give it the tool's JSON schema and the
+        error and let it fix the arguments before we surface a failure.
+        """
+        try:
+            from core.agents.llm import LLMMessage
+            from core.llm_parsing import parse_llm_json
+
+            schema = getattr(tool, 'schema', {}) or {}
+            resp = self.provider.respond(
+                messages=[
+                    LLMMessage(
+                        role='user',
+                        content=(
+                            f'The arguments for tool `{getattr(tool, "name", "")}` were '
+                            f'invalid: {err}\nJSON schema: {json.dumps(schema)}\n'
+                            f'You sent: {json.dumps(args, default=str)}\n'
+                            'Reply with ONLY the corrected JSON arguments object, no prose.'
+                        ),
+                    )
+                ],
+                temperature=0.0,
+                max_tokens=400,
+            )
+            parsed = parse_llm_json(getattr(resp, 'text', '') or '')
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:  # noqa: BLE001 — repair is best-effort, never fatal
+            return None
 
     def _dispatch_tool(self, *, tc, tools_by_name, msgs, conversation_key, context):
         """Invoke a single tool call, persist the result, append to LLM context.
@@ -520,8 +575,26 @@ class Assistant:
             result = tool.invoke(args, agent=self, context=context or {})
             output = result.output if hasattr(result, 'output') else result
         except Exception as e:  # noqa: BLE001 — never let a tool failure kill the run
-            output = {'error': f'{type(e).__name__}: {e}'}
-            error_msg = output['error']
+            # Tool.invoke wraps a bad-arguments TypeError as ToolError("TypeError:
+            # ... argument ..."). On that specific case, make ONE bounded LLM repair
+            # attempt before surfacing the error (Phase 1b self-correction).
+            # Intentional validation ToolErrors ("query required") pass straight
+            # through to the model via the error result, as before.
+            msg = str(e)
+            repaired = False
+            if 'TypeError' in msg and 'argument' in msg:
+                fixed = self._repair_tool_args(tool, args, e)
+                if isinstance(fixed, dict) and fixed != args:
+                    try:
+                        result = tool.invoke(fixed, agent=self, context=context or {})
+                        output = result.output if hasattr(result, 'output') else result
+                        args = fixed
+                        repaired = True
+                    except Exception:  # noqa: BLE001 — repair failed; fall through
+                        repaired = False
+            if not repaired:
+                output = {'error': f'{type(e).__name__}: {e}'}
+                error_msg = output['error']
         payload = output if isinstance(output, (dict, list, str, int, float, bool)) else str(output)
         msgs.append(
             LLMMessage(
