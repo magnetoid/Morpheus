@@ -36,6 +36,10 @@ SIGNAL_SOURCES = (
     ('seo_gap', 'SEO gap'),
     ('code_quality', 'Code-quality finding'),
     ('upstream_drift', 'Upstream drift'),
+    # Agent layer (Linda) — her own failures/feedback feed the same engine.
+    ('agent_failure', 'Linda failure'),
+    ('agent_dissent', 'Linda dissent'),
+    ('agent_skill_health', 'Linda skill health'),
 )
 
 RECOMMENDATION_STATUS = (

@@ -195,7 +195,7 @@ def record_skill_outcome(name: str, success: bool):
             from core.self_improvement.services import emit_signal
 
             emit_signal(
-                source='agent.skill_health',
+                source='agent_skill_health',
                 fingerprint=f'skill:{name}',
                 severity=40,
                 payload={

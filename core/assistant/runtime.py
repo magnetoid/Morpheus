@@ -381,6 +381,9 @@ class Assistant:
                     conversation_key=conversation_key,
                     message=StoredMessage(role='assistant', content=friendly),
                 )
+                self._emit_failure_signal(
+                    reason='provider_error', conversation_key=conversation_key, detail=err
+                )
                 yield {
                     'type': 'error',
                     'result': AssistantRunResult(
@@ -493,6 +496,7 @@ class Assistant:
             conversation_key=conversation_key,
             message=StoredMessage(role='assistant', content='(stopped: max steps)'),
         )
+        self._emit_failure_signal(reason='max_steps_exceeded', conversation_key=conversation_key)
         yield {
             'type': 'error',
             'result': AssistantRunResult(
@@ -505,6 +509,26 @@ class Assistant:
                 duration_ms=int((time.monotonic() - started) * 1000),
             ),
         }
+
+    def _emit_failure_signal(self, *, reason, conversation_key, detail=''):
+        """Phase 1d: record a Linda failure as a self-improvement signal so the
+        engine sees where the assistant gets stuck (deduped by reason via the
+        fingerprint). Fail-soft — never break the turn over telemetry."""
+        try:
+            from core.self_improvement.services import emit_signal
+
+            emit_signal(
+                source='agent_failure',
+                fingerprint=f'assistant:{reason}',
+                severity=40,
+                payload={
+                    'reason': reason,
+                    'conversation': conversation_key,
+                    'detail': str(detail)[:500],
+                },
+            )
+        except Exception:  # noqa: BLE001 — telemetry is best-effort
+            logger.debug('assistant: failure-signal emit skipped', exc_info=True)
 
     def _repair_tool_args(self, tool, args, err):
         """One bounded LLM re-ask to correct malformed tool arguments — returns a
