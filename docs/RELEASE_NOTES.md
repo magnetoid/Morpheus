@@ -10,6 +10,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.15 — 2026-07-01
+
+### Localization
+- **Translations are now a programmable API** — external translators and
+  translation tools can read/write translations over **MCP and GraphQL**, not
+  just the dashboard. New scopes `i18n.read` / `i18n.write` gate the access.
+  - MCP tools: `i18n.languages`, `i18n.get_translations`, `i18n.set_translation`
+    (any object, addressed by `content_type` + `object_id`).
+  - GraphQL: `enabledLanguages`, `translations(...)` queries + a
+    `setTranslation(...)` mutation. The same bearer token works from either.
+
+---
+
 ## v0.2.14 — 2026-07-01
 
 ### SEO

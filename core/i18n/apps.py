@@ -13,11 +13,18 @@ class I18nConfig(AppConfig):
         try:
             from core.agents import agent_registry
             from core.i18n.agent_tools import (
+                get_translations_tool,
+                list_languages_tool,
                 list_translations_tool,
+                set_translation_tool,
                 translate_product_tool,
             )
 
             agent_registry.register_tool(translate_product_tool, plugin='core.i18n')
             agent_registry.register_tool(list_translations_tool, plugin='core.i18n')
+            # Generic, any-object translation tools (external translators / tools).
+            agent_registry.register_tool(list_languages_tool, plugin='core.i18n')
+            agent_registry.register_tool(get_translations_tool, plugin='core.i18n')
+            agent_registry.register_tool(set_translation_tool, plugin='core.i18n')
         except Exception:  # noqa: BLE001, S110
             pass

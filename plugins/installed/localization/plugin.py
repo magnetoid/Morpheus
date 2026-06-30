@@ -47,6 +47,10 @@ class LocalizationPlugin(Plugin):
             prefix='dashboard/apps/localization/',
             namespace='localization',
         )
+        # Expose translations over GraphQL (mirrors the generic i18n MCP tools)
+        # so external translators + tools can read/write translations by API.
+        self.register_graphql_extension('plugins.installed.localization.graphql.queries')
+        self.register_graphql_extension('plugins.installed.localization.graphql.mutations')
 
     def contribute_dashboard_pages(self) -> list:
         # One combined entry in the *settings* sidebar — translations +

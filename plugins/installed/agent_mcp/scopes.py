@@ -67,6 +67,15 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
         'Orders · cancel/refund',
         'Cancel orders, mark refunded. Destructive — affects payments + audit.',
     ),
+    # Localization / translations — for external translators + translation tools
+    'i18n.read': (
+        'Translations · read',
+        'List enabled languages + read stored translations for any object.',
+    ),
+    'i18n.write': (
+        'Translations · write',
+        'Set translations for any object field in any enabled language.',
+    ),
     # Cart
     'cart.read': (
         'Cart · read',

@@ -152,6 +152,21 @@ All write operations enforce `info.context.request.user.is_staff` —
 the Bearer-resolved `mcp-service` user satisfies this; sessionless
 unauthenticated calls do not.
 
+### Translations (i18n)
+
+For external translators + translation tools. Any object is addressed by
+`content_type` (`app_label.model`, e.g. `catalog.product`) + `object_id`.
+Scopes: `i18n.read` / `i18n.write`.
+
+| Tool / Mutation | Purpose | Approval? |
+|---|---|---|
+| `i18n.languages` | List enabled languages (translation targets) | no |
+| `i18n.get_translations` / `translations(...)` | Read stored translations for an object | no |
+| `i18n.set_translation` / `setTranslation(...)` | Set a field's translation in a language | **yes** (MCP) |
+
+GraphQL also exposes `enabledLanguages`. The same Bearer token works from MCP or
+GraphQL; the merchant grants `i18n.read`/`i18n.write` when minting the token.
+
 ## Read surface
 
 Read tools available on the curated `/mcp/v1/` (no auth):
