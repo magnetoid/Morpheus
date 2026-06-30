@@ -25,105 +25,105 @@
      browser block it outright — leave it bare. unpkg.com does serve CORS,
      so its scripts keep the attribute. -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- Font Awesome Free (https://fontawesome.com) — one consistent Solid weight across
+<!-- Remix Icon webfont (https://remixicon.com) — one consistent line weight across
      the whole dashboard. We keep every existing `<i data-lucide="name">` in the
      templates untouched and shim `lucide.createIcons()` to convert each into the
-     matching FA glyph via the map below — so the swap is zero template churn. Each
-     map value is the FULL class string (style + glyph, e.g. "fa-solid fa-house");
-     a few brand marks use "fa-brands". Unmapped (config-driven) names fall back to a
-     neutral dot. Loaded from jsdelivr (already in the dashboard CSP style/font-src). -->
-<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" rel="stylesheet">
+     matching Remix glyph via the map below — so this is zero template churn. Each
+     map value is a single Remix class (e.g. "ri-home-5-line"). Unmapped
+     (config-driven) names fall back to a neutral dot. Loaded from jsdelivr
+     (already in the dashboard CSP style/font-src). -->
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet">
 <script>
 (function () {
   var MAP = {
     // navigation / chrome
-    'home':'fa-solid fa-house','search':'fa-solid fa-magnifying-glass','search-x':'fa-solid fa-magnifying-glass',
-    'bell':'fa-solid fa-bell','settings':'fa-solid fa-gear','cog':'fa-solid fa-gear',
-    'menu':'fa-solid fa-bars','more-horizontal':'fa-solid fa-ellipsis','panel-left':'fa-solid fa-table-columns',
-    'grid-3x3':'fa-solid fa-table-cells','grip-vertical':'fa-solid fa-grip-vertical','sliders-horizontal':'fa-solid fa-sliders',
-    'filter':'fa-solid fa-filter','list':'fa-solid fa-list','layers':'fa-solid fa-layer-group',
+    'home':'ri-home-5-line','search':'ri-search-line','search-x':'ri-search-line',
+    'bell':'ri-notification-3-line','settings':'ri-settings-3-line','cog':'ri-settings-3-line',
+    'menu':'ri-menu-line','more-horizontal':'ri-more-line','panel-left':'ri-side-bar-line',
+    'grid-3x3':'ri-layout-grid-line','grip-vertical':'ri-draggable','sliders-horizontal':'ri-equalizer-line',
+    'filter':'ri-filter-3-line','list':'ri-list-unordered','layers':'ri-stack-line',
     // people / accounts
-    'user':'fa-solid fa-user','users':'fa-solid fa-users','user-plus':'fa-solid fa-user-plus',
-    'log-in':'fa-solid fa-right-to-bracket','log-out':'fa-solid fa-right-from-bracket',
-    'lock':'fa-solid fa-lock','key':'fa-solid fa-key','key-round':'fa-solid fa-key','shield':'fa-solid fa-shield','eye':'fa-solid fa-eye',
+    'user':'ri-user-line','users':'ri-group-line','user-plus':'ri-user-add-line',
+    'log-in':'ri-login-box-line','log-out':'ri-logout-box-r-line',
+    'lock':'ri-lock-line','key':'ri-key-2-line','key-round':'ri-key-2-line','shield':'ri-shield-line','eye':'ri-eye-line',
     // commerce
-    'package':'fa-solid fa-box','package-check':'fa-solid fa-box-archive',
-    'shopping-bag':'fa-solid fa-bag-shopping','shopping-cart':'fa-solid fa-cart-shopping','truck':'fa-solid fa-truck',
-    'credit-card':'fa-solid fa-credit-card','dollar-sign':'fa-solid fa-dollar-sign','percent':'fa-solid fa-percent',
-    'tag':'fa-solid fa-tag','gift':'fa-solid fa-gift','store':'fa-solid fa-store','heart':'fa-solid fa-heart','star':'fa-solid fa-star',
+    'package':'ri-box-3-line','package-check':'ri-checkbox-circle-line',
+    'shopping-bag':'ri-shopping-bag-line','shopping-cart':'ri-shopping-cart-line','truck':'ri-truck-line',
+    'credit-card':'ri-bank-card-line','dollar-sign':'ri-money-dollar-circle-line','percent':'ri-percent-line',
+    'tag':'ri-price-tag-3-line','gift':'ri-gift-line','store':'ri-store-2-line','heart':'ri-heart-line','star':'ri-star-line',
     // AI / intelligence
-    'brain':'fa-solid fa-brain','bot':'fa-solid fa-robot','sparkles':'fa-solid fa-wand-magic-sparkles','wand-2':'fa-solid fa-wand-magic-sparkles',
-    'zap':'fa-solid fa-bolt','flame':'fa-solid fa-fire','lightbulb':'fa-solid fa-lightbulb','flask-conical':'fa-solid fa-flask',
+    'brain':'ri-brain-line','bot':'ri-robot-2-line','sparkles':'ri-sparkling-2-line','wand-2':'ri-magic-line',
+    'zap':'ri-flashlight-line','flame':'ri-fire-line','lightbulb':'ri-lightbulb-line','flask-conical':'ri-flask-line',
     // data / infra
-    'database':'fa-solid fa-database','server':'fa-solid fa-server','hard-drive':'fa-solid fa-hard-drive','cpu':'fa-solid fa-microchip',
-    'cloud':'fa-solid fa-cloud','plug':'fa-solid fa-plug','unplug':'fa-solid fa-plug','terminal':'fa-solid fa-terminal',
-    'code-2':'fa-solid fa-code','git-branch':'fa-solid fa-code-branch','git-commit-horizontal':'fa-solid fa-code-commit',
-    'github':'fa-brands fa-github','laptop':'fa-solid fa-laptop','smartphone':'fa-solid fa-mobile-screen',
+    'database':'ri-database-2-line','server':'ri-server-line','hard-drive':'ri-hard-drive-2-line','cpu':'ri-cpu-line',
+    'cloud':'ri-cloud-line','plug':'ri-plug-line','unplug':'ri-plug-line','terminal':'ri-terminal-box-line',
+    'code-2':'ri-code-s-slash-line','git-branch':'ri-git-branch-line','git-commit-horizontal':'ri-git-commit-line',
+    'github':'ri-github-line','laptop':'ri-computer-line','smartphone':'ri-smartphone-line',
     // arrows / chevrons
-    'chevron-down':'fa-solid fa-chevron-down','chevron-left':'fa-solid fa-chevron-left','chevron-right':'fa-solid fa-chevron-right',
-    'arrow-left':'fa-solid fa-arrow-left','arrow-right':'fa-solid fa-arrow-right',
-    'trending-up':'fa-solid fa-arrow-trend-up','trending-down':'fa-solid fa-arrow-trend-down',
-    'undo-2':'fa-solid fa-rotate-left','maximize-2':'fa-solid fa-maximize','send':'fa-solid fa-paper-plane','share-2':'fa-solid fa-share-nodes',
+    'chevron-down':'ri-arrow-down-s-line','chevron-left':'ri-arrow-left-s-line','chevron-right':'ri-arrow-right-s-line',
+    'arrow-left':'ri-arrow-left-line','arrow-right':'ri-arrow-right-line',
+    'trending-up':'ri-arrow-right-up-line','trending-down':'ri-arrow-right-down-line',
+    'undo-2':'ri-arrow-go-back-line','maximize-2':'ri-fullscreen-line','send':'ri-send-plane-line','share-2':'ri-share-line',
     // status / feedback
-    'check':'fa-solid fa-check','check-check':'fa-solid fa-check-double',
-    'check-circle':'fa-solid fa-circle-check','check-circle-2':'fa-solid fa-circle-check',
-    'circle':'fa-solid fa-circle','dot':'fa-solid fa-circle','square':'fa-solid fa-square',
-    'x':'fa-solid fa-xmark','x-circle':'fa-solid fa-circle-xmark',
-    'plus':'fa-solid fa-plus','plus-circle':'fa-solid fa-circle-plus','minus':'fa-solid fa-minus',
-    'alert-triangle':'fa-solid fa-triangle-exclamation','alert-circle':'fa-solid fa-circle-exclamation',
-    'info':'fa-solid fa-circle-info','help-circle':'fa-solid fa-circle-question',
+    'check':'ri-check-line','check-check':'ri-check-double-line',
+    'check-circle':'ri-checkbox-circle-line','check-circle-2':'ri-checkbox-circle-line',
+    'circle':'ri-checkbox-blank-circle-line','dot':'ri-checkbox-blank-circle-fill','square':'ri-checkbox-blank-line',
+    'x':'ri-close-line','x-circle':'ri-close-circle-line',
+    'plus':'ri-add-line','plus-circle':'ri-add-circle-line','minus':'ri-subtract-line',
+    'alert-triangle':'ri-error-warning-line','alert-circle':'ri-error-warning-line',
+    'info':'ri-information-line','help-circle':'ri-question-line',
     // time / activity
-    'calendar':'fa-solid fa-calendar','clock':'fa-solid fa-clock','history':'fa-solid fa-clock-rotate-left','activity':'fa-solid fa-wave-square',
-    'refresh-cw':'fa-solid fa-arrows-rotate','refresh-ccw':'fa-solid fa-arrows-rotate','loader':'fa-solid fa-spinner',
-    'play-circle':'fa-solid fa-circle-play','pause-circle':'fa-solid fa-circle-pause',
+    'calendar':'ri-calendar-line','clock':'ri-time-line','history':'ri-history-line','activity':'ri-pulse-line',
+    'refresh-cw':'ri-refresh-line','refresh-ccw':'ri-refresh-line','loader':'ri-loader-4-line',
+    'play-circle':'ri-play-circle-line','pause-circle':'ri-pause-circle-line',
     // files / content / media
-    'download':'fa-solid fa-download','upload':'fa-solid fa-upload','upload-cloud':'fa-solid fa-cloud-arrow-up',
-    'save':'fa-solid fa-floppy-disk','pencil':'fa-solid fa-pencil','trash-2':'fa-solid fa-trash','copy':'fa-solid fa-copy',
-    'file':'fa-solid fa-file','file-text':'fa-solid fa-file-lines','clipboard-list':'fa-solid fa-clipboard-list','book-open':'fa-solid fa-book-open',
-    'image':'fa-solid fa-image','image-off':'fa-solid fa-image','image-plus':'fa-solid fa-image','type':'fa-solid fa-font',
-    'link':'fa-solid fa-link','link-2':'fa-solid fa-link','external-link':'fa-solid fa-arrow-up-right-from-square',
-    'mail':'fa-solid fa-envelope','message-square':'fa-solid fa-comment','headphones':'fa-solid fa-headphones',
+    'download':'ri-download-2-line','upload':'ri-upload-2-line','upload-cloud':'ri-upload-cloud-2-line',
+    'save':'ri-save-3-line','pencil':'ri-pencil-line','trash-2':'ri-delete-bin-line','copy':'ri-file-copy-line',
+    'file':'ri-file-line','file-text':'ri-file-text-line','clipboard-list':'ri-file-list-3-line','book-open':'ri-book-open-line',
+    'image':'ri-image-line','image-off':'ri-image-2-line','image-plus':'ri-image-add-line','type':'ri-text',
+    'link':'ri-links-line','link-2':'ri-links-line','external-link':'ri-external-link-line',
+    'mail':'ri-mail-line','message-square':'ri-chat-3-line','headphones':'ri-headphone-line',
     // charts
-    'bar-chart':'fa-solid fa-chart-column','bar-chart-2':'fa-solid fa-chart-column','bar-chart-3':'fa-solid fa-chart-column',
-    'pie-chart':'fa-solid fa-chart-pie','line-chart':'fa-solid fa-chart-line',
+    'bar-chart':'ri-bar-chart-line','bar-chart-2':'ri-bar-chart-line','bar-chart-3':'ri-bar-chart-line',
+    'pie-chart':'ri-pie-chart-line','line-chart':'ri-line-chart-line',
     // misc / geography / theme
-    'globe':'fa-solid fa-globe','map':'fa-solid fa-map','map-pin':'fa-solid fa-location-dot','phone':'fa-solid fa-phone',
-    'languages':'fa-solid fa-language','folder':'fa-solid fa-folder','inbox':'fa-solid fa-inbox',
-    'sun':'fa-solid fa-sun','moon':'fa-solid fa-moon','hexagon':'fa-solid fa-cube',
+    'globe':'ri-global-line','map':'ri-map-2-line','map-pin':'ri-map-pin-line','phone':'ri-phone-line',
+    'languages':'ri-translate-2','folder':'ri-folder-line','inbox':'ri-inbox-line',
+    'sun':'ri-sun-line','moon':'ri-moon-line','hexagon':'ri-hexagon-line',
     // config-driven names: plugin nav, settings categories, channel tiles, media
     // (these come from plugin.py / settings_categories.py / DB icon fields — if a
     //  name here is missing it shows the neutral fallback dot on a real feature).
-    'megaphone':'fa-solid fa-bullhorn','ticket':'fa-solid fa-ticket','wallet':'fa-solid fa-wallet',
-    'gauge':'fa-solid fa-gauge-high','radio':'fa-solid fa-radio','radio-tower':'fa-solid fa-tower-broadcast',
-    'tags':'fa-solid fa-tags','calendar-check':'fa-solid fa-calendar-check','users-round':'fa-solid fa-people-group',
-    'user-round':'fa-solid fa-circle-user','message-circle':'fa-solid fa-comment-dots','kanban':'fa-solid fa-diagram-project',
-    'list-checks':'fa-solid fa-list-check','list-ordered':'fa-solid fa-list-ol','facebook':'fa-brands fa-facebook',
-    'braces':'fa-solid fa-file-code','code':'fa-solid fa-code','target':'fa-solid fa-bullseye',
-    'scroll-text':'fa-solid fa-scroll','shield-check':'fa-solid fa-shield-halved','edit-3':'fa-solid fa-pen',
-    'hash':'fa-solid fa-hashtag','ghost':'fa-solid fa-ghost','repeat':'fa-solid fa-repeat',
-    'music':'fa-solid fa-music','webhook':'fa-solid fa-plug','award':'fa-solid fa-award',
-    'sparkle':'fa-solid fa-wand-magic-sparkles','route':'fa-solid fa-route','puzzle':'fa-solid fa-puzzle-piece',
-    'x-octagon':'fa-solid fa-circle-xmark','alert-octagon':'fa-solid fa-triangle-exclamation',
-    'minimize-2':'fa-solid fa-compress','rotate-ccw':'fa-solid fa-arrow-rotate-left','archive':'fa-solid fa-box-archive',
-    'box':'fa-solid fa-cubes','sheet':'fa-solid fa-table-cells-large','newspaper':'fa-solid fa-newspaper',
-    'film':'fa-solid fa-film','video':'fa-solid fa-video','utensils':'fa-solid fa-utensils',
-    'graduation-cap':'fa-solid fa-graduation-cap','pilcrow':'fa-solid fa-paragraph'
+    'megaphone':'ri-megaphone-line','ticket':'ri-ticket-2-line','wallet':'ri-wallet-3-line',
+    'gauge':'ri-dashboard-3-line','radio':'ri-radio-line','radio-tower':'ri-broadcast-line',
+    'tags':'ri-price-tag-3-line','calendar-check':'ri-calendar-check-line','users-round':'ri-team-line',
+    'user-round':'ri-account-circle-line','message-circle':'ri-message-3-line','kanban':'ri-node-tree',
+    'list-checks':'ri-list-check-2','list-ordered':'ri-list-ordered','facebook':'ri-facebook-circle-line',
+    'braces':'ri-code-box-line','code':'ri-code-s-slash-line','target':'ri-focus-3-line',
+    'scroll-text':'ri-file-list-2-line','shield-check':'ri-shield-check-line','edit-3':'ri-edit-line',
+    'hash':'ri-hashtag','ghost':'ri-ghost-line','repeat':'ri-repeat-line',
+    'music':'ri-music-2-line','webhook':'ri-plug-line','award':'ri-award-line',
+    'sparkle':'ri-sparkling-2-line','route':'ri-route-line','puzzle':'ri-puzzle-line',
+    'x-octagon':'ri-close-circle-line','alert-octagon':'ri-error-warning-line',
+    'minimize-2':'ri-fullscreen-exit-line','rotate-ccw':'ri-arrow-go-back-line','archive':'ri-archive-line',
+    'box':'ri-archive-stack-line','sheet':'ri-table-line','newspaper':'ri-newspaper-line',
+    'film':'ri-film-line','video':'ri-vidicon-line','utensils':'ri-restaurant-line',
+    'graduation-cap':'ri-graduation-cap-line','pilcrow':'ri-paragraph'
   };
-  var FALLBACK = 'fa-solid fa-circle';
+  var FALLBACK = 'ri-checkbox-blank-circle-line';
   function renderIcons(root) {
     var scope = (root && root.querySelectorAll) ? root : document;
     var els = scope.querySelectorAll('[data-lucide]');
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
       var cls = MAP[el.getAttribute('data-lucide')] || FALLBACK;
-      if (el.getAttribute('data-fa') === cls) continue;        // already this glyph
-      el.className = el.className.replace(/\bfa-[a-z0-9-]+\b/g, '').replace(/\s+/g, ' ').trim();
+      if (el.getAttribute('data-ri') === cls) continue;        // already this glyph
+      el.className = el.className.replace(/\bri-[a-z0-9-]+\b/g, '').replace(/\s+/g, ' ').trim();
       cls.split(' ').forEach(function (c) { if (c) el.classList.add(c); });
-      el.setAttribute('data-fa', cls);
+      el.setAttribute('data-ri', cls);
     }
   }
   // Shim the lucide global so every existing `lucide.createIcons()` call (24 sites)
-  // renders Font Awesome glyphs instead — no other lucide API is used anywhere.
+  // renders Remix Icon glyphs instead — no other lucide API is used anywhere.
   window.lucide = { createIcons: renderIcons };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { renderIcons(document); });
@@ -131,10 +131,9 @@
 })();
 </script>
 <style>
-  /* FA glyphs sized to match the Tailwind h-*/w-* the existing markup uses.
-     Font icons size by font-size. FA's base class forces `display:inline-block`,
-     which would beat Tailwind's `hidden`/`md:inline` utilities and wrongly reveal
-     hidden icons — so re-assert those display utilities for our icons below. */
+  /* Remix glyphs sized to match the Tailwind h-*/w-* the existing markup uses.
+     Font icons size by font-size. The `.hidden`/`md:inline` utilities below are
+     re-asserted on our icons so responsive show/hide keeps working. */
   i[data-lucide] { font-style:normal; line-height:1; vertical-align:middle; }
   i[data-lucide].h-3,  i[data-lucide].w-3  { font-size:.75rem; }
   i[data-lucide].h-3\.5, i[data-lucide].w-3\.5 { font-size:.9rem; }

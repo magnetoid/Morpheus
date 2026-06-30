@@ -104,7 +104,7 @@ _CSP_DASHBOARD_ENFORCE = '; '.join(
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh",
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net",
         "img-src 'self' data: blob: https:",
-        # cdn.jsdelivr.net — Font Awesome Free webfont (all.min.css + .woff2 glyphs).
+        # cdn.jsdelivr.net — Remix Icon webfont (remixicon.css + .woff2 glyphs).
         "font-src 'self' data: https://cdn.jsdelivr.net",
         # esm.sh is in script-src (TipTap); allow its module/sourcemap fetches too.
         # unpkg.com fetches: PDF.js module + worker for the book_product 3D
