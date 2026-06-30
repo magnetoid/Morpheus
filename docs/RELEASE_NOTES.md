@@ -10,6 +10,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.14 — 2026-07-01
+
+### SEO
+- **Category & collection pages now advertise a price range** in their
+  structured data (schema.org `AggregateOffer` — e.g. "from $5–$30, 240 items").
+  Google and AI Overviews reward this on listing pages, improving how
+  categories surface in rich results and AI answers. Builds on the existing
+  `CollectionPage`/`ItemList` JSON-LD; a reusable `aggregate_offer()` helper is
+  available for variant ProductGroups next.
+
+---
+
 ## v0.2.13 — 2026-06-30
 
 ### Updates

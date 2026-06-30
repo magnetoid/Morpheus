@@ -52,6 +52,7 @@ from .meta import (
 
 # JSON-LD generators.
 from .jsonld import (
+    aggregate_offer,
     article_jsonld,
     book_jsonld,
     breadcrumb_jsonld,
@@ -133,6 +134,7 @@ __all__ = [
     # helpers
     'ResolvedMeta',
     '_jsonld_dump',
+    'aggregate_offer',
     '_seo_plugin_cfg',
     '_site_base_url',
     'logger',

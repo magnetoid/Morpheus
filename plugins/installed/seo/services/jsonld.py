@@ -652,6 +652,7 @@ def collection_page_jsonld(
     items: list[dict],
     kind: str = 'CollectionPage',
     total: int | None = None,
+    offers: dict | None = None,
 ) -> dict:
     """CollectionPage + ItemList for PLP/category pages.
 
@@ -662,10 +663,12 @@ def collection_page_jsonld(
     `total` lets callers pass the FULL queryset count so numberOfItems
     reflects the collection size, not just the sliced top-60. Falls back
     to len(items) when unset (backward-compatible). `kind` is the outer
-    @type and defaults to 'CollectionPage'.
+    @type and defaults to 'CollectionPage'. `offers` (an AggregateOffer
+    dict) advertises the collection's price range — Google + AI Overviews
+    reward "Books from $5–$30" signals on category pages.
     """
     base = _site_base_url().rstrip('/')
-    return {
+    out = {
         '@context': 'https://schema.org',
         '@type': kind,
         'name': name[:120],
@@ -688,6 +691,34 @@ def collection_page_jsonld(
             ],
         },
     }
+    if offers:
+        out['offers'] = offers
+    return out
+
+
+def aggregate_offer(prices: list, currency: str, *, count: int | None = None) -> dict | None:
+    """Build a schema.org AggregateOffer from a list of numeric prices.
+
+    Returns ``{lowPrice, highPrice, priceCurrency, offerCount}`` or None when
+    there are no usable prices. Used by collection/category pages (price range)
+    and variant ProductGroups. Never raises — bad values are skipped."""
+    nums = []
+    for p in prices or []:
+        try:
+            nums.append(float(p))
+        except (TypeError, ValueError):
+            continue
+    nums = [n for n in nums if n > 0]
+    if not nums:
+        return None
+    offer = {
+        '@type': 'AggregateOffer',
+        'priceCurrency': (currency or 'USD')[:3].upper(),
+        'lowPrice': round(min(nums), 2),
+        'highPrice': round(max(nums), 2),
+        'offerCount': count if count is not None else len(nums),
+    }
+    return offer
 
 
 def qa_page_jsonld(*, name: str, url: str, qa: list[dict]) -> dict:

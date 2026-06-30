@@ -568,6 +568,8 @@ def seo_collection_jsonld(context, items, name='', description=''):
     except Exception:  # noqa: BLE001
         url = ''
     normalised = []
+    prices: list = []
+    currency = ''
     for it in items:
         if not it:
             continue
@@ -580,13 +582,29 @@ def seo_collection_jsonld(context, items, name='', description=''):
                 else (it.get('image') or ''),
             }
         )
-    from plugins.installed.seo.services import collection_page_jsonld, _jsonld_dump
+        # Collect prices for an AggregateOffer (price range). Accept a dict
+        # {amount, currency}, a djmoney-like object, or a bare number.
+        price = it.get('price')
+        if price is not None:
+            if isinstance(price, dict):
+                prices.append(price.get('amount'))
+                currency = currency or str(price.get('currency') or '')
+            else:
+                prices.append(getattr(price, 'amount', price))
+                currency = currency or str(getattr(price, 'currency', ''))
+
+    from plugins.installed.seo.services import (
+        _jsonld_dump,
+        aggregate_offer,
+        collection_page_jsonld,
+    )
 
     obj = collection_page_jsonld(
         name=name or 'Collection',
         url=url,
         description=description,
         items=normalised,
+        offers=aggregate_offer(prices, currency),
     )
     return mark_safe(f'<script type="application/ld+json">{_jsonld_dump(obj)}</script>')
 
