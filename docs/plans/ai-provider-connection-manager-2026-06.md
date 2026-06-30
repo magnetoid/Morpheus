@@ -1,6 +1,12 @@
 # AI provider connection manager + DeepSeek
 
-**Status:** spec, pre-implementation · **Date:** 2026-06-30 · **Owner:** ai_assistant
+**Status:** SHIPPED (v0.2.11, in place) · **Date:** 2026-06-30 · **Owner:** ai_assistant
+
+> **Update (shipped):** built **in place** in `admin_dashboard` — connection
+> manager + DeepSeek. The proposed relocation into `ai_assistant` was
+> **dropped** (owner: not needed). The panel stays where it is; the
+> "Relocate ownership" decision and the Boundary section below are **not
+> pursued** and kept only as historical context.
 
 Replace the always-show-every-provider "AI providers" panel with a
 **connection manager**: by default only *connected* providers appear; an
@@ -27,7 +33,8 @@ connecting one reveals its form and moves it into the connected list. Also add
 
 - **Full connection-manager UX** (per owner) — not a lighter collapse.
 - **Design-first**: this spec → approval → build.
-- **Relocate ownership into `ai_assistant`** (see Boundary). We're rewriting the
+- ~~**Relocate ownership into `ai_assistant`**~~ — **dropped (not needed).**
+  Built in place in `admin_dashboard`. Original rationale kept below for history. We're rewriting the
   panel anyway; doing it in the correct layer is ~the same work and repays the
   existing debt + passes the disable test.
 - **No new model.** "Connected" is derived state: `bool(<slug>_api_key)` (or
