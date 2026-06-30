@@ -39,6 +39,12 @@ app.conf.beat_schedule = {
         'task': 'core.errors.tasks.prune_errors_task',
         'schedule': crontab(hour=3, minute=15),  # 03:15 UTC daily
     },
+    # Check upstream for a new Morpheus version once a day; caches the result
+    # so the dashboard can flag "update available" without a per-request fetch.
+    'core-check-for-updates': {
+        'task': 'core.tasks.check_for_updates',
+        'schedule': crontab(hour=4, minute=45),  # 04:45 UTC daily
+    },
 }
 
 # Self-improvement engine — registers ingest/analyze/digest tasks.

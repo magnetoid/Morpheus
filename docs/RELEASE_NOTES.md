@@ -10,6 +10,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.12 — 2026-06-30
+
+### Updates
+- **Automatic "update available" check.** Morpheus now checks the upstream repo
+  once a day and, when a newer version is available, surfaces an **Update
+  available** item in the dashboard activity feed linking to **Settings →
+  Updates** — so you know to update without manually checking. The check is
+  cached (no per-page network cost) and fails silently if git/network is
+  unavailable. Applying updates stays opt-in (`MORPHEUS_SELF_UPDATE_ENABLED`)
+  and CLI/dashboard-driven as before.
+
+---
+
 ## v0.2.11 — 2026-06-30
 
 ### AI providers

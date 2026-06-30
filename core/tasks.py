@@ -259,3 +259,27 @@ def run_hook_handler_async(self, event: str, handler_path: str, kwargs: dict) ->
                 handler_path,
                 event,
             )
+
+
+# ── Daily platform update check ───────────────────────────────────────────────
+
+
+@shared_task(name='core.tasks.check_for_updates', time_limit=60, soft_time_limit=45)
+def check_for_updates() -> dict:
+    """Daily: fetch upstream + cache update status so dashboard surfaces can
+    flag "update available" without a per-request git fetch. Best-effort —
+    network/git errors degrade to an 'unknown'/'unavailable' status, never raise."""
+    from core.updates import refresh_update_status
+
+    try:
+        status = refresh_update_status()
+    except Exception:  # noqa: BLE001 — a failed check must not crash the beat worker
+        logging.getLogger('morpheus.core.updates').warning('update check failed', exc_info=True)
+        return {'available': 'unknown'}
+    if status.get('available') == 'yes':
+        logging.getLogger('morpheus.core.updates').info(
+            'update available: %s behind, latest=%s',
+            status.get('behind'),
+            status.get('latest'),
+        )
+    return status

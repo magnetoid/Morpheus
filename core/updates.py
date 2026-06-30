@@ -99,6 +99,29 @@ def platform_update_status(*, fetch: bool = False) -> dict:
     return out
 
 
+_UPDATE_STATUS_CACHE_KEY = 'morpheus:update_status'
+_UPDATE_STATUS_TTL = 60 * 60 * 36  # 36h — survives a missed daily run
+
+
+def refresh_update_status() -> dict:
+    """Fetch the live update status (network) and cache it. Called by the
+    daily beat task so dashboard surfaces can show "update available" without
+    a per-request git fetch. Returns the status dict."""
+    from django.core.cache import cache
+
+    status = platform_update_status(fetch=True)
+    cache.set(_UPDATE_STATUS_CACHE_KEY, status, _UPDATE_STATUS_TTL)
+    return status
+
+
+def cached_update_status() -> dict | None:
+    """Last cached update status (from the daily check), or None if the check
+    hasn't run yet. Cheap — no git/network. Surfaces read this."""
+    from django.core.cache import cache
+
+    return cache.get(_UPDATE_STATUS_CACHE_KEY)
+
+
 def apply_platform_update(*, confirm: bool = False, run_migrations: bool = True) -> dict:  # noqa: PLR0911
     """Fast-forward the deployed checkout to its upstream — phase 4.
 
