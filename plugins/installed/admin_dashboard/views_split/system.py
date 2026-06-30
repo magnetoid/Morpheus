@@ -99,6 +99,12 @@ def updates_apply(request: HttpRequest) -> HttpResponse:
         )
     elif status in ('diverged', 'apply_failed'):
         messages.error(request, result.get('reason') or 'Update could not be applied.')
+    elif status == 'deps_changed':
+        messages.error(
+            request,
+            result.get('reason')
+            or 'This update changes dependencies — rebuild/redeploy the image instead.',
+        )
     elif status == 'disabled':
         messages.info(request, result.get('reason') or 'Self-update is disabled.')
     elif status == 'unavailable':

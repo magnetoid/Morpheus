@@ -18,7 +18,12 @@ the working tree / code).
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
+
+# Dependency manifests — if any of these change upstream, an in-place git apply
+# is unsafe (it doesn't pip-install), so we refuse unless explicitly allowed.
+_DEP_FILES = ('requirements.txt', 'requirements/', 'pyproject.toml', 'poetry.lock')
 
 
 def _git(args: list[str], cwd: Path, timeout: int = 10) -> str | None:
@@ -122,7 +127,37 @@ def cached_update_status() -> dict | None:
     return cache.get(_UPDATE_STATUS_CACHE_KEY)
 
 
-def apply_platform_update(*, confirm: bool = False, run_migrations: bool = True) -> dict:  # noqa: PLR0911
+def _dependency_changes(root: Path, upstream: str) -> list[str]:
+    """Dependency-manifest files that differ between HEAD and upstream. A
+    non-empty list means an in-place apply would run new code against
+    not-yet-installed packages (the native-dep landmine) — caller refuses."""
+    out = _git(['diff', '--name-only', f'HEAD..{upstream}', '--', *_DEP_FILES], root, timeout=20)
+    return [line for line in (out or '').splitlines() if line.strip()]
+
+
+def _boot_probe(root: Path) -> tuple[bool, str]:
+    """Run ``manage.py check`` in a FRESH interpreter so the *new* (post-merge)
+    code is actually re-imported. The in-process ``check`` runs in the
+    already-loaded old process and cannot catch a settings-import / bad-import /
+    native-dep crash in the new code — this can. Returns ``(ok, output_tail)``."""
+    try:
+        proc = subprocess.run(  # noqa: S603 — static args, repo-root cwd
+            [sys.executable, 'manage.py', 'check'],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+    except Exception as exc:  # noqa: BLE001 — a failed probe = treat as not-bootable
+        return False, str(exc)[:400]
+    ok = proc.returncode == 0
+    return ok, (proc.stderr or proc.stdout or '')[-400:]
+
+
+def apply_platform_update(  # noqa: PLR0911, PLR0912
+    *, confirm: bool = False, run_migrations: bool = True, allow_dependency_changes: bool = False
+) -> dict:
     """Fast-forward the deployed checkout to its upstream — phase 4.
 
     Conservative + reliable by construction:
@@ -131,13 +166,18 @@ def apply_platform_update(*, confirm: bool = False, run_migrations: bool = True)
       * **opt-in** — even with ``confirm`` it refuses unless
         ``settings.MORPHEUS_SELF_UPDATE_ENABLED`` is on.
       * **fast-forward only** — aborts if local has diverged (never force).
+      * **dependency guard** — refuses (``deps_changed``) if upstream changed
+        a dependency manifest, because in-place apply can't pip-install (the
+        native-dep landmine); rebuild the image instead, or pass
+        ``allow_dependency_changes`` once you've installed them.
       * **backup first** (``morph_backup``), then ``git merge --ff-only`` →
-        ``migrate`` → ``check``; any failure **rolls the code back** to the
-        prior commit. (DB migrations are not auto-reversed — the pre-update
-        backup is the restore point; this is reported loudly.)
+        **boot-probe** (``manage.py check`` in a *fresh* interpreter, so the
+        new code is actually re-imported — runs **before** ``migrate`` so a
+        non-bootable update reverts with the DB untouched) → ``migrate`` →
+        in-process ``check``; any failure **rolls the code back** to the prior
+        commit. (DB migrations are not auto-reversed — the pre-update backup is
+        the restore point; this is reported loudly.)
       * **inert** where there's no ``.git`` (built container) → ``unavailable``.
-
-    CLI-only (``manage.py morph_apply_update``); deliberately not web-triggerable.
     """
     from django.conf import settings
 
@@ -198,6 +238,23 @@ def apply_platform_update(*, confirm: bool = False, run_migrations: bool = True)
             'reason': 'Local has diverged from upstream; fast-forward not possible. Resolve manually.',
         }
 
+    # Dependency guard — an in-place git apply does NOT pip-install, so if
+    # upstream changed requirements the new code would import missing/native
+    # packages and crash at boot. Refuse (rebuild the image instead) unless
+    # the caller explicitly accepts responsibility for installing them.
+    dep_changes = _dependency_changes(root, upstream)
+    if dep_changes and not allow_dependency_changes:
+        return {
+            'ok': False,
+            'status': 'deps_changed',
+            'plan': {**plan, 'dependency_files': dep_changes},
+            'reason': (
+                'Upstream changed dependencies (' + ', '.join(dep_changes) + '). In-place apply '
+                'cannot install packages — rebuild/redeploy the image, or re-run with '
+                'allow_dependency_changes=True after installing them.'
+            ),
+        }
+
     from django.core.management import call_command
 
     try:
@@ -216,6 +273,16 @@ def apply_platform_update(*, confirm: bool = False, run_migrations: bool = True)
     def _rollback(reason: str) -> dict:
         _git_ok(['reset', '--hard', prior_sha], root)
         return {'ok': False, 'status': 'rolled_back', 'plan': plan, 'reason': reason}
+
+    # Boot-probe the NEW code in a fresh interpreter BEFORE migrating — the DB
+    # is still untouched, so a non-bootable update rolls back the code with zero
+    # schema risk. Catches settings-import / bad-import / native-dep crashes the
+    # in-process check (old code, already loaded) cannot see.
+    boot_ok, boot_tail = _boot_probe(root)
+    if not boot_ok:
+        return _rollback(
+            f'new code failed to boot ({boot_tail[:160]}); code reverted, DB untouched.'
+        )
 
     if run_migrations:
         try:

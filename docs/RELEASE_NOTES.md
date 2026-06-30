@@ -10,6 +10,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.13 — 2026-06-30
+
+### Updates
+- **Crash-safe one-click update.** The **Settings → Updates** page now always
+  shows an **Update now** button when a version is available. Applying is
+  hardened against bad updates: it **backs up**, then **boot-probes the new
+  code in a fresh process before migrating** (so a non-bootable update reverts
+  with the database untouched), and **refuses updates that change dependencies**
+  (those need an image rebuild — avoids the "imports a package that isn't
+  installed" crash). Any failure auto-rolls-back to the prior version.
+
+---
+
 ## v0.2.12 — 2026-06-30
 
 ### Updates

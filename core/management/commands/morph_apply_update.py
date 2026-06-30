@@ -25,12 +25,18 @@ class Command(BaseCommand):
             '--confirm', action='store_true', help='Actually apply (mutates the checkout).'
         )
         parser.add_argument('--no-migrate', action='store_true', help='Skip running migrations.')
+        parser.add_argument(
+            '--allow-dep-changes',
+            action='store_true',
+            help='Apply even if dependency manifests changed (you must pip-install them).',
+        )
         parser.add_argument('--json', action='store_true', help='Emit JSON.')
 
     def handle(self, *args, **opts) -> None:
         result = apply_platform_update(
             confirm=opts.get('confirm', False),
             run_migrations=not opts.get('no_migrate', False),
+            allow_dependency_changes=opts.get('allow_dep_changes', False),
         )
         if opts.get('json'):
             self.stdout.write(json.dumps(result, indent=2))

@@ -26,17 +26,16 @@
       {% if platform.available == 'yes' %}
         <span class="pill" style="background:var(--warning-bg,#fef3c7);">Update available</span>
         <span class="text-[color:var(--text-muted)]">{{ platform.behind }} commit(s) behind <code>{{ platform.upstream }}</code> · deployed <code>{{ platform.current }}</code></span>
-        <div class="mt-2">
-          {% if self_update_enabled %}
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
           <form method="post" action="{% url 'admin_dashboard:updates_apply' %}" class="inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-primary text-sm"
-                    data-confirm="Apply update? This fast-forwards the deployment from {{ platform.current }} to {{ platform.latest }}, backs up first, runs migrations, and auto-rolls-back on failure.">
-              <i data-lucide="download" class="h-4 w-4"></i> Apply update
+                    data-confirm="Apply update? This backs up first, fast-forwards the deployment from {{ platform.current }} to {{ platform.latest }}, boot-probes the new code, runs migrations, and auto-rolls-back on any failure.">
+              <i data-lucide="download" class="h-4 w-4"></i> Update now
             </button>
           </form>
-          {% else %}
-          <span class="text-xs text-[color:var(--text-muted)]">Self-update is off. Set <code>MORPHEUS_SELF_UPDATE_ENABLED=1</code> to enable one-click apply, or run <code>manage.py morph_apply_update --confirm</code>.</span>
+          {% if not self_update_enabled %}
+          <span class="text-xs text-[color:var(--text-muted)]">Self-update is off — set <code>MORPHEUS_SELF_UPDATE_ENABLED=1</code> to allow one-click apply (the button will tell you if it's blocked).</span>
           {% endif %}
         </div>
       {% elif platform.available == 'no' %}
