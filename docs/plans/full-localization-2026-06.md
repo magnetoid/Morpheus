@@ -42,10 +42,21 @@ languages (`/en/`, `/fr/`).
 ## Phased plan (each phase ships + verifies independently)
 
 ### Phase 1 — Routing foundation (prereq for everything)
-- `LANGUAGES` derived from `list_enabled_languages()` (default `en`); add
-  `django.middleware.locale.LocaleMiddleware` (after Session, before Common);
-  wrap storefront URLs in `i18n_patterns(prefix_default_language=False)` so the
-  default language stays unprefixed (no SEO regression) and others get `/fr/…`.
+- **Core language** is picked in **Settings → General** (default English) and is
+  the **unprefixed** language (`/product`, not `/en/product`). Every *other*
+  enabled language is prefixed (`/fr/…`, `/sr/…`). This is exactly Django's
+  `i18n_patterns(prefix_default_language=False)` with `LANGUAGE_CODE` = the
+  store's core language.
+- `LANGUAGES` derived from `list_enabled_languages()` (core first); add
+  `django.middleware.locale.LocaleMiddleware` (after Session, before Common).
+- **Storefront/dashboard URL split (the risk).** `morph/urls.py` mounts
+  `plugins.urls` (line 73), which aggregates storefront **and** `/dashboard/*`
+  **and** `/api/*`. `i18n_patterns` must wrap **only the storefront** — so first
+  separate the customer-facing storefront URLs from dashboard/API/auth, then
+  language-prefix only the storefront. Dashboard, `/api/`, `/auth/`, `/admin/`,
+  `healthz`, webhooks stay **unprefixed**.
+- Add a `core_language` field to `StoreSettings` + a General-settings picker;
+  `LANGUAGE_CODE` resolves from it (fallback `en`).
 - **Language switcher** `StorefrontBlock` (writes the language cookie + redirects
   to the prefixed URL); persist choice on the customer when logged in.
 - Per-language `hreflang` alternates (extend seo templatetag).
