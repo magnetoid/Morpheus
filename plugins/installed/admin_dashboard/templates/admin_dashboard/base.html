@@ -884,8 +884,7 @@
   }
 </style>
 </head>
-{% get_guided_ux_mode as guided_ux %}
-<body class="min-h-screen flex {% if guided_ux %}guided-ux{% endif %}" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
+<body class="min-h-screen flex guided-ux" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
 
 <script>
   {% comment %}Restore the desktop sidebar-collapsed state before paint (no flash).{% endcomment %}
@@ -1164,6 +1163,8 @@
       {% endfor %}
     </script>
     {% endif %}
+    {% get_ai_page_help as ai_help %}
+    {% if ai_help %}{% include "assistant/_page_helper.html" %}{% endif %}
     {% block content %}{% endblock %}
    </div>
   </main>

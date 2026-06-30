@@ -111,5 +111,7 @@ animations are decoupled from the toggle and become always-on.
 
 ## Out of scope (YAGNI)
 - Vision/screenshot sensing; per-page bespoke prompts; multi-language copy;
-  rewriting every page to emit structured context (DOM text is the baseline;
-  only `home` emits structured JSON in v1).
+  rewriting pages to emit structured context. **v1 is DOM-text-only on every
+  page**: the `#page-context` JSON path is wired end-to-end (service + JS both
+  read it when present) but reserved — no page emits it yet, including `home`.
+  Adding a page's structured emitter is a clean follow-up.

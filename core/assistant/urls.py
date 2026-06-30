@@ -13,4 +13,5 @@ urlpatterns = [
     path('invoke/', views.assistant_invoke, name='invoke'),
     path('stream/', views.assistant_stream, name='stream'),
     path('history/', views.assistant_history, name='history'),
+    path('page-help/', views.assistant_page_help, name='page_help'),
 ]
