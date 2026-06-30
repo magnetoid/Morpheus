@@ -6,6 +6,26 @@ from morpheus import forms
 
 from ._helpers import DashboardFormMixin
 
+# Common storefront languages for the core-language picker. Code is ISO 639-1;
+# the core language is served unprefixed, other enabled languages get a /xx/
+# URL prefix (see docs/plans/full-localization-2026-06.md).
+CORE_LANGUAGE_CHOICES = [
+    ('en', 'English'),
+    ('fr', 'French — Français'),
+    ('de', 'German — Deutsch'),
+    ('es', 'Spanish — Español'),
+    ('it', 'Italian — Italiano'),
+    ('pt', 'Portuguese — Português'),
+    ('nl', 'Dutch — Nederlands'),
+    ('sr', 'Serbian — Српски'),
+    ('ru', 'Russian — Русский'),
+    ('pl', 'Polish — Polski'),
+    ('tr', 'Turkish — Türkçe'),
+    ('ar', 'Arabic — العربية'),
+    ('zh-hans', 'Chinese (Simplified) — 简体中文'),
+    ('ja', 'Japanese — 日本語'),
+]
+
 
 class StoreGeneralForm(DashboardFormMixin, forms.Form):
     """Editable subset of `core.StoreSettings` shown under Settings → General."""
@@ -14,6 +34,13 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
     store_description = forms.CharField(widget=forms.Textarea, required=False)
     primary_currency = forms.CharField(max_length=3)
     country = forms.CharField(max_length=2)
+    core_language = forms.ChoiceField(
+        choices=CORE_LANGUAGE_CHOICES,
+        required=False,
+        label='Core language',
+        help_text='Default storefront language — served without a URL prefix. '
+        'Other languages you enable get a prefix (e.g. /fr/, /sr/).',
+    )
     timezone = forms.CharField(max_length=50, required=False)
     contact_email = forms.EmailField(required=False)
     support_phone = forms.CharField(max_length=30, required=False)
@@ -38,6 +65,7 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
                     'store_description',
                     'primary_currency',
                     'country',
+                    'core_language',
                     'timezone',
                     'contact_email',
                     'support_phone',

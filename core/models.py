@@ -23,6 +23,9 @@ class StoreSettings(models.Model):
     )
     primary_currency = models.CharField(max_length=3, default='USD')
     country = models.CharField(max_length=2, default='US')
+    # Core (default) storefront language — the one served unprefixed (`/product`,
+    # not `/en/product`); other enabled languages get a URL prefix. ISO 639-1.
+    core_language = models.CharField(max_length=10, default='en')
     timezone = models.CharField(max_length=50, default='UTC')
     tax_rate = models.DecimalField(max_digits=5, decimal_places=4, default=0)
     ai_provider = models.CharField(max_length=20, default='openai')
