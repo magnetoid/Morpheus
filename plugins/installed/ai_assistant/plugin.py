@@ -342,6 +342,23 @@ class AIAssistantPlugin(Plugin):
                     'default': 'gpt-4o-mini',
                     'description': 'Any model apikey.fun serves, e.g. gpt-4o · claude-3-5-sonnet.',
                 },
+                # ── DeepSeek (OpenAI-compatible) ──────────────────────
+                'deepseek_api_key': {
+                    'type': 'string',
+                    'title': 'DeepSeek · API Key',
+                    'description': 'DeepSeek API key. https://platform.deepseek.com/api_keys',
+                },
+                'deepseek_base_url': {
+                    'type': 'string',
+                    'title': 'DeepSeek · Base URL',
+                    'default': 'https://api.deepseek.com',
+                },
+                'deepseek_model': {
+                    'type': 'string',
+                    'title': 'DeepSeek · Default model',
+                    'default': 'deepseek-chat',
+                    'description': 'e.g. deepseek-chat · deepseek-reasoner',
+                },
                 # ── Packy (www.packyapi.com — Chinese LLM gateway) ────
                 'packy_api_key': {
                     'type': 'string',
@@ -403,6 +420,7 @@ class AIAssistantPlugin(Plugin):
                         'openrouter',
                         'grok',
                         'apikey',
+                        'deepseek',
                         'packy',
                         'hermes',
                         'ollama',
@@ -485,7 +503,7 @@ class AIAssistantPlugin(Plugin):
     def contribute_settings_panel(self):
         return SettingsPanel(
             label='AI providers',
-            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, apikey.fun, Packy, Hermes (NousResearch), and Ollama. Pick the active provider with "Active provider".',
+            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, apikey.fun, DeepSeek, Packy, Hermes (NousResearch), and Ollama. Pick the active provider with "Active provider".',
             schema=self.get_config_schema(),
             category='ai',
         )

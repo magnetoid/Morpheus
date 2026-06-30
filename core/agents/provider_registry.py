@@ -47,6 +47,7 @@ _DEFAULT_BASE_URLS = {
     'apikey': 'https://api.apikey.fun/v1',
     'packy': 'https://www.packyapi.com',
     'hermes': 'https://openrouter.ai/api/v1',
+    'deepseek': 'https://api.deepseek.com',
 }
 
 _DEFAULT_MODELS = {
@@ -59,6 +60,7 @@ _DEFAULT_MODELS = {
     'apikey': 'gpt-4o-mini',
     'packy': 'claude-3-5-sonnet-20241022',
     'hermes': 'nousresearch/hermes-3-llama-3.1-405b',
+    'deepseek': 'deepseek-chat',
 }
 
 _ENV_KEYS = {
@@ -70,6 +72,7 @@ _ENV_KEYS = {
     'grok': 'XAI_API_KEY',
     'apikey': 'APIKEY_FUN_API_KEY',
     'packy': 'PACKY_API_KEY',
+    'deepseek': 'DEEPSEEK_API_KEY',
 }
 
 _ENV_BASE = {
@@ -79,6 +82,7 @@ _ENV_BASE = {
     'grok': 'XAI_BASE_URL',
     'apikey': 'APIKEY_FUN_BASE_URL',
     'packy': 'PACKY_BASE_URL',
+    'deepseek': 'DEEPSEEK_BASE_URL',
 }
 
 

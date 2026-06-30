@@ -610,6 +610,25 @@ class ApikeyProvider(OpenAIProvider):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DeepSeek — OpenAI-compatible API (deepseek-chat / deepseek-reasoner).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class DeepSeekProvider(OpenAIProvider):
+    name = 'deepseek'
+
+    def __init__(self, model: str | None = None) -> None:
+        from core.agents.provider_registry import get_provider_config
+
+        cfg = get_provider_config('deepseek')
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://api.deepseek.com',
+        )
+        self.model = model or cfg.model or 'deepseek-chat'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Mock — deterministic, used in tests + when no provider configured
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -671,6 +690,7 @@ _PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
     'packy': PackyProvider,
     'hermes': HermesProvider,
     'apikey': ApikeyProvider,
+    'deepseek': DeepSeekProvider,
 }
 
 

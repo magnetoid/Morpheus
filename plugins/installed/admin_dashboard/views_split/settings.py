@@ -187,6 +187,51 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     return JsonResponse(result)
 
 
+@staff_member_required
+def settings_ai_disconnect(request: HttpRequest) -> HttpResponse:
+    """Disconnect a provider — clears its api_key/base_url/model so it leaves
+    the connected list and returns to the "Add AI" picker. If it was the active
+    provider, reassign to another still-connected provider (else unset).
+
+    Always returns JSON (data-ajax contract): ``{"ok": bool, "active": str}``.
+    """
+    from morpheus.views import JsonResponse
+    from plugins.registry import plugin_registry
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+    provider = (request.POST.get('provider') or '').strip()
+    valid = {p['slug'] for p in _AI_PROVIDERS}
+    if provider not in valid:
+        return JsonResponse({'ok': False, 'error': 'unknown provider'}, status=400)
+
+    ai_plugin = plugin_registry.get('ai_assistant')
+    if ai_plugin is None:
+        return JsonResponse({'ok': False, 'error': 'ai_assistant unavailable'}, status=503)
+
+    for suffix in ('api_key', 'base_url', 'model'):
+        ai_plugin.set_config(f'{provider}_{suffix}', '')
+
+    # Reassign active if we just disconnected the active provider.
+    cfg = ai_plugin.get_config()
+    active = cfg.get('ai_provider') or ''
+    if active == provider:
+        opt = {p['slug'] for p in _AI_PROVIDERS if p.get('api_key_optional')}
+        remaining = [
+            p['slug']
+            for p in _AI_PROVIDERS
+            if p['slug'] != provider
+            and (
+                bool(cfg.get(f'{p["slug"]}_api_key'))
+                or (p['slug'] in opt and bool(cfg.get(f'{p["slug"]}_base_url')))
+            )
+        ]
+        active = remaining[0] if remaining else ''
+        ai_plugin.set_config('ai_provider', active)
+
+    return JsonResponse({'ok': True, 'active': active})
+
+
 _AI_PROVIDERS = [
     {
         'slug': 'openai',
@@ -235,6 +280,22 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://apikey.fun/docs',
         'placeholder_model': 'gpt-4o-mini',
+    },
+    {
+        'slug': 'deepseek',
+        'label': 'DeepSeek',
+        'icon': 'brain',
+        'fields': ('api_key', 'base_url', 'model'),
+        'help_url': 'https://platform.deepseek.com/api_keys',
+        'placeholder_model': 'deepseek-chat',
+    },
+    {
+        'slug': 'hermes',
+        'label': 'Hermes (NousResearch)',
+        'icon': 'sparkles',
+        'fields': ('api_key', 'base_url', 'model'),
+        'help_url': 'https://openrouter.ai/keys',
+        'placeholder_model': 'nousresearch/hermes-3-llama-3.1-405b',
     },
     {
         'slug': 'packy',
@@ -639,13 +700,16 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001 — audit table may be empty / pre-migration
         pass
 
-    # Per-provider card data with current values + status.
+    # Per-provider card data with current values + status. A provider is
+    # "connected" once the merchant has set it up: an API key is present, or —
+    # for key-optional providers (Ollama) — a base URL has been saved. The
+    # panel shows only connected providers; the rest live behind "Add AI".
     cards = []
     for p in _AI_PROVIDERS:
         api_key = cfg.get(f'{p["slug"]}_api_key', '') or ''
         base_url = cfg.get(f'{p["slug"]}_base_url', '') or ''
         model = cfg.get(f'{p["slug"]}_model', '') or p.get('placeholder_model', '')
-        configured = bool(api_key) or p.get('api_key_optional')
+        configured = bool(api_key) or (p.get('api_key_optional') and bool(base_url))
         cards.append(
             {
                 **p,
@@ -657,6 +721,9 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
                 'last_call': last_call_by_provider.get(p['slug']),
             }
         )
+
+    connected_cards = [c for c in cards if c['configured']]
+    available_cards = [c for c in cards if not c['configured']]
 
     # Active-provider banner data — resolved model + status, the only
     # answer to "which provider is Linda actually using right now?".
@@ -706,6 +773,8 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         {
             'category': cat,
             'cards': cards,
+            'connected_cards': connected_cards,
+            'available_cards': available_cards,
             'active_provider': active,
             'active_banner': active_banner,
             'features': features,

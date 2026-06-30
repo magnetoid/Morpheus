@@ -17,12 +17,12 @@
     <div class="flex-1 min-w-0">
       <h1 class="text-xl font-semibold tracking-tight flex items-center gap-2">
         AI providers
-        <span class="context-help" aria-label="Connect Morpheus to LLM providers (OpenAI, Anthropic, Gemini, etc.) and configure API keys to power the platform's AI agents."><i data-lucide="help-circle" class="h-4 w-4"></i></span>
+        <span class="context-help" aria-label="Connect Morpheus to LLM providers (OpenAI, Anthropic, DeepSeek, etc.). Only the providers you connect appear here."><i data-lucide="help-circle" class="h-4 w-4"></i></span>
       </h1>
-      <p class="text-sm text-[color:var(--text-muted)] mt-1">Configure provider API keys, default models, and which one the kernel agent calls.</p>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Connect the providers you use, pick which one the kernel agent calls, and manage their keys + models.</p>
     </div>
   </div>
-  
+
   <div class="card card-padded mb-4 border-l-4" style="border-left-color: var(--brand);">
     <h3 class="font-medium text-sm mb-1">Quick Navigation</h3>
     <div class="flex flex-wrap gap-2 mt-2">
@@ -47,7 +47,7 @@
         </h2>
         <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
           {% if not ab.card.configured %}
-            <span class="text-[color:var(--danger)]">API key missing</span> — paste one below before Linda or any agent will respond.
+            <span class="text-[color:var(--danger)]">API key missing</span> — connect it below before Linda or any agent will respond.
           {% elif ab.last_call %}
             Last call <time datetime="{{ ab.last_call.at|date:'c' }}">{{ ab.last_call.at|timesince }}</time> ago ·
             {% if ab.last_call.ok %}<span class="text-[color:var(--success)]">OK</span>{% else %}<span class="text-[color:var(--danger)]">Error</span>{% endif %}
@@ -61,6 +61,8 @@
   {% endif %}
   {% endwith %}
 
+  {# Set-active — only connected providers can be made active. #}
+  {% if connected_cards %}
   <form method="post" action="/dashboard/settings/ai_assistant/"
         class="card card-padded flex items-center justify-between gap-3 flex-wrap"
         data-ajax data-autosave-hide-submit>
@@ -72,7 +74,7 @@
     </div>
     <div class="flex items-center gap-2">
       <select name="ai_provider" id="ai_provider" class="input" style="min-width: 180px;" data-autosave>
-        {% for c in cards %}
+        {% for c in connected_cards %}
         <option value="{{ c.slug }}" {% if c.is_active %}selected{% endif %}>{{ c.label }}</option>
         {% endfor %}
       </select>
@@ -80,97 +82,44 @@
       <button class="btn btn-primary" type="submit"><i data-lucide="check" class="h-4 w-4"></i> Set active</button>
     </div>
   </form>
+  {% endif %}
 
-  {# Per-provider cards. #}
-  {% for c in cards %}
-  <div class="card overflow-hidden">
-    <div class="card-padded flex items-center justify-between gap-3 border-b border-[color:var(--border)]">
-      <div class="flex items-center gap-3 min-w-0">
-        <div class="ai-tile-icon"><i data-lucide="{{ c.icon }}" class="h-4 w-4"></i></div>
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
-            <h2 class="font-semibold">{{ c.label }}</h2>
-            {% if c.is_active %}<span class="pill pill-info">Active</span>{% endif %}
-            {% if c.configured %}
-              <span class="pill pill-success" data-status="ok">Configured</span>
-            {% else %}
-              <span class="pill pill-neutral" data-status="empty">Not configured</span>
-            {% endif %}
-            {% if c.last_call %}
-              {% if c.last_call.ok %}
-                <span class="pill pill-success" title="{{ c.last_call.at|date:'c' }}">Used {{ c.last_call.at|timesince }} ago</span>
-              {% else %}
-                <span class="pill pill-danger" title="{{ c.last_call.at|date:'c' }}">Error {{ c.last_call.at|timesince }} ago</span>
-              {% endif %}
-            {% endif %}
-            <span class="ai-test-msg text-xs"></span>
-          </div>
-          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
-            <a href="{{ c.help_url }}" target="_blank" rel="noopener" class="hover:underline">Get a key</a> · {{ c.placeholder_model }}
-          </p>
-        </div>
+  {# Connected providers — the only ones shown by default. #}
+  {% for c in connected_cards %}
+    {% include "admin_dashboard/_ai_provider_card.html" with c=c mode="connected" %}
+  {% endfor %}
+
+  {% if not connected_cards %}
+  <div class="card card-padded text-center text-sm text-[color:var(--text-muted)]" data-ai-empty>
+    <p class="font-medium text-[color:var(--text)]">No AI providers connected yet</p>
+    <p class="mt-1">Click <strong>Add AI</strong> to connect a provider — only the ones you connect show up here.</p>
+  </div>
+  {% endif %}
+
+  {# Add AI — picker of not-yet-connected provider templates. #}
+  {% if available_cards %}
+  <div class="space-y-3" data-add-ai>
+    <div class="flex justify-center">
+      <button type="button" class="btn btn-secondary" id="add-ai-btn" aria-expanded="false">
+        <i data-lucide="plus" class="h-4 w-4"></i> Add AI
+      </button>
+    </div>
+    <div id="add-ai-picker" class="card card-padded" hidden>
+      <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-2">Choose a provider to connect</p>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {% for c in available_cards %}
+        <button type="button" class="btn btn-secondary justify-start ai-template-tile" data-provider="{{ c.slug }}">
+          <i data-lucide="{{ c.icon }}" class="h-4 w-4"></i> {{ c.label }}
+        </button>
+        {% endfor %}
       </div>
     </div>
-
-    <form method="post" action="/dashboard/settings/ai_assistant/" class="card-padded space-y-3" data-provider-form="{{ c.slug }}" data-ajax>
-      {% csrf_token %}
-    <input type="hidden" name="_next" value="/dashboard/settings/ai/">
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {% if 'api_key' in c.fields %}
-        <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
-            API key{% if c.api_key_optional %} <span class="font-normal text-[color:var(--text-subtle)] normal-case tracking-normal">— optional for self-hosted</span>{% endif %}
-          </label>
-          <input type="password" name="{{ c.slug }}_api_key" class="input mt-1 font-mono"
-                 {% if c.api_key %}value="********"{% else %}value=""{% endif %}
-                 autocomplete="off" spellcheck="false"
-                 placeholder="{% if c.slug == 'openai' %}sk-...{% elif c.slug == 'anthropic' %}sk-ant-...{% elif c.slug == 'gemini' %}AIza...{% elif c.slug == 'openrouter' %}sk-or-...{% elif c.slug == 'packy' %}sk-...{% elif c.slug == 'ollama' %}leave blank if self-hosted{% endif %}">
-          <p class="text-xs text-[color:var(--text-muted)] mt-1">Leave as ******** to keep the existing key, or type a new one to replace it.</p>
-        </div>
-        {% endif %}
-
-        {% if 'base_url' in c.fields %}
-        <div class="{% if 'api_key' in c.fields %}md:col-span-2{% endif %}">
-          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Base URL</label>
-          <input type="text" name="{{ c.slug }}_base_url" class="input mt-1"
-                 value="{{ c.base_url }}"
-                 placeholder="{% if c.slug == 'openai' %}https://api.openai.com/v1{% elif c.slug == 'openrouter' %}https://openrouter.ai/api/v1{% elif c.slug == 'apikey' %}https://api.apikey.fun/v1{% elif c.slug == 'packy' %}https://www.packyapi.com{% elif c.slug == 'ollama' %}http://localhost:11434{% endif %}">
-        </div>
-        {% endif %}
-
-        <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Default model</label>
-          <div class="flex items-center gap-2 mt-1">
-            <input type="text" name="{{ c.slug }}_model" class="input flex-1 font-mono"
-                   value="{{ c.model }}"
-                   data-model-input
-                   placeholder="{{ c.placeholder_model }}"
-                   autocomplete="off">
-            <button type="button" class="btn ai-fetch-btn" data-provider="{{ c.slug }}"><i data-lucide="download" class="h-3.5 w-3.5"></i> Fetch</button>
-            <button type="button" class="btn ai-test-btn" data-provider="{{ c.slug }}"><i data-lucide="zap" class="h-3.5 w-3.5"></i> Test</button>
-          </div>
-          {% comment %}
-          Model picker — sits on its OWN row below the input so a long
-          model list isn't squeezed beside the buttons. Hidden until
-          the merchant hits Fetch and we have a non-empty list.
-          {% endcomment %}
-          <div class="ai-model-picker-row mt-2" data-picker-row="{{ c.slug }}" hidden>
-            <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Pick from catalog</label>
-            <select class="input ai-model-picker w-full" data-provider="{{ c.slug }}">
-              <option value="">— select a model —</option>
-            </select>
-          </div>
-          <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id, or click Fetch to populate a dropdown of models the provider currently exposes.</p>
-        </div>
-      </div>
-
-      <div class="flex justify-end pt-1">
-        <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-3.5 w-3.5"></i> Save</button>
-      </div>
-    </form>
+    {# Hidden connect forms, revealed when a template tile is picked. #}
+    {% for c in available_cards %}
+      {% include "admin_dashboard/_ai_provider_card.html" with c=c mode="connect" %}
+    {% endfor %}
   </div>
-  {% endfor %}
+  {% endif %}
 
   <form method="post" action="/dashboard/settings/ai_assistant/" class="card overflow-hidden" data-ajax>
     {% csrf_token %}
@@ -248,8 +197,6 @@
   }
   .ai-test-msg.ok { color: var(--success); font-weight: 500; }
   .ai-test-msg.fail { color: var(--danger); font-weight: 500; }
-  /* Active-provider banner — three states: OK (success border), warn (no
-     key set), error (last call failed). Subtle, never noisy. */
   .ai-active-banner.is-ok    { border-left: 3px solid var(--success); }
   .ai-active-banner.is-warn  { border-left: 3px solid var(--warn); }
   .ai-active-banner.is-error { border-left: 3px solid var(--danger); }
@@ -258,6 +205,7 @@
 <script>
 (() => {
   const PROBE_URL = '{% url "admin_dashboard:settings_ai_probe" %}';
+  const DISCONNECT_URL = '{% url "admin_dashboard:settings_ai_disconnect" %}';
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value
             || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
@@ -272,6 +220,54 @@
     return getCardForm(provider)?.closest('.card')?.querySelector('.ai-test-msg');
   }
 
+  // ── Add AI: reveal the picker, and reveal a provider's connect form ──
+  const addBtn = document.getElementById('add-ai-btn');
+  const picker = document.getElementById('add-ai-picker');
+  if (addBtn && picker) {
+    addBtn.addEventListener('click', () => {
+      const open = !picker.hidden;
+      picker.hidden = open;
+      addBtn.setAttribute('aria-expanded', String(!open));
+    });
+  }
+  document.querySelectorAll('.ai-template-tile').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const p = tile.dataset.provider;
+      const card = document.querySelector(`[data-connect-card="${p}"]`);
+      if (card) {
+        card.hidden = false;
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.querySelector('input,select')?.focus();
+      }
+    });
+  });
+  document.querySelectorAll('.ai-cancel-connect').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = document.querySelector(`[data-connect-card="${btn.dataset.provider}"]`);
+      if (card) card.hidden = true;
+    });
+  });
+
+  // ── Disconnect: clear the provider's keys, then reload to re-split ──
+  document.querySelectorAll('.ai-disconnect-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const p = btn.dataset.provider;
+      if (!confirm(`Disconnect ${p}? This clears its API key and removes it from the list.`)) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch(DISCONNECT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf },
+          body: new URLSearchParams({ provider: p }),
+        });
+        const data = await res.json().catch(() => ({ ok: false }));
+        if (data.ok) { window.location.reload(); }
+        else { btn.disabled = false; alert('Could not disconnect — try again.'); }
+      } catch { btn.disabled = false; alert('Could not disconnect — try again.'); }
+    });
+  });
+
+  // ── Fetch / Test model probe (works for connected + connect forms) ──
   async function probe(provider) {
     const body = new URLSearchParams({
       provider,
@@ -280,18 +276,13 @@
     });
     const res = await fetch(PROBE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-CSRFToken': csrf,
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf },
       body,
     });
     try { return await res.json(); }
     catch { return { ok: false, error: `HTTP ${res.status}` }; }
   }
 
-  // Cache per provider — survives reloads so the dropdown is pre-populated
-  // on next visit without re-clicking Fetch. One-week TTL.
   function cacheKey(p) { return `ai-models:${p}`; }
   function loadCachedModels(p) {
     try {
@@ -305,12 +296,8 @@
   function saveCachedModels(p, ids) {
     try { localStorage.setItem(cacheKey(p), JSON.stringify({ at: Date.now(), ids })); } catch {}
   }
-  function modelPicker(p) {
-    return document.querySelector(`.ai-model-picker[data-provider="${p}"]`);
-  }
-  function modelInput(p) {
-    return document.querySelector(`form[data-provider-form="${p}"] [data-model-input]`);
-  }
+  function modelPicker(p) { return document.querySelector(`.ai-model-picker[data-provider="${p}"]`); }
+  function modelInput(p) { return document.querySelector(`form[data-provider-form="${p}"] [data-model-input]`); }
   function paintPicker(p, ids) {
     const sel = modelPicker(p);
     if (!sel || !ids?.length) return;
@@ -327,23 +314,15 @@
       if (id === current) opt.selected = true;
       sel.appendChild(opt);
     }
-    // Reveal the wrapper row — `hidden` attribute is the source of truth
-    // for visibility, not inline style. Survives Tailwind / theme CSS
-    // that might otherwise re-hide the select.
     const row = document.querySelector(`[data-picker-row="${p}"]`);
     if (row) row.hidden = false;
     sel.removeAttribute('hidden');
   }
-  // Hydrate every card's picker from cache on page load.
   document.querySelectorAll('[data-provider-form]').forEach(form => {
     const p = form.dataset.providerForm;
     const cached = loadCachedModels(p);
     if (cached) paintPicker(p, cached);
   });
-  // Picking from the catalog copies the model id into the text input
-  // and immediately triggers a Save (form has data-ajax — the change
-  // event bubbles, but we need to manually submit since the picker
-  // isn't a form field itself).
   document.querySelectorAll('.ai-model-picker').forEach(sel => {
     sel.addEventListener('change', () => {
       const p = sel.dataset.provider;
@@ -370,15 +349,10 @@
           return;
         }
         const ids = (data.models || []).map(m => m.id).filter(Boolean);
-        if (ids.length) {
-          paintPicker(p, ids);
-          saveCachedModels(p, ids);
-        }
+        if (ids.length) { paintPicker(p, ids); saveCachedModels(p, ids); }
         msg.className = 'ai-test-msg text-xs ok';
         msg.textContent = `✓ ${ids.length} models`;
-      } finally {
-        btn.disabled = false;
-      }
+      } finally { btn.disabled = false; }
     });
   });
 
@@ -394,9 +368,7 @@
         msg.textContent = data.ok
           ? `✓ connected (${data.models?.length || 0} models)`
           : '✗ ' + (data.error || 'failed');
-      } finally {
-        btn.disabled = false;
-      }
+      } finally { btn.disabled = false; }
     });
   });
 

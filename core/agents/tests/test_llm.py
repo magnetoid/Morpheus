@@ -127,3 +127,22 @@ class ProviderResolutionTests(SimpleTestCase):
         with patch('core.agents.provider_registry.get_provider_config', return_value=cfg):
             provider = get_llm_provider('apikey', use_fallback=False)
         self.assertEqual(provider.name, 'apikey')
+
+    def test_deepseek_is_a_registered_provider(self):
+        from unittest.mock import patch
+
+        from core.agents.llm import _PROVIDER_CLASSES, DeepSeekProvider
+        from core.agents.provider_registry import ProviderConfig
+
+        self.assertIs(_PROVIDER_CLASSES.get('deepseek'), DeepSeekProvider)
+
+        cfg = ProviderConfig(
+            provider='deepseek',
+            api_key='sk-test',
+            base_url='https://api.deepseek.com',
+            model='deepseek-chat',
+            embedding_model='',
+        )
+        with patch('core.agents.provider_registry.get_provider_config', return_value=cfg):
+            provider = get_llm_provider('deepseek', use_fallback=False)
+        self.assertEqual(provider.name, 'deepseek')

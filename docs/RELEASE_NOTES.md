@@ -10,6 +10,33 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.11 — 2026-06-30
+
+### AI providers
+- **AI providers panel is now a connection manager.** Instead of one long form
+  listing every possible provider, the panel shows **only the providers you've
+  connected**. An **"Add AI"** button opens a picker of the remaining provider
+  templates; connect one and it joins the list (and leaves the picker). Each
+  connected provider can be **disconnected** — clearing its key and, if it was
+  the active provider, reassigning the active one automatically.
+- **DeepSeek is now a supported provider** (OpenAI-compatible; `deepseek-chat` /
+  `deepseek-reasoner`). Connect it under Settings → AI providers.
+- **Fixed: selecting apikey.fun reported "No AI provider selected."** apikey.fun
+  was offered in settings but had no provider implementation; it now resolves
+  and runs like any other provider.
+
+### Dashboard
+- **Icon set reverted to Remix Icon** for a consistent line-weight look across
+  the dashboard.
+- **Per-page Linda helper** — when *AI-assisted tips & help* is enabled
+  (Settings), Linda explains each dashboard page and advises what to do next.
+
+### Performance
+- The active storefront channel is now resolved once per request, removing a
+  duplicate lookup that ran on every page.
+
+---
+
 ## v0.2.10 — 2026-06-28
 
 ### Morpheus Brain

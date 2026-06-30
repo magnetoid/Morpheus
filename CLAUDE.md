@@ -107,6 +107,18 @@ sign-in path MUST itself run the gate (`staff_mfa.services.second_factor_respons
 interposes in its `SocialAccountAdapter.pre_social_login`. Don't add a login route
 without it.
 
+**Landmine — a new LLM provider must be wired in *three* places or it silently
+"isn't selected".** Adding a provider touches: (1) `core/agents/llm.py` — a
+`Provider` class **and** a `_PROVIDER_CLASSES` entry; (2)
+`core/agents/provider_registry.py` — `_DEFAULT_BASE_URLS` / `_DEFAULT_MODELS` /
+`_ENV_KEYS` / `_ENV_BASE`; (3) `ai_assistant/plugin.py` — schema fields + the
+`ai_provider` enum, **and** the `_AI_PROVIDERS` catalog in
+`admin_dashboard/views_split/settings.py`. Miss #1 and `get_llm_provider`
+returns the unconfigured mock — the dashboard shows *"No AI provider selected"*
+even though the provider is offered in Settings (this shipped for apikey.fun:
+config + enum existed, the class did not). Add the resolution test alongside
+(`core/agents/tests/test_llm.py::ProviderResolutionTests`).
+
 **Convention — `format: password` settings fields are write-only.** In the
 shared dashboard settings-panel renderer
 (`admin_dashboard/views_split/settings.py` + `urls.py`), a JSON-schema

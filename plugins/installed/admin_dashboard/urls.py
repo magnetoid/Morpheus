@@ -277,6 +277,7 @@ urlpatterns = [
     path('ai/rewrite-email/', views.ai_rewrite_email, name='ai_rewrite_email'),
     path('settings/', views.settings_view, name='settings'),
     path('settings/ai/probe/', views.settings_ai_probe, name='settings_ai_probe'),
+    path('settings/ai/disconnect/', views.settings_ai_disconnect, name='settings_ai_disconnect'),
     path('settings/email-templates/', views.email_templates_list, name='email_templates_list'),
     path(
         'settings/email-templates/<str:key>/', views.email_template_edit, name='email_template_edit'
