@@ -104,3 +104,26 @@ class ProviderResolutionTests(SimpleTestCase):
         out = provider.respond(messages=[LLMMessage(role='user', content='hi')])
         self.assertIsInstance(out, LLMResponse)
         self.assertIsInstance(out.text, str)
+
+    def test_apikey_fun_is_a_registered_provider(self):
+        # apikey.fun is offered in the AI-providers settings panel + the
+        # ai_provider enum, so selecting it must resolve to a real provider
+        # class — not the "No AI provider selected" unconfigured mock. With a
+        # key configured (as in prod) it resolves to the apikey provider.
+        from unittest.mock import patch
+
+        from core.agents.llm import _PROVIDER_CLASSES, ApikeyProvider
+        from core.agents.provider_registry import ProviderConfig
+
+        self.assertIs(_PROVIDER_CLASSES.get('apikey'), ApikeyProvider)
+
+        cfg = ProviderConfig(
+            provider='apikey',
+            api_key='sk-test',
+            base_url='https://api.apikey.fun/v1',
+            model='gpt-4o-mini',
+            embedding_model='',
+        )
+        with patch('core.agents.provider_registry.get_provider_config', return_value=cfg):
+            provider = get_llm_provider('apikey', use_fallback=False)
+        self.assertEqual(provider.name, 'apikey')

@@ -28,7 +28,7 @@ from typing import Any, Callable, Iterable
 
 from django.conf import settings
 
-from core.circuit_breaker import LLM_BREAKER, CircuitOpenError, get_llm_breaker
+from core.circuit_breaker import CircuitOpenError, get_llm_breaker
 from django.core.cache import cache
 
 logger = logging.getLogger('morpheus.agents.llm')
@@ -77,8 +77,8 @@ def _llm_breaker(fn: Callable) -> Callable:
         # Generate cache key based on messages and tools
         messages = kwargs.get('messages', [])
         tools = kwargs.get('tools', [])
-        
-        # Only cache queries without tools to avoid caching side-effects, 
+
+        # Only cache queries without tools to avoid caching side-effects,
         # or cache specific repeatable queries.
         # For this high-performance spec, we will implement a semantic cache layer
         # by hashing the messages.
@@ -86,14 +86,17 @@ def _llm_breaker(fn: Callable) -> Callable:
         if not tools:
             try:
                 import hashlib
-                msg_str = json.dumps([{'role': m.role, 'content': m.content} for m in messages], sort_keys=True)
-                cache_key = f"llm_cache_{self.name}_{self.model}_{hashlib.sha256(msg_str.encode()).hexdigest()}"
+
+                msg_str = json.dumps(
+                    [{'role': m.role, 'content': m.content} for m in messages], sort_keys=True
+                )
+                cache_key = f'llm_cache_{self.name}_{self.model}_{hashlib.sha256(msg_str.encode()).hexdigest()}'
                 cached_resp = cache.get(cache_key)
                 if cached_resp:
                     logger.debug('llm provider %s returning cached response', self.name)
                     # Convert dict back to LLMResponse
                     return LLMResponse(**cached_resp)
-            except Exception:
+            except Exception:  # noqa: S110 — best-effort cache read; fall through to live call
                 pass
 
         breaker = get_llm_breaker(self.name)
@@ -108,8 +111,8 @@ def _llm_breaker(fn: Callable) -> Callable:
                             'completion_tokens': resp.completion_tokens,
                             'model': resp.model,
                         }
-                        cache.set(cache_key, cache_dict, timeout=3600) # Cache for 1 hour
-                    except Exception:
+                        cache.set(cache_key, cache_dict, timeout=3600)  # Cache for 1 hour
+                    except Exception:  # noqa: S110 — best-effort cache write; never block the response
                         pass
                 return resp
         except CircuitOpenError as exc:
@@ -588,6 +591,25 @@ class HermesProvider(OpenAIProvider):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# apikey.fun — unified OpenAI-compatible gateway to many model vendors.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class ApikeyProvider(OpenAIProvider):
+    name = 'apikey'
+
+    def __init__(self, model: str | None = None) -> None:
+        from core.agents.provider_registry import get_provider_config
+
+        cfg = get_provider_config('apikey')
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://api.apikey.fun/v1',
+        )
+        self.model = model or cfg.model or 'gpt-4o-mini'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Mock — deterministic, used in tests + when no provider configured
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -648,6 +670,7 @@ _PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
     'grok': GrokProvider,
     'packy': PackyProvider,
     'hermes': HermesProvider,
+    'apikey': ApikeyProvider,
 }
 
 
@@ -657,6 +680,7 @@ class FallbackProviderRouter(LLMProvider):
     Wraps multiple providers and cascades through them if one is degraded
     or its circuit breaker is open.
     """
+
     name = 'fallback_router'
 
     def __init__(self, primary: LLMProvider, secondaries: list[LLMProvider]):
@@ -673,8 +697,8 @@ class FallbackProviderRouter(LLMProvider):
         max_tokens: int = 1024,
     ) -> LLMResponse:
         providers_to_try = [self.primary] + self.secondaries
-        last_error_text = ""
-        
+        last_error_text = ''
+
         for provider in providers_to_try:
             resp = provider.respond(
                 messages=messages,
@@ -687,14 +711,16 @@ class FallbackProviderRouter(LLMProvider):
                 return resp
             last_error_text = resp.text
             logger.info('FallbackRouter: Provider %s degraded, trying next.', provider.name)
-            
+
         return LLMResponse(
             text=f'[All AI providers degraded. Last error: {last_error_text}]',
-            model='fallback_router_failed'
+            model='fallback_router_failed',
         )
 
 
-def get_llm_provider(name: str | None = None, *, model: str | None = None, use_fallback: bool = True) -> LLMProvider:
+def get_llm_provider(
+    name: str | None = None, *, model: str | None = None, use_fallback: bool = True
+) -> LLMProvider:
     """Resolve the active provider. Reads the ai_assistant plugin config (so
     keys saved in the dashboard apply immediately, no restart). Falls back
     to `MockLLMProvider` when nothing is configured.
@@ -717,16 +743,16 @@ def get_llm_provider(name: str | None = None, *, model: str | None = None, use_f
         )
     try:
         primary = cls(model=model)
-        
+
         if not use_fallback:
             return primary
-            
+
         # Automated fallback configuration
         # Attempt to instantiate fallback providers if they are configured
         secondaries = []
         fallback_choices = ['anthropic', 'openai', 'gemini']
         fallback_choices = [c for c in fallback_choices if c != chosen]
-        
+
         for fallback_name in fallback_choices:
             fallback_cls = _PROVIDER_CLASSES.get(fallback_name)
             try:
@@ -737,13 +763,13 @@ def get_llm_provider(name: str | None = None, *, model: str | None = None, use_f
                 if getattr(secondary, '_api_key', None) or hasattr(secondary, '_client'):
                     # Basic check if it has client initialized
                     secondaries.append(secondary)
-            except Exception:
+            except Exception:  # noqa: S110 — fallback provider is optional; skip if unconfigured
                 pass
-                
+
         if secondaries:
             return FallbackProviderRouter(primary, secondaries)
         return primary
-            
+
     except Exception as e:  # noqa: BLE001
         logger.warning('%s provider unavailable, using mock: %s', chosen, e)
         return _make_unconfigured_mock(
