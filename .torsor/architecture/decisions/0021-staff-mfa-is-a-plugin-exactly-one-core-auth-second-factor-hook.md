@@ -6,7 +6,20 @@ tags:
 links: []
 created: '2026-06-24T02:15:08'
 updated: '2026-06-24T02:15:08'
-rules: []
+rules:
+- id: new-login-path-must-run-second-factor
+  pattern: pre_social_login|SocialAccountAdapter|auth_login\(|auth\.login\(
+  message: New sign-in path? It MUST fire the staff_mfa second-factor gate
+    (staff_mfa.services.second_factor_response → ImmediateHttpResponse to the TOTP
+    challenge). allauth/SSO/social providers call their OWN login() and do NOT fire
+    core's AUTH_SECOND_FACTOR hook, so they log in single-factor. (ADR 0021; the
+    MFA-bypass landmine in CLAUDE.md.)
+- id: single-core-second-factor-hook
+  pattern: AUTH_SECOND_FACTOR
+  message: Exactly ONE core second-factor extension point — the AUTH_SECOND_FACTOR
+    filter fired in core/auth otp_verify (after email-OTP, before login()). Don't
+    add a parallel second-factor hook; all MFA logic lives in plugins/installed/staff_mfa.
+    (ADR 0021.)
 ---
 
 # ADR 0021: Staff MFA is a plugin + exactly one core AUTH_SECOND_FACTOR hook

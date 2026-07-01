@@ -6,7 +6,14 @@ tags:
 links: []
 created: '2026-06-04T02:04:31'
 updated: '2026-06-04T02:04:31'
-rules: []
+rules:
+- id: product-type-is-onetoone-not-catalog-edit
+  pattern: catalog/models\.py
+  message: Editing catalog models for a product-type? A product-type extension is
+    a plugin-owned OneToOne(→catalog.Product) model with its OWN surfaces contributed
+    (SettingsPanel, product-edit card, StorefrontBlock, GraphQL) — never a field
+    on catalog.Product and never a parallel table. (ADR 0006; the parallel-table
+    landmine, PR #62.)
 ---
 
 # ADR 0006: Product-type extensions are plugin-owned OneToOne models, not catalog edits
