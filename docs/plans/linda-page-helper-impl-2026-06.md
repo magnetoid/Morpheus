@@ -703,7 +703,7 @@ Expected: all clean.
 
 - [ ] **Step 3: Manual smoke (local or post-deploy)**
 
-In Settings → General, enable **AI-assisted tips & help**. Load Home, Orders, Products. Confirm: Linda card appears above content with a relevant summary + numbers + actions; collapse persists; revisiting a page renders instantly (sessionStorage). Disable the toggle → card gone, micro-animations still work.
+In Settings → General, enable **AI-assisted tips & help**. Load Home, Orders, Products. Confirm: Linda card appears above content with a relevant summary + numbers + actions; clicking ✕ dismisses it for that page (reload → still gone there, but it still appears on other pages); revisiting a non-dismissed page renders instantly (sessionStorage). Disable the toggle → card gone everywhere, micro-animations still work.
 
 - [ ] **Step 4: Commit any fixups, then deploy**
 

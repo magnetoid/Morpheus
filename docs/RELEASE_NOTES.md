@@ -10,6 +10,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.17 — 2026-07-01
+
+### Assistant
+- **Linda's per-page helper is now dismissible per page.** The card's control is
+  a **✕** that hides Linda *on that specific page* — it stays gone there on
+  reload, but still appears on pages you haven't dismissed (replacing the old
+  global Hide/Show toggle). Dismissing a page also skips its AI call entirely.
+  The master on/off switch remains **Settings → General → AI-assisted tips &
+  help** (`ai_page_help`).
+
+---
+
 ## v0.2.16 — 2026-07-01
 
 ### Localization

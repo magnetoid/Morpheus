@@ -57,8 +57,10 @@ animations are decoupled from the toggle and become always-on.
     load **and** on `htmx:afterSwap` (mirror how `lucide.createIcons()` is re-run).
   - Markup: Linda avatar (`static 'assistant/linda-avatar.jpg'`) + title
     "Linda's take on this page" + three sections — **What this page shows**,
-    **What the numbers mean**, **What to do next**. Collapsible (state in
-    `localStorage`); shimmer placeholder while loading. Uses `.card` tokens.
+    **What the numbers mean**, **What to do next**. A ✕ dismisses the card
+    per-page (dismissed URLs kept in `localStorage`, so it stays gone there but
+    still appears on pages not yet dismissed); shimmer placeholder while
+    loading. Uses `.card` tokens.
 
 ### 4. Sensing + data flow — JS in the partial
 1. On init (if enabled): collect `page_url` (path), `page_title`, `active_nav`,

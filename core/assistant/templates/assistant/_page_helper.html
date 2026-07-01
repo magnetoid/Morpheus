@@ -7,8 +7,9 @@
   <div style="flex:1; min-width:0;">
     <div style="display:flex; align-items:center; gap:.5rem;">
       <strong style="font-size:.875rem;">Linda's take on this page</strong>
-      <button type="button" id="linda-help-toggle" class="btn btn-ghost p-1"
-              style="margin-left:auto; font-size:.75rem;" aria-expanded="true">Hide</button>
+      <button type="button" id="linda-help-dismiss" class="btn btn-ghost p-1"
+              style="margin-left:auto; font-size:1.1rem; line-height:1;"
+              aria-label="Dismiss on this page" title="Dismiss on this page">&times;</button>
     </div>
     <div id="linda-help-body" style="font-size:.8125rem; color:var(--text-muted); margin-top:.35rem;">
       <div class="skeleton" style="height:1rem; width:60%; border-radius:4px;"></div>
@@ -21,21 +22,27 @@
   if (!root || root.dataset.bound) return;
   root.dataset.bound = '1';
   var body = document.getElementById('linda-help-body');
-  var toggle = document.getElementById('linda-help-toggle');
+  var dismissBtn = document.getElementById('linda-help-dismiss');
 
   function hash(s) { var h = 5381, i = s.length; while (i) h = (h * 33) ^ s.charCodeAt(--i); return (h >>> 0).toString(36); }
   function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
-  toggle.addEventListener('click', function () {
-    var open = body.style.display !== 'none';
-    body.style.display = open ? 'none' : '';
-    toggle.textContent = open ? 'Show' : 'Hide';
-    toggle.setAttribute('aria-expanded', String(!open));
-    try { localStorage.setItem('linda-help-collapsed', open ? '1' : '0'); } catch (_) {}
-  });
-  if (localStorage.getItem('linda-help-collapsed') === '1') {
-    body.style.display = 'none'; toggle.textContent = 'Show'; toggle.setAttribute('aria-expanded', 'false');
+  // Per-page dismiss (✕): remember which URLs the merchant killed the card on,
+  // so it stays gone there but still appears on pages they haven't dismissed.
+  // The global master switch stays the ai_page_help store setting (Settings → General).
+  var DISMISS_KEY = 'linda-help-dismissed';
+  function dismissedPaths() {
+    try { return JSON.parse(localStorage.getItem(DISMISS_KEY) || '[]'); } catch (_) { return []; }
   }
+  // Dismissed on this path → tear the card out and skip the LLM call entirely.
+  if (dismissedPaths().indexOf(location.pathname) !== -1) { root.remove(); return; }
+
+  dismissBtn.addEventListener('click', function () {
+    var paths = dismissedPaths();
+    if (paths.indexOf(location.pathname) === -1) paths.push(location.pathname);
+    try { localStorage.setItem(DISMISS_KEY, JSON.stringify(paths)); } catch (_) {}
+    root.remove();
+  });
 
   function render(d) {
     if (!d || !d.ok || (!d.summary && !(d.actions || []).length)) {
