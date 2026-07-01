@@ -4,14 +4,17 @@ status: active
 tags:
 - active
 links: []
-created: '2026-06-24T02:15:16'
-updated: '2026-06-24T02:15:16'
+created: '2026-07-01T03:03:29'
+updated: '2026-07-01T03:03:29'
 ---
 
 # Active Context
 
 ## Current focus
-Closing the confirmed enterprise-security / agentic-commerce gaps surfaced by the 2026 competitive-analysis fact-check (docs/analysis/platform_competitive_analysis_2026.md).
+Localization/i18n storefront rollout (Phase 1 done through 1b; Phases 2-4 pending). Side-stream this session: Linda per-page helper UX (shipped) + hardening Torsor drift guards (ADR 0023 added, ADRs 0006/0021 formalized).
 
 ## Open questions
-ACP: write a spec + present forks (like MFA) before building? Forks — (a) new `agentic_checkout` plugin vs extend agent_mcp; (b) wrap the existing complete_order GraphQL mutation vs call OrderService directly; (c) where the Stripe shared_payment_token handshake lives (new payments/services/delegated_payment.py vs a stripe_gateway method). ACP was rated 'speculative until justified' in the fact-check — confirm it's the priority vs SSO or the smaller wins (cart-abandonment email drip sender, search cross-encoder reranker). Three branches await the user's own push to main: feat/staff-mfa, fix/loyalty-and-webhook-oncommit, chore/supply-chain-scanning.
+1) Push b8fc602 (ADR rule guards, docs-only) with the next code push to avoid a standalone Coolify rebuild.
+2) Remaining Phase 1b piece: per-language hreflang alternates (extend seo/templatetags/seo.py:seo_hreflang, currently per-market).
+3) Phase 2: gettext UI-string translation + AI .po autofill. Phase 3: content-translation editor + AI autofill. Phase 4: emails/dashboard UI/formatting/RTL (spec: docs/plans/full-localization-2026-06.md).
+4) Disable-test debt (ADR 0023): storefront account sub-pages (orders list, credits, downloads) still query plugin models directly — not yet disable-safe.
