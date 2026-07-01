@@ -10,6 +10,24 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.19 — 2026-07-01
+
+### Dashboard UI
+- **Help "?" tooltips now actually work.** The `context-help` component had no
+  styling, so field help text rendered inline (cluttering the page). It's now a
+  small **?** that reveals its text in a tidy tooltip on **hover, keyboard
+  focus, or click/tap** — applied everywhere the "?" already appears (settings,
+  products, orders, home, AI providers…).
+- **Wider, standardised page width.** The dashboard content area was capped at
+  1280px and most pages re-capped themselves *narrower* still (settings at
+  896px, order detail at 1024px), leaving big empty margins. The global cap is
+  now 1536px (`max-w-screen-2xl`) and the working pages (home, lists, settings,
+  analytics, product/order detail) drop their own caps to fill it — one
+  consistent width. Focused single-action forms (refund, fulfil, address, new
+  order) intentionally stay narrow for readability.
+
+---
+
 ## v0.2.18 — 2026-07-01
 
 ### Plugins / modularity (ADR 0023)

@@ -1143,10 +1143,43 @@
     #theme-modes button.is-active { background: var(--brand-soft); color: var(--brand); }
     #theme-modes button:hover { background: var(--surface-2); }
     #theme-modes button.is-active:hover { background: var(--brand-soft); }
+
+    /* Context help — a small "?" that reveals its text in a tooltip on hover,
+       keyboard focus, or click/tap (.is-open, toggled by the delegated handler
+       below). Previously .context-help had no CSS, so the help text rendered
+       inline; this styles it as a proper tooltip everywhere it's already used. */
+    .context-help { position: relative; display: inline-flex; align-items: center; color: var(--text-muted); cursor: help; vertical-align: middle; }
+    .context-help:hover, .context-help:focus-visible { color: var(--brand); outline: none; }
+    .context-help-tooltip {
+      position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      z-index: 60; width: max-content; max-width: 280px; padding: .5rem .625rem;
+      background: var(--surface-2, #1f2937); color: var(--text, #f8fafc);
+      border: 1px solid var(--border); border-radius: .5rem;
+      box-shadow: 0 10px 28px rgba(0,0,0,.22);
+      font-size: .75rem; line-height: 1.45; font-weight: 400; letter-spacing: normal;
+      text-align: left; text-transform: none; white-space: normal;
+      opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity var(--motion-fast,.15s) ease, transform var(--motion-fast,.15s) ease;
+    }
+    .context-help:hover .context-help-tooltip,
+    .context-help:focus-within .context-help-tooltip,
+    .context-help.is-open .context-help-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+    .context-help-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--surface-2, #1f2937); }
   </style>
+  <script>
+    /* Click/tap toggles a context-help tooltip open (hover works via CSS).
+       Delegated on document so it survives htmx #main-content swaps. */
+    document.addEventListener('click', function (e) {
+      var h = e.target.closest('.context-help');
+      document.querySelectorAll('.context-help.is-open').forEach(function (x) { if (x !== h) x.classList.remove('is-open'); });
+      if (h) { e.preventDefault(); e.stopPropagation(); h.classList.toggle('is-open'); }
+    });
+  </script>
 
   <main id="main-content" class="flex-1 overflow-y-auto">
-   <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
+   {# Global dashboard content width: max-w-screen-2xl (1536px) > old 7xl (1280px); use max-w-none for full-bleed. #}
+   <div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
     {% if messages %}
     {# Pipe Django messages framework into the toast queue. Morph.toast is #}
     {# defined in dashboard.js (loaded with `defer`) so we buffer onto its #}
