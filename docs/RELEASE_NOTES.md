@@ -10,6 +10,22 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.18 — 2026-07-01
+
+### Plugins / modularity (ADR 0023)
+- **Disabling a plugin now reliably removes its dashboard/storefront surfaces.**
+  Fixed a class of bug where a disabled plugin's contributed cards, KPIs, and
+  feed items could keep rendering: the hook bus now skips any handler owned by a
+  disabled plugin (previously `deactivate()` left `ready()`-wired hooks in
+  place, so they kept firing). This makes **every** `register_hook`-based
+  contribution disable-safe at once.
+- **Book Product's "Book details" card** on the product editor was hard-wired
+  into the dashboard (so it showed even when book_product was disabled). It now
+  contributes through the `PRODUCT_FORM_CARDS` / `PRODUCT_FORM_SAVED` hooks like
+  every other product-form card, so it appears only while the plugin is enabled.
+
+---
+
 ## v0.2.17 — 2026-07-01
 
 ### Assistant

@@ -340,22 +340,10 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
         if form.is_valid():
             form.save()
             _save_product_identifiers(product, request.POST)
-            try:
-                from plugins.installed.book_product.dashboard import save_book_fields
-
-                save_book_fields(product, request.POST, request.FILES)
-            except ImportError:
-                pass  # book_product not installed/disabled — nothing to save
-            except Exception:  # noqa: BLE001
-                # The plugin IS present but its save failed — don't lose the
-                # merchant's book fields silently; log so it's visible.
-                import logging
-
-                logging.getLogger('morpheus.admin').exception(
-                    'save_book_fields failed for product %s', product.id
-                )
             # Let plugins persist their own product-form fields (their contributed
-            # cards) — the modular path; the hook bus isolates a broken handler.
+            # cards, incl. book_product's Book details) — the modular path; the
+            # hook bus isolates a broken handler and a disabled plugin's handler
+            # simply isn't registered.
             from core.hooks import MorpheusEvents, hook_registry
 
             hook_registry.fire(
@@ -424,24 +412,15 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     except Exception:  # noqa: BLE001 — never break the product page if BV is wedged
         bv_authed = False
 
-    # Book Product widget — owning plugin supplies the context; disabled/absent
-    # → no card.
-    book_widget: dict = {}
-    try:
-        from plugins.installed.book_product.dashboard import book_widget_context
-
-        book_widget = book_widget_context(product)
-    except Exception:  # noqa: BLE001
-        book_widget = {}
-
-    # Plugin-contributed product-form cards (modular extension point).
+    # Plugin-contributed product-form cards (modular extension point) — includes
+    # book_product's Book details card, contributed via PRODUCT_FORM_CARDS so it
+    # disappears when the plugin is disabled.
     extra_product_cards = _collect_product_form_cards(product, request)
 
     return render(
         request,
         'admin_dashboard/product_form.html',
         {
-            'book_widget': book_widget,
             'extra_product_cards': extra_product_cards,
             'form': form,
             'product': product,

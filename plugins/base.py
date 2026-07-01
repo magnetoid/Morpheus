@@ -188,7 +188,9 @@ class MorpheusPlugin:
             raise TypeError('register_hook: priority must be an int.')
         from core.hooks import hook_registry
 
-        hook_registry.register(event, handler, priority=priority)
+        # Tag the subscription with the owning plugin so the bus skips it while
+        # the plugin is disabled (ADR 0023) — deactivate() doesn't unwind hooks.
+        hook_registry.register(event, handler, priority=priority, plugin=self.name)
 
     def register_admin(self, model: Any, admin_class: Any) -> None:
         """Register a Django admin entry. Idempotent; ignores AlreadyRegistered."""

@@ -46,6 +46,12 @@ class PluginRegistry:
         self._settings_panels: dict = {}  # name -> SettingsPanel
         self._email_templates: list = []  # [EmailTemplateDef]
         self._ready = False
+        # Let the hook bus skip handlers owned by a disabled plugin, so a
+        # plugin's contributed cards/KPIs/feed items vanish on disable even
+        # though deactivate() doesn't unwind ready()-wired hooks (ADR 0023).
+        from core.hooks import hook_registry
+
+        hook_registry.set_active_check(self.is_active)
 
     # ── Discovery ──────────────────────────────────────────────────────────────
 

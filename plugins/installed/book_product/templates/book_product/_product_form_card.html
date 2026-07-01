@@ -1,0 +1,155 @@
+{% comment %}Book details card — contributed into the dashboard product form via
+the PRODUCT_FORM_CARDS hook (book_product.plugin.on_product_form_cards). Owned by
+this plugin, so disabling book_product removes it entirely (ADR 0023). Inputs
+submit with the product form; persisted by on_product_form_saved.{% endcomment %}
+    <div class="card card-padded space-y-3" id="book-details-card">
+      <h2 class="font-semibold text-sm flex items-center gap-2"><i data-lucide="book-open" class="h-4 w-4"></i> Book details</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Author, edition, physical attributes, and the cover PDF that drives the 3D preview. Stored on the book record, not as meta tags.</p>
+      <input type="hidden" name="book_submitted" value="1">
+      {% if book_widget.all_genres or book_widget.all_topics %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% if book_widget.all_genres %}
+        <div>
+          <label class="block text-sm font-medium mb-1">Genres</label>
+          <div class="flex flex-wrap gap-x-4 gap-y-1.5 max-h-40 overflow-auto p-2 border border-[color:var(--border)] rounded-md">
+            {% for g in book_widget.all_genres %}
+            <label class="flex items-center gap-1.5 text-sm whitespace-nowrap">
+              <input type="checkbox" name="genres" value="{{ g.id }}" {% if g.id|stringformat:'s' in book_widget.selected_genre_ids %}checked{% endif %}>
+              {{ g.name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if book_widget.all_topics %}
+        <div>
+          <label class="block text-sm font-medium mb-1">Topics</label>
+          <div class="flex flex-wrap gap-x-4 gap-y-1.5 max-h-40 overflow-auto p-2 border border-[color:var(--border)] rounded-md">
+            {% for t in book_widget.all_topics %}
+            <label class="flex items-center gap-1.5 text-sm whitespace-nowrap">
+              <input type="checkbox" name="topics" value="{{ t.id }}" {% if t.id|stringformat:'s' in book_widget.selected_topic_ids %}checked{% endif %}>
+              {{ t.name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Author</label>
+          <input type="text" name="author" class="input" value="{{ book_widget.book.author|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Subtitle</label>
+          <input type="text" name="subtitle" class="input" value="{{ book_widget.book.subtitle|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Publisher</label>
+          <input type="text" name="publisher" class="input" value="{{ book_widget.book.publisher|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Imprint</label>
+          <input type="text" name="imprint" class="input" value="{{ book_widget.book.imprint|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">ISBN-13</label>
+          <input type="text" name="isbn13" class="input" value="{{ book_widget.identifiers.isbn13|default:'' }}" placeholder="978…" inputmode="numeric">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Drives the Product rich result. Public-domain reissue with no ISBN? Leave blank and use OCLC / Open Library below.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">OCLC number</label>
+          <input type="text" name="oclc" class="input" value="{{ book_widget.identifiers.oclc|default:'' }}" placeholder="e.g. 34042251" inputmode="numeric">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Open Library work ID</label>
+          <input type="text" name="openlibrary" class="input" value="{{ book_widget.identifiers.openlibrary|default:'' }}" placeholder="e.g. OL1418187W">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Reconciles the Book (sameAs → openlibrary.org). Backfilled in bulk by <code>backfill_book_identifiers</code>.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Print type</label>
+          <select name="print_type" class="input">
+            {% for val, lbl in book_widget.print_types %}<option value="{{ val }}" {% if book_widget.book.print_type == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Paper type</label>
+          <select name="paper_type" class="input">
+            <option value="">—</option>
+            {% for val, lbl in book_widget.paper_types %}<option value="{{ val }}" {% if book_widget.book.paper_type == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Binding</label>
+          <input type="text" name="binding" class="input" value="{{ book_widget.book.binding|default:'' }}" placeholder="e.g. sewn, perfect-bound">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Page count</label>
+          <input type="number" name="page_count" min="0" class="input" value="{{ book_widget.book.page_count|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Language</label>
+          <input type="text" name="language" class="input" value="{{ book_widget.book.language|default:'' }}" placeholder="en">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Edition</label>
+          <input type="text" name="edition" class="input" value="{{ book_widget.book.edition|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Series</label>
+          <input type="text" name="series" class="input" value="{{ book_widget.book.series|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Series position</label>
+          <input type="text" name="series_position" class="input" value="{{ book_widget.book.series_position|default:'' }}" placeholder="e.g. Book 2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Publication date</label>
+          <input type="date" name="publication_date" class="input" value="{{ book_widget.book.publication_date|date:'Y-m-d' }}">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Width (mm)</label>
+          <input type="number" name="width_mm" min="0" class="input" value="{{ book_widget.book.width_mm|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Height (mm)</label>
+          <input type="number" name="height_mm" min="0" class="input" value="{{ book_widget.book.height_mm|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Spine (mm)</label>
+          <input type="number" name="spine_mm" min="0" class="input" value="{{ book_widget.book.spine_mm|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Weight (g)</label>
+          <input type="number" name="weight_g" min="0" class="input" value="{{ book_widget.book.weight_g|default:'' }}">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Synopsis</label>
+        <textarea name="synopsis" rows="3" class="input">{{ book_widget.book.synopsis|default:'' }}</textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Cover PDF <span class="text-xs text-[color:var(--text-muted)]">(drives the 3D preview)</span></label>
+        <input type="file" name="cover_pdf" accept="application/pdf" class="input">
+        {% if book_widget.book.cover_pdf %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: <a href="{{ book_widget.book.cover_pdf.url }}" class="underline" target="_blank" rel="noopener">{{ book_widget.book.cover_pdf.name }}</a></p>{% endif %}
+      </div>
+      {# 3D cover preview (three.js + PDF.js) — book_product/_book_3d.html. #}
+      {% if book_widget.book.cover_pdf %}
+      <div class="book-3d rounded border border-[color:var(--border)] bg-[color:var(--surface,#faf8f3)]" data-pdf-url="{{ book_widget.book.cover_pdf.url }}" style="height:340px;"></div>
+      {% include "book_product/_book_3d.html" %}
+      {% endif %}
+      {# Facet pages this book appears on — each attribute is a browsable category page. #}
+      {% if book_widget.facets %}
+      <div class="border-t border-[color:var(--border)] pt-3">
+        <div class="text-xs font-medium text-[color:var(--text-muted)] mb-2">Appears on these pages</div>
+        <div class="flex flex-wrap gap-1.5">
+          {% for f in book_widget.facets %}
+          <a href="{{ f.url }}" target="_blank" rel="noopener" class="pill pill-neutral text-xs hover:underline" title="{{ f.label }}">{{ f.value }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>

@@ -1,8 +1,11 @@
 """Dashboard product-edit integration for Book Product.
 
-`admin_dashboard.product_edit` calls these (guarded by try/except), so the
-book logic lives here in the owning plugin — disabling/removing book_product
-removes the widget with no dangling code in admin_dashboard.
+`book_product.plugin` contributes the Book details card via the
+PRODUCT_FORM_CARDS hook and persists it via PRODUCT_FORM_SAVED — these helpers
+supply that card's context (`book_widget_context`) and save logic
+(`save_book_fields`). All wiring lives in the owning plugin, so disabling
+book_product removes the card (its hook handlers aren't registered) with no
+dangling import in admin_dashboard (ADR 0023).
 """
 
 from __future__ import annotations

@@ -33,10 +33,36 @@ class HookRegistry:
     """
 
     def __init__(self):
-        # { event_name: [ (priority, handler, mode), ... ] }
+        # { event_name: [ (priority, handler, mode, plugin), ... ] }
         # mode is 'sync' (default, runs in-request) or 'async' (deferred to
-        # Celery so the request can return immediately).
-        self._handlers: dict[str, list[tuple[int, Callable, str]]] = defaultdict(list)
+        # Celery so the request can return immediately). plugin is the owning
+        # plugin name (None for core-owned handlers); a handler owned by an
+        # INACTIVE plugin is skipped at fire/filter time — that's how a
+        # disabled plugin's contributed cards/KPIs/feed items disappear (ADR
+        # 0023), since deactivate() intentionally does not unwind ready()-wired
+        # hooks.
+        self._handlers: dict[str, list[tuple[int, Callable, str, str | None]]] = defaultdict(list)
+        # Predicate (plugin_name) -> bool, set once by plugins.registry at boot
+        # so core/hooks never imports plugins.* (keeps the core boundary clean).
+        self._active_check: Callable[[str], bool] | None = None
+
+    def set_active_check(self, fn: Callable[[str], bool]) -> None:
+        """Wire the 'is this plugin active?' predicate (plugins.registry.is_active).
+        Until set, no handler is gated (every handler runs — the boot default)."""
+        self._active_check = fn
+
+    @staticmethod
+    def _unpack(entry: tuple) -> tuple[int, Callable, str, str | None]:
+        """Normalise a handler entry to (priority, handler, mode, plugin),
+        tolerating legacy 2-tuples (priority, handler) and 3-tuples (…, mode)."""
+        priority, handler = entry[0], entry[1]
+        mode = entry[2] if len(entry) > 2 else 'sync'
+        plugin = entry[3] if len(entry) > 3 else None
+        return priority, handler, mode, plugin
+
+    def _owner_inactive(self, plugin: str | None) -> bool:
+        """True when the handler is owned by a currently-disabled plugin."""
+        return bool(plugin) and self._active_check is not None and not self._active_check(plugin)
 
     def register(
         self,
@@ -44,6 +70,7 @@ class HookRegistry:
         handler: Callable,
         priority: int = 50,
         mode: str = 'sync',
+        plugin: str | None = None,
     ) -> None:
         """Register a handler for an event. Lower priority = runs first.
 
@@ -60,7 +87,7 @@ class HookRegistry:
         """
         if mode not in ('sync', 'async'):
             raise ValueError(f"Invalid hook mode {mode!r} — must be 'sync' or 'async'.")
-        self._handlers[event].append((priority, handler, mode))
+        self._handlers[event].append((priority, handler, mode, plugin))
         self._handlers[event].sort(key=lambda x: x[0])
         logger.debug(
             'Hook registered: %s → %s (priority=%d, mode=%s)',
@@ -87,13 +114,11 @@ class HookRegistry:
         self._dispatch_remote(event, kwargs)
 
         for entry in self._handlers.get(event, []):
-            # Backwards-compat: pre-mode tuples were (priority, handler).
-            # Unpack defensively so plugins registered the old way still work.
-            if len(entry) == 3:
-                _priority, handler, mode = entry
-            else:
-                _priority, handler = entry
-                mode = 'sync'
+            _priority, handler, mode, plugin = self._unpack(entry)
+            # A disabled plugin's handlers must not fire — this is what makes a
+            # contributed surface vanish on disable (ADR 0023).
+            if self._owner_inactive(plugin):
+                continue
 
             if mode == 'async':
                 self._enqueue_async(event, handler, kwargs)
@@ -158,10 +183,9 @@ class HookRegistry:
         silently treat any handler registered for a filter event as sync.
         """
         for entry in self._handlers.get(event, []):
-            if len(entry) == 3:
-                _priority, handler, _mode = entry
-            else:
-                _priority, handler = entry
+            _priority, handler, _mode, plugin = self._unpack(entry)
+            if self._owner_inactive(plugin):
+                continue
             try:
                 result = handler(value=value, **kwargs)
             except Exception as e:  # noqa: BLE001 — filter isolation, logged with traceback

@@ -97,6 +97,29 @@ disable; `admin_dashboard/tests/test_disable_guards.py` fails the build if a
 plugin link is added unguarded. (loyalty's `/account/points/` and the
 payments settings panel — the old known debt — are now properly contributed.)
 
+**Landmine — `deactivate()` does NOT unwind `ready()`-wired hooks; the bus
+gates on active-state instead.** A runtime plugin toggle (`registry.deactivate`)
+drops the plugin's *contributions* (StorefrontBlock/DashboardPage/SettingsPanel)
+but deliberately leaves its `register_hook` subscriptions in place (so a
+re-enable doesn't double-register them). The safety net is `core/hooks.py`:
+`fire`/`filter` skip any handler whose owning plugin is inactive (ownership is
+tagged via `Plugin.register_hook(..., plugin=self.name)`; the registry wires the
+`is_active` predicate through `hook_registry.set_active_check`). **Consequence:**
+a surface contributed through a hook (`PRODUCT_FORM_CARDS`, `DASHBOARD_KPIS`,
+`ACTIVITY_FEED`, `ACCOUNT_SUMMARY_FIELDS`, …) is disable-safe *for free*. But a
+shared shell (`admin_dashboard`, `storefront`, a theme) that **hard-imports an
+optional plugin to render a surface** bypasses the bus entirely, so that surface
+survives a disable — the ADR 0023 bug (book_product's product-form card shipped
+this way; fixed by moving it to `PRODUCT_FORM_CARDS`/`PRODUCT_FORM_SAVED`).
+Render an optional plugin's surface via its hook/contribution, never a
+try/except import (a `try/except ImportError` guards *absence*, not *disable* —
+a disabled plugin is still importable). Guarded by
+`core/tests/test_hook_disable_gating.py`. Still-open example: `bookvault`'s
+product-list column + fulfilment card (imported in
+`admin_dashboard/views_split/products.py`) — self-hides on `is_authenticated()`
+but leaks if disabled-while-configured; migrate to `PRODUCT_FORM_CARDS` +
+a `PRODUCT_LIST_COLUMNS`-style hook.
+
 **Landmine — a new sign-in path silently bypasses MFA.** Staff second factor
 (staff_mfa) hangs off the `AUTH_SECOND_FACTOR` filter, fired in
 `core/auth/views.py:otp_verify` *after* email-OTP and *before* `login()`. Any

@@ -3,7 +3,7 @@
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 
 
 class BookProductPlugin(Plugin):
@@ -19,6 +19,14 @@ class BookProductPlugin(Plugin):
     requires = ['catalog']
 
     def ready(self) -> None:
+        # Contribute the "Book details" card into the dashboard product form via
+        # the modular extension point (PRODUCT_FORM_CARDS) and persist it on save
+        # (PRODUCT_FORM_SAVED) — so the card lives in this plugin and DISABLING
+        # book_product removes it, with no hard-coded import in admin_dashboard
+        # (ADR 0023). Was previously a try/except import in product_edit, which
+        # only guarded ImportError and so survived a disable.
+        self.register_hook(events.PRODUCT_FORM_CARDS, self.on_product_form_cards, priority=40)
+        self.register_hook(events.PRODUCT_FORM_SAVED, self.on_product_form_saved, priority=40)
         # Full GraphQL control: bookProduct query + setBookProduct mutation.
         self.register_graphql_extension('plugins.installed.book_product.graphql.queries')
         self.register_graphql_extension('plugins.installed.book_product.graphql.mutations')
@@ -35,6 +43,28 @@ class BookProductPlugin(Plugin):
             prefix='dashboard/book-taxonomies/',
             namespace='book_product_dashboard',
         )
+
+    def on_product_form_cards(self, value, product=None, **kwargs):
+        """Contribute the 'Book details' card. Shown for every product (any
+        product can be made a book via this card's `book_submitted` marker)."""
+        from plugins.installed.book_product.dashboard import book_widget_context
+
+        value.append(
+            {
+                'template': 'book_product/_product_form_card.html',
+                'context': {'book_widget': book_widget_context(product)},
+                'order': 40,
+            }
+        )
+        return value
+
+    def on_product_form_saved(self, product=None, post=None, files=None, **kwargs):
+        """Persist the book fields submitted with the product form."""
+        if product is None or post is None:
+            return
+        from plugins.installed.book_product.dashboard import save_book_fields
+
+        save_book_fields(product, post, files)
 
     def contribute_dashboard_pages(self) -> list:
         from morpheus import DashboardPage  # noqa: PLC0415
