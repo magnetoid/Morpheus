@@ -1,0 +1,17 @@
+{% load i18n %}
+{% get_available_languages as LANGS %}
+{% if LANGS|length > 1 %}
+{% get_current_language as CUR_LANG %}
+<form action="{% url 'set_language' %}" method="post" class="morph-lang-switcher" style="display:inline-flex;align-items:center;gap:.4rem">
+  {% csrf_token %}
+  <input name="next" type="hidden" value="{{ request.path }}">
+  <label for="morph-lang-select" style="font-size:.8rem;opacity:.7">{% translate "Language" %}</label>
+  <select name="language" id="morph-lang-select" onchange="this.form.submit()"
+          aria-label="{% translate 'Language' %}" style="padding:.2rem .4rem;border-radius:6px">
+    {% for code, name in LANGS %}
+    <option value="{{ code }}" {% if code == CUR_LANG %}selected{% endif %}>{{ name }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit">{% translate "Go" %}</button></noscript>
+</form>
+{% endif %}

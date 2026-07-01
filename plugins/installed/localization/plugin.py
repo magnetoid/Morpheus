@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin
+from morpheus import DashboardPage, Plugin, StorefrontBlock
 
 logger = logging.getLogger('morpheus.localization')
 
@@ -51,6 +51,18 @@ class LocalizationPlugin(Plugin):
         # so external translators + tools can read/write translations by API.
         self.register_graphql_extension('plugins.installed.localization.graphql.queries')
         self.register_graphql_extension('plugins.installed.localization.graphql.mutations')
+
+    def contribute_storefront_blocks(self) -> list:
+        # Language switcher — renders only when >1 language is routable
+        # (settings.LANGUAGES). Sits in the footer; POSTs to set_language which
+        # redirects to the language-prefixed URL.
+        return [
+            StorefrontBlock(
+                slot='footer_extra',
+                template='localization/blocks/language_switcher.html',
+                priority=40,
+            )
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         # One combined entry in the *settings* sidebar — translations +

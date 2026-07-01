@@ -5,7 +5,7 @@ Verified via URL resolution (no browser): proves the storefront is reachable at
 both `/` and `/fr/`, and that chrome surfaces are NOT language-routed.
 """
 
-from django.test import SimpleTestCase
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import Resolver404, resolve, reverse
 from django.utils import translation
 
@@ -43,3 +43,26 @@ class StorefrontLanguageRoutingTests(SimpleTestCase):
 
     def test_set_language_view_mounted(self):
         self.assertTrue(resolve('/i18n/setlang/'))
+
+
+@override_settings(LANGUAGES=[('en', 'English'), ('fr', 'Français')])
+class RequestStackSmokeTests(TestCase):
+    """Full middleware stack (incl. LocaleMiddleware) doesn't break normal
+    traffic, and the language switcher's set_language endpoint works."""
+
+    def setUp(self):
+        self.c = Client()
+
+    def test_healthz_ok(self):
+        self.assertEqual(self.c.get('/healthz').status_code, 200)
+
+    def test_dashboard_reachable_not_500(self):
+        # Chrome page through the full stack — anonymous → redirect to login,
+        # never a 500 (LocaleMiddleware must not choke on unprefixed chrome).
+        self.assertIn(self.c.get('/dashboard/').status_code, (200, 302))
+
+    def test_set_language_redirects(self):
+        resp = self.c.post('/i18n/setlang/', {'language': 'fr', 'next': '/'})
+        self.assertEqual(resp.status_code, 302)
+        # Switching to a non-core language points at the /fr/-prefixed path.
+        self.assertTrue(resp['Location'].startswith('/fr'))

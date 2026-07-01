@@ -495,25 +495,37 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Supported storefront languages (the universe i18n_patterns will route). The
-# merchant's *enabled* subset (localization → Languages) drives the switcher +
-# hreflang; any code here can be reached at /<code>/ if linked.
-LANGUAGES = [
-    ('en', 'English'),
-    ('fr', 'Français'),
-    ('de', 'Deutsch'),
-    ('es', 'Español'),
-    ('it', 'Italiano'),
-    ('pt', 'Português'),
-    ('nl', 'Nederlands'),
-    ('sr', 'Српски'),
-    ('ru', 'Русский'),
-    ('pl', 'Polski'),
-    ('tr', 'Türkçe'),
-    ('ar', 'العربية'),
-    ('zh-hans', '简体中文'),
-    ('ja', '日本語'),
-]
+# Native display name per supported language code (for the switcher + LANGUAGES).
+_SUPPORTED_LANGUAGE_NAMES = {
+    'en': 'English',
+    'fr': 'Français',
+    'de': 'Deutsch',
+    'es': 'Español',
+    'it': 'Italiano',
+    'pt': 'Português',
+    'nl': 'Nederlands',
+    'sr': 'Српски',
+    'ru': 'Русский',
+    'pl': 'Polski',
+    'tr': 'Türkçe',
+    'ar': 'العربية',
+    'zh-hans': '简体中文',
+    'ja': '日本語',
+}
+
+# Languages that get URL routing (i18n_patterns) + Accept-Language handling.
+# Driven by env so it's opt-in: default is the core language ALONE → no
+# prefixes, no redirects, zero behaviour change. Set e.g.
+# MORPHEUS_LANGUAGES="en,fr,sr" to activate /fr/ + /sr/ once translated.
+# RTL scripts get direction handling in the theme.
+_lang_codes = [
+    c.strip().lower()
+    for c in config('MORPHEUS_LANGUAGES', default=LANGUAGE_CODE).split(',')
+    if c.strip()
+] or [LANGUAGE_CODE]
+if LANGUAGE_CODE not in _lang_codes:  # core language is always routable
+    _lang_codes.insert(0, LANGUAGE_CODE)
+LANGUAGES = [(c, _SUPPORTED_LANGUAGE_NAMES.get(c, c)) for c in dict.fromkeys(_lang_codes)]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── GraphQL ────────────────────────────────────────────────────────────────────
