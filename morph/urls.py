@@ -10,6 +10,7 @@ Plugin URLs are injected at runtime by the plugin registry.
 """
 
 from django.conf import settings
+from django.conf.urls.i18n import i18n_patterns
 from django.conf.urls.static import static
 from django.http import HttpResponse
 from django.urls import include, path, re_path
@@ -70,8 +71,21 @@ urlpatterns = [
         r'^accounts/(?P<rest>.*)$',
         RedirectView.as_view(url='/auth/%(rest)s', permanent=True, query_string=True),
     ),
-    path('', include('plugins.urls')),
+    # set_language view (the storefront language switcher POSTs here). Unprefixed.
+    path('i18n/', include('django.conf.urls.i18n')),
+    # Chrome surfaces (dashboard/, api/, payments/, …) — never language-prefixed.
+    path('', include('plugins.chrome_urls')),
 ]
+
+# Storefront pages are language-routed: the core language (LANGUAGE_CODE) is
+# served unprefixed, every other enabled language gets a /<code>/ prefix
+# (ADR 0022). Only prefix='' (storefront) plugin URLs are wrapped — dashboard,
+# api and payments above stay unprefixed. Appended last so the storefront
+# catch-all never shadows chrome routes.
+urlpatterns += i18n_patterns(
+    path('', include('plugins.storefront_urls')),
+    prefix_default_language=False,
+)
 
 if settings.DEBUG:
     # Django's stock admin is only available in development as a fallback.

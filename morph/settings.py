@@ -271,6 +271,10 @@ MIDDLEWARE = [
     'django.middleware.gzip.GZipMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    # i18n: activate the request language from the URL prefix (/fr/, /sr/ …) for
+    # storefront pages. Must sit after SessionMiddleware and before
+    # CommonMiddleware. The core language (LANGUAGE_CODE) is served unprefixed.
+    'django.middleware.locale.LocaleMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -482,10 +486,34 @@ if USE_S3:
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 # ── Internationalization ───────────────────────────────────────────────────────
-LANGUAGE_CODE = 'en-us'
+# Core (default) storefront language — served UNPREFIXED via
+# i18n_patterns(prefix_default_language=False). It mirrors StoreSettings.
+# core_language (Settings → General); because LANGUAGE_CODE is read at settings
+# import (before the DB), a non-'en' core language must also be set here via env.
+LANGUAGE_CODE = config('MORPHEUS_CORE_LANGUAGE', default='en')
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
+
+# Supported storefront languages (the universe i18n_patterns will route). The
+# merchant's *enabled* subset (localization → Languages) drives the switcher +
+# hreflang; any code here can be reached at /<code>/ if linked.
+LANGUAGES = [
+    ('en', 'English'),
+    ('fr', 'Français'),
+    ('de', 'Deutsch'),
+    ('es', 'Español'),
+    ('it', 'Italiano'),
+    ('pt', 'Português'),
+    ('nl', 'Nederlands'),
+    ('sr', 'Српски'),
+    ('ru', 'Русский'),
+    ('pl', 'Polski'),
+    ('tr', 'Türkçe'),
+    ('ar', 'العربية'),
+    ('zh-hans', '简体中文'),
+    ('ja', '日本語'),
+]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── GraphQL ────────────────────────────────────────────────────────────────────

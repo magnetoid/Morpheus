@@ -436,11 +436,25 @@ class PluginRegistry:
 
     # ── URL aggregation ───────────────────────────────────────────────────────
 
-    def get_urlpatterns(self):
+    def get_urlpatterns(self, *, storefront: bool | None = None):
+        """Build plugin URL patterns.
+
+        ``storefront`` filters by surface so the root urlconf can language-prefix
+        only customer-facing pages (Phase 1b localization, ADR 0022):
+          * ``None``  → every plugin URL (back-compat).
+          * ``True``  → only storefront entries (registered at prefix '').
+          * ``False`` → only chrome entries (dashboard/, api/, payments/, …),
+            which must stay UNPREFIXED.
+        """
         from django.urls import include, path
 
         patterns = []
         for entry in self._plugin_urls:
+            is_storefront = entry['prefix'] == ''
+            if storefront is True and not is_storefront:
+                continue
+            if storefront is False and is_storefront:
+                continue
             try:
                 patterns.append(
                     path(
