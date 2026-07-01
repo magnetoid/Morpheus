@@ -10,6 +10,20 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.16 — 2026-07-01
+
+### Localization
+- **Multi-language storefront URLs (opt-in).** The storefront can now serve each
+  language on its own URL: the **core language** (Settings → General) stays at
+  the root (`/product`), every other enabled language gets a prefix (`/fr/…`,
+  `/sr/…`), with `reverse()` keeping the prefix as visitors browse. A **language
+  switcher** appears in the footer once more than one language is enabled.
+  Enable languages per environment with `MORPHEUS_LANGUAGES="en,fr,sr"` (default
+  is the core language alone — no change until you opt in). Dashboard + API stay
+  unprefixed. Per-language `hreflang` is the next step.
+
+---
+
 ## v0.2.15 — 2026-07-01
 
 ### Localization
