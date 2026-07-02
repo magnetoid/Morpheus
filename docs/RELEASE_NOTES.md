@@ -10,6 +10,28 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.25 — 2026-07-02
+
+### Agent governance (enterprise Phase 1 — ADR 0027)
+- **Protected agent tools now require explicit approval.** Tools that make
+  sensitive writes (refunds, pricing, roles, translations…) can no longer be
+  executed over the MCP admin API just because a token has the right *scope* —
+  the merchant must grant that specific tool to that specific token under
+  **Settings → Developer → MCP tokens → Approved protected tools**. Ungranted
+  calls are refused. *(Tightening: an existing token that could previously fire
+  a protected write now needs the tool ticked once.)*
+- **Every agent action is audited.** Each executed MCP tool call, and every
+  refusal, now writes to the core audit trail (who / what / arguments / result /
+  duration) — the automated write surface is no longer invisible.
+- **Per-token rate limits.** Each token has a tool-call budget per minute
+  (default 120, adjustable), so a runaway or hostile agent can't exhaust the
+  platform.
+- **Agent order attribution now works.** When a verified shopping agent places
+  an order, its id is recorded on the order (`order.metadata.agent_id`) — the
+  manifest advertised this, but it was never actually wired until now.
+
+---
+
 ## v0.2.24 — 2026-07-02
 
 ### Storefront

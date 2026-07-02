@@ -138,5 +138,17 @@ def apply_bearer_user(request: HttpRequest) -> bool:
     request._morph_token_scopes_mcp = token_scopes(entry, 'mcp')
     request._morph_token_scopes_graphql = token_scopes(entry, 'graphql')
     request._morph_token_label = (entry or {}).get('label', '') if isinstance(entry, dict) else ''
+    # Governance metadata (enterprise Phase 1): which requires_approval tools
+    # the merchant pre-approved THIS token for, and its per-minute rate limit.
+    # Legacy raw-string tokens get neither (deny-by-default on approval tools).
+    if isinstance(entry, dict):
+        request._morph_token_approved_tools = {str(t) for t in (entry.get('approved_tools') or [])}
+        try:
+            request._morph_token_rate_limit = int(entry.get('rate_limit_per_minute') or 0) or None
+        except (TypeError, ValueError):
+            request._morph_token_rate_limit = None
+    else:
+        request._morph_token_approved_tools = set()
+        request._morph_token_rate_limit = None
     _touch_last_used(token)
     return True

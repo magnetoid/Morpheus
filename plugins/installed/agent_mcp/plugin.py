@@ -35,6 +35,20 @@ class AgentMcpPlugin(Plugin):
             prefix='.well-known/',
             namespace='agent_mcp_well_known',
         )
+        # Stamp the verified agent id onto orders it placed — the manifest
+        # advertises order.metadata.agent_id "persisted on checkout"; this is
+        # what makes that true (was previously unwired). Disable-safe: the hook
+        # bus skips this handler when agent_mcp is off (ADR 0024).
+        from morpheus import events
+
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=20)
+
+    def on_order_placed(self, order=None, **kwargs):
+        if order is None:
+            return
+        from plugins.installed.agent_mcp.middleware import stamp_order_with_agent
+
+        stamp_order_with_agent(order)
 
     def contribute_dashboard_pages(self) -> list:
         return [

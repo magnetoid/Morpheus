@@ -23,21 +23,21 @@ capture+reads consolidated into core/errors, boundary 24→22 (v0.2.21, ADR 0025
 
 ---
 
-## Phase 0 — Finish the quick wins (days, all S)
+## Phase 0 — Finish the quick wins ✅ SHIPPED (v0.2.22–v0.2.24)
 Close the audit items that are one-liners or near:
-- [ ] Flip `pip-audit` to enforcing (`continue-on-error: false` after one-time triage) — ci.yml:56.
-- [ ] Populate the lockfile (`uv.lock` is 52 bytes — effectively empty); commit it; CI installs from it.
-- [ ] Wire the **20 orphaned pytest-style plugin test suites** into CI (module-level `def test_` in `tests/__init__.py` — Django's runner reports "Ran 0 tests"). Convert to `TestCase` or add pytest to CI. **Plus a CI guard** that fails on new module-level test functions — the count grew 19→20 during this work, so it's an active regression class, not one-time debt.
-- [ ] Webhook delivery idempotency: dedup key on `deliver_webhook` so broker redelivery can't double-POST (double-charge/double-email class).
-- [ ] Ship v0.2.22 (hero animation — committed, unpushed).
+- [x] Flip `pip-audit` to enforcing (`continue-on-error: false` after one-time triage) — ci.yml:56.
+- [x] Populate the lockfile (`uv.lock` is 52 bytes — effectively empty); commit it; CI installs from it.
+- [x] Wire the **20 orphaned pytest-style plugin test suites** into CI (module-level `def test_` in `tests/__init__.py` — Django's runner reports "Ran 0 tests"). Convert to `TestCase` or add pytest to CI. **Plus a CI guard** that fails on new module-level test functions — the count grew 19→20 during this work, so it's an active regression class, not one-time debt.
+- [x] Webhook delivery idempotency: dedup key on `deliver_webhook` so broker redelivery can't double-POST (double-charge/double-email class).
+- [x] Ship v0.2.22 (hero animation — committed, unpushed).
 
-## Phase 1 — Agent-write governance (the AI-first enterprise core; ~1-2 wks)
+## Phase 1 — Agent-write governance ✅ SHIPPED v0.2.25 (ADR 0027)
 An enterprise buyer's first question is "what stops the AI from doing damage,
 and can I see everything it did?" Today: partially, and no.
-- [ ] **Enforce `requires_approval` at the MCP layer.** 16 admin tools declare it; the MCP dispatch wires no `approval_check` callback, so Bearer tokens get the full write catalog. Add the approval middleware to `/mcp/admin/v1/` (+ GraphQL agent endpoint), with a pending-approval queue surfaced in the dashboard.
-- [ ] **AI audit trail (core).** No record exists of which agent proposed/executed which change when. Log every TOOL_CALLING event (agent identity, tool, args-hash, outcome, approval state) to an append-only core model; surface in Settings → Developer. This is also the input for rollback.
-- [ ] **Rate limiting on MCP + GraphQL** — token-bucket per Bearer token (+IP), burst caps; an external agent must not be able to exhaust the catalog or DOS write tools.
-- [ ] **Verify agent order-attribution end-to-end** — `X-Verified-Agent-*` middleware exists but the Order stamping wasn't found in code; make `Order.metadata.agent_id` provable with a test.
+- [x] **Enforce `requires_approval` at the MCP layer.** 16 admin tools declare it; the MCP dispatch wires no `approval_check` callback, so Bearer tokens get the full write catalog. Add the approval middleware to `/mcp/admin/v1/` (+ GraphQL agent endpoint), with a pending-approval queue surfaced in the dashboard.
+- [x] **AI audit trail (core).** No record exists of which agent proposed/executed which change when. Log every TOOL_CALLING event (agent identity, tool, args-hash, outcome, approval state) to an append-only core model; surface in Settings → Developer. This is also the input for rollback.
+- [x] **Rate limiting on MCP** (GraphQL edge = follow-up) — token-bucket per Bearer token (+IP), burst caps; an external agent must not be able to exhaust the catalog or DOS write tools.
+- [x] **Agent order-attribution wired + tested** (was defined-but-uncalled) — `X-Verified-Agent-*` middleware exists but the Order stamping wasn't found in code; make `Order.metadata.agent_id` provable with a test.
 
 ## Phase 2 — Compliance & money correctness (~2 wks)
 - [ ] **Encrypt PII at rest**: `smtp_password` (core/models.py plaintext), order email/ip/user_agent, plugin API keys in `PluginConfig.config`. Field-level encryption + config-change audit trail. (GDPR Art. 32 exposure on any DB dump.)

@@ -25,8 +25,10 @@ fs.*, logs.*, plugins.*) are NEVER reachable here.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import time
 import uuid
 from typing import Any
 
@@ -44,6 +46,8 @@ _E_PARAMS = -32602
 _E_INTERNAL = -32603
 _E_AUTH = -32001  # custom: needs auth
 _E_TOOL_FAIL = -32002  # custom: tool errored
+_E_RATE = -32029  # custom: token rate limit exceeded
+_E_APPROVAL = -32030  # custom: tool needs a per-token approval grant
 
 
 # ── Curated tool whitelist ─────────────────────────────────────────────
@@ -179,6 +183,90 @@ def _handle_tools_list(params: dict, authed: bool) -> dict:
     return {'tools': out}
 
 
+# ── Governance helpers (enterprise Phase 1) ─────────────────────────────────
+# Audit + approval + rate limiting for the Bearer-token tool surface. The
+# in-process agent runtime has its own approval_check (core/agents/runtime.py);
+# these close the HTTP edge, writing to the CORE audit trail (core/audit).
+
+_MCP_DEFAULT_RATE_PER_MINUTE = 120
+
+
+def _mcp_actor() -> str:
+    """Audit identity for the in-flight call: token label or staff session."""
+    if getattr(_request_state, 'token_present', False):
+        label = getattr(_request_state, 'token_label', '') or 'unlabeled-token'
+        return f'mcp:{label}'
+    return 'mcp:staff-session'
+
+
+def _audit_denied(tool_name: str, reason: str) -> None:
+    """Denials are audit events too — refusals were previously unrecorded."""
+    try:
+        from core.audit.services import record
+
+        record(
+            event_type='mcp.tool_denied',
+            severity='warning',
+            actor=_mcp_actor(),
+            target=f'tool/{tool_name}',
+            metadata={'reason': reason},
+            request_id=getattr(_request_state, 'request_id', ''),
+        )
+    except Exception as e:  # noqa: BLE001 — audit must never break the call path
+        logger.debug('mcp: denied-audit write failed: %s', e)
+
+
+def _audit_call(tool_name: str, args: dict, output: Any = None, error: str = '', t0=None) -> None:
+    """One agents.decision row per executed MCP tool call (EU AI Act art. 12)."""
+    try:
+        from core.audit.services import record_ai_decision
+
+        blob = json.dumps(args, default=str)
+        capped_args = args if len(blob) <= 4000 else {'_truncated': blob[:4000]}
+        if error:
+            summary = f'error: {error}'[:1000]
+        else:
+            summary = json.dumps(output, default=str)[:1000] if output is not None else ''
+        record_ai_decision(
+            agent=_mcp_actor(),
+            actor=_mcp_actor(),  # fills actor_label (agent= only lands in metadata)
+            tool=tool_name,
+            args=capped_args,
+            output=summary,
+            duration_ms=int((time.monotonic() - t0) * 1000) if t0 is not None else None,
+            target=f'tool/{tool_name}',
+            request_id=getattr(_request_state, 'request_id', ''),
+        )
+    except Exception as e:  # noqa: BLE001 — audit must never break the call path
+        logger.debug('mcp: call-audit write failed: %s', e)
+
+
+def _enforce_rate_limit(tool_name: str) -> None:
+    """Per-token fixed-window limit on tool execution. Cache-outage = fail-open
+    (availability over strictness; the approval gate still protects writes)."""
+    limit = getattr(_request_state, 'rate_limit', None) or _MCP_DEFAULT_RATE_PER_MINUTE
+    count = None
+    try:
+        from django.core.cache import cache
+
+        client = getattr(_request_state, 'rl_client', '') or 'anon'
+        key = f'mcp:rl:{client}:{int(time.time() // 60)}'
+        try:
+            count = cache.incr(key)
+        except ValueError:  # key missing — first call this window
+            cache.set(key, 1, timeout=120)
+            count = 1
+    except Exception as e:  # noqa: BLE001
+        logger.debug('mcp: rate limit fail-open: %s', e)
+        return
+    if count is not None and count > limit:
+        _audit_denied(tool_name, f'rate_limited (>{limit}/min)')
+        raise _RpcError(
+            _E_RATE,
+            f'rate limited: this token may execute {limit} tool calls/minute; retry shortly',
+        )
+
+
 def _handle_tools_call(params: dict, authed: bool) -> dict:
     if not authed:
         raise _RpcError(_E_AUTH, 'authentication required for tools/call')
@@ -207,6 +295,31 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
             f'token missing scope: needs one of {required}',
         )
 
+    # ── Governance (enterprise Phase 1) ──────────────────────────────────
+    # 1. Per-token rate limit (fixed 60s window; audited + fail-open on
+    #    cache outage). Protects tool execution from runaway/hostile agents.
+    _enforce_rate_limit(name)
+
+    # 2. Approval gate at the HTTP edge. `requires_approval` tools are
+    #    callable over MCP only when the merchant pre-approved THIS token for
+    #    THIS tool (the `approved_tools` grant on the token entry — a human
+    #    decision made in the dashboard, itself audited). Staff sessions (no
+    #    token) pass: the human holds the same power in the dashboard UI.
+    #    In-process agents get the equivalent gate from core/agents/runtime.py
+    #    (approval_check); this closes the previously-unguarded Bearer path.
+    if (
+        getattr(tool, 'requires_approval', False)
+        and getattr(_request_state, 'token_present', False)
+        and name not in getattr(_request_state, 'approved_tools', set())
+    ):
+        _audit_denied(name, 'approval_required')
+        raise _RpcError(
+            _E_APPROVAL,
+            f'approval required: `{name}` is a protected write. Grant it to '
+            'this token under Dashboard → Settings → Developer → MCP tokens '
+            '(approved tools) to enable it.',
+        )
+
     # OpenTelemetry span wrap — agent traffic now shows in the same
     # APM dashboards as human requests, attributed by tool name +
     # token scopes. Silent no-op when OTel isn't installed so the MCP
@@ -228,12 +341,17 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
 
         _span_ctx = nullcontext()
 
+    _t0 = time.monotonic()
     with _span_ctx:
         try:
             result = tool.invoke(args, agent=None, context={'source': 'mcp'})
             output = result.output if hasattr(result, 'output') else result
         except Exception as e:  # noqa: BLE001 — surface as JSON-RPC error
+            _audit_call(name, args, error=f'{type(e).__name__}: {e}', t0=_t0)
             raise _RpcError(_E_TOOL_FAIL, f'{type(e).__name__}: {e}') from e
+    # Every executed MCP tool call lands in the core audit trail — the AI
+    # write surface is no longer invisible (enterprise Phase 1).
+    _audit_call(name, args, output=output, t0=_t0)
 
     # MCP tools/call returns content blocks; we wrap the structured
     # output as a single JSON text block so MCP clients can consume it
@@ -390,6 +508,22 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         '_morph_token_scopes_mcp',
         {WILDCARD},
     )
+    # Governance context for this call (see _handle_tools_call): who the token
+    # is (audit), what it's pre-approved for, and its rate-limit identity —
+    # a token-hash bucket when a Bearer token is present, else the client IP.
+    from plugins.installed.agent_mcp.auth import _present_token
+
+    _tok = _present_token(request)
+    _request_state.token_present = bool(_tok)
+    _request_state.token_label = getattr(request, '_morph_token_label', '') or ''
+    _request_state.approved_tools = getattr(request, '_morph_token_approved_tools', set())
+    _request_state.rate_limit = getattr(request, '_morph_token_rate_limit', None)
+    _request_state.request_id = getattr(request, 'request_id', '') or ''
+    if _tok:
+        _request_state.rl_client = f'tok:{hashlib.sha256(_tok.encode()).hexdigest()[:16]}'
+    else:
+        _ip = request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR', 'anon')
+        _request_state.rl_client = f'ip:{_ip}'
     try:
         if isinstance(body, list):
             payload: Any = [_dispatch(m, authed) for m in body]
@@ -411,6 +545,12 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         return resp
     finally:
         _request_state.scopes = {WILDCARD}
+        _request_state.token_present = False
+        _request_state.token_label = ''
+        _request_state.approved_tools = set()
+        _request_state.rate_limit = None
+        _request_state.rl_client = ''
+        _request_state.request_id = ''
 
 
 def _dispatch(message: dict, authed: bool) -> dict:

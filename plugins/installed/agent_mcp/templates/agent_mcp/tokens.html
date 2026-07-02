@@ -78,6 +78,26 @@
         </div>
       </div>
 
+      {% if edit.approval_catalog %}
+      <div class="mt-4 pt-3 border-t border-[color:var(--border)]">
+        <p class="text-sm font-semibold"><i data-lucide="shield-check" class="h-3.5 w-3.5 inline -mt-0.5"></i> Approved protected tools</p>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5 mb-2">
+          These tools make sensitive writes (refunds, pricing, roles…). Scope alone is not enough — a token may execute one only if you approve it here. Leave all unchecked to make this a read/propose-only token.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-x-4 gap-y-1.5 pl-1">
+          {% for t in edit.approval_catalog %}
+          <label class="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="approve_{{ t.name }}" {% if t.name in edit.approved_active %}checked{% endif %}>
+            <span>
+              <span class="font-mono text-xs font-medium">{{ t.name }}</span>
+              <span class="block text-xs text-[color:var(--text-muted)]">{{ t.description }}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       <div class="flex justify-end items-center gap-2 pt-3 mt-3 border-t border-[color:var(--border)]">
         <a href="?" class="btn">Cancel</a>
         <button class="btn btn-primary" type="submit">

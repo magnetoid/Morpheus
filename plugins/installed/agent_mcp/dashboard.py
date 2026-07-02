@@ -42,6 +42,22 @@ _TOKEN_PREFIX = 'mph_'
 _TOKEN_BYTES = 32
 
 
+def _approval_tools() -> list[dict]:
+    """The MCP-exposed tools flagged ``requires_approval=True`` — the protected
+    writes a merchant grants per token (enterprise Phase 1 governance)."""
+    from plugins.installed.agent_mcp.views import _public_tools
+
+    out = []
+    for t in _public_tools():
+        if getattr(t, 'requires_approval', False):
+            out.append({'name': t.name, 'description': getattr(t, 'description', '')})
+    return sorted(out, key=lambda d: d['name'])
+
+
+def _approval_tool_names() -> list[str]:
+    return [t['name'] for t in _approval_tools()]
+
+
 def _load_entries() -> list[dict]:
     """Return the stored entries, normalised to dict shape."""
     from plugins.models import PluginConfig
@@ -177,6 +193,12 @@ def tokens_view(request):  # noqa: PLR0912, PLR0915
                     entry['graphql_scopes'] = ['*']
                 else:
                     entry['graphql_scopes'] = _scope_list_from_form(request.POST, 'graphql')
+                # Approved tools — the per-token grant for requires_approval
+                # writes. A checked box means "this token may execute this
+                # protected tool over MCP" (enterprise Phase 1 governance).
+                entry['approved_tools'] = [
+                    t for t in _approval_tool_names() if request.POST.get(f'approve_{t}') == 'on'
+                ]
                 _save_entries(entries)
                 messages.success(
                     request, f'Permissions updated for {entry.get("label") or "(unlabelled)"}.'
@@ -236,6 +258,8 @@ def tokens_view(request):  # noqa: PLR0912, PLR0915
             'graphql_wildcard': gql_current is None or '*' in (gql_current or []),
             'mcp_active': set(mcp_current or []),
             'graphql_active': set(gql_current or []),
+            'approval_catalog': _approval_tools(),
+            'approved_active': set(edit_entry.get('approved_tools') or []),
         }
 
     return render(

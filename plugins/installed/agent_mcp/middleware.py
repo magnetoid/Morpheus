@@ -15,7 +15,20 @@ the view, not the middleware.
 
 from __future__ import annotations
 
+import logging
+import threading
 from dataclasses import dataclass
+
+logger = logging.getLogger('morpheus.agent_mcp.trusted_agent')
+
+# The verified agent for the in-flight request. Set by the middleware and read
+# by the ORDER_PLACED hook handler (which only receives `order`, not `request`).
+_current = threading.local()
+
+
+def current_trusted_agent():
+    """The TrustedAgent for the in-flight request, or None."""
+    return getattr(_current, 'agent', None)
 
 
 @dataclass
@@ -45,21 +58,28 @@ class TrustedAgentMiddleware:
             )
         else:
             request.trusted_agent = None
-        return self.get_response(request)
+        _current.agent = request.trusted_agent
+        try:
+            return self.get_response(request)
+        finally:
+            _current.agent = None
 
 
-def stamp_order_with_agent(order, request) -> None:
-    """Persist the verified agent id onto an order's metadata. Called
-    from the checkout completion path. Idempotent; no-op when no
-    trusted agent header was present."""
-    agent = getattr(request, 'trusted_agent', None)
+def stamp_order_with_agent(order, agent=None) -> bool:
+    """Persist the verified agent id onto an order's metadata. Idempotent;
+    no-op (returns False) when no trusted agent was present on the request.
+    `agent` defaults to the in-flight request's TrustedAgent (thread-local),
+    so the ORDER_PLACED hook handler can call it with just the order."""
+    agent = agent or current_trusted_agent()
     if agent is None:
-        return
+        return False
     try:
         meta = order.metadata or {}
         meta['agent_id'] = agent.agent_id
         meta['agent_provider'] = agent.provider
         order.metadata = meta
         order.save(update_fields=['metadata', 'updated_at'])
-    except Exception:  # noqa: BLE001, S110
-        pass
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning('trusted-agent order stamp failed for %s: %s', getattr(order, 'id', '?'), e)
+        return False
