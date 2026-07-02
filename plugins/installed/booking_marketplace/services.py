@@ -228,7 +228,7 @@ def submit_enquiry(
         except BookingError:
             breakdown, addon_snap = [], []
 
-    return Enquiry.objects.create(
+    enquiry = Enquiry.objects.create(
         service=service,
         customer=user if (user and user.is_authenticated) else None,
         name=name,
@@ -241,6 +241,14 @@ def submit_enquiry(
         tier_breakdown=breakdown,
         addons=addon_snap,
     )
+    # Notify host + confirm to guest — best-effort, never breaks capture.
+    try:
+        from plugins.installed.booking_marketplace.email import notify_enquiry
+
+        notify_enquiry(enquiry)
+    except Exception:  # noqa: BLE001
+        pass
+    return enquiry
 
 
 def _safe_qty(v) -> int:
