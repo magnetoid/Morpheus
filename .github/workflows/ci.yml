@@ -41,6 +41,11 @@ jobs:
         # Baseline-and-ratchet: blocks NEW wrong-direction imports and stale
         # allowlist entries. Shrinks phase by phase. See CLAUDE.md compass.
         run: python scripts/check_core_boundary.py
+      - name: mypy (core kernel — baseline report, non-blocking)
+        # mypy is configured (pyproject.toml) + installed above but was never run
+        # in CI. Report-only over the core/ kernel for now; tighten to enforcing
+        # once the baseline is clean. See enterprise-readiness audit.
+        run: mypy core || true
 
   audit:
     # Dependency CVE scan (pip-audit) over requirements.txt.
@@ -121,8 +126,11 @@ jobs:
         # a FK to a swapped-out user model, a lazy ref to a non-existent model).
         # These break the prod boot, so this gate must NOT be `|| true`d.
         run: python manage.py check
-      - name: Django deploy checks (advisory — security/HSTS warnings)
-        run: python manage.py check --deploy --fail-level WARNING || true
+      - name: Django deploy checks (BLOCKING at ERROR level)
+        # Enforcing at ERROR (not WARNING) so a deploy-security ERROR blocks the
+        # build without the noisy HSTS/SSL *warnings* (expected in the CI env)
+        # failing every run. Was `--fail-level WARNING || true` — a no-op gate.
+        run: python manage.py check --deploy --fail-level ERROR
       - name: Migrations are present
         run: python manage.py makemigrations --check --dry-run
       - name: Disable-test guard (plugin surfaces must vanish on disable)

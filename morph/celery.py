@@ -45,6 +45,15 @@ app.conf.beat_schedule = {
         'task': 'core.tasks.check_for_updates',
         'schedule': crontab(hour=4, minute=45),  # 04:45 UTC daily
     },
+    # Drain the transactional outbox into NATS JetStream every minute. Events are
+    # written to OutboxEvent in the SAME DB transaction as the domain mutation
+    # (core/hooks.py), and this is the ONLY path that publishes them. The task
+    # existed but was scheduled nowhere, so events accumulated undelivered and the
+    # at-least-once guarantee was broken; this restores it (and bounds the table).
+    'core-outbox-publish': {
+        'task': 'core.tasks.process_outbox',
+        'schedule': crontab(minute='*'),  # every minute
+    },
 }
 
 # Self-improvement engine — registers ingest/analyze/digest tasks.

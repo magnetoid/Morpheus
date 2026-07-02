@@ -248,6 +248,9 @@ class OutboxEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     published_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True, null=True)  # noqa: DJ001
+    # Publish attempts so a transient NATS failure retries on the next drain
+    # instead of permanently FAILing; only dead-lettered (FAILED) after the cap.
+    attempts = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['created_at']

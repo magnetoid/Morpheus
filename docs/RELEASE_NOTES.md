@@ -10,6 +10,26 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.20 — 2026-07-02
+
+### Reliability (enterprise-readiness Phase 1)
+- **Domain events are delivered again.** The transactional-outbox publisher
+  (`process_outbox`) existed but was scheduled on no Celery beat, so events
+  written to the outbox accumulated undelivered and the at-least-once guarantee
+  was silently broken. It now runs every minute.
+- **Bounded retry on publish failure.** A transient NATS failure now keeps the
+  event `PENDING` and retries on the next drain (new `attempts` counter),
+  dead-lettering to `FAILED` only after 5 attempts — previously the first
+  failure stranded the event permanently.
+
+### CI hardening
+- `manage.py check --deploy` is now an **enforcing** gate at ERROR level
+  (was a no-op `--fail-level WARNING || true`).
+- `mypy` (already configured, never run) now produces a **non-blocking baseline
+  report** over the `core/` kernel in CI.
+
+---
+
 ## v0.2.19 — 2026-07-01
 
 ### Dashboard UI

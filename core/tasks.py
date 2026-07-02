@@ -146,6 +146,68 @@ def _publish_to_nats_sync(event_type: str, payload: dict[str, Any]) -> None:
     asyncio.run(_publish())
 
 
+# Max publish attempts before an OutboxEvent is dead-lettered (status=FAILED).
+# Below this, a failed publish stays PENDING and retries on the next drain.
+_OUTBOX_MAX_ATTEMPTS = 5
+
+
+def _nats_configured() -> bool:
+    """True only when NATS is actually wired up for this deployment (NATS_URL set).
+
+    Production `docker-compose.yml` ships WITHOUT NATS (it's commented out as
+    optional — the outbox "works without NATS"); only the dev compose sets
+    NATS_URL. Without this guard, the beat-scheduled drain would try localhost:4222
+    every minute, fail every event, and spam the error log / dead-letter the whole
+    backlog. When NATS is unconfigured we skip the drain and leave rows PENDING
+    (harmless — there are no consumers yet), ready for whenever NATS is deployed.
+    """
+    return bool(os.environ.get('NATS_URL'))
+
+
+def _process_outbox_event(event) -> None:
+    """Publish a single OutboxEvent with bounded retry, in its own transaction.
+
+    A transient failure keeps the row PENDING (retried on the next drain) and
+    increments ``attempts``; only after ``_OUTBOX_MAX_ATTEMPTS`` is it
+    dead-lettered to FAILED. Extracted from ``process_outbox`` so this
+    retry/dead-letter logic is unit-testable without the ``FOR UPDATE SKIP
+    LOCKED`` drain query (which sqlite — the test DB — cannot run).
+    """
+    from django.db import transaction
+
+    with transaction.atomic():
+        try:
+            _publish_to_nats_sync(event.event_type, event.payload)
+        except SoftTimeLimitExceeded:
+            event.attempts += 1
+            event.error_message = 'soft time limit exceeded'
+            event.status = 'FAILED' if event.attempts >= _OUTBOX_MAX_ATTEMPTS else 'PENDING'
+            logger.warning(
+                'Outbox publish soft-timeout for %s (attempt %d, -> %s)',
+                event.id,
+                event.attempts,
+                event.status,
+            )
+        except Exception as e:  # noqa: BLE001 — explicitly logged with traceback
+            event.attempts += 1
+            event.error_message = str(e)[:1000]
+            # A transient NATS/network failure must retry, not permanently strand
+            # the event; only dead-letter (FAILED) after the attempt cap.
+            event.status = 'FAILED' if event.attempts >= _OUTBOX_MAX_ATTEMPTS else 'PENDING'
+            logger.error(
+                'Failed to publish OutboxEvent %s (attempt %d, -> %s): %s',
+                event.id,
+                event.attempts,
+                event.status,
+                e,
+                exc_info=True,
+            )
+        else:
+            event.status = 'PUBLISHED'
+            event.published_at = timezone.now()
+        event.save(update_fields=['status', 'published_at', 'error_message', 'attempts'])
+
+
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
 def process_outbox(self) -> None:
     """
@@ -155,7 +217,14 @@ def process_outbox(self) -> None:
     workers can run concurrently without double-publishing. Each event is
     handled in its own transaction so a single failure does not roll back
     successfully published siblings.
+
+    No-ops when NATS is not configured for this deployment (see
+    `_nats_configured`) so the beat schedule doesn't error-spam a NATS-less prod.
     """
+    if not _nats_configured():
+        logger.debug('process_outbox: NATS_URL unset; skipping drain (events left PENDING)')
+        return
+
     from django.db import transaction
 
     from core.models import OutboxEvent
@@ -168,21 +237,7 @@ def process_outbox(self) -> None:
         )
 
     for event in events:
-        with transaction.atomic():
-            try:
-                _publish_to_nats_sync(event.event_type, event.payload)
-            except SoftTimeLimitExceeded:
-                logger.warning('Outbox publish soft-timeout for %s', event.id)
-                event.status = 'FAILED'
-                event.error_message = 'soft time limit exceeded'
-            except Exception as e:  # noqa: BLE001 — explicitly logged with traceback
-                logger.error('Failed to publish OutboxEvent %s: %s', event.id, e, exc_info=True)
-                event.status = 'FAILED'
-                event.error_message = str(e)[:1000]
-            else:
-                event.status = 'PUBLISHED'
-                event.published_at = timezone.now()
-            event.save(update_fields=['status', 'published_at', 'error_message'])
+        _process_outbox_event(event)
 
 
 # ── Async hook handler dispatch ───────────────────────────────────────────────
