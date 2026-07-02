@@ -31,6 +31,13 @@ def deliver_webhook(delivery_id: str) -> None:
         d = WebhookDelivery.objects.select_related('endpoint').get(id=delivery_id)
     except WebhookDelivery.DoesNotExist:
         return
+    # Idempotency guard: acks_late means a worker crash/timeout after the POST
+    # gets the task REDELIVERED by the broker — without this check the same
+    # delivery re-POSTs (duplicate downstream side effects). Replay explicitly
+    # resets status to 'queued' first, so it still works.
+    if d.status == 'delivered':
+        logger.info('webhooks_ui: delivery %s already delivered; skipping redelivery', d.id)
+        return
     if not d.endpoint.is_active:
         d.status = 'failed'
         d.error_message = 'endpoint inactive'

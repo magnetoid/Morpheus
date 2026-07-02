@@ -10,6 +10,23 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.23 — 2026-07-02
+
+### Reliability & supply chain (enterprise Phase 0)
+- **20 plugins' tests now actually run in CI.** They were pytest-style suites the
+  Django test runner silently reported as "Ran 0 tests" — checkout_experience,
+  subscriptions_plus, returns_portal, referrals and 16 more. A new CI step runs
+  them (all 30 pass), and its glob auto-covers future plugins so the
+  silently-never-run class can't recur.
+- **Dependency CVE gate is now enforcing.** `pip-audit` was report-only; triaged
+  clean (zero known CVEs), so any finding now blocks the merge.
+- **Hash-pinned lockfile.** Dependencies floated on `>=` ranges; CI now installs
+  from `requirements.lock.txt` (universal, `--require-hashes`), so CI tests the
+  exact versions that would ship.
+- **Webhook deliveries are idempotent.** A broker redelivery (worker
+  crash/timeout after the POST) re-ran the delivery and double-POSTed the
+  receiver; an already-delivered row is now skipped.
+
 ## v0.2.22 — 2026-07-02
 
 ### Storefront

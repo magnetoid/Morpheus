@@ -80,3 +80,12 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
+
+[tool.pytest.ini_options]
+# Runs the pytest-style plugin smoke suites (module-level `def test_` in
+# plugins/installed/*/tests/__init__.py) that Django's unittest runner cannot
+# collect — CI reported "Ran 0 tests" for 20 shipped plugins until this existed.
+# CI invokes: pytest plugins/installed/*/tests/__init__.py (the glob auto-covers
+# new plugins, so the silently-never-run class can't recur).
+DJANGO_SETTINGS_MODULE = "morph.settings"
+addopts = "-p no:cacheprovider"

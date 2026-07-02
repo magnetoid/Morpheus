@@ -48,12 +48,10 @@ jobs:
         run: mypy core || true
 
   audit:
-    # Dependency CVE scan (pip-audit) over requirements.txt.
-    # Report-only for now (continue-on-error) so a pre-existing transitive CVE
-    # doesn't block every PR on day one — triage the initial findings, then drop
-    # continue-on-error to make this an enforcing gate. Pairs with dependabot.yml.
+    # Dependency CVE scan (pip-audit) over requirements.txt. ENFORCING —
+    # triaged 2026-07-02: zero known CVEs, so a finding here is a NEW vuln and
+    # must block the merge. Pairs with dependabot.yml.
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -91,7 +89,7 @@ jobs:
           cache: pip
       - run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --require-hashes -r requirements.lock.txt
       - name: migrate on Postgres (catches cast/apply errors sqlite masks)
         env:
           # sslmode=disable: the CI service container is plain TCP; settings
@@ -119,7 +117,7 @@ jobs:
           cache: pip
       - run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --require-hashes -r requirements.lock.txt
           pip install coverage pytest pytest-django
       - name: Django system checks (BLOCKING — catches model errors that crash prod boot)
         # Plain `check` fails on Error-level issues (e.g. fields.E301/E300/E307 —
@@ -138,6 +136,12 @@ jobs:
         # settings panel, storefront block) that survives a disable fails loudly
         # before the full suite. See CLAUDE.md "Disable-test enforcement".
         run: python manage.py test plugins.installed.admin_dashboard.tests.test_disable_guards --noinput
+      - name: Plugin smoke suites (pytest-style — the Django runner can't collect these)
+        # 20 plugins ship module-level `def test_` in tests/__init__.py, which
+        # `manage.py test` silently reports as "Ran 0 tests". The glob auto-covers
+        # new plugins, so the silently-never-run class can't recur. Config in
+        # pyproject.toml [tool.pytest.ini_options].
+        run: python -m pytest plugins/installed/*/tests/__init__.py -q
       - name: Tests with coverage
         run: |
           coverage run --source='.' manage.py test --noinput
@@ -164,6 +168,6 @@ jobs:
           cache: pip
       - run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --require-hashes -r requirements.lock.txt
       - name: API stability — diff against baseline
         run: python scripts/check_api_stability.py
