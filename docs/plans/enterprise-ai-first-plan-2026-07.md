@@ -69,10 +69,24 @@ outages already (PR #62/#64). Needs owner decisions, not just code:
 - [ ] **LLM cost budgets**: per-day/agent spend caps with alerting (observability already tracks cost; add the limiter).
 - [ ] AI-native merchandising: upgrade personalisation from co-purchase stats to embedding-based similarity (reuses the pgvector work).
 
-## Phase 6 — Scale & platform posture (strategic, decide before building)
-- [ ] **Multi-tenancy is a fork in the road**: Morpheus today is one-merchant-per-instance (StoreChannel = multi-storefront, not multi-tenant). Enterprise SaaS needs tenant isolation, per-tenant keys/tokens, RLS. Alternative: stay single-tenant and position as "one instance per merchant" (Shopify-competitor vs WooCommerce-model). **Owner decision required — everything in Phase 6 hangs on it.**
+## Phase 6 — Scale & platform posture (**tenancy fork RESOLVED — ADR 0026**)
+**Decision (2026-07-02):** Morpheus stays **single-tenant — one instance per
+client** (agency model). Multi-tenancy (tenant model, RLS, per-tenant keys) is
+**descoped**. Licensing: proprietary now, per-client commercial agreements;
+public license (open-core MIT vs FSL) decided at publish time.
+- [ ] **Fleet tooling** (replaces multi-tenancy): provision a new client
+      instance fast (scripted Coolify app + env + domain), and push updates
+      across all instances — extend the existing self-update system
+      (pull-from-`magnetoid/morpheus`) into a fleet channel with per-client
+      version pinning + staged rollout.
+- [ ] **License prep** (keeps open-core AND FSL endpoints open):
+      dependency license audit — no GPL/AGPL dep in core (drift rule added);
+      keep premium-candidate plugins (AI layer, B2B, marketplace) cleanly
+      separable per ADR 0023; CLA required from the first external contributor;
+      trademark check on "Morpheus OS"; per-client license template that grants
+      no rights constraining the future model.
 - [ ] Publish OpenAPI 3.1 for /v1/* + GraphQL schema endpoint (external integrators currently reverse-engineer).
-- [ ] SBOM + trivy image scan + scheduled CVE rescans in cd.yml.
+- [ ] SBOM + trivy image scan + scheduled CVE rescans in cd.yml (doubles as the license-audit input).
 - [ ] Split the 696-LOC catalog Product god-object into OneToOne plugin extensions (per ADR 0006).
 
 ## Sequencing logic
@@ -80,4 +94,6 @@ Phase 0 now (days). Phases 1+2 next in parallel — governance is the AI-first
 blocker, compliance is the legal one. Phase 3 needs your ops decisions (staging
 app, branch protection) — schedule a session for it. Phase 4 runs as a standing
 ratchet alongside everything. Phase 5 starts once 1 is done (approval gates must
-precede an agentic money path). Phase 6 after the tenancy decision.
+precede an agentic money path). Phase 6's tenancy fork is resolved (ADR 0026:
+single-tenant + fleet tooling); its remaining items can start anytime — fleet
+provisioning in particular compounds with every new client onboarded.
