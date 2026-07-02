@@ -93,12 +93,12 @@ class _MaskUnhandledErrors(SchemaExtension):
                 extra={'request_id': request_id},
             )
             try:
-                from plugins.installed.observability.services import record_error
+                from core.errors.services import record_error  # core (ADR 0025)
 
                 record_error(
-                    source='api.graphql',
-                    message=str(original)[:5000],
-                    metadata={'request_id': request_id, 'type': type(original).__name__},
+                    original,
+                    kind='server',
+                    extra={'source': 'api.graphql', 'request_id': request_id},
                 )
             except Exception:  # noqa: BLE001, S110
                 pass

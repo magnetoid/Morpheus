@@ -10,6 +10,29 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.21 — 2026-07-02
+
+### Observability (error logging is now one core system — ADR 0025)
+- **All errors land in one place.** Celery task failures, REST + GraphQL API
+  errors, and captured log records were being written to a *separate, simpler*
+  `ErrorEvent` table in the observability plugin — invisible to the core error
+  dashboard, the fingerprint dedup, and the self-improvement loop. They now all
+  record into the core `core/errors` system, so every error is fingerprinted,
+  deduped, request-correlated, and visible in one dashboard.
+- **Three core→plugin boundary violations removed** (`core/brain/log_handler.py`,
+  the Celery handler, and the assistant's `logs.*` tools no longer import a
+  plugin for errors — boundary baseline 24 → 22). API errors now capture the
+  real request (path/user/request_id) too.
+- **Linda's log tools** (`logs.recent_errors`, `logs.search`) now read the
+  unified core error log instead of the frozen plugin table, and surface the
+  richer fields (exception class, level).
+- New `core.errors.record_message()` for callers that only have a formatted
+  string (no live exception). The plugin's `record_error` is now a thin
+  forwarding shim into core. (Retiring the plugin's parallel table is a
+  follow-up data migration.)
+
+---
+
 ## v0.2.20 — 2026-07-02
 
 ### Reliability (enterprise-readiness Phase 1)

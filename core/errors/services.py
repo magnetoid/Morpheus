@@ -108,6 +108,59 @@ def record_error(
         logger.exception('record_error failed')
 
 
+def _user_of(request):
+    u = getattr(request, 'user', None)
+    return u if u and getattr(u, 'is_authenticated', False) else None
+
+
+def record_message(
+    message: str,
+    *,
+    level: str = 'error',
+    kind: str = 'server',
+    source: str = '',
+    exception_class: str = '',
+    stack_trace: str = '',
+    extra: dict[str, Any] | None = None,
+    request=None,
+) -> None:
+    """Write a server-side error from a pre-formatted message/stack when there is
+    no live exception object (e.g. a log record without exc_info, or a caller
+    that only has strings). Callers holding an exception should use
+    ``record_error`` for frame-based fingerprinting. Fail-soft.
+    """
+    try:
+        from core.errors.models import ErrorEvent
+
+        msg = _scrub(message or '')[:2000]
+        # Fingerprint on source + class + message head so the same recurring
+        # message dedups (mirrors the exception fingerprint's intent).
+        fp = hashlib.sha256(f'{source}|{exception_class}|{msg[:200]}'.encode()).hexdigest()[:32]
+        meta = dict(extra or {})
+        if source:
+            meta.setdefault('source', source)
+        ErrorEvent.objects.create(
+            kind=kind,
+            level=level if level in ('error', 'warning', 'info') else 'error',
+            fingerprint=fp,
+            exception_class=exception_class[:200],
+            message=msg,
+            traceback=_truncate(_scrub(stack_trace or ''), _TRACEBACK_LIMIT),
+            path=(getattr(request, 'path', '') or '')[:500],
+            method=getattr(request, 'method', '') or '',
+            status_code=None,
+            user=_user_of(request),
+            request_id=getattr(request, 'request_id', '') or '',
+            user_agent=(request.META.get('HTTP_USER_AGENT', '') if request is not None else '')[
+                :_USER_AGENT_LIMIT
+            ],
+            ip_hash=_ip_hash(request),
+            metadata=meta,
+        )
+    except Exception:  # noqa: BLE001 — never raise from the capture path
+        logger.exception('record_message failed')
+
+
 _JS_FRAME_RE = re.compile(r'(?:https?://[^\s)]+|/[^\s)]+):(\d+)(?::\d+)?')
 
 

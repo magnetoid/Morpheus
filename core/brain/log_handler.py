@@ -63,15 +63,10 @@ class ErrorEventLogHandler(logging.Handler):
 
         if not apps.ready:
             return
-        try:
-            from plugins.installed.observability.services import record_error
-        except Exception:  # noqa: BLE001 — plugin absent / imported too early
-            return
+        # Error capture is a core system (ADR 0025) — record into core.errors.
+        from core.errors.services import record_error, record_message
 
         msg = record.getMessage()
-        exc_text = ''
-        if record.exc_info:
-            exc_text = logging.Formatter().formatException(record.exc_info)
         # Lead with the exception class so the collector's class-extraction works.
         if record.exc_info and record.exc_info[0] is not None:
             message = f'{record.exc_info[0].__name__}: {msg}'
@@ -82,18 +77,23 @@ class ErrorEventLogHandler(logging.Handler):
         if self._throttled(fp):
             return
 
-        record_error(
-            source=f'log:{record.name}'[:40],
-            message=message,
-            stack_trace=exc_text,
-            metadata={
-                'logger': record.name,
-                'level': record.levelname,
-                'request_id': getattr(record, 'request_id', '') or '',
-                'module': record.module,
-                'lineno': record.lineno,
-            },
-        )
+        level = record.levelname.lower()
+        level = level if level in ('error', 'warning', 'info') else 'error'
+        meta = {
+            'logger': record.name,
+            'level': record.levelname,
+            'request_id': getattr(record, 'request_id', '') or '',
+            'module': record.module,
+            'lineno': record.lineno,
+        }
+        source = f'log:{record.name}'[:40]
+        # A live exception → frame-based fingerprint via record_error; otherwise
+        # the pre-formatted message path.
+        exc = record.exc_info[1] if (record.exc_info and record.exc_info[1] is not None) else None
+        if exc is not None:
+            record_error(exc, kind='server', level=level, extra={**meta, 'source': source})
+        else:
+            record_message(message, kind='server', level=level, source=source, extra=meta)
 
     def _throttled(self, fp: str) -> bool:
         now = time.monotonic()

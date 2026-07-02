@@ -16,8 +16,8 @@ import logging
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_default_handler
 
+from core.errors.services import record_error  # error capture is core (ADR 0025)
 from core.request_id import current_request_id
-from plugins.installed.observability.services import record_error  # type: ignore[import-not-found]
 
 logger = logging.getLogger('morpheus.api.errors')
 
@@ -52,10 +52,10 @@ def morpheus_exception_handler(exc, context):
     )
     try:  # noqa: SIM105
         record_error(
-            source='api.rest',
-            message=str(exc)[:5000],
-            stack_trace=_safe_stack(exc),
-            metadata={'request_id': current_request_id()},
+            exc,
+            request=context.get('request') if isinstance(context, dict) else None,
+            kind='server',
+            extra={'source': 'api.rest', 'request_id': current_request_id()},
         )
     except Exception:  # noqa: BLE001, S110
         pass
@@ -78,12 +78,3 @@ def _safe_message(data) -> str:
     if isinstance(data, list) and data:
         return '; '.join(str(x) for x in data)
     return str(data)[:500]
-
-
-def _safe_stack(exc) -> str:
-    import traceback
-
-    try:
-        return ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))[:20000]
-    except Exception:  # noqa: BLE001
-        return ''

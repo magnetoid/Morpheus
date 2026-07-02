@@ -88,19 +88,16 @@ def _on_task_failure(
     msg = str(exception)[:5000]
     stack = (str(einfo) if einfo else '')[:20000]
     try:
-        from plugins.installed.observability.services import record_error
+        # Error capture is a core system (ADR 0025) — record into core.errors so
+        # task failures share the fingerprinted table + self-improvement feed.
+        from core.errors.services import record_error, record_message
 
-        record_error(
-            source='celery',
-            message=msg,
-            stack_trace=stack,
-            metadata={
-                'task': sender.name if sender else '',
-                'task_id': task_id or '',
-                'exc_type': type(exception).__name__ if exception else '',
-            },
-        )
-    except Exception as e:  # noqa: BLE001 — observability outage must not block worker
+        meta = {'source': 'celery', 'task': sender.name if sender else '', 'task_id': task_id or ''}
+        if exception is not None:
+            record_error(exception, kind='server', extra=meta)
+        else:
+            record_message(msg, kind='server', source='celery', stack_trace=stack, extra=meta)
+    except Exception as e:  # noqa: BLE001 — capture outage must not block worker
         logger.debug('celery: failed to record_error: %s', e)
 
     try:

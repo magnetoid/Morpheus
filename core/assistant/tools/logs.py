@@ -9,7 +9,7 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 
 @tool(
     name='logs.recent_errors',
-    description='Recent ErrorEvent rows from observability (last N hours).',
+    description='Recent ErrorEvent rows from the core error log (last N hours).',
     scopes=['system.read'],
     schema={
         'type': 'object',
@@ -22,10 +22,9 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 def recent_errors_tool(*, hours: int = 6, limit: int = 25) -> ToolResult:
     from django.utils import timezone
 
-    try:
-        from plugins.installed.observability.models import ErrorEvent
-    except Exception as e:  # noqa: BLE001
-        return ToolResult(output={'errors': [], 'note': f'observability plugin unavailable: {e}'})
+    # Error capture is a core system (ADR 0025) — read the unified core log.
+    from core.errors.models import ErrorEvent
+
     since = timezone.now() - timedelta(hours=max(1, int(hours or 6)))
     rows = list(
         ErrorEvent.objects.filter(created_at__gte=since).order_by('-created_at')[
@@ -37,7 +36,9 @@ def recent_errors_tool(*, hours: int = 6, limit: int = 25) -> ToolResult:
             'errors': [
                 {
                     'when': e.created_at.isoformat(),
-                    'source': e.source,
+                    'source': (e.metadata or {}).get('source') or e.kind,
+                    'exception': e.exception_class,
+                    'level': e.level,
                     'message': (e.message or '')[:300],
                     'metadata': e.metadata or {},
                 }
@@ -65,10 +66,8 @@ def recent_errors_tool(*, hours: int = 6, limit: int = 25) -> ToolResult:
 def search_logs_tool(*, query: str, limit: int = 20) -> ToolResult:
     if not query.strip():
         raise ToolError('query required')
-    try:
-        from plugins.installed.observability.models import ErrorEvent
-    except Exception as e:  # noqa: BLE001
-        return ToolResult(output={'errors': [], 'note': f'unavailable: {e}'})
+    from core.errors.models import ErrorEvent  # core error log (ADR 0025)
+
     rows = list(
         ErrorEvent.objects.filter(message__icontains=query).order_by('-created_at')[
             : max(1, min(int(limit or 20), 50))
@@ -80,7 +79,8 @@ def search_logs_tool(*, query: str, limit: int = 20) -> ToolResult:
             'errors': [
                 {
                     'when': e.created_at.isoformat(),
-                    'source': e.source,
+                    'source': (e.metadata or {}).get('source') or e.kind,
+                    'exception': e.exception_class,
                     'message': (e.message or '')[:300],
                 }
                 for e in rows

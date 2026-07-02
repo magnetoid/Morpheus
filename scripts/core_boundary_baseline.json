@@ -54,16 +54,8 @@
       "imports": "plugins.installed.orders.models"
     },
     {
-      "file": "core/assistant/tools/logs.py",
-      "imports": "plugins.installed.observability.models"
-    },
-    {
       "file": "core/assistant/tools/spawn.py",
       "imports": "plugins.installed.agent_core.models"
-    },
-    {
-      "file": "core/brain/log_handler.py",
-      "imports": "plugins.installed.observability.services"
     },
     {
       "file": "core/brain/signals.py",
