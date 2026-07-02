@@ -1,0 +1,23 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}{{ region_label }} experiences{% endblock %}
+{% block content %}
+<section style="padding:3.5rem 0;">
+  <div class="wrap">
+    <nav class="breadcrumb" style="margin-bottom:1rem;"><a href="/regions/">Regions</a> / <span>{{ region_label }}</span></nav>
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">{{ region_label }}<span class="text-accent">.</span></h1>
+    {% if services %}
+    <div style="display:grid; gap:1rem;">
+      {% for s in services %}
+      <a href="/bookings/{{ s.slug }}/" style="display:block; padding:1.25rem; border:1px solid var(--rule); border-radius:10px; color:inherit; text-decoration:none;">
+        <h2 style="font-family:var(--serif); font-size:1.25rem; margin:0;">{{ s.name }}</h2>
+        <p class="meta" style="margin:.25rem 0 0;">Hosted by {{ s.vendor.name }} · {% if listing_mode %}Contact for price{% else %}{{ s.price|money }}{% endif %}</p>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lede">No experiences here yet. <a href="/bookings/">Browse all experiences</a>.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

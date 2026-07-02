@@ -10,9 +10,9 @@ from plugins.installed.booking_marketplace.models import BookableService, Bookin
 
 @staff_member_required
 def bookings_list(request):
-    bookings = Booking.objects.select_related('service', 'service__vendor').order_by('-start_at')[
-        :100
-    ]
+    bookings = Booking.objects.select_related('service', 'service__vendor').order_by(
+        '-booking_date', '-created_at'
+    )[:100]
     return render(
         request,
         'booking_marketplace/dashboard/bookings.html',

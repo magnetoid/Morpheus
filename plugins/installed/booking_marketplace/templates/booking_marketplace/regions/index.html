@@ -1,0 +1,17 @@
+{% extends "storefront/base.html" %}
+{% block title %}Explore by region{% endblock %}
+{% block content %}
+<section style="padding:3.5rem 0;">
+  <div class="wrap">
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">Explore by region<span class="text-accent">.</span></h1>
+    <div style="display:grid; gap:.75rem; grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">
+      {% for r in regions %}
+      <a href="/regions/{{ r.key }}/" style="display:block; padding:1.25rem; border:1px solid var(--rule); border-radius:10px; color:inherit; text-decoration:none;">
+        <h2 style="font-family:var(--serif); font-size:1.2rem; margin:0;">{{ r.label }}</h2>
+        <p class="meta" style="margin:.25rem 0 0;">{{ r.count }} experience{{ r.count|pluralize }}</p>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Your enquiries" %}{% endblock %}
+{% block content %}
+<section style="padding: 3.5rem 0;">
+  <div class="wrap" style="max-width: 980px;">
+    <nav class="breadcrumb" style="margin-bottom:1rem;"><a href="/bookings/host/" style="border-bottom:1px dotted var(--rule);">{% trans "Your experiences" %}</a> / <span>{% trans "Enquiries" %}</span></nav>
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">{% trans "Enquiries" %}<span class="text-accent">.</span></h1>
+
+    {% if enquiries %}
+    <div style="display:grid; gap:.6rem;">
+      {% for e in enquiries %}
+      <div style="padding:.9rem 1.1rem; border:1px solid var(--rule); border-radius:var(--radius);">
+        <div style="display:flex; gap:1rem; justify-content:space-between; flex-wrap:wrap;">
+          <p style="margin:0; font-weight:600;">{% if e.service %}{{ e.service.name }}{% else %}{% trans "General enquiry" %}{% endif %}</p>
+          <p class="meta" style="margin:0;">{{ e.created_at|date:"j M Y" }} · {{ e.get_status_display }}</p>
+        </div>
+        <p class="meta" style="margin:.3rem 0;">{{ e.name|default:"—" }} · {{ e.email }}{% if e.phone %} · {{ e.phone }}{% endif %}{% if e.preferred_date %} · prefers {{ e.preferred_date|date:"j M Y" }}{% endif %}{% if e.guests %} · {{ e.guests }} guests{% endif %}</p>
+        {% if e.message %}<p style="margin:.4rem 0 0; color:var(--ink-2);">{{ e.message }}</p>{% endif %}
+        <p style="margin:.5rem 0 0;"><a href="mailto:{{ e.email }}" class="btn btn-primary btn-sm">{% trans "Reply" %}</a></p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lede">{% trans "No enquiries yet." %}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

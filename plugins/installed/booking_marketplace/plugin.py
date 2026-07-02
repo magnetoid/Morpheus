@@ -16,7 +16,7 @@ from morpheus import DashboardPage, Plugin
 class BookingMarketplacePlugin(Plugin):
     name = 'booking_marketplace'
     label = 'Booking marketplace'
-    version = '1.0.0'
+    version = '2.0.0'
     description = (
         'Multivendor booking marketplace — vendors offer time-slot services '
         '(appointments, sessions, rentals); customers book a slot. Off by '

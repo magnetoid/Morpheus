@@ -1,0 +1,41 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Earnings" %}{% endblock %}
+{% block content %}
+<section style="padding: 3.5rem 0;">
+  <div class="wrap" style="max-width: 980px;">
+    <nav class="breadcrumb" style="margin-bottom:1rem;"><a href="/bookings/host/" style="border-bottom:1px dotted var(--rule);">{% trans "Your experiences" %}</a> / <span>{% trans "Earnings" %}</span></nav>
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">{% trans "Earnings" %}<span class="text-accent">.</span></h1>
+
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:2rem;">
+      <div style="padding:1.25rem; border:1px solid var(--rule); border-radius:var(--radius); background:var(--paper-2);">
+        <p class="meta" style="margin:0;">{% trans "Net to you" %}</p>
+        <p style="font-family:var(--serif); font-size:1.9rem; margin:.25rem 0 0; color:var(--accent);">€{{ net|floatformat:2 }}</p>
+      </div>
+      <div style="padding:1.25rem; border:1px solid var(--rule); border-radius:var(--radius);">
+        <p class="meta" style="margin:0;">{% trans "Platform fee (12%)" %}</p>
+        <p style="font-family:var(--serif); font-size:1.9rem; margin:.25rem 0 0;">€{{ fees|floatformat:2 }}</p>
+      </div>
+      <div style="padding:1.25rem; border:1px solid var(--rule); border-radius:var(--radius);">
+        <p class="meta" style="margin:0;">Gross ({{ count }} booking{{ count|pluralize }})</p>
+        <p style="font-family:var(--serif); font-size:1.9rem; margin:.25rem 0 0;">€{{ gross|floatformat:2 }}</p>
+      </div>
+    </div>
+    <p class="meta" style="margin:-1rem 0 2rem;">{% trans "Net is your take-home (per-guest price × guests). The platform keeps the 12% service fee guests pay on top. Payouts are settled to your registered account." %}</p>
+
+    {% if recent %}
+    <h2 style="font-family:var(--serif); font-size:1.3rem; margin-bottom:1rem;">{% trans "Confirmed &amp; completed" %}</h2>
+    <div style="display:grid; gap:.5rem;">
+      {% for b in recent %}
+      <div style="display:flex; gap:1rem; justify-content:space-between; align-items:center; padding:.7rem 1rem; border:1px solid var(--rule); border-radius:var(--radius); flex-wrap:wrap;">
+        <span>{{ b.service.name }} <span class="meta">· {{ b.booking_date|date:"j M Y" }} · {{ b.guests }}g · {{ b.get_status_display }}</span></span>
+        <span style="font-weight:600;">€{{ b.subtotal.amount|floatformat:2 }} <span class="meta" style="font-weight:400;">net</span></span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lede">{% trans "No confirmed bookings yet — your earnings will appear here." %}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

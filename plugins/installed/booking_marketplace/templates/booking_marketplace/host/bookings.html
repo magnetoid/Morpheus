@@ -1,0 +1,41 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load i18n %}
+{% block title %}{% trans "Your bookings" %}{% endblock %}
+{% block content %}
+<section style="padding: 3.5rem 0;">
+  <div class="wrap" style="max-width: 980px;">
+    {% if messages %}{% for m in messages %}
+    <div class="card" style="margin-bottom:1rem; padding:.8rem 1rem; border-radius:var(--radius); border:1px solid var(--rule); {% if m.tags == 'error' %}border-color:var(--accent);{% endif %}">{{ m }}</div>
+    {% endfor %}{% endif %}
+
+    <nav class="breadcrumb" style="margin-bottom:1rem;"><a href="/bookings/host/" style="border-bottom:1px dotted var(--rule);">{% trans "Your experiences" %}</a> / <span>{% trans "Bookings" %}</span></nav>
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">{% trans "Bookings" %}<span class="text-accent">.</span></h1>
+
+    {% if bookings %}
+    <div style="display:grid; gap:.6rem;">
+      {% for b in bookings %}
+      <div style="display:flex; gap:1rem; align-items:center; justify-content:space-between; padding:.9rem 1.1rem; border:1px solid var(--rule); border-radius:var(--radius); flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <p style="margin:0; font-weight:600;">{{ b.service.name }} <span class="meta">· {{ b.booking_date|date:"D j M Y" }} · {{ b.guests }} guest{{ b.guests|pluralize }}</span></p>
+          <p class="meta" style="margin:.2rem 0 0;">{{ b.customer_name }} · {{ b.customer_email }}{% if b.customer_phone %} · {{ b.customer_phone }}{% endif %} · {{ b.total_price|money }}</p>
+        </div>
+        <div style="display:flex; gap:.4rem; align-items:center;">
+          <span class="meta" style="text-transform:uppercase; letter-spacing:.08em; font-weight:700;">{{ b.get_status_display }}</span>
+          {% if b.status == 'pending' or b.status == 'confirmed' %}
+          <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="booking_id" value="{{ b.id }}">
+            {% if b.status == 'pending' %}<button name="action" value="confirm" class="btn btn-primary btn-sm">{% trans "Confirm" %}</button>{% endif %}
+            {% if b.status == 'confirmed' %}<button name="action" value="complete" class="btn btn-ghost btn-sm">{% trans "Complete" %}</button>{% endif %}
+            <button name="action" value="cancel" class="btn btn-ghost btn-sm">{% trans "Cancel" %}</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lede">{% trans "No bookings yet." %}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

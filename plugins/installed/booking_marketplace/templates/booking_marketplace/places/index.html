@@ -1,0 +1,19 @@
+{% extends "storefront/base.html" %}
+{% block title %}Places to visit{% endblock %}
+{% block content %}
+<section style="padding:3.5rem 0;">
+  <div class="wrap">
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">Places to visit<span class="text-accent">.</span></h1>
+    {% if places %}
+    <div style="display:grid; gap:.75rem; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
+      {% for p in places %}
+      <a href="/places/{{ p.slug }}/" style="display:block; padding:1.25rem; border:1px solid var(--rule); border-radius:10px; color:inherit; text-decoration:none;">
+        <h2 style="font-family:var(--serif); font-size:1.2rem; margin:0;">{{ p.name }}</h2>
+        {% if p.summary %}<p class="meta" style="margin:.25rem 0 0;">{{ p.summary }}</p>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}<p class="lede">Destinations are being added.</p>{% endif %}
+  </div>
+</section>
+{% endblock %}

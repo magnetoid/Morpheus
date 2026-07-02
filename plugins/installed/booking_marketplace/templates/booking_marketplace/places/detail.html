@@ -1,0 +1,22 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block title %}{{ place.name }}{% endblock %}
+{% block content %}
+<section style="padding:3.5rem 0;">
+  <div class="wrap" style="max-width:820px;">
+    <nav class="breadcrumb" style="margin-bottom:1rem;"><a href="/places/">Places</a> / <span>{{ place.name }}</span></nav>
+    <h1 class="display display-l" style="margin:.5rem 0 1rem;">{{ place.name }}<span class="text-accent">.</span></h1>
+    {% if place.description %}<div class="lede">{{ place.description|linebreaks }}</div>{% endif %}
+    <h2 style="font-family:var(--serif); font-size:1.3rem; margin:2rem 0 1rem;">Experiences in {{ place.name }}</h2>
+    {% if services %}
+    <div style="display:grid; gap:1rem;">
+      {% for s in services %}
+      <a href="/bookings/{{ s.slug }}/" style="display:block; padding:1.1rem; border:1px solid var(--rule); border-radius:10px; color:inherit; text-decoration:none;">
+        <strong>{{ s.name }}</strong> <span class="meta">· {% if listing_mode %}Contact for price{% else %}{{ s.price|money }}{% endif %}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}<p class="lede">No experiences here yet.</p>{% endif %}
+  </div>
+</section>
+{% endblock %}

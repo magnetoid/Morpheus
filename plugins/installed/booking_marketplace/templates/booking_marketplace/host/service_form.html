@@ -1,0 +1,83 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block title %}{% if svc %}{% trans "Edit" %}{% else %}{% trans "New" %}{% endif %} {% trans "experience" %}{% endblock %}
+{% block content %}
+<section style="padding: 3.5rem 0;">
+  <div class="wrap" style="max-width: 680px;">
+    {% if messages %}{% for m in messages %}
+    <div class="card" style="margin-bottom:1rem; padding:.8rem 1rem; border-radius:var(--radius); border:1px solid var(--rule); {% if m.tags == 'error' %}border-color:var(--accent);{% endif %}">{{ m }}</div>
+    {% endfor %}{% endif %}
+
+    <nav class="breadcrumb" style="margin-bottom:1rem;"><a href="/bookings/host/" style="border-bottom:1px dotted var(--rule);">{% trans "Your experiences" %}</a> / <span>{% if svc %}{{ svc.name }}{% else %}{% trans "New" %}{% endif %}</span></nav>
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">{% if svc %}{% trans "Edit experience" %}{% else %}{% trans "New experience" %}{% endif %}<span class="text-accent">.</span></h1>
+
+    <form method="post" enctype="multipart/form-data" style="display:grid; gap:1rem;">
+      {% csrf_token %}
+      {% with ist="width:100%; padding:.7rem; border:1px solid var(--rule); border-radius:var(--radius-sm,8px); font-family:var(--sans); font-size:.95rem;" %}
+      <label class="meta">{% trans "Name" %}
+        <input type="text" name="name" required value="{{ svc.name|default:'' }}" style="{{ ist }}">
+      </label>
+      <label class="meta">{% trans "Short description (shown on cards)" %}
+        <input type="text" name="short_description" maxlength="300" value="{{ svc.short_description|default:'' }}" style="{{ ist }}">
+      </label>
+      <label class="meta">{% trans "Full description" %}
+        <textarea name="description" rows="5" style="{{ ist }}">{{ svc.description|default:'' }}</textarea>
+      </label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <label class="meta">{% trans "Region" %}
+          <select name="region" style="{{ ist }}">
+            <option value="">—</option>
+            {% for r in regions %}<option value="{{ r.0 }}" {% if svc and svc.region == r.0 %}selected{% endif %}>{{ r.1 }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="meta">{% trans "Category" %}
+          <select name="category" style="{{ ist }}">
+            <option value="">—</option>
+            {% for c in categories %}<option value="{{ c.id }}" {% if svc and svc.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">
+        <label class="meta">{% trans "Price (€ per guest)" %}
+          <input type="number" name="price" min="0" step="0.01" value="{% if svc %}{{ svc.price.amount }}{% endif %}" style="{{ ist }}">
+        </label>
+        <label class="meta">{% trans "Duration (min)" %}
+          <input type="number" name="duration_minutes" min="0" value="{{ svc.duration_minutes|default:120 }}" style="{{ ist }}">
+        </label>
+        <label class="meta">{% trans "Seats / day" %}
+          <input type="number" name="daily_capacity" min="0" value="{{ svc.daily_capacity|default:10 }}" style="{{ ist }}">
+        </label>
+      </div>
+      <label class="meta">{% trans "Max guests per booking" %}
+        <input type="number" name="max_guests_per_booking" min="1" value="{{ svc.max_guests_per_booking|default:10 }}" style="{{ ist }}">
+      </label>
+      <fieldset style="border:1px solid var(--rule); border-radius:var(--radius-sm,8px); padding:.75rem 1rem;">
+        <legend class="meta">{% trans "Runs on" %}</legend>
+        <div style="display:flex; flex-wrap:wrap; gap:.75rem 1.25rem;">
+          {% for wd in weekdays %}
+          <label style="display:inline-flex; align-items:center; gap:.35rem; font-size:.9rem;">
+            <input type="checkbox" name="weekdays" value="{{ wd.0 }}" {% if wd.0 in selected_wd %}checked{% endif %}> {{ wd.1 }}
+          </label>
+          {% endfor %}
+        </div>
+        <p class="meta" style="margin:.5rem 0 0;">{% trans "Leave all unchecked to run every day." %}</p>
+      </fieldset>
+      <label class="meta">{% trans "Cancellation policy" %}
+        <textarea name="cancellation_policy" rows="2" style="{{ ist }}">{{ svc.cancellation_policy|default:'' }}</textarea>
+      </label>
+      <label class="meta">{% trans "Photo" %}
+        {% if svc.image %}<div style="margin:.4rem 0;"><img src="{{ svc.image.url }}" alt="" style="height:90px; border-radius:var(--radius-sm,8px);"></div>{% endif %}
+        <input type="file" name="image" accept="image/*" style="{{ ist }}">
+      </label>
+      <label style="display:inline-flex; align-items:center; gap:.5rem; font-size:.95rem;">
+        <input type="checkbox" name="is_active" {% if not svc or svc.is_active %}checked{% endif %}> {% trans "Visible on the storefront" %}
+      </label>
+      {% endwith %}
+      <div style="display:flex; gap:.75rem;">
+        <button type="submit" class="btn btn-primary">{% if svc %}{% trans "Save changes" %}{% else %}{% trans "Create experience" %}{% endif %}</button>
+        <a href="/bookings/host/" class="btn btn-ghost">{% trans "Cancel" %}</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

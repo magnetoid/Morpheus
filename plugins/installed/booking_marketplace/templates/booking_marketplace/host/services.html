@@ -1,0 +1,49 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load i18n %}
+{% block title %}{% trans "Your experiences" %}{% endblock %}
+{% block content %}
+<section style="padding: 3.5rem 0;">
+  <div class="wrap" style="max-width: 980px;">
+    {% if messages %}{% for m in messages %}
+    <div class="card" style="margin-bottom:1rem; padding:.8rem 1rem; border-radius:var(--radius); border:1px solid var(--rule); {% if m.tags == 'error' %}border-color:var(--accent);{% endif %}">{{ m }}</div>
+    {% endfor %}{% endif %}
+
+    <div style="display:flex; align-items:end; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+      <div>
+        <p class="eyebrow">Host · {{ vendor.name }}</p>
+        <h1 class="display display-m" style="margin-top:.4rem;">{% trans "Your experiences" %}<span class="text-accent">.</span></h1>
+      </div>
+      <a href="/bookings/host/new/" class="btn btn-primary">{% trans "+ New experience" %}</a>
+    </div>
+
+    <div style="display:flex; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
+      <a href="/bookings/host/bookings/" class="btn btn-ghost btn-sm">{% trans "Bookings" %}{% if pending_bookings %} · {{ pending_bookings }} pending{% endif %}</a>
+      <a href="/bookings/host/enquiries/" class="btn btn-ghost btn-sm">{% trans "Enquiries" %}{% if new_enquiries %} · {{ new_enquiries }} new{% endif %}</a>
+      <a href="/bookings/host/earnings/" class="btn btn-ghost btn-sm">{% trans "Earnings" %}</a>
+    </div>
+
+    {% if services %}
+    <div style="display:grid; gap:.75rem;">
+      {% for s in services %}
+      <div style="display:flex; gap:1rem; align-items:center; justify-content:space-between; padding:1rem 1.25rem; border:1px solid var(--rule); border-radius:var(--radius); flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <p style="font-family:var(--serif); font-size:1.2rem; margin:0;">{{ s.name }}{% if not s.is_active %} <span class="meta">{% trans "(hidden)" %}</span>{% endif %}</p>
+          <p class="meta" style="margin:.25rem 0 0;">{% if s.region %}{{ s.get_region_display }} · {% endif %}{{ s.price|money }} · cap {{ s.daily_capacity }}/day</p>
+        </div>
+        <div style="display:flex; gap:.5rem;">
+          <a href="/bookings/{{ s.slug }}/" class="btn btn-ghost btn-sm">{% trans "View" %}</a>
+          <a href="/bookings/host/{{ s.slug }}/edit/" class="btn btn-primary btn-sm">{% trans "Edit" %}</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:3rem 2rem; text-align:center; border:1px dashed var(--rule); border-radius:var(--radius);">
+      <p class="lede" style="margin:0 auto 1.5rem;">{% trans "You haven’t listed any experiences yet." %}</p>
+      <a href="/bookings/host/new/" class="btn btn-primary">{% trans "List your first experience" %}</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,45 +1,78 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% block title %}{{ service.name }} — book — dot books{% endblock %}
+{% block title %}{{ service.name }} — book{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">
   <div class="wrap" style="max-width: 720px;">
     <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
-      <a href="/bookings/" style="border-bottom:1px dotted var(--rule);">Bookings</a> /
+      <a href="/bookings/" style="border-bottom:1px dotted var(--rule);">Experiences</a> /
       <span aria-current="page">{{ service.name }}</span>
     </nav>
-    <p class="eyebrow">{{ service.vendor.name }}</p>
+    <p class="eyebrow">Hosted by {{ service.vendor.name }}{% if service.region %} · {{ service.get_region_display }}{% endif %}</p>
     <h1 class="display display-l" style="margin: 1rem 0;">{{ service.name }}<span class="text-accent">.</span></h1>
-    <p class="lede">{{ service.duration_minutes }} min · {{ service.price|money }}</p>
+    <p class="lede">{{ service.duration_minutes }} min{% if not listing_mode and service.price %} · {{ service.price|money }} per guest{% endif %}</p>
     {% if service.description %}<div class="lede" style="margin-top:1rem;">{{ service.description|linebreaks }}</div>{% endif %}
 
     {% if messages %}{% for m in messages %}
     <div class="card" style="margin-top:1.5rem; padding:1rem; border-radius:8px; border:1px solid var(--rule); {% if m.tags == 'error' %}border-color:var(--accent);{% endif %}">{{ m }}</div>
     {% endfor %}{% endif %}
 
-    <h2 style="font-family:var(--serif); font-size:1.4rem; margin:2.5rem 0 1rem;">Pick a time</h2>
-    {% if slots %}
-    <form method="post" action="/bookings/{{ service.slug }}/">
+    {% if listing_mode %}
+    <h2 style="font-family:var(--serif); font-size:1.4rem; margin:2.5rem 0 1rem;">Contact for price</h2>
+    <form method="post" action="/bookings/{{ service.slug }}/" style="display:grid; gap:.75rem; max-width:420px;">
       {% csrf_token %}
-      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:.6rem; margin-bottom:1.5rem;">
-        {% for slot in slots %}
-        <label style="display:block; padding:.6rem .8rem; border:1px solid var(--rule); border-radius:8px; cursor:pointer; font-size:.9rem;">
-          <input type="radio" name="slot" value="{{ slot.isoformat }}" required style="margin-right:.4rem;">
-          {{ slot|date:"D j M, H:i" }}
-        </label>
-        {% endfor %}
-      </div>
-      <div style="display:grid; gap:.75rem; max-width:420px;">
-        <input type="text" name="name" placeholder="Your name" required class="input" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
-        <input type="email" name="email" placeholder="Your email" required class="input" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
-        <textarea name="notes" placeholder="Anything we should know? (optional)" rows="3" class="input" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;"></textarea>
-        <button type="submit" class="btn btn-primary">Request booking</button>
-      </div>
+      <input type="text" name="name" placeholder="Your name" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <input type="email" name="email" placeholder="Your email" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <input type="tel" name="phone" placeholder="Phone (optional)" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <input type="date" name="preferred_date" aria-label="Preferred date" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <input type="number" name="guests" min="1" placeholder="Guests" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <textarea name="message" placeholder="Anything we should know? (optional)" rows="3" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;"></textarea>
+      <button type="submit" class="btn btn-primary">Send enquiry</button>
     </form>
     {% else %}
-    <p class="lede">No open times right now — please check back later.</p>
+    <h2 style="font-family:var(--serif); font-size:1.4rem; margin:2.5rem 0 1rem;">Book your spot</h2>
+    {% if dates %}
+    <form method="post" action="/bookings/{{ service.slug }}/" style="display:grid; gap:.75rem; max-width:420px;">
+      {% csrf_token %}
+      <select name="booking_date" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+        {% for d in dates %}<option value="{{ d.date|date:'Y-m-d' }}">{{ d.date|date:'D j M Y' }} — {{ d.remaining }} left</option>{% endfor %}
+      </select>
+      <input type="number" name="guests" value="1" min="1" max="{{ max_guests }}" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <input type="text" name="name" placeholder="Your name" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <input type="email" name="email" placeholder="Your email" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <input type="tel" name="phone" placeholder="Phone (optional)" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+      <textarea name="notes" placeholder="Anything we should know? (optional)" rows="3" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;"></textarea>
+      <button type="submit" class="btn btn-primary">Request to book</button>
+    </form>
+    {% else %}
+    <p class="lede">No dates open right now — please check back later.</p>
     {% endif %}
+    {% endif %}
+
+    {% if service.cancellation_policy %}<p class="meta" style="margin-top:1.5rem;"><strong>Cancellation:</strong> {{ service.cancellation_policy }}</p>{% endif %}
+
+    <div style="margin-top:2.5rem;">
+      <h2 style="font-family:var(--serif); font-size:1.4rem; margin-bottom:1rem;">Reviews{% if review_summary.count %} — {{ review_summary.avg }}★ ({{ review_summary.count }}){% endif %}</h2>
+      {% if can_review %}
+      <form method="post" action="/bookings/{{ service.slug }}/review/" style="display:grid; gap:.6rem; max-width:460px; margin-bottom:1.5rem;">
+        {% csrf_token %}
+        <select name="rating" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+          <option value="5">5 ★</option><option value="4">4 ★</option><option value="3">3 ★</option><option value="2">2 ★</option><option value="1">1 ★</option>
+        </select>
+        <input type="text" name="title" placeholder="Title (optional)" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
+        <textarea name="body" placeholder="Your review" rows="3" style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;"></textarea>
+        <button type="submit" class="btn btn-primary">Post review</button>
+      </form>
+      {% endif %}
+      {% for r in reviews %}
+      <div style="border-top:1px solid var(--rule); padding:1rem 0;">
+        <p style="margin:0;"><strong>{{ r.author_name|default:"Guest" }}</strong> · {{ r.rating }}★ · <span class="meta">{{ r.created_at|date:"M Y" }}</span></p>
+        {% if r.title %}<p style="margin:.3rem 0 0; font-weight:600;">{{ r.title }}</p>{% endif %}
+        {% if r.body %}<p style="margin:.3rem 0 0;">{{ r.body }}</p>{% endif %}
+      </div>
+      {% empty %}{% if not can_review %}<p class="meta">No reviews yet.</p>{% endif %}{% endfor %}
+    </div>
   </div>
 </section>
 {% endblock %}
