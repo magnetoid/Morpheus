@@ -26,6 +26,12 @@ def consent_show(context) -> bool:
     request = context.get('request')
     if request is None:
         return False
+    # Suppressed entirely when the store has GDPR/ePrivacy features off
+    # (Settings → General → GDPR). Default on, so no change unless opted out.
+    from core.context_processors import _gdpr_enabled
+
+    if not _gdpr_enabled():
+        return False
     return not has_decided(request)
 
 

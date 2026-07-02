@@ -13,7 +13,26 @@ def store_settings(request):
         'GOOGLE_PLACES_API_KEY': getattr(django_settings, 'GOOGLE_PLACES_API_KEY', ''),
         # Storefront fallback cover for products with no image (Settings → General).
         'PRODUCT_PLACEHOLDER_IMAGE': _product_placeholder_url(),
+        # GDPR/ePrivacy master switch — gates the cookie banner + data-rights
+        # links on every storefront page (Settings → General).
+        'GDPR_ENABLED': _gdpr_enabled(),
     }
+
+
+def _gdpr_enabled() -> bool:
+    """Cached read of the GDPR master switch (runs on every storefront page)."""
+    from django.core.cache import cache
+
+    val = cache.get('morph:gdpr_enabled')
+    if val is None:
+        import contextlib
+
+        from core.models import StoreSettings
+
+        val = bool(StoreSettings.get('gdpr_enabled', True))
+        with contextlib.suppress(Exception):  # cache outage must not break rendering
+            cache.set('morph:gdpr_enabled', val, timeout=60)
+    return val
 
 
 def _product_placeholder_url() -> str:

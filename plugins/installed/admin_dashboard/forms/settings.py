@@ -54,6 +54,13 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
         help_text='Show Linda on every dashboard page to explain what you are '
         'looking at and advise what to do. Uses your configured AI provider.',
     )
+    gdpr_enabled = forms.BooleanField(
+        required=False,
+        label='GDPR / ePrivacy features',
+        help_text='Show the cookie-consent banner and the self-service data '
+        'export + account deletion pages. Turn off for stores outside GDPR '
+        'jurisdiction (e.g. US-only or B2B).',
+    )
 
     def __init__(self, *args, instance=None, **kwargs):
         self.instance = instance
@@ -71,6 +78,7 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
                     'support_phone',
                     'product_placeholder_image',
                     'ai_page_help',
+                    'gdpr_enabled',
                 )
             }
         super().__init__(*args, **kwargs)
@@ -86,6 +94,14 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
                 continue
             setattr(instance, field, value)
         instance.save()
+        # Bust the storefront GDPR-switch cache so the toggle takes effect at
+        # once, not after the 60s TTL (Redis survives deploys — see landmine).
+        import contextlib
+
+        from django.core.cache import cache
+
+        with contextlib.suppress(Exception):
+            cache.delete('morph:gdpr_enabled')
         return instance
 
 

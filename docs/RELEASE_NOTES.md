@@ -10,6 +10,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.26 — 2026-07-02
+
+### Privacy
+- **GDPR/ePrivacy is now a single switch.** Settings → General → *GDPR / ePrivacy
+  features* turns the compliance surfaces on or off in one place. When off (for
+  stores outside GDPR jurisdiction — US-only, B2B), the cookie-consent banner is
+  suppressed and the self-service data-export / account-erasure pages are
+  disabled. Default **on**, so existing stores are unchanged.
+
+---
+
 ## v0.2.25 — 2026-07-02
 
 ### Agent governance (enterprise Phase 1 — ADR 0027)

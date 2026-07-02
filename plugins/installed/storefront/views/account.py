@@ -23,6 +23,18 @@ def _login_required(request, target):
     return None
 
 
+def _gdpr_required() -> None:
+    """404 the self-service GDPR pages when the store has turned GDPR features
+    off (Settings → General → GDPR/ePrivacy). Default ON, so no change unless
+    a merchant outside GDPR jurisdiction opts out."""
+    from core.models import StoreSettings
+
+    if not StoreSettings.get('gdpr_enabled', True):
+        from django.http import Http404
+
+        raise Http404('GDPR features are disabled for this store.')
+
+
 def _account_summary(user) -> dict:
     """Counts + balances for the account home dashboard.
 
@@ -331,6 +343,7 @@ def account_data_export(request):
     lazily inside ``gather_customer_data`` so disabled plugins drop out
     of the export silently.
     """
+    _gdpr_required()
     redirect_resp = _login_required(request, '/account/data-export/')
     if redirect_resp is not None:
         return redirect_resp
@@ -363,6 +376,7 @@ def account_delete(request):
     user to type their own email back, then anonymises the account, logs
     them out, and redirects to /.
     """
+    _gdpr_required()
     redirect_resp = _login_required(request, '/account/delete/')
     if redirect_resp is not None:
         return redirect_resp

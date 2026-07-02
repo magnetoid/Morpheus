@@ -42,6 +42,17 @@ class StoreSettings(models.Model):
         'looking at and advise what to do. Uses your configured AI provider.',
     )
 
+    # GDPR / ePrivacy master switch. ON (default) surfaces the EU compliance
+    # features: the cookie-consent banner + storefront self-service data export
+    # (Art. 15) and account erasure (Art. 17). Turn OFF for instances outside
+    # GDPR jurisdiction (e.g. US-only / B2B) so those features don't render.
+    gdpr_enabled = models.BooleanField(
+        default=True,
+        help_text='Show GDPR/ePrivacy features: cookie-consent banner and '
+        'self-service data export + account deletion. Turn off for stores '
+        'outside GDPR jurisdiction.',
+    )
+
     # Custom SMTP Overrides
     smtp_host = models.CharField(max_length=200, blank=True, help_text='e.g. smtp.resend.com')
     smtp_port = models.IntegerField(default=587)
