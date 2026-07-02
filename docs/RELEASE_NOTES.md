@@ -10,6 +10,22 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.24 — 2026-07-02
+
+### Storefront
+- **Letterpress decode, refined.** Hero titles and descriptions now animate as
+  individual letters: each character "searches" in muted accent ink, then locks
+  into place with a tiny settle pop — like type slugs snapping into a composing
+  stick. Words wrap as units, so lines never break mid-word during the effect.
+- **The hero headline is dynamic too** — it decodes once on page load. The old
+  explainer paragraph under it (which described the widget rather than the
+  books) is removed for a cleaner, more confident opening.
+- **Friendlier micro-details.** Primary buttons lift gently on hover, and text
+  selection uses the house ink-on-paper colors. All motion still honors
+  `prefers-reduced-motion`.
+
+---
+
 ## v0.2.23 — 2026-07-02
 
 ### Reliability & supply chain (enterprise Phase 0)

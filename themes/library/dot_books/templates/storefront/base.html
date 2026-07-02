@@ -90,6 +90,11 @@
   img.ko-fade-img.is-loaded { opacity: 1; }
   /* Subtle press feedback on every button-like control. ~30ms press, GPU. */
   .btn:active, button:not(.ck-input):active { transform: scale(0.97); transition: transform 80ms var(--ease-out); }
+  /* Friendly micro-lift on primary CTAs (hover only; press above still wins). */
+  .btn-primary { transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(14, 14, 14, 0.14); }
+  /* Text selection in the house ink — small, bookish detail. */
+  ::selection { background: var(--ink); color: var(--paper); }
   /* Animated nav underline on hover — reveals from left, GPU-cheap. */
   .nav a { position: relative; }
   .nav a::after {

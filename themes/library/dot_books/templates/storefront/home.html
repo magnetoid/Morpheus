@@ -30,12 +30,10 @@
           </p>
           {% endif %}
         </div>
+        {# Headline decodes once on load (data-decode-once); the old explainer paragraph described the widget, not the books — removed. #}
         <h2 class="display display-l hero-feature__headline">
-          A moving shelf of the books we want in your hands<span class="text-accent">.</span>
+          <span data-decode-once>A moving shelf of the books we want in your hands</span><span class="text-accent">.</span>
         </h2>
-        <p class="lede hero-feature__intro">
-          The hero now rotates through the strongest titles in your featured selection, so every visit surfaces more of the shelf without sacrificing clarity.
-        </p>
 
         <div class="hero-feature__copy-stage">
           {% for pick in hero_products %}
@@ -218,6 +216,18 @@
     line-height: 1.65;
     contain: layout;
   }
+  /* Decode letters (letterpress settle). .dw wraps each word so line breaks
+     stay at word boundaries while letters animate individually. Searching
+     letters sit in muted accent ink; on lock they pop into place. */
+  .dw { display: inline-block; }
+  .dl { display: inline-block; }
+  .dl--x { opacity: .45; color: var(--accent-ink); }
+  .dl--pop { animation: dl-pop 200ms var(--ease-out); }
+  @keyframes dl-pop {
+    0%   { transform: translateY(.08em) scale(1.14); opacity: .6; }
+    60%  { transform: translateY(-.02em) scale(1.02); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
   .hero-feature__price {
     font-family: var(--serif);
     font-size: clamp(1.2rem, 1.2vw + 1rem, 1.5rem);
@@ -358,6 +368,7 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    .dl--pop { animation: none !important; }
     .hero-feature__copy-panel,
     .hero-feature__copy-item,
     .hero-feature__media-panel,
@@ -397,65 +408,81 @@
         });
       }
 
-      // Per-letter "decode" scramble — each letter of the active slide's title
-      // and description rapidly cycles through glyphs then locks into place
-      // ("finding what letter fits"). Runs whenever a slide becomes active,
-      // including the first (show(0) below). textContent-only (never innerHTML)
-      // so titles/descriptions with <, & or ' render literally and safely.
+      // Per-letter "decode" scramble, letterpress edition — each letter renders
+      // as its own span, cycles through glyphs in muted ink while "searching",
+      // then LOCKS with a tiny settle pop (.dl--pop), like type slugs snapping
+      // into a composing stick. Words wrap as units (.dw), so line breaks stay
+      // at word boundaries. Only textContent is ever written (never innerHTML),
+      // and the element is restored to one plain text node when done.
       var SCRAMBLE_CHARS = 'abcdefghijklmnopqrstuvwxyz!<>-_/[]{}=+*?#';
+      function randChar() {
+        return SCRAMBLE_CHARS.charAt(Math.floor(Math.random() * SCRAMBLE_CHARS.length));
+      }
       function makeScramble(el) {
-        var frameRequest = null;
-        var queue = [];
-        var frame = 0;
-        function update() {
-          var output = '';
-          var complete = 0;
-          for (var i = 0; i < queue.length; i++) {
-            var q = queue[i];
-            if (frame >= q.end) {
-              complete++;
-              output += q.to;
-            } else if (frame >= q.start) {
-              if (!q.ch || Math.random() < 0.28) {
-                q.ch = SCRAMBLE_CHARS.charAt(Math.floor(Math.random() * SCRAMBLE_CHARS.length));
-              }
-              output += q.ch;
-            } else {
-              output += q.from;
-            }
-          }
-          el.textContent = output;
-          if (complete === queue.length) {
-            el.classList.remove('is-scrambling');
-            // Settled — expose the real text to assistive tech again.
-            el.removeAttribute('aria-hidden');
-          } else {
-            frame++;
-            frameRequest = requestAnimationFrame(update);
-          }
-        }
+        var raf = null;
+        var settleTimer = null;
         return function (newText) {
-          var oldText = el.textContent || '';
-          var len = Math.max(oldText.length, newText.length);
-          queue = [];
-          for (var i = 0; i < len; i++) {
-            var start = Math.floor(Math.random() * 24);
-            queue.push({
-              from: oldText.charAt(i),
-              to: newText.charAt(i),
-              start: start,
-              end: start + 12 + Math.floor(Math.random() * 28),
-              ch: null,
-            });
-          }
-          if (frameRequest) cancelAnimationFrame(frameRequest);
-          frame = 0;
-          el.classList.add('is-scrambling');
+          if (raf) cancelAnimationFrame(raf);
+          if (settleTimer) window.clearTimeout(settleTimer);
           // Decorative gibberish must not reach screen readers mid-animation;
-          // the settled text is re-exposed on completion (~1s). Reduced-motion
-          // skips scramble entirely, so this only applies to the animated path.
+          // the settled plain text is re-exposed on completion (~1s).
           el.setAttribute('aria-hidden', 'true');
-          update();
+          // Build word wrappers + letter spans via DOM APIs (no innerHTML).
+          el.textContent = '';
+          var letters = [];
+          var words = newText.split(' ');
+          for (var wi = 0; wi < words.length; wi++) {
+            var word = words[wi];
+            var w = document.createElement('span');
+            w.className = 'dw';
+            for (var ci = 0; ci < word.length; ci++) {
+              var l = document.createElement('span');
+              l.className = 'dl dl--x';
+              l.textContent = randChar();
+              var start = Math.floor(Math.random() * 20);
+              letters.push({
+                node: l,
+                to: word.charAt(ci),
+                start: start,
+                end: start + 10 + Math.floor(Math.random() * 26),
+                settled: false,
+              });
+              w.appendChild(l);
+            }
+            el.appendChild(w);
+            if (wi < words.length - 1) el.appendChild(document.createTextNode(' '));
+          }
+          var frame = 0;
+          function tick() {
+            var done = 0;
+            for (var i = 0; i < letters.length; i++) {
+              var q = letters[i];
+              if (q.settled) {
+                done++;
+              } else if (frame >= q.end) {
+                q.settled = true;
+                done++;
+                q.node.textContent = q.to;
+                q.node.classList.remove('dl--x');
+                q.node.classList.add('dl--pop');
+              } else if (frame >= q.start && Math.random() < 0.32) {
+                q.node.textContent = randChar();
+              }
+            }
+            if (done === letters.length) {
+              raf = null;
+              // Let the last pop play out, then collapse back to plain text
+              // (clean DOM for selection/copy) and re-expose to assistive tech.
+              settleTimer = window.setTimeout(function () {
+                el.textContent = newText;
+                el.removeAttribute('aria-hidden');
+              }, 220);
+              return;
+            }
+            frame++;
+            raf = requestAnimationFrame(tick);
+          }
+          tick();
         };
       }
       function scramblePanel(panel) {
@@ -551,6 +578,13 @@
 
       show(0);
       startAuto();
+
+      // The section headline decodes ONCE on load (its explainer paragraph was
+      // removed — the headline itself is the dynamic element now).
+      var once = root.querySelector('[data-decode-once]');
+      if (once && !prefersReduced) {
+        makeScramble(once)((once.textContent || '').trim());
+      }
     });
   })();
 </script>
