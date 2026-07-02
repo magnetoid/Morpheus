@@ -209,11 +209,14 @@
   .hero-feature__title {
     margin: 0;
     max-width: 11ch;
+    /* Isolate the per-letter scramble's rewrites from the surrounding layout. */
+    contain: layout;
   }
   .hero-feature__description {
     max-width: 52ch;
     color: var(--ink-2);
     line-height: 1.65;
+    contain: layout;
   }
   .hero-feature__price {
     font-family: var(--serif);
@@ -394,9 +397,86 @@
         });
       }
 
+      // Per-letter "decode" scramble — each letter of the active slide's title
+      // and description rapidly cycles through glyphs then locks into place
+      // ("finding what letter fits"). Runs whenever a slide becomes active,
+      // including the first (show(0) below). textContent-only (never innerHTML)
+      // so titles/descriptions with <, & or ' render literally and safely.
+      var SCRAMBLE_CHARS = 'abcdefghijklmnopqrstuvwxyz!<>-_/[]{}=+*?#';
+      function makeScramble(el) {
+        var frameRequest = null;
+        var queue = [];
+        var frame = 0;
+        function update() {
+          var output = '';
+          var complete = 0;
+          for (var i = 0; i < queue.length; i++) {
+            var q = queue[i];
+            if (frame >= q.end) {
+              complete++;
+              output += q.to;
+            } else if (frame >= q.start) {
+              if (!q.ch || Math.random() < 0.28) {
+                q.ch = SCRAMBLE_CHARS.charAt(Math.floor(Math.random() * SCRAMBLE_CHARS.length));
+              }
+              output += q.ch;
+            } else {
+              output += q.from;
+            }
+          }
+          el.textContent = output;
+          if (complete === queue.length) {
+            el.classList.remove('is-scrambling');
+            // Settled — expose the real text to assistive tech again.
+            el.removeAttribute('aria-hidden');
+          } else {
+            frame++;
+            frameRequest = requestAnimationFrame(update);
+          }
+        }
+        return function (newText) {
+          var oldText = el.textContent || '';
+          var len = Math.max(oldText.length, newText.length);
+          queue = [];
+          for (var i = 0; i < len; i++) {
+            var start = Math.floor(Math.random() * 24);
+            queue.push({
+              from: oldText.charAt(i),
+              to: newText.charAt(i),
+              start: start,
+              end: start + 12 + Math.floor(Math.random() * 28),
+              ch: null,
+            });
+          }
+          if (frameRequest) cancelAnimationFrame(frameRequest);
+          frame = 0;
+          el.classList.add('is-scrambling');
+          // Decorative gibberish must not reach screen readers mid-animation;
+          // the settled text is re-exposed on completion (~1s). Reduced-motion
+          // skips scramble entirely, so this only applies to the animated path.
+          el.setAttribute('aria-hidden', 'true');
+          update();
+        };
+      }
+      function scramblePanel(panel) {
+        if (!panel) return;
+        [
+          panel.querySelector('.hero-feature__title em'),
+          panel.querySelector('.hero-feature__description'),
+        ].forEach(function (el) {
+          if (!el) return;
+          // Cache the true final text once (before any scramble mutates it) so
+          // rapid navigation mid-animation always resolves to the real text.
+          if (el._finalText == null) el._finalText = (el.textContent || '').trim();
+          if (!el._run) el._run = makeScramble(el);
+          el._run(el._finalText);
+        });
+      }
+
       function show(idx) {
         idx = (idx + count) % count;
         setActive(copyPanels, idx);
+        if (!prefersReduced) scramblePanel(copyPanels[idx]);
         setActive(mediaPanels, idx, function (node, active) {
           node.tabIndex = active ? 0 : -1;
         });

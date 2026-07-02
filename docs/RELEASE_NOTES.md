@@ -10,6 +10,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.22 — 2026-07-02
+
+### Storefront
+- **Hero titles + descriptions "decode" on each slide.** As the home hero
+  rotates through featured books, each book's title and description animate
+  letter-by-letter — every character rapidly cycles through glyphs then locks
+  into place (a "finding the right letter" reveal), including on first load.
+  Framework-free (matches the vanilla dot_books theme), respects
+  `prefers-reduced-motion` (settles instantly), is layout-contained (no shift),
+  and never exposes the transient scramble to screen readers.
+
+---
+
 ## v0.2.21 — 2026-07-02
 
 ### Observability (error logging is now one core system — ADR 0025)
