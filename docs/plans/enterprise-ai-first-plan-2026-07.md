@@ -45,9 +45,12 @@ and can I see everything it did?" Today: partially, and no.
 - [ ] **Classify refund exceptions** (stripe_gateway.py bare `except`) — transient (network/5xx → retry) vs permanent (card/4xx → surface); stop stranding refunds.
 - [ ] **Stripe vault ops behind a circuit breaker** (create_setup_intent, list_payment_methods burn 20s timeouts per call during a Stripe outage).
 
-## Phase 3 — Deploy pipeline (the single biggest prod-safety win; ~1 wk + ops)
-Push-to-main = live prod deploy, no staging, no smoke, no rollback. Two 503
-outages already (PR #62/#64). Needs owner decisions, not just code:
+## Phase 3 — Deploy pipeline (**PARKED by owner, 2026-07-02**)
+Owner call: not important right now — acceptable risk for the current
+single-operator stage. Revisit when client instances go live (an outage then
+hits customers, not just dotbooks.store). Original scope kept below for that
+revisit. Push-to-main = live prod deploy, no staging, no smoke, no rollback.
+Two 503 outages already (PR #62/#64). Needs owner decisions, not just code:
 - [ ] Staging: a `staging` branch + second Coolify app (cheapest path), promote to main on green.
 - [ ] Post-deploy smoke: Coolify healthcheck → curl /healthz + a checkout-path probe; auto-rollback to previous image on failure.
 - [ ] Branch protection: require CI green on main (GitHub setting — `needs:` can't cross workflows).
