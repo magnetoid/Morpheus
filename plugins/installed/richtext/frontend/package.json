@@ -1,0 +1,21 @@
+{
+  "name": "morph-richtext",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Vanilla Lexical editor bundle for the Morpheus richtext plugin. Build only; not published.",
+  "scripts": {
+    "build": "esbuild editor.js --bundle --format=iife --global-name=MorphRichText --minify --legal-comments=none --outfile=../static/richtext/lexical-editor.bundle.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "lexical": "^0.21.0",
+    "@lexical/rich-text": "^0.21.0",
+    "@lexical/list": "^0.21.0",
+    "@lexical/link": "^0.21.0",
+    "@lexical/code": "^0.21.0",
+    "@lexical/history": "^0.21.0",
+    "@lexical/html": "^0.21.0",
+    "@lexical/selection": "^0.21.0",
+    "@lexical/utils": "^0.21.0"
+  }
+}

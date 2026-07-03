@@ -1,0 +1,20 @@
+/* Rich-text editor (Lexical) — shared dashboard component. */
+.rte { border:1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.rte-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:2px; padding:6px 8px; border-bottom:1px solid var(--border); background: var(--surface-2, var(--surface)); }
+.rte-btn { min-width:1.9rem; height:1.9rem; padding:0 .4rem; font-size:.8rem; border:1px solid transparent; border-radius:var(--radius-sm); background:transparent; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.rte-btn:hover { background: var(--surface-2); }
+.rte-btn.is-active { background: var(--surface-3); color: var(--text); }
+.rte-divider { width:1px; height:1.2rem; background:var(--border); margin:0 3px; }
+.rte-spacer { flex:1; }
+.rte-content { padding:.75rem .9rem; min-height:8rem; font-size:.9rem; line-height:1.6; color:var(--text); outline:none; }
+.rte-content:focus { outline:none; }
+.rte-content-short { min-height:4rem; }
+.rte-source { width:100%; min-height:8rem; padding:.75rem .9rem; font-family:ui-monospace,monospace; font-size:.8rem; border:0; background:var(--surface); color:var(--text); resize:vertical; }
+.rte-content .rte-h2 { font-size:1.25rem; font-weight:600; margin:.6rem 0 .3rem; }
+.rte-content .rte-h3 { font-size:1.1rem; font-weight:600; margin:.5rem 0 .3rem; }
+.rte-content .rte-ul { list-style:disc; padding-left:1.4rem; }
+.rte-content .rte-ol { list-style:decimal; padding-left:1.4rem; }
+.rte-content .rte-quote { border-left:3px solid var(--border); padding-left:.8rem; color:var(--text-muted); }
+.rte-content .rte-link { color:var(--brand); text-decoration:underline; }
+.rte-content .rte-img { max-width:100%; height:auto; border-radius:4px; }
+.rte-content pre { background:var(--surface-2); padding:.6rem .8rem; border-radius:var(--radius-sm); overflow-x:auto; font-family:ui-monospace,monospace; font-size:.8rem; }
