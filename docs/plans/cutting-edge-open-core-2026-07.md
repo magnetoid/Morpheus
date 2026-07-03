@@ -95,11 +95,22 @@ semantic memory, reflection, briefing, propose-only self-coding).
 
 ## The plan — five waves
 
-### Wave 1 — Truth & polish sprint (~2 weeks, all S/M effort)
-The cheapest credibility + conversion wins; several are one-file fixes.
-1. Render the dead slots: `{% storefront_blocks "checkout_extra" %}` (+
-   pdp_below_gallery, order_receipt_extra) — unlocks express-pay, address
-   autocomplete, upsells already written.
+### Wave 1 — Truth & polish sprint — **COMPLETE 2026-07-03**
+Shipped: fake-integrations removal, MCP admin write gate, cart quantity +
+promo codes + real totals + BEGIN_CHECKOUT on the live path, guest-cart
+recovery, AI-traffic attribution (+ AI-crawler accounting), one AI front
+door, honest error/empty states, mobile table unclipping — plus an
+audit-driven design-system consistency + micro-animation pass over the
+dashboard shell (4-lens audit, ~50 findings).
+1. ~~Render the dead slots~~ **CORRECTED after code inspection (2026-07-03):**
+   every `checkout_extra`/`global_head`/`pdp_below_gallery` contributor is a
+   facade — checkout_experience's block is a whole REPLACEMENT checkout form
+   (would render a second form inside the live checkout), media_3d /
+   post_checkout_upsell / ugc_reviews blocks gate on context keys no view
+   provides (render empty), brand_kit/motion emit `--morpheus-*` CSS + JS the
+   theme never consumes. Rendering the slots buys weight, not conversion.
+   → folded into Wave 5 portfolio cleanup (finish or retire each facade;
+   only then render its slot).
 2. Cart quantity edit + promo-code/gift-card field on the live one-page
    checkout; fire BEGIN_CHECKOUT there (cart_abandonment/analytics are
    currently blind on the default path).
