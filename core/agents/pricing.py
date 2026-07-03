@@ -24,6 +24,8 @@ _PRICES: dict[str, tuple[float, float]] = {
     'gemini-1.5-pro': (1.25, 5.00),
     'grok-4': (5.00, 15.00),
     'grok-2': (2.00, 10.00),
+    'deepseek-chat': (0.27, 1.10),
+    'deepseek-reasoner': (0.55, 2.19),
     'llama3.2': (0.0, 0.0),  # local / self-hosted — no per-token cost
 }
 

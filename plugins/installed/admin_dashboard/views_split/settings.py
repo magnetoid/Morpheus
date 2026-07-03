@@ -742,30 +742,58 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         'last_call': (active_card or {}).get('last_call'),
     }
 
-    # The agent_core panel — render it as a secondary schema-driven card
-    # below the providers (existing template fields helper handles it).
-    agent_core_card = None
-    ac_plugin = plugin_registry.get('agent_core')
-    if ac_plugin is not None and plugin_registry.settings_panel('agent_core') is not None:
-        panel = plugin_registry.settings_panel('agent_core')
-        agent_core_card = {
-            'plugin_name': 'agent_core',
-            'plugin': ac_plugin,
-            'panel': panel,
-            'fields': _build_panel_fields(ac_plugin, panel.schema),
-            'submit_url': '/dashboard/apps/agent_core/settings/',
-        }
-
+    # Feature toggles with a one-line description each (the schema carries
+    # these but the page used to discard them) + a `coming_soon` flag so
+    # unimplemented behaviours read honestly instead of as live switches.
+    # (key, label, description, coming_soon)
     feature_flags = [
-        ('enable_intent_engine', 'Intent engine'),
-        ('enable_semantic_search', 'Semantic search'),
-        ('enable_dynamic_pricing', 'Dynamic pricing'),
-        ('enable_zero_shot_catalog', 'Zero-shot catalog'),
-        ('enable_autonomous_operator', 'Autonomous operator'),
-        ('enable_synthetic_testing', 'Synthetic testing'),
-        ('agent_purchase_requires_approval', 'Agent purchases require approval'),
+        (
+            'enable_intent_engine',
+            'Intent engine',
+            'Parse shopper messages into structured intents (search, compare, buy) for the storefront agent.',
+            False,
+        ),
+        (
+            'enable_semantic_search',
+            'Semantic search',
+            'Rank catalog search by meaning (embeddings) alongside keywords, so synonyms and phrasing still match.',
+            False,
+        ),
+        (
+            'enable_dynamic_pricing',
+            'Dynamic pricing',
+            'Let rules adjust prices by demand/margin. Off by default — it only acts once you enable it.',
+            False,
+        ),
+        (
+            'enable_zero_shot_catalog',
+            'Zero-shot catalog',
+            'Auto-classify and tag new products from their title + description, no training data required.',
+            False,
+        ),
+        (
+            'enable_autonomous_operator',
+            'Autonomous operator',
+            'Allow Linda to run multi-step background jobs on her own. Writes still pass her confirm/approval gates.',
+            False,
+        ),
+        (
+            'enable_synthetic_testing',
+            'Synthetic testing',
+            'Generate synthetic shopper sessions to load-test the agent. Coming soon — not yet wired.',
+            True,
+        ),
+        (
+            'agent_purchase_requires_approval',
+            'Agent purchases require approval',
+            'Require your explicit approval before any AI agent completes a purchase. Recommended on.',
+            False,
+        ),
     ]
-    features = [{'key': k, 'label': lbl, 'value': bool(cfg.get(k))} for k, lbl in feature_flags]
+    features = [
+        {'key': k, 'label': lbl, 'description': desc, 'coming_soon': cs, 'value': bool(cfg.get(k))}
+        for k, lbl, desc, cs in feature_flags
+    ]
 
     return render(
         request,
@@ -778,7 +806,6 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
             'active_provider': active,
             'active_banner': active_banner,
             'features': features,
-            'agent_core_card': agent_core_card,
             'active_nav': 'settings',
         },
     )

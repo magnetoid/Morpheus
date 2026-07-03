@@ -208,6 +208,52 @@ def probe_ollama(*, api_key: str = '', base_url: str = '') -> dict:
     return _ok(models)
 
 
+# ── OpenAI-compatible providers (DeepSeek / apikey.fun / Hermes) ────────────
+# All three expose the standard OpenAI `GET {base}/models` → {data:[{id}]}
+# shape, so one helper covers them. Without these entries their dashboard
+# "Test" / "Fetch models" buttons returned "unknown provider".
+
+
+def _probe_openai_compatible(*, api_key: str, base_url: str, default_base: str, label: str) -> dict:
+    if not api_key:
+        return _fail(f'{label} API key not set.')
+    base = (base_url or default_base).rstrip('/')
+    data = _http_get(f'{base}/models', headers={'Authorization': f'Bearer {api_key}'})
+    if '_error' in data:
+        return _fail(str(data['_error']))
+    items = data.get('data') or []
+    models = [{'id': m.get('id'), 'label': m.get('id')} for m in items if m.get('id')]
+    models.sort(key=lambda m: m['id'])
+    return _ok(models)
+
+
+def probe_deepseek(*, api_key: str, base_url: str = '') -> dict:
+    return _probe_openai_compatible(
+        api_key=api_key,
+        base_url=base_url,
+        default_base='https://api.deepseek.com',
+        label='DeepSeek',
+    )
+
+
+def probe_apikey(*, api_key: str, base_url: str = '') -> dict:
+    return _probe_openai_compatible(
+        api_key=api_key,
+        base_url=base_url,
+        default_base='https://api.apikey.fun/v1',
+        label='apikey.fun',
+    )
+
+
+def probe_hermes(*, api_key: str, base_url: str = '') -> dict:
+    return _probe_openai_compatible(
+        api_key=api_key,
+        base_url=base_url,
+        default_base='https://openrouter.ai/api/v1',
+        label='Hermes',
+    )
+
+
 _PROBES = {
     'openai': probe_openai,
     'anthropic': probe_anthropic,
@@ -216,6 +262,9 @@ _PROBES = {
     'grok': probe_grok,
     'packy': probe_packy,
     'ollama': probe_ollama,
+    'deepseek': probe_deepseek,
+    'apikey': probe_apikey,
+    'hermes': probe_hermes,
 }
 
 
