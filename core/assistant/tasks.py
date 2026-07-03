@@ -14,6 +14,16 @@ from celery import shared_task
 logger = logging.getLogger('morpheus.assistant')
 
 
+@shared_task(bind=True, time_limit=600, soft_time_limit=540)
+def daily_briefing(self) -> dict:
+    """Generate Linda's morning briefing (see core/assistant/briefing.py).
+    No-ops when the feature is off, no provider is configured, or today's
+    briefing already exists."""
+    from core.assistant.briefing import run_daily_briefing
+
+    return run_daily_briefing()
+
+
 @shared_task(bind=True, time_limit=300, soft_time_limit=240)
 def decay_assistant_memories(self) -> dict:
     """Forget memories whose decayed relevance has fallen near zero.

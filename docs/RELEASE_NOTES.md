@@ -27,6 +27,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
   gap is remembered (`tool_gap.*`) — groundwork for Linda proposing her own
   new tools (propose-only, owner-approved) in an upcoming release.
 
+### Linda's morning briefing (self-learning Release 2, opt-in)
+- **Linda now works before you do.** Turn on Settings → General → *Linda's
+  daily briefing* and every morning (06:00 UTC) a read-only agent reviews
+  your last 24 hours — sales, errors, stock, reviews — and posts a short
+  briefing on the dashboard home with up to three suggested actions. Each
+  action is an "ask Linda" button that pre-fills the chat; nothing is ever
+  executed without you. Distinct from Linda's Pulse (rule-based alert
+  cards): the briefing is an open-ended, tool-grounded review.
+
 ---
 
 ## v0.2.26 — 2026-07-02

@@ -89,6 +89,14 @@ New module `core/assistant/reflection.py`:
 
 ## Release 2 — proactive daily briefing
 
+**Overlap audit vs Linda's Pulse** (`ai_assistant/services/pulse.py`): Pulse is
+rule-based — six hard-coded signals produce ranked alert *cards*; the LLM only
+rephrases copy. The briefing is an *agentic* review — a tool-using Worker run
+producing a narrative + delegable actions, discovering things no Pulse rule
+covers. Distinct concepts, distinct owners: Pulse stays in the ai_assistant
+plugin (disable-able alert cards); the briefing belongs to Linda herself
+(core, like `ai_page_help`). Both render on home; neither imports the other.
+
 - New Celery beat task `core.assistant.tasks.daily_briefing` (default 06:00
   store-local, registered in `morph/celery.py`). Skips when disabled or no
   provider configured.

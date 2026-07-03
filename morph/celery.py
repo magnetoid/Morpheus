@@ -54,6 +54,13 @@ app.conf.beat_schedule = {
         'task': 'core.tasks.process_outbox',
         'schedule': crontab(minute='*'),  # every minute
     },
+    # Linda's morning briefing — an agentic read-only review of the last 24h,
+    # rendered on the dashboard home. No-ops unless Settings → General →
+    # "Linda's daily briefing" is on AND an AI provider is configured.
+    'assistant-daily-briefing': {
+        'task': 'core.assistant.tasks.daily_briefing',
+        'schedule': crontab(hour=6, minute=0),  # 06:00 UTC daily
+    },
 }
 
 # Self-improvement engine — registers ingest/analyze/digest tasks.

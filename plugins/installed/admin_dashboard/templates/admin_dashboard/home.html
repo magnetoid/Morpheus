@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% load morph_dashboard %}
+{% load static morph_dashboard %}
 {% block title %}Home · Morpheus{% endblock %}
 
 {% block content %}
@@ -201,6 +201,31 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+  {% endif %}
+
+  {% if briefing %}
+  <div class="card" style="margin-bottom: 1rem;">
+    <div class="card-padded flex items-center justify-between border-b border-[color:var(--border)]">
+      <div class="flex items-center gap-3">
+        <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+        <div>
+          <h2 class="font-semibold">Linda's morning briefing</h2>
+          <p class="text-xs text-[color:var(--text-muted)]">{{ briefing.date }} · the last 24 hours, reviewed</p>
+        </div>
+      </div>
+      <a href="/dashboard/assistant/" class="btn btn-ghost text-xs">Open Linda</a>
+    </div>
+    <div class="card-padded">
+      <p class="text-sm" style="white-space: pre-line; margin: 0;">{{ briefing.body }}</p>
+      {% if briefing.actions %}
+      <div class="flex flex-wrap gap-2 mt-3">
+        {% for a in briefing.actions %}
+        <a href="/dashboard/assistant/?ask={{ a.prompt|urlencode }}" class="btn btn-secondary text-xs">{{ a.label }} →</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
   </div>
   {% endif %}
 

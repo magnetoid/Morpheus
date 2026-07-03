@@ -42,6 +42,15 @@ class StoreSettings(models.Model):
         'looking at and advise what to do. Uses your configured AI provider.',
     )
 
+    # Linda's daily briefing — a read-only agent reviews the last 24h each
+    # morning and posts a narrative + suggested actions on the dashboard home.
+    ai_daily_briefing = models.BooleanField(
+        default=False,
+        help_text='Every morning Linda reviews the last 24 hours (sales, errors, '
+        'stock, reviews) and posts a briefing with suggested actions on the '
+        'dashboard home. Uses your configured AI provider.',
+    )
+
     # GDPR / ePrivacy master switch. ON (default) surfaces the EU compliance
     # features: the cookie-consent banner + storefront self-service data export
     # (Art. 15) and account erasure (Art. 17). Turn OFF for instances outside

@@ -68,6 +68,15 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
         'has_keys': False,
     }
 
+    # Linda's daily briefing (core assistant — not a plugin, so a direct
+    # core import is the right direction). None when the toggle is off,
+    # nothing is generated yet, or the newest briefing is stale.
+    briefing = None
+    with _safe_block('home.briefing'):
+        from core.assistant.briefing import latest_briefing
+
+        briefing = latest_briefing()
+
     setup_steps = _compute_setup_steps()
     setup_done = sum(1 for s in setup_steps if s['done'])
     setup_total = len(setup_steps)
@@ -91,6 +100,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
             'setup_total': setup_total,
             'setup_all_done': setup_all_done,
             'activity': activity,
+            'briefing': briefing,
             'pulse': panels.get('pulse', []),
             'active_nav': 'home',
             'period': period,

@@ -201,6 +201,41 @@ class LearnedSkill(models.Model):
         )
 
 
+class AssistantBriefing(models.Model):
+    """Linda's daily morning briefing — one row per day.
+
+    Produced by ``core.assistant.briefing.run_daily_briefing`` (beat, 06:00
+    UTC): a read-only Worker reviews the last 24h and returns a short
+    narrative plus up to 3 delegable actions. Rendered on the dashboard home
+    when Settings → General → *Linda's daily briefing* is on. Distinct from
+    Linda's Pulse (rule-based alert cards in ai_assistant) — see
+    docs/plans/linda-self-learning-2026-07.md.
+    """
+
+    STATUS_CHOICES = [
+        ('ok', 'OK'),
+        ('failed', 'Failed'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    date = models.DateField(unique=True, db_index=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='ok')
+    body = models.TextField(blank=True)  # plain-text narrative (bullet lines)
+    actions = models.JSONField(default=list, blank=True)  # [{label, prompt}]
+    error = models.CharField(max_length=500, blank=True)
+    provider = models.CharField(max_length=40, blank=True)
+    model = models.CharField(max_length=100, blank=True)
+    duration_ms = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'assistant'
+        ordering = ['-date']
+
+    def __str__(self) -> str:
+        return f'AssistantBriefing({self.date}/{self.status})'
+
+
 class CodeProposal(models.Model):
     """A piece of code Linda DRAFTED for herself (uplift Phase 4 — self-written
     modules). It is statically scanned but NEVER executed and NEVER written to

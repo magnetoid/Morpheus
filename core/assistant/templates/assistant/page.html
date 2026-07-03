@@ -521,6 +521,17 @@
   }
   input.addEventListener('input', autoresize);
 
+  /* ?ask= prefill — the daily-briefing action buttons (dashboard home) link
+     here with the request pre-typed; the merchant reviews and presses send. */
+  if (input) {
+    var askParam = new URLSearchParams(window.location.search).get('ask');
+    if (askParam) {
+      input.value = askParam;
+      input.focus();
+      autoresize();
+    }
+  }
+
   // Enter sends, Shift+Enter inserts newline.
   input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) {
