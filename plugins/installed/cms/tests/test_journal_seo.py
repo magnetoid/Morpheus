@@ -40,3 +40,19 @@ class JournalDictSeoTests(TestCase):
     def test_author_falls_back_to_default(self):
         page = Page.objects.create(slug='n3', title='N3', state='published', body='x', metadata={})
         self.assertEqual(_journal_dict(page)['author'], 'dot books staff')
+
+    def test_date_label_shows_real_publish_date_and_read_time(self):
+        from datetime import UTC, datetime
+
+        page = Page.objects.create(
+            slug='n4',
+            title='N4',
+            state='published',
+            body='<p>' + ('word ' * 400) + '</p>',  # ~400 words → 2 min read
+            publish_at=datetime(2026, 7, 3, 9, 0, tzinfo=UTC),
+            metadata={'category': 'journal'},
+        )
+        d = _journal_dict(page)
+        # Real date (was "%B · %-d min read" — day-of-month posing as read time).
+        self.assertEqual(d['date_label'], 'July 3, 2026 · 2 min read')
+        self.assertEqual(d['published_at'], page.publish_at)

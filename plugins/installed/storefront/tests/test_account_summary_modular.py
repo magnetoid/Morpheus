@@ -68,10 +68,8 @@ class AccountSummaryModularityTests(TestCase):
         from core.hooks import MorpheusEvents, hook_registry
 
         quals = {
-            getattr(h, '__qualname__', '')
-            for (_prio, h, _mode) in hook_registry._handlers.get(
-                MorpheusEvents.ACCOUNT_SUMMARY_FIELDS, []
-            )
+            getattr(hook_registry._unpack(entry)[1], '__qualname__', '')
+            for entry in hook_registry._handlers.get(MorpheusEvents.ACCOUNT_SUMMARY_FIELDS, [])
         }
         self.assertTrue(any('GiftCardsPlugin' in q for q in quals), 'gift_cards not subscribed')
         self.assertTrue(

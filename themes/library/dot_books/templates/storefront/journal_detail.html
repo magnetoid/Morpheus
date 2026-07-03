@@ -15,7 +15,7 @@
     <p class="meta" style="margin-bottom: 1.25rem;">
       <a href="/journal/" style="color: var(--muted);">Journal</a>
     </p>
-    <p class="meta">{{ entry.date_label }}</p>
+    <p class="meta">{% if entry.published_at %}<time datetime="{{ entry.published_at|date:'c' }}">{{ entry.date_label }}</time>{% else %}{{ entry.date_label }}{% endif %}</p>
     <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
       {{ entry.title }}<span class="text-accent">.</span>
     </h1>

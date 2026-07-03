@@ -24,6 +24,12 @@ def get_live_page(slug: str):
     return page
 
 
+def _read_minutes(body: str) -> int:
+    """Honest reading-time estimate: strip tags, count words, ~200 wpm."""
+    words = len(re.sub(r'<[^>]+>', ' ', body or '').split())
+    return max(1, round(words / 200))
+
+
 def _journal_dict(page) -> dict:
     pub = page.publish_at or page.updated_at or page.created_at
     meta = page.metadata or {}
@@ -47,7 +53,12 @@ def _journal_dict(page) -> dict:
         'id': str(page.id),
         'slug': page.slug,
         'title': page.title,
-        'date_label': pub.strftime('%B · %-d min read') if pub else '',
+        # Visible publish date + honest reading time — e.g. "July 3, 2026 · 4 min
+        # read". (The old format was "%B · %-d min read", which rendered the DAY
+        # OF MONTH as a fake reading time and showed no actual date.)
+        'date_label': (
+            f'{pub.strftime("%B %-d, %Y")} · {_read_minutes(page.body)} min read' if pub else ''
+        ),
         'excerpt': page.excerpt or '',
         'body': page.body or '',
         'published_at': pub,
