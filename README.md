@@ -6,23 +6,38 @@
 
 **Describe your shop in one sentence → a real store in ~20 seconds.**
 **Flip any feature on or off like an app.**
-**Hand the back office to an AI that actually runs it.**
+**Hand the back office to an AI staff member who learns your store, briefs you every morning — and proposes her own upgrades.**
 
 A Shopify-grade store you genuinely **own** — where AI is a built-in co-worker, not a
 monthly add-on, and every feature is a plugin you can switch off without leaving a trace.
+When the AI wants to change *code*, the change is reviewed by a **consensus panel of
+independent LLMs** and then by **you** — never merged by a machine alone.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live-dotbooks.store-ff5722.svg)](https://dotbooks.store)
 [![Plugins](https://img.shields.io/badge/plugins-60%2B%20active-blue.svg)](#whats-inside)
 [![Modular](https://img.shields.io/badge/modular-theme%20slots%20%E2%86%92%20plugin%20fills-06b6d4.svg)](#the-modularity-contract)
 [![MCP](https://img.shields.io/badge/MCP-ready-7c3aed.svg)](#agentic-commerce-surfaces)
+[![Self-learning](https://img.shields.io/badge/AI-self--learning%20%2B%20consensus--reviewed-e11d48.svg)](#6-self-learning--self-coding-live-propose-only)
 [![SEO / AEO](https://img.shields.io/badge/SEO%20%2B%20AEO-2026%20stack-eab308.svg)](#discovery--seo--aeo)
 [![One-prompt bootstrap](https://img.shields.io/badge/bootstrap-1%20prompt%20%E2%86%92%20live%20store-22c55e.svg)](#one-prompt-store-bootstrap)
 [![Stack](https://img.shields.io/badge/django%206-postgres-2563eb.svg)](#tech-stack)
 
 ### [▶ See it live](https://dotbooks.store) · [🚀 Deploy in minutes](#quick-start) · [🧠 How it works](#the-mental-model)
 
-[Quick start](#quick-start) · [The mental model](#the-mental-model) · [The modularity contract](#the-modularity-contract) · [What's inside](#whats-inside) · [The agent layer](#the-agent-layer) · [Agentic commerce surfaces](#agentic-commerce-surfaces) · [Discovery / SEO / AEO](#discovery--seo--aeo) · [Roadmap](#roadmap) · [Showcase](#showcase) · [Docs](#documentation)
+[Quick start](#quick-start) · [The mental model](#the-mental-model) · [The modularity contract](#the-modularity-contract) · [What's inside](#whats-inside) · [Meet Linda](#the-agent-layer) · [Grow a shop fast](#grow-a-shop-fast) · [Agentic commerce](#agentic-commerce-surfaces) · [Discovery / SEO / AEO](#discovery--seo--aeo) · [Roadmap](#roadmap) · [Docs](#documentation)
+
+</div>
+
+---
+
+<div align="center">
+
+### 🧠 The one-liner
+
+**Morpheus is a complete commerce platform where every feature is a switch-off-able plugin, and the back office ships with Linda — an AI staff member who runs on a real agent kernel, remembers your store, works before you wake up, and writes her own new tools under a consensus-of-LLMs review gate that ends at *your* approval.**
+
+*Not a chatbot tab bolted onto a store. A store that was built for an operator who happens to be an AI.*
 
 </div>
 
@@ -50,7 +65,9 @@ Saleor, Medusa, and Vendure are excellent self-hostable platforms. Morpheus's be
 | Agentic Commerce Protocol (`/.well-known/acp.json`, OpenAI/Stripe) | ✅ | — | — | — |
 | Staff SSO (OIDC + SAML 2.0) **that cannot bypass MFA** | ✅ | — | — | — |
 | Always-on hard-coded merchant assistant (Linda) | ✅ | — | — | — |
-| Self-improving agent (skills from experience + gated self-written tools) | ✅ | — | — | — |
+| **Self-learning agent** (semantic memory + reflection loop + auto-retiring skills) | ✅ | — | — | — |
+| **Proactive daily briefing** (agent reviews your last 24h before you log in) | ✅ | — | — | — |
+| **Self-coding under multi-LLM consensus + owner approval** | ✅ | — | — | — |
 | Hybrid retrieval (BM25 + dense + RRF) on storefront search | ✅ | — | — | — |
 | EU AI Act decision-provenance audit trail | ✅ | — | — | — |
 | **Auto-generated Google Web Stories per product (AMP)** | ✅ | — | — | — |
@@ -374,10 +391,10 @@ This is what makes Morpheus different from every other open-source commerce plat
 | **Reads — Ecommerce** | `orders.search`, `orders.get`, `db.recent_orders`, `products.search`, `products.get`, `customers.search`, `customers.get`, `analytics.summary`, `analytics.top_products`, `cms.pages`, `email.templates`, `media.search`, `metafields.list_for` |
 | **Reads — System** | `db.list_models`, `db.describe_model`, `db.count_rows`, `settings.list` (secrets auto-redacted), `markets.list`, `platform.circuit_breakers` |
 | **Writes — gated by `confirmed=True`** | `orders.update_status`, `orders.cancel`, `orders.add_note`, `products.update_status`, `products.update_price`, `customers.add_note`, `cms.publish_page`, `cms.unpublish_page`, `metafields.set`, `metafields.delete` |
-| **Memory (cross-session)** | `memory.recall`, `memory.remember`, `memory.forget` |
-| **Self-learning** | `skills.distill` (turn a successful run into a reusable skill), `skills.list`, `skills.record_outcome` (auto-prunes skills that underperform) |
+| **Memory (cross-session, semantic)** | `memory.recall`, `memory.remember`, `memory.forget` — embedded on write; recall ranks by similarity to the current question, not just recency |
+| **Self-learning** | `skills.distill` (turn a successful run into a reusable skill), `skills.list`, `skills.record_outcome`; plus an automatic post-run **reflection loop** that writes lessons to memory + retires chronically-failing skills |
 | **Code composition** | `run_python` — compose read/safe tools in a sandboxed Python script (no import/file/network; 3 s wall; 50-call cap) |
-| **Self-development — Linda-only, gated** | `code.draft_tool`, `code.evaluate_proposal` (multi-model consensus), `code.list_proposals`, `code.apply_proposal` — draft → static safety-scan → consensus → owner-approved apply to a git branch. **Dormant** unless `MORPHEUS_SELF_UPDATE_ENABLED` |
+| **Self-coding — Linda-only, gated** | `code.draft_tool`, `code.evaluate_proposal` (multi-LLM consensus), `code.list_proposals`, `code.apply_proposal` — draft → static safety-scan → consensus panel → owner approval queue → apply to a git branch. Fed automatically by the tool-gap flywheel. **Propose-only; apply dormant** unless `MORPHEUS_SELF_UPDATE_ENABLED` (ADR 0014 + 0028) |
 | **Platform ops — require approval** | `plugins.toggle`, `settings.set`, `theme.activate`, `workflows.run`, `updates.status`, `updates.apply`, `dashboard.navigate` |
 | **Delegate** | `delegate.spawn_workers` / `poll_workers` / `wait_for_workers` — fan out N generic Workers in parallel; `delegate.invoke_agent`, `delegate.list_agents` |
 
@@ -426,29 +443,32 @@ Schedule any registered agent to run autonomously on a fixed interval. Backed by
 
 [`/dashboard/agents/observability/`](https://dotbooks.store/dashboard/agents/observability/) — per-agent runs / tokens / tool calls / avg duration over a configurable window, state breakdown, top tools, recent failures linking to run detail.
 
-### 6. Self-learning + self-development (the closed loop — gated)
+### 6. Self-learning + self-coding (live, propose-only)
 
-Linda doesn't just *call* tools — she improves her own toolkit, behind the safety
-boundary ([`core/safety.py`](core/safety.py)) and a default-off kill switch:
+**This is the frontier bit — and as of v0.2.27 the loop is closed and running, not a diagram.** Linda doesn't just *call* tools; she learns from what she did, gets ahead of you, and proposes her own upgrades — all inside the safety boundary ([`core/safety.py`](core/safety.py)), with the code path ending at *your* click.
 
-- **Self-authored skills.** After a successful multi-step run, `skills.distill` turns
-  the trajectory into a persisted, runtime-registered `Skill`; per-skill outcomes are
-  tracked and chronic underperformers auto-pruned.
-- **`run_python` composition.** Multi-tool pipelines run as one sandboxed script
-  (read/safe tools only — no import/file/network, 3 s wall, 50-call cap) instead of
-  turn-by-turn calls.
-- **Self-written code — gated, dormant.** `code.draft_tool` drafts a new tool's source
-  → static safety scan ([`codegen.scan_source`](core/assistant/codegen.py): dangerous
-  calls, hallucinated imports, SQL-fstring, tool-shape) → multi-model **consensus**
-  review ([`consensus.py`](core/assistant/consensus.py), 2/3 quorum) → **owner**
-  approval → `code.apply_proposal` writes it to a git **branch** (never `main`, never
-  the live working tree) under [`plugins/installed/linda_generated/`](plugins/installed/linda_generated/).
-  The whole apply path is **OFF** unless ops sets `MORPHEUS_SELF_UPDATE_ENABLED`; the
-  signed-off policy is **ADR 0014**. Self-dev tools are Linda-only via a `selfdev`
-  scope the generic Worker never carries.
+**She remembers — semantically.** [`LindaMemory`](core/assistant/models.py) stores cross-session facts, embedded on write. Recall is ranked against *what you're asking right now* (cosine similarity blended with recency + source-confidence decay), so "where do my parcels leave from" surfaces "warehouse is in Berlin" even with zero shared words.
 
-The spine: **propose → sandbox → verify → consensus → owner-gate → audit → rollback** —
-a self-improving agent on a live store, kept safe at every step.
+**She learns from every background job.** When a delegated Worker finishes, a cheap [reflection pass](core/assistant/reflection.py) judges the outcome: durable lessons are written back to memory, verdicts update each learned skill's success/failure counters, and a skill that keeps failing **retires itself** — and Linda remembers *why*, so she can tell you. Capability gaps she hits get logged (`tool_gap.*`) as fuel for the next step.
+
+**She works before you do.** Turn on *Settings → General → Linda's daily briefing* and every morning a **read-only** agent (write tools physically hidden by scope filtering) reviews your last 24h — sales, errors, stock, reviews — and posts a briefing on the dashboard home with up to three one-click "ask Linda" actions. Nothing is ever executed without you.
+
+**She writes her own tools — you hold the pen.** This is the headline, and it's deliberately conservative:
+
+```
+tool gap seen ≥ 2×  →  Linda drafts a new @tool module
+   →  static safety scan   (dangerous calls, hallucinated imports, SQL-fstring, tool shape)
+   →  CONSENSUS OF LLMs     (an independent panel of your configured providers reviews it; 2-of-3 quorum)
+   →  YOUR approval queue   (superuser-only, at /dashboard/assistant/proposals/ — source + scan + each model's verdict, side by side)
+   →  git BRANCH            (never main, never the live tree; only when MORPHEUS_SELF_UPDATE_ENABLED is set)
+   →  you review + merge
+```
+
+**Why a consensus of LLMs?** A single model reviewing its own code is a rubber stamp. Morpheus runs the proposal past a **panel of independent providers** ([`consensus.py`](core/assistant/consensus.py) — OpenAI *and* Anthropic *and* Gemini/Grok/…, whichever you've configured), each judging separately; it needs a **2-of-3 quorum** to even reach your queue. LLM-written code ships measurably more bugs than human code — so Morpheus treats Linda's output as untrusted-third-party code and makes it survive a jury *and* a judge (you) before a single line lands. Every decision is audited (`assistant.proposal_*`). Self-coding tools are Linda-only via a `selfdev` scope the generic Worker never carries; the whole apply path is **OFF** unless ops opts in. Policy: **ADR 0014** + **ADR 0028** (propose-only).
+
+**"Smarter" is measured, not vibed.** A golden-task evals harness (`manage.py run_assistant_evals`, 20 tasks: tool grounding, refusal to invent numbers, write-gate discipline) scores Linda against a baseline so a self-learned change can't silently regress her.
+
+The spine: **remember → reflect → propose → sandbox → consensus-of-LLMs → owner-gate → audit → measure**. A genuinely self-improving agent on a live store, bounded at every step.
 
 ---
 
@@ -508,6 +528,7 @@ Full integration guide: [`docs/AGENT_PROTOCOLS.md`](docs/AGENT_PROTOCOLS.md).
 
 ### Brand voice config
 
+
 [`/dashboard/settings/ai/`](https://dotbooks.store/dashboard/settings/ai/) — set `brand_name`, `brand_audience`, `brand_tone`, `brand_voice_guidelines` once. The fragment is automatically prepended to:
 
 - The dashboard's `call_llm()` helper (product description drafts, email rewrites, …)
@@ -518,6 +539,28 @@ One edit, propagated everywhere — Shopify's "Magic" parity from a single confi
 ### Authoritative cart totals
 
 [`orders.cart_totals`](plugins/installed/orders/graphql/queries.py) GraphQL query returns the canonical `(subtotal, shipping, tax, discount, total)` for any cart + address — used by the storefront and any external AI agent that wants to quote a price before checkout. Driven by the same `OrderService.calculate_cart_breakdown()` that runs at order create, so quotes match charges exactly.
+
+---
+
+## Grow a shop fast
+
+Morpheus isn't just a place to *host* a store — it's a stack for *growing* one, with the whole loop under one roof and an AI operator watching it. The pieces below ship in the default install as plugins; toggle what you don't want.
+
+**① Launch in seconds, not weeks.** One sentence → a live catalog with brand voice, categories, and priced products (see [one-prompt bootstrap](#one-prompt-store-bootstrap)). Import an existing store from Shopify or WooCommerce with `manage.py morph_import`.
+
+**② Get *found* — by search engines and by AI.** The [`seo`](plugins/installed/seo/) plugin is a full 2026 discovery stack: JSON-LD on every page-type, sitemap index + image/news sub-sitemaps, IndexNow same-second push, a 15-bot AI-crawler matrix, `/llms.txt`, per-product markdown export, and auto-generated **Google Web Stories** ([`webstories`](plugins/installed/webstories/)). AI-referred retail traffic is the fastest-growing acquisition channel of 2026 — Morpheus makes your catalog machine-readable so ChatGPT, Perplexity, and Google AI Overviews can recommend it. Full detail: [Discovery / SEO / AEO](#discovery--seo--aeo).
+
+**③ Sell on every channel from one catalog.** A proven channel-plugin family generates real feeds for **Google Shopping, Meta, TikTok, Pinterest, Microsoft, Amazon, Reddit, and Snapchat**, with a blended-MER attribution view across all of them ([`channels`](plugins/installed/channels/)). Add a channel = add a plugin, not a re-platform.
+
+**④ Convert the traffic.** Three-tier storefront search (Typesense → hybrid BM25+dense RRF → SKU/metafield fallback), personalized product rails, a guest-first one-page checkout with wallets, promo codes and gift cards, cart quantity editing, and a rules-based [`promotions`](plugins/installed/promotions/) engine (percent / BOGO / tiered / free-shipping with an audit trail).
+
+**⑤ Keep them — retention is where the margin is.** Loyalty points, referrals, gift cards, subscriptions, cart-abandonment recovery, and a consent-aware GA4/GTM + server-side tracking plugin ([`tracking`](plugins/installed/tracking/)) with Consent Mode v2 done right.
+
+**⑥ Be sellable to AI shopping agents.** The MCP cluster + UCP / ACP / Trusted-Agent discovery surfaces (above) mean an OpenAI or Perplexity shopping agent can find your catalog, quote an authoritative price, and hand a ready cart to a human to check out on *your* storefront — the exact "discovery in AI, checkout on the merchant site" posture the market converged on in 2026.
+
+**⑦ Let Linda run the growth engine.** She reviews it every morning, remembers what works, and — under the consensus + approval gate — proposes the tools she's missing to run it better. The [full growth + AI-first roadmap](docs/plans/cutting-edge-open-core-2026-07.md) is public.
+
+> **The thesis:** a solo founder or a lean agency can stand up a store, make it discoverable to humans *and* agents, wire every ad channel, and hand day-to-day operations to an AI — from one open-source codebase they own outright.
 
 ---
 
@@ -645,20 +688,20 @@ A live tracker of how Morpheus compares to Saleor, the previous open-source benc
 
 ## Where Saleor is still better (honest)
 
-We won't pretend. Saleor has ~5 years of production mileage on thousands of stores; Morpheus is younger. If you're picking a platform today, here's the candid trade-off so you can choose with eyes open:
+We won't pretend. Saleor has ~5 years of production mileage on thousands of stores; Morpheus is younger. This table is a **living scorecard** — items move to "closing" or drop off as we ship. If you're picking a platform today, here's the candid trade-off so you can choose with eyes open:
 
-| Area | Reality |
-|---|---|
-| **Maturity & runtime hours** | Saleor has shipped through edge cases Morpheus hasn't seen yet. Recent internal audits surfaced real concurrency bugs (promotion `usage_limit` race, gift-card redemption inside a broad except, refund-state race) that Saleor patched years ago. We're closing them — see [`CHANGELOG.md`](CHANGELOG.md) — but the lead is real. |
-| **GraphQL completeness** | Saleor's GraphQL *is* the API — exhaustive, versioned, with announced breaking-change cadence. Morpheus has GraphQL for catalog/orders/cart but plenty of operations still live in Django views. Building a non-trivial headless storefront against Morpheus today means mixing GraphQL + REST + occasional template scraping. |
-| **Multi-warehouse / multi-currency depth** | Saleor has stock-reservation across warehouses, channel-specific pricing, country-specific tax stacks, FX-aware refunds at multiple rate snapshots. Morpheus has the basics, not the edges. |
-| **Public API contract** | Saleor's schema is versioned; Morpheus has no public-API stability guarantee yet. We're working on that ([`docs/API_STABILITY.md`](docs/API_STABILITY.md)) but you can't build a third-party app on Morpheus today and assume the schema won't shift. |
-| **Performance at scale** | Saleor has been load-tested and tuned (caching layers, optimized indexes, CDN strategies). Morpheus hasn't published p95 numbers at 100 req/s yet. |
-| **Developer ecosystem** | Stack Overflow questions, third-party tutorials, hosted-app marketplace, recruiters who know the name. Morpheus is one team — that's changing, but it's the truth today. |
-| **Enterprise compliance posture** | Saleor Cloud has GDPR / PCI / SOC2 work done. Morpheus ships the `rbac` + `audit` + `observability` plugins but no third-party attestations. |
-| **Webhook ecosystem** | Saleor webhooks have Zapier / Make / n8n recipes. Morpheus has the `webhooks_ui` plugin with the same primitives but the third-party recipe library is still thin — see [`docs/WEBHOOK_RECIPES.md`](docs/WEBHOOK_RECIPES.md) for the starters. |
+| Area | Reality | Trend |
+|---|---|:---:|
+| **Maturity & runtime hours** | Saleor has shipped through edge cases Morpheus hasn't seen yet. Internal audits surfaced real concurrency bugs (promotion `usage_limit` race, gift-card redemption inside a broad except, refund-state race) that Saleor patched years ago. The named ones are fixed — see [`CHANGELOG.md`](CHANGELOG.md) — and every agent MCP write now runs through a scope→rate-limit→approval→audit chain, but the total runtime lead is real. | 🟡 closing |
+| **GraphQL completeness** | Saleor's GraphQL *is* the API — exhaustive, versioned, with announced breaking-change cadence. Morpheus has GraphQL for catalog / orders / cart (incl. authoritative `cartTotals` + coupon/gift-card mutations) but some operations still live in Django views, so a headless build mixes GraphQL + REST today. Closing this is a tracked mid-term item. | 🟡 closing |
+| **Multi-warehouse / multi-currency depth** | Saleor has stock-reservation across warehouses, channel-specific pricing, country-specific tax stacks, FX-aware refunds at multiple rate snapshots. Morpheus has the basics (cheapest-warehouse allocator, `ProductChannelListing`, display-currency context) but not all the edges. | 🔴 real gap |
+| **Public API contract** | Saleor's schema is versioned; Morpheus's stability contract is young. [`scripts/check_api_stability.py`](scripts/check_api_stability.py) now CI-enforces the `morpheus.*` SDK surface (blocks silent breaking changes), but the public GraphQL schema doesn't yet carry a versioned deprecation window — see [`docs/API_STABILITY.md`](docs/API_STABILITY.md). | 🟡 closing |
+| **Performance at scale** | Saleor has been load-tested and tuned (caching layers, optimized indexes, CDN strategies). Morpheus hasn't published p95 numbers at 100 req/s yet. | 🔴 real gap |
+| **Developer ecosystem** | Stack Overflow questions, third-party tutorials, hosted-app marketplace, recruiters who know the name. Morpheus is one team + AI-assisted contributors — that's changing, but it's the truth today. The bet: **AI-native DX** (a Dev MCP, `morph doctor`, agent-installable skills) is a tracked strategic move. | 🟡 closing |
+| **Enterprise compliance posture** | Saleor Cloud has GDPR / PCI / SOC2 work done. Morpheus ships `rbac` + `audit` + `observability` and a **GDPR master switch** (toggle the compliance surfaces on/off per jurisdiction), but no third-party attestations yet. | 🟡 closing |
+| **Webhook ecosystem** | Saleor webhooks have Zapier / Make / n8n recipes. Morpheus has the `webhooks_ui` plugin with the same signed, ret/replay primitives but the third-party recipe library is still thin — see [`docs/WEBHOOK_RECIPES.md`](docs/WEBHOOK_RECIPES.md) for the starters. | 🟡 closing |
 
-**One-line summary**: Morpheus is the better pick for a new merchant launching this year with a small/mid catalog and a desire for AI-driven onboarding. Saleor is the safer pick for a $50M+ GMV merchant migrating off Shopify Plus today. We're working on closing both gaps — track progress in the [enterprise roadmap](ENTERPRISE_ROADMAP.md).
+**One-line summary**: Morpheus is the better pick for a new merchant or agency launching this year with a small/mid catalog who wants AI-driven onboarding, an AI operator, and code they own. Saleor is the safer pick for a $50M+ GMV merchant migrating off Shopify Plus *today*. We're closing both gaps deliberately — track progress in the [cutting-edge roadmap](docs/plans/cutting-edge-open-core-2026-07.md) and the [enterprise roadmap](ENTERPRISE_ROADMAP.md).
 
 ---
 
@@ -666,14 +709,17 @@ We won't pretend. Saleor has ~5 years of production mileage on thousands of stor
 
 A live snapshot of where we are and where we're going. Items move between tiers as they ship; this list is rebuilt with intent every couple of weeks. Anything marked **[done]** is already in `main`. (Recently shipped items have moved into [What's new](#whats-new-recent-waves).)
 
+The current north-star is the **[cutting-edge open-core plan](docs/plans/cutting-edge-open-core-2026-07.md)** — a five-wave agenda distilled from a 26-agent market-research + codebase audit (mid-2026 trends × honest audit). Wave 1 (truth & polish) is landing now.
+
 ### Now (mid-2026)
 
 | Track | Status | Notes |
 |---|---|---|
-| Robots-meta consolidation across cart/checkout/account/search (~19 templates) | in progress | Extend `seo_meta` with `noindex=True` flag → remove duplicated `<meta name="robots">` everywhere. Deferred from the SEO bundle because it exceeded the per-batch safety threshold. |
+| **Linda self-learning loop (v0.2.27)** | **[done]** | Semantic memory recall, post-run reflection, opt-in daily briefing, self-coding proposals queue under LLM consensus + owner approval, evals harness. See [§6](#6-self-learning--self-coding-live-propose-only). |
+| **Wave 1 conversion + trust fixes** | in progress | Cart quantity editing, shopper promo codes on the live checkout, real cart totals, MCP admin writes routed through governance, fabricated-integration stubs removed. |
+| GDPR master switch (toggle compliance surfaces per jurisdiction) | **[done]** | Settings → General → GDPR / ePrivacy features. |
 | Web Stories v2 — admin per-panel editor + theme overlay | queued | Reorder panels, edit captions / titles, set background overlay tint per merchant. v1 is auto-only. |
-| Polling endpoint for Linda JSON mode (concurrency Phase 1) | queued | Async `/api/llm-tasks/` so the synchronous assistant path doesn't hold a gunicorn thread for 12 s LLM calls. |
-| API stability contract for catalog/orders/cart GraphQL | queued | `docs/API_STABILITY.md` skeleton exists; we need versioned breaking-change cadence on the public surface. |
+| API stability contract for catalog/orders/cart GraphQL | in progress | `scripts/check_api_stability.py` now CI-guards the SDK surface; versioned deprecation window on the public GraphQL schema is next. |
 
 ### Mid term (H2 2026)
 
@@ -923,6 +969,8 @@ PRs welcome. The bar:
 
 ## What's new (recent waves)
 
+- **Linda self-learning wave (v0.2.27)** — the assistant's dormant self-improvement machinery is now a closed, running loop. **Semantic memory:** `LindaMemory` recall is ranked by similarity to the current question (embedded on write), not flat recency. **Reflection loop:** every background Worker run is judged afterward — lessons flow back to memory, learned-skill success/failure counters finally get written, and chronically-failing skills auto-retire (with a note explaining why). **Proactive daily briefing:** an opt-in, read-only agent reviews the last 24h and posts findings + one-click actions on the dashboard home. **Self-coding, propose-only:** repeat tool-gaps become drafted `@tool` proposals that pass a static safety scan → a **consensus panel of independent LLMs** (2-of-3 quorum) → a superuser approval queue at `/dashboard/assistant/proposals/` → a git branch (never `main`; apply gated behind `MORPHEUS_SELF_UPDATE_ENABLED`). **Evals harness:** `manage.py run_assistant_evals` scores Linda against 20 golden tasks so changes can't silently regress. Policy: [ADR 0028](.torsor/architecture/decisions/) (propose-only). Every decision audited.
+- **Wave 1 conversion + trust fixes** — cart line **quantity editing** (−/+ steppers), shopper-facing **promo codes** on the live one-page checkout (the coupon engine existed with no UI), **real cart totals** on the summary (fixed two live bugs where the one-page total and item names rendered blank), `BEGIN_CHECKOUT` now fires on the default checkout path (analytics + cart-abandonment were blind), the **MCP admin write catalog** is reachable at last (it was rejected before governance could run — now routed through scope + rate-limit + approval + audit), and the fabricated "20+ integrations" stubs that could have made Linda report actions that never happened were removed. **Journal posts show a real publish date + honest read time.**
 - **3D bookstore walkthrough** — new [`bookstore_3d`](plugins/installed/bookstore_3d/) plugin. An immersive first-person 3D bookstore at `/walkthrough/`, rendered *inside* the active dot_books theme (header / nav / footer) with a full-bleed three.js canvas loaded from a CDN ES-module importmap — no build step. A pure plugin: disable it and the route is simply gone.
 - **Lumina Book Creator landing** — new [`lumina`](plugins/installed/lumina/) plugin. A storefront landing page at `/create/` promoting "write a book with AI + voice", plus a "Write a book" link contributed into the theme's `nav_primary_extra` slot. Lives entirely in the plugin; disabling it removes both the page and the nav entry — a clean demonstration of the modularity contract.
 - **Advanced payment gateways** — new [`advanced_payments`](plugins/installed/advanced_payments/) plugin. Two extra `PaymentGateway` adapters registered into the existing `GatewayRegistry`: a sandbox **test** gateway (always succeeds — for end-to-end checkout testing) and **cash on delivery** (`cod`). Shoppers can pick them at checkout; merchants disable the plugin to remove them.
