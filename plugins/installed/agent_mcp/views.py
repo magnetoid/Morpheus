@@ -274,12 +274,16 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
     args = (params or {}).get('arguments', {}) or {}
     if not name:
         raise _RpcError(_E_PARAMS, 'missing `name`')
-    if name not in _PUBLIC_TOOL_NAMES:
-        raise _RpcError(_E_METHOD, f'tool not exposed: {name}')
 
+    # Exposure is decided by the ACTIVE CLUSTER's whitelist (same resolution
+    # tools/list uses): legacy /mcp/v1/ still resolves to the curated public
+    # reads, while /mcp/admin/v1/ resolves to the full catalog. A hardcoded
+    # `name not in _PUBLIC_TOOL_NAMES` pre-check here used to reject every
+    # admin write BEFORE scope/approval/rate governance could run — the admin
+    # server could list Linda's write tools but never execute one.
     tool = next((t for t in _public_tools() if t.name == name), None)
     if tool is None:
-        raise _RpcError(_E_METHOD, f'tool not found: {name}')
+        raise _RpcError(_E_METHOD, f'tool not exposed: {name}')
 
     # Scope enforcement. The presented token's `mcp_scopes` were stashed
     # on a thread-local during rpc_endpoint(); legacy / wildcard tokens
