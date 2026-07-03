@@ -1,0 +1,21 @@
+{% if active %}
+<div class="rte" data-richtext
+     data-allow-headings="{{ allow_headings|yesno:'true,false' }}"
+     data-allow-images="{{ allow_images|yesno:'true,false' }}"
+     data-upload-url="{{ upload_url }}"
+     {% if expose_as %}data-expose-as="{{ expose_as }}"{% endif %}
+     data-aria-label="{{ aria_label }}">
+  <div class="rte-toolbar" role="toolbar" aria-label="{{ aria_label }} formatting">
+    {% for action, title, label in toolbar %}
+      {% if action == '_divider' %}<span class="rte-divider"></span>
+      {% elif action == '_spacer' %}<span class="rte-spacer"></span>
+      {% else %}<button type="button" class="rte-btn" data-rte="{{ action }}" title="{{ title }}">{{ label|safe }}</button>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="rte-content" data-rte-mount aria-label="{{ aria_label }}"></div>
+  <textarea class="rte-source" hidden></textarea>
+  <textarea name="{{ name }}" id="{{ field_id }}" class="rte-hidden" hidden>{{ value }}</textarea>
+</div>
+{% else %}
+<textarea name="{{ name }}" id="{{ field_id }}" class="input w-full" rows="10">{{ value }}</textarea>
+{% endif %}
