@@ -41,7 +41,7 @@ from .account import (
     account_returns,
     order_confirmation,
 )
-from .cart import cart, cart_add, cart_remove
+from .cart import cart, cart_add, cart_remove, cart_update
 from .catalog import (
     # helpers re-exported for any callers that imported them via views.*
     _apply_search,
@@ -62,8 +62,10 @@ from .catalog import (
 )
 from .checkout import (
     checkout,
+    checkout_apply_coupon,
     checkout_apply_gift_card,
     checkout_payment,
+    checkout_remove_coupon,
     checkout_remove_gift_card,
     checkout_review,
     checkout_shipping,
@@ -106,11 +108,14 @@ __all__ = [
     'cart',
     'cart_add',
     'cart_remove',
+    'cart_update',
     'checkout',
     'checkout_shipping',
     'checkout_review',
     'checkout_payment',
+    'checkout_apply_coupon',
     'checkout_apply_gift_card',
+    'checkout_remove_coupon',
     'checkout_remove_gift_card',
     # account
     'account_home',

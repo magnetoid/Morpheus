@@ -19,6 +19,7 @@ urlpatterns = [
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),
     path('cart/', views.cart, name='cart'),
     path('cart/add/<uuid:product_id>/', views.cart_add, name='cart_add'),
+    path('cart/update/<uuid:item_id>/', views.cart_update, name='cart_update'),
     path('cart/remove/<uuid:item_id>/', views.cart_remove, name='cart_remove'),
     path('checkout/', views.checkout, name='checkout'),
     path('checkout/shipping/', views.checkout_shipping, name='checkout_shipping'),
@@ -31,6 +32,8 @@ urlpatterns = [
         views.checkout_one_page,
         name='checkout_one_page',
     ),
+    path('checkout/coupon/apply/', views.checkout_apply_coupon, name='checkout_apply_coupon'),
+    path('checkout/coupon/remove/', views.checkout_remove_coupon, name='checkout_remove_coupon'),
     path(
         'checkout/gift-card/apply/', views.checkout_apply_gift_card, name='checkout_apply_gift_card'
     ),

@@ -178,6 +178,7 @@ def product_list(request):
     if sort == 'for_you':
         try:
             from plugins.installed.personalisation.services import rank_for_visitor
+
             products = rank_for_visitor(request, products, surface='catalog_plp')
         except Exception:
             pass
@@ -1037,6 +1038,7 @@ def category_detail(request, slug):
     if sort == 'for_you':
         try:
             from plugins.installed.personalisation.services import rank_for_visitor
+
             products = rank_for_visitor(request, products, surface='category_plp')
         except Exception:
             pass
@@ -1130,10 +1132,11 @@ def collection_detail(request, slug):
     )
     page_obj = Paginator(qs, 24).get_page(request.GET.get('page') or 1)
     products = list(page_obj.object_list)
-    
+
     if sort == 'for_you':
         try:
             from plugins.installed.personalisation.services import rank_for_visitor
+
             products = rank_for_visitor(request, products, surface='collection_plp')
         except Exception:
             pass

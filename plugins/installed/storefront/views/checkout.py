@@ -96,10 +96,36 @@ def _checkout_base_context(request):
                 )
         except Exception:  # noqa: BLE001
             pass
+    cart = cart_data.get('cart') or {}
     return {
-        'cart': cart_data.get('cart') or {},
+        'cart': cart,
+        'totals': _cart_totals(request, cart),
         'form': saved,
     }
+
+
+def _cart_totals(request, cart: dict) -> dict:
+    """Real breakdown (discount/shipping/tax/total) for the summary rows.
+    Empty dict on any failure — templates fall back to subtotal-only."""
+    cart_id = (cart.get('id') or request.session.get('cart_id') or '').strip()
+    if not cart_id:
+        return {}
+    try:
+        from ._queries import CART_TOTALS_QUERY
+
+        data = internal_graphql(CART_TOTALS_QUERY, variables={'cartId': cart_id}, request=request)
+        totals = (data or {}).get('cartTotals') or {}
+        # Drop zero rows so templates never render a "$0.00 Shipping/Tax/
+        # Discount" line (e.g. before an address is entered).
+        for key in ('discount', 'shipping', 'tax'):
+            try:
+                if float((totals.get(key) or {}).get('amount') or 0) == 0:
+                    totals.pop(key, None)
+            except (TypeError, ValueError):
+                totals.pop(key, None)
+        return totals
+    except Exception:  # noqa: BLE001 — summary rows are progressive enhancement
+        return {}
 
 
 def _available_shipping_rates(request, addr):
@@ -200,6 +226,58 @@ def checkout_apply_gift_card(request):
         )
     back = request.META.get('HTTP_REFERER', '/checkout/') or '/checkout/'
     return redirect(back)
+
+
+def checkout_apply_coupon(request):
+    """POST /checkout/coupon/apply/ — apply a promo code and bounce back.
+
+    An invalid/expired code redirects back with ``?coupon=invalid`` so the
+    form can show an inline error (the theme renders no messages framework).
+    """
+    if request.method != 'POST':
+        return redirect('/checkout/quick/')
+    code = (request.POST.get('code') or '').strip()
+    cart_id = request.session.get('cart_id') or ''
+    back = request.META.get('HTTP_REFERER', '/checkout/quick/') or '/checkout/quick/'
+    back = back.split('?')[0]
+    if cart_id and code:
+        mutation = """
+        mutation Apply($input: ApplyCouponInput!) {
+          applyCoupon(input: $input) { errors { code message } }
+        }
+        """
+        data = (
+            internal_graphql(
+                mutation,
+                variables={'input': {'cartId': cart_id, 'code': code}},
+                request=request,
+            )
+            or {}
+        )
+        errors = ((data.get('applyCoupon') or {}).get('errors')) or []
+        if errors:
+            return redirect(f'{back}?coupon=invalid')
+    return redirect(back)
+
+
+def checkout_remove_coupon(request):
+    """POST /checkout/coupon/remove/ — clear the applied promo code."""
+    if request.method != 'POST':
+        return redirect('/checkout/quick/')
+    cart_id = request.session.get('cart_id') or ''
+    if cart_id:
+        mutation = """
+        mutation Remove($input: ApplyCouponInput!) {
+          removeCoupon(input: $input) { errors { code message } }
+        }
+        """
+        internal_graphql(
+            mutation,
+            variables={'input': {'cartId': cart_id, 'code': ''}},
+            request=request,
+        )
+    back = request.META.get('HTTP_REFERER', '/checkout/quick/') or '/checkout/quick/'
+    return redirect(back.split('?')[0])
 
 
 def checkout_remove_gift_card(request):

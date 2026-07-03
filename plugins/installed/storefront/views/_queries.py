@@ -56,3 +56,18 @@ query Cart {
   }
 }
 """
+
+# Real money math for the summary rows — the same breakdown order finalize
+# uses (promotions + coupon + gift card + shipping + tax), NOT a template-side
+# re-computation. Fetched alongside CART_QUERY wherever a summary renders.
+CART_TOTALS_QUERY = """
+query CartTotals($cartId: ID!) {
+  cartTotals(cartId: $cartId) {
+    subtotal { amount currency }
+    discount { amount currency }
+    shipping { amount currency }
+    tax { amount currency }
+    total { amount currency }
+  }
+}
+"""

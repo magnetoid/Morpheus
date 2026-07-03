@@ -153,31 +153,60 @@
       {% for item in cart.items %}
       <div style="display:flex; gap:1rem; padding:.65rem 0; border-bottom:1px solid var(--rule);">
         <div style="flex:1;">
-          <p style="font-family: var(--serif); font-size: .98rem;">{{ item.productName }}</p>
+          <p style="font-family: var(--serif); font-size: .98rem;">{{ item.product.name }}</p>
           <p class="meta">{{ item.quantity }} × {{ item.unitPrice|money }}</p>
         </div>
         <p style="font-family: var(--serif); font-weight: 600;">{{ item.totalPrice|money }}</p>
       </div>
       {% endfor %}
+
+      {# Promo code — real coupon engine; totals rows use the order-finalize breakdown. #}
+      {% if cart.coupon %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding-top:.75rem;">
+        <p class="meta">Code <strong>{{ cart.coupon.code }}</strong> applied</p>
+        <form method="post" action="{% url 'storefront:checkout_remove_coupon' %}" style="margin:0;">
+          {% csrf_token %}
+          <button type="submit" class="btn-link" style="background:none; border:0; padding:0; font-size:.8rem; color:var(--muted); cursor:pointer;">Remove</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="post" action="{% url 'storefront:checkout_apply_coupon' %}"
+            style="display:flex; gap:.5rem; padding-top:.75rem;">
+        {% csrf_token %}
+        <input type="text" name="code" placeholder="Promo code" autocomplete="off"
+               style="flex:1; min-width:0; border:1px solid var(--rule); border-radius:4px; padding:.45rem .6rem; font-size:.9rem; background:var(--paper);">
+        <button type="submit" class="btn btn-ghost" style="white-space:nowrap;">Apply</button>
+      </form>
+      {% if request.GET.coupon == 'invalid' %}
+      <p class="meta" style="color:var(--accent-ink); margin-top:.35rem;">That code isn't valid or has expired.</p>
+      {% endif %}
+      {% endif %}
+
       <div style="display:flex; justify-content:space-between; padding-top: 1rem;">
         <p>Subtotal</p>
         <p>{{ cart.subtotal|money }}</p>
       </div>
-      {% if cart.shipping %}
+      {% if cart.coupon and totals.discount %}
       <div style="display:flex; justify-content:space-between;">
-        <p>Shipping</p>
-        <p>{{ cart.shipping|money }}</p>
+        <p>Discount</p>
+        <p>−{{ totals.discount|money }}</p>
       </div>
       {% endif %}
-      {% if cart.tax %}
+      {% if totals.shipping %}
+      <div style="display:flex; justify-content:space-between;">
+        <p>Shipping</p>
+        <p>{{ totals.shipping|money }}</p>
+      </div>
+      {% endif %}
+      {% if totals.tax %}
       <div style="display:flex; justify-content:space-between;">
         <p>Tax</p>
-        <p>{{ cart.tax|money }}</p>
+        <p>{{ totals.tax|money }}</p>
       </div>
       {% endif %}
       <div style="display:flex; justify-content:space-between; padding-top: .75rem; margin-top: .75rem; border-top: 1px solid var(--rule);">
         <p style="font-family: var(--serif); font-size: 1.1rem;">Total</p>
-        <p style="font-family: var(--serif); font-size: 1.4rem; font-weight: 600;">{{ cart.total|money }}</p>
+        <p style="font-family: var(--serif); font-size: 1.4rem; font-weight: 600;">{% if totals.total %}{{ totals.total|money }}{% else %}{{ cart.subtotal|money }}{% endif %}</p>
       </div>
     </aside>
 

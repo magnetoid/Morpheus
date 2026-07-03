@@ -38,7 +38,19 @@
                   </div>
                 </div>
               </td>
-              <td style="text-align:right; padding: 1.25rem 0;">{{ item.quantity }}</td>
+              <td style="text-align:right; padding: 1.25rem 0;">
+                <form method="post" action="{% url 'storefront:cart_update' item.id %}"
+                      style="display:inline-flex; align-items:center; gap:.5rem; border:1px solid var(--rule); border-radius:999px; padding:.15rem .35rem;">
+                  {% csrf_token %}
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'-1' }}"
+                          aria-label="Decrease quantity of {{ item.product.name }}"
+                          style="background:none; border:0; cursor:pointer; width:1.6rem; height:1.6rem; color:var(--ink); font-size:1rem; line-height:1;">−</button>
+                  <span style="min-width:1.4rem; text-align:center; font-variant-numeric:tabular-nums;">{{ item.quantity }}</span>
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'1' }}"
+                          aria-label="Increase quantity of {{ item.product.name }}"
+                          style="background:none; border:0; cursor:pointer; width:1.6rem; height:1.6rem; color:var(--ink); font-size:1rem; line-height:1;">+</button>
+                </form>
+              </td>
               <td style="text-align:right; padding: 1.25rem 0; font-weight: 600;">{{ item.totalPrice|money }}</td>
             </tr>
             {% endfor %}
@@ -54,11 +66,16 @@
           <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--ink-2);">
             <span>Subtotal</span><span>{{ cart.subtotal|money }}</span>
           </div>
+          {% if cart.coupon and totals.discount %}
+          <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--ink-2);">
+            <span>Discount <span class="meta">({{ cart.coupon.code }})</span></span><span>−{{ totals.discount|money }}</span>
+          </div>
+          {% endif %}
           <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--muted); font-size: 0.9rem;">
             <span>Shipping</span><span>Calculated at checkout</span>
           </div>
           <div style="display:flex; justify-content:space-between; padding: 1rem 0; border-top: 1px solid var(--rule); font-family: var(--serif); font-size: 1.25rem; font-weight: 600; margin-top: 1rem;">
-            <span>Total</span><span>{{ cart.subtotal|money }}</span>
+            <span>Total</span><span>{% if totals.total %}{{ totals.total|money }}{% else %}{{ cart.subtotal|money }}{% endif %}</span>
           </div>
         </div>
         {% storefront_blocks "cart_summary_extra" %}

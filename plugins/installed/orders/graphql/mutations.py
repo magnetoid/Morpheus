@@ -206,6 +206,21 @@ class OrdersMutationExtension:
             logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
         return CartPayload(cart=cart, errors=[])
 
+    @strawberry.mutation(description='Remove the applied coupon from a cart.')
+    def remove_coupon(self, input: ApplyCouponInput) -> CartPayload:
+        from plugins.installed.orders.models import Cart
+
+        try:
+            cart = Cart.objects.get(pk=input.cart_id)
+        except Cart.DoesNotExist:
+            return CartPayload(
+                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
+            )
+        if cart.coupon_id is not None:
+            cart.coupon = None
+            cart.save(update_fields=['coupon', 'updated_at'])
+        return CartPayload(cart=cart, errors=[])
+
     @strawberry.mutation(
         description='Apply a gift card to a cart. Discount is applied at order time.'
     )

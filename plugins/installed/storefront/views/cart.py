@@ -20,8 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 def cart(request):
+    from .checkout import _cart_totals
+
     data = internal_graphql(CART_QUERY, request=request)
-    return render(request, 'storefront/cart.html', {'cart': (data or {}).get('cart', {})})
+    cart_data = (data or {}).get('cart', {}) or {}
+    return render(
+        request,
+        'storefront/cart.html',
+        {'cart': cart_data, 'totals': _cart_totals(request, cart_data)},
+    )
 
 
 def cart_remove(request, item_id):
@@ -63,6 +70,53 @@ def cart_remove(request, item_id):
         logger.exception('REMOVE_FROM_CART hook failed')
 
     messages.success(request, 'Removed from cart.')
+    return redirect('/cart/')
+
+
+def cart_update(request, item_id):
+    """Set a cart line's quantity (POST `quantity`; 0 removes the line).
+
+    Same ownership check as ``cart_remove`` — the item must belong to the
+    requesting visitor's cart. Clamped to 0–99. No-JS friendly: the cart
+    page's − / + stepper buttons submit this form with quantity±1.
+    """
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    qs = CartItem.objects.select_related('cart', 'product')
+    if request.user.is_authenticated:
+        qs = qs.filter(cart__customer=request.user)
+    else:
+        qs = qs.filter(
+            cart__customer__isnull=True,
+            cart__session_key=request.session.session_key or '',
+        )
+    item = get_object_or_404(qs, pk=item_id)
+
+    try:
+        quantity = int((request.POST.get('quantity') or '').strip())
+    except ValueError:
+        quantity = item.quantity
+    quantity = max(0, min(99, quantity))
+
+    if quantity == 0:
+        cart_obj, product, removed = item.cart, item.product, item.quantity
+        item.delete()
+        try:
+            hook_registry.fire(
+                MorpheusEvents.REMOVE_FROM_CART,
+                cart=cart_obj,
+                product=product,
+                quantity=removed,
+                customer=request.user if request.user.is_authenticated else None,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception('REMOVE_FROM_CART hook failed')
+        messages.success(request, 'Removed from cart.')
+    elif quantity != item.quantity:
+        item.quantity = quantity
+        item.save(update_fields=['quantity'])
+
     return redirect('/cart/')
 
 

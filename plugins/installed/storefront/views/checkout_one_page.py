@@ -39,9 +39,37 @@ from plugins.installed.storefront.views.checkout import (
 logger = logging.getLogger('morpheus.storefront.checkout_one_page')
 
 
+def _fire_begin_checkout(request) -> None:
+    """Fire BEGIN_CHECKOUT once per session (same flag as the legacy 3-step
+    flow, so switching flows can't double-fire). This is the LIVE path —
+    cart_abandonment + analytics were blind on it. Fail-soft: analytics must
+    never break checkout."""
+    try:
+        if request.session.get('checkout_started'):
+            return
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from plugins.installed.orders.models import Cart  # noqa: PLC0415
+
+        cart_obj = None
+        if request.user.is_authenticated:
+            cart_obj = Cart.objects.filter(customer=request.user).first()
+        elif request.session.session_key:
+            cart_obj = Cart.objects.filter(session_key=request.session.session_key).first()
+        if cart_obj is not None:
+            hook_registry.fire(
+                MorpheusEvents.BEGIN_CHECKOUT,
+                cart=cart_obj,
+                customer=request.user if request.user.is_authenticated else None,
+            )
+            request.session['checkout_started'] = True
+    except Exception:  # noqa: BLE001
+        logger.warning('BEGIN_CHECKOUT hook failed', exc_info=True)
+
+
 def checkout_one_page(request):
     """Single-screen checkout — render or submit."""
     if request.method == 'GET':
+        _fire_begin_checkout(request)
         return _render_form(request, addr=None, rate_id='', error='')
 
     addr = _collect_address(request)
