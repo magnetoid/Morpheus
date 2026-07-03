@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% load static morph_dashboard %}
+{% load static morph morph_dashboard %}
 {% block title %}Home · Morpheus{% endblock %}
 
 {% block content %}
@@ -14,19 +14,17 @@
     {% include "admin_dashboard/_date_range_picker.html" %}
   </div>
 
-  {# Merchant Ops command bar — submits to the Ops console with the #}
-  {# message pre-filled; console auto-submits on load. Single biggest #}
-  {# AI-first signal on the home page. #}
-  <form method="get" action="/dashboard/apps/agent_core/console/" class="card card-padded"
+  {# ONE AI front door: the command bar is Linda. It used to post to a #}
+  {# second AI surface (the agent_core console) that 404'd when that #}
+  {# plugin was disabled — Linda lives in core and is always reachable. #}
+  <form method="get" action="/dashboard/assistant/" class="card card-padded"
         style="background: linear-gradient(135deg, var(--surface-2), var(--surface)); border-color: var(--border);">
     <div class="flex items-center gap-3">
-      <span class="inline-flex items-center justify-center"
-            style="width: 2rem; height: 2rem; border-radius: 999px; background: var(--ink); color: var(--paper); flex-shrink: 0;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z"/></svg>
-      </span>
+      <img src="{% static 'assistant/linda-avatar.jpg' %}" alt=""
+           style="width: 2rem; height: 2rem; border-radius: 999px; object-fit: cover; flex-shrink: 0;">
       <div class="flex-1 min-w-0">
-        <label class="block text-xs font-medium mb-1 text-[color:var(--text-muted)]">Ask Merchant Ops</label>
-        <input type="text" name="msg" class="input w-full"
+        <label class="block text-xs font-medium mb-1 text-[color:var(--text-muted)]">Ask Linda</label>
+        <input type="text" name="ask" class="input w-full"
                placeholder="e.g. How many active products do we have? What sold best this week?"
                autocomplete="off" required
                style="font-size: 0.95rem; background: var(--surface); border-color: var(--border);">
@@ -34,11 +32,13 @@
       <button type="submit" class="btn btn-primary whitespace-nowrap" style="align-self: flex-end;">Ask</button>
     </div>
     <div class="flex flex-wrap gap-2 mt-3 ml-11">
-      <a href="/dashboard/apps/store_bootstrap/start/" class="pill pill-info" style="font-size:.72rem; font-weight:600;">Bootstrap a store</a>
-      <a href="/dashboard/apps/agent_core/console/?msg=Catalog%20status" class="pill pill-neutral" style="font-size:.72rem;">Catalog status</a>
-      <a href="/dashboard/apps/agent_core/console/?msg=Revenue%20for%20the%20last%207%20days" class="pill pill-neutral" style="font-size:.72rem;">Revenue (7d)</a>
-      <a href="/dashboard/apps/agent_core/console/?msg=Which%20products%20are%20low%20stock" class="pill pill-neutral" style="font-size:.72rem;">Low stock</a>
-      <a href="/dashboard/apps/agent_core/console/?msg=Audit%20SEO%20across%20the%20catalogue" class="pill pill-neutral" style="font-size:.72rem;">SEO audit</a>
+      {% plugin_enabled "store_bootstrap" as bootstrap_enabled %}{% if bootstrap_enabled %}
+      <a href="/dashboard/apps/store_bootstrap/start/" class="pill pill-info pill-xs" style="font-weight:600;">Bootstrap a store</a>
+      {% endif %}
+      <a href="/dashboard/assistant/?ask=Give%20me%20a%20snapshot%20of%20the%20catalog" class="pill pill-neutral pill-xs">Catalog status</a>
+      <a href="/dashboard/assistant/?ask=Revenue%20for%20the%20last%207%20days" class="pill pill-neutral pill-xs">Revenue (7d)</a>
+      <a href="/dashboard/assistant/?ask=Which%20products%20are%20low%20on%20stock%3F" class="pill pill-neutral pill-xs">Low stock</a>
+      <a href="/dashboard/assistant/?ask=Audit%20SEO%20across%20the%20catalogue" class="pill pill-neutral pill-xs">SEO audit</a>
     </div>
   </form>
 
@@ -151,18 +151,22 @@
         <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="message-square" class="h-4 w-4"></i> Assistant</div>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Chat with the kernel agent — ask anything about the store.</p>
       </a>
+      {% plugin_enabled "agent_core" as agent_core_enabled %}{% if agent_core_enabled %}
       <a href="/dashboard/apps/agent_core/agents/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
         <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="bot" class="h-4 w-4"></i> Agents</div>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">{{ ai_summary.agent_count }} active · {{ ai_summary.recent_runs }} runs in last 7d</p>
       </a>
+      {% endif %}
       <a href="{% url 'admin_dashboard:ai_insights' %}" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
         <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="lightbulb" class="h-4 w-4"></i> Insights</div>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">{{ ai_summary.unread_insights }} unread</p>
       </a>
+      {% if agent_core_enabled %}
       <a href="/dashboard/apps/agent_core/runs/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
         <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="activity" class="h-4 w-4"></i> Ops console</div>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Background runs, schedules, observability.</p>
       </a>
+      {% endif %}
     </div>
   </div>
 
