@@ -40,8 +40,8 @@ class ActivityFeedModularityTests(TestCase):
         from core.hooks import MorpheusEvents, hook_registry
 
         quals = {
-            getattr(h, '__qualname__', '')
-            for (_prio, h, _mode) in hook_registry._handlers.get(MorpheusEvents.ACTIVITY_FEED, [])
+            getattr(hook_registry._unpack(entry)[1], '__qualname__', '')
+            for entry in hook_registry._handlers.get(MorpheusEvents.ACTIVITY_FEED, [])
         }
         for plugin_cls in (
             'OrdersPlugin',

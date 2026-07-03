@@ -49,8 +49,8 @@ class DashboardHomeModularityTests(TestCase):
 
         def quals(event):
             return {
-                getattr(h, '__qualname__', '')
-                for (_prio, h, _mode) in hook_registry._handlers.get(event, [])
+                getattr(hook_registry._unpack(entry)[1], '__qualname__', '')
+                for entry in hook_registry._handlers.get(event, [])
             }
 
         kpis = quals(MorpheusEvents.DASHBOARD_KPIS)
