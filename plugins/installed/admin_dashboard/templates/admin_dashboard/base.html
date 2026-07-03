@@ -222,6 +222,12 @@
 </style>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
 <script src="{% static 'admin_dashboard/media-uploader.js' %}" defer></script>
+{% comment %}Rich-text editor (Lexical) — self-hosted, guarded so disabling the richtext plugin removes it entirely. Bundle scans [data-richtext]; re-scanned on htmx swaps below.{% endcomment %}
+{% plugin_enabled "richtext" as richtext_on %}
+{% if richtext_on %}
+<link rel="stylesheet" href="{% static 'richtext/editor.css' %}">
+<script src="{% static 'richtext/lexical-editor.bundle.js' %}" defer></script>
+{% endif %}
 <!-- Catch unhandled JS errors + unhandledrejection → /api/errors/client/. -->
 <script src="{% static 'core/error-capture.js' %}"></script>
 <!-- htmx — progressive partial-reload for boosted links + filter forms.
@@ -577,30 +583,8 @@
   .input-search { padding-left: 2rem; }
   /* Multi-line variant — inherits .input look, drops the fixed height. */
   textarea.input { height: auto; padding: .5rem .75rem; line-height: 1.45; resize: vertical; }
-  /* ── Rich-text editor (TipTap) — shared dashboard component (catalog product form + CMS page editor) ── */
-  .rte { border:1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden; background: var(--surface); }
-  .rte-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:2px; padding:6px 8px; border-bottom:1px solid var(--border); background: var(--surface-2, var(--surface)); }
-  .rte-btn { min-width:28px; height:28px; padding:0 6px; border:1px solid transparent; border-radius:4px; background:transparent; color: var(--text); cursor:pointer; font-size:13px; line-height:1; }
-  .rte-btn:hover { background: var(--surface); border-color: var(--border); }
-  .rte-btn.is-active { background: var(--text); color: var(--surface); border-color: var(--text); }
-  .rte-divider { width:1px; align-self:stretch; background: var(--border); margin:4px 2px; }
-  .rte-spacer { flex:1; }
-  .rte-content { min-height:320px; padding:14px 16px; font-size:14px; line-height:1.6; color: var(--text); outline:none; }
-  .rte-content:focus, .rte-content:focus-visible { outline:none; box-shadow:none; }
-  .rte-content .ProseMirror-selectednode { outline:none !important; box-shadow:none !important; }
-  .rte-content .ProseMirror-gapcursor { display:none !important; }
-  .rte-content > * + * { margin-top:.7em; }
-  .rte-content h2 { font-size:1.3rem; font-weight:600; margin-top:1.2em; }
-  .rte-content h3 { font-size:1.1rem; font-weight:600; margin-top:1em; }
-  .rte-content p { margin:0; }
-  .rte-content ul, .rte-content ol { padding-left:1.5em; }
-  .rte-content a { color: var(--accent-ink, #1e40af); text-decoration:underline; }
-  .rte-content blockquote { border-left:3px solid var(--border); padding-left:1em; margin-left:0; color: var(--text-muted); font-style:italic; }
-  .rte-content code { background: var(--surface-2, #f3f3f3); padding:1px 5px; border-radius:3px; font-family: ui-monospace, Menlo, monospace; font-size:.9em; }
-  .rte-content pre { background: var(--surface-2, #f3f3f3); padding:.75em 1em; border-radius:4px; overflow-x:auto; font-size:.85em; }
-  .rte-content hr { border:0; border-top:1px solid var(--border); margin:1.5em 0; }
-  .rte-content img { max-width:100%; height:auto; border-radius:6px; margin:0.5em 0; }
-  .rte-source { width:100%; min-height:320px; padding:14px 16px; font-family: ui-monospace, monospace; font-size:12px; border:0; resize:vertical; background: var(--surface); color: var(--text); }
+  /* (Rich-text editor CSS moved to the richtext plugin:
+     static/richtext/editor.css, loaded below when the plugin is active.) */
   /* (Backdrop visuals live on #sidebar-backdrop in the drawer media query —
      the old display:none/.open toggle here skipped the opacity fade.) */
   /* Dropdown menus — used for action overflow on detail pages. */
@@ -1530,6 +1514,7 @@
     try {
       if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
       if (window.Morph && typeof window.Morph.reinit === 'function') window.Morph.reinit(e.detail.target);
+      if (window.MorphRichText && typeof window.MorphRichText.scan === 'function') window.MorphRichText.scan(e.detail.target);
       // Sidebar is now boosted: re-evaluate main↔settings menu mode for the
       // new URL (the sidebar DOM persists, so the server can't switch it).
       if (window.Morph && typeof window.Morph.syncSidebarMode === 'function') window.Morph.syncSidebarMode();

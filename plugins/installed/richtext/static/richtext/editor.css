@@ -1,20 +1,29 @@
-/* Rich-text editor (Lexical) — shared dashboard component. */
-.rte { border:1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+/* Rich-text editor (Lexical) — shared dashboard component
+   (catalog product form + CMS page editor). Moved out of admin_dashboard
+   base.html when TipTap was replaced. Bare-tag selectors match the HTML the
+   editor emits ($generateHtmlFromNodes → real tags); .rte-* theme classes are
+   the Lexical node theme (belt-and-suspenders). */
+.rte { border:1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden; background: var(--surface); }
 .rte-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:2px; padding:6px 8px; border-bottom:1px solid var(--border); background: var(--surface-2, var(--surface)); }
-.rte-btn { min-width:1.9rem; height:1.9rem; padding:0 .4rem; font-size:.8rem; border:1px solid transparent; border-radius:var(--radius-sm); background:transparent; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
-.rte-btn:hover { background: var(--surface-2); }
-.rte-btn.is-active { background: var(--surface-3); color: var(--text); }
-.rte-divider { width:1px; height:1.2rem; background:var(--border); margin:0 3px; }
+.rte-btn { min-width:28px; height:28px; padding:0 6px; border:1px solid transparent; border-radius:4px; background:transparent; color: var(--text); cursor:pointer; font-size:13px; line-height:1; display:inline-flex; align-items:center; justify-content:center; }
+.rte-btn:hover { background: var(--surface); border-color: var(--border); }
+.rte-btn.is-active { background: var(--text); color: var(--surface); border-color: var(--text); }
+.rte-divider { width:1px; align-self:stretch; background: var(--border); margin:4px 2px; }
 .rte-spacer { flex:1; }
-.rte-content { padding:.75rem .9rem; min-height:8rem; font-size:.9rem; line-height:1.6; color:var(--text); outline:none; }
-.rte-content:focus { outline:none; }
-.rte-content-short { min-height:4rem; }
-.rte-source { width:100%; min-height:8rem; padding:.75rem .9rem; font-family:ui-monospace,monospace; font-size:.8rem; border:0; background:var(--surface); color:var(--text); resize:vertical; }
-.rte-content .rte-h2 { font-size:1.25rem; font-weight:600; margin:.6rem 0 .3rem; }
-.rte-content .rte-h3 { font-size:1.1rem; font-weight:600; margin:.5rem 0 .3rem; }
-.rte-content .rte-ul { list-style:disc; padding-left:1.4rem; }
-.rte-content .rte-ol { list-style:decimal; padding-left:1.4rem; }
-.rte-content .rte-quote { border-left:3px solid var(--border); padding-left:.8rem; color:var(--text-muted); }
-.rte-content .rte-link { color:var(--brand); text-decoration:underline; }
-.rte-content .rte-img { max-width:100%; height:auto; border-radius:4px; }
-.rte-content pre { background:var(--surface-2); padding:.6rem .8rem; border-radius:var(--radius-sm); overflow-x:auto; font-family:ui-monospace,monospace; font-size:.8rem; }
+.rte-content { min-height:320px; padding:14px 16px; font-size:14px; line-height:1.6; color: var(--text); outline:none; }
+.rte-content:focus, .rte-content:focus-visible { outline:none; box-shadow:none; }
+.rte-content-short { min-height:120px; }
+.rte-content > * + * { margin-top:.7em; }
+.rte-content h2, .rte-content .rte-h2 { font-size:1.3rem; font-weight:600; margin-top:1.2em; }
+.rte-content h3, .rte-content .rte-h3 { font-size:1.1rem; font-weight:600; margin-top:1em; }
+.rte-content p { margin:0; }
+.rte-content ul, .rte-content ol, .rte-content .rte-ul, .rte-content .rte-ol { padding-left:1.5em; }
+.rte-content ul { list-style:disc; }
+.rte-content ol { list-style:decimal; }
+.rte-content a, .rte-content .rte-link { color: var(--accent-ink, #1e40af); text-decoration:underline; }
+.rte-content blockquote, .rte-content .rte-quote { border-left:3px solid var(--border); padding-left:1em; margin-left:0; color: var(--text-muted); font-style:italic; }
+.rte-content code { background: var(--surface-2, #f3f3f3); padding:1px 5px; border-radius:3px; font-family: ui-monospace, Menlo, monospace; font-size:.9em; }
+.rte-content pre { background: var(--surface-2, #f3f3f3); padding:.75em 1em; border-radius:4px; overflow-x:auto; font-size:.85em; }
+.rte-content hr { border:0; border-top:1px solid var(--border); margin:1.5em 0; }
+.rte-content img, .rte-content .rte-img { max-width:100%; height:auto; border-radius:6px; margin:0.5em 0; }
+.rte-source { width:100%; min-height:320px; padding:14px 16px; font-family: ui-monospace, monospace; font-size:12px; border:0; resize:vertical; background: var(--surface); color: var(--text); }
