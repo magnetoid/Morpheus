@@ -87,30 +87,27 @@ _CSP_REPORT_ONLY = '; '.join(
 # CDN allow-list rationale (TODO: self-host these to remove the allow-list):
 #   - cdn.tailwindcss.com — Tailwind JIT runtime (admin styling)
 #   - unpkg.com — htmx + lucide-icons (admin behaviour + iconography)
-#   - esm.sh — TipTap rich-text editor ESM bundles (product description
-#     editors). Without this the editors silently fail to mount and the
-#     short/long description fields render blank.
-# Self-hosting all of these would let us drop the allow-list entirely and
-# restore the tighter policy.
+# The rich-text editor is now self-hosted (richtext plugin: an eval-free
+# Lexical bundle served from 'self'), so esm.sh was removed from the dashboard
+# CSP entirely (it used to load TipTap).
 _CSP_DASHBOARD_ENFORCE = '; '.join(
     [
         "default-src 'self'",
-        # 'unsafe-eval' is required by the TipTap v3 rich-text editor (esm.sh
-        # build uses new Function) AND the Tailwind Play CDN's JIT compiler.
-        # Without it the product-form editor never constructs and you can't
-        # edit descriptions. script-src already allows 'unsafe-inline' and the
-        # storefront report-only CSP already permits 'unsafe-eval', so this is
-        # a consistency fix, not a new relaxation. Dashboard is staff-only.
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh",
+        # 'unsafe-eval' is required ONLY by the Tailwind Play CDN's JIT compiler
+        # (cdn.tailwindcss.com), which evals at runtime. The TipTap editor that
+        # also needed it is gone — replaced by the self-hosted, eval-free
+        # richtext/Lexical bundle served from 'self'. To finally drop
+        # 'unsafe-eval', precompile Tailwind to a static stylesheet (separate
+        # follow-up). Dashboard is staff-only.
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com",
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net",
         "img-src 'self' data: blob: https:",
         # cdn.jsdelivr.net — Remix Icon webfont (remixicon.css + .woff2 glyphs).
         "font-src 'self' data: https://cdn.jsdelivr.net",
-        # esm.sh is in script-src (TipTap); allow its module/sourcemap fetches too.
         # unpkg.com fetches: PDF.js module + worker for the book_product 3D
         # cover preview (three.js + pdf.js). connect-src covers the worker/wasm
         # fetch; worker-src allows the PDF.js web worker (blob: + unpkg).
-        "connect-src 'self' https://esm.sh https://unpkg.com",
+        "connect-src 'self' https://unpkg.com",
         "worker-src 'self' blob: https://unpkg.com",
         "frame-ancestors 'none'",
         "object-src 'none'",
