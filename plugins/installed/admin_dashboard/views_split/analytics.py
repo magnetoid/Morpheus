@@ -240,6 +240,18 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0915
     weekday_max = max((w['cnt'] for w in weekday_pattern), default=0) or 1
     hour_max = max((h['cnt'] for h in hour_pattern), default=0) or 1
 
+    # AI visibility — sessions/revenue referred by AI assistants + AI-crawler
+    # catalog reads (analytics plugin owns the data; None hides the card).
+    ai_traffic = None
+    try:
+        from plugins.installed.analytics.services import ai_traffic_summary
+
+        ai_traffic = ai_traffic_summary(days=30)
+        if not (ai_traffic['assistant_sessions'] or ai_traffic['crawler_hits']):
+            ai_traffic = None  # nothing to show yet — keep the page quiet
+    except Exception:  # noqa: BLE001 — analytics plugin off/missing
+        ai_traffic = None
+
     return render(
         request,
         'admin_dashboard/analytics.html',
@@ -263,6 +275,7 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0915
             'hour_pattern': hour_pattern,
             'hour_max': hour_max,
             'new_customers': new_customers,
+            'ai_traffic': ai_traffic,
             'active_nav': 'analytics',
         },
     )

@@ -149,3 +149,34 @@ def analytics_top_products_tool(*, days: int = 30, limit: int = 10) -> ToolResul
             'products': top_products(days=int(days or 30), limit=int(limit or 10)),
         }
     )
+
+
+@tool(
+    name='analytics.ai_traffic',
+    description=(
+        'AI-visibility picture for the last N days: human sessions + revenue '
+        'arriving FROM AI assistants (ChatGPT/Perplexity/Claude/Gemini '
+        'referrals), and AI-crawler reads of the catalog (GPTBot, ClaudeBot, '
+        'PerplexityBot, ...). Use for "is AI sending me customers?" questions '
+        'and the daily briefing.'
+    ),
+    scopes=['analytics.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'days': {'type': 'integer', 'minimum': 1, 'maximum': 365, 'default': 30},
+        },
+    },
+)
+def analytics_ai_traffic_tool(*, days: int = 30) -> ToolResult:
+    from plugins.installed.analytics.services import ai_traffic_summary
+
+    s = ai_traffic_summary(days=int(days or 30))
+    sessions = sum(s['assistant_sessions'].values())
+    return ToolResult(
+        output=s,
+        display=(
+            f'{sessions} AI-referred sessions, {s["assistant_revenue_total"]} revenue, '
+            f'{s["crawler_hits_total"]} crawler reads, last {s["days"]}d'
+        ),
+    )

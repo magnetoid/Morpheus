@@ -126,6 +126,7 @@ class AnalyticsPlugin(Plugin):
     def contribute_agent_tools(self) -> list:
         from plugins.installed.analytics.agent_tools import (
             analytics_agent_costs_tool,
+            analytics_ai_traffic_tool,
             analytics_funnel_tool,
             analytics_realtime_tool,
             analytics_search_trends_tool,
@@ -139,6 +140,7 @@ class AnalyticsPlugin(Plugin):
             analytics_search_trends_tool,
             analytics_realtime_tool,
             analytics_agent_costs_tool,
+            analytics_ai_traffic_tool,
             analytics_top_products_tool,
         ]
 

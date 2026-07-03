@@ -89,6 +89,48 @@
   </div>
 
   <!-- Two-column block: top products + status breakdown -->
+  {% if ai_traffic %}
+  <!-- AI visibility — assistant referrals + crawler reads (last 30 days).
+       Hidden until there's at least one signal, so new stores stay quiet. -->
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold flex items-center gap-2"><i data-lucide="sparkles" class="h-4 w-4"></i> AI visibility</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Shoppers arriving from AI assistants, and AI crawlers reading your catalog — last {{ ai_traffic.days }} days.</p>
+      </div>
+      {% if ai_traffic.assistant_revenue_total %}
+      <span class="pill pill-success">${{ ai_traffic.assistant_revenue_total|floatformat:2 }} AI-referred revenue</span>
+      {% endif %}
+    </div>
+    <div class="card-padded grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)] mb-2">Sessions from assistants</p>
+        {% if ai_traffic.assistant_sessions %}
+        <ul style="list-style:none; margin:0; padding:0;" class="text-sm space-y-1">
+          {% for src, n in ai_traffic.assistant_sessions.items %}
+          <li class="flex justify-between gap-3"><span class="capitalize">{{ src }}</span><span class="font-medium" style="font-variant-numeric: tabular-nums;">{{ n }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-[color:var(--text-muted)]">None yet — assistants haven't referred a shopper in this window.</p>
+        {% endif %}
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)] mb-2">Catalog reads by AI crawlers</p>
+        {% if ai_traffic.crawler_hits %}
+        <ul style="list-style:none; margin:0; padding:0;" class="text-sm space-y-1">
+          {% for bot, n in ai_traffic.crawler_hits.items %}
+          <li class="flex justify-between gap-3"><span>{{ bot }}</span><span class="font-medium" style="font-variant-numeric: tabular-nums;">{{ n }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-[color:var(--text-muted)]">No AI crawler visits recorded yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
     <!-- Top products by revenue -->

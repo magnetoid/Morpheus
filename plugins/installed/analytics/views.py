@@ -47,13 +47,17 @@ _MAX_PAYLOAD_VALUE_LEN = 1000
 def custom_events_config(request):
     """Returns the list of active CustomEventConfig items for the frontend JS to attach listeners."""
     from plugins.installed.analytics.models import CustomEventConfig
+
     try:
-        events = list(CustomEventConfig.objects.filter(is_active=True).values(
-            'name', 'css_selector', 'url_pattern', 'event_kind'
-        ))
+        events = list(
+            CustomEventConfig.objects.filter(is_active=True).values(
+                'name', 'css_selector', 'url_pattern', 'event_kind'
+            )
+        )
         return JsonResponse({'events': events})
     except Exception:
         return JsonResponse({'events': []})
+
 
 @csrf_exempt
 @require_http_methods(['POST'])
@@ -83,7 +87,18 @@ def track_beacon(request):
     payload = {
         k: (v[:_MAX_PAYLOAD_VALUE_LEN] if isinstance(v, str) else v)
         for k, v in body.items()
-        if k not in ('name', 'kind', 'url', 'product_slug', 'search_query', 'scroll_depth', 'duration_ms', 'error_context', 'is_realtime')
+        if k
+        not in (
+            'name',
+            'kind',
+            'url',
+            'product_slug',
+            'search_query',
+            'scroll_depth',
+            'duration_ms',
+            'error_context',
+            'is_realtime',
+        )
     }
     if len(payload) > _MAX_PAYLOAD_KEYS:
         return HttpResponseBadRequest('Too many payload keys')
@@ -99,25 +114,31 @@ def track_beacon(request):
         # Skip staff/admin browsing so it doesn't pollute customer analytics.
         if should_track_request(request):
             session = get_or_create_session(request, response=response)
-            
+
             # Extract new metrics
             scroll_depth = None
             if body.get('scroll_depth') is not None:
-                try: scroll_depth = int(body.get('scroll_depth'))
-                except ValueError: pass
-                
+                try:
+                    scroll_depth = int(body.get('scroll_depth'))
+                except ValueError:
+                    pass
+
             duration_ms = None
             if body.get('duration_ms') is not None:
-                try: duration_ms = int(body.get('duration_ms'))
-                except ValueError: pass
-                
+                try:
+                    duration_ms = int(body.get('duration_ms'))
+                except ValueError:
+                    pass
+
             error_context = body.get('error_context') or {}
             if isinstance(error_context, str):
-                try: error_context = json.loads(error_context)
-                except json.JSONDecodeError: error_context = {'raw': error_context}
-            
+                try:
+                    error_context = json.loads(error_context)
+                except json.JSONDecodeError:
+                    error_context = {'raw': error_context}
+
             is_realtime = bool(body.get('is_realtime', False))
-            
+
             record_event(
                 name=name,
                 kind=kind,
@@ -142,37 +163,39 @@ def track_beacon(request):
 def export_data(request):
     """Export analytics data in CSV/JSON format."""
     import csv
-    from plugins.installed.analytics.services import summary_for, top_products, top_searches, agent_activity
-    
+    from plugins.installed.analytics.services import (
+        summary_for,
+        top_products,
+        top_searches,
+        agent_activity,
+    )
+
     format_type = request.GET.get('format', 'csv')
     days = int(request.GET.get('days', 30))
-    
+
     summary = summary_for(days=days)
     products = top_products(days=days, limit=100)
-    
+
     if format_type == 'json':
-        response = JsonResponse({
-            'summary': summary,
-            'top_products': products
-        })
+        response = JsonResponse({'summary': summary, 'top_products': products})
         response['Content-Disposition'] = f'attachment; filename="analytics_export_{days}d.json"'
         return response
-        
+
     # CSV Default
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="analytics_export_{days}d.csv"'
-    
+
     writer = csv.writer(response)
     writer.writerow(['Metric', 'Value'])
     for key, value in summary.items():
         writer.writerow([key, str(value)])
-        
+
     writer.writerow([])
     writer.writerow(['Top Products'])
     writer.writerow(['Product Slug', 'Views'])
     for p in products:
         writer.writerow([p['product_slug'], p['views']])
-        
+
     return response
 
 

@@ -99,6 +99,12 @@ def should_track_customer(customer) -> bool:
     return not _excluded_user(customer)
 
 
+def _inferred_ai_source(request) -> str:
+    """'ai:chatgpt' when the visit's referrer is an AI assistant, else ''."""
+    src = ai_source_from_referrer(request.META.get('HTTP_REFERER', '') or '')
+    return f'ai:{src}' if src else ''
+
+
 def get_or_create_session(request, *, response=None):
     """Resolve the visitor's analytics session. Sets the cookie if missing."""
     from plugins.installed.analytics.models import AnalyticsSession
@@ -120,13 +126,13 @@ def get_or_create_session(request, *, response=None):
 
     customer = getattr(request, 'user', None)
     customer = customer if (customer is not None and customer.is_authenticated) else None
-    
+
     # Anonymized cross-device ID
     cross_device_id = ''
     if customer:
-        cross_device_id = hashlib.sha256(f"customer_{customer.id}".encode('utf-8')).hexdigest()[:32]
+        cross_device_id = hashlib.sha256(f'customer_{customer.id}'.encode()).hexdigest()[:32]
     else:
-        cross_device_id = hashlib.sha256(cookie_id.encode('utf-8')).hexdigest()[:32]
+        cross_device_id = hashlib.sha256(cookie_id.encode()).hexdigest()[:32]
 
     # Geolocation and Device specs tracking
     ip_addr = request.META.get('REMOTE_ADDR', '')
@@ -151,8 +157,16 @@ def get_or_create_session(request, *, response=None):
                 'geo_location': geo_location,
                 'referrer': (request.META.get('HTTP_REFERER', '') or '')[:500],
                 'landing_url': (request.path or '')[:500],
-                'utm_source': (request.GET.get('utm_source') or '')[:80],
-                'utm_medium': (request.GET.get('utm_medium') or '')[:80],
+                # No explicit utm_source → infer AI-assistant referrals
+                # ('ai:chatgpt', …) so every existing source rollup segments
+                # them (same inference GA does for organic/referral).
+                'utm_source': (
+                    (request.GET.get('utm_source') or '').strip() or _inferred_ai_source(request)
+                )[:80],
+                'utm_medium': (
+                    (request.GET.get('utm_medium') or '').strip()
+                    or ('ai-assistant' if _inferred_ai_source(request) else '')
+                )[:80],
                 'utm_campaign': (request.GET.get('utm_campaign') or '')[:120],
                 'utm_content': (request.GET.get('utm_content') or '')[:120],
                 'customer': customer,
@@ -209,9 +223,8 @@ def record_event(
         return None
 
     # Deduplication logic
-    if idempotency_key:
-        if AnalyticsEvent.objects.filter(idempotency_key=idempotency_key).exists():
-            return None
+    if idempotency_key and AnalyticsEvent.objects.filter(idempotency_key=idempotency_key).exists():
+        return None
 
     try:
         evt = AnalyticsEvent.objects.create(
@@ -362,6 +375,137 @@ def summary_for(*, days: int = 7) -> dict:
     }
 
 
+# ── AI-traffic attribution (Wave 1, docs/plans/cutting-edge-open-core-2026-07.md) ──
+#
+# Two distinct populations:
+#   * HUMANS arriving FROM an AI assistant (clicked a ChatGPT/Perplexity
+#     recommendation) — classified into utm_source as 'ai:<name>' when no
+#     explicit utm_source is present, so every existing rollup
+#     (top_sources, revenue_by_source, blended attribution) segments them
+#     for free. AI-referred traffic converts BETTER than search in 2026 —
+#     merchants need to see it.
+#   * AI CRAWLERS reading the catalog (GPTBot, ClaudeBot, …) — counted as
+#     DailyMetric('ai_crawler_hits', dimension=bot) and EXCLUDED from
+#     visitor sessions/pageviews (they were previously counted as humans).
+
+_AI_ASSISTANT_REFERRERS = {
+    'chatgpt.com': 'chatgpt',
+    'chat.openai.com': 'chatgpt',
+    'perplexity.ai': 'perplexity',
+    'claude.ai': 'claude',
+    'gemini.google.com': 'gemini',
+    'bard.google.com': 'gemini',
+    'copilot.microsoft.com': 'copilot',
+    'meta.ai': 'meta-ai',
+    'grok.com': 'grok',
+    'poe.com': 'poe',
+    'you.com': 'you',
+}
+
+_AI_CRAWLER_UA_MARKERS = (
+    ('gptbot', 'gptbot'),
+    ('oai-searchbot', 'oai-searchbot'),
+    ('chatgpt-user', 'chatgpt-user'),
+    ('claudebot', 'claudebot'),
+    ('claude-web', 'claude-web'),
+    ('anthropic-ai', 'anthropic-ai'),
+    ('perplexitybot', 'perplexitybot'),
+    ('perplexity-user', 'perplexity-user'),
+    ('google-extended', 'google-extended'),
+    ('bytespider', 'bytespider'),
+    ('ccbot', 'ccbot'),
+    ('meta-externalagent', 'meta-externalagent'),
+    ('applebot-extended', 'applebot-extended'),
+    ('amazonbot', 'amazonbot'),
+)
+
+
+def ai_source_from_referrer(referrer: str) -> str:
+    """'https://chatgpt.com/c/abc' → 'chatgpt'; '' when not an AI assistant."""
+    from urllib.parse import urlparse
+
+    try:
+        host = (urlparse(referrer or '').netloc or '').lower().split(':')[0]
+    except ValueError:
+        return ''
+    if not host:
+        return ''
+    for domain, name in _AI_ASSISTANT_REFERRERS.items():
+        if host == domain or host.endswith('.' + domain):
+            return name
+    return ''
+
+
+def ai_crawler_from_ua(user_agent: str) -> str:
+    """Bot slug when the UA is a known AI crawler, else ''."""
+    ua = (user_agent or '').lower()
+    for marker, name in _AI_CRAWLER_UA_MARKERS:
+        if marker in ua:
+            return name
+    return ''
+
+
+def record_ai_crawler_hit(bot: str) -> None:
+    """Bump today's DailyMetric counter for one AI-crawler request. Fail-soft."""
+    from django.db.models import F
+
+    from plugins.installed.analytics.models import DailyMetric
+
+    try:
+        _, created = DailyMetric.objects.get_or_create(
+            day=timezone.now().date(),
+            metric='ai_crawler_hits',
+            dimension=bot[:120],
+            defaults={'value_int': 1},
+        )
+        if not created:
+            DailyMetric.objects.filter(
+                day=timezone.now().date(), metric='ai_crawler_hits', dimension=bot[:120]
+            ).update(value_int=F('value_int') + 1)
+    except DatabaseError as e:
+        logger.debug('analytics: ai crawler counter failed: %s', e)
+
+
+def ai_traffic_summary(*, days: int = 30) -> dict:
+    """The merchant's AI-visibility picture: human sessions + revenue arriving
+    from AI assistants, and AI-crawler reads of the catalog."""
+    from plugins.installed.analytics.models import AnalyticsSession, DailyMetric
+
+    since = timezone.now() - timedelta(days=max(1, int(days)))
+
+    sessions: dict[str, int] = {}
+    for row in (
+        AnalyticsSession.objects.filter(first_seen_at__gte=since, utm_source__startswith='ai:')
+        .values('utm_source')
+        .annotate(c=Count('id'))
+    ):
+        sessions[row['utm_source'].removeprefix('ai:')] = row['c']
+
+    rev = revenue_by_source(days=days)
+    revenue = {
+        src.removeprefix('ai:'): amt
+        for src, amt in rev['by_source'].items()
+        if src.startswith('ai:')
+    }
+
+    crawls: dict[str, int] = {}
+    for row in (
+        DailyMetric.objects.filter(metric='ai_crawler_hits', day__gte=since.date())
+        .values('dimension')
+        .annotate(n=Sum('value_int'))
+    ):
+        crawls[row['dimension']] = int(row['n'] or 0)
+
+    return {
+        'days': int(days),
+        'assistant_sessions': sessions,
+        'assistant_revenue': revenue,
+        'assistant_revenue_total': round(sum(revenue.values()), 2),
+        'crawler_hits': crawls,
+        'crawler_hits_total': sum(crawls.values()),
+    }
+
+
 def revenue_by_source(*, days: int = 30) -> dict:
     """Last-touch purchase revenue grouped by the converting session's
     ``utm_source`` over the last ``days``.
@@ -483,32 +627,36 @@ def real_time(*, minutes: int = 30) -> dict:
         ),
     }
 
+
 def predictive_trends(*, days: int = 30) -> dict:
     """Predictive trend forecasting using simple moving average and linear projection."""
     from plugins.installed.analytics.models import DailyMetric
+
     since = timezone.now().date() - timedelta(days=days)
-    
+
     # Fetch historical revenue
     historical = list(DailyMetric.objects.filter(metric='revenue', day__gte=since).order_by('day'))
     if not historical or len(historical) < 3:
         return {'forecast_next_7d': 0.0, 'trend_direction': 'flat', 'confidence': 'low'}
-        
+
     values = [float(h.value_money.amount) for h in historical if h.value_money]
-    
+
     # Calculate simple moving average and slope
     if len(values) >= 7:
         recent_avg = sum(values[-7:]) / 7
-        older_avg = sum(values[:-7][-7:]) / 7 if len(values) >= 14 else sum(values[:-7]) / len(values[:-7])
+        older_avg = (
+            sum(values[:-7][-7:]) / 7 if len(values) >= 14 else sum(values[:-7]) / len(values[:-7])
+        )
         daily_growth = (recent_avg - older_avg) / 7 if older_avg > 0 else 0
     else:
         daily_growth = (values[-1] - values[0]) / len(values)
-        
+
     forecast_next_7d = sum(max(0, values[-1] + (daily_growth * i)) for i in range(1, 8))
-    
+
     return {
         'forecast_next_7d': round(forecast_next_7d, 2),
         'trend_direction': 'up' if daily_growth > 0 else ('down' if daily_growth < 0 else 'flat'),
-        'confidence': 'high' if len(values) >= 14 else 'medium'
+        'confidence': 'high' if len(values) >= 14 else 'medium',
     }
 
 

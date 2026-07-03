@@ -35,10 +35,21 @@ class AnalyticsMiddleware:
             return response
         try:
             from plugins.installed.analytics.services import (
+                ai_crawler_from_ua,
                 get_or_create_session,
+                record_ai_crawler_hit,
                 record_event,
                 should_track_request,
             )
+
+            # AI crawlers (GPTBot, ClaudeBot, PerplexityBot, ...) are counted
+            # as catalog reads — the merchant's "AI is reading my store"
+            # signal — and are NOT visitor sessions/pageviews (they used to
+            # pollute both).
+            bot = ai_crawler_from_ua(request.META.get('HTTP_USER_AGENT', ''))
+            if bot:
+                record_ai_crawler_hit(bot)
+                return response
 
             if not should_track_request(request):
                 return response  # staff/admin browsing — don't pollute analytics

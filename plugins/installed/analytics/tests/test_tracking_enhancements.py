@@ -7,6 +7,7 @@ from plugins.installed.analytics.views import track_beacon
 
 User = get_user_model()
 
+
 class AnalyticsTrackingTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -33,19 +34,17 @@ class AnalyticsTrackingTests(TestCase):
             'kind': 'scroll',
             'scroll_depth': 75,
             'duration_ms': 12000,
-            'is_realtime': True
+            'is_realtime': True,
         }
         request = self.factory.post(
-            '/track/beacon/',
-            data=json.dumps(payload),
-            content_type='application/json'
+            '/track/beacon/', data=json.dumps(payload), content_type='application/json'
         )
         # Mock session behavior for test
         request.COOKIES['morph_aid'] = 'test-cookie-123'
-        
+
         response = track_beacon(request)
         self.assertEqual(response.status_code, 204)
-        
+
         event = AnalyticsEvent.objects.last()
         self.assertEqual(event.kind, 'scroll')
         self.assertEqual(event.scroll_depth, 75)
@@ -57,16 +56,14 @@ class AnalyticsTrackingTests(TestCase):
         payload = {
             'name': 'api.error',
             'kind': 'error',
-            'error_context': {'code': 500, 'message': 'Internal Server Error'}
+            'error_context': {'code': 500, 'message': 'Internal Server Error'},
         }
         request = self.factory.post(
-            '/track/beacon/',
-            data=json.dumps(payload),
-            content_type='application/json'
+            '/track/beacon/', data=json.dumps(payload), content_type='application/json'
         )
         response = track_beacon(request)
         self.assertEqual(response.status_code, 204)
-        
+
         event = AnalyticsEvent.objects.last()
         self.assertEqual(event.kind, 'error')
         self.assertEqual(event.error_context.get('code'), 500)
