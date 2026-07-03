@@ -24,6 +24,15 @@ def daily_briefing(self) -> dict:
     return run_daily_briefing()
 
 
+@shared_task(bind=True, time_limit=600, soft_time_limit=540)
+def tool_gap_flywheel(self) -> dict:
+    """Weekly: draft CodeProposals for tool gaps the reflection loop has
+    seen at least twice (see core/assistant/flywheel.py). Propose-only."""
+    from core.assistant.flywheel import run_tool_gap_flywheel
+
+    return run_tool_gap_flywheel()
+
+
 @shared_task(bind=True, time_limit=300, soft_time_limit=240)
 def decay_assistant_memories(self) -> dict:
     """Forget memories whose decayed relevance has fallen near zero.

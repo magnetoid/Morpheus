@@ -1,6 +1,7 @@
 # Linda: semantic memory, self-learning, proactive briefing, self-coding
 
-**Status:** approved (owner, 2026-07-03) · autonomy level: **propose-only**
+**Status:** BUILT — R1+R2+R3 implemented & tested 2026-07-03 (v0.2.27,
+pending ship) · autonomy level: **propose-only**
 **Owner surfaces:** `core/assistant/`, `core/agents/`, dashboard contributions
 **ADR trail:** ADR 0011 (one agent, grown via skills/tools), ADR 0014 (apply
 engine, branch-only), ADR 0027 (agent-write governance)

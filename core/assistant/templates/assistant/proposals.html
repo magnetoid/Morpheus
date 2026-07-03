@@ -1,0 +1,112 @@
+{% extends "admin_dashboard/base.html" %}
+{% load static %}
+{% block title %}Linda's proposals · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+      <div>
+        <h1 class="text-xl font-semibold">Linda's code proposals</h1>
+        <p class="text-sm text-[color:var(--text-muted)]">
+          Tools Linda drafted for herself. Nothing here runs or touches the repo until you approve it
+          {% if not apply_enabled %} — and the apply gate (<code>MORPHEUS_SELF_UPDATE_ENABLED</code>) is currently <strong>off</strong>, so approving only records your decision{% endif %}.
+        </p>
+      </div>
+    </div>
+    <a href="/dashboard/assistant/" class="btn btn-ghost text-xs">Open Linda</a>
+  </div>
+
+  {% if not proposals %}
+  <div class="card card-padded text-sm text-[color:var(--text-muted)]">
+    No proposals yet. When Linda repeatedly hits a capability she lacks, she drafts a tool for it and it appears here for your review.
+  </div>
+  {% endif %}
+
+  {% for p in proposals %}
+  <details class="card" {% if forloop.first and p.status == 'draft' %}open{% endif %}>
+    <summary class="card-padded flex items-center justify-between" style="cursor:pointer; list-style:none;">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="pill {% if p.status == 'draft' %}pill-warn{% elif p.status == 'approved' or p.status == 'applied' %}pill-success{% else %}pill-neutral{% endif %}">{{ p.status }}</span>
+        <span class="font-medium truncate">{{ p.name }}</span>
+        <span class="text-xs text-[color:var(--text-muted)]">{{ p.kind }} · {{ p.created_at|date:"M j, H:i" }}</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
+        {% if p.passed %}<span class="pill pill-success">scan clean</span>{% else %}<span class="pill pill-warn">scan findings</span>{% endif %}
+        {% if p.consensus.decision %}<span class="pill pill-neutral">panel: {{ p.consensus.decision }}</span>{% endif %}
+      </div>
+    </summary>
+    <div class="card-padded border-t border-[color:var(--border)] space-y-4">
+
+      {% if p.rationale %}
+      <p class="text-sm" style="margin:0;"><strong>Why Linda wants it:</strong> {{ p.rationale }}</p>
+      {% endif %}
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin:0;">Target (informational): <code>{{ p.target_path }}</code></p>
+
+      {% if p.findings %}
+      <div>
+        <h3 class="text-sm font-semibold mb-1">Static safety scan</h3>
+        <ul class="text-xs space-y-1" style="list-style:none; margin:0; padding:0;">
+          {% for f in p.findings %}
+          <li><span class="pill {% if f.severity == 'CRITICAL' or f.severity == 'HIGH' %}pill-warn{% else %}pill-neutral{% endif %}">{{ f.severity }}</span> {{ f.message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if p.consensus.verdicts %}
+      <div>
+        <h3 class="text-sm font-semibold mb-1">Consensus panel</h3>
+        <ul class="text-xs space-y-1" style="list-style:none; margin:0; padding:0;">
+          {% for v in p.consensus.verdicts %}
+          <li><span class="pill {% if v.approve %}pill-success{% else %}pill-warn{% endif %}">{{ v.provider }}</span> {{ v.reason|default:v.note|default:"—" }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div>
+        <h3 class="text-sm font-semibold mb-1">Source</h3>
+        <div style="overflow-x:auto; max-height: 24rem; overflow-y:auto;">
+          <pre class="text-xs" style="margin:0; padding:.75rem; background:var(--surface-2); border-radius:.5rem;"><code>{{ p.source }}</code></pre>
+        </div>
+      </div>
+
+      {% if p.approver %}
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin:0;">
+        Approved by {{ p.approver }} at {{ p.approved_at|date:"M j, H:i" }}{% if p.applied_branch %} · applied to branch <code>{{ p.applied_branch }}</code>{% endif %}
+      </p>
+      {% endif %}
+
+      {% if p.status == 'draft' or p.status == 'approved' %}
+      <div class="flex flex-wrap gap-2">
+        {% if p.status == 'draft' %}
+        <form method="post" action="{% url 'assistant:proposal_action' pk=p.id %}" class="m-0">
+          {% csrf_token %}<input type="hidden" name="action" value="review">
+          <button type="submit" class="btn btn-secondary text-xs">Run consensus review</button>
+        </form>
+        <form method="post" action="{% url 'assistant:proposal_action' pk=p.id %}" class="m-0">
+          {% csrf_token %}<input type="hidden" name="action" value="approve">
+          <button type="submit" class="btn btn-primary text-xs">Approve</button>
+        </form>
+        <form method="post" action="{% url 'assistant:proposal_action' pk=p.id %}" class="m-0">
+          {% csrf_token %}<input type="hidden" name="action" value="reject">
+          <button type="submit" class="btn btn-ghost text-xs">Reject</button>
+        </form>
+        {% elif p.status == 'approved' and apply_enabled %}
+        <form method="post" action="{% url 'assistant:proposal_action' pk=p.id %}" class="m-0">
+          {% csrf_token %}<input type="hidden" name="action" value="approve">
+          <button type="submit" class="btn btn-primary text-xs">Apply to branch</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div>
+  </details>
+  {% endfor %}
+
+</div>
+{% endblock %}

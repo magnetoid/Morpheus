@@ -61,6 +61,12 @@ app.conf.beat_schedule = {
         'task': 'core.assistant.tasks.daily_briefing',
         'schedule': crontab(hour=6, minute=0),  # 06:00 UTC daily
     },
+    # Tool-gap flywheel — weekly, Linda drafts propose-only tools for
+    # capabilities the reflection loop saw her Workers miss twice or more.
+    'assistant-tool-gap-flywheel': {
+        'task': 'core.assistant.tasks.tool_gap_flywheel',
+        'schedule': crontab(hour=6, minute=30, day_of_week='mon'),  # Mondays 06:30 UTC
+    },
 }
 
 # Self-improvement engine — registers ingest/analyze/digest tasks.

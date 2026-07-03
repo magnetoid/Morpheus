@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from core.assistant import views
+from core.assistant import views, views_proposals
 
 app_name = 'assistant'
 
@@ -14,4 +14,11 @@ urlpatterns = [
     path('stream/', views.assistant_stream, name='stream'),
     path('history/', views.assistant_history, name='history'),
     path('page-help/', views.assistant_page_help, name='page_help'),
+    # Self-coding approval queue (superuser-only, ADR 0014 human gate).
+    path('proposals/', views_proposals.proposals_page, name='proposals'),
+    path(
+        'proposals/<uuid:pk>/action/',
+        views_proposals.proposal_action,
+        name='proposal_action',
+    ),
 ]

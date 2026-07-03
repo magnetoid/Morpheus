@@ -36,6 +36,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
   executed without you. Distinct from Linda's Pulse (rule-based alert
   cards): the briefing is an open-ended, tool-grounded review.
 
+### Linda writes her own tools — you hold the pen (self-learning Release 3)
+- **Proposals queue.** Linda → Proposals (superuser only) lists every tool
+  Linda drafted for herself: the source, the static safety scan, and the
+  multi-model consensus verdicts side by side, with Approve / Reject / Run
+  consensus review. Nothing executes and nothing touches the repo from
+  drafting; approving records your decision, and code is only written — to
+  a git branch, never main — when `MORPHEUS_SELF_UPDATE_ENABLED` is also
+  set. Every decision is audited.
+- **The flywheel.** Weekly, Linda turns capability gaps her Workers hit
+  twice or more into drafted proposals in that queue — the platform now
+  notices what it's missing and proposes the fix itself.
+- **Evals harness.** `manage.py run_assistant_evals` scores Linda against
+  20 golden tasks (tool grounding, write-gate discipline, no invented
+  numbers), so every assistant change is measured against a baseline.
+
 ---
 
 ## v0.2.26 — 2026-07-02
