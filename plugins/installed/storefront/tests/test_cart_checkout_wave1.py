@@ -102,6 +102,20 @@ class CouponOnLivePathTests(_Base):
         self.assertIsNone(self.cart.coupon_id)
 
 
+class CheckoutEmailStampTests(_Base):
+    def test_one_page_submit_stamps_email_on_cart(self):
+        # Validation will fail (no address) — the stamp must land anyway, so
+        # an abandoned attempt is still recoverable.
+        self.c.post('/checkout/quick/', {'email': 'buyer@example.test'})
+        self.cart.refresh_from_db()
+        self.assertEqual(self.cart.metadata.get('checkout_email'), 'buyer@example.test')
+
+    def test_garbage_email_not_stamped(self):
+        self.c.post('/checkout/quick/', {'email': 'not-an-email'})
+        self.cart.refresh_from_db()
+        self.assertNotIn('checkout_email', self.cart.metadata or {})
+
+
 class BeginCheckoutOnLivePathTests(_Base):
     def test_fires_once_per_session_on_quick_checkout(self):
         fired: list = []

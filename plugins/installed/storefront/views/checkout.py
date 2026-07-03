@@ -9,10 +9,14 @@ review → Stripe payment. Plus gift card apply/remove side-trips.
 
 from __future__ import annotations
 
+import logging
+
 from api.client import internal_graphql
 from morpheus.views import redirect, render
 
 from ._queries import CART_QUERY
+
+logger = logging.getLogger('morpheus.storefront.checkout')
 
 
 def _cart_requires_shipping(request) -> bool:
@@ -128,6 +132,42 @@ def _cart_totals(request, cart: dict) -> dict:
         return {}
 
 
+def _stamp_checkout_email(request, email: str) -> None:
+    """Persist the checkout-entered email onto the visitor's cart metadata.
+
+    This is what makes GUEST carts recoverable: the cart-abandonment drip
+    reads ``metadata['checkout_email']`` when the cart has no customer
+    account. Consent is still checked at send time — stamping the address
+    only makes the cart *reachable*, never mailable by itself. Fail-soft:
+    a stamp failure must never affect checkout.
+    """
+    email = (email or '').strip()
+    if not email or '@' not in email:
+        return
+    try:
+        from plugins.installed.orders.models import Cart  # noqa: PLC0415
+
+        if request.user.is_authenticated:
+            cart = Cart.objects.filter(customer=request.user).order_by('-updated_at').first()
+        elif request.session.session_key:
+            cart = (
+                Cart.objects.filter(session_key=request.session.session_key)
+                .order_by('-updated_at')
+                .first()
+            )
+        else:
+            cart = None
+        if cart is None:
+            return
+        meta = dict(cart.metadata or {})
+        if meta.get('checkout_email') != email:
+            meta['checkout_email'] = email
+            cart.metadata = meta
+            cart.save(update_fields=['metadata'])
+    except Exception:  # noqa: BLE001
+        logger.warning('checkout: email stamp failed', exc_info=True)
+
+
 def _available_shipping_rates(request, addr):
     """Compute shipping rates; fall back to free standard if plugin off."""
     try:
@@ -187,6 +227,7 @@ def checkout(request):
         'phone',
     )
     addr = {f: (request.POST.get(f) or '').strip() for f in fields}
+    _stamp_checkout_email(request, addr['email'])
     if no_shipping:
         if not addr['email']:
             ctx = _checkout_base_context(request)

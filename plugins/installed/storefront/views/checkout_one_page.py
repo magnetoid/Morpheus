@@ -73,6 +73,11 @@ def checkout_one_page(request):
         return _render_form(request, addr=None, rate_id='', error='')
 
     addr = _collect_address(request)
+    # Make GUEST carts reachable for abandonment recovery the moment an email
+    # is typed — even if this submit later fails validation or payment.
+    from .checkout import _stamp_checkout_email  # noqa: PLC0415
+
+    _stamp_checkout_email(request, addr.get('email', ''))
     rate_id = (request.POST.get('shipping_rate_id') or '').strip()
     payment_method = (request.POST.get('payment_method') or '').strip()
     no_shipping = not _cart_requires_shipping(request)

@@ -54,13 +54,16 @@ def _config() -> dict:
 
 
 def _cart_email(cart) -> str:
-    """Best-effort reach: customer's email, or any session-bound shipping email."""
+    """Best-effort reach: customer's email, else the email the shopper typed
+    at checkout (stamped onto ``cart.metadata['checkout_email']`` by the
+    storefront checkout views) — this is what makes GUEST carts, the majority
+    of abandonment, recoverable at all."""
     customer = getattr(cart, 'customer', None)
     if customer is not None:
         em = getattr(customer, 'email', '')
         if em:
             return em
-    return ''
+    return str((getattr(cart, 'metadata', {}) or {}).get('checkout_email') or '').strip()
 
 
 @shared_task(bind=True, time_limit=120, soft_time_limit=90)
@@ -115,15 +118,25 @@ _RECOVERY_SUBJECTS = {
 }
 
 
-def _has_marketing_consent(customer) -> bool:
-    """True only when the customer's most recent consent log opts in to marketing.
-
-    No consent row → False (we never email without a recorded yes).
+def _has_marketing_consent(cart) -> bool:
+    """True only when the cart owner's most recent consent log opts in to
+    marketing. Customers are matched by account; GUESTS by the cart's
+    session_key (the consent banner logs both). No consent row → False —
+    we never email without a recorded yes.
     """
+    customer = getattr(cart, 'customer', None)
+    session_key = getattr(cart, 'session_key', '') or ''
     try:
         from plugins.installed.consent.models import ConsentLog
 
-        latest = ConsentLog.objects.filter(customer=customer).order_by('-created_at').first()
+        if customer is not None:
+            latest = ConsentLog.objects.filter(customer=customer).order_by('-created_at').first()
+        elif session_key:
+            latest = (
+                ConsentLog.objects.filter(session_key=session_key).order_by('-created_at').first()
+            )
+        else:
+            return False
     except Exception as e:  # noqa: BLE001 — consent plugin missing/migrating
         logger.warning('cart_abandonment: consent lookup failed: %s', e)
         return False
@@ -183,12 +196,12 @@ def send_cart_recovery_drip(self) -> dict:
 
     now = timezone.now()
     # Only carts old enough for at least step 1, that still have items.
+    # GUEST carts are included — they're reachable when checkout stamped the
+    # shopper's email onto metadata (see _cart_email); consent still gates
+    # every send. Guest carts made up the majority of abandonment and were
+    # previously excluded outright.
     cutoff = now - timedelta(minutes=delays[0])
-    qs = (
-        Cart.objects.filter(updated_at__lt=cutoff, items__isnull=False)
-        .exclude(customer__isnull=True)
-        .distinct()
-    )
+    qs = Cart.objects.filter(updated_at__lt=cutoff, items__isnull=False).distinct()
 
     scanned = 0
     sent = 0
@@ -212,8 +225,7 @@ def _drip_cart(cart, now, cfg, send_templated_email) -> int:
     """
     from plugins.installed.orders.models import Cart
 
-    customer = getattr(cart, 'customer', None)
-    email = getattr(customer, 'email', '') if customer is not None else ''
+    email = _cart_email(cart)
     if not email:
         return 0
 
@@ -248,7 +260,7 @@ def _drip_cart(cart, now, cfg, send_templated_email) -> int:
                 continue
             if cfg['require_marketing_consent']:
                 if consent_ok is None:
-                    consent_ok = _has_marketing_consent(customer)
+                    consent_ok = _has_marketing_consent(locked)
                 if not consent_ok:
                     continue
             subject = _RECOVERY_SUBJECTS[i]
