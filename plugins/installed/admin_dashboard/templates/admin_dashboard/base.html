@@ -143,6 +143,14 @@
   i[data-lucide].h-8,  i[data-lucide].w-8  { font-size:1.8rem; }
   i[data-lucide].hidden { display: none; }
   @media (min-width:768px) { i[data-lucide].md\:inline { display: inline; } }
+  /* Remix icon-font glyphs render low on their text baseline, so icon+text
+     controls looked like the icon sat slightly below the label. Flex-center
+     the glyph inside its own box on the interactive surfaces (the icon box is
+     already vertically centered by the control's own flex, so this only lifts
+     the glyph to that box's true center). */
+  :is(.btn, .nav-link, .pill, .dropdown-item, .rte-btn) i[data-lucide] {
+    display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+  }
 
   /* ── Micro-interaction flows ──────────────────────────────────────────
      Tasteful, GPU-cheap (transform/opacity only), fully disabled under
