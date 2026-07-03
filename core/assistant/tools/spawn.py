@@ -39,6 +39,17 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 logger = logging.getLogger('morpheus.assistant.spawn')
 
 
+def _reflect(run) -> None:
+    """Post-run reflection (learning loop) — best-effort, after the terminal
+    state is saved so pollers never wait on it. See core/assistant/reflection.py."""
+    try:
+        from core.assistant.reflection import reflect_on_worker_run
+
+        reflect_on_worker_run(run)
+    except Exception:  # noqa: BLE001 — reflection must never affect the run
+        logger.debug('spawn: reflection skipped for %s', run.id, exc_info=True)
+
+
 def _execute_worker_run(  # noqa: PLR0915
     *,
     run_id: str,
@@ -128,6 +139,7 @@ def _execute_worker_run(  # noqa: PLR0915
         run.duration_ms = int((time.monotonic() - started) * 1000)
         run.ended_at = timezone.now()
         run.save(update_fields=['state', 'error', 'duration_ms', 'ended_at'])
+        _reflect(run)
         return
 
     run.state = result.state
@@ -154,6 +166,7 @@ def _execute_worker_run(  # noqa: PLR0915
             'ended_at',
         ]
     )
+    _reflect(run)
 
 
 @tool(

@@ -84,7 +84,15 @@ LINDA_BASE_PROMPT = (
 
 
 def _inject_memories(base: str, *, limit: int = 20) -> str:
-    """Append up to `limit` top-relevance LindaMemory rows to the
+    """DEPRECATED — no longer called by ``build_system_prompt``.
+
+    Memory injection now happens once per turn in
+    ``runtime._format_recent_memories(user_message)``, which is query-aware
+    (semantic similarity to the current message). This function doubled the
+    injection (a second recency-only ``[MEMORY]`` block) and is kept for one
+    release only in case an external caller imports it.
+
+    Append up to `limit` top-relevance LindaMemory rows to the
     system prompt. The model already supports relevance_score() with
     a 60-day half-life so stale memories naturally drop off.
 
@@ -129,16 +137,18 @@ def _inject_memories(base: str, *, limit: int = 20) -> str:
 
 
 def build_system_prompt() -> str:
-    """Return the full system prompt with brand-voice + LindaMemory
-    injected when available.
+    """Return the full system prompt with brand-voice injected when available.
 
     Layering (top → bottom):
-      1. LindaMemory facts — surface-level "things Linda knows".
-      2. Brand voice — per-store name / audience / tone / guidelines
+      1. Brand voice — per-store name / audience / tone / guidelines
          from ``ai_content`` plugin config.
-      3. LINDA_BASE_PROMPT — the hard-coded tool catalogue + style
-         rules. Always present even when plugins / memory are
-         absent.
+      2. LINDA_BASE_PROMPT — the hard-coded tool catalogue + style
+         rules. Always present even when plugins are absent.
+
+    LindaMemory facts are NOT injected here — the runtime adds a single
+    query-aware ``REMEMBERED FACTS`` system message per turn
+    (``runtime._format_recent_memories``), ranked by semantic similarity
+    to the merchant's current message.
     """
     prompt = LINDA_BASE_PROMPT
     try:
@@ -147,7 +157,6 @@ def build_system_prompt() -> str:
         prompt = with_brand_voice(prompt)
     except Exception as e:  # noqa: BLE001 — prompt must always be available
         logger.debug('assistant: brand-voice injection skipped: %s', e)
-    prompt = _inject_memories(prompt)
     return prompt
 
 

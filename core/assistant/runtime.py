@@ -104,13 +104,19 @@ class AssistantRunResult:
     duration_ms: int = 0
 
 
-def _format_recent_memories() -> str:
+def _format_recent_memories(query: str = '') -> str:
     """Compact bullet list of remembered facts, prepended each turn.
-    Empty string when nothing's remembered (or the model isn't migrated yet)."""
+
+    ``query`` is the merchant's current message — semantically-similar
+    memories rank above merely-recent ones (see ``get_recent_memories``).
+    Empty string when nothing's remembered (or the model isn't migrated yet).
+    This is the SINGLE memory-injection point; ``build_system_prompt`` no
+    longer adds its own ``[MEMORY]`` section (it used to, doubling tokens).
+    """
     try:
         from core.assistant.tools.memory import get_recent_memories
 
-        rows = get_recent_memories(limit=50)
+        rows = get_recent_memories(limit=50, query=query)
     except Exception:  # noqa: BLE001
         return ''
     if not rows:
@@ -175,7 +181,7 @@ def _to_llm_messages(
     msgs = [LLMMessage(role='system', content=build_system_prompt())]
     # Inject remembered facts (top of turn) so Linda recalls preferences
     # across sessions without an explicit memory.recall call.
-    memo = _format_recent_memories()
+    memo = _format_recent_memories(user_message)
     if memo:
         msgs.append(LLMMessage(role='system', content=memo))
     # Inject the page context (URL + title) if the caller supplied one

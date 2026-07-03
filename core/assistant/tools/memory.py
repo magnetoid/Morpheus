@@ -164,12 +164,17 @@ def memory_forget_tool(*, key: str, scope: str = 'merchant') -> ToolResult:
     return ToolResult(output={'forgot': deleted > 0, 'scope': scope, 'key': key})
 
 
-def get_recent_memories(limit: int = 50) -> list[dict]:
+def get_recent_memories(limit: int = 50, *, query: str = '') -> list[dict]:
     """Top-of-turn injection helper — returns ``[{scope, key, value}, ...]``
     for the most relevant memories by combined source-confidence + temporal
     decay. The May-2026 industry consensus (Mem0 / Zep) is that flat recency
     misses the "user told me a key preference six weeks ago" fact in favour
     of yesterday's noise — relevance scoring fixes that.
+
+    When ``query`` is given (the merchant's current message), rows whose
+    embedding clears ``_SEMANTIC_FLOOR`` get the cosine similarity ADDED to
+    their decay score — so what the merchant is asking about right now
+    outranks merely-recent facts. Rows without embeddings keep decay-only.
 
     Fails closed: when the table doesn't exist or the import fails, returns
     an empty list so Linda still works on a fresh install.
@@ -180,7 +185,32 @@ def get_recent_memories(limit: int = 50) -> list[dict]:
         # Cap the query at 4× the desired output so the in-Python sort stays
         # bounded even on databases with thousands of rows.
         candidates = list(LindaMemory.objects.all()[: max(limit * 4, 200)])
-        candidates.sort(key=lambda r: r.relevance_score(), reverse=True)
+        qvec = None
+        if (query or '').strip():
+            try:
+                from core.embeddings import embed
+
+                qvec = embed(query.strip()[:2000])
+            except Exception:  # noqa: BLE001 — embedding outage → decay-only
+                qvec = None
+
+        def _score(r) -> float:
+            try:
+                s = r.relevance_score()
+            except Exception:  # noqa: BLE001
+                s = 0.0
+            if qvec is not None and r.embedding:
+                try:
+                    from core.embeddings import cosine_similarity
+
+                    sem = cosine_similarity(qvec, r.embedding)
+                    if sem >= _SEMANTIC_FLOOR:
+                        s += sem
+                except Exception:  # noqa: BLE001, S110 — malformed vector → decay-only
+                    pass
+            return s
+
+        candidates.sort(key=_score, reverse=True)
         return [{'scope': r.scope, 'key': r.key, 'value': r.value} for r in candidates[:limit]]
     except Exception:  # noqa: BLE001
         return []

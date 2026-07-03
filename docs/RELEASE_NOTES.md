@@ -10,6 +10,25 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.2.27 — 2026-07-03
+
+### Linda learns (self-learning Release 1)
+- **Memory recall is now semantic and question-aware.** Linda ranks her
+  remembered facts against what you're asking *right now* — "where do my
+  parcels leave from" surfaces "warehouse is in Berlin" even though they share
+  no words. (Previously recall was recency-only, and the memory block was
+  injected twice per turn — fixed, halving the token overhead.)
+- **Linda now learns from her background Workers.** When a delegated job
+  finishes, a short reflection pass judges the outcome, saves up to two
+  durable lessons to her memory, and records the verdict on any learned skill
+  the job used. A skill that keeps failing retires itself — and Linda
+  remembers why, so she can tell you.
+- **Tool gaps are tracked.** When a Worker clearly lacked a capability, the
+  gap is remembered (`tool_gap.*`) — groundwork for Linda proposing her own
+  new tools (propose-only, owner-approved) in an upcoming release.
+
+---
+
 ## v0.2.26 — 2026-07-02
 
 ### Privacy

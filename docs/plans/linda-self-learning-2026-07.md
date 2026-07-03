@@ -68,10 +68,11 @@ New module `core/assistant/reflection.py`:
   confidence weight and decay handle quality control), capped at 2 per run.
 - `tool_gaps` are stored as `LindaMemory` rows under scope `merchant`, key
   prefix `tool_gap.` — Release 3 turns these into `CodeProposal` drafts.
-- **Auto-disable:** after a reflection updates counters, if
-  `uses >= 5 and success_rate() < 0.4`, set `enabled=False` and write a
-  memory row explaining why (so Linda can tell the merchant). Audited via
-  `record_ai_decision`.
+- **Auto-disable:** counter updates + auto-retire delegate to the existing
+  `record_skill_outcome` (`core/assistant/tools/skills.py` — threshold:
+  `uses >= 5 and success_rate() < 0.5`, unregisters from the live registry,
+  signals self-improvement). Reflection adds a `skill_disabled.*` memory row
+  (so Linda can tell the merchant why) and a `record_ai_decision` audit row.
 - Linda conversation turns are NOT reflected on every turn (cost); only
   Worker runs, which have a crisp objective/outcome shape.
 - Fail-soft everywhere: reflection errors never affect the run result.
