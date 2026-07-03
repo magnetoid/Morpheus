@@ -61,6 +61,53 @@
   {% endif %}
   {% endwith %}
 
+  {# Usage & cost — store-wide token spend over the last 30 days (estimate). #}
+  {% with u=usage %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold flex items-center gap-2"><i data-lucide="gauge" class="h-4 w-4"></i> Usage &amp; cost</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Estimated LLM spend across Linda + background agents, last {{ u.days }} days. Estimate for visibility, not a bill.</p>
+      </div>
+      <a href="/dashboard/agents/observability/" class="btn btn-ghost text-xs"><i data-lucide="activity" class="h-3.5 w-3.5"></i> Observability</a>
+    </div>
+    {% if u.has_data %}
+    <div class="card-padded grid grid-cols-2 sm:grid-cols-3 gap-4 border-b border-[color:var(--border)]">
+      <div>
+        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Est. cost</p>
+        <p class="text-xl font-semibold mt-0.5" style="font-variant-numeric:tabular-nums;">${{ u.total_cost|floatformat:2 }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Tokens</p>
+        <p class="text-xl font-semibold mt-0.5" style="font-variant-numeric:tabular-nums;">{{ u.total_tokens }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Calls</p>
+        <p class="text-xl font-semibold mt-0.5" style="font-variant-numeric:tabular-nums;">{{ u.calls }}</p>
+      </div>
+    </div>
+    <table class="morph-table">
+      <thead><tr><th>Model</th><th class="text-right">Calls</th><th class="text-right">Tokens</th><th class="text-right">Est. cost</th></tr></thead>
+      <tbody>
+        {% for r in u.by_model %}
+        <tr>
+          <td><code class="font-mono text-xs">{{ r.model }}</code></td>
+          <td class="text-right text-[color:var(--text-muted)]" style="font-variant-numeric:tabular-nums;">{{ r.calls }}</td>
+          <td class="text-right text-[color:var(--text-muted)]" style="font-variant-numeric:tabular-nums;">{{ r.tokens }}</td>
+          <td class="text-right font-medium" style="font-variant-numeric:tabular-nums;">{% if r.cost %}${{ r.cost|floatformat:2 }}{% else %}<span class="text-[color:var(--text-subtle)]">—</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-center text-sm text-[color:var(--text-muted)] py-8">
+      <p>No AI usage recorded in the last {{ u.days }} days yet.</p>
+      <p class="mt-1 text-xs">Send Linda a message or run an agent and spend shows up here.</p>
+    </div>
+    {% endif %}
+  </div>
+  {% endwith %}
+
   {# Set-active — only connected providers can be made active. #}
   {% if connected_cards %}
   <form method="post" action="/dashboard/settings/ai_assistant/"
@@ -156,6 +203,37 @@
     </div>
   </form>
 
+  {% comment %}Brand voice — owned by the ai_content plugin, surfaced here as a widget so the AI page is the single home for AI config. POSTs to ai_content.{% endcomment %}
+  {% if brand_voice %}
+  <form method="post" action="{{ brand_voice.submit_url }}" class="card overflow-hidden">
+    {% csrf_token %}
+    <input type="hidden" name="_next" value="/dashboard/settings/ai/">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold flex items-center gap-2"><i data-lucide="megaphone" class="h-4 w-4"></i> {{ brand_voice.label }}</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ brand_voice.description }} Applied to every AI generation — product copy, emails, Linda's replies.</p>
+    </div>
+    <div class="card-padded space-y-3">
+      {% for field in brand_voice.fields %}
+      <div class="space-y-1">
+        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">{{ field.title }}</label>
+        {% if field.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.description }}</p>{% endif %}
+        {% if field.kind == 'boolean' %}
+        <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="{{ field.key }}" {% if field.value %}checked{% endif %}> Enabled</label>
+        {% elif field.kind == 'enum' %}
+        <select name="{{ field.key }}" class="input">{% for option in field.enum %}<option value="{{ option }}" {% if option == field.value %}selected{% endif %}>{{ option }}</option>{% endfor %}</select>
+        {% elif field.kind == 'text_long' or field.key == 'brand_voice_guidelines' %}
+        <textarea name="{{ field.key }}" class="input" rows="3" placeholder="{{ field.placeholder|default:'' }}">{{ field.value }}</textarea>
+        {% else %}
+        <input type="text" name="{{ field.key }}" class="input" value="{{ field.value }}" placeholder="{{ field.placeholder|default:'' }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-3.5 w-3.5"></i> Save brand voice</button>
+    </div>
+  </form>
+  {% endif %}
 
 </div>
 

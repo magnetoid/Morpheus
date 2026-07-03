@@ -662,6 +662,79 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _ai_key_fingerprint(key: str) -> str:
+    """A safe, recognisable hint for a stored API key — never the full secret.
+    'sk-abcd…wxyz' for long keys; a generic mask for short ones."""
+    k = (key or '').strip()
+    if not k:
+        return ''
+    if len(k) <= 8:
+        return '••••'
+    return f'{k[:4]}…{k[-4:]}'
+
+
+def _ai_usage_summary(days: int = 30) -> dict:
+    """Store-wide LLM token usage + estimated spend over the last `days`,
+    from background agent runs + Linda chat messages. Estimate only (not
+    billing); priced via core.agents.pricing. Fail-soft to zeros."""
+    from django.utils import timezone
+
+    from core.agents.pricing import estimate_cost
+
+    since = timezone.now() - __import__('datetime').timedelta(days=max(1, int(days)))
+    by_model: dict[str, dict] = {}
+    total_tokens = 0
+    total_cost = 0.0
+    calls = 0
+
+    def _add(model: str, pt: int, ct: int, n: int = 1):
+        nonlocal total_tokens, total_cost, calls
+        model = (model or 'unknown').strip() or 'unknown'
+        pt = int(pt or 0)
+        ct = int(ct or 0)
+        cost = estimate_cost(model, pt, ct)
+        row = by_model.setdefault(model, {'model': model, 'tokens': 0, 'cost': 0.0, 'calls': 0})
+        row['tokens'] += pt + ct
+        row['cost'] += cost
+        row['calls'] += n
+        total_tokens += pt + ct
+        total_cost += cost
+        calls += n
+
+    try:
+        from plugins.installed.agent_core.models import AgentRun
+
+        for r in AgentRun.objects.filter(started_at__gte=since).only(
+            'model', 'prompt_tokens', 'completion_tokens'
+        ):
+            _add(r.model, r.prompt_tokens, r.completion_tokens)
+    except Exception:  # noqa: BLE001 — plugin/table may be absent
+        pass
+    try:
+        from core.assistant.models import AssistantMessage
+
+        for m in (
+            AssistantMessage.objects.filter(created_at__gte=since)
+            .exclude(prompt_tokens=0, completion_tokens=0)
+            .only('model', 'prompt_tokens', 'completion_tokens')
+        ):
+            _add(m.model, m.prompt_tokens, m.completion_tokens)
+    except Exception:  # noqa: BLE001
+        pass
+
+    rows = sorted(by_model.values(), key=lambda r: r['cost'], reverse=True)
+    for r in rows:
+        r['cost'] = round(r['cost'], 4)
+    return {
+        'days': int(days),
+        'total_tokens': total_tokens,
+        'total_cost': round(total_cost, 2),
+        'calls': calls,
+        'by_model': rows[:8],
+        'has_data': total_tokens > 0,
+    }
+
+
 def settings_ai(request: HttpRequest) -> HttpResponse:
     """Custom AI providers settings page — card per provider.
 
@@ -713,7 +786,12 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         cards.append(
             {
                 **p,
-                'api_key': '********' if api_key else '',
+                # Never pre-fill the secret (nor a '********' literal). The
+                # input stays empty; a fingerprint shows what's stored, and a
+                # blank submit keeps the existing key (save handler contract).
+                'api_key': '',
+                'key_set': bool(api_key),
+                'key_hint': _ai_key_fingerprint(api_key),
                 'base_url': base_url,
                 'model': model,
                 'configured': configured,
@@ -795,6 +873,25 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         for k, lbl, desc, cs in feature_flags
     ]
 
+    # Brand voice — owned by the ai_content plugin, which contributes a
+    # category='ai' SettingsPanel. Render its fields here (via the shared
+    # panel-field helper) so the AI page is the single home for AI config;
+    # the form POSTs back to ai_content's own settings endpoint (no
+    # cross-plugin model import — plugin ownership preserved).
+    brand_voice = None
+    try:
+        bv_plugin = plugin_registry.get('ai_content')
+        bv_panel = plugin_registry.settings_panel('ai_content')
+        if bv_plugin is not None and bv_panel is not None:
+            brand_voice = {
+                'label': bv_panel.label,
+                'description': bv_panel.description,
+                'fields': _build_panel_fields(bv_plugin, bv_panel.schema),
+                'submit_url': '/dashboard/settings/ai_content/',
+            }
+    except Exception:  # noqa: BLE001 — ai_content may be disabled
+        brand_voice = None
+
     return render(
         request,
         'admin_dashboard/settings_ai.html',
@@ -806,6 +903,8 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
             'active_provider': active,
             'active_banner': active_banner,
             'features': features,
+            'brand_voice': brand_voice,
+            'usage': _ai_usage_summary(days=30),
             'active_nav': 'settings',
         },
     )

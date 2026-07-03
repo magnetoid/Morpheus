@@ -44,13 +44,20 @@ Expects `c` (provider card dict) and `mode`.
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       {% if 'api_key' in c.fields %}
       <div class="md:col-span-2">
-        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
-          API key{% if c.api_key_optional %} <span class="font-normal text-[color:var(--text-subtle)] normal-case tracking-normal">— optional for self-hosted</span>{% endif %}
-        </label>
-        <input type="password" name="{{ c.slug }}_api_key" class="input mt-1 font-mono"
-               {% if c.api_key %}value="********"{% else %}value=""{% endif %}
-               autocomplete="off" spellcheck="false" placeholder="API key">
-        <p class="text-xs text-[color:var(--text-muted)] mt-1">Leave as ******** to keep the existing key, or type a new one to replace it.</p>
+        <div class="flex items-center justify-between gap-2">
+          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
+            API key{% if c.api_key_optional %} <span class="font-normal text-[color:var(--text-subtle)] normal-case tracking-normal">— optional for self-hosted</span>{% endif %}
+          </label>
+          {% if c.key_set %}
+          <span class="pill pill-success pill-xs" title="A key is stored for this provider">
+            <i data-lucide="key-round" class="h-3 w-3"></i> {{ c.key_hint }}
+          </span>
+          {% endif %}
+        </div>
+        <input type="password" name="{{ c.slug }}_api_key" class="input mt-1 font-mono" value=""
+               autocomplete="off" spellcheck="false"
+               placeholder="{% if c.key_set %}Leave blank to keep the stored key{% else %}Paste your API key{% endif %}">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">{% if c.key_set %}A key is saved (shown as a fingerprint above, never the full secret). Leave blank to keep it, or paste a new one to replace it.{% else %}Paste the key from your provider — it's saved server-side and never shown in full again.{% endif %}</p>
       </div>
       {% endif %}
 
