@@ -60,6 +60,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.analytics',
     'plugins.installed.storefront',
     'plugins.installed.admin_dashboard',
+    'plugins.installed.richtext',
     'plugins.installed.ai_assistant',
     'plugins.installed.ai_content',
     'plugins.installed.functions',
