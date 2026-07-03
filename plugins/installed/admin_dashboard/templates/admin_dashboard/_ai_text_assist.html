@@ -14,8 +14,8 @@ Must sit inside a <form> that has {% csrf_token %} (or any csrf token on page).
 <div class="flex items-center gap-2 flex-wrap" data-ai-assist
      data-endpoint="{{ endpoint }}" data-desc="{{ desc_id }}"
      data-title="{{ title_id|default:'' }}" data-metadesc="{{ metadesc_id|default:'' }}">
-  <button type="button" class="btn btn-ghost btn-sm" data-ai-generate>✨ Generate {{ label|default:'text' }}</button>
-  <button type="button" class="btn btn-ghost btn-sm" data-ai-rewrite>↻ Rewrite</button>
+  <button type="button" class="btn btn-ghost btn-sm" data-ai-generate><i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Generate {{ label|default:'text' }}</button>
+  <button type="button" class="btn btn-ghost btn-sm" data-ai-rewrite><i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> Rewrite</button>
   <span class="text-xs text-[color:var(--text-muted)]" data-ai-status></span>
 </div>
 <script>

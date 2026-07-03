@@ -1,0 +1,18 @@
+{% comment %}
+Honest failure state for list pages — rendered when the view's query raised
+(DB outage, broken migration) so the page never shows the first-run
+"add your first X" empty state over an error. Pass via {% include %} with:
+  entity — plural noun for the copy ("products", "orders")
+{% endcomment %}
+<div class="card-padded text-center py-16">
+  <i data-lucide="alert-triangle" class="h-10 w-10 mx-auto mb-3 text-[color:var(--danger)]"></i>
+  <p class="font-medium">Couldn&rsquo;t load {{ entity|default:"this list" }}</p>
+  <p class="text-sm text-[color:var(--text-muted)] mt-1 max-w-md mx-auto">
+    Something went wrong on our side — your data is untouched. The error has
+    been logged (Settings &rarr; Developer &rarr; Errors has the details).
+  </p>
+  <a href="{{ request.path }}" class="btn text-sm mt-4 inline-flex">
+    <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+    Try again
+  </a>
+</div>

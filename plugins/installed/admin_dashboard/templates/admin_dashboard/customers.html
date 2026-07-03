@@ -117,7 +117,7 @@
     </table>
     {% else %}
     {% url 'admin_dashboard:customer_new' as add_url %}
-    {% include "admin_dashboard/_empty_state.html" with icon="users" title="No customers yet" hint="They'll appear here after their first order, signup, or lead capture." action_url=add_url action_label="Add a customer" %}
+    {% include "admin_dashboard/_empty_state.html" with icon="users" title="No customers yet" hint="They'll appear here after their first order, signup, or lead capture." action_url=add_url action_label="Add a customer" search=search %}
     {% endif %}
     {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
   </div>

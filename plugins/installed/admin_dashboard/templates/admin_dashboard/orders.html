@@ -97,9 +97,11 @@
         {% endfor %}
       </tbody>
     </table>
+    {% elif load_error %}
+    {% include "admin_dashboard/_load_error.html" with entity="orders" %}
     {% else %}
     {% url 'admin_dashboard:order_new' as order_new_url %}
-    {% include "admin_dashboard/_empty_state.html" with icon="shopping-bag" title="No orders yet" hint="When customers place orders, they'll appear here." action_url=order_new_url action_label="Create order" action_icon="plus" %}
+    {% include "admin_dashboard/_empty_state.html" with icon="shopping-bag" title="No orders yet" hint="When customers place orders, they'll appear here." action_url=order_new_url action_label="Create order" action_icon="plus" search=search %}
     {% endif %}
     {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
   </div>

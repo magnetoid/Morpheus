@@ -128,7 +128,7 @@
     <div class="callout__body">
       <p class="callout__title">No AI API keys configured</p>
       Linda and the agent system will fall back to offline mode until you add keys.
-      <a href="{% url 'admin_dashboard:settings_category' category='ai' %}" class="underline ml-1">Configure AI →</a>
+      <a href="{% url 'admin_dashboard:settings_category' category='ai' %}" class="underline ml-1 inline-flex items-center gap-1">Configure AI <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></a>
     </div>
   </div>
   {% endif %}
@@ -221,7 +221,7 @@
       {% if briefing.actions %}
       <div class="flex flex-wrap gap-2 mt-3">
         {% for a in briefing.actions %}
-        <a href="/dashboard/assistant/?ask={{ a.prompt|urlencode }}" class="btn btn-secondary text-xs">{{ a.label }} →</a>
+        <a href="/dashboard/assistant/?ask={{ a.prompt|urlencode }}" class="btn btn-secondary text-xs">{{ a.label }} <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></a>
         {% endfor %}
       </div>
       {% endif %}
@@ -263,7 +263,7 @@
           <div class="flex flex-col gap-1 items-end">
             {% if p.suggested_action.url %}
             <a href="{{ p.suggested_action.url }}" class="btn btn-primary text-xs whitespace-nowrap">
-              {{ p.suggested_action.label|default:"Open" }} →
+              {{ p.suggested_action.label|default:"Open" }} <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
             </a>
             {% endif %}
             <form method="post" action="{% url 'ai_assistant_dashboard:pulse_dismiss' insight_id=p.id %}" class="m-0">

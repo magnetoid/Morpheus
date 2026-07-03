@@ -6,9 +6,24 @@ Reusable empty-state block for list pages. Pass via {% include %} with:
   action_url   — optional link
   action_label — button copy ("Add a customer")
   action_icon  — optional lucide icon name to render inside the CTA
+  search       — the ACTIVE search/filter query, when the list supports one.
+                 When truthy, the first-run copy is replaced by a
+                 "no results for X / clear search" state so a filtered-empty
+                 list never claims the store has no data.
+  clear_url    — where "Clear search" points (default: the current path)
+  compact      — truthy → tighter vertical padding for in-card empties
 Renders inside an existing `card` container.
 {% endcomment %}
-<div class="card-padded text-center py-16">
+<div class="card-padded text-center {% if compact %}py-10{% else %}py-16{% endif %}">
+  {% if search %}
+  <i data-lucide="search-x" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
+  <p class="font-medium">No results for &ldquo;{{ search }}&rdquo;</p>
+  <p class="text-sm text-[color:var(--text-muted)] mt-1 max-w-md mx-auto">Try a different search, or clear it to see everything.</p>
+  <a href="{{ clear_url|default:request.path }}" class="btn text-sm mt-4 inline-flex">
+    <i data-lucide="x" class="h-4 w-4"></i>
+    Clear search
+  </a>
+  {% else %}
   <i data-lucide="{{ icon|default:'inbox' }}" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
   <p class="font-medium">{{ title|default:"Nothing here yet" }}</p>
   {% if hint %}<p class="text-sm text-[color:var(--text-muted)] mt-1 max-w-md mx-auto">{{ hint }}</p>{% endif %}
@@ -17,5 +32,6 @@ Renders inside an existing `card` container.
     {% if action_icon %}<i data-lucide="{{ action_icon }}" class="h-4 w-4"></i>{% endif %}
     {{ action_label }}
   </a>
+  {% endif %}
   {% endif %}
 </div>

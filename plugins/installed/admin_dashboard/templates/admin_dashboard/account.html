@@ -9,7 +9,7 @@
     <p class="text-sm text-[color:var(--text-muted)]">
       Personal settings for {{ account_user.email|default:"your staff account" }}.
       Looking for the store-wide settings instead?
-      <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline" style="color: var(--text);">Open store settings →</a>
+      <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline inline-flex items-center gap-1" style="color: var(--text);">Open store settings <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></a>
     </p>
   </div>
 

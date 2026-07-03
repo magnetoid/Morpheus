@@ -79,8 +79,14 @@ def products_list(request: HttpRequest) -> HttpResponse:
             allowed_sorts=('name', 'created_at', 'status', 'price'),
         )
         products = list(page_obj.object_list)
+        load_error = False
     except Exception:  # noqa: BLE001
+        # An honest failure state — NOT the first-run empty state. A DB
+        # outage on a 500-product store must never render "Add your first
+        # product".
+        logger.exception('products_list: query failed')
         products = []
+        load_error = True
 
     # Bookvault is an optional plugin. Surface the per-row link status
     # column only when BV is configured + authed; otherwise the column
@@ -105,6 +111,7 @@ def products_list(request: HttpRequest) -> HttpResponse:
         'admin_dashboard/products.html',
         {
             'products': products,
+            'load_error': load_error,
             'status_filter': status,
             'status_choices': PRODUCT_STATUS_CHOICES,
             'status_counts': status_counts,

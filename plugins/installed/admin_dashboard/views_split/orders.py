@@ -71,8 +71,12 @@ def orders_list(request: HttpRequest) -> HttpResponse:
             allowed_sorts=('placed_at', 'order_number', 'total', 'status', 'email'),
         )
         orders = list(page_obj.object_list)
+        load_error = False
     except Exception:  # noqa: BLE001
+        # Honest failure state — never render "No orders yet" over a DB error.
+        logger.exception('orders_list: query failed')
         orders = []
+        load_error = True
     # Drafts surface inside the Orders page rather than as a separate
     # sidebar entry — staff sees drafts and real orders side by side.
     draft_count = 0
@@ -90,6 +94,7 @@ def orders_list(request: HttpRequest) -> HttpResponse:
         'admin_dashboard/orders.html',
         {
             'orders': orders,
+            'load_error': load_error,
             'status_filter': status_filter,
             'status_choices': ORDER_STATUS_CHOICES,
             'status_counts': status_counts,

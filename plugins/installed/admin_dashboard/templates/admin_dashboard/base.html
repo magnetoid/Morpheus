@@ -38,7 +38,7 @@
   var MAP = {
     // navigation / chrome
     'home':'ri-home-5-line','search':'ri-search-line','search-x':'ri-search-line',
-    'bell':'ri-notification-3-line','settings':'ri-settings-3-line','cog':'ri-settings-3-line',
+    'bell':'ri-notification-3-line','settings':'ri-settings-3-line','cog':'ri-play-circle-line',
     'menu':'ri-menu-line','more-horizontal':'ri-more-line','panel-left':'ri-side-bar-line',
     'grid-3x3':'ri-layout-grid-line','grip-vertical':'ri-draggable','sliders-horizontal':'ri-equalizer-line',
     'filter':'ri-filter-3-line','list':'ri-list-unordered','layers':'ri-stack-line',
@@ -74,7 +74,7 @@
     'info':'ri-information-line','help-circle':'ri-question-line',
     // time / activity
     'calendar':'ri-calendar-line','clock':'ri-time-line','history':'ri-history-line','activity':'ri-pulse-line',
-    'refresh-cw':'ri-refresh-line','refresh-ccw':'ri-refresh-line','loader':'ri-loader-4-line',
+    'refresh-cw':'ri-refresh-line','refresh-ccw':'ri-arrow-go-back-line','loader':'ri-loader-4-line',
     'play-circle':'ri-play-circle-line','pause-circle':'ri-pause-circle-line',
     // files / content / media
     'download':'ri-download-2-line','upload':'ri-upload-2-line','upload-cloud':'ri-upload-cloud-2-line',
@@ -147,10 +147,14 @@
   /* ── Micro-interaction flows ──────────────────────────────────────────
      Tasteful, GPU-cheap (transform/opacity only), fully disabled under
      reduce-motion. The new Remix glyphs come alive on interaction. */
+  /* Context-correct icon sizing inside buttons regardless of the per-template
+     h-* class — every .btn glyph reads at the button's own scale. */
+  .btn i[data-lucide] { font-size: 1rem; }
+  .btn.text-xs i[data-lucide], .btn.text-sm i[data-lucide], .btn-sm i[data-lucide] { font-size: .9rem; }
+
   @media (prefers-reduced-motion: no-preference) {
     :is(.nav-link, .btn, a, button) i[data-lucide] {
       transition: transform .18s var(--ease-out, cubic-bezier(.2,.8,.2,1)), color .15s ease;
-      will-change: transform;
     }
     :is(.nav-link, .btn):hover i[data-lucide] { transform: scale(1.15); }
     .nav-link.active i[data-lucide] { transform: scale(1.06); }
@@ -162,11 +166,12 @@
     @keyframes mi-swing { 0%,100%{transform:rotate(0)} 20%{transform:rotate(14deg)}
       40%{transform:rotate(-10deg)} 60%{transform:rotate(6deg)} 80%{transform:rotate(-3deg)} }
 
-    :is(a, button, .btn):hover > i[data-lucide="refresh-cw"],
-    :is(a, button, .btn):hover > i[data-lucide="refresh-ccw"] { animation: mi-spin .7s ease; }
+    :is(a, button, .btn):hover > i[data-lucide="refresh-cw"] { animation: mi-spin .7s ease; }
     /* keep spinning while an htmx request fired from this control is in flight */
-    .htmx-request i[data-lucide="refresh-cw"], .htmx-request i[data-lucide="refresh-ccw"],
-    .htmx-request i[data-lucide="loader"] { animation: mi-spin .8s linear infinite; }
+    .htmx-request i[data-lucide="refresh-cw"] { animation: mi-spin .8s linear infinite; }
+    /* A loader glyph is never static — fetch()-driven busy states (no
+       .htmx-request ancestor) get the same spin. */
+    i[data-lucide="loader"] { animation: mi-spin .8s linear infinite; }
     @keyframes mi-spin { to { transform: rotate(360deg); } }
 
     :is(a, button, .btn, .nav-link):hover > i[data-lucide="sparkles"],
@@ -189,16 +194,30 @@
     .nav-link { transition: background var(--motion-fast,.14s) ease, color var(--motion-fast,.14s) ease, padding-left .16s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
     .nav-link:hover { padding-left: calc(.65rem + 4px); }
 
-    /* Content settles in as a staggered flow on each page render */
-    #main-content .card { animation: mi-rise .44s var(--ease-out, cubic-bezier(.2,.8,.2,1)) both; }
-    #main-content .card:nth-child(2){animation-delay:.05s} #main-content .card:nth-child(3){animation-delay:.1s}
-    #main-content .card:nth-child(4){animation-delay:.15s} #main-content .card:nth-child(5){animation-delay:.2s}
-    #main-content .card:nth-child(6){animation-delay:.25s} #main-content .card:nth-child(n+7){animation-delay:.3s}
-    @keyframes mi-rise { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+    /* Page entrance is owned by the view transition on #main-content (see
+       mc-vt-in below) — the old per-card mi-rise stagger stacked a second
+       opacity animation on top of it and the two fought on every boosted
+       navigation. Opt-in stagger lives on .reveal-stagger instead. */
+    .reveal-stagger > * { animation: ko-reveal-up var(--motion-med, .24s) var(--ease-out, cubic-bezier(.2,.8,.2,1)) backwards; }
+    .reveal-stagger > *:nth-child(2) { animation-delay: .05s; }
+    .reveal-stagger > *:nth-child(3) { animation-delay: .1s; }
+    .reveal-stagger > *:nth-child(4) { animation-delay: .15s; }
+    .reveal-stagger > *:nth-child(5) { animation-delay: .2s; }
+    .reveal-stagger > *:nth-child(n+6) { animation-delay: .25s; }
 
     /* Reusable success pop (add .mi-pop to an element to play it once) */
     @keyframes mi-pop { 0%{transform:scale(.5);opacity:0} 60%{transform:scale(1.18)} 100%{transform:scale(1);opacity:1} }
     .mi-pop { animation: mi-pop .35s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
+
+    /* Overlay entrance — one primitive for every pop-in surface. display:none
+       → visible restarts CSS animations, so the existing hidden-toggle JS
+       needs no changes. */
+    @keyframes overlay-in { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
+    .dropdown-menu:not([hidden]),
+    #user-menu-panel,
+    #morph-palette:not([hidden]) .card,
+    #morph-confirm-modal:not([hidden]) .card,
+    dialog.morph-modal[open] { animation: overlay-in var(--motion-fast, .14s) var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
   }
 </style>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
@@ -348,10 +367,7 @@
     }
   }
   @keyframes ko-reveal-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  @keyframes ko-pop       { 0% { transform: scale(1); } 30% { transform: scale(1.18); } 100% { transform: scale(1); } }
-  @keyframes ko-pulse     { 0%, 100% { box-shadow: 0 0 0 0 var(--primary); } 50% { box-shadow: 0 0 0 6px transparent; } }
   .ko-reveal { animation: ko-reveal-up var(--motion-med) var(--ease-out) both; }
-  .ko-pulse-once { animation: ko-pulse 1s ease-out 1; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -359,7 +375,6 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
-    .ko-fade { transition-duration: 120ms !important; }
   }
   body {
     background: var(--bg);
@@ -372,7 +387,9 @@
     -moz-osx-font-smoothing: grayscale;
   }
   /* Modern type scale — explicit for headings so plugins don't drift */
-  h1, .h1 { font-size: 1.5rem; line-height: 1.25; font-weight: 600; letter-spacing: -.015em; color: var(--text); }
+  /* 1.25rem matches the text-xl every page title actually uses — a bare
+     <h1> is now correct by default instead of oversized. */
+  h1, .h1 { font-size: 1.25rem; line-height: 1.3; font-weight: 600; letter-spacing: -.025em; color: var(--text); }
   h2, .h2 { font-size: 1.125rem; line-height: 1.3;  font-weight: 600; letter-spacing: -.01em; color: var(--text); }
   h3, .h3 { font-size: 1rem;     line-height: 1.35; font-weight: 600; color: var(--text); }
   .meta, small, .text-meta { font-size: .8125rem; color: var(--text-muted); }
@@ -384,13 +401,19 @@
   }
   .card-padded { padding: 1rem 1.1rem; }
   .card-hoverable:hover { box-shadow: var(--shadow-card-hover); }
-  .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .75rem; font-size:.875rem; font-weight:500; border-radius: var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); transition:background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast); cursor: pointer; }
+  .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .75rem; font-size:.875rem; font-weight:500; border-radius: var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); transition:background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast) var(--ease-out); cursor: pointer; }
   .btn:hover { background: var(--surface-2); }
+  /* (Press feedback lives in ONE rule further down: .btn:active scale(.97).) */
+  /* The small size step. Was referenced by templates but never defined —
+     also absorbs the ad-hoc `btn text-xs` hacks. */
+  .btn-sm { padding: .25rem .55rem; font-size: .75rem; gap: .3rem; }
+  .input-sm { height: 1.75rem; padding: 0 .5rem; font-size: .8125rem; }
   /* Focus rings use the brand accent — visible against both light + dark
-     bg, satisfies WCAG 2.2 AA on the new neutral palette. */
-  .btn:focus-visible,
-  .input:focus-visible,
-  a:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
+     bg, satisfies WCAG 2.2 AA on the new neutral palette. One rule covers
+     every focusable control, incl. dropdown items, selects and summaries. */
+  :is(.btn, .input, a, button, select, summary, [tabindex]):focus-visible {
+    outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand);
+  }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn-primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
   .btn-primary:hover { background: var(--accent); }
@@ -411,16 +434,29 @@
   .text-info    { color: var(--info); }
   .field-error  { color: var(--danger); font-size: .75rem; margin-top: .25rem; }
   .form-error-banner { border-color: var(--danger); color: var(--danger); }
-  .pill { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:9999px; font-size:.75rem; font-weight:500; line-height:1.4; }
+  .pill { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:9999px; font-size:.75rem; font-weight:500; line-height:1.4; transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), filter var(--motion-fast) var(--ease-out); }
+  a.pill:hover, button.pill:hover { filter: brightness(.95); }
+  :root[data-theme="dark"] a.pill:hover, :root[data-theme="dark"] button.pill:hover { filter: brightness(1.15); }
+  .pill-xs { font-size: .68rem; padding: .05rem .4rem; }
   .pill-success { background: var(--success-bg); color: var(--success); }
   .pill-warn    { background: var(--warn-bg); color: var(--warn); }
   .pill-danger  { background: var(--danger-bg); color: var(--danger); }
   .pill-info    { background: var(--info-bg); color: var(--info); }
   .pill-neutral { background: var(--surface-2); color: var(--text-muted); border:1px solid var(--border); }
+  /* Mobile: tables sit inside `card overflow-hidden` wrappers across ~130
+     dashboard templates, which CLIPPED overflowing columns with no scroll.
+     :has() flips those containers to horizontal scroll — zero template
+     edits, every table becomes swipeable on phones. */
+  .card:has(table.morph-table),
+  .card.overflow-hidden:has(table.morph-table),
+  .card-padded:has(> table.morph-table) { overflow-x: auto; }
+  @media (max-width: 767px) {
+    table.morph-table { min-width: max-content; }
+  }
   table.morph-table { width:100%; border-collapse: separate; border-spacing:0; }
   table.morph-table th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color: var(--text-muted); padding:.7rem .9rem; background: var(--surface-2); border-bottom:1px solid var(--border); position: sticky; top: 0; z-index: 1; }
   table.morph-table td { padding:.75rem .9rem; font-size:.875rem; border-bottom:1px solid var(--border); vertical-align: middle; transition: background var(--motion-fast) var(--ease-out); }
-  table.morph-table tbody tr:hover td { background: var(--nav-hover-bg); }
+  table.morph-table tbody tr:hover td { background: var(--surface-2); }
   table.morph-table tr:last-child td { border-bottom: none; }
   table.morph-table.morph-table-zebra tbody tr:nth-child(2n) td { background: var(--surface-2); }
   table.morph-table.morph-table-zebra tbody tr:nth-child(2n):hover td { background: var(--surface-3); }
@@ -565,8 +601,8 @@
   .rte-content hr { border:0; border-top:1px solid var(--border); margin:1.5em 0; }
   .rte-content img { max-width:100%; height:auto; border-radius:6px; margin:0.5em 0; }
   .rte-source { width:100%; min-height:320px; padding:14px 16px; font-family: ui-monospace, monospace; font-size:12px; border:0; resize:vertical; background: var(--surface); color: var(--text); }
-  .drawer-backdrop { position:fixed; inset:0; background: rgba(0,0,0,.4); z-index:40; display:none; }
-  .drawer-backdrop.open { display:block; }
+  /* (Backdrop visuals live on #sidebar-backdrop in the drawer media query —
+     the old display:none/.open toggle here skipped the opacity fade.) */
   /* Dropdown menus — used for action overflow on detail pages. */
   .dropdown { position: relative; display: inline-block; }
   .dropdown-menu {
@@ -586,7 +622,9 @@
   .dropdown-item-danger:hover { background: var(--danger-bg); }
   @keyframes fadein { from {opacity:0; transform:translateY(2px)} to {opacity:1; transform:none} }
   .fadein { animation: fadein .12s ease-out both; }
-  /* htmx loading indicator — a thin progress strip across the top of main. */
+  /* htmx loading indicator — a thin progress strip across the top of main.
+     On completion it finishes to 100% and fades — it must never visibly
+     retreat back to 0 (the .done class is toggled in the afterSwap handler). */
   #htmx-progress {
     position: fixed; top: 0; left: 0; height: 2px; width: 0%;
     background: var(--brand); z-index: 9999; opacity: 0;
@@ -594,6 +632,10 @@
     pointer-events: none;
   }
   .htmx-request #htmx-progress { width: 70%; opacity: 1; }
+  #htmx-progress.done {
+    width: 100%; opacity: 0;
+    transition: width var(--motion-fast) var(--ease-out), opacity var(--motion-med) var(--ease-out) var(--motion-fast);
+  }
   /* ── UX polish primitives — used by tables, forms, mobile ───────────── */
   /* Loading skeleton — wrap with .skeleton + opacity-transition on real
      content. Standard shimmer gradient, GPU-cheap. Drop into any table
@@ -618,27 +660,8 @@
   @media (prefers-reduced-motion: reduce) {
     .skeleton { animation: none; background: var(--surface-2); }
   }
-  /* Toast notifications — flash messages, save confirmations, error banners.
-     Position fixed top-right. JS sets .toast-show to fade in; setTimeout
-     removes the class to fade out. */
-  #toast-stack {
-    position: fixed; top: 1rem; right: 1rem;
-    z-index: 10000; display: flex; flex-direction: column; gap: .5rem;
-    pointer-events: none;
-  }
-  .toast {
-    background: var(--surface); border: 1px solid var(--border);
-    box-shadow: var(--shadow-pop); border-radius: var(--radius-sm);
-    padding: .65rem .85rem; font-size: .85rem; min-width: 240px; max-width: 360px;
-    opacity: 0; transform: translateY(-6px);
-    transition: opacity var(--motion-med) var(--ease-out), transform var(--motion-med) var(--ease-out);
-    pointer-events: auto; display: flex; align-items: flex-start; gap: .5rem;
-  }
-  .toast.toast-show { opacity: 1; transform: none; }
-  .toast-success { border-left: 3px solid var(--success); }
-  .toast-warn    { border-left: 3px solid var(--warn); }
-  .toast-error   { border-left: 3px solid var(--danger); }
-  .toast-info    { border-left: 3px solid var(--brand); }
+  /* (Toast styling lives in _toast.html's .morph-toast — the single toast
+     system. A parallel #toast-stack/.toast system was removed.) */
   /* Mobile sidebar drawer — was rendering inline on narrow screens. Now
      slides in from the left, backdrop dims content, swipe-to-close
      compatible. Triggered by the existing #sidebar-open button + matching
@@ -696,12 +719,19 @@
     body.sidebar-collapsed #sidebar .nav-section-label,
     body.sidebar-collapsed #sidebar .h-12 a span { display: none; }
   }
-  /* Subtle row hover on data tables — used everywhere a list renders. */
-  table tbody tr { transition: background var(--motion-fast) var(--ease-out); }
-  table tbody tr:hover { background: var(--surface-2); }
-  /* Card hover lift — tiny, used on stat tiles + Pulse cards. */
-  .card { transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
-  .card:hover { transform: translateY(-1px); box-shadow: var(--shadow-pop); }
+  /* Every Tailwind hover:bg-* utility in content eases uniformly — pages
+     stop mixing instant and eased hovers on the same screen. */
+  #main-content :is(a, button, summary) {
+    transition: background-color var(--motion-fast) var(--ease-out),
+                color var(--motion-fast) var(--ease-out),
+                border-color var(--motion-fast) var(--ease-out);
+  }
+  /* Row hover is owned by the .morph-table rules above — one token
+     (--surface-2 plain, --surface-3 zebra), no generic table rule painting
+     layout tables. Card hover-lift is OPT-IN: static cards shouldn't
+     levitate; clickable ones declare it. */
+  a.card, .card-hoverable { transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+  a.card:hover, .card-hoverable:hover { transform: translateY(-1px); box-shadow: var(--shadow-card-hover); }
   /* Subtle press feedback on buttons — matches storefront. */
   .btn:active, button:not(.input):active { transform: scale(0.97); transition: transform 80ms var(--ease-out); }
   /* Seamless page swaps — one fast cross-fade + subtle rise on the main
@@ -744,23 +774,8 @@
     border-top: 1px dashed var(--border);
   }
 
-  /* Skeleton loader — drop .morph-skeleton on any block while waiting
-     for async content. Shimmer respects prefers-reduced-motion. */
-  .morph-skeleton {
-    background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
-    background-size: 200% 100%;
-    border-radius: var(--radius-sm);
-    animation: morph-skeleton-shimmer 1.4s ease-in-out infinite;
-  }
-  .morph-skeleton--line { height: .85rem; margin: .35rem 0; }
-  .morph-skeleton--block { min-height: 4.5rem; }
-  @keyframes morph-skeleton-shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .morph-skeleton { animation: none; background: var(--surface-2); }
-  }
+  /* (.skeleton — defined once, further up — is the single loading-shimmer
+     primitive. A near-identical .morph-skeleton duplicate was removed.) */
 
   /* ─── Tremor-inspired utility classes ─────────────────────────────────
      Visual-language adoption from tremor.so (Vercel acquisition). No
@@ -891,7 +906,7 @@
 </script>
 <div id="htmx-progress" aria-hidden="true"></div>
 <div id="sidebar-backdrop" class="drawer-backdrop lg:hidden"></div>
-<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col -translate-x-full lg:translate-x-0 lg:static transition-transform duration-200 ease-out">
+<aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-56 border-r border-[color:var(--border)] flex flex-col lg:static">
   <div class="h-12 flex items-center justify-between px-3 border-b border-[color:var(--border)]">
     <a href="{% url 'admin_dashboard:home' %}" class="flex items-center gap-2 font-semibold tracking-tight">
       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
@@ -1062,8 +1077,8 @@
 
 <div class="flex-1 flex flex-col min-w-0">
   <header class="h-12 flex items-center gap-2 px-3 lg:px-4 border-b border-[color:var(--border)] bg-[color:var(--bg)]" hx-boost="false">
-    <button id="sidebar-open" class="lg:hidden btn btn-ghost p-1.5" aria-label="Open menu"><i data-lucide="menu" class="h-5 w-5"></i></button>
-    <button id="sidebar-toggle" class="hidden lg:inline-flex btn btn-ghost p-1.5" aria-label="Collapse menu" title="Toggle sidebar (⌘\)"><i data-lucide="panel-left" class="h-5 w-5"></i></button>
+    <button id="sidebar-open" class="lg:hidden btn btn-ghost p-1.5" aria-label="Open menu"><i data-lucide="menu" class="h-4 w-4"></i></button>
+    <button id="sidebar-toggle" class="hidden lg:inline-flex btn btn-ghost p-1.5" aria-label="Collapse menu" title="Toggle sidebar (⌘\)"><i data-lucide="panel-left" class="h-4 w-4"></i></button>
     <button id="palette-open" class="relative flex-1 max-w-xl text-left input input-search"
             type="button"
             style="cursor: text; color: var(--text-muted); display: flex; align-items: center; gap: .35rem;">
@@ -1214,13 +1229,9 @@
 <script>
   lucide.createIcons();
   (() => {
-    const sb = document.getElementById('sidebar');
-    const bd = document.getElementById('sidebar-backdrop');
-    const open = () => { sb.classList.remove('-translate-x-full'); bd.classList.add('open'); };
-    const close = () => { sb.classList.add('-translate-x-full'); bd.classList.remove('open'); };
-    document.getElementById('sidebar-open')?.addEventListener('click', open);
-    document.getElementById('sidebar-close')?.addEventListener('click', close);
-    bd.addEventListener('click', close);
+    // (Mobile drawer open/close is wired ONCE, in the drawer block near the
+    // end of <body> — this block used to double-wire the same buttons with
+    // competing classes, which killed the backdrop fade.)
     // Desktop (>=1024px) collapse toggle — slides the in-flow sidebar away and
     // the content reclaims the space. Persisted; restored before paint by the
     // inline script at the top of <body>.
@@ -1526,9 +1537,20 @@
       // triggers the full reload that used to close it implicitly.
       var _sb = document.getElementById('sidebar');
       if (_sb && window.matchMedia && window.matchMedia('(max-width: 1023px)').matches) {
-        _sb.classList.add('-translate-x-full');
+        _sb.classList.remove('sidebar-open');
         var _bd = document.getElementById('sidebar-backdrop');
-        if (_bd) _bd.classList.remove('open', 'show');
+        if (_bd) _bd.classList.remove('show');
+      }
+      // Progress bar: finish to 100% and fade — never retreat leftwards.
+      var _pg = document.getElementById('htmx-progress');
+      if (_pg) {
+        _pg.classList.add('done');
+        window.setTimeout(function () {
+          _pg.style.transition = 'none';
+          _pg.classList.remove('done');
+          void _pg.offsetWidth; // flush so the next request animates cleanly
+          _pg.style.transition = '';
+        }, 450);
       }
     } catch (_) { /* swallow — never break navigation over a polish failure */ }
     syncSidebarActive();
@@ -1557,37 +1579,14 @@
   });
 })();
 </script>
-<div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
-<div id="sidebar-backdrop"></div>
 <script>
-/* Toast notifications — global helper. Any code can call window.morphToast(
-   text, {kind: 'success'|'warn'|'error'|'info', timeout: ms}). Toasts stack
-   top-right and auto-dismiss. */
-(function () {
-  var stack = document.getElementById('toast-stack');
-  if (!stack) return;
-  window.morphToast = function (text, opts) {
-    opts = opts || {};
-    var kind = opts.kind || 'info';
-    var timeout = opts.timeout || 3500;
-    var t = document.createElement('div');
-    t.className = 'toast toast-' + kind;
-    t.setAttribute('role', kind === 'error' ? 'alert' : 'status');
-    t.textContent = text;
-    stack.appendChild(t);
-    requestAnimationFrame(function () { t.classList.add('toast-show'); });
-    setTimeout(function () {
-      t.classList.remove('toast-show');
-      setTimeout(function () { t.remove(); }, 280);
-    }, timeout);
-  };
-  // Surface Django flash messages as toasts on page-load.
-  document.querySelectorAll('[data-django-message]').forEach(function (el) {
-    var kind = el.getAttribute('data-django-message') || 'info';
-    window.morphToast(el.textContent.trim(), {kind: kind});
-    el.remove();
-  });
-})();
+/* Toast — ONE pipeline. Morph.toast (dashboard.js → _toast.html container)
+   owns rendering; morphToast stays as a thin alias for older callers
+   (media-uploader.js). The parallel #toast-stack system that rendered a
+   second, differently-styled toast in the same corner is gone. */
+window.morphToast = function (text, opts) {
+  if (window.Morph && window.Morph.toast) window.Morph.toast(text, (opts || {}).kind || 'info');
+};
 /* Mobile sidebar drawer — wires #sidebar-open + #sidebar-backdrop + the
    sidebar's own #sidebar-close button (if present) into open/close
    transitions. Closes on Esc + on click outside the drawer. */
@@ -1600,6 +1599,7 @@
   function close() { sidebar.classList.remove('sidebar-open'); backdrop.classList.remove('show'); }
   openBtn.addEventListener('click', open);
   backdrop.addEventListener('click', close);
+  document.getElementById('sidebar-close')?.addEventListener('click', close);
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && sidebar.classList.contains('sidebar-open')) close();
   });
