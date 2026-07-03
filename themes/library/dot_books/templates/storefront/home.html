@@ -30,9 +30,9 @@
           </p>
           {% endif %}
         </div>
-        {# Headline decodes once on load (data-decode-once); the old explainer paragraph described the widget, not the books — removed. #}
+        {# Headline re-decodes with EVERY slide change (data-decode) — the whole copy column resets in letterpress rhythm per book. #}
         <h2 class="display display-l hero-feature__headline">
-          <span data-decode-once>A moving shelf of the books we want in your hands</span><span class="text-accent">.</span>
+          <span data-decode>A moving shelf of the books we want in your hands</span><span class="text-accent">.</span>
         </h2>
 
         <div class="hero-feature__copy-stage">
@@ -60,8 +60,8 @@
                 {% if pick.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ pick.price|money }}
               </p>
               <div class="hero-feature__actions hero-feature__copy-item" style="--hero-delay: 320ms;">
-                <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop this book</a>
-                <a href="/products/" class="btn btn-ghost">Browse all books</a>
+                <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
+                <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
               </div>
             </div>
           </article>
@@ -155,8 +155,10 @@
     font-variant-numeric: tabular-nums;
   }
   .hero-feature__headline {
-    max-width: 12ch;
+    max-width: 14ch;
     margin: 1rem 0 0;
+    text-wrap: balance; /* even rag across the 3-4 lines the long line breaks into */
+    contain: layout;    /* isolate the per-letter decode rewrites, like the title */
   }
   .hero-feature__intro {
     max-width: 56ch;
@@ -204,9 +206,16 @@
     transform: translate3d(0, 0, 0);
     transition-delay: var(--hero-delay, 0ms);
   }
+  /* Category line reads as a proper eyebrow: caps, tracked out, quiet. */
+  .hero-feature__copy-stack > .meta {
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-size: .72rem;
+  }
   .hero-feature__title {
     margin: 0;
     max-width: 11ch;
+    text-wrap: balance;
     /* Isolate the per-letter scramble's rewrites from the surrounding layout. */
     contain: layout;
   }
@@ -214,6 +223,7 @@
     max-width: 52ch;
     color: var(--ink-2);
     line-height: 1.65;
+    text-wrap: pretty; /* no orphan word on the last line */
     contain: layout;
   }
   /* Decode letters (letterpress settle). .dw wraps each word so line breaks
@@ -231,6 +241,7 @@
   .hero-feature__price {
     font-family: var(--serif);
     font-size: clamp(1.2rem, 1.2vw + 1rem, 1.5rem);
+    font-variant-numeric: tabular-nums; /* digits hold width as slides change */
   }
   .hero-feature__actions {
     display: flex;
@@ -500,10 +511,23 @@
         });
       }
 
+      // The section headline joins the per-slide rhythm: it re-decodes on
+      // every change, same letterpress treatment as the title/description.
+      var headline = root.querySelector('[data-decode]');
+      function scrambleHeadline() {
+        if (!headline) return;
+        if (headline._finalText == null) headline._finalText = (headline.textContent || '').trim();
+        if (!headline._run) headline._run = makeScramble(headline);
+        headline._run(headline._finalText);
+      }
+
       function show(idx) {
         idx = (idx + count) % count;
         setActive(copyPanels, idx);
-        if (!prefersReduced) scramblePanel(copyPanels[idx]);
+        if (!prefersReduced) {
+          scramblePanel(copyPanels[idx]);
+          scrambleHeadline();
+        }
         setActive(mediaPanels, idx, function (node, active) {
           node.tabIndex = active ? 0 : -1;
         });
@@ -578,13 +602,6 @@
 
       show(0);
       startAuto();
-
-      // The section headline decodes ONCE on load (its explainer paragraph was
-      // removed — the headline itself is the dynamic element now).
-      var once = root.querySelector('[data-decode-once]');
-      if (once && !prefersReduced) {
-        makeScramble(once)((once.textContent || '').trim());
-      }
     });
   })();
 </script>
