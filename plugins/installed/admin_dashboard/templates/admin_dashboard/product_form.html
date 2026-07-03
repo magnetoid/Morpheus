@@ -1,6 +1,7 @@
 {% extends "admin_dashboard/base.html" %}
 {% load metafields_tags %}
 {% load morph %}
+{% load richtext %}
 {% block title %}{% if product %}{{ product.name }}{% else %}New product{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
@@ -178,29 +179,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Short description</label>
-        <div id="short-description-editor-wrap" class="rte rte-short">
-          <div id="short-description-toolbar" class="rte-toolbar" role="toolbar" aria-label="Short description formatting">
-            <button type="button" class="rte-btn" data-rte="bold" title="Bold (⌘B)"><b>B</b></button>
-            <button type="button" class="rte-btn" data-rte="italic" title="Italic (⌘I)"><i>I</i></button>
-            <button type="button" class="rte-btn" data-rte="strike" title="Strikethrough"><s>S</s></button>
-            <button type="button" class="rte-btn" data-rte="code" title="Inline code"><code style="font-size:.9em;">&lt;&gt;</code></button>
-            <span class="rte-divider"></span>
-            <button type="button" class="rte-btn" data-rte="bulletList" title="Bullet list">•</button>
-            <button type="button" class="rte-btn" data-rte="orderedList" title="Numbered list">1.</button>
-            <span class="rte-divider"></span>
-            <button type="button" class="rte-btn" data-rte="link" title="Insert link">🔗</button>
-            <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">⛓̸</button>
-            <button type="button" class="rte-btn" data-rte="clear" title="Clear formatting">⌫</button>
-            <span class="rte-divider"></span>
-            <button type="button" class="rte-btn" data-rte="undo" title="Undo">↶</button>
-            <button type="button" class="rte-btn" data-rte="redo" title="Redo">↷</button>
-            <span class="rte-spacer"></span>
-            <button type="button" class="rte-btn" data-rte="source" title="Edit HTML source directly">HTML</button>
-          </div>
-          <div id="short-description-editor" class="rte-content rte-content-short"></div>
-          <textarea id="short-description-source" class="rte-source rte-source-short" hidden></textarea>
-        </div>
-        <textarea id="product-short-description" name="short_description" hidden>{{ form.short_description.value|default:'' }}</textarea>
+        {% richtext_field name="short_description" value=form.short_description.value id="product-short-description" allow_headings=False allow_images=False expose_as="morphProductShortDescriptionEditor" aria_label="Short description" %}
       </div>
       <div>
         <div class="flex items-center justify-between mb-1">
@@ -220,36 +199,7 @@
             </button>
           </div>
         </div>
-        <div id="description-editor-wrap" class="rte">
-          <div id="description-toolbar" class="rte-toolbar" role="toolbar" aria-label="Formatting">
-            <button type="button" class="rte-btn" data-rte="bold" title="Bold (⌘B)"><b>B</b></button>
-            <button type="button" class="rte-btn" data-rte="italic" title="Italic (⌘I)"><i>I</i></button>
-            <button type="button" class="rte-btn" data-rte="strike" title="Strikethrough"><s>S</s></button>
-            <button type="button" class="rte-btn" data-rte="code" title="Inline code"><code style="font-size:.9em;">&lt;&gt;</code></button>
-            <span class="rte-divider"></span>
-            <button type="button" class="rte-btn" data-rte="h2" title="Heading 2">H2</button>
-            <button type="button" class="rte-btn" data-rte="h3" title="Heading 3">H3</button>
-            <button type="button" class="rte-btn" data-rte="paragraph" title="Paragraph">¶</button>
-            <span class="rte-divider"></span>
-            <button type="button" class="rte-btn" data-rte="bulletList" title="Bullet list">•</button>
-            <button type="button" class="rte-btn" data-rte="orderedList" title="Numbered list">1.</button>
-            <button type="button" class="rte-btn" data-rte="blockquote" title="Blockquote">❝</button>
-            <button type="button" class="rte-btn" data-rte="codeBlock" title="Code block">≡&lt;&gt;</button>
-            <button type="button" class="rte-btn" data-rte="hr" title="Horizontal rule">―</button>
-            <span class="rte-divider"></span>
-            <button type="button" class="rte-btn" data-rte="link" title="Insert link">🔗</button>
-            <button type="button" class="rte-btn" data-rte="unlink" title="Remove link">⛓̸</button>
-            <button type="button" class="rte-btn" data-rte="clear" title="Clear formatting">⌫</button>
-            <span class="rte-divider"></span>
-            <button type="button" class="rte-btn" data-rte="undo" title="Undo">↶</button>
-            <button type="button" class="rte-btn" data-rte="redo" title="Redo">↷</button>
-            <span class="rte-spacer"></span>
-            <button type="button" class="rte-btn" data-rte="source" title="Edit HTML source directly">HTML</button>
-          </div>
-          <div id="description-editor" class="rte-content"></div>
-          <textarea id="description-source" class="rte-source" hidden></textarea>
-        </div>
-        <textarea id="product-description" name="description" hidden>{{ form.description.value|default:'' }}</textarea>
+        {% richtext_field name="description" value=form.description.value id="product-description" allow_headings=True allow_images=False expose_as="morphProductDescriptionEditor" aria_label="Product description" %}
       </div>
     </div>
 
@@ -265,12 +215,6 @@
       .rte-content-short { min-height: 80px; }
       .rte-source-short { min-height: 80px; }
       .rte-content:focus, .rte-content:focus-visible { outline: none; box-shadow: none; }
-      /* Suppress ProseMirror's "node-selected" blue halo + the
-         empty-line gap-cursor pill that show by default on the
-         focused editor. We want a plain caret only — no selection
-         rectangle when no text is actually highlighted. */
-      .rte-content .ProseMirror-selectednode { outline: none !important; box-shadow: none !important; }
-      .rte-content .ProseMirror-gapcursor { display: none !important; }
       .rte-content::selection,
       .rte-content *::selection { background: transparent; }
       .rte-content::-moz-selection,
@@ -336,166 +280,6 @@
       }
     </style>
 
-    <script type="module">
-      // TipTap 3.23.4 — pinned together so the transitive extension graph
-      // resolves to a self-consistent tree. The 2.x line broke here when
-      // esm.sh resolved StarterKit's transitive `extension-horizontal-rule`
-      // to v2.27 (which wanted a newer `canInsertNode` API than was in
-      // @tiptap/core@2.11.7), surfacing as a SyntaxError + the downstream
-      // RangeError "Adding different instances of a keyed plugin". In v3
-      // every extension carries the same version stamp as core so the
-      // transitive dep can't drift out from under us.
-      import { Editor } from 'https://esm.sh/@tiptap/core@3.23.4';
-      import StarterKit from 'https://esm.sh/@tiptap/starter-kit@3.23.4?deps=@tiptap/core@3.23.4';
-      import Link from 'https://esm.sh/@tiptap/extension-link@3.23.4?deps=@tiptap/core@3.23.4';
-
-      function wireTiptap({ hiddenId, targetId, sourceId, toolbarId, allowHeadings, ariaLabel, exposeAs }) {
-        const hidden  = document.getElementById(hiddenId);
-        const target  = document.getElementById(targetId);
-        const source  = document.getElementById(sourceId);
-        const toolbar = document.getElementById(toolbarId);
-        if (!hidden || !target || !toolbar) return null;
-
-        const extensions = [
-          // StarterKit v3 bundles its own Link — disable it so our configured
-          // Link is the only one (avoids the "Duplicate extension names: link" warning).
-          StarterKit.configure({ heading: allowHeadings ? { levels: [2, 3] } : false, link: false }),
-          Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener', target: '_blank' } }),
-        ];
-
-        const editor = new Editor({
-          element: target,
-          extensions,
-          content: hidden.value || '<p></p>',
-          editorProps: { attributes: { 'aria-label': ariaLabel } },
-          onUpdate({ editor }) {
-            const html = editor.getHTML();
-            hidden.value = html;
-            if (!source.hidden) source.value = html;
-            refreshButtons();
-          },
-        });
-
-        if (exposeAs) window[exposeAs] = editor;
-
-        function btn(action) { return toolbar.querySelector(`[data-rte="${action}"]`); }
-        function setActive(action, on) {
-          const b = btn(action);
-          if (b) b.classList.toggle('is-active', !!on);
-        }
-        function refreshButtons() {
-          setActive('bold',         editor.isActive('bold'));
-          setActive('italic',       editor.isActive('italic'));
-          setActive('strike',       editor.isActive('strike'));
-          setActive('code',         editor.isActive('code'));
-          if (allowHeadings) {
-            setActive('h2',         editor.isActive('heading', { level: 2 }));
-            setActive('h3',         editor.isActive('heading', { level: 3 }));
-            setActive('paragraph',  editor.isActive('paragraph'));
-          }
-          setActive('bulletList',   editor.isActive('bulletList'));
-          setActive('orderedList',  editor.isActive('orderedList'));
-          setActive('blockquote',   editor.isActive('blockquote'));
-          setActive('codeBlock',    editor.isActive('codeBlock'));
-          setActive('link',         editor.isActive('link'));
-        }
-        editor.on('selectionUpdate', refreshButtons);
-
-        toolbar.addEventListener('click', (e) => {
-          const b = e.target.closest('[data-rte]');
-          if (!b) return;
-          e.preventDefault();
-          const a = b.dataset.rte;
-          const chain = editor.chain().focus();
-          switch (a) {
-            case 'bold':         chain.toggleBold().run(); break;
-            case 'italic':       chain.toggleItalic().run(); break;
-            case 'strike':       chain.toggleStrike().run(); break;
-            case 'code':         chain.toggleCode().run(); break;
-            case 'h2':           chain.toggleHeading({ level: 2 }).run(); break;
-            case 'h3':           chain.toggleHeading({ level: 3 }).run(); break;
-            case 'paragraph':    chain.setParagraph().run(); break;
-            case 'bulletList':   chain.toggleBulletList().run(); break;
-            case 'orderedList':  chain.toggleOrderedList().run(); break;
-            case 'blockquote':   chain.toggleBlockquote().run(); break;
-            case 'codeBlock':    chain.toggleCodeBlock().run(); break;
-            case 'hr':           chain.setHorizontalRule().run(); break;
-            case 'clear':        chain.unsetAllMarks().clearNodes().run(); break;
-            case 'undo':         chain.undo().run(); break;
-            case 'redo':         chain.redo().run(); break;
-            case 'link': {
-              const prev = editor.getAttributes('link').href || '';
-              const url = window.prompt('URL', prev);
-              if (url === null) return;
-              if (url === '') { editor.chain().focus().unsetLink().run(); return; }
-              editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-              break;
-            }
-            case 'unlink':       chain.unsetLink().run(); break;
-            case 'source': {
-              const showingSource = !source.hidden;
-              if (showingSource) {
-                editor.commands.setContent(source.value || '<p></p>');
-                source.hidden = true;
-                target.hidden = false;
-                b.classList.remove('is-active');
-              } else {
-                source.value = editor.getHTML();
-                source.hidden = false;
-                target.hidden = true;
-                b.classList.add('is-active');
-              }
-              break;
-            }
-          }
-          refreshButtons();
-        });
-
-        // External writes to `hidden.value` (e.g. AI-draft button) flow
-        // back into the editor. The legacy script uses `ta.value = …`
-        // directly, so we patch the setter too.
-        const obs = new MutationObserver(() => {
-          if (hidden.value !== editor.getHTML()) {
-            editor.commands.setContent(hidden.value || '<p></p>');
-          }
-        });
-        obs.observe(hidden, { attributes: true, childList: true, characterData: true, subtree: true });
-        const desc = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
-        if (desc && desc.set) {
-          Object.defineProperty(hidden, 'value', {
-            get() { return desc.get.call(this); },
-            set(v) {
-              desc.set.call(this, v);
-              if (v !== editor.getHTML()) {
-                editor.commands.setContent(v || '<p></p>');
-              }
-            },
-          });
-        }
-
-        refreshButtons();
-        return editor;
-      }
-
-      wireTiptap({
-        hiddenId: 'product-description',
-        targetId: 'description-editor',
-        sourceId: 'description-source',
-        toolbarId: 'description-toolbar',
-        allowHeadings: true,
-        ariaLabel: 'Product description editor',
-        exposeAs: 'morphProductDescriptionEditor',
-      });
-      wireTiptap({
-        hiddenId: 'product-short-description',
-        targetId: 'short-description-editor',
-        sourceId: 'short-description-source',
-        toolbarId: 'short-description-toolbar',
-        allowHeadings: false,
-        ariaLabel: 'Short description editor',
-        exposeAs: 'morphProductShortDescriptionEditor',
-      });
-    </script>
 
     <script>
     (function () {
@@ -533,7 +317,9 @@
               if (window.Morph && Morph.toast) Morph.toast(res.data.error || 'AI draft failed.', 'error');
               return;
             }
-            ta.value = res.data.text || '';
+            var _html = res.data.text || '';
+            if (window.morphProductDescriptionEditor) window.morphProductDescriptionEditor.setHTML(_html);
+            else ta.value = _html;
             if (window.Morph && Morph.toast) Morph.toast('Draft inserted — review before saving.', 'success');
           })
           .catch(function () {
@@ -578,7 +364,9 @@
               if (window.Morph && Morph.toast) Morph.toast(res.data.error || 'Rewrite failed.', 'error');
               return;
             }
-            ta.value = res.data.text || '';
+            var _html = res.data.text || '';
+            if (window.morphProductDescriptionEditor) window.morphProductDescriptionEditor.setHTML(_html);
+            else ta.value = _html;
             if (window.Morph && Morph.toast) Morph.toast('Rewritten — review before saving.', 'success');
           })
           .catch(function () {

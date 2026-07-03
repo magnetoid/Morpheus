@@ -44,7 +44,8 @@ class PageDashboardTests(TestCase):
         self._staff()
         r = self.client.get(NEW_URL)
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'body-editor')  # TipTap mount rendered
+        self.assertContains(r, 'data-richtext')  # richtext (Lexical) editor rendered
+        self.assertContains(r, 'name="body"')  # the body field still submits
 
     # ── CRUD ──────────────────────────────────────────────────────────────
     def test_create_page(self):
