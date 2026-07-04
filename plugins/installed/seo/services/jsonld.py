@@ -630,10 +630,12 @@ def speakable_jsonld(selectors: list[str] | None = None) -> dict:
     """SpeakableSpecification — tells voice assistants which CSS selectors
     contain text suitable for spoken reading.
 
-    Defaults target the page's headline + the lede paragraph, which work
-    on every storefront template we ship.
+    Defaults target the page's headline, the lede paragraph, AND the
+    article body — journal/article templates wrap their copy in
+    ``[itemprop="articleBody"]`` (with no ``.lede``), so without that
+    selector voice assistants only got the H1 on editorial pages.
     """
-    css = selectors or ['h1', '.lede', '[itemprop="description"]']
+    css = selectors or ['h1', '.lede', '[itemprop="articleBody"]', '[itemprop="description"]']
     return {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
@@ -751,36 +753,53 @@ def article_jsonld(
     headline: str,
     body: str,
     url: str,
+    kind: str = 'Article',
+    description: str = '',
     author: str = '',
+    author_url: str = '',
     published_at=None,
     updated_at=None,
     image: str = '',
     image_url: str = '',
+    word_count: int | None = None,
     citations: list[str] | None = None,
     author_same_as: list[str] | None = None,
 ) -> dict:
     """Article schema for journal posts.
 
-    Beyond the bare-bones headline/body/url, we emit ``publisher`` (reusing
-    ``organization_jsonld()`` minus the @context so it nests as a plain
-    inner dict), ``mainEntityOfPage`` (Google's required pointer back to
-    the canonical page), and ``dateModified`` — only when ``updated_at``
-    actually differs from ``published_at``, so unchanged posts don't get
-    spurious freshness signals.
+    ``kind`` selects the schema.org subtype (``Article`` / ``BlogPosting`` /
+    ``NewsArticle``) — journals emit ``BlogPosting`` so SERP + AI engines
+    classify editorial content correctly. Beyond the bare-bones
+    headline/body/url, we emit ``publisher`` (reusing ``organization_jsonld()``
+    minus the @context so it nests as a plain inner dict), ``mainEntityOfPage``
+    (Google's required pointer back to the canonical page), ``description`` and
+    ``wordCount`` (Google Article guidance rewards both), and ``dateModified`` —
+    only when ``updated_at`` actually differs from ``published_at``, so
+    unchanged posts don't get spurious freshness signals.
 
     Both ``image`` and ``image_url`` are accepted for caller convenience;
     ``image_url`` wins when both are passed.
     """
     out = {
         '@context': 'https://schema.org',
-        '@type': 'Article',
+        '@type': kind or 'Article',
         'headline': headline[:110],
         'url': url,
         'articleBody': body[:5000],
         'mainEntityOfPage': {'@type': 'WebPage', '@id': url},
     }
+    if description:
+        out['description'] = description[:300]
+    # wordCount — count from the body when the caller doesn't pass one.
+    wc = word_count
+    if wc is None and body:
+        wc = len(body.split())
+    if wc:
+        out['wordCount'] = wc
     if author:
         author_node = {'@type': 'Person', 'name': author}
+        if author_url:
+            author_node['url'] = author_url
         # E-E-A-T: sameAs links prove the author entity (LinkedIn /
         # ORCID / Wikidata). AI engines weight authored, attributable
         # content far higher for citation.

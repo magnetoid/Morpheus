@@ -472,6 +472,50 @@ def seo_product_og(product):
     return mark_safe('\n'.join(out))
 
 
+@register.simple_tag
+def seo_article_og(entry):
+    """Open Graph ``article:*`` tags for journal/blog posts.
+
+    Emits ``article:published_time`` / ``article:modified_time`` /
+    ``article:author`` / ``article:section`` / ``article:tag`` so Slack,
+    iMessage, LinkedIn, X and AI crawlers get article metadata inline —
+    the JSON-LD Article carries the same facts for search engines, this is
+    the Open Graph mirror. Accepts the journal entry dict or a model.
+    """
+    if not entry:
+        return ''
+
+    def g(name, default=''):
+        if isinstance(entry, dict):
+            return entry.get(name, default)
+        return getattr(entry, name, default)
+
+    def _iso(v):
+        try:
+            return v.isoformat()
+        except Exception:  # noqa: BLE001
+            return ''
+
+    out = []
+    pub, mod = g('published_at'), g('updated_at')
+    pub_iso = _iso(pub) if pub else ''
+    if pub_iso:
+        out.append(f'<meta property="article:published_time" content="{escape(pub_iso)}">')
+    mod_iso = _iso(mod) if mod else ''
+    if mod_iso and mod != pub:
+        out.append(f'<meta property="article:modified_time" content="{escape(mod_iso)}">')
+    author = g('author')
+    if author:
+        out.append(f'<meta property="article:author" content="{escape(str(author))}">')
+    section = g('section')
+    if section:
+        out.append(f'<meta property="article:section" content="{escape(str(section))}">')
+    for tag in g('tags') or []:
+        if tag:
+            out.append(f'<meta property="article:tag" content="{escape(str(tag))}">')
+    return mark_safe('\n'.join(out))
+
+
 @register.simple_tag(takes_context=True)
 def seo_ai_answer_block(context, product) -> dict:
     """Data for the PDP "Key facts" / AI-answer storefront block.
@@ -759,10 +803,25 @@ def seo_responsive_image(
 
 @register.simple_tag(takes_context=True)
 def seo_article_jsonld(
-    context, *, headline, body, author='', published=None, modified=None, image=''
+    context,
+    *,
+    headline,
+    body,
+    kind='BlogPosting',
+    description='',
+    author='',
+    author_url='',
+    published=None,
+    modified=None,
+    image='',
+    word_count=None,
+    author_same_as=None,
+    citations=None,
 ):
-    """Article schema for journal posts. AI engines weigh this heavily
-    for citation (especially Person.author + datePublished + sameAs)."""
+    """BlogPosting/Article schema for journal posts. AI engines weigh this
+    heavily for citation (Person.author + sameAs E-E-A-T, datePublished,
+    citations provenance). ``kind`` defaults to ``BlogPosting`` — the
+    Google-recognised Article subtype for editorial content."""
     request = context.get('request')
     try:
         url = request.build_absolute_uri() if request else ''
@@ -774,9 +833,15 @@ def seo_article_jsonld(
         headline=headline or '',
         body=body or '',
         url=url,
+        kind=kind or 'BlogPosting',
+        description=description or '',
         author=author or '',
+        author_url=author_url or '',
         published_at=published,
         image=image,
+        word_count=word_count,
+        author_same_as=list(author_same_as) if author_same_as else None,
+        citations=list(citations) if citations else None,
     )
     if modified:
         try:

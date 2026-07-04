@@ -5,7 +5,7 @@ feature-area module (meta, jsonld, sitemaps, …) can import them
 without pulling in everything else.
 """
 
-# ruff: noqa: PLR0912, PLC0415, S112, S110, I001
+# ruff: noqa: PLR0912, PLC0415, S112, S110, I001, SIM105
 # Inline imports avoid circular deps with seo.models / plugins.registry;
 # the broad try/except guards keep meta resolution working during early
 # boot + tests. Same convention as views_split/products.py.
@@ -57,7 +57,7 @@ class ResolvedMeta:
     # <script>, separate from the single merged structured_data dict above.
     extra_blocks: list = None  # type: ignore[assignment]
 
-    def to_html(self) -> str:
+    def to_html(self) -> str:  # noqa: PLR0915 — linear list of head-meta appends; splitting hurts readability
         """Render the meta tags as an HTML fragment for the <head>."""
         parts: list[str] = []
         doc_title = self.document_title or self.title
@@ -79,11 +79,35 @@ class ResolvedMeta:
 
         og_title = self.og_title or self.title
         og_desc = self.og_description or self.description
+        # Brand + Twitter handle for og:site_name / twitter:site.
+        site_name = ''
+        twitter_handle = ''
+        try:
+            # brand_name() resolves org name → store name → STORE_NAME, so
+            # og:site_name is present even when only STORE_NAME is configured.
+            from plugins.installed.seo.services.meta import brand_name
+
+            site_name = (brand_name() or '').strip()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            twitter_handle = (getattr(site_settings(), 'twitter_handle', '') or '').strip()
+        except Exception:  # noqa: BLE001
+            pass
+        # Social/AI link previews require ABSOLUTE image URLs — a site-relative
+        # /media/… path renders no image on Facebook / LinkedIn / iMessage / X.
+        og_image_abs = self.og_image
+        if og_image_abs.startswith('/'):
+            og_image_abs = site_base_url().rstrip('/') + og_image_abs
         if og_title:
             parts.append(f'<meta property="og:title" content="{escape(og_title)}">')
         if og_desc:
             parts.append(f'<meta property="og:description" content="{escape(og_desc)}">')
         parts.append(f'<meta property="og:type" content="{escape(self.og_type)}">')
+        if self.canonical_url:
+            parts.append(f'<meta property="og:url" content="{escape(self.canonical_url)}">')
+        if site_name:
+            parts.append(f'<meta property="og:site_name" content="{escape(site_name)}">')
         # og:locale — matches the Content-Language header the markets
         # middleware emits; falls back to en_US.
         try:
@@ -93,21 +117,24 @@ class ResolvedMeta:
         except Exception:  # noqa: BLE001
             locale = 'en_US'
         parts.append(f'<meta property="og:locale" content="{escape(locale)}">')
-        if self.og_image:
-            parts.append(f'<meta property="og:image" content="{escape(self.og_image)}">')
-            parts.append(f'<meta property="og:image:secure_url" content="{escape(self.og_image)}">')
+        if og_image_abs:
+            parts.append(f'<meta property="og:image" content="{escape(og_image_abs)}">')
+            parts.append(f'<meta property="og:image:secure_url" content="{escape(og_image_abs)}">')
             parts.append('<meta property="og:image:width" content="1200">')
             parts.append('<meta property="og:image:height" content="630">')
             if og_title:
                 parts.append(f'<meta property="og:image:alt" content="{escape(og_title)}">')
 
         parts.append(f'<meta name="twitter:card" content="{escape(self.twitter_card)}">')
+        if twitter_handle:
+            handle = twitter_handle if twitter_handle.startswith('@') else f'@{twitter_handle}'
+            parts.append(f'<meta name="twitter:site" content="{escape(handle)}">')
         if og_title:
             parts.append(f'<meta name="twitter:title" content="{escape(og_title)}">')
         if og_desc:
             parts.append(f'<meta name="twitter:description" content="{escape(og_desc)}">')
-        if self.og_image:
-            parts.append(f'<meta name="twitter:image" content="{escape(self.og_image)}">')
+        if og_image_abs:
+            parts.append(f'<meta name="twitter:image" content="{escape(og_image_abs)}">')
 
         if self.structured_data:
             parts.append(

@@ -4,7 +4,8 @@
 
 {% block extra_head %}
 <link rel="amphtml" href="/journal/{{ entry.slug }}/amp/">
-{% seo_article_jsonld headline=entry.title body=entry.body|striptags|truncatechars:5000 author=entry.author|default:"dot books staff" published=entry.published_at modified=entry.updated_at|default:entry.published_at image=entry.image %}
+{% seo_article_jsonld headline=entry.title body=entry.body|striptags|truncatechars:5000 kind="BlogPosting" description=entry.excerpt author=entry.author|default:"dot books staff" published=entry.published_at modified=entry.updated_at|default:entry.published_at image=entry.image word_count=entry.word_count author_same_as=entry.author_same_as citations=entry.citations %}
+{% seo_article_og entry %}
 {% seo_speakable_jsonld %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endblock %}

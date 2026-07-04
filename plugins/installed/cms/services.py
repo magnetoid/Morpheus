@@ -30,6 +30,22 @@ def _read_minutes(body: str) -> int:
     return max(1, round(words / 200))
 
 
+def _str_list(value) -> list[str]:
+    """Coerce a free-form ``page.metadata`` value into a clean ``list[str]``.
+
+    author_same_as / citations are authored as raw JSON today, so a merchant
+    can plausibly write a single URL as a scalar string. Passing that scalar
+    on to the JSON-LD tag would ``list()``-explode it into one entry per
+    character; coerce a bare string to a one-item list and drop anything that
+    isn't a string/list so the Article schema stays valid.
+    """
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if isinstance(value, (list, tuple)):
+        return [str(v) for v in value if v]
+    return []
+
+
 def _journal_dict(page) -> dict:
     pub = page.publish_at or page.updated_at or page.created_at
     meta = page.metadata or {}
@@ -49,6 +65,14 @@ def _journal_dict(page) -> dict:
     author = (meta.get('author') or '').strip()
     if not author and getattr(page, 'author', None):
         author = (page.author.get_full_name() or page.author.get_username() or '').strip()
+    # E-E-A-T + provenance for the Article JSON-LD. Authored via page.metadata
+    # today (author_same_as / citations lists); the journal editor surfaces
+    # these as fields in a follow-on. Lists degrade to [] when unset.
+    author_same_as = _str_list(meta.get('author_same_as') or meta.get('author_links'))
+    citations = _str_list(meta.get('citations') or meta.get('sources'))
+    # Accurate wordCount from the FULL body (the template truncates the body it
+    # passes to the JSON-LD tag, which would otherwise undercount long posts).
+    word_count = len(re.sub(r'<[^>]+>', ' ', page.body or '').split())
     return {
         'id': str(page.id),
         'slug': page.slug,
@@ -65,6 +89,9 @@ def _journal_dict(page) -> dict:
         'updated_at': page.updated_at,
         'image': image,
         'author': author or 'dot books staff',
+        'author_same_as': author_same_as,
+        'citations': citations,
+        'word_count': word_count,
         'is_html': True,
     }
 
@@ -81,15 +108,28 @@ def list_journal_entries(*, limit: int = 50) -> list[dict]:
     return [_journal_dict(p) for p in qs]
 
 
-def get_journal_entry(slug: str) -> dict | None:
-    """Single published journal entry by slug, or None."""
+def get_journal_page(slug: str):
+    """The underlying published journal ``Page`` instance (not the dict).
+
+    The storefront journal view renders from the ``_journal_dict`` for
+    display, but the SEO engine (`resolve_meta`) needs the real model
+    instance as ``seo_object`` so it can load the per-page ``SeoMeta``
+    override row (title/description/canonical/robots/OG) and the visual
+    schema blocks (FAQ/HowTo/Event). Returns ``None`` for the seeded
+    fallback entries that have no backing Page.
+    """
     from plugins.installed.cms.models import Page
 
-    page = (
+    return (
         Page.objects.filter(slug=slug, state='published', metadata__category='journal')
         .exclude(publish_at__gt=timezone.now())
         .first()
     )
+
+
+def get_journal_entry(slug: str) -> dict | None:
+    """Single published journal entry by slug, or None."""
+    page = get_journal_page(slug)
     return _journal_dict(page) if page else None
 
 

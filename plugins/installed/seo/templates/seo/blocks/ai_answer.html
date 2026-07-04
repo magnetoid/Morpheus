@@ -1,7 +1,13 @@
 {% load seo %}
 {% seo_ai_answer_block product as aeo %}
 {% if aeo.enabled %}{% if aeo.answer or aeo.facts %}
-<aside class="seo-ai-answer" aria-label="Key facts" itemscope itemtype="https://schema.org/Answer" style="
+{% comment %}
+  Clean, readable HTML only — no schema.org microdata here. A standalone
+  Answer island (itemscope Answer with no enclosing Question/QAPage) is
+  invalid structured data; the machine-readable answer is carried by the
+  JSON-LD (disambiguatingDescription / QAPage), not this block.
+{% endcomment %}
+<aside class="seo-ai-answer" aria-label="Key facts" style="
     margin: 1rem 0 1.25rem;
     padding: 0.9rem 1.1rem;
     border: 1px solid var(--rule, #e3dfd6);
@@ -12,7 +18,7 @@
     color: var(--ink, #2a2a2a);
 ">
   {% if aeo.answer %}
-  <p class="seo-ai-answer__tldr" itemprop="text" style="margin: 0 0 0.5rem; line-height: 1.5;">
+  <p class="seo-ai-answer__tldr" style="margin: 0 0 0.5rem; line-height: 1.5;">
     <strong style="font-weight: 600;">In short:</strong> {{ aeo.answer }}
   </p>
   {% endif %}

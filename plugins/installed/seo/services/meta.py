@@ -252,6 +252,20 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
             'name': title or getattr(obj, 'name', ''),
             'description': description or strip_html(getattr(obj, 'description', '')),
         }
+    if cls_name == 'Page':
+        # Journal posts already emit Article (+ a WebPage/speakable node) from
+        # the storefront journal template, so returning a WebPage here would
+        # duplicate the node — only give NON-journal single pages a default
+        # WebPage so they stop shipping bare Organization/WebSite graphs.
+        page_meta = getattr(obj, 'metadata', None) or {}
+        if page_meta.get('category') == 'journal':
+            return {}
+        return {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            'name': title or getattr(obj, 'title', ''),
+            'description': description or strip_html(getattr(obj, 'excerpt', '')),
+        }
     return {}
 
 

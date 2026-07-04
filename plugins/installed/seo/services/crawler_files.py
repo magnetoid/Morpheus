@@ -152,7 +152,7 @@ def render_robots_txt() -> str:
     return '\n'.join(lines).rstrip() + '\n'
 
 
-def render_llms_txt(*, full: bool = False) -> str:
+def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 — linear llms.txt section builder
     """Generate /llms.txt (compact) or /llms-full.txt (with product summaries).
 
     Format follows the emerging llmstxt.org convention:
@@ -244,6 +244,27 @@ def render_llms_txt(*, full: bool = False) -> str:
             out.append(line)
     except Exception:  # noqa: BLE001
         pass
+
+    # Journal / editorial — the content answer engines most want to cite.
+    # Read the same published cms.Page journal entries the sitemaps use.
+    try:
+        from plugins.installed.cms.services import list_journal_entries
+
+        entries = list_journal_entries(limit=200 if full else 50)
+        if entries:
+            out.append('')
+            out.append('## Journal')
+            for e in entries:
+                slug = e.get('slug', '')
+                line = f'- [{e.get("title", "")}]({base}/journal/{slug}/)'
+                if full:
+                    summary = (e.get('excerpt') or '')[:160]
+                    if summary:
+                        line += f': {summary}'
+                out.append(line)
+    except Exception:  # noqa: BLE001
+        pass
+
     return '\n'.join(out) + '\n'
 
 

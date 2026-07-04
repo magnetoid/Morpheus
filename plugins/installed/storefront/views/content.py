@@ -194,9 +194,14 @@ def journal_detail(request, slug):
     from morpheus.views import Http404
 
     entry = None
+    seo_object = None
     try:
-        from plugins.installed.cms.services import get_journal_entry
+        from plugins.installed.cms.services import get_journal_entry, get_journal_page
 
+        # The real Page instance is the SEO object — resolve_meta needs it to
+        # layer the merchant's per-page SeoMeta override + visual schema blocks.
+        # None for the seeded fallback entries (they degrade to the fallbacks).
+        seo_object = get_journal_page(slug)
         entry = get_journal_entry(slug)
     except Exception:  # noqa: BLE001
         pass
@@ -218,6 +223,7 @@ def journal_detail(request, slug):
         'storefront/journal_detail.html',
         {
             'entry': entry,
+            'seo_object': seo_object,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': f'{entry["title"]} — Journal — dot books',
             'seo_description': entry.get('excerpt', '')[:160],
