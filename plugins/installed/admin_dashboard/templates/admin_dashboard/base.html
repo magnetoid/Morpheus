@@ -1207,6 +1207,8 @@
     {% endif %}
     {% get_ai_page_help as ai_help %}
     {% if ai_help %}{% include "assistant/_page_helper.html" %}{% endif %}
+    {% comment %}Breadcrumbs, rendered once for every dashboard page. Default: the view's explicit `breadcrumb_trail`, else the path-derived `auto_breadcrumb_trail` (admin_dashboard.context_processors); self-hides on empty. Pages needing a richer trail with parent record names override `{% block breadcrumb %}` in place (e.g. variant_form, order_refund).{% endcomment %}
+    {% block breadcrumb %}{% with crumbs=breadcrumb_trail|default:auto_breadcrumb_trail %}{% if crumbs %}<div class="mb-4">{% include "admin_dashboard/_breadcrumb_trail.html" with trail=crumbs %}</div>{% endif %}{% endwith %}{% endblock %}
     {% block content %}{% endblock %}
    </div>
   </main>

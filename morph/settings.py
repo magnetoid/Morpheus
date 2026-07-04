@@ -331,6 +331,7 @@ TEMPLATES = [
                 'plugins.installed.book_product.context_processors.nav_genres',
                 'plugins.installed.book_product.context_processors.nav_topics',
                 'plugins.installed.cms.context_processors.nav_menus',
+                'plugins.installed.admin_dashboard.context_processors.dashboard_breadcrumbs',
                 'themes.context_processors.theme_context',
                 'plugins.context_processors.plugin_context',
                 'plugins.installed.markets.services.market_context',

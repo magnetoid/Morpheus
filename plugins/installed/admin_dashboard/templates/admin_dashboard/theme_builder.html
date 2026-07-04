@@ -1,16 +1,20 @@
 {% extends "admin_dashboard/base.html" %}
 {% block title %}Theme builder — {{ page.title }} · Morpheus{% endblock %}
 
+{% block breadcrumb %}
+<div class="mb-4"><nav class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+  <a href="/dashboard/" class="hover:underline">Dashboard</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="/dashboard/cms/pages/" class="hover:underline">Pages</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="/dashboard/cms/pages/" class="hover:underline truncate" style="max-width:16rem;">{{ page.title }}</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <span class="font-medium text-[color:var(--text)]">Theme builder</span>
+</nav></div>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-[1600px] mx-auto space-y-3">
-
-  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="/dashboard/cms/pages/" class="hover:underline">Pages</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span class="font-medium text-[color:var(--text)] truncate">{{ page.title }}</span>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span>Theme builder</span>
-  </div>
 
   <div class="flex items-end justify-between gap-3">
     <div>

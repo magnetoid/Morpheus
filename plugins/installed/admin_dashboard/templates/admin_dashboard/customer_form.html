@@ -2,16 +2,18 @@
 {% load metafields_tags %}
 {% block title %}{% if customer %}{{ customer.email }}{% else %}New customer{% endif %} · Morpheus{% endblock %}
 
+{% block breadcrumb %}
+<div class="mb-4"><nav class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+  <a href="/dashboard/" class="hover:underline">Dashboard</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Users</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <span class="font-medium text-[color:var(--text)]">{% if customer %}{{ customer.email }}{% else %}New customer{% endif %}</span>
+</nav></div>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
-
-  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:customers' %}" class="hover:underline">Customers</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span class="font-medium text-[color:var(--text)]">
-      {% if customer %}{{ customer.email }}{% else %}New customer{% endif %}
-    </span>
-  </div>
 
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-semibold">

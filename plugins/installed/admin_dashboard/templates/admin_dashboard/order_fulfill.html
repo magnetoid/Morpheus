@@ -1,16 +1,20 @@
 {% extends "admin_dashboard/base.html" %}
 {% block title %}Fulfill · Order #{{ order.order_number }}{% endblock %}
 
+{% block breadcrumb %}
+<div class="mb-4"><nav class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+  <a href="/dashboard/" class="hover:underline">Dashboard</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="{% url 'admin_dashboard:orders' %}" class="hover:underline">Orders</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="{% url 'admin_dashboard:order_detail' order_number=order.order_number %}" class="hover:underline">#{{ order.order_number }}</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <span class="font-medium text-[color:var(--text)]">Fulfill</span>
+</nav></div>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-4">
-
-  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:orders' %}" class="hover:underline">Orders</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <a href="{% url 'admin_dashboard:order_detail' order_number=order.order_number %}" class="hover:underline">#{{ order.order_number }}</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span class="font-medium text-[color:var(--text)]">Fulfill</span>
-  </div>
 
   <h1 class="text-xl font-semibold">Create fulfillment</h1>
   <p class="text-sm text-[color:var(--text-muted)]">
