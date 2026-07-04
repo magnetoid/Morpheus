@@ -103,49 +103,47 @@ def _parse_publish_at(raw):
     return dt
 
 
-def _page_seo(page):
-    """(title, description) from the page's SeoMeta override, or ('', '')."""
-    if page is None or not getattr(page, 'pk', None):
-        return '', ''
-    try:
-        from django.contrib.contenttypes.models import ContentType
-        from plugins.installed.seo.models import SeoMeta
+def _apply_editorial_metadata(meta: dict, post) -> dict:
+    """Fold the page form's editorial (journal) controls into ``meta``:
+    the Publish-to-Journal toggle, author, author profile links (sameAs),
+    and cited sources. Author links + sources are stored as clean lists so
+    the journal Article JSON-LD reads them safely."""
 
-        ct = ContentType.objects.get_for_model(type(page))
-        sm = SeoMeta.objects.filter(content_type=ct, object_id=str(page.pk)).first()
-        if sm:
-            return sm.title or '', sm.description or ''
-    except Exception:  # noqa: BLE001 — seo plugin optional
-        pass
-    return '', ''
+    def _lines(name):
+        return [ln.strip() for ln in (post.get(name) or '').splitlines() if ln.strip()]
+
+    if post.get('is_journal'):
+        meta['category'] = 'journal'
+    elif meta.get('category') == 'journal':
+        meta.pop('category', None)
+
+    author = (post.get('author') or '').strip()[:120]
+    if author:
+        meta['author'] = author
+    else:
+        meta.pop('author', None)
+
+    for key, field in (('author_same_as', 'author_same_as'), ('citations', 'citations')):
+        vals = _lines(field)
+        if vals:
+            meta[key] = vals
+        else:
+            meta.pop(key, None)
+    return meta
 
 
-def _save_page_seo(page, meta_title, meta_description):
-    """Upsert the page's SeoMeta override (seo plugin, generic FK). Only writes
-    when there's content or an existing row (no empty clutter). Fail-soft."""
-    title = (meta_title or '').strip()[:255]
-    description = (meta_description or '').strip()[:500]
-    try:
-        from django.contrib.contenttypes.models import ContentType
-        from plugins.installed.seo.models import SeoMeta
-
-        ct = ContentType.objects.get_for_model(type(page))
-        qs = SeoMeta.objects.filter(content_type=ct, object_id=str(page.pk))
-        if title or description or qs.exists():
-            SeoMeta.objects.update_or_create(
-                content_type=ct,
-                object_id=str(page.pk),
-                defaults={'title': title, 'description': description, 'auto_filled': False},
-            )
-    except Exception:  # noqa: BLE001 — seo plugin optional
-        pass
+def _meta_list_text(value) -> str:
+    """A metadata list (author_same_as / citations) → newline-joined text for
+    the textarea. Tolerates a scalar string set via raw JSON."""
+    if isinstance(value, (list, tuple)):
+        return '\n'.join(str(v) for v in value if v)
+    return str(value) if value else ''
 
 
 def _page_form_context(request, page, *, creating):
     from plugins.installed.cms.models import Page
 
-    seo_title, seo_description = _page_seo(page)
-    cover_image = (getattr(page, 'metadata', None) or {}).get('cover', '') if page else ''
+    meta = (getattr(page, 'metadata', None) or {}) if page else {}
     return {
         'page': page,
         'creating': creating,
@@ -153,15 +151,18 @@ def _page_form_context(request, page, *, creating):
         'layout_choices': Page.LAYOUT_CHOICES,
         'form_action': request.path,
         'active_nav': 'cms',
-        'page_meta_title': seo_title,
-        'page_meta_description': seo_description,
-        'cover_image': cover_image,
+        'cover_image': meta.get('cover', ''),
+        # Editorial (journal) controls — Page.metadata backed.
+        'is_journal': meta.get('category') == 'journal',
+        'page_author': meta.get('author', ''),
+        'author_same_as_text': _meta_list_text(meta.get('author_same_as')),
+        'citations_text': _meta_list_text(meta.get('citations')),
     }
 
 
 @staff_member_required
 @require_http_methods(['GET', 'POST'])
-def page_edit(request, page_id=None):  # noqa: PLR0912 — flat validate→save view
+def page_edit(request, page_id=None):  # noqa: PLR0912, PLR0915 — flat validate→save view
     """Create (page_id is None) or edit a CMS Page."""
     from plugins.installed.cms.models import Page
 
@@ -205,16 +206,18 @@ def page_edit(request, page_id=None):  # noqa: PLR0912 — flat validate→save 
                 layout,
                 publish_at,
             )
+            # Carry the POSTed cover + editorial fields into the re-render — the
+            # context derives them from state, which would silently drop a
+            # just-uploaded cover (orphaning the Media asset) or the journal
+            # toggle on a validation error like a slug clash. The SEO panel
+            # itself re-prefills from request.POST (takes_context).
+            draft.metadata = _apply_editorial_metadata(dict(draft.metadata or {}), request.POST)
+            cover = (request.POST.get('cover_image') or '').strip()[:600]
+            if cover:
+                draft.metadata['cover'] = cover
+            else:
+                draft.metadata.pop('cover', None)
             ctx = _page_form_context(request, draft, creating=creating)
-            # Carry the POSTed cover + SEO fields into the re-render — the
-            # context derives them from saved state, which would silently
-            # drop a just-uploaded cover (orphaning the Media asset) on a
-            # validation error like a slug clash.
-            ctx.update(
-                cover_image=(request.POST.get('cover_image') or '').strip()[:600],
-                page_meta_title=(request.POST.get('meta_title') or '').strip()[:255],
-                page_meta_description=(request.POST.get('meta_description') or '').strip()[:500],
-            )
             return render(request, 'cms/dashboard/page_form.html', ctx)
 
         if page is None:
@@ -223,19 +226,22 @@ def page_edit(request, page_id=None):  # noqa: PLR0912 — flat validate→save 
                 page.author = request.user
         page.title, page.slug, page.excerpt = title, slug, excerpt
         page.body, page.state, page.layout, page.publish_at = body, state, layout, publish_at
-        # Cover image (journal OG/cover) lives in metadata; preserve the rest
-        # (e.g. category='journal').
+        # Cover image (journal OG/cover) + editorial fields live in metadata.
         cover = (request.POST.get('cover_image') or '').strip()[:600]
         meta = dict(page.metadata or {})
         if cover:
             meta['cover'] = cover
         else:
             meta.pop('cover', None)
-        page.metadata = meta
+        page.metadata = _apply_editorial_metadata(meta, request.POST)
         page.save()
-        _save_page_seo(
-            page, request.POST.get('meta_title', ''), request.POST.get('meta_description', '')
-        )
+        # Reusable SEO panel: upsert the SeoMeta override + seo.ai_answer.
+        try:
+            from plugins.installed.seo.services.panel import save_object_seo
+
+            save_object_seo(page, request.POST)
+        except Exception:  # noqa: BLE001 — seo plugin optional
+            pass
         messages.success(request, f'Saved “{page.title}”.')
         return redirect(_PAGES_LIST_URL)
 

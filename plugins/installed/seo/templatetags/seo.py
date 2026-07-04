@@ -599,6 +599,20 @@ def seo_faq_jsonld(items):
     )
 
 
+@register.inclusion_tag('seo/_meta_panel.html', takes_context=True)
+def seo_meta_panel(context, obj):
+    """Render the reusable per-object SEO settings panel for ``obj``.
+
+    Drop ``{% seo_meta_panel page %}`` into any dashboard edit form; persist on
+    save with ``seo.services.panel.save_object_seo(obj, request.POST)``. The
+    panel posts ``seo_*`` fields backed by the ``SeoMeta`` override + the
+    ``seo.ai_answer`` metafield — one editor for every content type.
+    """
+    from plugins.installed.seo.services.panel import panel_context
+
+    return panel_context(obj, context.get('request'))
+
+
 @register.simple_tag(takes_context=True)
 def seo_collection_jsonld(context, items, name='', description=''):
     """Emit CollectionPage + ItemList JSON-LD for a PLP/category.

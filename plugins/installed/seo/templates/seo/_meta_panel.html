@@ -1,0 +1,181 @@
+{% comment %}
+  Reusable per-object SEO settings panel — rendered by {% seo_meta_panel obj %}
+  (seo/templatetags/seo.py). Every field posts as seo_* and is persisted by
+  seo.services.panel.save_object_seo(obj, request.POST). Self-contained: a
+  scoped IIFE drives the live Google + social previews and the counters, so the
+  panel can drop into any dashboard edit form.
+  Context: seo (values dict), seo_ai_answer, seo_noindex, seo_nofollow,
+  seo_title_max, seo_desc_max, seo_twitter_choices, seo_brand, seo_host.
+{% endcomment %}
+<div class="seo-panel space-y-4" data-seo-panel>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    {# ── Live previews ─────────────────────────────────────────────── #}
+    <div class="space-y-3 order-last lg:order-first">
+      <div>
+        <p class="text-xs font-medium text-[color:var(--text-muted)] mb-1">Google result preview</p>
+        <div class="rounded-lg border border-[color:var(--border)] p-3 bg-[color:var(--surface)]">
+          <div class="text-xs text-[color:var(--text-muted)] truncate" data-seo-pv-url>{{ seo_host }}</div>
+          <div class="text-[color:#1a0dab] dark:text-[#8ab4f8] text-base leading-snug truncate" data-seo-pv-title>Title</div>
+          <div class="text-xs text-[color:var(--text)] leading-snug mt-0.5 line-clamp-2" data-seo-pv-desc>Meta description preview.</div>
+        </div>
+      </div>
+      <div>
+        <p class="text-xs font-medium text-[color:var(--text-muted)] mb-1">Social share card</p>
+        <div class="rounded-lg border border-[color:var(--border)] overflow-hidden bg-[color:var(--surface)]">
+          <div class="aspect-[1200/630] bg-[color:var(--surface-2)] flex items-center justify-center text-xs text-[color:var(--text-muted)]" data-seo-pv-card>
+            <img alt="" class="w-full h-full object-cover hidden" data-seo-pv-img>
+            <span data-seo-pv-noimg>No share image</span>
+          </div>
+          <div class="p-2.5 border-t border-[color:var(--border)]">
+            <div class="text-[10px] uppercase tracking-wide text-[color:var(--text-muted)] truncate" data-seo-pv-host>{{ seo_host }}</div>
+            <div class="text-sm font-medium truncate" data-seo-pv-ogtitle>Title</div>
+            <div class="text-xs text-[color:var(--text-muted)] line-clamp-2" data-seo-pv-ogdesc>Description</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Fields ────────────────────────────────────────────────────── #}
+    <div class="space-y-3">
+      <div>
+        <label class="flex items-center justify-between text-xs font-medium mb-1" for="seo-title">
+          <span>SEO title <span class="text-[color:var(--text-muted)]">(blank = auto from title)</span></span>
+          <span class="text-[color:var(--text-muted)]" data-seo-count="title">0/{{ seo_title_max }}</span>
+        </label>
+        <input type="text" id="seo-title" name="seo_title" maxlength="200" class="input" value="{{ seo.title }}" data-seo-field="title">
+      </div>
+      <div>
+        <label class="flex items-center justify-between text-xs font-medium mb-1" for="seo-desc">
+          <span>Meta description</span>
+          <span class="text-[color:var(--text-muted)]" data-seo-count="desc">0/{{ seo_desc_max }}</span>
+        </label>
+        <textarea id="seo-desc" name="seo_description" rows="2" maxlength="320" class="input" data-seo-field="desc">{{ seo.description }}</textarea>
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1" for="seo-canonical">Canonical URL <span class="text-[color:var(--text-muted)]">(blank = this page's URL)</span></label>
+        <input type="text" id="seo-canonical" name="seo_canonical" maxlength="600" class="input" value="{{ seo.canonical_url }}" placeholder="https://…">
+      </div>
+      <div class="flex items-center gap-5">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="seo_noindex" value="1" {% if seo_noindex %}checked{% endif %}> Noindex
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="seo_nofollow" value="1" {% if seo_nofollow %}checked{% endif %}> Nofollow
+        </label>
+        <span class="text-xs text-[color:var(--text-muted)]">Hide this page from search engines.</span>
+      </div>
+
+      <details class="rounded-lg border border-[color:var(--border)] px-3 py-2">
+        <summary class="text-xs font-medium cursor-pointer select-none">Social sharing (Open Graph &amp; Twitter)</summary>
+        <div class="space-y-3 mt-3">
+          <div>
+            <label class="block text-xs font-medium mb-1" for="seo-og-title">OG title <span class="text-[color:var(--text-muted)]">(blank = SEO title)</span></label>
+            <input type="text" id="seo-og-title" name="seo_og_title" maxlength="200" class="input" value="{{ seo.og_title }}" data-seo-field="ogtitle">
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1" for="seo-og-desc">OG description <span class="text-[color:var(--text-muted)]">(blank = meta description)</span></label>
+            <textarea id="seo-og-desc" name="seo_og_description" rows="2" maxlength="320" class="input" data-seo-field="ogdesc">{{ seo.og_description }}</textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1" for="seo-og-image">Share image (OG image)</label>
+            <div class="flex gap-2 items-center">
+              <input type="text" id="seo-og-image" name="seo_og_image" maxlength="600" class="input flex-1" value="{{ seo.og_image }}" placeholder="/media/… or paste a URL" data-seo-field="ogimage">
+              <button type="button" class="btn btn-ghost btn-sm whitespace-nowrap" data-seo-og-upload>⬆ Upload</button>
+            </div>
+            <p class="text-xs text-[color:var(--text-muted)] mt-1">Blank falls back to the cover image, then the site default. 1200×630 recommended.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1" for="seo-twitter">Twitter card</label>
+            <select id="seo-twitter" name="seo_twitter_card" class="input">
+              {% for value, label in seo_twitter_choices %}
+              <option value="{{ value }}" {% if seo.twitter_card == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <div>
+        <label class="block text-xs font-medium mb-1" for="seo-ai-answer">AI answer / key takeaway <span class="text-[color:var(--text-muted)]">(quotable TL;DR)</span></label>
+        <textarea id="seo-ai-answer" name="seo_ai_answer" rows="2" maxlength="600" class="input" placeholder="One or two factual sentences an AI assistant can quote verbatim.">{{ seo_ai_answer }}</textarea>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Powers the on-page answer block + <code class="font-mono text-[11px]">disambiguatingDescription</code> for AI answer engines.</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1" for="seo-keywords">Focus keyword <span class="text-[color:var(--text-muted)]">(internal; not emitted as meta keywords)</span></label>
+        <input type="text" id="seo-keywords" name="seo_keywords" maxlength="255" class="input" value="{{ seo.keywords }}">
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var root = document.currentScript.closest('[data-seo-panel]');
+    if (!root || root.dataset.seoWired) return;
+    root.dataset.seoWired = '1';
+    var brand = "{{ seo_brand|escapejs }}";
+    var q = function (sel) { return root.querySelector(sel); };
+    var titleEl = q('[data-seo-field="title"]');
+    var descEl = q('[data-seo-field="desc"]');
+    var ogTitleEl = q('[data-seo-field="ogtitle"]');
+    var ogDescEl = q('[data-seo-field="ogdesc"]');
+    var ogImgEl = q('[data-seo-field="ogimage"]');
+    var pageTitle = document.getElementById('page-title'); // host form's title, if present
+    var pageDesc = document.getElementById('page-excerpt');
+    function val(el) { return el ? (el.value || '').trim() : ''; }
+    function titleWithBrand(t) { return brand && t ? t + ' — ' + brand : (t || brand); }
+    function render() {
+      var t = val(titleEl) || val(pageTitle);
+      var d = val(descEl) || val(pageDesc);
+      var ogt = val(ogTitleEl) || t;
+      var ogd = val(ogDescEl) || d;
+      var img = val(ogImgEl);
+      q('[data-seo-pv-title]').textContent = titleWithBrand(t) || 'Page title';
+      q('[data-seo-pv-desc]').textContent = d || 'Your meta description preview appears here.';
+      q('[data-seo-pv-ogtitle]').textContent = ogt || 'Page title';
+      q('[data-seo-pv-ogdesc]').textContent = ogd || 'Description';
+      var imgEl = q('[data-seo-pv-img]');
+      var noImg = q('[data-seo-pv-noimg]');
+      // OG image preview falls back to the host form's cover field.
+      var cover = document.getElementById('page-cover');
+      var src = img || (cover ? (cover.value || '').trim() : '');
+      if (src) { imgEl.src = src; imgEl.classList.remove('hidden'); if (noImg) noImg.classList.add('hidden'); }
+      else { imgEl.classList.add('hidden'); if (noImg) noImg.classList.remove('hidden'); }
+      // counters
+      var tc = q('[data-seo-count="title"]');
+      var dc = q('[data-seo-count="desc"]');
+      if (tc) tc.textContent = val(titleEl).length + '/{{ seo_title_max }}';
+      if (dc) dc.textContent = val(descEl).length + '/{{ seo_desc_max }}';
+    }
+    ['input', 'change'].forEach(function (ev) { root.addEventListener(ev, render); });
+    if (pageTitle) pageTitle.addEventListener('input', render);
+    if (pageDesc) pageDesc.addEventListener('input', render);
+    var coverEl = document.getElementById('page-cover');
+    if (coverEl) coverEl.addEventListener('input', render);
+    // OG image upload → Media library (same endpoint the cover uses)
+    var upBtn = q('[data-seo-og-upload]');
+    if (upBtn) upBtn.addEventListener('click', function () {
+      var file = document.createElement('input');
+      file.type = 'file'; file.accept = 'image/*';
+      file.onchange = async function () {
+        var f = file.files && file.files[0];
+        if (!f) return;
+        var tok = document.querySelector('[name=csrfmiddlewaretoken]');
+        var fd = new FormData(); fd.append('file', f);
+        upBtn.disabled = true; upBtn.textContent = 'Uploading…';
+        try {
+          var resp = await fetch('/dashboard/media/api/upload/', {
+            method: 'POST', body: fd, credentials: 'same-origin',
+            headers: tok ? { 'X-CSRFToken': tok.value } : {},
+          });
+          var data = await resp.json();
+          if (resp.ok && data.url) { ogImgEl.value = data.url; render(); }
+          else { window.alert('Image upload failed: ' + (data.error || resp.status)); }
+        } catch (err) { window.alert('Image upload failed: ' + err); }
+        finally { upBtn.disabled = false; upBtn.textContent = '⬆ Upload'; }
+      };
+      file.click();
+    });
+    render();
+  })();
+  </script>
+</div>

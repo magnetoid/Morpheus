@@ -1,6 +1,7 @@
 {% extends "admin_dashboard/base.html" %}
 {% load morph %}
 {% load richtext %}
+{% load seo %}
 {% block title %}{% if creating %}New page{% else %}{{ page.title }}{% endif %} · CMS · Morpheus{% endblock %}
 
 {% block content %}
@@ -123,19 +124,41 @@
         });
       })();
       </script>
-      <div>
-        <label class="block text-xs font-medium mb-1" for="page-meta-title">SEO title <span class="text-[color:var(--text-muted)]">(≤60 chars; blank = auto from title)</span></label>
-        <input type="text" id="page-meta-title" name="meta_title" maxlength="255" class="input" value="{{ page_meta_title|default:'' }}">
+      {% comment %}Editorial (journal) controls — turn a page into a blog/journal post + author E-E-A-T.{% endcomment %}
+      <div class="space-y-3 pt-2 border-t border-[color:var(--border)]">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_journal" value="1" {% if is_journal %}checked{% endif %}>
+          <span class="font-medium">Publish to Journal</span>
+          <span class="text-xs text-[color:var(--text-muted)]">— surface this page as a blog/journal article at <code class="font-mono text-[11px]">/journal/{{ page.slug|default:"…" }}/</code></span>
+        </label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium mb-1" for="page-author-name">Author</label>
+            <input type="text" id="page-author-name" name="author" maxlength="120" class="input" value="{{ page_author|default:'' }}" placeholder="e.g. Jane Austen">
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1" for="page-author-links">Author profile links <span class="text-[color:var(--text-muted)]">(one URL per line)</span></label>
+            <textarea id="page-author-links" name="author_same_as" rows="2" class="input" placeholder="https://linkedin.com/in/…">{{ author_same_as_text }}</textarea>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" for="page-sources">Sources cited <span class="text-[color:var(--text-muted)]">(one URL per line — provenance for AI answer engines)</span></label>
+          <textarea id="page-sources" name="citations" rows="2" class="input">{{ citations_text }}</textarea>
+        </div>
       </div>
-      <div>
-        <label class="block text-xs font-medium mb-1" for="page-meta-desc">SEO description <span class="text-[color:var(--text-muted)]">(≤160 chars)</span></label>
-        <textarea id="page-meta-desc" name="meta_description" rows="2" maxlength="500" class="input">{{ page_meta_description|default:'' }}</textarea>
-      </div>
+
+      {% comment %}Reusable per-object SEO panel (seo plugin): SeoMeta fields + AI answer + live Google/social previews.{% endcomment %}
       {% plugin_enabled "seo" as seo_enabled %}
-      {% if seo_enabled and not creating %}
-      <div>
-        <a href="/dashboard/seo/schema/cms/page/{{ page.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
-        <p class="text-xs text-[color:var(--text-muted)] mt-1">Add rich-result schema with no JSON.</p>
+      {% if seo_enabled %}
+      <div class="pt-2 border-t border-[color:var(--border)]">
+        <h3 class="text-sm font-semibold mb-3">Search &amp; social</h3>
+        {% seo_meta_panel page %}
+        {% if not creating %}
+        <div class="mt-3">
+          <a href="/dashboard/seo/schema/cms/page/{{ page.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Add rich-result schema (FAQ/HowTo/Event) with no JSON.</p>
+        </div>
+        {% endif %}
       </div>
       {% endif %}
     </div>
