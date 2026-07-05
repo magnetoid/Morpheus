@@ -262,8 +262,8 @@ def step_dropoffs(*, steps: list[str], days: int = 30) -> list[dict]:
         rate = round((lost / prev_n) * 100, 1) if prev_n else 0.0
         out.append(
             {
-                'from_step': prev['name'],
-                'to_step': cur['name'],
+                'from_step': prev['step'],
+                'to_step': cur['step'],
                 'prev_count': prev_n,
                 'cur_count': cur_n,
                 'lost': lost,
