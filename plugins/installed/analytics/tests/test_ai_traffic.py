@@ -42,7 +42,9 @@ class ClassifierTests(TestCase):
 
 class SessionStampingTests(TestCase):
     def _visit(self, **extra):
-        return Client().get('/', **extra)
+        client = Client()
+        client.cookies['cookie_consent'] = 'true'  # consented visitor
+        return client.get('/', **extra)
 
     def test_ai_referral_lands_in_utm_source(self):
         self._visit(HTTP_REFERER='https://chatgpt.com/c/recommendation')
@@ -53,7 +55,9 @@ class SessionStampingTests(TestCase):
     def test_explicit_utm_wins_over_inference(self):
         self._visit(HTTP_REFERER='https://chatgpt.com/c/x')  # arrives via ?utm too
         AnalyticsSession.objects.all().delete()
-        Client().get('/?utm_source=newsletter', HTTP_REFERER='https://chatgpt.com/c/x')
+        consented = Client()
+        consented.cookies['cookie_consent'] = 'true'
+        consented.get('/?utm_source=newsletter', HTTP_REFERER='https://chatgpt.com/c/x')
         s = AnalyticsSession.objects.latest('first_seen_at')
         self.assertEqual(s.utm_source, 'newsletter')
 

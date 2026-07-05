@@ -112,6 +112,13 @@ def get_or_create_session(request, *, response=None):
     cookie_id = (request.COOKIES.get(COOKIE_NAME) or '').strip()
     is_consented = request.COOKIES.get('cookie_consent') == 'true'
 
+    # GDPR/ePrivacy: no consent → no visitor-level persistence. Events still
+    # record session-less (aggregate counts stay honest) and server-side
+    # commerce events carry customer when known. Previously a fresh
+    # AnalyticsSession row was minted per request here, inflating `sessions`.
+    if not is_consented:
+        return None
+
     if not cookie_id:
         cookie_id = secrets.token_urlsafe(24)[:48]
         if response is not None and is_consented:
