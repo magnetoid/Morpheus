@@ -14,6 +14,19 @@ class AISettingsDedupeTests(TestCase):
         )
         self.c.force_login(u)
 
+    def tearDown(self):
+        # The POST test persists openai_api_key into the ai_assistant plugin's
+        # in-memory _config_cache (plugins/base.py). That cache lives on the
+        # registry-singleton plugin instance, so it survives this TestCase's DB
+        # rollback and would leak 'sk-test-xyz' into later tests (e.g.
+        # test_reflection saw it as a configured provider and made a live 401
+        # call). Invalidate it so the next test re-reads the rolled-back DB.
+        from plugins.registry import plugin_registry
+
+        p = plugin_registry.get('ai_assistant')
+        if p is not None:
+            p.invalidate_config_cache()
+
     def test_get_plugin_page_redirects_to_rich_ai_page(self):
         r = self.c.get('/dashboard/settings/ai_assistant/')
         self.assertEqual(r.status_code, 302)
