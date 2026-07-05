@@ -66,6 +66,13 @@ class AnalyticsPlugin(Plugin):
                 'schedule': 60 * 60 * 24,  # daily
             },
         )
+        self.register_celery_beat(
+            'analytics:detect_anomalies',
+            {
+                'task': 'analytics.detect_anomalies',
+                'schedule': 60 * 60 * 24,  # daily, after roll_daily has run
+            },
+        )
 
         # Dashboard-home presence: KPI tiles + anomaly activity — via the
         # filter bus, so a disabled plugin's tiles simply never render.

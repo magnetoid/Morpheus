@@ -72,3 +72,13 @@ def trim_old_events_task(keep_days: int = 90) -> int:
     n = trim_old_events(keep_days=keep_days)
     logger.info('analytics: trimmed %d old events (keep_days=%d)', n, keep_days)
     return n
+
+
+@app.task(name='analytics.detect_anomalies', ignore_result=True, time_limit=120)
+def detect_anomalies_task() -> int:
+    from plugins.installed.analytics.services_anomaly import detect_anomalies
+
+    findings = detect_anomalies()
+    if findings:
+        logger.info('analytics: %d metric anomalies detected', len(findings))
+    return len(findings)
