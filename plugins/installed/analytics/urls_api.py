@@ -1,4 +1,5 @@
 from django.urls import path
+
 from plugins.installed.analytics import views
 
 app_name = 'analytics_api'
