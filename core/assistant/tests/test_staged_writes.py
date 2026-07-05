@@ -280,7 +280,7 @@ class StagedMetafieldToolTests(TestCase):
 
 class StagedCmsToolTests(TestCase):
     def test_staged_publish_and_unpublish(self):
-        from core.assistant.tools.ecommerce_writes import (
+        from plugins.installed.cms.agent_tools import (
             cms_publish_page_tool,
             cms_unpublish_page_tool,
         )

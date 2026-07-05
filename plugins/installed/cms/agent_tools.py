@@ -318,3 +318,149 @@ def email_templates_tool() -> ToolResult:
         for t in EmailTemplate.objects.all().order_by('key')
     ]
     return ToolResult(output={'templates': rows, 'count': len(rows)})
+
+
+# ── Publish / unpublish (migrated from core/assistant/tools/ecommerce_writes.py,
+#    arch-debt refactor) ─────────────────────────────────────────────────────
+# Names unchanged — Linda sources them by name (get_default_tools._migrated_names).
+# Staged-mode + confirm helpers stay core (plugin -> core is the right direction).
+
+
+@tool(
+    name='cms.publish_page',
+    description=(
+        'Publish a CMS page (sets state=published). Pass `id` or `slug`. Requires `confirmed=True`.'
+    ),
+    scopes=['content.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'id': {'type': 'string'},
+            'slug': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+    },
+    requires_approval=True,
+)
+def cms_publish_page_tool(
+    *, id: str = '', slug: str = '', confirmed: bool = False, context: dict | None = None
+) -> ToolResult:
+    from core.assistant.tools.ecommerce_writes import (
+        _is_staged,
+        _obj_ref,
+        _require_confirmed,
+        _stage,
+    )
+
+    staged = _is_staged(context)
+    if not staged:
+        _require_confirmed(confirmed)
+    try:
+        from django.utils import timezone
+
+        from plugins.installed.cms.models import Page
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'cms plugin unavailable: {e}') from e
+    p = None
+    if id:
+        p = Page.objects.filter(pk=id).first()
+    if p is None and slug:
+        p = Page.objects.filter(slug=slug).first()
+    if p is None:
+        raise ToolError('page not found — pass id or slug')
+    prev = getattr(p, 'state', '')
+    if staged:
+        title = getattr(p, 'title', '') or str(p.pk)
+        return _stage(
+            context=context,
+            tool_name='cms.publish_page',
+            kind='cms.publish',
+            title=f'Publish page "{title}"',
+            summary=f"Set page {title!r} state from {prev!r} to 'published'.",
+            changes=[{'object': _obj_ref(p), 'field': 'state', 'old': prev, 'new': 'published'}],
+            target=p,
+        )
+    p.state = 'published'
+    if hasattr(p, 'published_at') and not getattr(p, 'published_at', None):
+        p.published_at = timezone.now()
+        p.save(
+            update_fields=['state', 'published_at', 'updated_at']
+            if hasattr(p, 'updated_at')
+            else ['state', 'published_at']
+        )
+    else:
+        p.save(update_fields=['state', 'updated_at'] if hasattr(p, 'updated_at') else ['state'])
+    return ToolResult(
+        output={
+            'page_id': str(p.pk),
+            'slug': getattr(p, 'slug', ''),
+            'previous_state': prev,
+            'new_state': 'published',
+        },
+        display=f'published "{getattr(p, "title", p.pk)}"',
+    )
+
+
+@tool(
+    name='cms.unpublish_page',
+    description=(
+        'Unpublish a CMS page (sets state=draft). Pass `id` or `slug`. Requires `confirmed=True`.'
+    ),
+    scopes=['content.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'id': {'type': 'string'},
+            'slug': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+    },
+    requires_approval=True,
+)
+def cms_unpublish_page_tool(
+    *, id: str = '', slug: str = '', confirmed: bool = False, context: dict | None = None
+) -> ToolResult:
+    from core.assistant.tools.ecommerce_writes import (
+        _is_staged,
+        _obj_ref,
+        _require_confirmed,
+        _stage,
+    )
+
+    staged = _is_staged(context)
+    if not staged:
+        _require_confirmed(confirmed)
+    try:
+        from plugins.installed.cms.models import Page
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'cms plugin unavailable: {e}') from e
+    p = None
+    if id:
+        p = Page.objects.filter(pk=id).first()
+    if p is None and slug:
+        p = Page.objects.filter(slug=slug).first()
+    if p is None:
+        raise ToolError('page not found — pass id or slug')
+    prev = getattr(p, 'state', '')
+    if staged:
+        title = getattr(p, 'title', '') or str(p.pk)
+        return _stage(
+            context=context,
+            tool_name='cms.unpublish_page',
+            kind='cms.unpublish',
+            title=f'Unpublish page "{title}"',
+            summary=f"Set page {title!r} state from {prev!r} to 'draft'.",
+            changes=[{'object': _obj_ref(p), 'field': 'state', 'old': prev, 'new': 'draft'}],
+            target=p,
+        )
+    p.state = 'draft'
+    p.save(update_fields=['state', 'updated_at'] if hasattr(p, 'updated_at') else ['state'])
+    return ToolResult(
+        output={
+            'page_id': str(p.pk),
+            'slug': getattr(p, 'slug', ''),
+            'previous_state': prev,
+            'new_state': 'draft',
+        },
+        display=f'unpublished "{getattr(p, "title", p.pk)}"',
+    )

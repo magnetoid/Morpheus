@@ -112,6 +112,8 @@ class CmsPlugin(Plugin):
     def contribute_agent_tools(self) -> list:
         from plugins.installed.cms.agent_tools import (
             cms_pages_tool,
+            cms_publish_page_tool,
+            cms_unpublish_page_tool,
             create_page_tool,
             delete_page_tool,
             email_templates_tool,
@@ -131,6 +133,8 @@ class CmsPlugin(Plugin):
             upsert_block_tool,
             recent_submissions_tool,
             cms_pages_tool,
+            cms_publish_page_tool,
+            cms_unpublish_page_tool,
             email_templates_tool,
         ]
 

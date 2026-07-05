@@ -28,8 +28,6 @@ from core.assistant.tools.ecommerce import (
     settings_list_tool,
 )
 from core.assistant.tools.ecommerce_writes import (
-    cms_publish_page_tool,
-    cms_unpublish_page_tool,
     customers_add_note_tool,
     metafields_delete_tool,
     metafields_set_tool,
@@ -121,8 +119,6 @@ def get_default_tools() -> list:
         products_update_status_tool,
         products_update_price_tool,
         customers_add_note_tool,
-        cms_publish_page_tool,
-        cms_unpublish_page_tool,
         metafields_set_tool,
         metafields_delete_tool,
         # Self-awareness — enumerate the full toolset so Linda discovers her
@@ -172,6 +168,8 @@ def get_default_tools() -> list:
         'analytics.summary',
         'analytics.top_products',
         'cms.pages',
+        'cms.publish_page',
+        'cms.unpublish_page',
         'email.templates',
     ]
     tools += [t for t in (agent_registry.get_tool(n) for n in _migrated_names) if t is not None]
