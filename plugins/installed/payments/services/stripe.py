@@ -183,6 +183,77 @@ class PaymentService:
             return {'success': False, 'error': str(e)}
 
     @classmethod
+    def redeem_delegated_token(cls, order, token):
+        """Charge an ACP Shared Payment Token off-session for `order`.
+
+        The agent already collected the card; we confirm in one shot
+        (`confirm=True, off_session=True`) — no client secret, no 3DS
+        challenge surface. `idempotency_key` makes an agent retry of
+        `complete` return the original intent instead of double-charging.
+        Never raises: declines and Stripe errors come back as
+        ``{'success': False, ...}`` so the ACP view can map them to a
+        conformant 422.
+        """
+        stripe.api_key = cls.get_stripe_api_key()
+
+        amount_cents = int(order.total.amount * 100)
+        # Evidence metadata is attached by the ACP view (Order has no
+        # metadata column — it rides as an instance attr; read fail-soft).
+        md = getattr(order, 'metadata', None) or {}
+        acp = md.get('acp') if isinstance(md, dict) else None
+        acp_session = str((acp or {}).get('session_id', ''))
+
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=amount_cents,
+                currency=order.total.currency.code.lower(),
+                payment_method=token,
+                confirm=True,
+                off_session=True,
+                metadata={
+                    'order_id': str(order.id),
+                    'order_number': order.order_number,
+                    'acp_session': acp_session,
+                },
+                idempotency_key=f'acp-{order.id}',
+            )
+        except stripe.error.CardError as e:
+            message = getattr(e, 'user_message', '') or str(e)
+            PaymentTransaction.objects.create(
+                order=order,
+                amount=order.total,
+                status=PaymentTransaction.Status.FAILED,
+                provider='stripe',
+                error_message=message,
+            )
+            return {'success': False, 'error': message, 'decline_code': e.code or ''}
+        except stripe.error.StripeError as e:
+            return {'success': False, 'error': str(e)}
+
+        if intent.status != 'succeeded':
+            # requires_action & friends — agents can't drive a 3DS
+            # challenge in v1, so treat it as a decline.
+            message = 'Payment requires additional authentication'
+            PaymentTransaction.objects.create(
+                order=order,
+                amount=order.total,
+                status=PaymentTransaction.Status.FAILED,
+                provider='stripe',
+                provider_transaction_id=intent.id,
+                error_message=message,
+            )
+            return {'success': False, 'error': message, 'decline_code': 'authentication_required'}
+
+        tx = PaymentTransaction.objects.create(
+            order=order,
+            amount=order.total,
+            status=PaymentTransaction.Status.SUCCEEDED,
+            provider='stripe',
+            provider_transaction_id=intent.id,
+        )
+        return {'success': True, 'transaction_id': tx.id, 'payment_intent_id': intent.id}
+
+    @classmethod
     def process_webhook(cls, payload, sig_header):
         """
         Processes a Stripe webhook to update transaction statuses.
