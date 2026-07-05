@@ -8,13 +8,16 @@ echoes the ``API-Version`` response header.
 The session ``id`` IS a ``Cart`` id. ``createCheckoutSession`` builds a new
 ``Cart`` from ``line_items``; the others read/mutate/cancel/complete it.
 
-Phase 1: ``complete`` returns a conformant ``CheckoutSession`` carrying a
-``MessageError`` with code ``unsupported`` — the money path (Stripe Shared
-Payment Token) is Phase 2.
+``complete`` is the money path (Phase 2), gated on the ``payments_enabled``
+config flag: it places a real ``Order`` and redeems the Stripe Shared Payment
+Token off-session through the payments plugin. With the flag off (or the
+payments plugin unavailable) it returns a conformant ``CheckoutSession``
+carrying a ``MessageError`` with code ``unsupported`` — the Phase-1 behavior.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import timedelta
@@ -26,7 +29,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from plugins.installed.agentic_checkout import serializers as ser
-from plugins.installed.agentic_checkout.auth import require_acp_scope
+from plugins.installed.agentic_checkout.auth import _bearer_token, require_acp_scope
+from plugins.installed.agentic_checkout.eligibility import agentic_excluded
 from plugins.installed.agentic_checkout.plugin import ACP_API_VERSION
 
 logger = logging.getLogger('morpheus.agentic_checkout')
@@ -66,6 +70,19 @@ def _session_ttl_minutes() -> int:
     except Exception:  # noqa: BLE001, S110 — config read is best-effort
         pass
     return _DEFAULT_SESSION_TTL_MINUTES
+
+
+def _payments_enabled() -> bool:
+    """Money-path opt-in from plugin config (``payments_enabled``, default off)."""
+    try:
+        from plugins.models import PluginConfig
+
+        row = PluginConfig.objects.filter(plugin_name='agentic_checkout').first()
+        if row and isinstance(row.config, dict):
+            return bool(row.config.get('payments_enabled'))
+    except Exception:  # noqa: BLE001, S110 — config read is best-effort
+        pass
+    return False
 
 
 def _get_cart(session_id: str):
@@ -279,6 +296,15 @@ def _resolve_line_items(line_items: list) -> tuple[list[dict], list[dict]]:
                 ser.message_error('not_found', f'No product for {ref!r}.', param='line_items')
             )
             continue
+        if agentic_excluded(product):
+            messages.append(
+                ser.message_error(
+                    'invalid',
+                    f'{product.name} is not available for agent checkout.',
+                    param='line_items',
+                )
+            )
+            continue
         resolved.append({'product': product, 'variant': variant, 'quantity': quantity})
     return resolved, messages
 
@@ -429,29 +455,51 @@ def cancel_checkout_session(request: HttpRequest, session_id: str) -> HttpRespon
     return _with_version(JsonResponse(session))
 
 
-@csrf_exempt
-@require_http_methods(['POST'])
-def complete_checkout_session(request: HttpRequest, session_id: str) -> HttpResponse:
-    """POST /acp/checkout_sessions/{id}/complete — Phase 2 (money path).
+def _order_block(order, cart, request: HttpRequest | None) -> dict[str, Any]:
+    """ACP ``Order`` object for a ``CheckoutSessionWithOrder`` response."""
+    permalink = f'/order/confirmation/{order.order_number}/'
+    if request is not None:
+        permalink = request.build_absolute_uri(permalink)
+    return {
+        'id': str(order.id),
+        'checkout_session_id': str(cart.id),
+        'permalink_url': permalink,
+    }
 
-    Returns a conformant ``CheckoutSession`` carrying a ``MessageError`` with
-    code ``unsupported``. The Stripe Shared Payment Token redemption is NOT
-    implemented in Phase 1.
 
-    A 200 on this route implies ``CheckoutSessionWithOrder`` (i.e. a real
-    ``order``). Because Phase 1 creates no order we return the session under a
-    422 so an agent can never read it as a successful completion.
+def _record_delegation_evidence(order, cart, request: HttpRequest, token: str) -> None:
+    """Dispute evidence on the Order via the metafields plugin (zero-migration).
+
+    Fail-soft: metafields disabled/absent (or any write hiccup) must never
+    poison the success path of an already-charged order.
     """
-    denied = require_acp_scope(request)
-    if denied is not None:
-        return _with_version(denied)
+    try:
+        from plugins.installed.metafields.models import Metafield
 
-    cart = _get_cart(session_id)
-    if cart is None:
-        return _with_version(
-            ser.error_response('not_found', 'Checkout session not found.', status=404)
+        Metafield.objects.set(
+            order,
+            namespace='acp',
+            key='evidence',
+            value={
+                'api_version': ACP_API_VERSION,
+                'session_id': str(cart.id),
+                'token_fingerprint': hashlib.sha256(_bearer_token(request).encode()).hexdigest()[
+                    :16
+                ],
+                'spt_last4': token[-4:],
+                'completed_at': timezone.now().isoformat(),
+                'user_agent': str(request.META.get('HTTP_USER_AGENT', ''))[:300],
+            },
+        )
+    except Exception:  # noqa: BLE001 — evidence is best-effort
+        logger.warning(
+            'agentic_checkout: evidence metafield write failed for order %s',
+            getattr(order, 'pk', '?'),
         )
 
+
+def _unsupported_response(cart, request: HttpRequest) -> HttpResponse:
+    """The Phase-1 conformant ``unsupported`` 422 (money path off)."""
     session = _serialize(
         cart,
         request,
@@ -464,3 +512,194 @@ def complete_checkout_session(request: HttpRequest, session_id: str) -> HttpResp
         ],
     )
     return _with_version(JsonResponse(session, status=422))
+
+
+def _payment_service():
+    """The payments plugin's ``PaymentService``, or ``None`` when unavailable."""
+    try:
+        from plugins.installed.payments.services.stripe import PaymentService
+    except ImportError:
+        return None
+    return PaymentService
+
+
+def _completion_contact(cart) -> tuple[str, dict | None]:
+    """(email, shipping_address) accumulated on the cart by ``update`` calls."""
+    meta = cart.metadata if isinstance(cart.metadata, dict) else {}
+    buyer = meta.get('acp_buyer') or {}
+    fulfillment = meta.get('acp_fulfillment') or {}
+    email = str(buyer.get('email') or fulfillment.get('email') or '').strip()
+    address = fulfillment.get('address')
+    if not isinstance(address, dict) or not address:
+        address = None
+    return email, address
+
+
+def _missing_messages(cart, email: str, address: dict | None) -> list[dict]:
+    """Param-scoped ``missing`` MessageErrors for an incomplete session."""
+    missing: list[dict] = []
+    if not cart.items.exists():
+        missing.append(
+            ser.message_error('missing', 'Checkout session has no line items.', param='line_items')
+        )
+    if not email:
+        missing.append(
+            ser.message_error(
+                'missing', 'A buyer email is required to complete checkout.', param='buyer.email'
+            )
+        )
+    if address is None:
+        missing.append(
+            ser.message_error(
+                'missing',
+                'A shipping address is required to complete checkout.',
+                param='fulfillment_details.address',
+            )
+        )
+    return missing
+
+
+def _payment_data_error(body: dict) -> tuple[str, dict | None]:
+    """Validate ``payment_data`` → (token, MessageError-or-None)."""
+    payment = body.get('payment_data') if isinstance(body.get('payment_data'), dict) else {}
+    provider = str(payment.get('provider') or '').strip().lower()
+    token = str(payment.get('token') or '').strip()
+    if provider != 'stripe':
+        return token, ser.message_error(
+            'unsupported',
+            f'Unsupported payment provider {provider!r} — only "stripe" '
+            '(Shared Payment Token) is accepted.',
+            param='payment_data.provider',
+        )
+    if not token:
+        return token, ser.message_error(
+            'invalid',
+            'payment_data.token must be a non-empty Shared Payment Token.',
+            param='payment_data.token',
+        )
+    return token, None
+
+
+def _finalize_paid_order(order, cart, request: HttpRequest, token: str) -> None:
+    """Success path — mirror the Stripe webhook's ``_mark_transaction_success``.
+
+    Flip ``payment_status``, run the ``confirm()`` FSM transition, fire
+    ORDER_PAID, record delegation evidence, and stamp the cart so an agent
+    retry of ``complete`` returns this order instead of charging again.
+    """
+    from core.hooks import MorpheusEvents, hook_registry
+
+    order.payment_status = 'paid'
+    order.source = 'agent:acp'
+    if order.status == 'pending':
+        order.confirm()
+        order.save(update_fields=['payment_status', 'status', 'source'])
+    else:
+        order.save(update_fields=['payment_status', 'source'])
+    hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
+
+    _record_delegation_evidence(order, cart, request, token)
+
+    stamped = dict(cart.metadata or {})
+    stamped['acp_order_id'] = str(order.id)
+    cart.metadata = stamped
+    cart.save(update_fields=['metadata', 'updated_at'])
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def complete_checkout_session(  # noqa: PLR0911 — validation ladder, one exit per error
+    request: HttpRequest, session_id: str
+) -> HttpResponse:
+    """POST /acp/checkout_sessions/{id}/complete — the money path (Phase 2).
+
+    Gated on plugin config ``payments_enabled`` + the payments plugin being
+    importable; otherwise the Phase-1 conformant ``unsupported`` 422 is
+    preserved. On success: a real ``Order`` via ``create_from_cart``, the
+    Shared Payment Token redeemed off-session through
+    ``PaymentService.redeem_delegated_token``, the order confirmed the same
+    way the Stripe webhook success path does (ORDER_PAID fires), delegation
+    evidence recorded, and a 200 ``CheckoutSessionWithOrder``. A retry on an
+    already-completed session returns the same order without a new charge.
+    """
+    denied = require_acp_scope(request)
+    if denied is not None:
+        return _with_version(denied)
+
+    cart = _get_cart(session_id)
+    if cart is None:
+        return _with_version(
+            ser.error_response('not_found', 'Checkout session not found.', status=404)
+        )
+
+    payment_service = _payment_service() if _payments_enabled() else None
+    if payment_service is None:
+        return _unsupported_response(cart, request)
+
+    # Idempotent retry: an order already completed for this session → return
+    # it (200), never a second charge. The stamp is written only on success.
+    from plugins.installed.orders.models import Order
+
+    meta = cart.metadata if isinstance(cart.metadata, dict) else {}
+    existing = (
+        Order.objects.filter(id=meta['acp_order_id']).first() if meta.get('acp_order_id') else None
+    )
+    if existing is not None:
+        session = _serialize(cart, request)
+        session['status'] = ser.STATUS_COMPLETED
+        session['order'] = _order_block(existing, cart, request)
+        return _with_version(JsonResponse(session))
+
+    body = _json_body(request)
+    if body is None:
+        return _with_version(ser.error_response('invalid_body', 'Request body must be JSON.'))
+
+    email, address = _completion_contact(cart)
+    missing = _missing_messages(cart, email, address)
+    if missing:
+        return _with_version(
+            JsonResponse(_serialize(cart, request, extra_messages=missing), status=422)
+        )
+
+    token, payment_error = _payment_data_error(body)
+    if payment_error is not None:
+        return _with_version(
+            JsonResponse(_serialize(cart, request, extra_messages=[payment_error]), status=422)
+        )
+
+    from plugins.installed.orders.services import OrderService
+
+    # Snapshot the priced session BEFORE create_from_cart empties the cart so
+    # the completed/declined response still carries the purchased line items.
+    session = _serialize(cart, request)
+
+    try:
+        order = OrderService.create_from_cart(cart, email, address, address)
+    except ValueError as e:
+        msg = ser.message_error('invalid', str(e))
+        return _with_version(
+            JsonResponse(_serialize(cart, request, extra_messages=[msg]), status=422)
+        )
+
+    # The ACP session id rides on the PaymentIntent metadata. Order has no
+    # metadata DB column — this is an instance attr redeem reads fail-soft.
+    order.metadata = {'acp': {'session_id': str(cart.id)}}
+    result = payment_service.redeem_delegated_token(order, token)
+
+    if not result.get('success'):
+        # Mirror the webhook failure convention: the FAILED PaymentTransaction
+        # is already recorded by redeem; the order stays pending/unpaid.
+        session['messages'] = list(session.get('messages') or []) + [
+            ser.message_error(
+                'payment_declined',
+                str(result.get('error') or 'Payment was declined.'),
+                param=str(result.get('decline_code') or ''),
+            )
+        ]
+        return _with_version(JsonResponse(session, status=422))
+
+    _finalize_paid_order(order, cart, request, token)
+
+    session['status'] = ser.STATUS_COMPLETED
+    session['order'] = _order_block(order, cart, request)
+    return _with_version(JsonResponse(session))

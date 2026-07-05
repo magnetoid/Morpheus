@@ -22,6 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from plugins.installed.agentic_checkout.auth import require_acp_scope
+from plugins.installed.agentic_checkout.eligibility import agentic_excluded
 from plugins.installed.agentic_checkout.plugin import ACP_API_VERSION
 
 logger = logging.getLogger('morpheus.agentic_checkout')
@@ -115,10 +116,12 @@ def product_feed(request: HttpRequest) -> HttpResponse:
         if base is None:
             continue
         variants = expand_variants(product, base, settings)
-        if variants:
-            items.extend(_google_to_acp(v) for v in variants)
-        else:
-            items.append(_google_to_acp(base))
+        rows = [_google_to_acp(v) for v in variants] if variants else [_google_to_acp(base)]
+        # Per-product agent-checkout eligibility (metafield ``agentic.exclude``).
+        eligible = not agentic_excluded(product)
+        for row in rows:
+            row['is_eligible_checkout'] = eligible
+        items.extend(rows)
 
     response = JsonResponse({'version': ACP_API_VERSION, 'products': items, 'count': len(items)})
     response['API-Version'] = ACP_API_VERSION

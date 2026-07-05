@@ -11,9 +11,13 @@ Phase 1 (this plugin, shipped OFF by default):
   * ``createCheckoutSession`` / ``getCheckoutSession`` /
     ``updateCheckoutSession`` / ``cancelCheckoutSession`` backed by ``Cart``.
   * Bearer/scope auth (``acp.checkout``), conformant ``CheckoutSession`` JSON.
-  * ``completeCheckoutSession`` exists but returns a conformant
-    ``MessageError`` with code ``unsupported`` — the money path (Stripe Shared
-    Payment Token redemption) is Phase 2.
+
+Phase 2 (the money path, gated on the ``payments_enabled`` config flag,
+default OFF): ``completeCheckoutSession`` places a real ``Order``, redeems
+the Stripe Shared Payment Token off-session via the payments plugin, and
+records delegation evidence on the order (``acp.evidence`` metafield). With
+the flag off (or the payments plugin unavailable) it returns the Phase-1
+conformant ``MessageError`` with code ``unsupported``.
 
 Disable test: deleting this plugin removes the manifest, feed, and the
 ``/acp/`` endpoints; nothing in core or a sibling plugin references it.
@@ -30,14 +34,15 @@ ACP_API_VERSION = '2026-04-17'
 class AgenticCheckoutPlugin(Plugin):
     name = 'agentic_checkout'
     label = 'Agentic Commerce Protocol (ACP)'
-    version = '0.1.0'
+    version = '0.2.0'
     description = (
         'Agentic Commerce Protocol (2026-04-17) checkout surface. AI agents '
         '(ChatGPT Instant Checkout, etc.) discover the catalog via '
         '/.well-known/acp.json + an ACP product feed, then create a priced, '
         'conformant CheckoutSession backed by our Cart. Bearer/scope auth '
-        '(acp.checkout). Phase 1 — read/quote only; the money path '
-        '(Stripe Shared Payment Token) is OFF until a merchant enrolls.'
+        '(acp.checkout). The money path (Stripe Shared Payment Token '
+        'redemption) ships behind the payments_enabled config flag, OFF '
+        'until a merchant enrolls.'
     )
     has_models = False
     # OFF by default — no live money path yet; a merchant opts in from
@@ -78,6 +83,11 @@ class AgenticCheckoutPlugin(Plugin):
                     'type': 'boolean',
                     'default': True,
                     'title': 'Master switch',
+                },
+                'payments_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Accept agent payments (ACP complete)',
                 },
                 'session_ttl_minutes': {
                     'type': 'integer',
