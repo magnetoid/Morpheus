@@ -1,8 +1,11 @@
 import json
-from django.test import TestCase, RequestFactory
+
 from django.contrib.auth import get_user_model
-from plugins.installed.analytics.models import AnalyticsEvent, AnalyticsSession
-from plugins.installed.analytics.services import get_or_create_session, record_event
+from django.core.cache import cache
+from django.test import RequestFactory, TestCase
+
+from plugins.installed.analytics.models import AnalyticsEvent
+from plugins.installed.analytics.services import get_or_create_session
 from plugins.installed.analytics.views import track_beacon
 
 User = get_user_model()
@@ -12,6 +15,9 @@ class AnalyticsTrackingTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.user = User.objects.create_user(username='testuser', password='password')
+        # The beacon's per-IP rate-limit counter lives in the shared locmem
+        # cache and survives across TestCases in the same process.
+        cache.clear()
 
     def test_get_or_create_session_cross_device_id(self):
         """Verify cross_device_id and geo tracking works"""

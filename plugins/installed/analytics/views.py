@@ -25,15 +25,15 @@ _ALLOWED_KINDS = {
     'product_view',
     'search',
     'cart',
-    'checkout',
-    'purchase',
-    'signup',
-    'login',
     'custom',
     'click',
     'form_submit',
     'scroll',
     'error',
+    # NOTE: 'purchase'/'checkout'/'signup'/'login' are deliberately absent —
+    # money/auth truth comes from server-side hooks only (order.placed,
+    # checkout.started, customer.registered). A forged client event would
+    # inflate revenue/conversion.
 }
 
 # Hard caps on beacon shape — anyone can POST to this endpoint, so we
@@ -62,13 +62,28 @@ def custom_events_config(request):
 
 @csrf_exempt
 @require_http_methods(['POST'])
-def track_beacon(request):
+def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (size/rate/shape checks)
     """Storefront JS calls this with `{name, kind?, url?, product_slug?, search_query?, scroll_depth?, duration_ms?, error_context?}`.
 
     Always returns 204 quickly. Recording is best-effort; never raises to caller.
     """
     if len(request.body or b'') > _MAX_BODY_BYTES:
         return HttpResponse(status=413)
+
+    # Per-IP rate limit: open unauthenticated endpoint. Cache counter,
+    # 120 events/min; race-tolerant (worst case a few extra slip through).
+    ip = request.META.get('REMOTE_ADDR', '') or 'unknown'
+    rl_key = f'analytics:beacon-rl:{ip}'
+    from django.core.cache import cache  # noqa: PLC0415
+
+    cache.add(rl_key, 0, timeout=60)
+    try:
+        count = cache.incr(rl_key)
+    except ValueError:  # key expired between add and incr
+        count = 1
+    if count > 120:
+        return HttpResponse(status=429)
+
     try:
         body = (
             json.loads(request.body or b'{}')
