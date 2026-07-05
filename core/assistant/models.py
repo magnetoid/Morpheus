@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import uuid
 
+from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 
 
@@ -299,3 +301,177 @@ class CodeProposal(models.Model):
         self.applied_at = timezone.now()
         self.status = 'applied'
         self.save(update_fields=['applied_branch', 'applied_at', 'status', 'updated_at'])
+
+
+class OpsProposal(models.Model):
+    """A staged *business-level* change (price edit, SEO meta fill, …) awaiting
+    merchant approval — the generic propose→preview→approve→apply artifact
+    (staged-changes design 2026-07-05, generalizing ADR-0028's propose-only
+    queue). Distinct from CodeProposal (self-written code) and
+    SiRecommendation (code-quality findings): OpsProposal stages *data*
+    changes, described field-by-field in ``changes`` and applied via
+    ContentType resolution so core never imports plugin models.
+    """
+
+    STATUS_CHOICES = [
+        ('proposed', 'Proposed'),
+        ('approved', 'Approved'),
+        ('applied', 'Applied'),
+        ('rejected', 'Rejected'),
+        ('expired', 'Expired'),
+        ('failed', 'Failed'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source = models.CharField(
+        max_length=80, db_index=True
+    )  # 'routine:<name>' | 'skill:<name>' | 'chat'
+    # String reference: core must not import the agent_core plugin module at load.
+    agent_run = models.ForeignKey(
+        'agent_core.AgentRun',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='ops_proposals',
+    )
+    kind = models.CharField(max_length=40, db_index=True)  # 'product.update' | 'seo.meta' | …
+    title = models.CharField(max_length=200)
+    summary = models.TextField(blank=True)  # the agent's rationale
+    # GenericFK to the object being changed (nullable for multi-object proposals).
+    target_ct = models.ForeignKey(
+        'contenttypes.ContentType',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+    )
+    target_id = models.CharField(max_length=64, blank=True)  # str so UUID and int pks both fit
+    target = GenericForeignKey('target_ct', 'target_id')
+    changes = models.JSONField(
+        default=list, blank=True
+    )  # [{object: '<app>.<model>:<pk>', field, old, new}]
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='proposed', db_index=True
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='approved_ops_proposals',
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
+    apply_error = models.TextField(blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)  # stale proposals auto-expire
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'assistant'
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f'OpsProposal({self.kind}/{self.status})'
+
+    def approve(self, user) -> bool:
+        """Staff approval — fail-closed (mirrors CodeProposal.approve, but staff
+        suffices: ops proposals run through class-allowlisted data rails, they
+        don't land code). Returns True on approve; False if the proposal had
+        expired (status flips to 'expired'). Raises PermissionError for
+        non-staff and ValueError for a non-'proposed' status.
+        """
+        from django.utils import timezone
+
+        if user is None or not getattr(user, 'is_staff', False):
+            raise PermissionError('only staff may approve an ops proposal')
+        if self.status != 'proposed':
+            raise ValueError(f'cannot approve an ops proposal in status {self.status!r}')
+        now = timezone.now()
+        if self.expires_at is not None and self.expires_at < now:
+            self.status = 'expired'
+            self.save(update_fields=['status', 'updated_at'])
+            return False
+        self.approved_by = user
+        self.approved_at = now
+        self.status = 'approved'
+        self.save(update_fields=['approved_by', 'approved_at', 'status', 'updated_at'])
+        return True
+
+    def apply(self, user=None) -> dict:
+        """Apply each staged change, fail-soft per change. Never raises.
+
+        Per change: resolve ``object`` ('<app_label>.<model>:<pk>') via
+        ContentType; skip + report rows whose live value drifted from ``old``;
+        otherwise set the field, save, and record a core.audit entry. Status
+        flips to 'applied' if ANYTHING applied (partial success), 'failed' if
+        nothing did.
+
+        Returns ``{'applied': N, 'skipped': [...], 'errors': [...]}``.
+        """
+        from django.contrib.contenttypes.models import ContentType
+        from django.utils import timezone
+
+        from core.audit.services import record
+
+        if self.status not in ('proposed', 'approved'):
+            return {
+                'applied': 0,
+                'skipped': [],
+                'errors': [{'error': f'cannot apply an ops proposal in status {self.status!r}'}],
+            }
+
+        applied = 0
+        skipped: list[dict] = []
+        errors: list[dict] = []
+        for change in self.changes or []:
+            ref = str(change.get('object', ''))
+            field = str(change.get('field', ''))
+            try:
+                label, _, pk = ref.partition(':')
+                app_label, _, model_name = label.partition('.')
+                if not (app_label and model_name and pk and field):
+                    raise ValueError(f'malformed change {change!r}')
+                ct = ContentType.objects.get(app_label=app_label, model=model_name.lower())
+                model = ct.model_class()
+                if model is None:
+                    raise LookupError(f'model for {label!r} is not installed')
+                obj = model.objects.get(pk=pk)
+                live = getattr(obj, field)
+                old = change.get('old')
+                if live != old and str(live) != str(old):
+                    skipped.append(
+                        {'object': ref, 'field': field, 'reason': 'drifted', 'live': str(live)}
+                    )
+                    continue
+                setattr(obj, field, change.get('new'))
+                obj.save(update_fields=[field])
+                applied += 1
+                record(
+                    event_type='assistant.ops_proposal.change_applied',
+                    actor=user,
+                    target=ref,
+                    metadata={
+                        'proposal': str(self.pk),
+                        'kind': self.kind,
+                        'source': self.source,
+                        'field': field,
+                        'old': change.get('old'),
+                        'new': change.get('new'),
+                    },
+                )
+            except Exception as exc:  # fail-soft per change — apply() never raises
+                errors.append({'object': ref, 'field': field, 'error': str(exc)})
+
+        if applied:
+            self.status = 'applied'
+            self.applied_at = timezone.now()
+            self.apply_error = ''
+        else:
+            self.status = 'failed'
+            problems = [e['error'] for e in errors] + [
+                f'{s["object"]}: {s["reason"]}' for s in skipped
+            ]
+            self.apply_error = '; '.join(problems) or 'no changes to apply'
+        self.save(update_fields=['status', 'applied_at', 'apply_error', 'updated_at'])
+        return {'applied': applied, 'skipped': skipped, 'errors': errors}
