@@ -359,9 +359,24 @@ class MorpheusEvents:
     # PAYMENT_REFUNDED  — kwargs: refund=Refund, order=Order, amount=Money,
     #                     actor=User|None. Fired by RefundService.process()
     #                     for every refund (admin-initiated OR return-driven).
+    # STRIPE_WEBHOOK_EVENT — fire, kwargs: event_type=str, payload=dict (the full
+    #                     Stripe event payload; named ``payload`` not ``event``
+    #                     because fire() reserves ``event`` for the event name).
+    #                     Fired by
+    #                     payments.services.stripe.process_webhook for every
+    #                     Stripe event type payments does NOT own itself (it
+    #                     handles only payment_intent.succeeded /
+    #                     payment_intent.payment_failed). Lets an OPTIONAL
+    #                     consumer plugin (subscriptions' billing reconciler)
+    #                     react to invoice.* / customer.subscription.* WITHOUT
+    #                     payments importing it. Idempotent: the
+    #                     StripeWebhookEvent unique-id guard upstream means a
+    #                     redelivered event never re-fires. Fail-soft: the bus
+    #                     isolates a broken subscriber.
     PAYMENT_CAPTURED = 'payment.captured'
     PAYMENT_FAILED = 'payment.failed'
     PAYMENT_REFUNDED = 'payment.refunded'
+    STRIPE_WEBHOOK_EVENT = 'payments.stripe_webhook_event'  # fire
 
     # ── Cart (fire) ────────────────────────────────────────────────────────
     # CART_CREATED      — kwargs: cart=Cart.

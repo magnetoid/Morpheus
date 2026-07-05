@@ -1,0 +1,12 @@
+Hi{% if subscription.customer.first_name %} {{ subscription.customer.first_name }}{% endif %},
+
+Your {{ plan.name }} subscription renews on {{ renews_on|date:"F j, Y" }}
+for {{ subscription.plan.price }}.
+
+No action is needed — we'll bill your saved payment method automatically.
+
+Want to make a change? You can pause or cancel any time before then:
+
+  {{ manage_url }}
+
+— The team

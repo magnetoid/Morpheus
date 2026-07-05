@@ -1,0 +1,12 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Your subscription payment failed{% endblock %}
+{% block preheader %}Update your payment method to keep your membership active.{% endblock %}
+{% block body %}
+  <p>Hi{% if subscription.customer.first_name %} {{ subscription.customer.first_name }}{% endif %},</p>
+  <p>We couldn't process the payment for your <strong>{{ plan.name }}</strong> subscription.</p>
+  <p>Your access is safe for now, but we'll need a working payment method to keep it active. We'll retry the charge automatically once your details are up to date.</p>
+
+  <p style="margin-top:14px;"><a class="btn" href="{{ manage_url }}">Update payment method</a></p>
+
+  <p class="muted">If you've already updated your details, you can ignore this email.</p>
+{% endblock %}

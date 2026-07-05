@@ -1,0 +1,13 @@
+Hi{% if subscription.customer.first_name %} {{ subscription.customer.first_name }}{% endif %},
+
+We couldn't process the payment for your {{ plan.name }} subscription.
+
+Your access is safe for now, but we'll need a working payment method to
+keep it active. Please update your payment details here:
+
+  {{ manage_url }}
+
+We'll try the charge again automatically, so there's nothing else you need
+to do once your details are up to date.
+
+— The team

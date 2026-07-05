@@ -1,0 +1,10 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Your subscription renews soon{% endblock %}
+{% block preheader %}Renews {{ renews_on|date:"F j, Y" }} — pause or cancel any time before then.{% endblock %}
+{% block body %}
+  <p>Hi{% if subscription.customer.first_name %} {{ subscription.customer.first_name }}{% endif %},</p>
+  <p>Your <strong>{{ plan.name }}</strong> subscription renews on <strong>{{ renews_on|date:"F j, Y" }}</strong> for {{ subscription.plan.price }}.</p>
+  <p>No action is needed — we'll bill your saved payment method automatically. Want to make a change? You can pause or cancel any time before then.</p>
+
+  <p style="margin-top:14px;"><a class="btn" href="{{ manage_url }}">Manage subscription</a></p>
+{% endblock %}

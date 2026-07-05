@@ -391,6 +391,14 @@ class PaymentService:
                 cls._mark_transaction_failed(
                     payment_intent.id, payment_intent.last_payment_error.message
                 )
+            else:
+                # Payments owns only payment_intent.*; every OTHER Stripe event
+                # type (invoice.*, customer.subscription.*, …) is fanned out to
+                # the STRIPE_WEBHOOK_EVENT hook so an optional consumer plugin
+                # reconciles it without payments importing that plugin. The
+                # dispatch is itself fail-soft, so it never lands in the
+                # record-and-reraise branch below.
+                cls._dispatch_stripe_event_hook(event.type, event_row.payload)
         except Exception as exc:  # noqa: BLE001 — record + re-raise so Stripe retries
             event_row.error = str(exc)[:5000]
             event_row.save(update_fields=['error'])
@@ -473,3 +481,29 @@ class PaymentService:
             tx.status = PaymentTransaction.Status.FAILED
             tx.error_message = error_msg
             tx.save(update_fields=['status', 'error_message'])
+
+    @classmethod
+    def _dispatch_stripe_event_hook(cls, event_type, payload):
+        """Offer a non-payment-intent Stripe event to the core hook bus.
+
+        Payments owns only ``payment_intent.*``; every OTHER event type is
+        fanned out through ``STRIPE_WEBHOOK_EVENT`` so an optional consumer —
+        the subscriptions billing reconciler — can react WITHOUT payments
+        importing it (the core-boundary + no-cross-plugin-import contract).
+        Fail-soft: a broken subscriber must never fail the webhook, or Stripe
+        would retry an already-recorded event forever. The ``StripeWebhookEvent``
+        unique-id guard upstream means a redelivery never reaches here twice.
+        """
+        try:
+            from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+            # NB: the payload kwarg is ``payload=`` (not ``event=``) — the bus's
+            # fire(event, **kwargs) reserves ``event`` for the event *name*, so a
+            # kwarg of that name collides. Subscribers read ``payload``.
+            hook_registry.fire(
+                MorpheusEvents.STRIPE_WEBHOOK_EVENT,
+                event_type=event_type,
+                payload=payload,
+            )
+        except Exception:  # noqa: BLE001 — a subscriber must not break the webhook
+            logger.warning('stripe webhook: hook dispatch failed for %s', event_type, exc_info=True)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, StorefrontBlock, events
+from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
 
 
 class SubscriptionsPlugin(Plugin):
@@ -34,6 +34,32 @@ class SubscriptionsPlugin(Plugin):
         from plugins.installed.subscriptions.membership import apply_member_discount
 
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, apply_member_discount, priority=40)
+
+        # Stripe billing reconciliation: payments fires STRIPE_WEBHOOK_EVENT for
+        # every event type it doesn't own; we reconcile the billing subset
+        # (invoice.* / customer.subscription.*) onto the local rows. Wired
+        # through the bus so payments never imports subscriptions, and the
+        # handler self-disables with the plugin (ADR 0023).
+        from plugins.installed.subscriptions.webhooks import handle_stripe_event
+
+        self.register_hook(events.STRIPE_WEBHOOK_EVENT, handle_stripe_event)
+
+        # Dunning + pre-renewal email drips (consent-gated, beat-driven).
+        self.register_celery_tasks('plugins.installed.subscriptions.tasks')
+        self.register_celery_beat(
+            'subscriptions.dunning',
+            {
+                'task': 'plugins.installed.subscriptions.tasks.send_dunning_emails',
+                'schedule': 60 * 60,  # hourly — fires each step close to its day
+            },
+        )
+        self.register_celery_beat(
+            'subscriptions.prerenewal',
+            {
+                'task': 'plugins.installed.subscriptions.tasks.send_renewal_reminders',
+                'schedule': 60 * 60 * 24,  # daily
+            },
+        )
 
     def contribute_storefront_blocks(self) -> list:
         # "Membership" link in the footer's "pages" column (footer_extra slot).
@@ -72,3 +98,55 @@ class SubscriptionsPlugin(Plugin):
             subscriptions_resume_tool,
             subscriptions_cancel_tool,
         ]
+
+    def contribute_email_templates(self) -> list:
+        from morpheus import EmailTemplateDef
+
+        return [
+            EmailTemplateDef(
+                key='subscription_payment_failed',
+                label='Subscription payment failed (dunning)',
+                default_subject='Your subscription payment failed — action needed',
+                group='Subscriptions',
+                description='Dunning drip sent while a subscription is past due.',
+            ),
+            EmailTemplateDef(
+                key='subscription_upcoming_renewal',
+                label='Subscription renews soon',
+                default_subject='Your subscription renews soon',
+                group='Subscriptions',
+                description='Pre-renewal reminder sent a few days before a cycle bills.',
+            ),
+        ]
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Subscription billing',
+            description='Dunning and pre-renewal email drips for Stripe subscriptions.',
+            schema=self.get_config_schema(),
+            category='marketing',
+        )
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'prerenewal_days': {
+                    'type': 'integer',
+                    'title': 'Pre-renewal reminder lead time (days)',
+                    'default': 3,
+                    'minimum': 1,
+                },
+                'dunning_step_days': {
+                    'type': 'array',
+                    'title': 'Dunning step schedule (days since payment failed)',
+                    'items': {'type': 'integer', 'minimum': 0},
+                    'default': [0, 3, 7],
+                },
+                'require_marketing_consent': {
+                    'type': 'boolean',
+                    'title': 'Only email customers with marketing consent',
+                    'default': True,
+                },
+            },
+        }
