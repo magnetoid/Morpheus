@@ -4,6 +4,7 @@ import stripe
 from django.conf import settings
 
 from plugins.installed.payments.models import PaymentTransaction
+from plugins.installed.payments.services.money import amount_to_minor
 from plugins.registry import plugin_registry
 
 logger = logging.getLogger('morpheus.payments.stripe')
@@ -150,15 +151,15 @@ class PaymentService:
         """
         stripe.api_key = cls.get_stripe_api_key()
 
-        # Calculate amount in cents
-        amount_cents = int(order.total.amount * 100)
+        # Amount in the currency's minor units (cents for USD; JPY has none).
+        amount_minor = amount_to_minor(order.total.amount, order.total.currency.code)
 
         try:
             # idempotency_key prevents duplicate intents on retry — if Stripe
             # has already seen the same key + amount, it returns the original
             # intent instead of charging twice.
             intent = stripe.PaymentIntent.create(
-                amount=amount_cents,
+                amount=amount_minor,
                 currency=order.total.currency.code.lower(),
                 metadata={'order_id': str(order.id), 'order_number': order.order_number},
                 # Let Stripe enable every payment method the merchant has
@@ -166,7 +167,7 @@ class PaymentService:
                 # Link, Klarna, …). Required for the Express Checkout +
                 # Payment Element combo to render wallets.
                 automatic_payment_methods={'enabled': True},
-                idempotency_key=f'pi-{order.id}-{amount_cents}',
+                idempotency_key=f'pi-{order.id}-{amount_minor}',
             )
 
             # Record the pending transaction
@@ -188,37 +189,47 @@ class PaymentService:
 
         The agent already collected the card; we confirm in one shot
         (`confirm=True, off_session=True`) — no client secret, no 3DS
-        challenge surface. `idempotency_key` makes an agent retry of
-        `complete` return the original intent instead of double-charging.
-        Never raises: declines and Stripe errors come back as
-        ``{'success': False, ...}`` so the ACP view can map them to a
+        challenge surface. The idempotency key is scoped to the ACP
+        *session* (not the order/attempt) and the create params are
+        attempt-stable, so a retried ``complete`` — including one after an
+        ambiguous connection error — replays the original PaymentIntent
+        instead of double-charging. Order linkage is attached afterwards via
+        ``PaymentIntent.modify`` so it never destabilises the replayed
+        params. Never raises: declines and Stripe errors come back as
+        ``{'success': False, ...}`` (plus ``retryable: True`` for
+        interrupted/processing outcomes) so the ACP view can map them to a
         conformant 422.
         """
         stripe.api_key = cls.get_stripe_api_key()
 
-        amount_cents = int(order.total.amount * 100)
-        # Evidence metadata is attached by the ACP view (Order has no
+        amount_minor = amount_to_minor(order.total.amount, order.total.currency.code)
+        # The ACP session id is attached by the ACP view (Order has no
         # metadata column — it rides as an instance attr; read fail-soft).
         md = getattr(order, 'metadata', None) or {}
         acp = md.get('acp') if isinstance(md, dict) else None
-        acp_session = str((acp or {}).get('session_id', ''))
+        acp_session = str((acp or {}).get('session_id') or '')
+        if acp_session:
+            idempotency_key = f'acp-{acp_session}'
+        else:
+            logger.warning(
+                'redeem_delegated_token: order %s has no ACP session id; '
+                'falling back to an order-scoped idempotency key',
+                order.pk,
+            )
+            idempotency_key = f'acp-{order.id}'
 
         try:
             intent = stripe.PaymentIntent.create(
-                amount=amount_cents,
+                amount=amount_minor,
                 currency=order.total.currency.code.lower(),
                 payment_method=token,
                 confirm=True,
                 off_session=True,
-                metadata={
-                    'order_id': str(order.id),
-                    'order_number': order.order_number,
-                    'acp_session': acp_session,
-                },
-                idempotency_key=f'acp-{order.id}',
+                metadata={'acp_session': acp_session},
+                idempotency_key=idempotency_key,
             )
         except stripe.error.CardError as e:
-            message = getattr(e, 'user_message', '') or str(e)
+            message = e.user_message or 'Payment was declined.'
             PaymentTransaction.objects.create(
                 order=order,
                 amount=order.total,
@@ -227,8 +238,63 @@ class PaymentService:
                 error_message=message,
             )
             return {'success': False, 'error': message, 'decline_code': e.code or ''}
+        except stripe.error.APIConnectionError as e:
+            # Ambiguous outcome — the charge may or may not have reached
+            # Stripe (timeouts land here too; stripe-python wraps them in
+            # APIConnectionError). No intent id is known so no transaction
+            # row; the caller retries the SAME session and the session-scoped
+            # idempotency key makes the replay safe.
+            logger.warning('redeem_delegated_token: connection error for order %s: %s', order.pk, e)
+            return {
+                'success': False,
+                'error': 'Payment processing was interrupted — retry this completion.',
+                'retryable': True,
+            }
         except stripe.error.StripeError as e:
-            return {'success': False, 'error': str(e)}
+            # Log the raw error server-side; never leak Stripe internals to
+            # the agent-facing surface.
+            logger.error(
+                'redeem_delegated_token: stripe error for order %s: %s',
+                order.pk,
+                e,
+                exc_info=True,
+            )
+            return {'success': False, 'error': 'Payment could not be processed.'}
+
+        # Order linkage lives OUTSIDE the idempotent create so a replayed
+        # retry sends byte-identical create params. Best-effort: a linkage
+        # hiccup must never fail an already-confirmed charge.
+        try:
+            stripe.PaymentIntent.modify(
+                intent.id,
+                metadata={
+                    'acp_session': acp_session,
+                    'order_id': str(order.id),
+                    'order_number': order.order_number,
+                },
+            )
+        except Exception:  # noqa: BLE001 — linkage is best-effort
+            logger.warning(
+                'redeem_delegated_token: metadata linkage failed for intent %s', intent.id
+            )
+
+        if intent.status == 'processing':
+            # Asynchronous confirmation — not failed, not yet paid. The
+            # payment_intent.succeeded webhook promotes this PENDING row
+            # when the charge settles.
+            PaymentTransaction.objects.create(
+                order=order,
+                amount=order.total,
+                status=PaymentTransaction.Status.PENDING,
+                provider='stripe',
+                provider_transaction_id=intent.id,
+            )
+            return {
+                'success': False,
+                'error': 'Payment is processing.',
+                'decline_code': 'processing',
+                'retryable': True,
+            }
 
         if intent.status != 'succeeded':
             # requires_action & friends — agents can't drive a 3DS

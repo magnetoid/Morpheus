@@ -23,8 +23,10 @@ import logging
 from datetime import timedelta
 from typing import Any
 
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -39,6 +41,9 @@ logger = logging.getLogger('morpheus.agentic_checkout')
 # sending an absurd number that would blow past stock + reservation math).
 _MAX_QUANTITY = 1000
 _DEFAULT_SESSION_TTL_MINUTES = 60
+# How long a `complete` in-flight claim (metadata['acp_completing']) blocks
+# concurrent completions before it is presumed dead and taken over.
+_CLAIM_TTL = timedelta(minutes=10)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -154,19 +159,49 @@ def _availability_messages(cart) -> list[dict]:
     return messages
 
 
-def _serialize(cart, request, *, extra_messages: list[dict] | None = None) -> dict:
-    breakdown = _breakdown(cart)
+def _stamp_quoted_total(cart, breakdown) -> None:
+    """Persist the minor-units total this response advertises.
+
+    ``complete`` compares the stamp against a fresh recompute and refuses to
+    charge a drifted amount (price edit, promo expiry, tax/shipping recalc
+    between quote and completion) — the agent must re-fetch first.
+    """
+    total = breakdown.get('total')
+    if total is None:
+        return
+    quoted = ser.money_to_minor(total, str(breakdown.get('currency') or 'USD'))
+    meta = cart.metadata if isinstance(cart.metadata, dict) else {}
+    if meta.get('acp_quoted_total') == quoted:
+        return
+    meta = dict(meta)
+    meta['acp_quoted_total'] = quoted
+    cart.metadata = meta
+    # No `updated_at` — advertising a quote must not extend the session TTL.
+    cart.save(update_fields=['metadata'])
+
+
+def _serialize(
+    cart,
+    request,
+    *,
+    extra_messages: list[dict] | None = None,
+    breakdown: dict | None = None,
+) -> dict:
+    if breakdown is None:
+        breakdown = _breakdown(cart)
     status = _derive_status(cart, breakdown)
     messages = _availability_messages(cart)
     if extra_messages:
         messages = messages + extra_messages
-    return ser.serialize_session(
+    session = ser.serialize_session(
         cart,
         status=status,
         breakdown=breakdown,
         request=request,
         messages=messages,
     )
+    _stamp_quoted_total(cart, breakdown)
+    return session
 
 
 def _apply_buyer(cart, buyer: dict | None) -> None:
@@ -467,6 +502,105 @@ def _order_block(order, cart, request: HttpRequest | None) -> dict[str, Any]:
     }
 
 
+def _order_line_items(order, currency: str) -> list[dict[str, Any]]:
+    """ACP ``line_items[]`` rebuilt from persisted ``OrderItem`` rows.
+
+    ``create_from_cart`` empties the cart, so an idempotent retry (or a
+    pending-order response) can't serialize cart items — the Order snapshot
+    is the source of truth for what was purchased.
+    """
+    items: list[dict[str, Any]] = []
+    for oi in order.items.all():
+        name = oi.product_name
+        if oi.variant_name:
+            name = f'{oi.product_name} — {oi.variant_name}'
+        items.append(
+            {
+                'id': str(oi.id),
+                'item': {
+                    'id': oi.sku or str(oi.product_id or ''),
+                    'name': name,
+                    'unit_amount': ser.money_to_minor(oi.unit_price, currency),
+                },
+                'quantity': oi.quantity,
+                'sku': oi.sku,
+                'product_id': str(oi.product_id) if oi.product_id else None,
+                'variant_id': str(oi.variant_id) if oi.variant_id else None,
+                'availability_status': 'in_stock',
+                'totals': [
+                    {
+                        'type': 'subtotal',
+                        'display_text': 'Line subtotal',
+                        'amount': ser.money_to_minor(oi.total_price, currency),
+                    }
+                ],
+            }
+        )
+    return items
+
+
+def _order_snapshot(order, cart, request: HttpRequest | None, *, status: str) -> dict[str, Any]:
+    """Session body rebuilt from a persisted ``Order`` (the cart is empty)."""
+    currency = str(order.total.currency)
+    breakdown = {
+        'currency': currency,
+        'subtotal': order.subtotal,
+        'shipping': order.shipping_total,
+        'tax': order.tax_total,
+        'discount': order.discount_total,
+        'total': order.total,
+    }
+    session = ser.serialize_session(cart, status=status, breakdown=breakdown, request=request)
+    session['line_items'] = _order_line_items(order, currency)
+    return session
+
+
+def _claim_fresh(meta: dict) -> bool:
+    """``True`` iff an in-flight completion claim younger than the TTL exists."""
+    raw = str(meta.get('acp_completing') or '')
+    if not raw:
+        return False
+    claimed_at = parse_datetime(raw)
+    if claimed_at is None:
+        return False
+    if timezone.is_naive(claimed_at):
+        claimed_at = timezone.make_aware(claimed_at)
+    return timezone.now() - claimed_at < _CLAIM_TTL
+
+
+def _clear_claim(cart) -> None:
+    """Release the in-flight claim so the agent can retry this session.
+
+    ``acp_pending_order_id`` is kept — the retry reuses that order, and the
+    session-scoped Stripe idempotency key makes the re-redeem replay-safe.
+    """
+    meta = dict(cart.metadata) if isinstance(cart.metadata, dict) else {}
+    if 'acp_completing' not in meta:
+        return
+    meta.pop('acp_completing', None)
+    cart.metadata = meta
+    cart.save(update_fields=['metadata', 'updated_at'])
+
+
+def _quote_drift_error(cart, breakdown) -> dict | None:
+    """MessageError when the total drifted since it was quoted, else ``None``."""
+    meta = cart.metadata if isinstance(cart.metadata, dict) else {}
+    quoted = meta.get('acp_quoted_total')
+    if quoted is None:
+        return None
+    current = ser.money_to_minor(breakdown.get('total'), str(breakdown.get('currency') or 'USD'))
+    try:
+        if int(quoted) == current:
+            return None
+    except (TypeError, ValueError):
+        return None
+    return ser.message_error(
+        'invalid',
+        'Session total changed — re-fetch the checkout session before completing.',
+        param='total',
+    )
+
+
 def _record_delegation_evidence(order, cart, request: HttpRequest, token: str) -> None:
     """Dispute evidence on the Order via the metafields plugin (zero-migration).
 
@@ -584,8 +718,9 @@ def _finalize_paid_order(order, cart, request: HttpRequest, token: str) -> None:
     """Success path — mirror the Stripe webhook's ``_mark_transaction_success``.
 
     Flip ``payment_status``, run the ``confirm()`` FSM transition, fire
-    ORDER_PAID, record delegation evidence, and stamp the cart so an agent
-    retry of ``complete`` returns this order instead of charging again.
+    ORDER_PAID, record delegation evidence, and swap the in-flight claim for
+    the ``acp_order_id`` stamp so an agent retry of ``complete`` returns this
+    order instead of charging again.
     """
     from core.hooks import MorpheusEvents, hook_registry
 
@@ -600,10 +735,140 @@ def _finalize_paid_order(order, cart, request: HttpRequest, token: str) -> None:
 
     _record_delegation_evidence(order, cart, request, token)
 
-    stamped = dict(cart.metadata or {})
+    stamped = {
+        k: v
+        for k, v in dict(cart.metadata or {}).items()
+        if k not in ('acp_completing', 'acp_pending_order_id')
+    }
     stamped['acp_order_id'] = str(order.id)
     cart.metadata = stamped
     cart.save(update_fields=['metadata', 'updated_at'])
+
+
+def _create_order_for_completion(cart, request: HttpRequest):
+    """Validate the session + place the ``Order`` (inside the locked txn).
+
+    Returns ``(error_response, order, session_snapshot)`` — exactly one of
+    ``error_response`` / ``order`` is set.
+    """
+    from plugins.installed.orders.services import OrderService
+
+    email, address = _completion_contact(cart)
+    missing = _missing_messages(cart, email, address)
+    if missing:
+        return (
+            JsonResponse(_serialize(cart, request, extra_messages=missing), status=422),
+            None,
+            None,
+        )
+
+    # Quote-drift guard: never charge a total the agent hasn't seen. The 422
+    # body re-advertises (and re-stamps) the current totals — it IS the
+    # re-fetch the message asks for.
+    breakdown = _breakdown(cart)
+    drift = _quote_drift_error(cart, breakdown)
+    if drift is not None:
+        body = _serialize(cart, request, breakdown=breakdown, extra_messages=[drift])
+        return JsonResponse(body, status=422), None, None
+
+    # Snapshot the priced session BEFORE create_from_cart empties the cart so
+    # the completed/declined response still carries the purchased line items.
+    session = _serialize(cart, request, breakdown=breakdown)
+    try:
+        order = OrderService.create_from_cart(cart, email, address, address)
+    except ValueError as e:
+        msg = ser.message_error('invalid', str(e))
+        return (
+            JsonResponse(_serialize(cart, request, extra_messages=[msg]), status=422),
+            None,
+            None,
+        )
+    return None, order, session
+
+
+def _locked_complete(request: HttpRequest, session_id: str, body: dict):
+    """The claim/idempotency gate + order creation, under the cart row lock.
+
+    Runs inside ``transaction.atomic()`` with the cart re-fetched via
+    ``select_for_update`` so two concurrent ``complete`` calls serialize:
+    the loser then sees either the winner's ``acp_order_id`` stamp (→ 200
+    idempotent retry) or its fresh ``acp_completing`` claim (→ 409-style
+    conflict). Returns ``(early_response, ctx)``; ``ctx`` is
+    ``(cart, order, token, session_snapshot)`` when redemption should
+    proceed — the Stripe call itself happens AFTER the lock is released.
+    """
+    from plugins.installed.orders.models import Cart, Order
+
+    cart = (
+        Cart.objects.select_for_update().filter(id=session_id, metadata__acp_session=True).first()
+    )
+    if cart is None:
+        return ser.error_response('not_found', 'Checkout session not found.', status=404), None
+
+    meta = cart.metadata if isinstance(cart.metadata, dict) else {}
+
+    # (a) Already completed → the same order, never a second charge.
+    if meta.get('acp_order_id'):
+        existing = Order.objects.filter(id=meta['acp_order_id']).first()
+        if existing is not None:
+            session = _order_snapshot(existing, cart, request, status=ser.STATUS_COMPLETED)
+            session['order'] = _order_block(existing, cart, request)
+            return JsonResponse(session), None
+
+    # (b) Another completion is in flight → conflict; stale claims (crashed
+    # worker) are taken over below.
+    if _claim_fresh(meta):
+        conflict = _serialize(
+            cart,
+            request,
+            extra_messages=[
+                ser.message_error('invalid', 'Completion already in progress — retry shortly.')
+            ],
+        )
+        return JsonResponse(conflict, status=409), None
+
+    token, payment_error = _payment_data_error(body)
+    if payment_error is not None:
+        body_ = _serialize(cart, request, extra_messages=[payment_error])
+        return JsonResponse(body_, status=422), None
+
+    # (c) Reuse the pending order from an interrupted attempt (the cart is
+    # already empty; the session-scoped idempotency key replays the charge),
+    # else validate + create one now.
+    order = None
+    if meta.get('acp_pending_order_id'):
+        order = Order.objects.filter(id=meta['acp_pending_order_id']).first()
+    if order is not None:
+        session = _order_snapshot(order, cart, request, status=ser.STATUS_READY)
+    else:
+        error, order, session = _create_order_for_completion(cart, request)
+        if error is not None:
+            return error, None
+
+    # Claim the session before COMMIT so concurrent completes see it.
+    claimed = dict(cart.metadata or {})
+    claimed['acp_completing'] = timezone.now().isoformat()
+    claimed['acp_pending_order_id'] = str(order.id)
+    cart.metadata = claimed
+    cart.save(update_fields=['metadata', 'updated_at'])
+
+    return None, (cart, order, token, session)
+
+
+def _payment_failure_message(result: dict) -> dict:
+    """Map a redeem failure dict onto a conformant ``MessageError``.
+
+    Retryable outcomes (connection interrupted, intent still processing)
+    come back as ``invalid`` so the agent retries the SAME session; hard
+    declines are ``payment_declined`` with ``param`` naming the offending
+    request field and the Stripe decline code folded into the content.
+    """
+    error = str(result.get('error') or 'Payment was declined.')
+    if result.get('retryable'):
+        return ser.message_error('invalid', error)
+    code = str(result.get('decline_code') or '')
+    content = f'{error} (decline code: {code})' if code else error
+    return ser.message_error('payment_declined', content, param='payment_data.token')
 
 
 @csrf_exempt
@@ -615,12 +880,16 @@ def complete_checkout_session(  # noqa: PLR0911 — validation ladder, one exit 
 
     Gated on plugin config ``payments_enabled`` + the payments plugin being
     importable; otherwise the Phase-1 conformant ``unsupported`` 422 is
-    preserved. On success: a real ``Order`` via ``create_from_cart``, the
-    Shared Payment Token redeemed off-session through
-    ``PaymentService.redeem_delegated_token``, the order confirmed the same
-    way the Stripe webhook success path does (ORDER_PAID fires), delegation
-    evidence recorded, and a 200 ``CheckoutSessionWithOrder``. A retry on an
-    already-completed session returns the same order without a new charge.
+    preserved. The idempotency gate + order creation run inside a
+    ``select_for_update`` transaction (see ``_locked_complete``): a retry on
+    an already-completed session returns the same order (200), a concurrent
+    completion gets a 409-style conflict, and a drifted total is refused
+    before any charge. The Stripe redeem happens AFTER the lock is released
+    — never hold a DB lock across a network call. On success the order is
+    confirmed the same way the Stripe webhook success path does (ORDER_PAID
+    fires) and delegation evidence is recorded; on decline or a retryable
+    interruption the claim is cleared so the agent can retry the session
+    (the session-scoped Stripe idempotency key makes the replay safe).
     """
     denied = require_acp_scope(request)
     if denied is not None:
@@ -636,65 +905,29 @@ def complete_checkout_session(  # noqa: PLR0911 — validation ladder, one exit 
     if payment_service is None:
         return _unsupported_response(cart, request)
 
-    # Idempotent retry: an order already completed for this session → return
-    # it (200), never a second charge. The stamp is written only on success.
-    from plugins.installed.orders.models import Order
-
-    meta = cart.metadata if isinstance(cart.metadata, dict) else {}
-    existing = (
-        Order.objects.filter(id=meta['acp_order_id']).first() if meta.get('acp_order_id') else None
-    )
-    if existing is not None:
-        session = _serialize(cart, request)
-        session['status'] = ser.STATUS_COMPLETED
-        session['order'] = _order_block(existing, cart, request)
-        return _with_version(JsonResponse(session))
-
     body = _json_body(request)
     if body is None:
         return _with_version(ser.error_response('invalid_body', 'Request body must be JSON.'))
 
-    email, address = _completion_contact(cart)
-    missing = _missing_messages(cart, email, address)
-    if missing:
-        return _with_version(
-            JsonResponse(_serialize(cart, request, extra_messages=missing), status=422)
-        )
+    with transaction.atomic():
+        early, ctx = _locked_complete(request, str(cart.id), body)
+    if early is not None:
+        return _with_version(early)
+    cart, order, token, session = ctx
 
-    token, payment_error = _payment_data_error(body)
-    if payment_error is not None:
-        return _with_version(
-            JsonResponse(_serialize(cart, request, extra_messages=[payment_error]), status=422)
-        )
-
-    from plugins.installed.orders.services import OrderService
-
-    # Snapshot the priced session BEFORE create_from_cart empties the cart so
-    # the completed/declined response still carries the purchased line items.
-    session = _serialize(cart, request)
-
-    try:
-        order = OrderService.create_from_cart(cart, email, address, address)
-    except ValueError as e:
-        msg = ser.message_error('invalid', str(e))
-        return _with_version(
-            JsonResponse(_serialize(cart, request, extra_messages=[msg]), status=422)
-        )
-
-    # The ACP session id rides on the PaymentIntent metadata. Order has no
-    # metadata DB column — this is an instance attr redeem reads fail-soft.
+    # The ACP session id rides on the PaymentIntent metadata and keys the
+    # session-scoped idempotency. Order has no metadata DB column — this is
+    # an instance attr redeem reads fail-soft.
     order.metadata = {'acp': {'session_id': str(cart.id)}}
     result = payment_service.redeem_delegated_token(order, token)
 
     if not result.get('success'):
-        # Mirror the webhook failure convention: the FAILED PaymentTransaction
-        # is already recorded by redeem; the order stays pending/unpaid.
+        # Mirror the webhook failure convention: any FAILED/PENDING
+        # PaymentTransaction is already recorded by redeem; the order stays
+        # pending/unpaid. Release the claim so the session can retry.
+        _clear_claim(cart)
         session['messages'] = list(session.get('messages') or []) + [
-            ser.message_error(
-                'payment_declined',
-                str(result.get('error') or 'Payment was declined.'),
-                param=str(result.get('decline_code') or ''),
-            )
+            _payment_failure_message(result)
         ]
         return _with_version(JsonResponse(session, status=422))
 

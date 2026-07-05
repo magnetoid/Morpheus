@@ -10,9 +10,13 @@ delegation evidence, idempotent retry, validation errors, and the
 from __future__ import annotations
 
 import json
+from datetime import timedelta
+from types import SimpleNamespace
 from unittest import mock
 
+import stripe
 from django.test import Client, TestCase
+from django.utils import timezone
 from djmoney.money import Money
 
 from plugins.installed.agentic_checkout.plugin import ACP_API_VERSION
@@ -39,7 +43,9 @@ def _set_acp_config(**config) -> None:
     row.save()
 
 
-class AcpCompleteTests(TestCase):
+class _CompleteTestBase(TestCase):
+    """Shared fixture + helpers for the ``complete`` money-path suites."""
+
     def setUp(self) -> None:
         _enable_plugin_and_tokens()
         _set_acp_config(payments_enabled=True)
@@ -105,6 +111,8 @@ class AcpCompleteTests(TestCase):
     def _error_codes(session: dict) -> list[str]:
         return [m.get('code') for m in session.get('messages', []) if m.get('type') == 'error']
 
+
+class AcpCompleteTests(_CompleteTestBase):
     # ── config gate ──────────────────────────────────────────────────────────
 
     def test_payments_disabled_preserves_unsupported(self):
@@ -194,14 +202,20 @@ class AcpCompleteTests(TestCase):
         session = r.json()
         self.assertIn('payment_declined', self._error_codes(session))
         err = next(m for m in session['messages'] if m.get('code') == 'payment_declined')
-        self.assertEqual(err.get('param'), 'card_declined')
+        # `param` names the offending request field; the Stripe decline code
+        # is folded into the human-readable content instead.
+        self.assertEqual(err.get('param'), 'payment_data.token')
+        self.assertIn('Your card was declined.', err.get('content') or '')
+        self.assertIn('(decline code: card_declined)', err.get('content') or '')
         # Webhook failure convention: order recorded, left pending/unpaid.
         order = Order.objects.get()
         self.assertEqual(order.payment_status, 'unpaid')
         self.assertEqual(order.status, 'pending')
-        # No retry stamp — the session is NOT completed.
+        # No retry stamp — the session is NOT completed — and the in-flight
+        # claim is released so the agent can retry.
         cart = Cart.objects.get(id=sid)
         self.assertNotIn('acp_order_id', cart.metadata or {})
+        self.assertNotIn('acp_completing', cart.metadata or {})
 
     # ── validation ───────────────────────────────────────────────────────────
 
@@ -234,6 +248,159 @@ class AcpCompleteTests(TestCase):
         self.assertEqual(r.status_code, 422)
         self.assertIn('invalid', self._error_codes(r.json()))
         redeem.assert_not_called()
+
+
+class AcpCompleteHardeningTests(_CompleteTestBase):
+    """Adversarial-review fixes: the completion claim (double-charge race),
+    quote drift, retryable outcomes, and order-derived retry bodies.
+
+    sqlite has no real row locking (``select_for_update`` is a no-op), so
+    the claim/stamp state machine is exercised sequentially: claim fresh →
+    conflict; claim stale → take-over; stamp → idempotent 200.
+    """
+
+    def _cart(self, sid):
+        return Cart.objects.get(id=sid)
+
+    def _set_claim(self, sid, *, minutes_ago: int = 0) -> None:
+        cart = self._cart(sid)
+        meta = dict(cart.metadata or {})
+        meta['acp_completing'] = (timezone.now() - timedelta(minutes=minutes_ago)).isoformat()
+        cart.metadata = meta
+        cart.save(update_fields=['metadata'])
+
+    # ── fix 1: completion claim ──────────────────────────────────────────────
+
+    def test_fresh_claim_returns_conflict_without_charging(self):
+        sid = self._create_session().json()['id']
+        self._set_claim(sid, minutes_ago=0)
+        with mock.patch(_REDEEM, return_value=_OK) as redeem:
+            r = self._complete(sid)
+        self.assertEqual(r.status_code, 409)
+        err = next(m for m in r.json()['messages'] if m.get('type') == 'error')
+        self.assertEqual(err['code'], 'invalid')
+        self.assertIn('already in progress', err['content'])
+        self.assertEqual(Order.objects.count(), 0)
+        redeem.assert_not_called()
+
+    def test_stale_claim_is_taken_over(self):
+        sid = self._create_session().json()['id']
+        self._set_claim(sid, minutes_ago=11)
+        with mock.patch(_REDEEM, return_value=_OK):
+            r = self._complete(sid)
+        self.assertEqual(r.status_code, 200)
+        order = Order.objects.get()
+        self.assertEqual(order.payment_status, 'paid')
+        cart = self._cart(sid)
+        # Success swaps the claim for the idempotent-retry stamp.
+        self.assertEqual(cart.metadata.get('acp_order_id'), str(order.id))
+        self.assertNotIn('acp_completing', cart.metadata)
+
+    # ── fix 3: ambiguous outcome → retry the SAME session, replay-safe ──────
+
+    def test_retry_after_connection_error_replays_same_key_and_completes(self):
+        sid = self._create_session().json()['id']
+        intent = SimpleNamespace(id='pi_recover_1', status='succeeded')
+        boom = stripe.error.APIConnectionError('connection dropped mid-flight')
+        with (
+            mock.patch('stripe.PaymentIntent.create', side_effect=[boom, intent]) as create,
+            mock.patch('stripe.PaymentIntent.modify') as modify,
+        ):
+            first = self._complete(sid)
+            second = self._complete(sid)
+
+        # Attempt 1: interrupted → conformant retryable error, claim freed.
+        self.assertEqual(first.status_code, 422)
+        err = next(m for m in first.json()['messages'] if m.get('type') == 'error')
+        self.assertEqual(err['code'], 'invalid')
+        self.assertIn('interrupted', err['content'])
+        # Attempt 2: same session id → same idempotency key → Stripe replays
+        # the original create (here: it succeeded server-side) → paid order.
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()['status'], 'completed')
+        self.assertEqual(Order.objects.count(), 1)
+        order = Order.objects.get()
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(second.json()['order']['id'], str(order.id))
+        self.assertEqual(create.call_count, 2)
+        keys = {c.kwargs['idempotency_key'] for c in create.call_args_list}
+        self.assertEqual(keys, {f'acp-{sid}'})
+        modify.assert_called_once()
+
+    # ── fix 5: 'processing' intents are retryable, not declines ─────────────
+
+    def test_processing_result_maps_to_retryable_not_declined(self):
+        sid = self._create_session().json()['id']
+        processing = {
+            'success': False,
+            'error': 'Payment is processing.',
+            'decline_code': 'processing',
+            'retryable': True,
+        }
+        with mock.patch(_REDEEM, return_value=processing):
+            r = self._complete(sid)
+        self.assertEqual(r.status_code, 422)
+        codes = self._error_codes(r.json())
+        self.assertIn('invalid', codes)
+        self.assertNotIn('payment_declined', codes)
+        err = next(m for m in r.json()['messages'] if m.get('type') == 'error')
+        self.assertEqual(err['content'], 'Payment is processing.')
+        # Claim freed so the agent can poll/retry this session.
+        self.assertNotIn('acp_completing', self._cart(sid).metadata or {})
+
+    # ── fix 8: quote drift ───────────────────────────────────────────────────
+
+    def test_total_drift_rejected_before_charge_then_requote_succeeds(self):
+        sid = self._create_session().json()['id']
+        # Price changes between the quote and the completion. (CartItem
+        # snapshots unit_price at add-time, so drift the snapshot too — the
+        # guard compares totals, whatever the drift source.)
+        self.variant.price = Money(25, 'USD')
+        self.variant.save()
+        item = self._cart(sid).items.get()
+        item.unit_price = Money(25, 'USD')
+        item.save()
+
+        with mock.patch(_REDEEM, return_value=_OK) as redeem:
+            r = self._complete(sid)
+        self.assertEqual(r.status_code, 422)
+        err = next(m for m in r.json()['messages'] if m.get('type') == 'error')
+        self.assertEqual(err['code'], 'invalid')
+        self.assertEqual(err['param'], 'total')
+        self.assertIn('re-fetch', err['content'])
+        self.assertEqual(Order.objects.count(), 0)
+        redeem.assert_not_called()
+
+        # The 422 body re-advertised the new totals — that IS the re-fetch;
+        # a follow-up complete now charges the re-quoted amount.
+        with mock.patch(_REDEEM, return_value=_OK):
+            r2 = self._complete(sid)
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(Order.objects.get().total, Money(50, 'USD'))
+
+    # ── fix 9: idempotent-retry 200 carries the order's line items ──────────
+
+    def test_retry_response_rebuilds_line_items_from_order(self):
+        sid = self._create_session().json()['id']
+        with mock.patch(_REDEEM, return_value=_OK):
+            self._complete(sid)
+            second = self._complete(sid)
+        self.assertEqual(second.status_code, 200)
+        body = second.json()
+        self.assertEqual(body['status'], 'completed')
+        order = Order.objects.get()
+        self.assertEqual(body['order']['id'], str(order.id))
+        # The cart was emptied at order-create; line items + totals must be
+        # rebuilt from the persisted Order, not the hollowed-out cart.
+        self.assertEqual(len(body['line_items']), 1)
+        li = body['line_items'][0]
+        oi = order.items.get()
+        self.assertEqual(li['quantity'], oi.quantity)
+        self.assertEqual(li['sku'], oi.sku)
+        self.assertIn(oi.product_name, li['item']['name'])
+        self.assertEqual(li['item']['unit_amount'], 2000)  # $20.00
+        total_row = next(t for t in body['totals'] if t['type'] == 'total')
+        self.assertEqual(total_row['amount'], 4000)  # 2 × $20.00
 
 
 class AcpEligibilityTests(TestCase):

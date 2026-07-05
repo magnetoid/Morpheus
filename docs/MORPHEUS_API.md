@@ -257,14 +257,24 @@ explicit `acp_scopes` list containing `acp.checkout` (explicit grant from
 | `GET /acp/checkout_sessions/{id}`             | getCheckoutSession     | Read the session.                                |
 | `POST /acp/checkout_sessions/{id}`            | updateCheckoutSession  | Mutate line items / buyer / fulfillment.         |
 | `POST /acp/checkout_sessions/{id}/cancel`     | cancelCheckoutSession  | Release the cart; status `canceled`.             |
-| `POST /acp/checkout_sessions/{id}/complete`   | completeCheckoutSession | Phase 1 (`unsupported`) — see below.            |
+| `POST /acp/checkout_sessions/{id}/complete`   | completeCheckoutSession | Money path (Phase 2) — see below.               |
 
 The session `id` is the `Cart` id. Responses are conformant ACP
 `CheckoutSession` JSON (status, currency, `line_items[]`, `totals[]`,
 `capabilities`, `messages[]`, `links[]`) with amounts as integer minor
-units. **Phase 1 ships read/quote only:** `complete` returns a `422` with a
-`MessageError` whose code is `unsupported` — the money path (Stripe Shared
-Payment Token redemption) is deferred to Phase 2.
+units. **`complete` is gated on the plugin's `payments_enabled` config**
+(default off → `422` with a `MessageError` code `unsupported`, the Phase-1
+behavior). With it on, `complete` places a real `Order` and redeems the
+Stripe Shared Payment Token off-session. Money-path semantics: retrying a
+completed session returns the same order (200; line items rebuilt from the
+persisted Order); a concurrent completion gets a `409` with an `invalid`
+"already in progress" message (retry shortly); a total that drifted since
+it was quoted is refused (`422`, `param='total'` — re-fetch the session,
+then retry); interrupted/processing outcomes return `422 invalid` and are
+safe to retry on the **same** session (the Stripe idempotency key is
+session-scoped, so a replay can never double-charge); hard declines return
+`422 payment_declined` with `param='payment_data.token'` and the Stripe
+decline code folded into the message content.
 
 ## When to import from Django directly
 
