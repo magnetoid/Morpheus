@@ -52,6 +52,11 @@ class ResolvedMeta:
     canonical_url: str = ''
     robots: str = 'index, follow'
     keywords: str = ''
+    # Site identity, resolved ONCE by resolve_meta (og:site_name / twitter:site).
+    # to_html renders from these fields — it must never query the DB itself,
+    # since it runs on every storefront <head>.
+    site_name: str = ''
+    twitter_site: str = ''
     structured_data: dict = None  # type: ignore[assignment]
     # Standalone JSON-LD blocks (visual schema editor): each emitted as its own
     # <script>, separate from the single merged structured_data dict above.
@@ -79,26 +84,10 @@ class ResolvedMeta:
 
         og_title = self.og_title or self.title
         og_desc = self.og_description or self.description
-        # Brand + Twitter handle for og:site_name / twitter:site.
-        site_name = ''
-        twitter_handle = ''
-        try:
-            # brand_name() resolves org name → store name → STORE_NAME, so
-            # og:site_name is present even when only STORE_NAME is configured.
-            from plugins.installed.seo.services.meta import brand_name
-
-            site_name = (brand_name() or '').strip()
-        except Exception:  # noqa: BLE001
-            pass
-        try:
-            twitter_handle = (getattr(site_settings(), 'twitter_handle', '') or '').strip()
-        except Exception:  # noqa: BLE001
-            pass
-        # Social/AI link previews require ABSOLUTE image URLs — a site-relative
-        # /media/… path renders no image on Facebook / LinkedIn / iMessage / X.
+        # og:image is already absolute — resolve_meta absolutizes it (social/AI
+        # link previews reject relative /media/… paths), so both these tags and
+        # the JSON-LD image get the same absolute URL with zero work here.
         og_image_abs = self.og_image
-        if og_image_abs.startswith('/'):
-            og_image_abs = site_base_url().rstrip('/') + og_image_abs
         if og_title:
             parts.append(f'<meta property="og:title" content="{escape(og_title)}">')
         if og_desc:
@@ -106,8 +95,8 @@ class ResolvedMeta:
         parts.append(f'<meta property="og:type" content="{escape(self.og_type)}">')
         if self.canonical_url:
             parts.append(f'<meta property="og:url" content="{escape(self.canonical_url)}">')
-        if site_name:
-            parts.append(f'<meta property="og:site_name" content="{escape(site_name)}">')
+        if self.site_name:
+            parts.append(f'<meta property="og:site_name" content="{escape(self.site_name)}">')
         # og:locale — matches the Content-Language header the markets
         # middleware emits; falls back to en_US.
         try:
@@ -126,8 +115,10 @@ class ResolvedMeta:
                 parts.append(f'<meta property="og:image:alt" content="{escape(og_title)}">')
 
         parts.append(f'<meta name="twitter:card" content="{escape(self.twitter_card)}">')
-        if twitter_handle:
-            handle = twitter_handle if twitter_handle.startswith('@') else f'@{twitter_handle}'
+        if self.twitter_site:
+            handle = (
+                self.twitter_site if self.twitter_site.startswith('@') else f'@{self.twitter_site}'
+            )
             parts.append(f'<meta name="twitter:site" content="{escape(handle)}">')
         if og_title:
             parts.append(f'<meta name="twitter:title" content="{escape(og_title)}">')

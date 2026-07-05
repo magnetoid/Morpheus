@@ -28,6 +28,15 @@ from django.utils.safestring import mark_safe
 
 from plugins.installed.seo.services import resolve_meta
 
+
+def _attr(obj, name, default=None):
+    """Dict-or-model accessor — journal entries arrive as dicts, catalog
+    objects as ORM models; tags that accept either resolve through this."""
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return getattr(obj, name, default)
+
+
 register = template.Library()
 
 
@@ -485,11 +494,6 @@ def seo_article_og(entry):
     if not entry:
         return ''
 
-    def g(name, default=''):
-        if isinstance(entry, dict):
-            return entry.get(name, default)
-        return getattr(entry, name, default)
-
     def _iso(v):
         try:
             return v.isoformat()
@@ -497,20 +501,20 @@ def seo_article_og(entry):
             return ''
 
     out = []
-    pub, mod = g('published_at'), g('updated_at')
+    pub, mod = _attr(entry, 'published_at'), _attr(entry, 'updated_at')
     pub_iso = _iso(pub) if pub else ''
     if pub_iso:
         out.append(f'<meta property="article:published_time" content="{escape(pub_iso)}">')
     mod_iso = _iso(mod) if mod else ''
     if mod_iso and mod != pub:
         out.append(f'<meta property="article:modified_time" content="{escape(mod_iso)}">')
-    author = g('author')
+    author = _attr(entry, 'author')
     if author:
         out.append(f'<meta property="article:author" content="{escape(str(author))}">')
-    section = g('section')
+    section = _attr(entry, 'section')
     if section:
         out.append(f'<meta property="article:section" content="{escape(str(section))}">')
-    for tag in g('tags') or []:
+    for tag in _attr(entry, 'tags') or []:
         if tag:
             out.append(f'<meta property="article:tag" content="{escape(str(tag))}">')
     return mark_safe('\n'.join(out))
@@ -847,15 +851,15 @@ def seo_article_jsonld(
         headline=headline or '',
         body=body or '',
         url=url,
-        kind=kind or 'BlogPosting',
-        description=description or '',
-        author=author or '',
-        author_url=author_url or '',
+        kind=kind,
+        description=description,
+        author=author,
+        author_url=author_url,
         published_at=published,
         image=image,
         word_count=word_count,
-        author_same_as=list(author_same_as) if author_same_as else None,
-        citations=list(citations) if citations else None,
+        author_same_as=author_same_as,
+        citations=citations,
     )
     if modified:
         try:

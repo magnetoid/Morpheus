@@ -26,6 +26,14 @@ def _clamp_twitter(value: str) -> str:
     return v if v in _TWITTER_CARDS else 'summary_large_image'
 
 
+def _robots_from_post(post) -> str:
+    """The panel's noindex/nofollow checkboxes → a valid robots string."""
+    return '{}, {}'.format(
+        'noindex' if post.get('seo_noindex') else 'index',
+        'nofollow' if post.get('seo_nofollow') else 'follow',
+    )
+
+
 def panel_context(obj, request=None) -> dict:
     """Current SEO-panel values for ``obj``: the SeoMeta override + the
     ``seo.ai_answer`` metafield + the site title/description length limits.
@@ -76,10 +84,7 @@ def panel_context(obj, request=None) -> dict:
             vals['og_image'] = p.get('seo_og_image', '')
             vals['twitter_card'] = _clamp_twitter(p.get('seo_twitter_card', ''))
             vals['keywords'] = p.get('seo_keywords', '')
-            vals['robots'] = '{}, {}'.format(
-                'noindex' if p.get('seo_noindex') else 'index',
-                'nofollow' if p.get('seo_nofollow') else 'follow',
-            )
+            vals['robots'] = _robots_from_post(p)
             ai_answer = p.get('seo_ai_answer', '')
 
     title_max, desc_max = 60, 160
@@ -133,10 +138,7 @@ def save_object_seo(obj, post) -> None:
     # noindex page back to indexable.
     if 'seo_title' not in post:
         return
-    robots = '{}, {}'.format(
-        'noindex' if post.get('seo_noindex') else 'index',
-        'nofollow' if post.get('seo_nofollow') else 'follow',
-    )
+    robots = _robots_from_post(post)
     fields = {
         'title': (post.get('seo_title') or '').strip()[:200],
         'description': (post.get('seo_description') or '').strip()[:320],

@@ -196,13 +196,14 @@ def journal_detail(request, slug):
     entry = None
     seo_object = None
     try:
-        from plugins.installed.cms.services import get_journal_entry, get_journal_page
+        from plugins.installed.cms.services import get_journal_page, journal_dict
 
-        # The real Page instance is the SEO object — resolve_meta needs it to
-        # layer the merchant's per-page SeoMeta override + visual schema blocks.
-        # None for the seeded fallback entries (they degrade to the fallbacks).
+        # One Page fetch serves both: the model instance is the SEO object
+        # (resolve_meta layers the per-page SeoMeta override + visual schema
+        # blocks off it) and the render dict is derived from it. None for the
+        # seeded fallback entries (they degrade to the fallbacks).
         seo_object = get_journal_page(slug)
-        entry = get_journal_entry(slug)
+        entry = journal_dict(seo_object) if seo_object else None
     except Exception:  # noqa: BLE001
         pass
     if entry is None:

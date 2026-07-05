@@ -1,4 +1,4 @@
-"""journal _journal_dict — SEO enrichment (cover image, author, dateModified)."""
+"""journal journal_dict — SEO enrichment (cover image, author, dateModified)."""
 
 # ruff: noqa: PLC0415
 from __future__ import annotations
@@ -6,7 +6,7 @@ from __future__ import annotations
 from django.test import TestCase
 
 from plugins.installed.cms.models import Page
-from plugins.installed.cms.services import _journal_dict
+from plugins.installed.cms.services import journal_dict
 
 
 class JournalDictSeoTests(TestCase):
@@ -18,7 +18,7 @@ class JournalDictSeoTests(TestCase):
             body='<p>Hi</p><img src="/media/cover.jpg" alt="c"><p>Bye</p>',
             metadata={'category': 'journal', 'author': 'Jane Doe'},
         )
-        d = _journal_dict(page)
+        d = journal_dict(page)
         # Relative media paths are absolutized for og:image (scrapers require it).
         self.assertTrue(d['image'].startswith('https://'))
         self.assertTrue(d['image'].endswith('/media/cover.jpg'))
@@ -33,13 +33,13 @@ class JournalDictSeoTests(TestCase):
             body='<img src="/media/body.jpg">',
             metadata={'category': 'journal', 'cover': '/media/explicit.jpg'},
         )
-        image = _journal_dict(page)['image']
+        image = journal_dict(page)['image']
         self.assertTrue(image.startswith('https://'))
         self.assertTrue(image.endswith('/media/explicit.jpg'))
 
     def test_author_falls_back_to_default(self):
         page = Page.objects.create(slug='n3', title='N3', state='published', body='x', metadata={})
-        self.assertEqual(_journal_dict(page)['author'], 'dot books staff')
+        self.assertEqual(journal_dict(page)['author'], 'dot books staff')
 
     def test_date_label_shows_real_publish_date_and_read_time(self):
         from datetime import UTC, datetime
@@ -52,7 +52,7 @@ class JournalDictSeoTests(TestCase):
             publish_at=datetime(2026, 7, 3, 9, 0, tzinfo=UTC),
             metadata={'category': 'journal'},
         )
-        d = _journal_dict(page)
+        d = journal_dict(page)
         # Real date (was "%B · %-d min read" — day-of-month posing as read time).
         self.assertEqual(d['date_label'], 'July 3, 2026 · 2 min read')
         self.assertEqual(d['published_at'], page.publish_at)

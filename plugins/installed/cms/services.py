@@ -24,12 +24,6 @@ def get_live_page(slug: str):
     return page
 
 
-def _read_minutes(body: str) -> int:
-    """Honest reading-time estimate: strip tags, count words, ~200 wpm."""
-    words = len(re.sub(r'<[^>]+>', ' ', body or '').split())
-    return max(1, round(words / 200))
-
-
 def _str_list(value) -> list[str]:
     """Coerce a free-form ``page.metadata`` value into a clean ``list[str]``.
 
@@ -46,22 +40,22 @@ def _str_list(value) -> list[str]:
     return []
 
 
-def _journal_dict(page) -> dict:
+def journal_dict(page) -> dict:
+    """The render/SEO dict for a journal ``Page``. Public — the storefront
+    journal view builds its context from this."""
     pub = page.publish_at or page.updated_at or page.created_at
     meta = page.metadata or {}
     # Cover image for OG + Article JSON-LD: explicit metadata first, else the
-    # first <img> in the (already-sanitised) body.
+    # first <img> in the (already-sanitised) body. Absolutized — OG scrapers
+    # require absolute URLs.
     image = (meta.get('cover') or meta.get('image') or meta.get('og_image') or '').strip()
     if not image and page.body:
         m = re.search(r"""<img[^>]+src=["']([^"']+)["']""", page.body)
         if m:
             image = m.group(1)
-    if image.startswith('/'):
-        # Uploaded Media assets are relative (/media/…); OG scrapers require
-        # absolute URLs for og:image, so prefix the canonical site base.
-        from core.utils.site import site_base_url
+    from core.utils.site import absolutize
 
-        image = site_base_url().rstrip('/') + image
+    image = absolutize(image)
     author = (meta.get('author') or '').strip()
     if not author and getattr(page, 'author', None):
         author = (page.author.get_full_name() or page.author.get_username() or '').strip()
@@ -70,9 +64,11 @@ def _journal_dict(page) -> dict:
     # these as fields in a follow-on. Lists degrade to [] when unset.
     author_same_as = _str_list(meta.get('author_same_as') or meta.get('author_links'))
     citations = _str_list(meta.get('citations') or meta.get('sources'))
-    # Accurate wordCount from the FULL body (the template truncates the body it
-    # passes to the JSON-LD tag, which would otherwise undercount long posts).
+    # Strip tags ONCE: accurate wordCount from the FULL body (the template
+    # truncates the body it passes to the JSON-LD tag, which would otherwise
+    # undercount long posts) + the honest ~200wpm reading time.
     word_count = len(re.sub(r'<[^>]+>', ' ', page.body or '').split())
+    read_min = max(1, round(word_count / 200))
     return {
         'id': str(page.id),
         'slug': page.slug,
@@ -80,9 +76,7 @@ def _journal_dict(page) -> dict:
         # Visible publish date + honest reading time — e.g. "July 3, 2026 · 4 min
         # read". (The old format was "%B · %-d min read", which rendered the DAY
         # OF MONTH as a fake reading time and showed no actual date.)
-        'date_label': (
-            f'{pub.strftime("%B %-d, %Y")} · {_read_minutes(page.body)} min read' if pub else ''
-        ),
+        'date_label': (f'{pub.strftime("%B %-d, %Y")} · {read_min} min read' if pub else ''),
         'excerpt': page.excerpt or '',
         'body': page.body or '',
         'published_at': pub,
@@ -105,13 +99,13 @@ def list_journal_entries(*, limit: int = 50) -> list[dict]:
         .exclude(publish_at__gt=timezone.now())
         .order_by('-publish_at', '-created_at')[:limit]
     )
-    return [_journal_dict(p) for p in qs]
+    return [journal_dict(p) for p in qs]
 
 
 def get_journal_page(slug: str):
     """The underlying published journal ``Page`` instance (not the dict).
 
-    The storefront journal view renders from the ``_journal_dict`` for
+    The storefront journal view renders from the ``journal_dict`` for
     display, but the SEO engine (`resolve_meta`) needs the real model
     instance as ``seo_object`` so it can load the per-page ``SeoMeta``
     override row (title/description/canonical/robots/OG) and the visual
@@ -130,7 +124,7 @@ def get_journal_page(slug: str):
 def get_journal_entry(slug: str) -> dict | None:
     """Single published journal entry by slug, or None."""
     page = get_journal_page(slug)
-    return _journal_dict(page) if page else None
+    return journal_dict(page) if page else None
 
 
 def render_block(key: str) -> dict | None:

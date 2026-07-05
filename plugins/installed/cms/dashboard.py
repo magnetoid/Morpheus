@@ -104,13 +104,19 @@ def _parse_publish_at(raw):
 
 
 def _apply_editorial_metadata(meta: dict, post) -> dict:
-    """Fold the page form's editorial (journal) controls into ``meta``:
-    the Publish-to-Journal toggle, author, author profile links (sameAs),
-    and cited sources. Author links + sources are stored as clean lists so
-    the journal Article JSON-LD reads them safely."""
+    """Fold the page form's metadata-backed controls into ``meta``: the
+    cover image, the Publish-to-Journal toggle, author, author profile
+    links (sameAs), and cited sources. Author links + sources are stored
+    as clean lists so the journal Article JSON-LD reads them safely."""
 
     def _lines(name):
         return [ln.strip() for ln in (post.get(name) or '').splitlines() if ln.strip()]
+
+    cover = (post.get('cover_image') or '').strip()[:600]
+    if cover:
+        meta['cover'] = cover
+    else:
+        meta.pop('cover', None)
 
     if post.get('is_journal'):
         meta['category'] = 'journal'
@@ -123,12 +129,12 @@ def _apply_editorial_metadata(meta: dict, post) -> dict:
     else:
         meta.pop('author', None)
 
-    for key, field in (('author_same_as', 'author_same_as'), ('citations', 'citations')):
+    for field in ('author_same_as', 'citations'):
         vals = _lines(field)
         if vals:
-            meta[key] = vals
+            meta[field] = vals
         else:
-            meta.pop(key, None)
+            meta.pop(field, None)
     return meta
 
 
@@ -212,11 +218,6 @@ def page_edit(request, page_id=None):  # noqa: PLR0912, PLR0915 — flat validat
             # toggle on a validation error like a slug clash. The SEO panel
             # itself re-prefills from request.POST (takes_context).
             draft.metadata = _apply_editorial_metadata(dict(draft.metadata or {}), request.POST)
-            cover = (request.POST.get('cover_image') or '').strip()[:600]
-            if cover:
-                draft.metadata['cover'] = cover
-            else:
-                draft.metadata.pop('cover', None)
             ctx = _page_form_context(request, draft, creating=creating)
             return render(request, 'cms/dashboard/page_form.html', ctx)
 
@@ -227,13 +228,7 @@ def page_edit(request, page_id=None):  # noqa: PLR0912, PLR0915 — flat validat
         page.title, page.slug, page.excerpt = title, slug, excerpt
         page.body, page.state, page.layout, page.publish_at = body, state, layout, publish_at
         # Cover image (journal OG/cover) + editorial fields live in metadata.
-        cover = (request.POST.get('cover_image') or '').strip()[:600]
-        meta = dict(page.metadata or {})
-        if cover:
-            meta['cover'] = cover
-        else:
-            meta.pop('cover', None)
-        page.metadata = _apply_editorial_metadata(meta, request.POST)
+        page.metadata = _apply_editorial_metadata(dict(page.metadata or {}), request.POST)
         page.save()
         # Reusable SEO panel: upsert the SeoMeta override + seo.ai_answer.
         try:

@@ -19,3 +19,14 @@ def site_base_url() -> str:
         return base + '/'
     hosts = getattr(settings, 'ALLOWED_HOSTS', []) or ['localhost']
     return f'https://{hosts[0]}/'
+
+
+def absolutize(url: str) -> str:
+    """Make a site-relative URL (``/media/…``) absolute against
+    :func:`site_base_url`. Absolute, protocol-relative, and empty URLs
+    pass through unchanged. OG scrapers, social cards, and JSON-LD all
+    require absolute URLs, so emitters route through this one helper.
+    """
+    if url and url.startswith('/') and not url.startswith('//'):
+        return site_base_url().rstrip('/') + url
+    return url

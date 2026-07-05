@@ -131,11 +131,18 @@ def resolve_meta(
         description = expand_tokens(description, obj)
     except Exception:  # noqa: BLE001 — never break meta resolution over tokens
         pass
-    og_image = (
-        (meta.og_image if meta and meta.og_image else '')
-        or fallback_image
-        or (site_settings().default_og_image or '')
-    ).strip()
+    from core.utils.site import absolutize
+
+    site = site_settings()
+    # Absolutize here — one chokepoint — so the OG/Twitter tags AND the
+    # JSON-LD image both get the absolute URL scrapers require.
+    og_image = absolutize(
+        (
+            (meta.og_image if meta and meta.og_image else '')
+            or fallback_image
+            or (site.default_og_image or '')
+        ).strip()
+    )
     canonical = (
         (meta.canonical_url if meta and meta.canonical_url else '')
         or native('canonical_url')
@@ -207,6 +214,9 @@ def resolve_meta(
         canonical_url=canonical,
         robots=robots,
         keywords=keywords,
+        # Site identity resolved once here — to_html must not query per render.
+        site_name=brand_name(),
+        twitter_site=(getattr(site, 'twitter_handle', '') or '').strip(),
         structured_data=structured,
         # schema_blocks stores raw editor entries [{type, data}, …]; build the
         # emit-ready JSON-LD here so the editor round-trips its own format.

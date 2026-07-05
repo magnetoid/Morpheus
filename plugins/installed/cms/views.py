@@ -40,11 +40,11 @@ def page_view(request, slug: str):
     # visual schema blocks — without this every single page rendered the
     # site-default <title>. seo_title/description/image are the fallbacks
     # used only when the SeoMeta row leaves a field blank.
-    cover = (meta.get('cover') or meta.get('image') or meta.get('og_image') or '').strip()
-    if cover.startswith('/'):
-        from core.utils.site import site_base_url
+    from core.utils.site import absolutize
 
-        cover = site_base_url().rstrip('/') + cover
+    cover = absolutize(
+        (meta.get('cover') or meta.get('image') or meta.get('og_image') or '').strip()
+    )
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': page.title, 'url': request.build_absolute_uri(request.path)},
