@@ -209,6 +209,7 @@ def checkout(request):
                         MorpheusEvents.BEGIN_CHECKOUT,
                         cart=cart,
                         customer=request.user if request.user.is_authenticated else None,
+                        request=request,
                     )
                 request.session['checkout_started'] = True
         except Exception:  # noqa: BLE001

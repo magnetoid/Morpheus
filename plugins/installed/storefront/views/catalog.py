@@ -375,6 +375,21 @@ def product_detail(request, slug):
     if product_row is not None and product_row.vendor and product_row.vendor.is_active:
         pdp_vendor = product_row.vendor
 
+    # Server-side analytics: the funnel's product.viewed truth. Client
+    # beacons are ad-blockable; this is not. Fail-soft — never break a PDP.
+    try:
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        if product_row is not None:
+            hook_registry.fire(
+                MorpheusEvents.PRODUCT_VIEWED,
+                product=product_row,
+                customer=request.user if request.user.is_authenticated else None,
+                request=request,
+            )
+    except Exception:  # noqa: BLE001, S110
+        pass
+
     related = _related_products(slug, request=request)
     images = product.get('images') or []
     primary_images = sorted(
@@ -857,6 +872,20 @@ def _related_products(current_slug: str, limit: int = 4, *, request=None) -> lis
 def search(request):
     q = request.GET.get('q', '').strip()
     use_semantic = request.GET.get('mode') == 'semantic'
+
+    if q:
+        # Server-side analytics: search.performed truth (ad-blocker-proof).
+        try:
+            from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+            hook_registry.fire(
+                MorpheusEvents.SEARCH_PERFORMED,
+                query=q,
+                results_count=None,
+                request=request,
+            )
+        except Exception:  # noqa: BLE001, S110
+            pass
 
     # Plain keyword search bounces to /products/?q=… so it lands on the rich PLP.
     if not use_semantic:

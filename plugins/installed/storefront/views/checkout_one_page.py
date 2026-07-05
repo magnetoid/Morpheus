@@ -60,6 +60,7 @@ def _fire_begin_checkout(request) -> None:
                 MorpheusEvents.BEGIN_CHECKOUT,
                 cart=cart_obj,
                 customer=request.user if request.user.is_authenticated else None,
+                request=request,
             )
             request.session['checkout_started'] = True
     except Exception:  # noqa: BLE001

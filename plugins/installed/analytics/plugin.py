@@ -90,12 +90,18 @@ class AnalyticsPlugin(Plugin):
                 if 'customer' in kwargs:
                     customer = kwargs.get('customer')
 
+                # Server-side storefront fires pass request= so the event
+                # joins the visitor's session (funnels group by session_id).
+                request = kwargs.get('request')
                 record_event(
                     name=event_name,
                     kind=_kind_for(event_name),
+                    request=request,
                     customer=customer,
                     revenue=revenue,
                     product_slug=product_slug,
+                    search_query=str(kwargs.get('query') or '')[:200],
+                    url=(getattr(request, 'path', '') or '')[:500],
                     payload={'src': 'hook'},
                 )
             except Exception:  # noqa: BLE001, S110
