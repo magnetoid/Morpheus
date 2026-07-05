@@ -9,20 +9,115 @@
     <div class="flex items-center gap-3">
       <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
       <div>
-        <h1 class="text-xl font-semibold">Linda's code proposals</h1>
+        <h1 class="text-xl font-semibold">Linda's proposals</h1>
         <p class="text-sm text-[color:var(--text-muted)]">
-          Tools Linda drafted for herself. Nothing here runs or touches the repo until you approve it
-          {% if not apply_enabled %} — and the apply gate (<code>MORPHEUS_SELF_UPDATE_ENABLED</code>) is currently <strong>off</strong>, so approving only records your decision{% endif %}.
+          Staged changes and drafted tools. Nothing here runs until you approve it.
         </p>
       </div>
     </div>
     <a href="/dashboard/assistant/" class="btn btn-ghost text-xs">Open Linda</a>
   </div>
 
+  {# ── Ops proposals — staged business changes (propose → preview → approve → apply) ── #}
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-semibold">Ops proposals</h2>
+    <div class="flex items-center gap-2 text-xs">
+      <a href="?ops_status=proposed" class="pill {% if ops_status == 'proposed' %}pill-success{% else %}pill-neutral{% endif %}">proposed</a>
+      <a href="?ops_status=all" class="pill {% if ops_status == 'all' %}pill-success{% else %}pill-neutral{% endif %}">all</a>
+    </div>
+  </div>
+
+  {% if not ops_proposals %}
+  <div class="card card-padded text-sm text-[color:var(--text-muted)]">
+    No staged changes{% if ops_status == 'proposed' %} awaiting review{% endif %}. When a routine or skill runs in staged mode, its proposed edits appear here for your approval.
+  </div>
+  {% endif %}
+
+  {% for p in ops_proposals %}
+  <details class="card" {% if forloop.first and p.status == 'proposed' %}open{% endif %}>
+    <summary class="card-padded flex items-center justify-between" style="cursor:pointer; list-style:none;">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="pill {% if p.status == 'proposed' %}pill-warn{% elif p.status == 'approved' or p.status == 'applied' %}pill-success{% else %}pill-neutral{% endif %}">{{ p.status }}</span>
+        <span class="font-medium truncate">{{ p.title }}</span>
+        <span class="text-xs text-[color:var(--text-muted)]">{{ p.kind }} · {{ p.created_at|date:"M j, H:i" }}</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
+        <span class="pill pill-neutral">{{ p.source }}</span>
+      </div>
+    </summary>
+    <div class="card-padded border-t border-[color:var(--border)] space-y-4">
+
+      {% if p.summary %}
+      <p class="text-sm" style="margin:0;"><strong>Why:</strong> {{ p.summary }}</p>
+      {% endif %}
+      {% if p.agent_run %}
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin:0;">
+        Proposed by run <code>{{ p.agent_run_id }}</code> · est. run cost ${{ p.agent_run.estimated_cost_usd|floatformat:4 }}
+      </p>
+      {% endif %}
+
+      <div style="overflow-x:auto;">
+        <table class="text-xs" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr class="text-left text-[color:var(--text-muted)]">
+              <th style="padding:.25rem .5rem;">Object</th>
+              <th style="padding:.25rem .5rem;">Field</th>
+              <th style="padding:.25rem .5rem;">Before</th>
+              <th style="padding:.25rem .5rem;">After</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in p.changes %}
+            <tr class="border-t border-[color:var(--border)]">
+              <td style="padding:.25rem .5rem;"><code>{{ c.object }}</code></td>
+              <td style="padding:.25rem .5rem;">{{ c.field }}</td>
+              <td style="padding:.25rem .5rem;">{{ c.old|default_if_none:"—" }}</td>
+              <td style="padding:.25rem .5rem;">{{ c.new|default_if_none:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if p.apply_error %}
+      <p class="text-xs" style="margin:0; color:var(--danger, #b91c1c);">Apply error: {{ p.apply_error }}</p>
+      {% endif %}
+      {% if p.approved_by %}
+      <p class="text-xs text-[color:var(--text-muted)]" style="margin:0;">
+        Approved by {{ p.approved_by }} at {{ p.approved_at|date:"M j, H:i" }}{% if p.applied_at %} · applied {{ p.applied_at|date:"M j, H:i" }}{% endif %}
+      </p>
+      {% endif %}
+
+      {% if p.status == 'proposed' %}
+      <div class="flex flex-wrap gap-2">
+        <form method="post" action="{% url 'assistant:ops_proposal_action' proposal_id=p.id %}" class="m-0">
+          {% csrf_token %}<input type="hidden" name="action" value="approve_apply">
+          <button type="submit" class="btn btn-primary text-xs">Approve &amp; apply</button>
+        </form>
+        <form method="post" action="{% url 'assistant:ops_proposal_action' proposal_id=p.id %}" class="m-0">
+          {% csrf_token %}<input type="hidden" name="action" value="reject">
+          <button type="submit" class="btn btn-ghost text-xs">Reject</button>
+        </form>
+      </div>
+      {% endif %}
+
+    </div>
+  </details>
+  {% endfor %}
+
+  {% if request.user.is_superuser %}
+  {# ── Code proposals — Linda's self-drafted tools (owner-only, ADR 0014) ── #}
+  <h2 class="text-lg font-semibold">Code proposals</h2>
+  <p class="text-sm text-[color:var(--text-muted)]" style="margin:0;">
+    Tools Linda drafted for herself. Nothing here runs or touches the repo until you approve it
+    {% if not apply_enabled %} — and the apply gate (<code>MORPHEUS_SELF_UPDATE_ENABLED</code>) is currently <strong>off</strong>, so approving only records your decision{% endif %}.
+  </p>
+
   {% if not proposals %}
   <div class="card card-padded text-sm text-[color:var(--text-muted)]">
     No proposals yet. When Linda repeatedly hits a capability she lacks, she drafts a tool for it and it appears here for your review.
   </div>
+  {% endif %}
   {% endif %}
 
   {% for p in proposals %}

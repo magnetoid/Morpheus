@@ -31,18 +31,25 @@ def _user(*, superuser: bool):
 
 
 class ProposalQueueAccessTests(TestCase):
-    def test_staff_non_superuser_cannot_open_queue(self):
+    def test_staff_non_superuser_sees_no_code_proposals(self):
+        # Staged-changes design §3: the page is staff-visible now (it hosts
+        # the ops-proposal inbox), but the code-proposal queue stays
+        # owner-only — a staff non-superuser gets the page WITHOUT any
+        # code-proposal content or its section heading.
+        CodeProposal.objects.create(name='demo-noop-hidden', source=_TOOL_SOURCE)
         c = Client()
         c.force_login(_user(superuser=False))
         resp = c.get('/dashboard/assistant/proposals/')
-        self.assertEqual(resp.status_code, 302)  # bounced to login
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'demo-noop-hidden')
+        self.assertNotContains(resp, 'Code proposals')
 
     def test_superuser_sees_queue(self):
         c = Client()
         c.force_login(_user(superuser=True))
         resp = c.get('/dashboard/assistant/proposals/')
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'code proposals')
+        self.assertContains(resp, 'Code proposals')
 
 
 class ProposalActionTests(TestCase):

@@ -10,6 +10,13 @@ class AssistantConfig(AppConfig):
     verbose_name = 'Linda AI Assistant'
 
     def ready(self) -> None:
+        # Dashboard-home activity feed: pending OpsProposals (staged-changes
+        # design §3). Core-owned handler — never gated by a plugin toggle.
+        from core.assistant.dashboard import on_activity_feed  # noqa: PLC0415
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        hook_registry.register(MorpheusEvents.ACTIVITY_FEED, on_activity_feed, priority=40)
+
         # Register Linda's self-authored (learned) skills into the skill_registry
         # so they survive restarts. Fail-soft: a fresh DB / early boot / tests
         # where the table isn't migrated yet simply loads nothing.

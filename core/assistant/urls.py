@@ -21,4 +21,10 @@ urlpatterns = [
         views_proposals.proposal_action,
         name='proposal_action',
     ),
+    # Ops-proposal inbox actions (staff, staged-changes design §3).
+    path(
+        'proposals/ops/<uuid:proposal_id>/action/',
+        views_proposals.ops_proposal_action,
+        name='ops_proposal_action',
+    ),
 ]
