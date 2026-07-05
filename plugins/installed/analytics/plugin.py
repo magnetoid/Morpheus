@@ -34,6 +34,7 @@ class AnalyticsPlugin(Plugin):
         for event in [
             events.ORDER_PLACED,
             events.PAYMENT_CAPTURED,
+            events.BEGIN_CHECKOUT,
             events.PRODUCT_VIEWED,
             events.SEARCH_PERFORMED,
             events.CUSTOMER_REGISTERED,

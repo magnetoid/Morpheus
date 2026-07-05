@@ -35,8 +35,12 @@ def log_analytics_event(payload):
 
 
 def _kind_for(name: str) -> str:  # noqa: PLR0911
-    if name in ('order.placed', 'payment.captured'):
+    # Only order.placed is the canonical money event — payment.captured used
+    # to map to 'purchase' too, double-counting revenue in roll_daily.
+    if name == 'order.placed':
         return 'purchase'
+    if name == 'checkout.started':
+        return 'checkout'
     if name == 'product.viewed':
         return 'product_view'
     if name == 'search.performed':

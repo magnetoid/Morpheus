@@ -293,7 +293,7 @@ def roll_daily(*, day: date | None = None) -> int:
 
     upsert('product_views', value_int=qs.filter(kind='product_view').count())
     upsert('cart_adds', value_int=qs.filter(name='cart.add').count())
-    upsert('checkouts_started', value_int=qs.filter(name='checkout.start').count())
+    upsert('checkouts_started', value_int=qs.filter(name='checkout.started').count())
     upsert('searches', value_int=qs.filter(kind='search').count())
 
     for row in (

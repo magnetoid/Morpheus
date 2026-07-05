@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 
@@ -118,17 +119,13 @@ def track_beacon(request):
             # Extract new metrics
             scroll_depth = None
             if body.get('scroll_depth') is not None:
-                try:
+                with contextlib.suppress(ValueError):
                     scroll_depth = int(body.get('scroll_depth'))
-                except ValueError:
-                    pass
 
             duration_ms = None
             if body.get('duration_ms') is not None:
-                try:
+                with contextlib.suppress(ValueError):
                     duration_ms = int(body.get('duration_ms'))
-                except ValueError:
-                    pass
 
             error_context = body.get('error_context') or {}
             if isinstance(error_context, str):
@@ -163,11 +160,10 @@ def track_beacon(request):
 def export_data(request):
     """Export analytics data in CSV/JSON format."""
     import csv
+
     from plugins.installed.analytics.services import (
         summary_for,
         top_products,
-        top_searches,
-        agent_activity,
     )
 
     format_type = request.GET.get('format', 'csv')
@@ -203,10 +199,10 @@ def export_data(request):
 def overview(request):
     from plugins.installed.analytics.services import (  # noqa: PLC0415
         agent_activity,
+        predictive_trends,
         summary_for,
         top_products,
         top_searches,
-        predictive_trends,
     )
 
     days = int(request.GET.get('days', 7) or 7)
@@ -241,7 +237,7 @@ def realtime(request):
 
 @staff_member_required
 def funnel_view(request):
-    """Default funnel: pageview → product.viewed → cart.add → order.placed.
+    """Default funnel: pageview → product.viewed → cart.add → checkout.started → order.placed.
 
     Augmented (sprint #4): per-step drop-off detail + period comparison
     so engineers can see *which* transition is the worst and whether
@@ -257,7 +253,7 @@ def funnel_view(request):
     if raw:
         steps = [s.strip() for s in raw.split(',') if s.strip()]
     else:
-        steps = ['pageview', 'product.viewed', 'cart.add', 'order.placed']
+        steps = ['pageview', 'product.viewed', 'cart.add', 'checkout.started', 'order.placed']
     days = int(request.GET.get('days', 30) or 30)
     rows = funnel_for(steps=steps, days=days)
     # Compute conversion percentages relative to step 1.
