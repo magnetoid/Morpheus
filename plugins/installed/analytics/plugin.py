@@ -67,6 +67,13 @@ class AnalyticsPlugin(Plugin):
             },
         )
 
+        # Dashboard-home presence: KPI tiles + anomaly activity — via the
+        # filter bus, so a disabled plugin's tiles simply never render.
+        from plugins.installed.analytics import dashboard  # noqa: PLC0415
+
+        self.register_hook(events.DASHBOARD_KPIS, dashboard.on_dashboard_kpis, priority=30)
+        self.register_hook(events.ACTIVITY_FEED, dashboard.on_activity_feed, priority=50)
+
     # ── Hook adapters ────────────────────────────────────────────────────────
 
     def _on_event(self, event_name: str):
