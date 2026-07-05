@@ -198,7 +198,10 @@ def run_agent(  # noqa: PLR0915
             runtime=runtime,
             user_message=user_message,
             history=list(history or []),
-            context={**(context or {}), 'customer': customer_obj},
+            # `agent_run` gives staged writes their provenance — OpsProposal
+            # rows record the run that proposed them (staged-changes design
+            # §1/§5). None when the AgentRun row couldn't be created.
+            context={**(context or {}), 'customer': customer_obj, 'agent_run': run},
             run_id=str(run.id) if run else None,
             timeout=timeout_seconds,
         )
