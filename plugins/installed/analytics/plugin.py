@@ -177,6 +177,14 @@ class AnalyticsPlugin(Plugin):
                 section='analytics',
                 order=30,
             ),
+            DashboardPage(
+                label='Cohorts',
+                slug='cohorts',
+                view='plugins.installed.analytics.views.cohort_view',
+                icon='users',
+                section='analytics',
+                order=40,
+            ),
         ]
 
     def contribute_storefront_blocks(self) -> list:

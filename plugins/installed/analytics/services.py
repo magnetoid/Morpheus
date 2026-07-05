@@ -303,6 +303,29 @@ def roll_daily(*, day: date | None = None) -> int:
     upsert('checkouts_started', value_int=qs.filter(name='checkout.started').count())
     upsert('searches', value_int=qs.filter(kind='search').count())
 
+    # ── Derived KPIs — rolled here so history survives the raw-event trim. ──
+    # Ratios are stored as BASIS POINTS in value_int (240 = 2.40%): value_int
+    # is a plain integer while value_money is currency-tagged (wrong type for
+    # a ratio). aov is a true money amount → value_money.
+    sessions_n = qs.values('session_id').distinct().count()
+    purchases_n = rev_agg.get('n') or 0
+    cart_adds_n = qs.filter(name='cart.add').count()
+    checkouts_n = qs.filter(name='checkout.started').count()
+
+    conversion_bp = round(purchases_n / sessions_n * 10_000) if sessions_n else 0
+    upsert('conversion_rate', value_int=conversion_bp)
+
+    total_rev = rev_agg.get('total')
+    if total_rev is not None and purchases_n:
+        upsert('aov', value_money=total_rev / purchases_n)
+    else:
+        upsert('aov', value_money=None)
+
+    abandonment_bp = (
+        round(max(0, cart_adds_n - checkouts_n) / cart_adds_n * 10_000) if cart_adds_n else 0
+    )
+    upsert('cart_abandonment', value_int=abandonment_bp)
+
     for row in (
         qs.filter(kind='product_view')
         .exclude(product_slug='')
