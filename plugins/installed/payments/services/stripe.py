@@ -320,6 +320,27 @@ class PaymentService:
         return {'success': True, 'transaction_id': tx.id, 'payment_intent_id': intent.id}
 
     @classmethod
+    def verify_webhook(cls, payload, sig_header):
+        """Construct + signature-verify a Stripe webhook event.
+
+        Single source of the construct-event logic, shared by
+        ``process_webhook`` and ``StripeGateway.webhook_verify``. Returns the
+        ``stripe.Event`` on success; raises ``ValueError`` on a malformed
+        payload / ``stripe.error.SignatureVerificationError`` on a bad
+        signature — ``process_webhook`` maps those to its "Invalid
+        payload/signature" responses, while the gateway wraps them into
+        ``None``.
+        """
+        plugin = plugin_registry.get('payments')
+        webhook_secret = (
+            plugin.get_config_value('stripe_webhook_secret', settings.STRIPE_WEBHOOK_SECRET)
+            if plugin
+            else settings.STRIPE_WEBHOOK_SECRET
+        )
+        stripe.api_key = cls.get_stripe_api_key()
+        return stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+
+    @classmethod
     def process_webhook(cls, payload, sig_header):
         """
         Processes a Stripe webhook to update transaction statuses.
@@ -338,14 +359,8 @@ class PaymentService:
 
         from plugins.installed.payments.models import StripeWebhookEvent  # noqa: PLC0415
 
-        plugin = plugin_registry.get('payments')
-        webhook_secret = plugin.get_config_value(
-            'stripe_webhook_secret', settings.STRIPE_WEBHOOK_SECRET
-        )
-        stripe.api_key = cls.get_stripe_api_key()
-
         try:
-            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+            event = cls.verify_webhook(payload, sig_header)
         except ValueError as e:
             raise Exception('Invalid payload') from e
         except stripe.error.SignatureVerificationError as e:
