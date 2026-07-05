@@ -44,18 +44,14 @@
             aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
           >
             <div class="hero-feature__copy-stack">
+              {% if pick.isOnSale %}
               <p class="meta hero-feature__copy-item" style="--hero-delay: 40ms;">
-                {% if pick.category.name %}{{ pick.category.name }}{% else %}Featured title{% endif %}
-                {% if pick.isOnSale %}
                 <span class="hero-feature__pill">-{{ pick.discountPercentage }}%</span>
-                {% endif %}
               </p>
-              <h3 class="display display-l hero-feature__title hero-feature__copy-item" style="--hero-delay: 110ms;">
+              {% endif %}
+              <h3 class="display display-xl hero-feature__title hero-feature__copy-item" style="--hero-delay: 150ms;">
                 <em>{{ pick.name }}</em><span class="text-accent">.</span>
               </h3>
-              <p class="hero-feature__description hero-feature__copy-item" style="--hero-delay: 180ms;">
-                {{ pick.shortDescription|default:"A sharp, current read from the top of the shelf."|striptags|truncatewords:36 }}
-              </p>
               <p class="hero-feature__price hero-feature__copy-item" style="--hero-delay: 250ms;">
                 {% if pick.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ pick.price|money }}
               </p>
@@ -135,7 +131,10 @@
   .hero-feature__shell {
     display: grid;
     gap: 2.5rem;
-    align-items: center;
+    /* Top-anchor both columns: the decode scramble makes the copy column's
+       height jitter per-frame, and centering would drag the book cover with
+       it. Anchoring to the top keeps the image dead still while letters settle. */
+    align-items: start;
   }
   .hero-feature__copy {
     min-width: 0;
@@ -217,13 +216,6 @@
     max-width: 11ch;
     text-wrap: balance;
     /* Isolate the per-letter scramble's rewrites from the surrounding layout. */
-    contain: layout;
-  }
-  .hero-feature__description {
-    max-width: 52ch;
-    color: var(--ink-2);
-    line-height: 1.65;
-    text-wrap: pretty; /* no orphan word on the last line */
     contain: layout;
   }
   /* Decode letters (letterpress settle). .dw wraps each word so line breaks
@@ -318,9 +310,10 @@
     opacity: 0;
     pointer-events: none;
     transform: translate3d(0, 10px, 0) scale(0.985);
+    /* Slow, graceful crossfade for the book cover (was 540ms). */
     transition:
-      opacity 540ms var(--ease-out),
-      transform 540ms var(--ease-out);
+      opacity 1000ms var(--ease-out),
+      transform 900ms var(--ease-out);
     will-change: opacity, transform;
   }
   .hero-feature__media-panel.is-active {
@@ -500,7 +493,6 @@
         if (!panel) return;
         [
           panel.querySelector('.hero-feature__title em'),
-          panel.querySelector('.hero-feature__description'),
         ].forEach(function (el) {
           if (!el) return;
           // Cache the true final text once (before any scramble mutates it) so
