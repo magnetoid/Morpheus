@@ -5,6 +5,14 @@ rows from this plugin's own dashboard settings page; the storefront then
 renders each enabled block into its theme slot, tuned per-visitor by the
 engine in ``services.py``.
 
+Automated + self-optimizing (all pure-Python, no ML deps):
+``services.calculate_grid_probabilities`` scores every product's real
+purchase-propensity nightly; the ``autopilot`` strategy Thompson-reranks that
+per visitor-segment (``reranker.py`` + ``BanditArm``, learned nightly from
+engagement); and ``autopilot.py`` runs a nightly propose-only AI merchandiser
+whose suggestions land in a human-checkpoint review queue. See
+``docs/plans/dynamic-products-autopilot-2026-07.md``.
+
 Modularity (both litmus tests pass):
 
 * **Storefront** — one ``StorefrontBlock`` is contributed per real theme
@@ -94,6 +102,15 @@ class DynamicProductsPlugin(Plugin):
                 'schedule': crontab(hour=4, minute=0),
             },
         )
+        # AI merchandiser: file merchandising proposals into the review queue
+        # each morning (after the propensity + bandit rebuilds it reasons over).
+        self.register_celery_beat(
+            'dynamic_products:merchandiser',
+            {
+                'task': 'dynamic_products.generate_merchandising_proposals',
+                'schedule': crontab(hour=5, minute=0),
+            },
+        )
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
 
     def on_product_viewed(self, product=None, request=None, **kwargs):
@@ -152,5 +169,15 @@ class DynamicProductsPlugin(Plugin):
                 order=40,
                 nav='settings',
                 url='/dashboard/dynamic-products/',
+            ),
+            DashboardPage(
+                label='Autopilot proposals',
+                slug='proposals',
+                view='plugins.installed.dynamic_products.views.proposals',
+                icon='wand-2',
+                section='marketing',
+                order=41,
+                nav='settings',
+                url='/dashboard/dynamic-products/proposals/',
             ),
         ]

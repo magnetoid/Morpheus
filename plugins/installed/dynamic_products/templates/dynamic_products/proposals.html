@@ -1,0 +1,60 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Autopilot proposals · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Autopilot proposals</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      The merchandiser reviews your store's own signals each morning and proposes
+      changes here. Nothing is applied until you approve it.
+    </p>
+  </div>
+
+  {% if open_proposals %}
+  <div class="space-y-3">
+    {% for p in open_proposals %}
+    <div class="rounded-lg border border-[color:var(--border)] p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">{{ p.get_kind_display }}</div>
+          <div class="font-medium mt-0.5">{{ p.title }}</div>
+          {% if p.rationale %}<p class="text-sm text-[color:var(--text-muted)] mt-1">{{ p.rationale }}</p>{% endif %}
+        </div>
+        <form method="post" action="/dashboard/dynamic-products/proposals/{{ p.id }}/" class="flex gap-2 shrink-0">
+          {% csrf_token %}
+          {% if p.is_actionable %}
+          <button name="action" value="approve" class="btn btn-primary text-xs">Approve</button>
+          {% else %}
+          <button name="action" value="approve" class="btn text-xs">Acknowledge</button>
+          {% endif %}
+          <button name="action" value="dismiss" class="btn text-xs">Dismiss</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-lg border border-[color:var(--border)] p-6 text-sm text-[color:var(--text-muted)]">
+    No open proposals. The merchandiser runs each morning; check back once it has
+    fresh signals to work with.
+  </div>
+  {% endif %}
+
+  {% if recent_proposals %}
+  <div class="mt-6">
+    <h2 class="text-sm font-semibold mb-2">Recent decisions</h2>
+    <ul class="text-sm space-y-1">
+      {% for p in recent_proposals %}
+      <li class="flex items-center justify-between gap-3">
+        <span class="text-[color:var(--text-muted)]">{{ p.title }}</span>
+        <span class="pill text-xs {% if p.status == 'approved' %}pill-info{% else %}pill-neutral{% endif %}">{{ p.get_status_display }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

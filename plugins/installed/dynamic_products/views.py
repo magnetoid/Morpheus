@@ -144,3 +144,47 @@ def _save_from_post(request, block):
         block.categories.clear()
 
     return block
+
+
+# ---------------------------------------------------------------------------
+# Autopilot merchandiser — review queue
+# ---------------------------------------------------------------------------
+
+
+@staff_member_required
+def proposals(request):
+    """Human-checkpoint review queue for the nightly merchandiser autopilot."""
+    from .models import MerchandisingProposal
+
+    return render(
+        request,
+        'dynamic_products/proposals.html',
+        {
+            'open_proposals': list(MerchandisingProposal.objects.filter(status='proposed')),
+            'recent_proposals': list(
+                MerchandisingProposal.objects.exclude(status='proposed').order_by('-reviewed_at')[
+                    :10
+                ]
+            ),
+            'breadcrumb_trail': _trail({'label': 'Autopilot proposals'}),
+            'active_section': 'settings',
+        },
+    )
+
+
+@staff_member_required
+def proposal_action(request, proposal_id):
+    """Approve (apply the low-risk config action) or dismiss one proposal."""
+    from . import autopilot
+    from .models import MerchandisingProposal
+
+    proposal = get_object_or_404(MerchandisingProposal, pk=proposal_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            applied = autopilot.apply_proposal(proposal, actor=request.user)
+            messages.success(request, 'Applied.' if applied else 'Acknowledged.')
+        elif action == 'dismiss':
+            autopilot.dismiss_proposal(proposal, actor=request.user)
+            messages.info(request, 'Dismissed.')
+    return HttpResponseRedirect('/dashboard/dynamic-products/proposals/')

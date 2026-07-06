@@ -51,3 +51,14 @@ def rebuild_bandit_posteriors(window_days: int = 30) -> dict:
     result = _rebuild(window_days=window_days)
     logger.info('dynamic_products: rebuilt %s bandit arms', result.get('updated'))
     return result
+
+
+@shared_task(name='dynamic_products.generate_merchandising_proposals')
+def generate_merchandising_proposals() -> dict:
+    """Nightly AI merchandiser — file merchandising proposals into the review
+    queue (see autopilot.generate_proposals)."""
+    from plugins.installed.dynamic_products.autopilot import generate_proposals
+
+    result = generate_proposals()
+    logger.info('dynamic_products: filed %s merchandising proposals', result.get('created'))
+    return result

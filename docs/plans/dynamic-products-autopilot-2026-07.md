@@ -165,7 +165,24 @@ now orders by a data-driven score; nightly + event refresh wired.
 - Tests: bandit converges to the higher-reward arm; exploration floor honored; diversity
   cap caps per-category; cold-start arm explored; reward mapping correct; disable-safe.
 
-## Phase 3 — AI merchandiser autopilot (LLM offline, human checkpoint)
+## Phase 3 — AI merchandiser autopilot (LLM offline, human checkpoint) — ✅ DONE
+
+> Shipped: `MerchandisingProposal` review-queue model + migration; `autopilot.py`
+> (`ensure_default_blocks` zero-config provisioning; `generate_proposals` —
+> data-driven proposals from live blocks / high-propensity products /
+> `experiments.results_for` winners, with an optional bounded **offline** LLM
+> rewrite of titles+rationales via the shared provider, fail-soft; `apply_proposal`
+> / `dismiss_proposal` — low-risk actions only, audited via `core.audit`); a
+> nightly `generate_merchandising_proposals` beat (5:00am); a dashboard review
+> page (`/dashboard/dynamic-products/proposals/`) with Approve/Dismiss + nav entry.
+> 11 tests; full 41-test dynamic_products sweep green. Migration 0005.
+> **Scope notes:** the "human checkpoint" is the Approve click (nothing
+> auto-applies) — heavier `core/safety.py` gating isn't needed because the only
+> apply actions (provision/enable a block, feature products) are non-destructive;
+> ADR 0029 respected (the LLM is a bounded text call, not a new agent class). The
+> visitor-id-on-order attribution fix (for counterfactual bandit rewards) remains
+> a follow-up, as does Phase 4 (LightGBM).
+
 
 **Files:**
 - `dynamic_products/autopilot.py` (**new**) — a nightly **Linda Worker** run (existing

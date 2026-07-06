@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 # Theme slots the reference theme (dot_books) renders today. Mirrors the
@@ -208,3 +209,65 @@ class BanditArm(models.Model):
     @property
     def mean(self) -> float:
         return self.alpha / (self.alpha + self.beta)
+
+
+class MerchandisingProposal(models.Model):
+    """A proposed merchandising change from the nightly autopilot merchandiser —
+    a **human-checkpoint review queue**.
+
+    Nothing is applied automatically: the merchandiser reads the store's own
+    signals (live blocks, bandit winners, propensity distribution, experiment
+    results) and files a proposal; a staff member then Approves (which applies a
+    low-risk config action — provision/enable a block, feature products) or
+    Dismisses it. Approval is audited via ``core.audit``. Risky actions are out of
+    scope by construction, so this needs no heavier safety gate than the human
+    click. (ADR 0029: the optional LLM rationale uses the shared provider for a
+    bounded text task — it does not add an agent class.)
+    """
+
+    KIND_CHOICES = [
+        ('enable_autopilot', 'Turn on Autopilot'),
+        ('provision_block', 'Add a merchandising block'),
+        ('feature_products', 'Feature high-propensity products'),
+        ('winning_strategy', 'Experiment result'),
+        ('insight', 'Merchandising insight'),
+    ]
+    STATUS_CHOICES = [
+        ('proposed', 'Proposed'),
+        ('approved', 'Approved'),
+        ('dismissed', 'Dismissed'),
+    ]
+    # Kinds that perform a config change on approval (vs informational insights).
+    ACTIONABLE_KINDS = ('enable_autopilot', 'provision_block', 'feature_products')
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES, db_index=True)
+    title = models.CharField(max_length=200)
+    rationale = models.TextField(blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    # Dedup key — the merchandiser skips filing a proposal that already has an
+    # open (proposed) row with the same signature.
+    signature = models.CharField(max_length=200, db_index=True)
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default='proposed', db_index=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['status', '-created_at'], name='dynprop_status_idx')]
+
+    def __str__(self) -> str:
+        return f'{self.get_kind_display()}: {self.title} [{self.status}]'
+
+    @property
+    def is_actionable(self) -> bool:
+        return self.kind in self.ACTIONABLE_KINDS
