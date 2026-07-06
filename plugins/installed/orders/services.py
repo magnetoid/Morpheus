@@ -22,6 +22,24 @@ from plugins.installed.orders.models import Cart, CartItem, Order, OrderItem
 
 logger = logging.getLogger('morpheus.orders')
 
+# Canonical "this order represents a completed purchase" status set — the single
+# source of truth for recommendation / analytics / co-purchase consumers, which
+# otherwise hardcoded divergent sets (personalisation referenced the non-existent
+# 'paid'/'completed', silently under-counting). Excludes pending/cancelled/refunded.
+PAID_STATUSES = (
+    'confirmed',
+    'processing',
+    'partially_fulfilled',
+    'fulfilled',
+    'shipped',
+    'delivered',
+)
+
+
+def paid_order_items_qs():
+    """OrderItems from orders that represent a completed purchase (see PAID_STATUSES)."""
+    return OrderItem.objects.filter(order__status__in=PAID_STATUSES)
+
 
 class CartService:
     @classmethod

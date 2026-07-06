@@ -188,8 +188,10 @@ def _probability_grid(block, *, request, customer, limit, **_) -> list:
         return []
 
     # Get items sorted by highest probability
-    grid_items = DynamicGridItem.objects.all().select_related('product').order_by('-purchase_probability')
-    
+    grid_items = (
+        DynamicGridItem.objects.all().select_related('product').order_by('-purchase_probability')
+    )
+
     # We may want to apply block filters (like categories/tags)
     product_qs = _base_active_qs()
     product_qs = _apply_filters(product_qs, block)
@@ -201,79 +203,231 @@ def _probability_grid(block, *, request, customer, limit, **_) -> list:
             ranked_pids.append(item.product_id)
             if len(ranked_pids) >= limit * 2:
                 break
-                
+
     # Fallback to _for_you if grid items are empty
     if not ranked_pids:
-        return _for_you(block, request=request, customer=customer, context_product=None, limit=limit)
-        
+        return _for_you(
+            block, request=request, customer=customer, context_product=None, limit=limit
+        )
+
     return ranked_pids
 
-def calculate_grid_probabilities() -> dict:
+
+def calculate_grid_probabilities(
+    *, sales_window_days: int = 60, view_window_days: int = 30, trend_window_days: int = 14
+) -> dict:
+    """Recompute ``DynamicGridItem.purchase_probability`` for every active product
+    from REAL behavioural signals — the data-driven replacement for the former
+    mock (which returned a constant ~0.4 for everything).
+
+    Transparent weighted scorecard; each component is min-max normalized ACROSS
+    the active catalog to [0, 1] so the score is calibrated and catalog-relative::
+
+        intent   purchases ÷ views (conversion — strongest intent signal)  0.30
+        sales    units sold in the sales window                             0.30
+        demand   product-view volume (interest)                             0.20
+        trend    recent-vs-prior view velocity (momentum)                   0.15
+        quality  avg rating + featured + on-sale bumps                      0.05
+      × inventory_factor  (tracked & out-of-stock → 0, low → 0.5, else 1)
+
+    Bulk-aggregated (a handful of GROUP BY queries + one write pass), so it is
+    safe to run nightly in a Celery worker. Signal plugins (analytics, inventory,
+    reviews) are read lazily and fail-soft: an absent one simply drops its term.
+    Returns ``{'updated': n}`` for the scheduler log.
     """
-    Recalculate purchase probabilities for all active products.
-    Integrates historical sales, inventory levels, popularity, and trends.
-    This should be run periodically via a background task (e.g., Celery beat)
-    or updated in real-time via signals.
-    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
     from plugins.installed.catalog.models import Product
-    from plugins.installed.dynamic_products.models import DynamicGridItem
-    
-    # Weights for different factors
-    W_SALES = 0.4
-    W_POPULARITY = 0.3
-    W_INVENTORY = 0.2
-    W_TREND = 0.1
-    
-    active_products = Product.objects.filter(status='active').prefetch_related('images', 'category')
-    
-    updated_count = 0
-    for product in active_products:
-        # Mock calculation variables (in a real system, these come from analytics/orders models)
-        # e.g. recent_sales = OrderItem.objects.filter(product=product, created_at__gte=...)...
-        sales_score = getattr(product, 'recent_sales_score', 0.5) 
-        popularity_score = getattr(product, 'view_count_score', 0.5)
-        trend_score = getattr(product, 'trend_velocity', 0.5)
-        
-        # Inventory factor: slightly penalize if low stock, heavily if out of stock
-        inventory_score = 1.0
-        if getattr(product, 'track_inventory', False):
-            stock = product.total_stock if hasattr(product, 'total_stock') else 10
-            if stock == 0:
-                inventory_score = 0.0
-            elif stock < 5:
-                inventory_score = 0.5
-                
-        # Calculate final probability (0.0 to 1.0)
-        probability = (
-            (sales_score * W_SALES) + 
-            (popularity_score * W_POPULARITY) + 
-            (trend_score * W_TREND)
-        ) * inventory_score
-        
-        # Normalize and cap
-        probability = max(0.0, min(1.0, probability))
-        
-        # Extract metadata
-        primary_image = product.primary_image
-        cover_url = primary_image.image.url if primary_image and primary_image.image else ""
-        price_val = product.price.amount if product.price else 0.00
-        category_name = product.category.name if product.category else ""
-        
-        # Update or create the grid item
-        DynamicGridItem.objects.update_or_create(
-            product=product,
-            defaults={
-                'title': product.name,
-                'author': getattr(product, 'author_name', ''), # Fallback metadata
-                'cover_image_url': cover_url,
-                'price': price_val,
-                'genre': category_name,
-                'purchase_probability': probability
-            }
+
+    now = timezone.now()
+    products = list(
+        Product.objects.filter(status='active').values(
+            'pk',
+            'slug',
+            'name',
+            'is_featured',
+            'track_inventory',
+            'price',
+            'compare_at_price',
+            'category__name',
         )
-        updated_count += 1
-        
-    return {'updated': updated_count}
+    )
+    if not products:
+        return {'updated': 0}
+    pids = [p['pk'] for p in products]
+
+    # Raw signals (each a bulk GROUP BY; optional plugins fail soft to empty).
+    units_sales = _units_sold(now - timedelta(days=sales_window_days))
+    units_intent = _units_sold(now - timedelta(days=view_window_days))
+    views_demand = _view_counts(now - timedelta(days=view_window_days))
+    views_recent = _view_counts(now - timedelta(days=trend_window_days))
+    views_prior = _view_counts(
+        now - timedelta(days=2 * trend_window_days),
+        until=now - timedelta(days=trend_window_days),
+    )
+    ratings = _ratings(pids)
+    inv_factor = _inventory_factors(pids, {p['pk'] for p in products if p['track_inventory']})
+
+    raw_sales, raw_demand, raw_intent, raw_trend, quality = {}, {}, {}, {}, {}
+    for p in products:
+        pid, slug = p['pk'], p['slug']
+        v_demand = views_demand.get(slug, 0)
+        raw_sales[pid] = float(units_sales.get(pid, 0))
+        raw_demand[pid] = float(v_demand)
+        raw_intent[pid] = min(1.0, units_intent.get(pid, 0) / v_demand) if v_demand else 0.0
+        raw_trend[pid] = views_recent.get(slug, 0) / max(views_prior.get(slug, 0), 1)
+        q = ratings.get(pid, 0.0)
+        if p['is_featured']:
+            q += 0.3
+        if p['compare_at_price'] and p['price'] and p['compare_at_price'] > p['price']:
+            q += 0.2
+        quality[pid] = min(1.0, q)
+
+    n_sales = _minmax(raw_sales, pids)
+    n_demand = _minmax(raw_demand, pids)
+    n_intent = _minmax(raw_intent, pids)
+    n_trend = _minmax(raw_trend, pids)
+
+    scores = {}
+    for p in products:
+        pid = p['pk']
+        blended = (
+            0.30 * n_intent[pid]
+            + 0.30 * n_sales[pid]
+            + 0.20 * n_demand[pid]
+            + 0.15 * n_trend[pid]
+            + 0.05 * quality[pid]
+        ) * inv_factor.get(pid, 1.0)
+        scores[pid] = max(0.0, min(1.0, blended))
+    return {'updated': _persist_scores(products, scores, now)}
+
+
+def _persist_scores(products, scores, now) -> int:
+    """Write purchase_probability + denormalized display fields to DynamicGridItem
+    in two bulk passes (create new rows, update existing)."""
+    from plugins.installed.dynamic_products.models import DynamicGridItem
+
+    pids = [p['pk'] for p in products]
+    existing = {gi.product_id: gi for gi in DynamicGridItem.objects.filter(product_id__in=pids)}
+    to_create, to_update = [], []
+    for p in products:
+        pid = p['pk']
+        gi = existing.get(pid)
+        if gi is not None:
+            gi.purchase_probability = scores[pid]
+            gi.title = (p['name'] or '')[:255]
+            gi.genre = (p['category__name'] or '')[:100]
+            gi.last_calculated_at = now
+            to_update.append(gi)
+        else:
+            to_create.append(
+                DynamicGridItem(
+                    product_id=pid,
+                    title=(p['name'] or '')[:255],
+                    genre=(p['category__name'] or '')[:100],
+                    price=p['price'] or 0,
+                    purchase_probability=scores[pid],
+                    last_calculated_at=now,
+                )
+            )
+    if to_create:
+        DynamicGridItem.objects.bulk_create(to_create, batch_size=500)
+    if to_update:
+        DynamicGridItem.objects.bulk_update(
+            to_update,
+            ['purchase_probability', 'title', 'genre', 'last_calculated_at'],
+            batch_size=500,
+        )
+    return len(to_create) + len(to_update)
+
+
+def _units_sold(since, until=None) -> dict:
+    """product_id -> units sold in PAID orders in the window (canonical statuses)."""
+    from django.db.models import Sum
+
+    from plugins.installed.orders.services import paid_order_items_qs
+
+    qs = paid_order_items_qs().filter(order__placed_at__gte=since)
+    if until is not None:
+        qs = qs.filter(order__placed_at__lt=until)
+    rows = qs.values('product_id').annotate(u=Sum('quantity'))
+    return {r['product_id']: (r['u'] or 0) for r in rows if r['product_id']}
+
+
+def _view_counts(since, until=None) -> dict:
+    """product_slug -> product_view events in the window. Analytics is optional."""
+    try:
+        from django.db.models import Count
+
+        from plugins.installed.analytics.models import AnalyticsEvent
+    except Exception:  # noqa: BLE001 - analytics plugin disabled
+        return {}
+    qs = AnalyticsEvent.objects.filter(kind='product_view', created_at__gte=since).exclude(
+        product_slug=''
+    )
+    if until is not None:
+        qs = qs.filter(created_at__lt=until)
+    return {r['product_slug']: r['n'] for r in qs.values('product_slug').annotate(n=Count('id'))}
+
+
+def _ratings(pids) -> dict:
+    """product_id -> avg rating normalized to [0,1]. Reviews are optional."""
+    try:
+        from django.db.models import Avg
+
+        from plugins.installed.catalog.models import ProductReview
+    except Exception:  # noqa: BLE001 - reviews unavailable
+        return {}
+    try:
+        rows = (
+            ProductReview.objects.filter(product_id__in=pids)
+            .values('product_id')
+            .annotate(a=Avg('rating'))
+        )
+        return {r['product_id']: min(1.0, (r['a'] or 0) / 5.0) for r in rows}
+    except Exception:  # noqa: BLE001 - ProductReview shape differs
+        return {}
+
+
+def _inventory_factors(pids, tracking_pids) -> dict:
+    """product_id -> stock factor in [0,1]. Only products that TRACK inventory and
+    are out/low are penalized (out -> 0, <5 -> 0.5). Inventory is an optional
+    plugin; absent -> every product neutral (1.0)."""
+    factors = {pid: 1.0 for pid in pids}
+    if not tracking_pids:
+        return factors
+    try:
+        from django.db.models import F, Sum
+
+        from plugins.installed.inventory.models import StockLevel
+    except Exception:  # noqa: BLE001 - inventory plugin disabled
+        return factors
+    rows = (
+        StockLevel.objects.filter(variant__product_id__in=tracking_pids)
+        .values('variant__product_id')
+        .annotate(avail=Sum(F('quantity') - F('reserved_quantity')))
+    )
+    for r in rows:
+        avail = r['avail'] or 0
+        if avail <= 0:
+            factors[r['variant__product_id']] = 0.0
+        elif avail < 5:
+            factors[r['variant__product_id']] = 0.5
+    return factors
+
+
+def _minmax(raw: dict, pids: list) -> dict:
+    """Min-max normalize component values across the catalog to [0,1]. A flat
+    (all-equal) input yields all zeros — no signal to differentiate on."""
+    vals = [raw.get(pid, 0.0) for pid in pids]
+    lo, hi = min(vals), max(vals)
+    if hi <= lo:
+        return {pid: 0.0 for pid in pids}
+    span = hi - lo
+    return {pid: (raw.get(pid, 0.0) - lo) / span for pid in pids}
+
 
 # ---------------------------------------------------------------------------
 # Signal helpers (each optional / lazy / fail-soft)

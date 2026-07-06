@@ -72,6 +72,20 @@ class DynamicProductsPlugin(Plugin):
         # normally written by advanced_ecommerce. We subscribe too so the
         # session signal survives advanced_ecommerce being disabled.
         self.register_hook(events.PRODUCT_VIEWED, self.on_product_viewed, priority=72)
+        # Automated propensity refresh: a nightly full recompute + a throttled
+        # refresh after each order, so DynamicGridItem.purchase_probability tracks
+        # real demand with zero merchant effort. Tasks live in tasks.py.
+        from celery.schedules import crontab  # noqa: PLC0415
+
+        self.register_celery_tasks('plugins.installed.dynamic_products.tasks')
+        self.register_celery_beat(
+            'dynamic_products:recompute_probabilities',
+            {
+                'task': 'dynamic_products.recompute_probabilities',
+                'schedule': crontab(hour=3, minute=30),
+            },
+        )
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
 
     def on_product_viewed(self, product=None, request=None, **kwargs):
         """Maintain session['recently_viewed'] (idempotent, capped)."""
@@ -89,6 +103,18 @@ class DynamicProductsPlugin(Plugin):
             session['recently_viewed'] = slugs[:_RECENTLY_VIEWED_CAP]
         except Exception as e:  # noqa: BLE001 — never block the product page
             logger.debug('dynamic_products: recently_viewed track failed: %s', e)
+
+    def on_order_placed(self, order=None, **kwargs):
+        """After a sale, debounce a probability refresh so the grid reflects the
+        new demand ahead of the nightly run. Never blocks checkout."""
+        try:
+            from plugins.installed.dynamic_products.tasks import (  # noqa: PLC0415
+                refresh_probabilities_throttled,
+            )
+
+            refresh_probabilities_throttled.delay()
+        except Exception as e:  # noqa: BLE001 — a queue hiccup must not fail an order
+            logger.debug('dynamic_products: refresh enqueue failed: %s', e)
 
     # ── Contributions ────────────────────────────────────────────────────
     def contribute_storefront_blocks(self) -> list:

@@ -24,6 +24,20 @@ class PersonalisationPlugin(Plugin):
         # disabled the subscriber is gone and every list renders in its
         # original order, so personalisation vanishes with the toggle.
         self.register_hook(events.PRODUCT_LIST_REORDER, self._reorder_products, priority=50)
+        # Nightly co-purchase recompute. The task existed but was never
+        # scheduled, so CoPurchaseScore never refreshed (the docstring's
+        # "runs nightly" was aspirational). 2:30am — ahead of the
+        # dynamic_products propensity recompute (3:30am) that reads it.
+        from celery.schedules import crontab  # noqa: PLC0415
+
+        self.register_celery_tasks('plugins.installed.personalisation.tasks')
+        self.register_celery_beat(
+            'personalisation:recompute_copurchases',
+            {
+                'task': 'personalisation.recompute_copurchases',
+                'schedule': crontab(hour=2, minute=30),
+            },
+        )
 
     def _reorder_products(self, value=None, request=None, surface: str = '', **kwargs):
         if value is None or request is None:
