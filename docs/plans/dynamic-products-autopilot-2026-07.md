@@ -130,7 +130,19 @@ plugins.installed.dynamic_products plugins.installed.personalisation
 plugins.installed.orders` green; `manage.py check`; ruff. Behaviour: probability_grid
 now orders by a data-driven score; nightly + event refresh wired.
 
-## Phase 2 — Self-optimizing per-visitor reranker (zero deps)
+## Phase 2 — Self-optimizing per-visitor reranker (zero deps) — ✅ DONE
+
+> Shipped: `BanditArm` (per product×segment Beta posterior) + migrations;
+> `segments.py` (PII-free device×daypart×auth); `reranker.py` (pure-Python
+> `random.betavariate` Thompson draw blended 50/50 with the Phase-1 propensity,
+> + exploration floor + per-category diversity cap + cold-start uniform prior);
+> a new `autopilot` strategy; `rebuild_bandit_posteriors` nightly beat (4:00am)
+> that learns from product-view engagement bucketed by segment (views in
+> converting sessions score higher). 10 tests; 30-test dynamic_products sweep
+> green. **Honest limitation:** reward is view→session-conversion association, not
+> counterfactual impression→purchase attribution (that needs the Phase-3
+> visitor-id-on-order fix + Phase-4 SNIPS rigor) — documented in the code.
+
 
 **Files:**
 - `dynamic_products/models.py` — `BanditArm(product, segment, alpha, beta, impressions,

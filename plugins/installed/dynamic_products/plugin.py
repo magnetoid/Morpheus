@@ -85,6 +85,15 @@ class DynamicProductsPlugin(Plugin):
                 'schedule': crontab(hour=3, minute=30),
             },
         )
+        # Self-optimizing bandit: rebuild per-segment posteriors nightly, just
+        # after the propensity recompute it blends with.
+        self.register_celery_beat(
+            'dynamic_products:rebuild_bandit_posteriors',
+            {
+                'task': 'dynamic_products.rebuild_bandit_posteriors',
+                'schedule': crontab(hour=4, minute=0),
+            },
+        )
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
 
     def on_product_viewed(self, product=None, request=None, **kwargs):

@@ -46,6 +46,7 @@ STRATEGY_CHOICES = [
     ('related', 'Related to this product'),
     ('bought_together', 'Frequently bought together'),
     ('probability_grid', 'Dynamic Probability Grid'),
+    ('autopilot', 'Autopilot (self-optimizing, per-visitor)'),
 ]
 
 # Strategies that only make sense on a product page (need context_product).
@@ -142,26 +143,68 @@ class DynamicGridItem(models.Model):
     """Stores all book metadata and a real-time calculated purchase probability score
     for dynamic grid layout rendering.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.OneToOneField(
-        'catalog.Product',
-        on_delete=models.CASCADE,
-        related_name='dynamic_grid_item'
+        'catalog.Product', on_delete=models.CASCADE, related_name='dynamic_grid_item'
     )
     title = models.CharField(max_length=255)
     author = models.CharField(max_length=255, blank=True)
     cover_image_url = models.URLField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     genre = models.CharField(max_length=100, blank=True)
-    
+
     # Real-time calculated purchase probability score (0.0 to 1.0)
     purchase_probability = models.FloatField(default=0.0, db_index=True)
-    
+
     last_calculated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-purchase_probability']
 
     def __str__(self) -> str:
-        return f"{self.title} (Probability: {self.purchase_probability:.2f})"
+        return f'{self.title} (Probability: {self.purchase_probability:.2f})'
 
+
+class BanditArm(models.Model):
+    """Per-(product, visitor-segment) Beta-Bernoulli posterior for the self-
+    optimizing "autopilot" reranker.
+
+    The posterior is rebuilt nightly (``tasks.rebuild_bandit_posteriors``) from
+    real product-view engagement bucketed by an anonymous, PII-free segment
+    (device × day-part × auth): views in sessions that went on to convert score
+    higher. At serve time the reranker draws one Thompson sample per arm
+    (``random.betavariate(alpha, beta)`` — pure-Python, no numpy) and ranks by it,
+    so well-performing products rise while uncertainty keeps exploring newcomers.
+
+    ``alpha = 1 + reward`` and ``beta = 1 + (trials - reward)`` — a Beta(1,1)
+    uniform prior for an unseen arm, so cold-start arms are naturally explored.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(
+        'catalog.Product', on_delete=models.CASCADE, related_name='bandit_arms'
+    )
+    segment = models.CharField(
+        max_length=64,
+        db_index=True,
+        help_text='Anonymous visitor segment, e.g. "mobile:evening:anon".',
+    )
+    alpha = models.FloatField(default=1.0)
+    beta = models.FloatField(default=1.0)
+    trials = models.PositiveIntegerField(default=0)
+    reward = models.FloatField(default=0.0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['product', 'segment'], name='dynbandit_product_segment')
+        ]
+        indexes = [models.Index(fields=['segment', 'product'], name='dynbandit_segment_idx')]
+
+    def __str__(self) -> str:
+        return f'{self.product_id} @ {self.segment} (α={self.alpha:.1f} β={self.beta:.1f})'
+
+    @property
+    def mean(self) -> float:
+        return self.alpha / (self.alpha + self.beta)

@@ -60,6 +60,7 @@ def recommend(block, *, request=None, customer=None, context_product=None) -> li
         'bought_together': _bought_together,
         'for_you': _for_you,
         'probability_grid': _probability_grid,
+        'autopilot': _autopilot,
     }
     fn = dispatch.get(strategy, _for_you)
 
@@ -211,6 +212,43 @@ def _probability_grid(block, *, request, customer, limit, **_) -> list:
         )
 
     return ranked_pids
+
+
+def _autopilot(block, *, request, customer, limit, **_) -> list:
+    """Self-optimizing per-visitor strategy: take the propensity-ranked candidate
+    pool and Thompson-rerank it for THIS visitor's segment (bandit posterior +
+    exploration floor + diversity cap). Degrades to the propensity / for-you order
+    when the bandit has no signal yet — so it's never worse than probability_grid.
+    """
+    from plugins.installed.dynamic_products.reranker import thompson_rerank
+    from plugins.installed.dynamic_products.segments import segment_for
+
+    ids = _probability_grid(block, request=request, customer=customer, limit=limit * 3)
+    if not ids:
+        ids = _for_you(
+            block, request=request, customer=customer, context_product=None, limit=limit * 3
+        )
+    if not ids:
+        return []
+    return thompson_rerank(
+        ids, segment_for(request), _propensity_map(ids), category_of=_category_map(ids)
+    )
+
+
+def _propensity_map(ids) -> dict:
+    """product_id -> Phase-1 purchase_probability, for the reranker blend."""
+    from plugins.installed.dynamic_products.models import DynamicGridItem
+
+    return dict(
+        DynamicGridItem.objects.filter(product_id__in=ids).values_list(
+            'product_id', 'purchase_probability'
+        )
+    )
+
+
+def _category_map(ids) -> dict:
+    """product_id -> category_id, for the reranker's per-category diversity cap."""
+    return dict(_base_active_qs().filter(pk__in=ids).values_list('pk', 'category_id'))
 
 
 def calculate_grid_probabilities(
@@ -700,6 +738,88 @@ def _materialize(ids, limit) -> list:
         )
     }
     return [by_id[pid] for pid in ordered if pid in by_id]
+
+
+def rebuild_bandit_posteriors(*, window_days: int = 30) -> dict:
+    """Rebuild every BanditArm posterior from real product-view engagement,
+    bucketed by anonymous segment. A view earns reward 1.0 when its session went
+    on to convert (a cart / checkout / purchase event in the window), else a 0.1
+    engagement floor; ``alpha = 1 + Σreward``, ``beta = 1 + (trials − Σreward)``.
+    So an arm whose views tend to precede conversions in a segment draws higher.
+    Analytics is optional (absent → no-op). Nightly Celery job."""
+    from collections import defaultdict
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from plugins.installed.dynamic_products.segments import segment_of
+
+    try:
+        from plugins.installed.analytics.models import AnalyticsEvent
+    except Exception:  # noqa: BLE001 — analytics plugin disabled
+        return {'updated': 0, 'skipped': 'analytics unavailable'}
+
+    cutoff = timezone.now() - timedelta(days=window_days)
+    converted = set(
+        AnalyticsEvent.objects.filter(
+            kind__in=('cart', 'checkout', 'purchase'), created_at__gte=cutoff
+        )
+        .exclude(session_id=None)
+        .values_list('session_id', flat=True)
+    )
+    slug_to_pid = dict(_base_active_qs().values_list('slug', 'pk'))
+    agg: dict = defaultdict(lambda: [0, 0.0])  # (pid, segment) -> [trials, reward]
+    views = (
+        AnalyticsEvent.objects.filter(kind='product_view', created_at__gte=cutoff)
+        .exclude(product_slug='')
+        .values(
+            'product_slug', 'session_id', 'created_at', 'session__device', 'session__customer_id'
+        )
+    )
+    for v in views.iterator():
+        pid = slug_to_pid.get(v['product_slug'])
+        if pid is None:
+            continue
+        hour = timezone.localtime(v['created_at']).hour
+        seg = segment_of(v['session__device'] or 'desktop', hour, bool(v['session__customer_id']))
+        cell = agg[(pid, seg)]
+        cell[0] += 1
+        cell[1] += 1.0 if v['session_id'] in converted else 0.1
+    return {'updated': _upsert_arms(agg)}
+
+
+def _upsert_arms(agg) -> int:
+    """Two-pass bulk upsert of BanditArm rows from an
+    (product_id, segment) -> [trials, reward] aggregate."""
+    from plugins.installed.dynamic_products.models import BanditArm
+
+    existing = {(a.product_id, a.segment): a for a in BanditArm.objects.all()}
+    to_create, to_update = [], []
+    for (pid, seg), (trials, reward) in agg.items():
+        alpha = 1.0 + reward
+        beta = 1.0 + max(0.0, trials - reward)
+        arm = existing.get((pid, seg))
+        if arm is not None:
+            arm.alpha, arm.beta, arm.trials, arm.reward = alpha, beta, trials, reward
+            to_update.append(arm)
+        else:
+            to_create.append(
+                BanditArm(
+                    product_id=pid,
+                    segment=seg,
+                    alpha=alpha,
+                    beta=beta,
+                    trials=trials,
+                    reward=reward,
+                )
+            )
+    if to_create:
+        BanditArm.objects.bulk_create(to_create, batch_size=500)
+    if to_update:
+        BanditArm.objects.bulk_update(
+            to_update, ['alpha', 'beta', 'trials', 'reward'], batch_size=500
+        )
+    return len(to_create) + len(to_update)
 
 
 # `models` is imported lazily-at-module-scope only for Q() expressions used

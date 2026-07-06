@@ -40,3 +40,14 @@ def refresh_probabilities_throttled() -> dict:
     if not cache.add(_REFRESH_LOCK_KEY, '1', timeout=_REFRESH_THROTTLE_SECONDS):
         return {'skipped': 'throttled'}
     return recompute_probabilities()
+
+
+@shared_task(name='dynamic_products.rebuild_bandit_posteriors')
+def rebuild_bandit_posteriors(window_days: int = 30) -> dict:
+    """Nightly rebuild of the autopilot bandit's per-segment posteriors from
+    product-view engagement (see services.rebuild_bandit_posteriors)."""
+    from plugins.installed.dynamic_products.services import rebuild_bandit_posteriors as _rebuild
+
+    result = _rebuild(window_days=window_days)
+    logger.info('dynamic_products: rebuilt %s bandit arms', result.get('updated'))
+    return result
