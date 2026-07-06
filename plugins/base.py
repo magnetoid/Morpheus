@@ -208,12 +208,20 @@ class MorpheusPlugin:
         self._registry.add_task_module(module)
 
     def register_context_processor(self, func: Callable) -> None:
-        """Add a template context processor that runs on every request."""
+        """Contribute a template context processor that runs on every request.
+
+        Consumed at request time by the aggregator in
+        `plugins/context_processors.py:plugin_context` (Django resolves the
+        static TEMPLATES list at settings-import, before plugins load, so this
+        lazy registration is invisible to a directly-listed processor). The
+        aggregator skips this func while `self.name` is inactive, so the
+        contributed context disappears when the plugin is disabled.
+        """
         if not callable(func):
             raise TypeError('register_context_processor: func must be callable.')
         if self._registry is None:
             return
-        self._registry.add_context_processor(func)
+        self._registry.add_context_processor(func, plugin=self.name)
 
     def register_celery_beat(self, name: str, entry: dict) -> None:
         """Add a Celery beat schedule entry. Existing entries are not overwritten."""

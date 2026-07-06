@@ -44,10 +44,6 @@
     {
       "file": "core/assistant/tools/spawn.py",
       "imports": "plugins.installed.agent_core.models"
-    },
-    {
-      "file": "core/context_processors.py",
-      "imports": "plugins.installed.orders.models"
     }
   ]
 }

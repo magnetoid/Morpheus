@@ -322,7 +322,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.store_settings',
-                'core.context_processors.cart_context',
+                # cart_context moved to the orders plugin (register_context_processor);
+                # merged at request time by plugins.context_processors.plugin_context.
                 'core.context_processors.display_currency',
                 'core.context_processors.channel_context',
                 'plugins.installed.catalog.context_processors.nav_categories',

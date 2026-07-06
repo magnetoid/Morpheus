@@ -1,8 +1,12 @@
-"""Plugin context processor — exposes active plugins + dashboard contributions."""
+"""Plugin context processor — exposes active plugins + dashboard contributions,
+and merges plugin-contributed context processors (register_context_processor)."""
 
 from __future__ import annotations
 
+import logging
 from collections import OrderedDict
+
+logger = logging.getLogger(__name__)
 
 # Section display order in the admin sidebar — Shopify-style top-to-bottom.
 # Sections not in this list fall through to alphabetical order at the bottom.
@@ -224,7 +228,7 @@ def plugin_context(request):
         if len(rest) >= 2 and rest[0]:
             active_apps_slug = f'{rest[0]}/{rest[1]}'
 
-    return {
+    out = {
         'active_plugins': plugin_registry._active,
         'plugin_registry': plugin_registry,
         'nav_badges': nav_badges,
@@ -243,6 +247,26 @@ def plugin_context(request):
         'active_settings_category': active_settings_category,
         'active_apps_slug': active_apps_slug,
     }
+
+    # Plugin-contributed context processors (register_context_processor). Django
+    # resolves its TEMPLATES list at settings-import — before plugins load — so
+    # these are merged HERE, at request time, instead of being listed directly.
+    # Each runs only while its owning plugin is active (context processors are
+    # not bus-gated like hooks), and a broken one is isolated so it can't 500
+    # the page. This is the consumer that makes register_context_processor real.
+    for func, owner in plugin_registry.context_processors():
+        if owner and not plugin_registry.is_active(owner):
+            continue
+        try:
+            extra = func(request)
+        except Exception:  # noqa: BLE001 — a broken contributor must not break rendering
+            logger.warning(
+                'context processor %s failed', getattr(func, '__qualname__', func), exc_info=True
+            )
+            continue
+        if isinstance(extra, dict):
+            out.update(extra)
+    return out
 
 
 def _compute_nav_badges(request) -> dict:

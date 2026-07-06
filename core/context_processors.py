@@ -46,36 +46,6 @@ def _product_placeholder_url() -> str:
         return ''
 
 
-def cart_context(request):
-    """Lightweight cart item count for the nav bar.
-
-    Runs on every request, so resolve it in a SINGLE query: annotate the
-    sum of line quantities onto the cart lookup instead of fetching the cart
-    and then calling `cart.item_count` (which issues its own aggregate) — two
-    queries per request collapsed to one.
-    """
-    from django.db.models import Sum
-
-    count = 0
-    try:
-        from plugins.installed.orders.models import Cart
-
-        qs = None
-        if request.user.is_authenticated:
-            qs = Cart.objects.filter(customer=request.user)
-        elif request.session.session_key:
-            qs = Cart.objects.filter(session_key=request.session.session_key)
-        if qs is not None:
-            row = qs.annotate(_n=Sum('items__quantity')).order_by('-updated_at').first()
-            if row:
-                count = row._n or 0
-    except Exception:
-        import logging
-
-        logging.getLogger(__name__).warning('cart_context failed', exc_info=True)
-    return {'cart_item_count': count}
-
-
 def display_currency(request):
     """Resolve the visitor's preferred display currency.
 

@@ -420,8 +420,19 @@ class PluginRegistry:
         if module not in self._task_modules:
             self._task_modules.append(module)
 
-    def add_context_processor(self, func) -> None:
-        self._context_processors.append(func)
+    def add_context_processor(self, func, plugin: str | None = None) -> None:
+        """Record a plugin-contributed context processor as (func, owner). The
+        owner lets the request-time aggregator (plugins/context_processors.py)
+        skip it while its plugin is inactive — context processors are resolved
+        statically by Django and are NOT bus-gated like hooks."""
+        self._context_processors.append((func, plugin))
+
+    def context_processors(self) -> list:
+        """The (func, owner) context processors plugins contributed via
+        `register_context_processor`. Consumed by the request-time aggregator;
+        Django never sees these directly (its TEMPLATES list is fixed at
+        settings-import, before plugins load)."""
+        return list(self._context_processors)
 
     # ── GraphQL schema assembly ────────────────────────────────────────────────
 

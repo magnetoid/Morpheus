@@ -25,6 +25,12 @@ class OrdersPlugin(Plugin):
         # Contribute order count / open returns / store credit to the
         # storefront account-home summary.
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=10)
+        # Nav-bar cart item count — contributed to every template (it reads
+        # orders.Cart). The aggregator in plugins/context_processors.py runs it
+        # only while orders is active, so the count vanishes on disable.
+        from plugins.installed.orders.context_processors import cart_context  # noqa: PLC0415
+
+        self.register_context_processor(cart_context)
         # Dashboard-home tiles: KPI row, recent-orders panel, setup step.
         from plugins.installed.orders import dashboard  # noqa: PLC0415
 

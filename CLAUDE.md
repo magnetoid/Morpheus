@@ -169,11 +169,16 @@ arrives via the `EMAIL_TEMPLATE_OVERRIDE` filter; site base URL moved to
 `core/utils/site.py`), and the provider-config coupling
 (`core/agents/llm.py` + `core/assistant/consensus.py` resolve through
 `core/agents/provider_registry.py`; ai_assistant's `ready()` registers the
-dashboard-aware resolver). *Still leaking:* `core/assistant/tools/*`
-queries catalog/orders/cms/metafields/… models directly (fix: migrate each
-to the owning plugin's `contribute_agent_tools()`); and
-`core/context_processors.cart_context` imports `orders.Cart` (can't move
-until something consumes `Plugin.register_context_processor`).
+dashboard-aware resolver); `core/brain/signals.py` (the Brain aggregator no
+longer imports seo/catalog/ai_assistant/morpheus_brain — each plugin pushes its
+slice through the `BRAIN_SIGNALS` filter; ADR 0031); and
+`core/context_processors.cart_context` (moved to the orders plugin via
+`register_context_processor` — the request-time consumer is
+`plugins/context_processors.py:plugin_context`, which merges contributed
+processors and skips inactive owners; this is what finally makes that mechanism
+real). *Still leaking:* `core/assistant/tools/*` queries
+catalog/orders/cms/metafields/… models directly (fix: migrate each to the
+owning plugin's `contribute_agent_tools()`).
 
 ---
 
