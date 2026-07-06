@@ -124,6 +124,9 @@ from .audit import (
     suggest_internal_links_for,
 )
 
+# Core Web Vitals (field data).
+from .cwv import cwv_summary
+
 # Backwards-compat re-export. The old monolith did
 # `from plugins.installed.seo.models import SeoMeta` at module level
 # (line 22 of services.py with a noqa) so that `services.SeoMeta`
@@ -192,6 +195,8 @@ __all__ = [
     'score_aeo',
     'store_audit',
     'suggest_internal_links_for',
+    # core web vitals
+    'cwv_summary',
     # legacy re-export
     'SeoMeta',
 ]

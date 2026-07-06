@@ -85,6 +85,8 @@ class AIAssistantPlugin(Plugin):
         # of ai_summary, and the connect-a-provider setup step.
         self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=30)
         self.register_hook(events.DASHBOARD_SETUP_STEPS, self.on_setup_steps, priority=30)
+        # Morpheus Brain: contribute unread merchant insights (→ improvements.insights).
+        self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
 
         # Autonomy gate: answer the background-agent scheduler's AUTONOMY_ENABLED
         # filter from the `enable_autonomous_operator` flag (Settings → AI). This
@@ -194,6 +196,25 @@ class AIAssistantPlugin(Plugin):
             pulse_daily_refresh.delay()
         except Exception:  # noqa: BLE001
             pass
+
+    def on_brain_signals(self, value, **kwargs):
+        """Merge unread merchant insights into the Brain's Improvements panel
+        (→ improvements.insights). Defensive read; disable-gated by the bus."""
+        from contextlib import suppress  # noqa: PLC0415
+
+        with suppress(Exception):
+            from plugins.installed.ai_assistant.models import MerchantInsight  # noqa: PLC0415
+
+            value.setdefault('improvements', {})['insights'] = [
+                {
+                    'title': i.title,
+                    'type': getattr(i, 'insight_type', ''),
+                    'priority': getattr(i, 'priority', ''),
+                    'impact': getattr(i, 'estimated_impact', ''),
+                }
+                for i in MerchantInsight.objects.filter(is_read=False).order_by('-created_at')[:10]
+            ]
+        return value
 
     def on_order_placed(self, order, **kwargs):
         """Update recommendation model after purchase."""

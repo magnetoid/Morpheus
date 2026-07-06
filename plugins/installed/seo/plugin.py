@@ -50,9 +50,57 @@ class SeoPlugin(Plugin):
         # Categories + Collections — fired from catalog/signals.py post_save.
         self.register_hook(events.CATEGORY_UPDATED, self.on_category_updated, priority=85)
         self.register_hook('collection.updated', self.on_collection_updated, priority=85)
+        # Morpheus Brain — contribute the SEO/content-audit + Core Web Vitals
+        # slices to the read-only signal snapshot (disable-gated by the bus).
+        self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
         # CMS pages — wire the post_save signal directly so we don't need
         # a new cms/signals.py + apps.py wiring.
         self._wire_cms_page_signal()
+
+    def on_brain_signals(self, value, **kwargs):
+        """Merge the SEO slice into the Brain snapshot: content-audit scores,
+        top unresolved 404s (→ content.*) and Core Web Vitals + structured-data
+        flags (→ storefront.*). Every read is defensive; a partial DB never
+        breaks the aggregator."""
+        from contextlib import suppress  # noqa: PLC0415
+
+        content = value.setdefault('content', {})
+        with suppress(Exception):
+            from django.db.models import Avg  # noqa: PLC0415
+
+            from plugins.installed.seo.models import SeoAuditResult  # noqa: PLC0415
+
+            low = SeoAuditResult.objects.order_by('score')[:20]
+            content['low_seo'] = [{'score': a.score, 'issues': (a.issues or [])[:4]} for a in low]
+            content['seo_avg'] = round(
+                SeoAuditResult.objects.aggregate(a=Avg('score'))['a'] or 0, 1
+            )
+            content['seo_low_count'] = SeoAuditResult.objects.filter(score__lt=50).count()
+            content['seo_total'] = SeoAuditResult.objects.count()
+        with suppress(Exception):
+            from plugins.installed.seo.models import NotFoundLog  # noqa: PLC0415
+
+            content['notfound'] = [
+                {'path': n.path, 'hits': n.hit_count}
+                for n in NotFoundLog.objects.order_by('-hit_count')[:10]
+            ]
+        store = value.setdefault('storefront', {})
+        with suppress(Exception):
+            from plugins.installed.seo.services import cwv_summary  # noqa: PLC0415
+
+            store['cwv'] = cwv_summary()
+        with suppress(Exception):
+            from plugins.installed.seo.services import site_settings  # noqa: PLC0415
+
+            s = site_settings()
+            store['seo_flags'] = {
+                'Organization JSON-LD': getattr(s, 'jsonld_organization', None),
+                'Product JSON-LD': getattr(s, 'jsonld_product', None),
+                'WebSite + search box': getattr(s, 'jsonld_website', None),
+                'llms.txt': getattr(s, 'llms_txt_enabled', None),
+                'AI answer block': getattr(s, 'ai_answer_block_enabled', None),
+            }
+        return value
 
     def _wire_cms_page_signal(self) -> None:
         try:

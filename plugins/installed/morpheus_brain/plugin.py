@@ -11,7 +11,7 @@ page. Future plugins can surface extra cards here via a BRAIN_PANELS filter
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin
+from morpheus import DashboardPage, Plugin, events
 
 
 class MorpheusBrainPlugin(Plugin):
@@ -26,6 +26,11 @@ class MorpheusBrainPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        # Contribute the daily AI reports to the core Brain signal snapshot.
+        # DailyReport is THIS plugin's data; the aggregator that renders it
+        # lives in core/brain/ (the kernel owns the console, the plugin owns
+        # the reports). Disable this plugin → the Reports panel goes away.
+        self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
         # The Brain *engine* lives in core/brain/ (core, non-disableable). This
         # surface schedules its continuous AI analysis (Celery beat) and imports
         # the task so Celery discovers it. No cost when no AI is configured.
@@ -47,6 +52,35 @@ class MorpheusBrainPlugin(Plugin):
                 'brain.generate_briefing',
                 {'task': 'morpheus_brain.generate_briefing', 'schedule': 60 * 60 * 24},
             )
+
+    def on_brain_signals(self, value, **kwargs):
+        """Merge the daily AI reports into the Brain snapshot (→ reports). Core
+        seeds reports={'available': False}; publishing them here flips it to
+        available so a disabled plugin shows 'Reports service unavailable'."""
+        from contextlib import suppress  # noqa: PLC0415
+
+        reports = value.setdefault('reports', {})
+        reports['available'] = True
+        reports['reports'] = []
+        with suppress(Exception):
+            from plugins.installed.morpheus_brain.models import DailyReport  # noqa: PLC0415
+
+            rows = DailyReport.objects.filter(is_published=True).order_by('-published_at')[:10]
+            reports['reports'] = [
+                {
+                    'id': str(r.id),
+                    'title': r.title,
+                    'category': r.get_category_display(),
+                    'summary': r.summary,
+                    'content': r.content,
+                    'published_at': r.published_at,
+                    'references': [
+                        {'title': ref.title, 'url': ref.url} for ref in r.references.all()
+                    ],
+                }
+                for r in rows
+            ]
+        return value
 
     def contribute_dashboard_pages(self) -> list:
         return [

@@ -46,30 +46,6 @@
       "imports": "plugins.installed.agent_core.models"
     },
     {
-      "file": "core/brain/signals.py",
-      "imports": "plugins.installed.ai_assistant.models"
-    },
-    {
-      "file": "core/brain/signals.py",
-      "imports": "plugins.installed.catalog.models"
-    },
-    {
-      "file": "core/brain/signals.py",
-      "imports": "plugins.installed.morpheus_brain.models"
-    },
-    {
-      "file": "core/brain/signals.py",
-      "imports": "plugins.installed.seo.models"
-    },
-    {
-      "file": "core/brain/signals.py",
-      "imports": "plugins.installed.seo.services"
-    },
-    {
-      "file": "core/brain/signals.py",
-      "imports": "plugins.installed.seo.views"
-    },
-    {
       "file": "core/context_processors.py",
       "imports": "plugins.installed.orders.models"
     }

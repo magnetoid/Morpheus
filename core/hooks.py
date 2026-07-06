@@ -517,6 +517,18 @@ class MorpheusEvents:
     #   daily task (which caches the result under channels:metrics:v1); the
     #   overview PAGE never triggers it. Fail-soft per channel.
     CHANNELS_METRICS = 'channels.metrics'  # filter
+    # BRAIN_SIGNALS — filter, value=dict (the Morpheus Brain signal snapshot),
+    #   no kwargs. The kernel aggregator (core/brain/signals.py) seeds the
+    #   core-owned sections (plugin health, error-log + code-quality signals,
+    #   the setup checklist) and fires this filter so each plugin merges ITS
+    #   OWN read-only slice: seo → content.{low_seo,seo_avg,…,notfound} +
+    #   storefront.{cwv,seo_flags}; catalog → content.catalog; ai_assistant →
+    #   improvements.insights; morpheus_brain → reports. Handlers mutate/merge
+    #   into value and return it (order-independent — the slices are disjoint).
+    #   A disabled contributor's slice simply never appears (bus skips inactive
+    #   owners), so its Brain panel vanishes. Keeps core importing no plugin
+    #   model — the inverse of the old hard-coded imports (ADR 0017).
+    BRAIN_SIGNALS = 'brain.signals'  # filter
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,

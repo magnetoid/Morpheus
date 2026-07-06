@@ -22,6 +22,7 @@ from morpheus.views import get_object_or_404, redirect, render
 from plugins.installed.seo.services import (
     audit_all_products,
     audit_product,
+    cwv_summary,
     refresh_404_suggestions,
     render_ai_products_feed,
     render_llms_txt,
@@ -429,7 +430,7 @@ def seo_overview(request):
         TrackedKeyword,
     )
 
-    cwv = _cwv_summary()
+    cwv = cwv_summary()
 
     # Outcome ratio: % of active Products with a complete SeoMeta
     # (non-empty title AND description). Zero-active-products falls
@@ -499,40 +500,6 @@ def seo_overview(request):
             'active_nav': 'seo',
         },
     )
-
-
-def _cwv_summary() -> dict:
-    """Aggregate the last 1000 web-vitals beacon reports into p75 per
-    metric — the same threshold Google uses to decide pass/fail.
-
-    Source: AuditEvent rows with event_type='cwv.report'. No new model.
-    """
-    out = {'lcp': None, 'inp': None, 'cls': None, 'samples': 0}
-    try:
-        from core.audit.models import AuditEvent
-
-        rows = list(
-            AuditEvent.objects.filter(event_type='cwv.report')
-            .order_by('-created_at')[:1000]
-            .values_list('metadata', flat=True)
-        )
-        if not rows:
-            return out
-        out['samples'] = len(rows)
-        for metric_key, metric_name in (('lcp', 'LCP'), ('inp', 'INP'), ('cls', 'CLS')):
-            values = sorted(
-                [
-                    float(m.get('value') or 0.0)
-                    for m in rows
-                    if (m or {}).get('metric') == metric_name
-                ]
-            )
-            if values:
-                p75_idx = int(0.75 * (len(values) - 1))
-                out[metric_key] = values[p75_idx]
-    except Exception:  # noqa: BLE001
-        pass
-    return out
 
 
 @staff_member_required

@@ -16,7 +16,28 @@ class CatalogPlugin(Plugin):
         self.register_hook(events.DASHBOARD_KPIS, self.on_dashboard_kpis, priority=20)
         self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=20)
         self.register_hook(events.DASHBOARD_SETUP_STEPS, self.on_setup_steps, priority=10)
+        # Morpheus Brain: contribute the catalog content-gap counts.
+        self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
         from plugins.installed.catalog import signals  # noqa - register signals
+
+    def on_brain_signals(self, value, **kwargs):
+        """Merge the catalog content-gap slice into the Brain snapshot —
+        active-product count and how many lack a description (→ content.catalog)."""
+        from contextlib import suppress  # noqa: PLC0415
+
+        with suppress(Exception):
+            from django.db.models import Q  # noqa: PLC0415
+
+            from plugins.installed.catalog.models import Product  # noqa: PLC0415
+
+            active = Product.objects.filter(status='active')
+            value.setdefault('content', {})['catalog'] = {
+                'total': active.count(),
+                'missing_desc': active.filter(
+                    Q(description__isnull=True) | Q(description='')
+                ).count(),
+            }
+        return value
 
     def on_dashboard_kpis(self, value, date_range=None, **kwargs):
         """Append the active-products KPI tile."""

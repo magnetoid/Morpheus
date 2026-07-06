@@ -127,72 +127,11 @@ def code_signal() -> dict:
     return out
 
 
-def content_seo() -> dict:
-    out: dict = {'available': True}
-    with suppress(Exception):
-        from django.db.models import Avg
-
-        from plugins.installed.seo.models import SeoAuditResult
-
-        low = SeoAuditResult.objects.order_by('score')[:20]
-        out['low_seo'] = [{'score': a.score, 'issues': (a.issues or [])[:4]} for a in low]
-        out['seo_avg'] = round(SeoAuditResult.objects.aggregate(a=Avg('score'))['a'] or 0, 1)
-        out['seo_low_count'] = SeoAuditResult.objects.filter(score__lt=50).count()
-        out['seo_total'] = SeoAuditResult.objects.count()
-    with suppress(Exception):
-        from plugins.installed.seo.models import NotFoundLog
-
-        out['notfound'] = [
-            {'path': n.path, 'hits': n.hit_count}
-            for n in NotFoundLog.objects.order_by('-hit_count')[:10]
-        ]
-    with suppress(Exception):
-        from django.db.models import Q
-
-        from plugins.installed.catalog.models import Product
-
-        active = Product.objects.filter(status='active')
-        out['catalog'] = {
-            'total': active.count(),
-            'missing_desc': active.filter(Q(description__isnull=True) | Q(description='')).count(),
-        }
-    return out
-
-
-def storefront() -> dict:
-    out: dict = {'available': True}
-    with suppress(Exception):
-        from plugins.installed.seo.views import _cwv_summary
-
-        out['cwv'] = _cwv_summary()
-    with suppress(Exception):
-        from plugins.installed.seo.services import site_settings
-
-        s = site_settings()
-        out['seo_flags'] = {
-            'Organization JSON-LD': getattr(s, 'jsonld_organization', None),
-            'Product JSON-LD': getattr(s, 'jsonld_product', None),
-            'WebSite + search box': getattr(s, 'jsonld_website', None),
-            'llms.txt': getattr(s, 'llms_txt_enabled', None),
-            'AI answer block': getattr(s, 'ai_answer_block_enabled', None),
-        }
-    return out
-
-
-def insights() -> dict:
+def _setup_signal() -> dict:
+    """Core-owned slice of the Improvements section: the first-run setup
+    checklist (the DASHBOARD_SETUP_STEPS hook). The AI 'insights' half is
+    contributed by ai_assistant through BRAIN_SIGNALS."""
     out: dict = {'available': True, 'insights': [], 'setup': []}
-    with suppress(Exception):
-        from plugins.installed.ai_assistant.models import MerchantInsight
-
-        out['insights'] = [
-            {
-                'title': i.title,
-                'type': getattr(i, 'insight_type', ''),
-                'priority': getattr(i, 'priority', ''),
-                'impact': getattr(i, 'estimated_impact', ''),
-            }
-            for i in MerchantInsight.objects.filter(is_read=False).order_by('-created_at')[:10]
-        ]
     with suppress(Exception):
         from core.hooks import MorpheusEvents, hook_registry
 
@@ -201,41 +140,27 @@ def insights() -> dict:
     return out
 
 
-def daily_reports() -> dict:
-    """Daily curated AI reports covering Code Optimization, Feature Enhancements, and E-commerce Advancements."""
-    out: dict = {'available': True, 'reports': []}
-    with suppress(Exception):
-        from plugins.installed.morpheus_brain.models import DailyReport
-        # Get the latest 10 reports, grouped by category
-        reports = DailyReport.objects.filter(is_published=True).order_by('-published_at')[:10]
-        out['reports'] = [
-            {
-                'id': str(r.id),
-                'title': r.title,
-                'category': r.get_category_display(),
-                'summary': r.summary,
-                'content': r.content,
-                'published_at': r.published_at,
-                'references': [
-                    {'title': ref.title, 'url': ref.url}
-                    for ref in r.references.all()
-                ]
-            }
-            for r in reports
-        ]
-    return out
-
 def _gather_all_uncached() -> dict[str, Any]:
-    """Everything the Brain knows, in one (DB-heavy) pass."""
-    return {
+    """Everything the Brain knows, in one (DB-heavy) pass.
+
+    Core owns plugin health, the error-log + code-quality signals, and the
+    setup checklist. Every *plugin-owned* slice — SEO/content audits, catalog
+    gaps, Core Web Vitals, merchant insights, the daily AI reports — is merged
+    in by its plugin through the BRAIN_SIGNALS filter, so the kernel imports no
+    plugin model and a disabled contributor's Brain panel simply vanishes.
+    """
+    from core.hooks import MorpheusEvents, hook_registry
+
+    data: dict[str, Any] = {
         'plugins': plugins_health(),
         'errors': errors_signal(),
         'code': code_signal(),
-        'content': content_seo(),
-        'storefront': storefront(),
-        'improvements': insights(),
-        'reports': daily_reports(),
+        'content': {'available': True},
+        'storefront': {'available': True},
+        'improvements': _setup_signal(),
+        'reports': {'available': False},
     }
+    return hook_registry.filter(MorpheusEvents.BRAIN_SIGNALS, value=data)
 
 
 def gather_all() -> dict[str, Any]:
