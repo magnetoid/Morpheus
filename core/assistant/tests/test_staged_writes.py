@@ -209,7 +209,7 @@ class StagedCustomerToolTests(TestCase):
 
 class StagedMetafieldToolTests(TestCase):
     def test_staged_set_updates_existing_row(self):
-        from core.assistant.tools.ecommerce_writes import metafields_set_tool
+        from plugins.installed.metafields.agent_tools import metafields_set_tool
         from plugins.installed.metafields.models import Metafield
 
         p = _product(slug='staged-mf', sku='STG-MF')
@@ -241,7 +241,7 @@ class StagedMetafieldToolTests(TestCase):
         )
 
     def test_staged_set_of_new_key_refuses(self):
-        from core.assistant.tools.ecommerce_writes import metafields_set_tool
+        from plugins.installed.metafields.agent_tools import metafields_set_tool
 
         p = _product(slug='staged-mf-new', sku='STG-MFN')
         with self.assertRaises(ToolError):
@@ -257,7 +257,7 @@ class StagedMetafieldToolTests(TestCase):
         self.assertEqual(OpsProposal.objects.count(), 0)
 
     def test_staged_delete_refuses(self):
-        from core.assistant.tools.ecommerce_writes import metafields_delete_tool
+        from plugins.installed.metafields.agent_tools import metafields_delete_tool
         from plugins.installed.metafields.models import Metafield
 
         p = _product(slug='staged-mf-del', sku='STG-MFD')

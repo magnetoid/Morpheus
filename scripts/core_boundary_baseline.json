@@ -43,10 +43,6 @@
     },
     {
       "file": "core/assistant/tools/ecommerce_writes.py",
-      "imports": "plugins.installed.metafields.models"
-    },
-    {
-      "file": "core/assistant/tools/ecommerce_writes.py",
       "imports": "plugins.installed.orders.models"
     },
     {

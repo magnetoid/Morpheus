@@ -29,8 +29,6 @@ from core.assistant.tools.ecommerce import (
 )
 from core.assistant.tools.ecommerce_writes import (
     customers_add_note_tool,
-    metafields_delete_tool,
-    metafields_set_tool,
     orders_add_note_tool,
     orders_cancel_tool,
     orders_update_status_tool,
@@ -119,8 +117,6 @@ def get_default_tools() -> list:
         products_update_status_tool,
         products_update_price_tool,
         customers_add_note_tool,
-        metafields_set_tool,
-        metafields_delete_tool,
         # Self-awareness — enumerate the full toolset so Linda discovers her
         # own reach instead of replying "I can't"; introspect any installed
         # plugin (manifest + models + commands + code path) to learn it.
@@ -164,6 +160,8 @@ def get_default_tools() -> list:
         'customers.get',
         'media.search',
         'metafields.list_for',
+        'metafields.set',
+        'metafields.delete',
         'markets.list',
         'analytics.summary',
         'analytics.top_products',
