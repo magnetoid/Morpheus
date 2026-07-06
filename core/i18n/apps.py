@@ -15,14 +15,12 @@ class I18nConfig(AppConfig):
             from core.i18n.agent_tools import (
                 get_translations_tool,
                 list_languages_tool,
-                list_translations_tool,
                 set_translation_tool,
-                translate_product_tool,
             )
 
-            agent_registry.register_tool(translate_product_tool, plugin='core.i18n')
-            agent_registry.register_tool(list_translations_tool, plugin='core.i18n')
             # Generic, any-object translation tools (external translators / tools).
+            # i18n.translate_product / i18n.list_translations moved to the catalog
+            # plugin (they query catalog.Product) and are contributed there.
             agent_registry.register_tool(list_languages_tool, plugin='core.i18n')
             agent_registry.register_tool(get_translations_tool, plugin='core.i18n')
             agent_registry.register_tool(set_translation_tool, plugin='core.i18n')

@@ -72,10 +72,6 @@
     {
       "file": "core/context_processors.py",
       "imports": "plugins.installed.orders.models"
-    },
-    {
-      "file": "core/i18n/agent_tools.py",
-      "imports": "plugins.installed.catalog.models"
     }
   ]
 }
