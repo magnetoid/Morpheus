@@ -346,3 +346,31 @@ def apply_internal_links_tool(*, slugs: list[str] | None = None, force: bool = F
         output={'summary': summary, 'log_tail': out[-600:]},
         display=f'applied={summary.get("applied", 0)} skipped={summary.get("skipped", 0)}',
     )
+
+
+# ── Sitemap (migrated from core/assistant/tools/admin_ops.py, arch-debt refactor).
+#    Was defined in core but never surfaced in get_default_tools(); now a proper,
+#    disable-safe seo agent tool (registry-contributed, seo-scoped). ────────────
+@tool(
+    name='seo.regenerate_sitemap',
+    description=(
+        'Regenerate the sitemap: recount every URL, purge the CDN copies of the '
+        'sitemap files, and ping IndexNow so crawlers re-fetch. Safe + idempotent '
+        '— run whenever pages/products/taxonomies were added or changed.'
+    ),
+    scopes=['system.write'],
+    schema={'type': 'object', 'properties': {}},
+)
+def seo_regenerate_sitemap_tool() -> ToolResult:
+    from plugins.installed.seo.services import regenerate_sitemap
+
+    res = regenerate_sitemap(triggered_by='linda')
+    counts = res.get('counts') or {}
+    return ToolResult(
+        output=res,
+        display=(
+            f'Sitemap regenerated: {counts.get("total", 0)} URLs, '
+            f'{res.get("purged_zones", 0)} CDN zone(s) purged, '
+            f'ping {"sent" if res.get("pinged") else "skipped"}.'
+        ),
+    )

@@ -312,28 +312,3 @@ def workflows_run_tool(
         },
         display=f'Workflow {name}: {getattr(run, "state", "?")} ({"dry-run" if dry_run else "live"}).',
     )
-
-
-@tool(
-    name='seo.regenerate_sitemap',
-    description=(
-        'Regenerate the sitemap: recount every URL, purge the CDN copies of the '
-        'sitemap files, and ping IndexNow so crawlers re-fetch. Safe + idempotent '
-        '— run whenever pages/products/taxonomies were added or changed.'
-    ),
-    scopes=['system.write'],
-    schema={'type': 'object', 'properties': {}},
-)
-def seo_regenerate_sitemap_tool() -> ToolResult:
-    from plugins.installed.seo.services import regenerate_sitemap  # noqa: PLC0415
-
-    res = regenerate_sitemap(triggered_by='linda')
-    counts = res.get('counts') or {}
-    return ToolResult(
-        output=res,
-        display=(
-            f'Sitemap regenerated: {counts.get("total", 0)} URLs, '
-            f'{res.get("purged_zones", 0)} CDN zone(s) purged, '
-            f'ping {"sent" if res.get("pinged") else "skipped"}.'
-        ),
-    )

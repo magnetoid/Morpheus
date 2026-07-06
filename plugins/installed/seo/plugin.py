@@ -175,6 +175,7 @@ class SeoPlugin(Plugin):
             create_redirect_tool,
             get_meta_tool,
             list_404s_tool,
+            seo_regenerate_sitemap_tool,
             set_meta_tool,
             set_site_settings_tool,
         )
@@ -189,6 +190,7 @@ class SeoPlugin(Plugin):
             bulk_set_meta_tool,
             set_site_settings_tool,
             apply_internal_links_tool,
+            seo_regenerate_sitemap_tool,
         ]
 
     def contribute_skills(self) -> list:

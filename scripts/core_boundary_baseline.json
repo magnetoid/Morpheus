@@ -19,10 +19,6 @@
     },
     {
       "file": "core/assistant/tools/admin_ops.py",
-      "imports": "plugins.installed.seo.services"
-    },
-    {
-      "file": "core/assistant/tools/admin_ops.py",
       "imports": "plugins.installed.workflows.engine"
     },
     {
