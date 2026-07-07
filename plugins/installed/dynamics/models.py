@@ -1,4 +1,4 @@
-"""dynamic_products — models.
+"""dynamics — models.
 
 One table: ``DynamicBlock``. Each row is a merchant-configured slice of
 personalized merchandising: *render this strategy, in this theme slot,
@@ -48,10 +48,15 @@ STRATEGY_CHOICES = [
     ('bought_together', 'Frequently bought together'),
     ('probability_grid', 'Dynamic Probability Grid'),
     ('autopilot', 'Autopilot (self-optimizing, per-visitor)'),
+    ('trending', 'Trending now'),
+    ('new_arrivals', 'New arrivals'),
+    ('best_sellers', 'Best sellers'),
+    ('on_sale', 'On sale'),
+    ('similar_price', 'Similar price (product page)'),
 ]
 
 # Strategies that only make sense on a product page (need context_product).
-PDP_ONLY_STRATEGIES = {'related', 'bought_together'}
+PDP_ONLY_STRATEGIES = {'related', 'bought_together', 'similar_price'}
 
 
 class DynamicBlock(models.Model):

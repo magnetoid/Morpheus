@@ -1,4 +1,4 @@
-"""dynamic_products — the recommendation engine.
+"""dynamics — the recommendation engine.
 
 `recommend(block, *, request, customer, context_product=None)` turns a
 configured :class:`DynamicBlock` into an ordered, de-duplicated list of
@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 from collections import Counter
 
-logger = logging.getLogger('morpheus.dynamic_products')
+logger = logging.getLogger('morpheus.dynamics')
 
 MAX_LIMIT = 24
 # How deep to look into history when building affinity / recency signals.
@@ -61,6 +61,11 @@ def recommend(block, *, request=None, customer=None, context_product=None) -> li
         'for_you': _for_you,
         'probability_grid': _probability_grid,
         'autopilot': _autopilot,
+        'trending': _trending,
+        'new_arrivals': _new_arrivals,
+        'best_sellers': _best_sellers,
+        'on_sale': _on_sale,
+        'similar_price': _similar_price,
     }
     fn = dispatch.get(strategy, _for_you)
 
@@ -69,7 +74,7 @@ def recommend(block, *, request=None, customer=None, context_product=None) -> li
             block, request=request, customer=customer, context_product=context_product, limit=limit
         )
     except Exception:  # noqa: BLE001 — a bad block must not break the page
-        logger.warning('dynamic_products: strategy %s failed', strategy, exc_info=True)
+        logger.warning('dynamics: strategy %s failed', strategy, exc_info=True)
         return []
 
     return _materialize(ids, limit)
@@ -184,7 +189,7 @@ def _for_you(block, *, request, customer, context_product, limit, **_) -> list:
 def _probability_grid(block, *, request, customer, limit, **_) -> list:
     """Returns products sorted by real-time purchase probability score for dynamic grid layout."""
     try:
-        from plugins.installed.dynamic_products.models import DynamicGridItem
+        from plugins.installed.dynamics.models import DynamicGridItem
     except Exception:
         return []
 
@@ -220,8 +225,8 @@ def _autopilot(block, *, request, customer, limit, **_) -> list:
     exploration floor + diversity cap). Degrades to the propensity / for-you order
     when the bandit has no signal yet — so it's never worse than probability_grid.
     """
-    from plugins.installed.dynamic_products.reranker import thompson_rerank
-    from plugins.installed.dynamic_products.segments import segment_for
+    from plugins.installed.dynamics.reranker import thompson_rerank
+    from plugins.installed.dynamics.segments import segment_for
 
     ids = _probability_grid(block, request=request, customer=customer, limit=limit * 3)
     if not ids:
@@ -235,9 +240,74 @@ def _autopilot(block, *, request, customer, limit, **_) -> list:
     )
 
 
+def _trending(block, *, limit, **_) -> list:
+    """Highest product-view velocity over the last 7 days — what's hot now.
+    Falls back to newest when analytics has no views."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    views = _view_counts(timezone.now() - timedelta(days=7))
+    slug_to_pid = dict(_apply_filters(_base_active_qs(), block).values_list('slug', 'pk'))
+    ranked = sorted((s for s in views if s in slug_to_pid), key=lambda s: views[s], reverse=True)
+    pids = [slug_to_pid[s] for s in ranked[: limit * 2]]
+    return pids or _new_arrivals(block, limit=limit)
+
+
+def _new_arrivals(block, *, limit, **_) -> list:
+    """Newest active products first (respecting the block's filters)."""
+    qs = _apply_filters(_base_active_qs(), block).order_by('-created_at')
+    return list(qs.values_list('pk', flat=True)[: limit * 2])
+
+
+def _best_sellers(block, *, limit, **_) -> list:
+    """Most units sold in paid orders over the last 90 days. Falls back to
+    newest when there are no sales yet."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    units = _units_sold(timezone.now() - timedelta(days=90))
+    allowed = set(_apply_filters(_base_active_qs(), block).values_list('pk', flat=True))
+    ranked = sorted((p for p in units if p in allowed), key=lambda p: units[p], reverse=True)
+    return ranked[: limit * 2] or _new_arrivals(block, limit=limit)
+
+
+def _on_sale(block, *, limit, **_) -> list:
+    """Active products whose compare-at price beats the current price."""
+    rows = (
+        _apply_filters(_base_active_qs(), block)
+        .filter(compare_at_price__isnull=False)
+        .order_by('-is_featured', '-created_at')
+        .values_list('pk', 'price', 'compare_at_price')
+    )
+    return [pid for pid, price, cmp in rows if cmp and price and cmp > price][: limit * 2]
+
+
+def _similar_price(block, *, context_product, limit, **_) -> list:
+    """Product-page strategy: other products within ±30% of this one's price,
+    nearest first."""
+    if context_product is None or getattr(context_product, 'price', None) is None:
+        return []
+    from decimal import Decimal
+
+    anchor = context_product.price.amount
+    lo, hi = anchor * Decimal('0.7'), anchor * Decimal('1.3')
+    rows = (
+        _apply_filters(_base_active_qs(), block)
+        .exclude(pk=context_product.pk)
+        .values_list('pk', 'price')
+    )
+    near = [
+        (pid, abs(price - anchor)) for pid, price in rows if price is not None and lo <= price <= hi
+    ]
+    near.sort(key=lambda t: t[1])
+    return [pid for pid, _ in near][: limit * 2]
+
+
 def _propensity_map(ids) -> dict:
     """product_id -> Phase-1 purchase_probability, for the reranker blend."""
-    from plugins.installed.dynamic_products.models import DynamicGridItem
+    from plugins.installed.dynamics.models import DynamicGridItem
 
     return dict(
         DynamicGridItem.objects.filter(product_id__in=ids).values_list(
@@ -345,7 +415,7 @@ def calculate_grid_probabilities(
 def _persist_scores(products, scores, now) -> int:
     """Write purchase_probability + denormalized display fields to DynamicGridItem
     in two bulk passes (create new rows, update existing)."""
-    from plugins.installed.dynamic_products.models import DynamicGridItem
+    from plugins.installed.dynamics.models import DynamicGridItem
 
     pids = [p['pk'] for p in products]
     existing = {gi.product_id: gi for gi in DynamicGridItem.objects.filter(product_id__in=pids)}
@@ -752,7 +822,7 @@ def rebuild_bandit_posteriors(*, window_days: int = 30) -> dict:
 
     from django.utils import timezone
 
-    from plugins.installed.dynamic_products.segments import segment_of
+    from plugins.installed.dynamics.segments import segment_of
 
     try:
         from plugins.installed.analytics.models import AnalyticsEvent
@@ -791,7 +861,7 @@ def rebuild_bandit_posteriors(*, window_days: int = 30) -> dict:
 def _upsert_arms(agg) -> int:
     """Two-pass bulk upsert of BanditArm rows from an
     (product_id, segment) -> [trials, reward] aggregate."""
-    from plugins.installed.dynamic_products.models import BanditArm
+    from plugins.installed.dynamics.models import BanditArm
 
     existing = {(a.product_id, a.segment): a for a in BanditArm.objects.all()}
     to_create, to_update = [], []
