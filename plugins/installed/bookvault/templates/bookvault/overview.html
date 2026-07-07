@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-5">
-  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div class="flex items-center gap-3">
@@ -113,37 +112,39 @@
     </div>
   </div>
 
-  <div class="card card-padded">
-    <h2 class="font-semibold mb-2">Recent orders sent to Bookvault</h2>
+  <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Recent orders sent to Bookvault</h2>
+    </div>
     {% if recent_orders %}
-      <table class="w-full text-sm">
+      <table class="morph-table">
         <thead>
-          <tr class="text-left text-[color:var(--text-muted)]">
-            <th class="py-1">Order</th>
-            <th class="py-1">BV ref</th>
-            <th class="py-1">Sent</th>
-            <th class="py-1 text-right">Actions</th>
+          <tr>
+            <th>Order</th>
+            <th>BV ref</th>
+            <th>Sent</th>
+            <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for link in recent_orders %}
-          <tr class="border-t border-[color:var(--border)]">
-            <td class="py-2"><code>{{ link.order.order_number|default:link.order.id }}</code></td>
-            <td class="py-2">
+          <tr>
+            <td><code>{{ link.order.order_number|default:link.order.id }}</code></td>
+            <td>
               {% if link.bv_ref %}
                 <a href="https://portal.bookvault.app/order?ID={{ link.bv_ref }}"
-                   target="_blank" rel="noopener" class="underline">
+                   target="_blank" rel="noopener" class="hover:underline">
                   {{ link.bv_ref }}
                 </a>
               {% else %}
                 <span class="text-[color:var(--text-muted)]">—</span>
               {% endif %}
             </td>
-            <td class="py-2">{{ link.last_sent_at|date:"Y-m-d H:i" }}</td>
-            <td class="py-2 text-right">
+            <td>{{ link.last_sent_at|date:"Y-m-d H:i" }}</td>
+            <td class="text-right">
               <form method="post" action="{% url 'bookvault:resend_order' link.order.id %}" style="display:inline;">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-ghost p-1" title="Resend to Bookvault">
+                <button type="submit" class="btn btn-ghost btn-sm" title="Resend to Bookvault">
                   <i data-lucide="refresh-cw" class="h-3 w-3"></i> Resend
                 </button>
               </form>
@@ -153,10 +154,12 @@
         </tbody>
       </table>
     {% else %}
-      <p class="text-sm text-[color:var(--text-muted)]">
-        No orders have been forwarded to Bookvault yet. Paid orders containing
-        ISBN-13 line items will appear here automatically.
-      </p>
+      <div class="px-4 py-4">
+        <p class="text-sm text-[color:var(--text-muted)]">
+          No orders have been forwarded to Bookvault yet. Paid orders containing
+          ISBN-13 line items will appear here automatically.
+        </p>
+      </div>
     {% endif %}
   </div>
   {% endif %}

@@ -3,7 +3,6 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-4">
-  {% include "admin_dashboard/_breadcrumb_trail.html" with trail=breadcrumb_trail %}
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
@@ -17,43 +16,43 @@
   </div>
 
   {% if blocks %}
-  <div class="overflow-x-auto rounded-lg border border-[color:var(--border)]">
-    <table class="w-full text-sm">
-      <thead class="text-left text-[color:var(--text-muted)]">
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead>
         <tr>
-          <th class="px-3 py-2">Name</th>
-          <th class="px-3 py-2">Strategy</th>
-          <th class="px-3 py-2">Slot</th>
-          <th class="px-3 py-2">Limit</th>
-          <th class="px-3 py-2">Order</th>
-          <th class="px-3 py-2">Status</th>
-          <th class="px-3 py-2"></th>
+          <th>Name</th>
+          <th>Strategy</th>
+          <th>Slot</th>
+          <th>Limit</th>
+          <th>Order</th>
+          <th>Status</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for block in blocks %}
-        <tr class="border-t border-[color:var(--border)]">
-          <td class="px-3 py-2 font-medium">
+        <tr>
+          <td class="font-medium">
             <a href="/dashboard/dynamics/{{ block.pk }}/" class="hover:underline">{{ block.name }}</a>
             {% if block.heading %}<div class="text-xs text-[color:var(--text-muted)]">“{{ block.heading }}”</div>{% endif %}
           </td>
-          <td class="px-3 py-2">{{ block.get_strategy_display }}</td>
-          <td class="px-3 py-2"><code class="text-xs">{{ block.get_slot_display }}</code></td>
-          <td class="px-3 py-2">{{ block.limit }}</td>
-          <td class="px-3 py-2">{{ block.sort_order }}</td>
-          <td class="px-3 py-2">
+          <td>{{ block.get_strategy_display }}</td>
+          <td><code class="text-xs">{{ block.get_slot_display }}</code></td>
+          <td>{{ block.limit }}</td>
+          <td>{{ block.sort_order }}</td>
+          <td>
             {% if block.enabled %}
-              <span class="inline-block rounded px-1.5 py-0.5 text-xs bg-green-500/15 text-green-600">Enabled</span>
+              <span class="pill pill-success">Enabled</span>
             {% else %}
-              <span class="inline-block rounded px-1.5 py-0.5 text-xs bg-zinc-500/15 text-[color:var(--text-muted)]">Off</span>
+              <span class="pill pill-neutral">Off</span>
             {% endif %}
           </td>
-          <td class="px-3 py-2 text-right">
+          <td class="text-right">
             <a href="/dashboard/dynamics/{{ block.pk }}/" class="btn btn-ghost text-xs">Edit</a>
             <form method="post" action="/dashboard/dynamics/{{ block.pk }}/delete/" class="inline"
                   onsubmit="return confirm('Delete this block?');">
               {% csrf_token %}
-              <button type="submit" class="btn btn-ghost text-xs text-red-600">Delete</button>
+              <button type="submit" class="btn btn-ghost text-xs text-[color:var(--danger)]">Delete</button>
             </form>
           </td>
         </tr>
@@ -62,9 +61,13 @@
     </table>
   </div>
   {% else %}
-  <div class="rounded-lg border border-dashed border-[color:var(--border)] p-8 text-center text-sm text-[color:var(--text-muted)]">
-    No dynamic blocks yet.
-    <a href="/dashboard/dynamics/new/" class="text-[color:var(--accent)] hover:underline">Create your first one →</a>
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="layout-grid" class="h-6 w-6"></i></div>
+    <h3>No dynamic blocks yet</h3>
+    <p>Create a merchandising block and it renders into a storefront slot, tuned per visitor.</p>
+    <div class="actions">
+      <a href="/dashboard/dynamics/new/" class="btn btn-primary">+ New block</a>
+    </div>
   </div>
   {% endif %}
 </div>

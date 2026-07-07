@@ -2,12 +2,12 @@
 {% block title %}Cohort retention · Analytics{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto">
   <div class="flex items-baseline justify-between mb-4">
-    <h1 class="text-2xl font-semibold">Cohort retention</h1>
-    <a href="{% url 'analytics_dash:funnel' %}" class="text-sm underline">Back to funnel →</a>
+    <h1 class="text-xl font-semibold tracking-tight">Cohort retention</h1>
+    <a href="{% url 'analytics_dash:funnel' %}" class="text-sm hover:underline text-[color:var(--text-muted)]">Back to funnel →</a>
   </div>
-  <p class="text-sm text-gray-600 mb-6 max-w-3xl">
+  <p class="text-sm text-[color:var(--text-muted)] mb-6 max-w-3xl">
     Each row is a weekly cohort (customers who signed up that week). Each
     column W<sub>N</sub> shows the percentage of that cohort who
     {% if metric == 'order' %}placed an order
@@ -39,11 +39,11 @@
     <button type="submit" class="btn btn-primary">Update</button>
   </form>
 
-  <div class="bg-white rounded-lg border overflow-x-auto">
+  <div class="card overflow-x-auto">
     <table class="min-w-full text-sm">
-      <thead class="bg-gray-50 border-b">
+      <thead class="bg-[color:var(--surface-2)] border-b border-[color:var(--border)]">
         <tr>
-          <th class="text-left px-3 py-2 sticky left-0 bg-gray-50">Cohort</th>
+          <th class="text-left px-3 py-2 sticky left-0 bg-[color:var(--surface-2)]">Cohort</th>
           <th class="text-right px-2 py-2">Size</th>
           {% for period in cohort_data.periods %}
             <th class="text-right px-2 py-2 font-mono text-xs">{{ period }}</th>
@@ -52,9 +52,9 @@
       </thead>
       <tbody>
         {% for row in cohort_data.rows %}
-        <tr class="border-b last:border-b-0 hover:bg-gray-50">
-          <td class="px-3 py-2 font-medium sticky left-0 bg-white">{{ row.week_label }}</td>
-          <td class="px-2 py-2 text-right text-gray-600">{{ row.size }}</td>
+        <tr class="border-b border-[color:var(--border)] last:border-b-0 hover:bg-[color:var(--surface-2)]">
+          <td class="px-3 py-2 font-medium sticky left-0 bg-[color:var(--surface)]">{{ row.week_label }}</td>
+          <td class="px-2 py-2 text-right text-[color:var(--text-muted)]">{{ row.size }}</td>
           {% for cell in row.cells %}
             {% if row.size %}
               {% if metric == 'revenue' %}
@@ -69,19 +69,19 @@
                 </td>
               {% endif %}
             {% else %}
-              <td class="px-2 py-2 text-right text-gray-300">—</td>
+              <td class="px-2 py-2 text-right text-[color:var(--text-subtle)]">—</td>
             {% endif %}
           {% endfor %}
         </tr>
         {% empty %}
         <tr>
-          <td colspan="{{ cohort_data.periods|length|add:2 }}" class="px-3 py-8 text-center text-gray-500">
+          <td colspan="{{ cohort_data.periods|length|add:2 }}" class="px-3 py-8 text-center text-[color:var(--text-muted)]">
             No cohort data yet — needs at least one week of signups.
           </td>
         </tr>
         {% endfor %}
       </tbody>
-      <tfoot class="bg-gray-50 border-t">
+      <tfoot class="bg-[color:var(--surface-2)] border-t border-[color:var(--border)]">
         <tr>
           <td class="px-3 py-2 font-medium">Total</td>
           <td class="px-2 py-2 text-right">{{ cohort_data.totals.customers }} customers · {{ cohort_data.totals.cohorts }} active cohorts</td>
@@ -91,7 +91,7 @@
     </table>
   </div>
 
-  <p class="text-xs text-gray-500 mt-3 max-w-3xl">
+  <p class="text-xs text-[color:var(--text-muted)] mt-3 max-w-3xl">
     Reading the table:
     <strong>W0</strong> = signup week itself.
     A healthy DTC shop has W1 retention of 8-15% on order metric;

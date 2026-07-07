@@ -2,13 +2,16 @@
 {% block title %}Self-improvement · System{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto">
 
-  <header class="mb-6 flex items-baseline justify-between">
-    <div>
-      <p class="text-xs uppercase tracking-wide text-gray-500">System</p>
-      <h1 class="text-2xl font-semibold">Self-improvement engine</h1>
-      <p class="text-sm text-gray-600 mt-1 max-w-3xl">
+  <header class="mb-6 flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="activity" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-subtle)]">System</p>
+      <h1 class="text-xl font-semibold tracking-tight">Self-improvement engine</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1 max-w-3xl">
         The autonomic loop. Read it daily; act on items that have rolled up enough
         evidence. Items below auto-apply confidence stay as advise until you approve.
       </p>
@@ -16,52 +19,52 @@
   </header>
 
   <!-- DORA strip -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+  <div class="reveal-stagger grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
     {% with counts as c %}
-    <div class="rounded-lg border bg-white p-4">
-      <p class="text-xs uppercase tracking-wide text-gray-500">Open recommendations</p>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Open recommendations</p>
       <p class="text-2xl font-semibold mt-1">{{ c.open }}</p>
     </div>
-    <div class="rounded-lg border bg-white p-4">
-      <p class="text-xs uppercase tracking-wide text-gray-500">Auto-applied (7d)</p>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Auto-applied (7d)</p>
       <p class="text-2xl font-semibold mt-1">{{ c.auto_applied_7d }}</p>
     </div>
-    <div class="rounded-lg border bg-white p-4">
-      <p class="text-xs uppercase tracking-wide text-gray-500">Rejected (7d)</p>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Rejected (7d)</p>
       <p class="text-2xl font-semibold mt-1">{{ c.rejected_7d }}</p>
     </div>
-    <div class="rounded-lg border bg-white p-4">
-      <p class="text-xs uppercase tracking-wide text-gray-500">Rollbacks (7d)</p>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Rollbacks (7d)</p>
       <p class="text-2xl font-semibold mt-1">{{ c.rollbacks_7d }}</p>
     </div>
     {% endwith %}
   </div>
 
   <!-- Tabs -->
-  <nav class="border-b mb-6 flex gap-6 text-sm" role="tablist">
-    <a href="#backlog"  data-tab class="tab-link border-b-2 border-black pb-2">Backlog ({{ backlog|length }})</a>
-    <a href="#drift"    data-tab class="tab-link text-gray-500 hover:text-black pb-2">Drift</a>
-    <a href="#settings" data-tab class="tab-link text-gray-500 hover:text-black pb-2">Settings</a>
-    <a href="#cost"     data-tab class="tab-link text-gray-500 hover:text-black pb-2">Cost</a>
-  </nav>
+  <div class="tab-list" role="tablist">
+    <a href="#backlog"  data-tab class="tab is-active">Backlog ({{ backlog|length }})</a>
+    <a href="#drift"    data-tab class="tab">Drift</a>
+    <a href="#settings" data-tab class="tab">Settings</a>
+    <a href="#cost"     data-tab class="tab">Cost</a>
+  </div>
 
   <!-- BACKLOG -->
   <section id="backlog" class="tab-pane">
     {% if backlog %}
       <ul class="space-y-3">
         {% for rec in backlog %}
-        <li class="rounded-lg border bg-white p-4">
+        <li class="card card-padded">
           <div class="flex justify-between items-start gap-4">
             <div class="flex-1 min-w-0">
-              <p class="text-xs uppercase tracking-wide text-gray-500">
+              <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
                 {{ rec.class_name }} · confidence {{ rec.confidence }}
               </p>
               <p class="text-base font-medium mt-1">{{ rec.title }}</p>
               {% if rec.rationale %}
-              <p class="text-sm text-gray-700 mt-1">{{ rec.rationale|truncatechars:300 }}</p>
+              <p class="text-sm text-[color:var(--text-muted)] mt-1">{{ rec.rationale|truncatechars:300 }}</p>
               {% endif %}
               {% if rec.pr_url %}
-              <p class="text-xs mt-2"><a href="{{ rec.pr_url }}" class="underline">PR ↗</a></p>
+              <p class="text-xs mt-2"><a href="{{ rec.pr_url }}" class="hover:underline">PR ↗</a></p>
               {% endif %}
             </div>
             <div class="flex gap-2 flex-shrink-0">
@@ -81,104 +84,118 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p class="text-sm text-gray-600">No open recommendations. Either the engine hasn't run yet or it has nothing new to suggest.</p>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="check-circle-2" class="h-6 w-6"></i></div>
+        <h3>No open recommendations</h3>
+        <p>Either the engine hasn't run yet, or it has nothing new to suggest.</p>
+      </div>
     {% endif %}
   </section>
 
   <!-- DRIFT -->
   <section id="drift" class="tab-pane hidden">
-    <p class="text-sm text-gray-600 mb-3">Files diverged from canonical Morpheus in the last 30 days. Declare intentional changes in <code>core/customizations.yml</code>; orphans are cheap re-merge candidates.</p>
+    <p class="text-sm text-[color:var(--text-muted)] mb-3">Files diverged from canonical Morpheus in the last 30 days. Declare intentional changes in <code>core/customizations.yml</code>; orphans are cheap re-merge candidates.</p>
     {% if drift_signals %}
-      <table class="min-w-full text-sm bg-white border rounded-lg overflow-hidden">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="text-left p-3">Path</th>
-            <th class="text-left p-3">Classification</th>
-            <th class="text-right p-3">Added</th>
-            <th class="text-right p-3">Removed</th>
-            <th class="text-right p-3">Severity</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in drift_signals %}
-          <tr class="border-b last:border-b-0">
-            <td class="p-3 font-mono text-xs">{{ s.payload.path }}</td>
-            <td class="p-3">{{ s.payload.classification }}</td>
-            <td class="p-3 text-right">+{{ s.payload.added|default:0 }}</td>
-            <td class="p-3 text-right">−{{ s.payload.removed|default:0 }}</td>
-            <td class="p-3 text-right">{{ s.severity }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="card overflow-hidden">
+        <table class="morph-table">
+          <thead>
+            <tr>
+              <th>Path</th>
+              <th>Classification</th>
+              <th>Added</th>
+              <th>Removed</th>
+              <th>Severity</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in drift_signals %}
+            <tr>
+              <td class="font-mono text-xs">{{ s.payload.path }}</td>
+              <td>{{ s.payload.classification }}</td>
+              <td class="text-right">+{{ s.payload.added|default:0 }}</td>
+              <td class="text-right">−{{ s.payload.removed|default:0 }}</td>
+              <td class="text-right">{{ s.severity }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% else %}
-      <p class="text-sm text-gray-600">No drift signals in the last 30 days. Either you're in sync with upstream or the drift collector hasn't run.</p>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="git-compare" class="h-6 w-6"></i></div>
+        <h3>No drift signals</h3>
+        <p>You're in sync with upstream, or the drift collector hasn't run in the last 30 days.</p>
+      </div>
     {% endif %}
   </section>
 
   <!-- SETTINGS -->
   <section id="settings" class="tab-pane hidden">
-    <p class="text-sm text-gray-600 mb-3">
+    <p class="text-sm text-[color:var(--text-muted)] mb-3">
       Per-class thresholds. Set auto-apply to 0 to keep a class as advise-only.
       Edit by writing to <code>SELF_IMPROVEMENT["policy"][&lt;class&gt;]</code> in settings.
     </p>
-    <table class="min-w-full text-sm bg-white border rounded-lg overflow-hidden">
-      <thead class="bg-gray-50 border-b">
-        <tr>
-          <th class="text-left p-3">Class</th>
-          <th class="text-center p-3">Enabled</th>
-          <th class="text-right p-3">Auto-apply ≥</th>
-          <th class="text-right p-3">Propose ≥</th>
-          <th class="text-center p-3">Reversible</th>
-          <th class="text-left p-3">Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in policies %}
-        <tr class="border-b last:border-b-0">
-          <td class="p-3 font-medium">{{ p.name }}</td>
-          <td class="p-3 text-center">{% if p.enabled %}✓{% else %}—{% endif %}</td>
-          <td class="p-3 text-right font-mono">{{ p.auto_apply_threshold|floatformat:2 }}</td>
-          <td class="p-3 text-right font-mono">{{ p.propose_threshold|floatformat:2 }}</td>
-          <td class="p-3 text-center">{% if p.reversible %}✓{% else %}—{% endif %}</td>
-          <td class="p-3 text-gray-600 text-xs">{{ p.description }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="card overflow-hidden">
+      <table class="morph-table">
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Enabled</th>
+            <th>Auto-apply ≥</th>
+            <th>Propose ≥</th>
+            <th>Reversible</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in policies %}
+          <tr>
+            <td class="font-medium">{{ p.name }}</td>
+            <td class="text-center">{% if p.enabled %}✓{% else %}—{% endif %}</td>
+            <td class="text-right font-mono">{{ p.auto_apply_threshold|floatformat:2 }}</td>
+            <td class="text-right font-mono">{{ p.propose_threshold|floatformat:2 }}</td>
+            <td class="text-center">{% if p.reversible %}✓{% else %}—{% endif %}</td>
+            <td class="text-[color:var(--text-muted)] text-xs">{{ p.description }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <!-- COST -->
   <section id="cost" class="tab-pane hidden">
-    <div class="grid grid-cols-2 gap-3 mb-4">
-      <div class="rounded-lg border bg-white p-4">
-        <p class="text-xs uppercase tracking-wide text-gray-500">LLM tokens (30d)</p>
+    <div class="reveal-stagger grid grid-cols-2 gap-3 mb-4">
+      <div class="card card-padded">
+        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">LLM tokens (30d)</p>
         <p class="text-2xl font-semibold mt-1">{{ cost_30d_tokens|stringformat:"d" }}</p>
       </div>
-      <div class="rounded-lg border bg-white p-4">
-        <p class="text-xs uppercase tracking-wide text-gray-500">Est. spend (30d)</p>
+      <div class="card card-padded">
+        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Est. spend (30d)</p>
         <p class="text-2xl font-semibold mt-1">${{ cost_30d_usd }}</p>
       </div>
     </div>
     <details class="text-sm">
-      <summary class="cursor-pointer text-gray-600">Last collector runs</summary>
-      <table class="min-w-full text-xs mt-3 bg-white border rounded-lg overflow-hidden">
-        <thead class="bg-gray-50 border-b">
-          <tr><th class="text-left p-2">Collector</th><th class="text-left p-2">Status</th><th class="text-left p-2">Emitted</th><th class="text-left p-2">Started</th></tr>
-        </thead>
-        <tbody>
-          {% for r in last_runs %}
-          <tr class="border-b last:border-b-0">
-            <td class="p-2 font-mono">{{ r.collector }}</td>
-            <td class="p-2">{{ r.status }}</td>
-            <td class="p-2">{{ r.signals_emitted }}</td>
-            <td class="p-2">{{ r.started_at|date:"Y-m-d H:i" }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="4" class="p-3 text-gray-500">No runs yet.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <summary class="cursor-pointer text-[color:var(--text-muted)]">Last collector runs</summary>
+      <div class="card overflow-hidden mt-3">
+        <table class="morph-table">
+          <thead>
+            <tr><th>Collector</th><th>Status</th><th>Emitted</th><th>Started</th></tr>
+          </thead>
+          <tbody>
+            {% for r in last_runs %}
+            <tr>
+              <td class="font-mono text-xs">{{ r.collector }}</td>
+              <td>{{ r.status }}</td>
+              <td>{{ r.signals_emitted }}</td>
+              <td>{{ r.started_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-[color:var(--text-muted)]">No runs yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </details>
   </section>
 
@@ -190,10 +207,7 @@
     var panes = document.querySelectorAll('.tab-pane');
     function activate(hash) {
       tabs.forEach(function (t) {
-        var match = t.getAttribute('href') === hash;
-        t.classList.toggle('border-b-2', match);
-        t.classList.toggle('border-black', match);
-        t.classList.toggle('text-gray-500', !match);
+        t.classList.toggle('is-active', t.getAttribute('href') === hash);
       });
       panes.forEach(function (p) {
         p.classList.toggle('hidden', '#' + p.id !== hash);

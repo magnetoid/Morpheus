@@ -1,26 +1,40 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Stockout Forecast{% endblock %}
+{% block title %}Stockout forecast · Morpheus{% endblock %}
 {% block content %}
-<div class="page-head">
-  <h1>Stockout Forecast</h1>
-  <p class="muted">SKUs projected to run out within the reorder window, worst cover first.</p>
+<div class="space-y-4">
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="package" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Stockout forecast</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">SKUs projected to run out within the reorder window, worst cover first.</p>
+    </div>
+  </div>
+
+  {% if alerts %}
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>Product</th><th>SKU</th><th>Days of cover</th><th>Velocity / day</th><th>Suggested reorder</th></tr></thead>
+      <tbody>
+      {% for a in alerts %}
+        <tr>
+          <td>{{ a.variant.product.name }}</td>
+          <td>{{ a.variant.sku }}</td>
+          <td>{% if a.days_of_cover is not None %}{{ a.days_of_cover|floatformat:1 }}{% else %}—{% endif %}</td>
+          <td>{{ a.daily_velocity|floatformat:2 }}</td>
+          <td>{{ a.suggested_reorder_qty }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="check-circle-2" class="h-6 w-6"></i></div>
+    <h3>Nothing about to stock out</h3>
+    <p>No SKUs are projected to run out within the current reorder window.</p>
+  </div>
+  {% endif %}
 </div>
-{% if alerts %}
-<table class="morph-table">
-  <thead><tr><th>Product</th><th>SKU</th><th>Days of cover</th><th>Velocity / day</th><th>Suggested reorder</th></tr></thead>
-  <tbody>
-  {% for a in alerts %}
-    <tr>
-      <td>{{ a.variant.product.name }}</td>
-      <td>{{ a.variant.sku }}</td>
-      <td>{% if a.days_of_cover is not None %}{{ a.days_of_cover|floatformat:1 }}{% else %}—{% endif %}</td>
-      <td>{{ a.daily_velocity|floatformat:2 }}</td>
-      <td>{{ a.suggested_reorder_qty }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<p class="muted">No SKUs are projected to stock out. 🎉</p>
-{% endif %}
 {% endblock %}
