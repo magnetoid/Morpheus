@@ -1,4 +1,4 @@
-"""dynamic_products — the AI merchandiser autopilot.
+"""dynamics — the AI merchandiser autopilot.
 
 A nightly, propose-only merchandiser. It reads the store's OWN signals — which
 blocks are live, the bandit's per-segment winners, the propensity distribution,
@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger('morpheus.dynamic_products')
+logger = logging.getLogger('morpheus.dynamics')
 
 # The slots Autopilot auto-provisions — the two highest-intent surfaces.
 _DEFAULT_SLOTS = ['home_above_grid', 'pdp_below_form']
@@ -34,7 +34,7 @@ def ensure_default_blocks(*, slots=None) -> int:
     """Idempotently provision an enabled ``autopilot`` block on each slot that has
     none — so a store gets per-visitor self-optimizing merchandising with zero
     manual configuration. Returns the number created."""
-    from plugins.installed.dynamic_products.models import DynamicBlock
+    from plugins.installed.dynamics.models import DynamicBlock
 
     created = 0
     for slot in slots or _DEFAULT_SLOTS:
@@ -62,11 +62,38 @@ def generate_proposals() -> dict:
     drafts.extend(_feature_drafts())
     drafts.extend(_experiment_drafts())
     _enrich_with_llm(drafts)
-    return {'created': _persist(drafts)}
+    created = _persist(drafts)
+    applied = _auto_apply_actionables() if created and _auto_apply_enabled() else 0
+    return {'created': created, 'auto_applied': applied}
+
+
+def _auto_apply_enabled() -> bool:
+    """The merchant's 'skip the review queue for low-risk actions' toggle
+    (Settings → Autopilot). Off by default — proposals wait for a human."""
+    try:
+        from plugins.registry import plugin_registry
+
+        return bool(plugin_registry.get('dynamics').get_config().get('auto_apply'))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _auto_apply_actionables() -> int:
+    """Auto-approve the just-filed low-risk (actionable) proposals when the
+    merchant has opted in. Insights still wait for a human."""
+    from plugins.installed.dynamics.models import MerchandisingProposal
+
+    n = 0
+    for p in MerchandisingProposal.objects.filter(
+        status='proposed', kind__in=MerchandisingProposal.ACTIONABLE_KINDS
+    ):
+        if apply_proposal(p, actor=None):
+            n += 1
+    return n
 
 
 def _autopilot_draft() -> list[dict]:
-    from plugins.installed.dynamic_products.models import DynamicBlock
+    from plugins.installed.dynamics.models import DynamicBlock
 
     if DynamicBlock.objects.filter(strategy='autopilot', enabled=True).exists():
         return []
@@ -87,7 +114,7 @@ def _autopilot_draft() -> list[dict]:
 def _feature_drafts() -> list[dict]:
     """Propose featuring the highest-propensity products that aren't featured yet."""
     from plugins.installed.catalog.models import Product
-    from plugins.installed.dynamic_products.models import DynamicGridItem
+    from plugins.installed.dynamics.models import DynamicGridItem
 
     top = list(
         DynamicGridItem.objects.filter(purchase_probability__gt=0)
@@ -190,13 +217,13 @@ def _enrich_with_llm(drafts: list[dict]) -> None:
                 drafts[i]['title'] = str(row.get('title') or drafts[i]['title'])[:200]
                 drafts[i]['rationale'] = str(row.get('why') or drafts[i]['rationale'])
     except Exception as e:  # noqa: BLE001 — LLM is a nicety, never a dependency
-        logger.debug('dynamic_products: proposal LLM enrich skipped: %s', e)
+        logger.debug('dynamics: proposal LLM enrich skipped: %s', e)
 
 
 def _persist(drafts: list[dict]) -> int:
     """Create a row per draft unless an OPEN (proposed) one with the same
     signature already exists."""
-    from plugins.installed.dynamic_products.models import MerchandisingProposal
+    from plugins.installed.dynamics.models import MerchandisingProposal
 
     open_sigs = set(
         MerchandisingProposal.objects.filter(status='proposed').values_list('signature', flat=True)
@@ -244,7 +271,7 @@ def apply_proposal(proposal, *, actor=None) -> bool:
     proposal.reviewed_by = actor if getattr(actor, 'is_authenticated', False) else None
     proposal.save(update_fields=['status', 'reviewed_at', 'reviewed_by'])
     audit.record(
-        event_type='dynamic_products.proposal_approved',
+        event_type='dynamics.proposal_approved',
         actor=actor,
         target=str(proposal.id),
         metadata={'kind': proposal.kind, 'applied': applied},

@@ -1,4 +1,4 @@
-"""dynamic_products — background recomputation of the propensity grid.
+"""dynamics — background recomputation of the propensity grid.
 
 `services.calculate_grid_probabilities()` scores the whole active catalog from
 sales / view / inventory signals, so it runs as a **nightly** Celery-beat job
@@ -13,24 +13,24 @@ import logging
 
 from celery import shared_task
 
-logger = logging.getLogger('morpheus.dynamic_products')
+logger = logging.getLogger('morpheus.dynamics')
 
 # Debounce the (catalog-wide) recompute so an order burst can't stampede it.
-_REFRESH_LOCK_KEY = 'dynamic_products:recompute:throttle'
+_REFRESH_LOCK_KEY = 'dynamics:recompute:throttle'
 _REFRESH_THROTTLE_SECONDS = 15 * 60
 
 
-@shared_task(name='dynamic_products.recompute_probabilities')
+@shared_task(name='dynamics.recompute_probabilities')
 def recompute_probabilities() -> dict:
     """Full recompute of every active product's purchase probability (nightly)."""
-    from plugins.installed.dynamic_products.services import calculate_grid_probabilities
+    from plugins.installed.dynamics.services import calculate_grid_probabilities
 
     result = calculate_grid_probabilities()
-    logger.info('dynamic_products: recomputed %s grid probabilities', result.get('updated'))
+    logger.info('dynamics: recomputed %s grid probabilities', result.get('updated'))
     return result
 
 
-@shared_task(name='dynamic_products.refresh_probabilities_throttled')
+@shared_task(name='dynamics.refresh_probabilities_throttled')
 def refresh_probabilities_throttled() -> dict:
     """Event-driven refresh (fired after an order). Debounced via a short cache
     lock so a spike of orders triggers at most one recompute per window."""
@@ -42,23 +42,23 @@ def refresh_probabilities_throttled() -> dict:
     return recompute_probabilities()
 
 
-@shared_task(name='dynamic_products.rebuild_bandit_posteriors')
+@shared_task(name='dynamics.rebuild_bandit_posteriors')
 def rebuild_bandit_posteriors(window_days: int = 30) -> dict:
     """Nightly rebuild of the autopilot bandit's per-segment posteriors from
     product-view engagement (see services.rebuild_bandit_posteriors)."""
-    from plugins.installed.dynamic_products.services import rebuild_bandit_posteriors as _rebuild
+    from plugins.installed.dynamics.services import rebuild_bandit_posteriors as _rebuild
 
     result = _rebuild(window_days=window_days)
-    logger.info('dynamic_products: rebuilt %s bandit arms', result.get('updated'))
+    logger.info('dynamics: rebuilt %s bandit arms', result.get('updated'))
     return result
 
 
-@shared_task(name='dynamic_products.generate_merchandising_proposals')
+@shared_task(name='dynamics.generate_merchandising_proposals')
 def generate_merchandising_proposals() -> dict:
     """Nightly AI merchandiser — file merchandising proposals into the review
     queue (see autopilot.generate_proposals)."""
-    from plugins.installed.dynamic_products.autopilot import generate_proposals
+    from plugins.installed.dynamics.autopilot import generate_proposals
 
     result = generate_proposals()
-    logger.info('dynamic_products: filed %s merchandising proposals', result.get('created'))
+    logger.info('dynamics: filed %s merchandising proposals', result.get('created'))
     return result

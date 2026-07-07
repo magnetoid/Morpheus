@@ -1,4 +1,4 @@
-"""dynamic_products plugin manifest.
+"""dynamics plugin manifest.
 
 Smart personalized merchandising. Merchants configure ``DynamicBlock``
 rows from this plugin's own dashboard settings page; the storefront then
@@ -11,7 +11,7 @@ purchase-propensity nightly; the ``autopilot`` strategy Thompson-reranks that
 per visitor-segment (``reranker.py`` + ``BanditArm``, learned nightly from
 engagement); and ``autopilot.py`` runs a nightly propose-only AI merchandiser
 whose suggestions land in a human-checkpoint review queue. See
-``docs/plans/dynamic-products-autopilot-2026-07.md``.
+``docs/plans/dynamics-autopilot-2026-07.md``.
 
 Modularity (both litmus tests pass):
 
@@ -20,7 +20,7 @@ Modularity (both litmus tests pass):
   the enabled ``DynamicBlock`` rows for that slot. Adding/removing a block
   from the dashboard needs **no** new contribution and **no** theme edit.
 * **Dashboard** — a ``DashboardPage(nav='settings')`` points at this
-  plugin's own CRUD views, mounted under ``/dashboard/dynamic-products/``
+  plugin's own CRUD views, mounted under ``/dashboard/dynamics/``
   via ``register_urls``. Nothing is hard-coded into admin_dashboard.
 * **Disable** drops every block + the settings page automatically; the
   ``product.viewed`` subscriber stops firing. Nothing survives the toggle.
@@ -37,9 +37,9 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, StorefrontBlock, events
+from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
 
-logger = logging.getLogger('morpheus.dynamic_products')
+logger = logging.getLogger('morpheus.dynamics')
 
 # Slots we contribute a renderer for — the full implemented set. Each maps
 # to the same per-slot template, which fans out to the configured blocks.
@@ -56,9 +56,9 @@ _SLOTS = [
 _RECENTLY_VIEWED_CAP = 8
 
 
-class DynamicProductsPlugin(Plugin):
-    name = 'dynamic_products'
-    label = 'Dynamic Products'
+class DynamicsPlugin(Plugin):
+    name = 'dynamics'
+    label = 'Dynamics'
     version = '0.1.0'
     description = (
         'Personalized merchandising blocks — for-you, related, recently '
@@ -71,9 +71,9 @@ class DynamicProductsPlugin(Plugin):
     # ── Lifecycle ────────────────────────────────────────────────────────
     def ready(self) -> None:
         self.register_urls(
-            'plugins.installed.dynamic_products.urls',
-            prefix='dashboard/dynamic-products/',
-            namespace='dynamic_products',
+            'plugins.installed.dynamics.urls',
+            prefix='dashboard/dynamics/',
+            namespace='dynamics',
         )
         # Safety-net behavioral capture. The durable signal is the
         # analytics plugin's product_view event; the session list is
@@ -85,29 +85,29 @@ class DynamicProductsPlugin(Plugin):
         # real demand with zero merchant effort. Tasks live in tasks.py.
         from celery.schedules import crontab  # noqa: PLC0415
 
-        self.register_celery_tasks('plugins.installed.dynamic_products.tasks')
+        self.register_celery_tasks('plugins.installed.dynamics.tasks')
         self.register_celery_beat(
-            'dynamic_products:recompute_probabilities',
+            'dynamics:recompute_probabilities',
             {
-                'task': 'dynamic_products.recompute_probabilities',
+                'task': 'dynamics.recompute_probabilities',
                 'schedule': crontab(hour=3, minute=30),
             },
         )
         # Self-optimizing bandit: rebuild per-segment posteriors nightly, just
         # after the propensity recompute it blends with.
         self.register_celery_beat(
-            'dynamic_products:rebuild_bandit_posteriors',
+            'dynamics:rebuild_bandit_posteriors',
             {
-                'task': 'dynamic_products.rebuild_bandit_posteriors',
+                'task': 'dynamics.rebuild_bandit_posteriors',
                 'schedule': crontab(hour=4, minute=0),
             },
         )
         # AI merchandiser: file merchandising proposals into the review queue
         # each morning (after the propensity + bandit rebuilds it reasons over).
         self.register_celery_beat(
-            'dynamic_products:merchandiser',
+            'dynamics:merchandiser',
             {
-                'task': 'dynamic_products.generate_merchandising_proposals',
+                'task': 'dynamics.generate_merchandising_proposals',
                 'schedule': crontab(hour=5, minute=0),
             },
         )
@@ -128,19 +128,19 @@ class DynamicProductsPlugin(Plugin):
             slugs.insert(0, slug)
             session['recently_viewed'] = slugs[:_RECENTLY_VIEWED_CAP]
         except Exception as e:  # noqa: BLE001 — never block the product page
-            logger.debug('dynamic_products: recently_viewed track failed: %s', e)
+            logger.debug('dynamics: recently_viewed track failed: %s', e)
 
     def on_order_placed(self, order=None, **kwargs):
         """After a sale, debounce a probability refresh so the grid reflects the
         new demand ahead of the nightly run. Never blocks checkout."""
         try:
-            from plugins.installed.dynamic_products.tasks import (  # noqa: PLC0415
+            from plugins.installed.dynamics.tasks import (  # noqa: PLC0415
                 refresh_probabilities_throttled,
             )
 
             refresh_probabilities_throttled.delay()
         except Exception as e:  # noqa: BLE001 — a queue hiccup must not fail an order
-            logger.debug('dynamic_products: refresh enqueue failed: %s', e)
+            logger.debug('dynamics: refresh enqueue failed: %s', e)
 
     # ── Contributions ────────────────────────────────────────────────────
     def contribute_storefront_blocks(self) -> list:
@@ -151,7 +151,7 @@ class DynamicProductsPlugin(Plugin):
         return [
             StorefrontBlock(
                 slot=slot,
-                template='dynamic_products/_slot.html',
+                template='dynamics/_slot.html',
                 priority=45,
                 context_keys=['request', 'product', 'cart'],
             )
@@ -161,23 +161,49 @@ class DynamicProductsPlugin(Plugin):
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Dynamic Products',
+                label='Dynamics',
                 slug='index',
-                view='plugins.installed.dynamic_products.views.index',
+                view='plugins.installed.dynamics.views.index',
                 icon='sparkles',
                 section='marketing',
                 order=40,
                 nav='settings',
-                url='/dashboard/dynamic-products/',
+                url='/dashboard/dynamics/',
             ),
             DashboardPage(
                 label='Autopilot proposals',
                 slug='proposals',
-                view='plugins.installed.dynamic_products.views.proposals',
+                view='plugins.installed.dynamics.views.proposals',
                 icon='wand-2',
                 section='marketing',
                 order=41,
                 nav='settings',
-                url='/dashboard/dynamic-products/proposals/',
+                url='/dashboard/dynamics/proposals/',
             ),
         ]
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'auto_apply': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Auto-apply low-risk proposals',
+                    'description': (
+                        'When on, the nightly merchandiser applies its low-risk '
+                        'proposals (turn on Autopilot, feature high-intent products) '
+                        'automatically instead of queuing them for review. '
+                        'Informational insights still wait for you.'
+                    ),
+                },
+            },
+        }
+
+    def contribute_settings_panel(self):
+        return SettingsPanel(
+            label='Autopilot',
+            description='Controls for the self-optimizing merchandiser.',
+            schema=self.get_config_schema(),
+            category='general',
+        )

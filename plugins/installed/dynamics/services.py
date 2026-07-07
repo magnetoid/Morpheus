@@ -77,7 +77,37 @@ def recommend(block, *, request=None, customer=None, context_product=None) -> li
         logger.warning('dynamics: strategy %s failed', strategy, exc_info=True)
         return []
 
+    ids = _apply_block_options(ids, block, request=request, customer=customer)
     return _materialize(ids, limit)
+
+
+def _apply_block_options(ids, block, *, request=None, customer=None) -> list:
+    """Post-strategy block options that can't live in the DB filter: drop the
+    merchant's excluded ids + (optionally) already-purchased products, then pin
+    the merchant's chosen ids to the front (preserving their order)."""
+    excluded = {str(x) for x in (block.excluded_product_ids or [])}
+    if block.exclude_purchased:
+        excluded |= {str(p) for p in _purchased_ids(customer)}
+    kept = [pid for pid in ids if str(pid) not in excluded]
+
+    pinned_raw = [str(x) for x in (block.pinned_product_ids or []) if str(x) not in excluded]
+    if pinned_raw:
+        # Resolve the merchant's pinned ids to real, active product pks (same
+        # type as the strategy output, so _materialize finds them) in the given
+        # order, then prepend — a pin force-shows a product even if the strategy
+        # wouldn't have picked it.
+        from plugins.installed.catalog.models import Product
+
+        by_str = {
+            str(pk): pk
+            for pk in Product.objects.filter(pk__in=pinned_raw, status='active').values_list(
+                'pk', flat=True
+            )
+        }
+        pinned_pks = [by_str[s] for s in pinned_raw if s in by_str]
+        pinned_set = {str(x) for x in pinned_pks}
+        kept = pinned_pks + [pid for pid in kept if str(pid) not in pinned_set]
+    return kept
 
 
 # ---------------------------------------------------------------------------
@@ -235,9 +265,30 @@ def _autopilot(block, *, request, customer, limit, **_) -> list:
         )
     if not ids:
         return []
+    seg = block.segment_override or segment_for(request)
+    overrides = {}
+    if block.exploration_rate is not None:
+        overrides['exploration_rate'] = block.exploration_rate
+    if block.diversity_cap is not None:
+        overrides['per_category_cap'] = block.diversity_cap
     return thompson_rerank(
-        ids, segment_for(request), _propensity_map(ids), category_of=_category_map(ids)
+        ids, seg, _propensity_map(ids), category_of=_category_map(ids), **overrides
     )
+
+
+def reason_label(block) -> str:
+    """A short shopper-facing 'why' label for a block's products (B3 show_reason).
+    Strategy-derived — cheap, no per-product computation."""
+    return {
+        'trending': 'Trending now',
+        'new_arrivals': 'New arrival',
+        'best_sellers': 'Bestseller',
+        'on_sale': 'On sale',
+        'similar_price': 'Similar price',
+        'related': 'Related',
+        'bought_together': 'Often bought together',
+        'recently_viewed': 'You viewed this',
+    }.get(block.strategy, 'Recommended for you')
 
 
 def _trending(block, *, limit, **_) -> list:
@@ -734,7 +785,39 @@ def _apply_filters(qs, block):
         if mf_ids is not None:
             qs = qs.filter(pk__in=mf_ids)
 
+    # B2 extra filters — price band + out-of-stock.
+    if block.price_min is not None or block.price_max is not None:
+        from django.conf import settings
+        from djmoney.money import Money
+
+        cur = settings.STORE_CURRENCY
+        if block.price_min is not None:
+            qs = qs.filter(price__gte=Money(block.price_min, cur))
+        if block.price_max is not None:
+            qs = qs.filter(price__lte=Money(block.price_max, cur))
+    if block.exclude_out_of_stock:
+        in_stock = _in_stock_ids()
+        if in_stock is not None:
+            qs = qs.filter(pk__in=in_stock)
+
     return qs
+
+
+def _in_stock_ids():
+    """Product ids with > 0 available stock (summed over variants). Returns None
+    when the inventory plugin is absent so the caller skips the filter."""
+    try:
+        from django.db.models import F, Sum
+
+        from plugins.installed.inventory.models import StockLevel
+    except Exception:  # noqa: BLE001 — inventory plugin disabled
+        return None
+    rows = (
+        StockLevel.objects.values('variant__product_id')
+        .annotate(avail=Sum(F('quantity') - F('reserved_quantity')))
+        .filter(avail__gt=0)
+    )
+    return [r['variant__product_id'] for r in rows]
 
 
 def _metafield_product_ids(key, value):

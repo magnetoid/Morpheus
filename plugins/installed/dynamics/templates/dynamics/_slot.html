@@ -1,12 +1,8 @@
 {% comment %}Renders every enabled DynamicBlock configured for this slot.
    `block` here is the StorefrontBlock (carries .slot); `product`/`cart`
    come from the surrounding page context when present.{% endcomment %}
-{% load dynamic_products %}
+{% load dynamics %}
 {% dynamic_blocks_for block.slot request product as rendered_blocks %}
 {% for entry in rendered_blocks %}
-  {% if entry.block.strategy == 'probability_grid' %}
-    {% include "dynamic_products/_probability_grid.html" with heading=entry.block.heading products=entry.products %}
-  {% else %}
-    {% include "dynamic_products/_carousel.html" with heading=entry.block.heading products=entry.products %}
-  {% endif %}
+  {% include "dynamics/_carousel.html" with heading=entry.block.heading products=entry.products layout=entry.block.layout columns=entry.block.columns show_price=entry.block.show_price reason=entry.reason %}
 {% endfor %}

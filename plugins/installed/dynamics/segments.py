@@ -1,4 +1,4 @@
-"""dynamic_products — anonymous, PII-free visitor segmentation for the bandit.
+"""dynamics — anonymous, PII-free visitor segmentation for the bandit.
 
 A segment is a coarse ``device : day-part : auth-state`` bucket derived entirely
 from the request (no cookies, no stored profile, no PII). The same visitor maps

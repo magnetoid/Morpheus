@@ -1,16 +1,16 @@
-{% comment %}A single dynamic-products carousel/grid. Inputs: `heading`, `products`.
+{% comment %}A single dynamics carousel/grid. Inputs: `heading`, `products`.
    Uses the dot_books storefront card classes (.wrap/.grid-books/.book) so
    it inherits the active theme's look; degrades to plain markup if the
    theme doesn't define them. Renders nothing when there are no products.{% endcomment %}
 {% if products %}
-<section class="dynamic-products" style="padding: 3rem 0;">
+<section class="dynamics" style="padding: 3rem 0;">
   <div class="wrap">
     {% if heading %}
     <div style="display:flex; align-items:end; justify-content:space-between; gap:1rem; margin-bottom:1.5rem;">
       <h2 class="display display-m" style="margin:0;">{{ heading }}<span class="text-accent">.</span></h2>
     </div>
     {% endif %}
-    <div class="grid-books">
+    <div class="grid-books"{% if layout == 'grid' and columns %} style="grid-template-columns: repeat({{ columns }}, minmax(0,1fr));"{% endif %}>
       {% for product in products %}
       <a href="/products/{{ product.slug }}/" class="book">
         <div class="cover-wrap">
@@ -22,9 +22,12 @@
         </div>
         <div>
           <p class="title">{{ product.name }}</p>
+          {% if reason %}<p class="reason" style="font-size:.72rem; opacity:.65; margin:.25rem 0 0;">{{ reason }}</p>{% endif %}
+          {% if show_price or show_price == None %}
           <p class="price">
             {% if product.price_starts_from %}From {% endif %}{{ product.display_price }}
           </p>
+          {% endif %}
         </div>
       </a>
       {% endfor %}

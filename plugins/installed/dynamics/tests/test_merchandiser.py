@@ -15,8 +15,8 @@ from django.test import TestCase
 from djmoney.money import Money
 
 from plugins.installed.catalog.models import Product
-from plugins.installed.dynamic_products import autopilot
-from plugins.installed.dynamic_products.models import (
+from plugins.installed.dynamics import autopilot
+from plugins.installed.dynamics.models import (
     DynamicBlock,
     DynamicGridItem,
     MerchandisingProposal,
@@ -114,12 +114,12 @@ class ReviewPageTests(TestCase):
 
     def test_renders_for_staff(self):
         self.client.force_login(self.staff)
-        resp = self.client.get('/dashboard/dynamic-products/proposals/')
+        resp = self.client.get('/dashboard/dynamics/proposals/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Autopilot proposals')
 
     def test_anon_blocked(self):
-        resp = self.client.get('/dashboard/dynamic-products/proposals/')
+        resp = self.client.get('/dashboard/dynamics/proposals/')
         self.assertIn(resp.status_code, (301, 302, 403))
 
     def test_approve_via_post(self):
@@ -130,9 +130,7 @@ class ReviewPageTests(TestCase):
             signature='enable_autopilot',
             payload={'slots': ['home_above_grid']},
         )
-        resp = self.client.post(
-            f'/dashboard/dynamic-products/proposals/{prop.id}/', {'action': 'approve'}
-        )
+        resp = self.client.post(f'/dashboard/dynamics/proposals/{prop.id}/', {'action': 'approve'})
         self.assertEqual(resp.status_code, 302)
         prop.refresh_from_db()
         self.assertEqual(prop.status, 'approved')
@@ -142,9 +140,9 @@ class WiringTests(TestCase):
     def test_merchandiser_task_and_beat_registered(self):
         from django.conf import settings
 
-        from plugins.installed.dynamic_products.tasks import (
+        from plugins.installed.dynamics.tasks import (
             generate_merchandising_proposals as task,
         )
 
-        self.assertEqual(task.name, 'dynamic_products.generate_merchandising_proposals')
-        self.assertIn('dynamic_products:merchandiser', settings.CELERY_BEAT_SCHEDULE)
+        self.assertEqual(task.name, 'dynamics.generate_merchandising_proposals')
+        self.assertIn('dynamics:merchandiser', settings.CELERY_BEAT_SCHEDULE)

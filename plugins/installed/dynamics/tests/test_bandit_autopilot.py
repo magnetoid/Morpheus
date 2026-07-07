@@ -17,14 +17,14 @@ from djmoney.money import Money
 
 from plugins.installed.analytics.models import AnalyticsEvent, AnalyticsSession
 from plugins.installed.catalog.models import Product
-from plugins.installed.dynamic_products.models import BanditArm, DynamicBlock, DynamicGridItem
-from plugins.installed.dynamic_products.reranker import (
+from plugins.installed.dynamics.models import BanditArm, DynamicBlock, DynamicGridItem
+from plugins.installed.dynamics.reranker import (
     _cap_by_category,
     _inject_exploration,
     thompson_rerank,
 )
-from plugins.installed.dynamic_products.segments import segment_of
-from plugins.installed.dynamic_products.services import rebuild_bandit_posteriors, recommend
+from plugins.installed.dynamics.segments import segment_of
+from plugins.installed.dynamics.services import rebuild_bandit_posteriors, recommend
 
 Customer = get_user_model()
 
@@ -46,7 +46,7 @@ class SegmentTests(TestCase):
         self.assertEqual(segment_of('weird', 2, False), 'desktop:night:anon')  # unknown → desktop
 
     def test_segment_for_reads_request(self):
-        from plugins.installed.dynamic_products.segments import segment_for
+        from plugins.installed.dynamics.segments import segment_for
 
         req = RequestFactory().get('/', HTTP_USER_AGENT='Mozilla/5.0 (iPhone; Mobile)')
         seg = segment_for(req)
@@ -121,7 +121,7 @@ class AutomationWiringTests(TestCase):
     def test_bandit_rebuild_task_and_beat_registered(self):
         from django.conf import settings
 
-        from plugins.installed.dynamic_products.tasks import rebuild_bandit_posteriors as task
+        from plugins.installed.dynamics.tasks import rebuild_bandit_posteriors as task
 
-        self.assertEqual(task.name, 'dynamic_products.rebuild_bandit_posteriors')
-        self.assertIn('dynamic_products:rebuild_bandit_posteriors', settings.CELERY_BEAT_SCHEDULE)
+        self.assertEqual(task.name, 'dynamics.rebuild_bandit_posteriors')
+        self.assertIn('dynamics:rebuild_bandit_posteriors', settings.CELERY_BEAT_SCHEDULE)

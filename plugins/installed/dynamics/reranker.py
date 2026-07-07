@@ -1,4 +1,4 @@
-"""dynamic_products — the self-optimizing Thompson-sampling reranker.
+"""dynamics — the self-optimizing Thompson-sampling reranker.
 
 Pure-Python (no numpy): one ``random.betavariate(alpha, beta)`` draw per candidate
 arm. Products with a stronger per-segment posterior tend to draw higher, while an
@@ -63,7 +63,7 @@ def thompson_rerank(
 def _arms_for(product_ids: list, segment: str) -> dict:
     """product_id -> (alpha, beta) for this segment. Missing rows are cold-start."""
     try:
-        from plugins.installed.dynamic_products.models import BanditArm
+        from plugins.installed.dynamics.models import BanditArm
 
         rows = BanditArm.objects.filter(product_id__in=product_ids, segment=segment).values_list(
             'product_id', 'alpha', 'beta'

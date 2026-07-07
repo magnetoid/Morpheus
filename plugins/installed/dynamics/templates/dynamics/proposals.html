@@ -23,7 +23,7 @@
           <div class="font-medium mt-0.5">{{ p.title }}</div>
           {% if p.rationale %}<p class="text-sm text-[color:var(--text-muted)] mt-1">{{ p.rationale }}</p>{% endif %}
         </div>
-        <form method="post" action="/dashboard/dynamic-products/proposals/{{ p.id }}/" class="flex gap-2 shrink-0">
+        <form method="post" action="/dashboard/dynamics/proposals/{{ p.id }}/" class="flex gap-2 shrink-0">
           {% csrf_token %}
           {% if p.is_actionable %}
           <button name="action" value="approve" class="btn btn-primary text-xs">Approve</button>

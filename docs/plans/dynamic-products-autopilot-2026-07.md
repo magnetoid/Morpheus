@@ -215,3 +215,21 @@ now orders by a data-driven score; nightly + event refresh wired.
   Torsor ADR for the autopilot/self-optimization loop at the end.
 - **Verify each phase:** scoped tests (sqlite mem) + `manage.py check` +
   `makemigrations --check` + ruff + boundary/pre-commit. Smoke live on "ship".
+
+---
+
+## Follow-up (2026-07-07): rename + more options — ✅ DONE
+
+- **Renamed** the plugin `dynamic_products` → **`dynamics`** (module, Plugin.name,
+  imports, URLs `/dashboard/dynamics/`, templates, tasks, logger). The Django app
+  **label stays `dynamic_products`** so the live DB tables/migrations/content-types
+  are untouched (zero data risk). Boot + 41-test suite verified.
+- **+5 strategies:** trending, new_arrivals, best_sellers, on_sale, similar_price (PDP).
+- **+block config (B2):** price_min/max, exclude_out_of_stock, exclude_purchased,
+  pinned/excluded product-id lists (pins force-inject + resolve to real pks).
+- **+display (B3):** layout (carousel/grid), columns, show_price, show_reason
+  ("why" label from the strategy) — rendered by `_carousel.html`.
+- **+autopilot controls (B4):** per-block exploration_rate / diversity_cap /
+  segment_override (thread into the reranker), plus a plugin `auto_apply` settings
+  toggle so the merchandiser can skip the review queue for low-risk actions.
+- All settable in the block edit form; migrations 0006/0007; +18 tests (54 total).

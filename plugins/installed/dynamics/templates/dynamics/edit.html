@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}{% if block %}Edit block{% else %}New block{% endif %} · Dynamic Products{% endblock %}
+{% block title %}{% if block %}Edit block{% else %}New block{% endif %} · Dynamics{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-4">
@@ -98,9 +98,84 @@
       </div>
     </fieldset>
 
+    <fieldset class="rounded-lg border border-[color:var(--border)] p-3 space-y-3">
+      <legend class="px-1 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">More filters</legend>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Min price</label>
+          <input type="number" step="0.01" name="price_min" value="{{ block.price_min|default:'' }}"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Max price</label>
+          <input type="number" step="0.01" name="price_max" value="{{ block.price_max|default:'' }}"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-4 text-sm">
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="exclude_out_of_stock" {% if block.exclude_out_of_stock %}checked{% endif %}> Hide out-of-stock</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="exclude_purchased" {% if block.exclude_purchased %}checked{% endif %}> Hide already-purchased</label>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Pin product ids (comma-sep)</label>
+          <input type="text" name="pinned_product_ids" value="{{ pinned_value }}"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Exclude product ids (comma-sep)</label>
+          <input type="text" name="excluded_product_ids" value="{{ excluded_value }}"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="rounded-lg border border-[color:var(--border)] p-3 space-y-3">
+      <legend class="px-1 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Display</legend>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Layout</label>
+          <select name="layout" class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+            <option value="carousel" {% if not block or block.layout == 'carousel' %}selected{% endif %}>Carousel</option>
+            <option value="grid" {% if block.layout == 'grid' %}selected{% endif %}>Grid</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Columns (grid)</label>
+          <input type="number" name="columns" min="2" max="6" value="{{ block.columns|default:4 }}"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-4 text-sm">
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_price" {% if not block or block.show_price %}checked{% endif %}> Show price</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_reason" {% if block.show_reason %}checked{% endif %}> Show “why” label</label>
+      </div>
+    </fieldset>
+
+    <fieldset class="rounded-lg border border-[color:var(--border)] p-3 space-y-3">
+      <legend class="px-1 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Autopilot (self-optimizing strategy)</legend>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Exploration rate</label>
+          <input type="number" step="0.01" min="0" max="1" name="exploration_rate" value="{{ block.exploration_rate|default:'' }}" placeholder="default"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Diversity cap</label>
+          <input type="number" min="1" max="12" name="diversity_cap" value="{{ block.diversity_cap|default:'' }}" placeholder="default"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Segment override</label>
+          <input type="text" name="segment_override" value="{{ block.segment_override|default:'' }}" placeholder="per-visitor"
+                 class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+        </div>
+      </div>
+    </fieldset>
+
     <div class="flex items-center gap-2">
       <button type="submit" class="btn btn-primary text-sm">Save block</button>
-      <a href="/dashboard/dynamic-products/" class="btn btn-ghost text-sm">Cancel</a>
+      <a href="/dashboard/dynamics/" class="btn btn-ghost text-sm">Cancel</a>
     </div>
   </form>
 </div>

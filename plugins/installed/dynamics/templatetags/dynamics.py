@@ -16,7 +16,7 @@ import logging
 
 from django import template
 
-logger = logging.getLogger('morpheus.dynamic_products')
+logger = logging.getLogger('morpheus.dynamics')
 
 register = template.Library()
 
@@ -25,8 +25,8 @@ register = template.Library()
 def dynamic_blocks_for(context, slot, request=None, product=None):
     """Resolve enabled DynamicBlocks for ``slot`` into render-ready rows."""
     try:
-        from plugins.installed.dynamic_products.models import DynamicBlock
-        from plugins.installed.dynamic_products.services import recommend
+        from plugins.installed.dynamics.models import DynamicBlock
+        from plugins.installed.dynamics.services import reason_label, recommend
     except Exception:  # noqa: BLE001 — plugin mid-teardown
         return []
 
@@ -45,5 +45,11 @@ def dynamic_blocks_for(context, slot, request=None, product=None):
             continue
         products = recommend(block, request=req, customer=customer, context_product=product)
         if products:
-            out.append({'block': block, 'products': products})
+            out.append(
+                {
+                    'block': block,
+                    'products': products,
+                    'reason': reason_label(block) if block.show_reason else '',
+                }
+            )
     return out

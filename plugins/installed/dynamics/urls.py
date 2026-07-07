@@ -1,4 +1,4 @@
-"""dynamic_products dashboard routes (mounted under /dashboard/dynamic-products/)."""
+"""dynamics dashboard routes (mounted under /dashboard/dynamics/)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from django.urls import path
 
 from . import views
 
-app_name = 'dynamic_products'
+app_name = 'dynamics'
 
 urlpatterns = [
     path('', views.index, name='index'),

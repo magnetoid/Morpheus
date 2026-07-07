@@ -17,8 +17,8 @@ from djmoney.money import Money
 
 from plugins.installed.analytics.models import AnalyticsEvent
 from plugins.installed.catalog.models import Product
-from plugins.installed.dynamic_products.models import DynamicBlock, DynamicGridItem
-from plugins.installed.dynamic_products.services import calculate_grid_probabilities, recommend
+from plugins.installed.dynamics.models import DynamicBlock, DynamicGridItem
+from plugins.installed.dynamics.services import calculate_grid_probabilities, recommend
 from plugins.installed.orders.models import Order, OrderItem
 
 Customer = get_user_model()
@@ -124,15 +124,15 @@ class AutomationWiringTests(TestCase):
     def test_task_and_nightly_beat_registered(self):
         from django.conf import settings
 
-        from plugins.installed.dynamic_products.tasks import recompute_probabilities
+        from plugins.installed.dynamics.tasks import recompute_probabilities
 
-        self.assertEqual(recompute_probabilities.name, 'dynamic_products.recompute_probabilities')
-        self.assertIn('dynamic_products:recompute_probabilities', settings.CELERY_BEAT_SCHEDULE)
+        self.assertEqual(recompute_probabilities.name, 'dynamics.recompute_probabilities')
+        self.assertIn('dynamics:recompute_probabilities', settings.CELERY_BEAT_SCHEDULE)
 
     def test_throttled_refresh_recomputes_then_debounces(self):
         from django.core.cache import cache
 
-        from plugins.installed.dynamic_products.tasks import (
+        from plugins.installed.dynamics.tasks import (
             _REFRESH_LOCK_KEY,
             refresh_probabilities_throttled,
         )

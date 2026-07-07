@@ -1,7 +1,7 @@
-"""dynamic_products — dashboard config views (staff-only).
+"""dynamics — dashboard config views (staff-only).
 
 A small CRUD over :class:`DynamicBlock`: list, create/edit, delete. All
-templates live under this plugin's own ``templates/dynamic_products/``;
+templates live under this plugin's own ``templates/dynamics/``;
 nothing is hard-coded into admin_dashboard, so disabling the plugin takes
 the whole settings page with it.
 """
@@ -26,7 +26,7 @@ from .models import (
 def _trail(*items):
     trail = [
         {'label': 'Dashboard', 'url': '/dashboard/'},
-        {'label': 'Dynamic Products', 'url': '/dashboard/dynamic-products/'},
+        {'label': 'Dynamics', 'url': '/dashboard/dynamics/'},
     ]
     for item in items:
         trail.append(item if isinstance(item, dict) else {'label': str(item)})
@@ -39,7 +39,7 @@ def index(request):
     blocks = list(DynamicBlock.objects.prefetch_related('categories').all())
     return render(
         request,
-        'dynamic_products/index.html',
+        'dynamics/index.html',
         {
             'blocks': blocks,
             'breadcrumb_trail': _trail(),
@@ -59,7 +59,7 @@ def edit_block(request, block_id=None):
         block = _save_from_post(request, block)
         if block is not None:
             messages.success(request, 'Block saved.')
-            return redirect('/dashboard/dynamic-products/')
+            return redirect('/dashboard/dynamics/')
 
     categories = list(Category.objects.order_by('name').values('pk', 'name'))
     selected_cats = (
@@ -67,7 +67,7 @@ def edit_block(request, block_id=None):
     )
     return render(
         request,
-        'dynamic_products/edit.html',
+        'dynamics/edit.html',
         {
             'block': block,
             'slot_choices': SLOT_CHOICES,
@@ -75,6 +75,12 @@ def edit_block(request, block_id=None):
             'categories': categories,
             'selected_cats': selected_cats,
             'tags_value': ', '.join(block.tags) if block and block.tags else '',
+            'pinned_value': ', '.join(str(x) for x in block.pinned_product_ids)
+            if block and block.pinned_product_ids
+            else '',
+            'excluded_value': ', '.join(str(x) for x in block.excluded_product_ids)
+            if block and block.excluded_product_ids
+            else '',
             'breadcrumb_trail': _trail({'label': block.name if block else 'New block'}),
             'active_section': 'settings',
         },
@@ -87,7 +93,7 @@ def delete_block(request, block_id):
     if request.method == 'POST':
         block.delete()
         messages.success(request, 'Block deleted.')
-    return HttpResponseRedirect('/dashboard/dynamic-products/')
+    return HttpResponseRedirect('/dashboard/dynamics/')
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +138,7 @@ def _save_from_post(request, block):
     block.tags = tags
     block.metafield_key = (request.POST.get('metafield_key') or '').strip()[:120]
     block.metafield_value = (request.POST.get('metafield_value') or '').strip()[:255]
+    _apply_option_fields(block, request)
     block.save()
 
     # Category M2M.
@@ -146,6 +153,56 @@ def _save_from_post(request, block):
     return block
 
 
+def _checked(request, key) -> bool:
+    return request.POST.get(key) in ('on', 'true', '1', 'yes')
+
+
+def _apply_option_fields(block, request) -> None:
+    """Parse the B2/B3/B4 option fields off POST onto `block` (before save)."""
+    from decimal import Decimal, InvalidOperation
+
+    def _dec(key):
+        raw = (request.POST.get(key) or '').strip()
+        if not raw:
+            return None
+        try:
+            return Decimal(raw)
+        except InvalidOperation:
+            return None
+
+    def _int(key, lo, hi, default):
+        raw = (request.POST.get(key) or '').strip()
+        if not raw:
+            return default
+        try:
+            return max(lo, min(int(raw), hi))
+        except (TypeError, ValueError):
+            return default
+
+    def _ids(key):
+        return [t.strip() for t in (request.POST.get(key) or '').split(',') if t.strip()]
+
+    # B2 — filters
+    block.exclude_out_of_stock = _checked(request, 'exclude_out_of_stock')
+    block.exclude_purchased = _checked(request, 'exclude_purchased')
+    block.price_min = _dec('price_min')
+    block.price_max = _dec('price_max')
+    block.pinned_product_ids = _ids('pinned_product_ids')
+    block.excluded_product_ids = _ids('excluded_product_ids')
+    # B3 — display
+    block.layout = 'grid' if request.POST.get('layout') == 'grid' else 'carousel'
+    block.columns = _int('columns', 2, 6, 4)
+    block.show_price = _checked(request, 'show_price')
+    block.show_reason = _checked(request, 'show_reason')
+    # B4 — autopilot overrides (blank → default)
+    rate = _dec('exploration_rate')
+    block.exploration_rate = (
+        float(max(Decimal('0'), min(rate, Decimal('1')))) if rate is not None else None
+    )
+    block.diversity_cap = _int('diversity_cap', 1, 12, None)
+    block.segment_override = (request.POST.get('segment_override') or '').strip()[:64]
+
+
 # ---------------------------------------------------------------------------
 # Autopilot merchandiser — review queue
 # ---------------------------------------------------------------------------
@@ -158,7 +215,7 @@ def proposals(request):
 
     return render(
         request,
-        'dynamic_products/proposals.html',
+        'dynamics/proposals.html',
         {
             'open_proposals': list(MerchandisingProposal.objects.filter(status='proposed')),
             'recent_proposals': list(
@@ -187,4 +244,4 @@ def proposal_action(request, proposal_id):
         elif action == 'dismiss':
             autopilot.dismiss_proposal(proposal, actor=request.user)
             messages.info(request, 'Dismissed.')
-    return HttpResponseRedirect('/dashboard/dynamic-products/proposals/')
+    return HttpResponseRedirect('/dashboard/dynamics/proposals/')

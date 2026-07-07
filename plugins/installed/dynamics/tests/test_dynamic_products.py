@@ -1,4 +1,4 @@
-"""dynamic_products — permission boundary + engine unit tests."""
+"""dynamics — permission boundary + engine unit tests."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from django.urls import reverse
 from djmoney.money import Money
 
 from plugins.installed.catalog.models import Category, Product
-from plugins.installed.dynamic_products.models import DynamicBlock
-from plugins.installed.dynamic_products.services import recommend
+from plugins.installed.dynamics.models import DynamicBlock
+from plugins.installed.dynamics.services import recommend
 from plugins.installed.orders.models import Order, OrderItem
 
 Customer = get_user_model()
@@ -61,12 +61,12 @@ def _paid_order(customer, products, *, status='confirmed'):
 # ---------------------------------------------------------------------------
 
 
-class DynamicProductsIndexBoundaryTests(TestCase):
+class DynamicsIndexBoundaryTests(TestCase):
     """anon blocked · non-staff blocked · staff allowed (customers.Customer)."""
 
     @classmethod
     def setUpTestData(cls):
-        cls.url = reverse('dynamic_products:index')
+        cls.url = reverse('dynamics:index')
         cls.shopper = Customer.objects.create_user(
             username='shopper', email='shopper@example.com', password='pw'
         )
@@ -96,7 +96,7 @@ class DynamicProductsIndexBoundaryTests(TestCase):
 # ---------------------------------------------------------------------------
 
 
-class DynamicProductsEngineTests(TestCase):
+class DynamicsEngineTests(TestCase):
     def setUp(self):
         self.rf = RequestFactory()
         self.cat = Category.objects.create(name='Fiction', slug='fiction')

@@ -125,6 +125,63 @@ class DynamicBlock(models.Model):
         help_text='…and this metafield value. Leave blank to match any value for the key.',
     )
 
+    # ── Extra filter options (B2) ────────────────────────────────────────────
+    exclude_out_of_stock = models.BooleanField(
+        default=False,
+        help_text='Hide products with zero available stock (needs the inventory plugin).',
+    )
+    exclude_purchased = models.BooleanField(
+        default=False, help_text='Hide products the signed-in visitor has already bought.'
+    )
+    price_min = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Only show products at/above this price.',
+    )
+    price_max = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Only show products at/below this price.',
+    )
+    pinned_product_ids = models.JSONField(
+        default=list, blank=True, help_text='Product ids to force to the front, in order.'
+    )
+    excluded_product_ids = models.JSONField(
+        default=list, blank=True, help_text='Product ids to always hide from this block.'
+    )
+
+    # ── Display options (B3) ─────────────────────────────────────────────────
+    LAYOUT_CHOICES = [('carousel', 'Carousel'), ('grid', 'Grid')]
+    layout = models.CharField(max_length=16, choices=LAYOUT_CHOICES, default='carousel')
+    columns = models.PositiveSmallIntegerField(
+        default=4, help_text='Items per row when the layout is Grid (2–6).'
+    )
+    show_price = models.BooleanField(default=True)
+    show_reason = models.BooleanField(
+        default=False, help_text='Show a short "why" label under each product (e.g. “Trending”).'
+    )
+
+    # ── Autopilot controls (B4) — apply to the self-optimizing reranker ──────
+    exploration_rate = models.FloatField(
+        null=True,
+        blank=True,
+        help_text='Override the bandit exploration rate (0–1). Blank = default.',
+    )
+    diversity_cap = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text='Override the max items per category in the head. Blank = default.',
+    )
+    segment_override = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text='Force a bandit segment for everyone (advanced). Blank = per-visitor.',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
