@@ -4,10 +4,14 @@
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-4">
 
-  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'media:library' %}" class="hover:underline">Media library</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span class="font-medium text-[color:var(--text)] truncate">{{ asset.filename|default:"asset" }}</span>
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="image" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight truncate">{{ asset.filename|default:"Edit asset" }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Update this asset's metadata — title, alt text, caption &amp; SEO.</p>
+    </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">

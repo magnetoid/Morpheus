@@ -4,12 +4,14 @@
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
 
-  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'workflows:index' %}" class="hover:underline">Workflows</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span class="font-medium text-[color:var(--text)]">
-      {% if workflow %}{{ workflow.name }}{% else %}New{% endif %}
-    </span>
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="workflow" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">{% if workflow %}Edit workflow{% else %}New workflow{% endif %}</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Run actions automatically when a matching store event fires.</p>
+    </div>
   </div>
 
   <form method="post" class="space-y-4" data-morph-dirty>
@@ -73,7 +75,7 @@
       <pre class="text-xs" style="background:var(--surface-2); padding:.65rem; border-radius:6px; margin:0;">[
   {"kind": "notify_staff",
    "title": "VIP order placed",
-   "body": "Order #{{ '{{ order.order_number }}' }} — over $200",
+   "body": "Order #{% verbatim %}{{ order.order_number }}{% endverbatim %} — over $200",
    "icon": "star"},
   {"kind": "tag_customer", "tag": "vip"},
   {"kind": "agent_skill", "agent": "merchant_ops",

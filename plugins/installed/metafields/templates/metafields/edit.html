@@ -4,12 +4,14 @@
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-4">
 
-  <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-    <a href="{% url 'metafields:index' %}" class="hover:underline">Metafields</a>
-    <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-    <span class="font-medium text-[color:var(--text)]">
-      {% if metafield %}Edit{% else %}New{% endif %}
-    </span>
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="braces" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">{% if metafield %}Edit metafield{% else %}New metafield{% endif %}</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Attach custom structured data to any record.</p>
+    </div>
   </div>
 
   <form method="post" class="card card-padded space-y-4" data-morph-dirty>
