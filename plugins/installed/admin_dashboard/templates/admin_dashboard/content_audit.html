@@ -21,7 +21,7 @@
     {% endif %}
   </div>
 
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+  <div class="reveal-stagger grid grid-cols-2 md:grid-cols-4 gap-3">
     <div class="card card-padded kpi"><span class="kpi__label">Total products</span><span class="kpi__value">{{ summary.product_total }}</span></div>
     <div class="card card-padded kpi"><span class="kpi__label">Incomplete</span><span class="kpi__value">{{ summary.total }}</span></div>
     <div class="card card-padded kpi"><span class="kpi__label">Missing short</span><span class="kpi__value">{{ summary.missing_short }}</span></div>
@@ -103,7 +103,7 @@
       });
       const data = await res.json();
       if (data.ok && data.updated && data.updated.length) {
-        resultCell.innerHTML = '<span style="color: var(--success, #2c8a3e);">✓ filled ' + data.updated.join(', ') + '</span>';
+        resultCell.innerHTML = '<span class="mi-pop" style="color: var(--success);">✓ filled ' + data.updated.join(', ') + '</span>';
         btn.innerHTML = '<i data-lucide="check" class="h-3.5 w-3.5"></i> Done';
         if (window.lucide) lucide.createIcons();
         return true;

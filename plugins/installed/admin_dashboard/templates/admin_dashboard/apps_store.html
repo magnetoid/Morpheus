@@ -32,7 +32,7 @@
   {% for category, apps in categories %}
   <section>
     <h2 class="h2" style="margin: 1.5rem 0 .75rem;">{{ category }}</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div class="reveal-stagger grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       {% for a in apps %}
       <div class="card card-hoverable card-padded" style="display: flex; flex-direction: column; gap: .65rem;">
         <div style="display:flex; align-items:flex-start; gap:.65rem;">

@@ -287,10 +287,8 @@
     SECTIONS.forEach(s => {
       const tile = document.createElement('button');
       tile.type = 'button';
-      tile.className = 'card card-padded text-left';
-      tile.style.cssText = 'cursor: pointer; transition: border-color .15s, box-shadow .15s; padding: .65rem .85rem;';
-      tile.addEventListener('mouseenter', () => { tile.style.borderColor = 'var(--text)'; });
-      tile.addEventListener('mouseleave', () => { tile.style.borderColor = ''; });
+      tile.className = 'card card-hoverable card-padded text-left';
+      tile.style.cssText = 'cursor: pointer; padding: .65rem .85rem;';
       tile.innerHTML = `
         <div style="display:flex; align-items:center; gap:.55rem; margin-bottom:.25rem;">
           <i data-lucide="${s.icon || 'square'}" class="h-4 w-4"></i>
@@ -316,6 +314,7 @@
       .then(data => {
         if (data.error) { setStatus(data.error, 'error'); return; }
         renderRow(data.row);
+        if (list.lastElementChild) list.lastElementChild.classList.add('fadein');
         setStatus('Added.', 'success');
         refreshPreview();
       })

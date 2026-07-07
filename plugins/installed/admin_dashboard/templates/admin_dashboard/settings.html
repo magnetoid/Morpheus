@@ -12,7 +12,7 @@
     </p>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+  <div class="reveal-stagger grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
     {% for c in cards %}
     <a href="{% url 'admin_dashboard:settings_category' category=c.category.slug %}"
        class="card card-padded settings-tile">
@@ -60,8 +60,7 @@
 </div>
 
 <style>
-  .settings-tile { display: block; transition: background .15s, border-color .15s; }
-  .settings-tile:hover { background: var(--surface-2); }
+  .settings-tile { display: block; }
   .settings-tile-icon {
     width: 2.25rem; height: 2.25rem; border-radius: 8px;
     background: var(--surface-2); border: 1px solid var(--border);

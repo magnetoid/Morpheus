@@ -12,13 +12,13 @@
 
 {% if flash %}<p class="pill pill-success mb-3">{{ flash }}</p>{% endif %}
 
-<nav class="flex items-center gap-1 mb-4" style="border-bottom: 1px solid var(--border);">
-  {% with t='connection' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="link-2" class="h-4 w-4"></i> Connection</a>{% endwith %}
-  {% with t='events' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="zap" class="h-4 w-4"></i> Event firing</a>{% endwith %}
-  {% with t='consent' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="shield" class="h-4 w-4"></i> Consent</a>{% endwith %}
-  {% with t='identity' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="user" class="h-4 w-4"></i> Identity</a>{% endwith %}
-  {% with t='filters' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="filter" class="h-4 w-4"></i> Filters &amp; dedup</a>{% endwith %}
-  {% with t='tests' %}<a href="?tab={{ t }}" class="inline-flex items-center gap-2 px-3 py-2 text-sm" style="border-bottom: 2px solid {% if tab == t %}var(--text){% else %}transparent{% endif %}; color: {% if tab == t %}var(--text){% else %}var(--text-muted){% endif %}; font-weight: {% if tab == t %}600{% else %}500{% endif %}; margin-bottom: -1px;"><i data-lucide="flask-conical" class="h-4 w-4"></i> Tests</a>{% endwith %}
+<nav class="tab-list overflow-x-auto">
+  {% with t='connection' %}<a href="?tab={{ t }}" class="tab{% if tab == t %} is-active{% endif %} inline-flex items-center gap-2"><i data-lucide="link-2" class="h-4 w-4"></i> Connection</a>{% endwith %}
+  {% with t='events' %}<a href="?tab={{ t }}" class="tab{% if tab == t %} is-active{% endif %} inline-flex items-center gap-2"><i data-lucide="zap" class="h-4 w-4"></i> Event firing</a>{% endwith %}
+  {% with t='consent' %}<a href="?tab={{ t }}" class="tab{% if tab == t %} is-active{% endif %} inline-flex items-center gap-2"><i data-lucide="shield" class="h-4 w-4"></i> Consent</a>{% endwith %}
+  {% with t='identity' %}<a href="?tab={{ t }}" class="tab{% if tab == t %} is-active{% endif %} inline-flex items-center gap-2"><i data-lucide="user" class="h-4 w-4"></i> Identity</a>{% endwith %}
+  {% with t='filters' %}<a href="?tab={{ t }}" class="tab{% if tab == t %} is-active{% endif %} inline-flex items-center gap-2"><i data-lucide="filter" class="h-4 w-4"></i> Filters &amp; dedup</a>{% endwith %}
+  {% with t='tests' %}<a href="?tab={{ t }}" class="tab{% if tab == t %} is-active{% endif %} inline-flex items-center gap-2"><i data-lucide="flask-conical" class="h-4 w-4"></i> Tests</a>{% endwith %}
 </nav>
 
 {% if tab == 'connection' %}

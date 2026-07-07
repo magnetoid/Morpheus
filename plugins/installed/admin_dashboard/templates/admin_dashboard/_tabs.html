@@ -2,17 +2,12 @@
 {# Driven by the `index_tabs` template tag in morph_dashboard.py. Each tab #}
 {# is a real <a href> so it works without JS; clicking just navigates. #}
 {# `tabs` is a list of {label, value, count, active, href}. #}
-<nav class="flex items-center gap-1 overflow-x-auto" style="border-bottom: 1px solid var(--border);" aria-label="Status tabs">
+<nav class="tab-list overflow-x-auto" aria-label="Status tabs">
   {% for t in tabs %}
-  <a href="{{ t.href }}"
-     class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
-     style="border-bottom: 2px solid {% if t.active %}var(--text){% else %}transparent{% endif %};
-            color: {% if t.active %}var(--text){% else %}var(--text-muted){% endif %};
-            font-weight: {% if t.active %}600{% else %}500{% endif %};
-            margin-bottom: -1px;">
+  <a href="{{ t.href }}" class="tab{% if t.active %} is-active{% endif %} inline-flex items-center gap-2 whitespace-nowrap">
     {{ t.label }}
     {% if t.count %}
-    <span class="pill pill-neutral" style="font-size: .68rem; padding: .05rem .4rem;">{{ t.count }}</span>
+    <span class="pill pill-neutral pill-xs">{{ t.count }}</span>
     {% endif %}
   </a>
   {% endfor %}
