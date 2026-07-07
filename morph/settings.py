@@ -98,7 +98,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.cart_abandonment',
     'plugins.installed.backups',
     'plugins.installed.digital_products',
-    'plugins.installed.dynamic_products',
+    'plugins.installed.dynamics',
     # Phase-1+2 plugins added later in development. Each ships its own
     # migrations; keep registered so models.* tables exist + plugin
     # manifests get discovered.

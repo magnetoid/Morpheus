@@ -27,7 +27,7 @@ class PersonalisationPlugin(Plugin):
         # Nightly co-purchase recompute. The task existed but was never
         # scheduled, so CoPurchaseScore never refreshed (the docstring's
         # "runs nightly" was aspirational). 2:30am — ahead of the
-        # dynamic_products propensity recompute (3:30am) that reads it.
+        # dynamics propensity recompute (3:30am) that reads it.
         from celery.schedules import crontab  # noqa: PLC0415
 
         self.register_celery_tasks('plugins.installed.personalisation.tasks')
