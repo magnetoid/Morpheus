@@ -1,12 +1,16 @@
-"""Release notes plugin — the in-dashboard "Version & updates" page.
+"""Release notes plugin — the in-dashboard platform-info pages.
 
-Thin, model-less surface that renders [`docs/RELEASE_NOTES.md`](../../../docs/RELEASE_NOTES.md)
-— the single source of truth for the Morpheus OS changelog — under
-Dashboard → Settings, alongside the live `MORPHEUS_VERSION`.
+Two model-less surfaces under Dashboard → Settings:
 
-House rule (torsor ADR "Versioned release notes" + CLAUDE.md): every version
-bump adds a `## vX.Y.Z — YYYY-MM-DD` entry to that document. This plugin only
-*displays* it; it owns no data.
+* **About Morpheus** — what the platform is + a live catalogue of every
+  installed app, read straight from the plugin registry (`views.about`).
+* **Version & updates** — renders [`docs/RELEASE_NOTES.md`](../../../docs/RELEASE_NOTES.md),
+  the single source of truth for the Morpheus OS changelog, next to the
+  running `MORPHEUS_VERSION` (`views.version_updates`).
+
+House rule (torsor ADR "Versioned release notes" + ADR 0032 + CLAUDE.md): every
+production deploy bumps `MORPHEUS_VERSION` and adds a `## vX.Y.Z — YYYY-MM-DD`
+entry to that document. This plugin only *displays*; it owns no data.
 """
 
 from __future__ import annotations
@@ -17,15 +21,25 @@ from morpheus import DashboardPage, Plugin
 class ReleaseNotesPlugin(Plugin):
     name = 'release_notes'
     label = 'Release notes'
-    version = '1.0.0'
+    version = '1.1.0'
     description = (
-        'The Settings → Version & updates page. Renders docs/RELEASE_NOTES.md '
-        '(the Morpheus OS changelog) next to the running version.'
+        'The Settings → About Morpheus page (what the platform is + a live '
+        'catalogue of every installed app) and the Version & updates changelog '
+        '(renders docs/RELEASE_NOTES.md next to the running version).'
     )
     has_models = False
 
     def contribute_dashboard_pages(self) -> list:
         return [
+            DashboardPage(
+                label='About Morpheus',
+                slug='about',
+                view='plugins.installed.release_notes.views.about',
+                icon='info',
+                section='settings',
+                order=94,
+                nav='settings',
+            ),
             DashboardPage(
                 label='Version & updates',
                 slug='version',

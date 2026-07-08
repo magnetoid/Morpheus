@@ -49,3 +49,25 @@ class VersionPageTests(TestCase):
     def test_anon_blocked(self):
         resp = self.client.get('/dashboard/apps/release_notes/version/')
         self.assertIn(resp.status_code, (302, 301, 403))
+
+
+class AboutPageTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff = User.objects.create_user(
+            username='boss2', email='b2@x.io', password='pw', is_staff=True
+        )
+
+    def test_page_renders_and_lists_apps(self):
+        self.client.force_login(self.staff)
+        resp = self.client.get('/dashboard/apps/release_notes/about/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'About Morpheus')
+        self.assertContains(resp, 'Every app')
+        # The catalogue is data-driven from the plugin registry — the
+        # release_notes plugin lists itself, so its label appears.
+        self.assertContains(resp, 'Release notes')
+
+    def test_anon_blocked(self):
+        resp = self.client.get('/dashboard/apps/release_notes/about/')
+        self.assertIn(resp.status_code, (302, 301, 403))

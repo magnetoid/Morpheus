@@ -3,12 +3,34 @@
 Detailed, user-facing updates to the **Morpheus OS core** and its modules,
 surfaced in **Dashboard → Settings → Version & updates**.
 
-> **House rule (enforced):** every Morpheus OS version bump MUST add a dated,
-> versioned `## vX.Y.Z — YYYY-MM-DD` entry here describing the change. This file
-> is the single source of truth for the in-dashboard changelog. See
-> [`CLAUDE.md`](../CLAUDE.md) and the torsor ADR "Versioned release notes".
+> **House rule (enforced):** merging to `main` is a production deploy, so
+> **every deploy MUST bump `MORPHEUS_VERSION` and add a matching dated
+> `## vX.Y.Z — YYYY-MM-DD` entry** here describing the change. This file is the
+> single source of truth for the in-dashboard changelog. See
+> [`CLAUDE.md`](../CLAUDE.md) and torsor ADRs "Versioned release notes" + **0032**
+> (every production deploy bumps the version).
 
 ---
+
+## v0.2.28 — 2026-07-08
+
+### New: an About page for your platform
+- **Settings → About Morpheus** explains what Morpheus is, its three surfaces
+  (storefront, dashboard, and Linda), and lists **every app installed on your
+  store** — read live from the plugin registry, each with its version and on/off
+  state. One clear map of everything running.
+
+### A smoother, more consistent dashboard
+- **Breadcrumbs are fixed** across the whole dashboard — pages that used to show
+  the trail twice now show it once, and several edit screens gained proper page
+  titles.
+- **Dark-mode fixes** — the self-improvement and cohort-retention pages no longer
+  render with light panels in dark mode; several tables and status badges moved to
+  the standard styling.
+- **Micro-animations** — dashboard cards and tiles ease in, tabs give hover
+  feedback, and success moments get a subtle pop. All motion respects your
+  operating system's "reduce motion" setting.
+- Fixed a crash on the New / Edit workflow page.
 
 ## v0.2.27 — 2026-07-03
 

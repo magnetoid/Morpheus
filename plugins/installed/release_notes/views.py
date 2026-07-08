@@ -129,3 +129,45 @@ def version_updates(request):
             'latest': releases[0] if releases else None,
         },
     )
+
+
+@staff_member_required
+def about(request):
+    """About Morpheus — platform narrative + a live catalogue of every installed
+    app, read straight from the plugin registry so the list never drifts."""
+    from plugins.registry import plugin_registry
+
+    # Intended-enabled state from the DB (what a merchant last chose). A plugin
+    # with no PluginConfig row ships enabled, so default True.
+    db_enabled: dict[str, bool] = {}
+    try:
+        from plugins.models import PluginConfig
+
+        db_enabled = dict(PluginConfig.objects.values_list('plugin_name', 'is_enabled'))
+    except Exception:  # noqa: BLE001, S110 — never break the page on a DB hiccup
+        pass
+
+    apps = [
+        {
+            'name': name,
+            'label': getattr(cls, 'label', name) or name,
+            'description': getattr(cls, 'description', '') or '',
+            'version': getattr(cls, 'version', '') or '',
+            'requires': list(getattr(cls, 'requires', []) or []),
+            'active': db_enabled.get(name, True),
+        }
+        for name, cls in plugin_registry._classes.items()
+    ]
+    apps.sort(key=lambda a: a['label'].lower())
+
+    return render(
+        request,
+        'release_notes/about.html',
+        {
+            'version': getattr(settings, 'MORPHEUS_VERSION', 'v0.1.0'),
+            'apps': apps,
+            'app_total': len(apps),
+            'app_active': sum(1 for a in apps if a['active']),
+            'active_nav': 'settings',
+        },
+    )
