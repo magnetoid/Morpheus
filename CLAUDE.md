@@ -239,7 +239,12 @@ watches the repo: every push/merge to `main` triggers a build+deploy
 of dotbooks.store. There is no separate "ship" step — treat a merge as
 a deploy (and don't land several merges in rapid succession; Coolify
 thrashes). A broken migration or boot error on `main` is a live 503
-until hot-fixed.
+until hot-fixed. **Because a merge *is* a deploy, every merge to `main`
+MUST bump `MORPHEUS_VERSION` and add a matching dated
+`docs/RELEASE_NOTES.md` entry** (ADR 0032) — Settings → Version & updates
+reads both, so an unversioned deploy silently ships changes users can't
+see in the changelog. Batch local commits into one deploy carrying one
+bump (PATCH = fix/polish, MINOR = feature, MAJOR = breaking).
 
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`
@@ -376,7 +381,7 @@ relevant Markdown *in the same commit* — not "later." Which doc:
 | a house rule, landmine, or convention | this file (`CLAUDE.md`) |
 | the public API / MCP / GraphQL surface | `docs/MORPHEUS_API.md`, `docs/MCP_SERVER.md` |
 | a skill's behaviour | `docs/SKILLS.md` + the skill's `SKILL.md` |
-| **`MORPHEUS_VERSION` (any version bump)** | **`docs/RELEASE_NOTES.md`** — add a dated `## vX.Y.Z — YYYY-MM-DD` entry (newest first); it's the source of truth for **Settings → Version & updates** (`release_notes` plugin). Torsor ADR 0019. |
+| **`MORPHEUS_VERSION`** — bump on **every** deploy (merge = deploy) | **`docs/RELEASE_NOTES.md`** — add a dated `## vX.Y.Z — YYYY-MM-DD` entry (newest first); it's the source of truth for **Settings → Version & updates** (`release_notes` plugin). Torsor ADR 0019 + **0032** (every production deploy bumps). |
 
 Prefer pointing at the source of truth over hard-coding volatile facts:
 a plugin *count* in prose rots (it drifted to 47/49/54 across three docs
