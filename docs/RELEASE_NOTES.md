@@ -32,6 +32,10 @@ surfaced in **Dashboard → Settings → Version & updates**.
   operating system's "reduce motion" setting.
 - Fixed a crash on the New / Edit workflow page.
 
+### Storefront
+- Removed an empty **"Pairs with this"** section that could appear on product
+  pages with nothing listed under it.
+
 ## v0.2.27 — 2026-07-03
 
 ### Linda learns (self-learning Release 1)

@@ -25,8 +25,8 @@ class RailsPlugin(Plugin):
     label = 'Personalised rails'
     version = '1.0.0'
     description = (
-        'Six "feed-style" rails (For You, Restocked, Recently Viewed, '
-        'Trending With Your Cohort, Co-Purchase Next, Looks Like You). '
+        'Five "feed-style" rails (For You, Restocked, Recently Viewed, '
+        'Trending With Your Cohort, Looks Like You). '
         'Falls back to anonymous trending when consent is missing.'
     )
     has_models = True
@@ -40,12 +40,6 @@ class RailsPlugin(Plugin):
 
     def contribute_storefront_blocks(self) -> list:
         return [
-            StorefrontBlock(
-                slot='pdp_above_long_description',
-                template='rails/blocks/co_purchase_next.html',
-                priority=20,
-                context_keys=['product'],
-            ),
             StorefrontBlock(
                 slot='cart_summary_extra',
                 template='rails/blocks/trending_with_you.html',
@@ -89,11 +83,6 @@ class RailsPlugin(Plugin):
                     'type': 'boolean',
                     'default': True,
                     'title': '"Trending with your cohort" rail',
-                },
-                'enable_co_purchase_next': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': '"Co-purchase next" rail (PDP)',
                 },
                 'enable_looks_like_you': {
                     'type': 'boolean',
