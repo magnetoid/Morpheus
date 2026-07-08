@@ -33,6 +33,10 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - Fixed a crash on the New / Edit workflow page.
 
 ### Storefront
+- **Full-width layout** — the browse pages (home, shop, categories, search, and
+  product pages) now stretch to fill the screen, and the book grid adds more
+  columns on wide displays instead of enlarging the covers. Checkout and cart stay
+  comfortably bounded for readability.
 - Removed an empty **"Pairs with this"** section that could appear on product
   pages with nothing listed under it.
 

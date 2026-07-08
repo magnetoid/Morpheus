@@ -27,7 +27,7 @@
     --rule:         #d9d2bf;
     --accent:       #e63946;
     --accent-ink:   #b62b37;
-    --max:          1240px;
+    --max:          100%;
     --serif: 'Fraunces', 'Georgia', 'Times New Roman', serif;
     --sans:  'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --motion-fast: 140ms;
@@ -345,6 +345,8 @@
   @media (min-width: 640px) { .grid-books { grid-template-columns: repeat(3, 1fr); } }
   @media (min-width: 1024px) { .grid-books { grid-template-columns: repeat(4, 1fr); } }
   @media (min-width: 1280px) { .grid-books { grid-template-columns: repeat(5, 1fr); } }
+  @media (min-width: 1600px) { .grid-books { grid-template-columns: repeat(6, 1fr); } }
+  @media (min-width: 2000px) { .grid-books { grid-template-columns: repeat(7, 1fr); } }
 
   /* Marquee strip */
   .strip { background: var(--ink); color: var(--paper); }
