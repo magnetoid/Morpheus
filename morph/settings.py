@@ -185,6 +185,9 @@ MORPHEUS_DEFAULT_PLUGINS = [
     # checkout backed by our Cart. Ships OFF by default — the money path
     # (Stripe Shared Payment Token) is gated until a merchant enrolls.
     'plugins.installed.agentic_checkout',
+    # Per-install feature-usage aggregates + install-health score. No PII,
+    # no fleet telemetry — single-install product analytics.
+    'plugins.installed.feature_adoption',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

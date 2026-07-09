@@ -1,0 +1,66 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
+{% block title %}Feature adoption · Morpheus{% endblock %}
+{% block content %}
+<div class="space-y-4">
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="activity" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Feature adoption</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Which plugins actually get used on this install — and how healthy the install looks overall.</p>
+    </div>
+  </div>
+
+  <div class="card card-padded">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm text-[color:var(--text-muted)]">Install health</div>
+        <div class="text-3xl font-semibold tracking-tight">{{ health.score }}<span class="text-lg text-[color:var(--text-muted)]">/100</span></div>
+      </div>
+      <div class="flex gap-4 text-sm">
+        <div class="text-center"><div class="font-semibold">{{ health.components.breadth }}</div><div class="text-[color:var(--text-muted)]">breadth</div></div>
+        <div class="text-center"><div class="font-semibold">{{ health.components.agent }}</div><div class="text-[color:var(--text-muted)]">agent</div></div>
+        <div class="text-center"><div class="font-semibold">{{ health.components.freshness }}</div><div class="text-[color:var(--text-muted)]">freshness</div></div>
+      </div>
+    </div>
+  </div>
+
+  {% if rows %}
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>Plugin</th><th>7d</th><th>30d</th><th>90d</th><th>Trend</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="font-medium">{{ r.plugin }}</td>
+          <td>{{ r.u7 }}</td>
+          <td>{{ r.u30 }}</td>
+          <td>{{ r.u90 }}</td>
+          <td>{% sparkline r.series %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="activity" class="h-6 w-6"></i></div>
+    <h3>No usage recorded yet</h3>
+    <p>Feature usage is aggregated hourly. Check back after some dashboard and agent activity.</p>
+  </div>
+  {% endif %}
+
+  {% if never_used %}
+  <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Never used in 90 days <span class="text-sm font-normal text-[color:var(--text-muted)]">— deprecation candidates</span></h2>
+    </div>
+    <div class="px-4 py-3 flex flex-wrap gap-2">
+      {% for name in never_used %}<span class="pill pill-neutral">{{ name }}</span>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
