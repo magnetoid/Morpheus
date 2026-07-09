@@ -47,3 +47,19 @@ class FunnelViewTests(TestCase):
             {'steps': 'pageview,product.viewed'},
         )
         self.assertEqual(resp.status_code, 200)
+
+    def test_funnel_page_renders_dropoffs_and_comparison(self):
+        """The view computes `dropoffs` + `comparison`; the template must show them."""
+        _seed_two_step_funnel()
+        staff = get_user_model().objects.create_user(
+            username='staff2', email='staff2@test.local', password='x', is_staff=True
+        )
+        self.client.force_login(staff)
+        resp = self.client.get(
+            '/dashboard/analytics/v2/funnel/',
+            {'steps': 'pageview,product.viewed'},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Biggest drop-offs')
+        self.assertContains(resp, '66.7')  # 3 entered → 1 continued = 66.7% drop-off
+        self.assertContains(resp, 'previous period')

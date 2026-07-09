@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph %}
 {% block title %}Funnel · Morpheus{% endblock %}
 
 {% block content %}
@@ -22,4 +23,59 @@
     </tbody>
   </table>
 </div>
+
+{# Biggest drop-offs — computed by step_dropoffs(), previously never rendered. #}
+<div class="card mt-4">
+  <div class="px-4 py-3 border-b border-[color:var(--border)]">
+    <h2 class="font-semibold">Biggest drop-offs</h2>
+  </div>
+  {% if dropoffs %}
+  <table class="morph-table">
+    <thead><tr><th>Transition</th><th>Entered</th><th>Continued</th><th>Lost</th><th>Drop-off</th></tr></thead>
+    <tbody>
+    {% for d in dropoffs %}
+    <tr>
+      <td><code>{{ d.from_step }}</code> → <code>{{ d.to_step }}</code></td>
+      <td>{{ d.prev_count }}</td>
+      <td>{{ d.cur_count }}</td>
+      <td>{{ d.lost }}</td>
+      <td>
+        {% if d.dropoff_pct >= 50 %}<span class="pill pill-danger">{{ d.dropoff_pct }}%</span>
+        {% elif d.dropoff_pct >= 25 %}<span class="pill pill-warn">{{ d.dropoff_pct }}%</span>
+        {% else %}<span class="pill pill-neutral">{{ d.dropoff_pct }}%</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="px-4 py-4"><p class="text-sm text-[color:var(--text-muted)]">Add at least two steps to see where shoppers drop off.</p></div>
+  {% endif %}
+</div>
+
+{# This period vs the previous period — computed by period_comparison(), previously never rendered. #}
+{% if comparison %}
+<div class="card card-padded mt-4">
+  <h2 class="font-semibold mb-3">This period vs previous period
+    <span class="text-sm font-normal text-[color:var(--text-muted)]">({{ comparison.days }} days each)</span></h2>
+  <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Orders</p>
+      <p class="text-2xl font-semibold mt-1">{{ comparison.orders_this }}</p>
+      <p class="text-sm mt-1">
+        {% if comparison.orders_pct_change is not None %}{% if comparison.orders_pct_change >= 0 %}<span class="pill pill-success">▲ {{ comparison.orders_pct_change }}%</span>{% else %}<span class="pill pill-danger">▼ {{ comparison.orders_pct_change }}%</span>{% endif %}{% else %}<span class="pill pill-neutral">new</span>{% endif %}
+        <span class="text-[color:var(--text-muted)]">vs {{ comparison.orders_prev }} prior</span>
+      </p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Revenue</p>
+      <p class="text-2xl font-semibold mt-1">{{ comparison.revenue_this|money }}</p>
+      <p class="text-sm mt-1">
+        {% if comparison.revenue_pct_change is not None %}{% if comparison.revenue_pct_change >= 0 %}<span class="pill pill-success">▲ {{ comparison.revenue_pct_change }}%</span>{% else %}<span class="pill pill-danger">▼ {{ comparison.revenue_pct_change }}%</span>{% endif %}{% else %}<span class="pill pill-neutral">new</span>{% endif %}
+        <span class="text-[color:var(--text-muted)]">vs {{ comparison.revenue_prev|money }} prior</span>
+      </p>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
