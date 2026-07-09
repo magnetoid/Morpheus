@@ -1,0 +1,95 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
+{% block title %}NPS · Analytics{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="smile" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Net Promoter Score</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Customer satisfaction from the {{ days }}-day NPS survey — collected at 30 days post-delivery.</p>
+    </div>
+  </div>
+
+  {% if summary.responses %}
+  <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">NPS ({{ days }}d)</p>
+      <div class="flex items-end justify-between gap-2 mt-1">
+        <p class="text-2xl font-semibold">{{ summary.nps }}</p>
+        {% if trend_series %}{% sparkline trend_series %}{% endif %}
+      </div>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Responses</p>
+      <p class="text-2xl font-semibold mt-1">{{ summary.responses }}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Response rate</p>
+      <p class="text-2xl font-semibold mt-1">{% if summary.response_rate is not None %}{{ summary.response_rate }}%{% else %}—{% endif %}</p>
+      <p class="text-xs text-[color:var(--text-muted)]">{{ summary.responses }} of {{ summary.surveys_sent }} sent</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Mix</p>
+      <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+        <span class="pill pill-success">{{ summary.promoters }} promoters</span>
+        <span class="pill pill-neutral">{{ summary.passives }} passive</span>
+        <span class="pill pill-danger">{{ summary.detractors }} detractors</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]"><h2 class="font-semibold">By product</h2></div>
+    {% if by_product %}
+    <table class="morph-table">
+      <thead><tr><th>Product</th><th>Responses</th><th>NPS</th><th>Promoter %</th></tr></thead>
+      <tbody>
+      {% for p in by_product %}
+      <tr>
+        <td class="font-medium">{{ p.product }}</td>
+        <td>{{ p.n }}</td>
+        <td>{% if p.nps >= 30 %}<span class="pill pill-success">{{ p.nps }}</span>{% elif p.nps >= 0 %}<span class="pill pill-neutral">{{ p.nps }}</span>{% else %}<span class="pill pill-danger">{{ p.nps }}</span>{% endif %}</td>
+        <td>{{ p.promoter_pct }}%</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="px-4 py-4"><p class="text-sm text-[color:var(--text-muted)]">No product-linked responses yet.</p></div>
+    {% endif %}
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold mb-2">Recent detractor comments</h2>
+    {% if detractors %}
+    <div class="space-y-2">
+      {% for d in detractors %}
+      <div class="rounded-lg border border-[color:var(--border)] p-3">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="pill pill-danger">{{ d.score }}/10</span>
+          <span class="text-xs text-[color:var(--text-muted)]">order #{{ d.order_id }} · {{ d.submitted_at|date:"M j, Y" }}</span>
+        </div>
+        {% if d.comment %}<p class="text-sm">{{ d.comment }}</p>{% else %}<p class="text-sm text-[color:var(--text-subtle)] italic">No comment.</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">No detractors in the window — nice.</p>
+    {% endif %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="smile" class="h-6 w-6"></i></div>
+    <h3>No NPS responses yet</h3>
+    <p>Once the post-purchase NPS survey (sent ~30 days after delivery) starts collecting scores, they'll roll up here.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus import DashboardPage, Plugin, SettingsPanel
 
 
 class PostPurchasePlugin(Plugin):
@@ -21,6 +21,18 @@ class PostPurchasePlugin(Plugin):
             prefix='post-purchase/',
             namespace='post_purchase',
         )
+
+    def contribute_dashboard_pages(self) -> list:
+        return [
+            DashboardPage(
+                label='NPS',
+                slug='nps',
+                view='plugins.installed.post_purchase.views_dashboard.nps_dashboard',
+                icon='smile',
+                section='analytics',
+                order=60,
+            ),
+        ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
