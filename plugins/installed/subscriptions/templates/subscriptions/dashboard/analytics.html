@@ -1,0 +1,80 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph morph_dashboard %}
+{% block title %}Subscription analytics · Analytics{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="trending-up" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Subscription analytics</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Recurring revenue, churn, and trial conversion for your subscription plans.</p>
+    </div>
+  </div>
+
+  {% if plans %}
+  <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Committed MRR</p>
+      <div class="flex items-end justify-between gap-2 mt-1">
+        <p class="text-2xl font-semibold">{{ mrr|money }}</p>
+        {% if trend_series %}{% sparkline trend_series stroke='up' %}{% endif %}
+      </div>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Active subscribers</p>
+      <p class="text-2xl font-semibold mt-1">{{ active_count }}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Churn (30d)</p>
+      <p class="text-2xl font-semibold mt-1">{% if churn.rate is not None %}{{ churn.rate }}%{% else %}—{% endif %}</p>
+      <p class="text-xs text-[color:var(--text-muted)]">{{ churn.cancelled }} of {{ churn.active_at_start }}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Trial → paid</p>
+      <p class="text-2xl font-semibold mt-1">{% if trials.conversion_rate is not None %}{{ trials.conversion_rate }}%{% else %}—{% endif %}</p>
+      <p class="text-xs text-[color:var(--text-muted)]">{{ trials.converted }} of {{ trials.started }} trials</p>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]"><h2 class="font-semibold">By plan</h2></div>
+    <table class="morph-table">
+      <thead><tr><th>Plan</th><th>Price</th><th>Active</th><th>Trialing</th><th>Cancelled (30d)</th><th>MRR</th></tr></thead>
+      <tbody>
+      {% for p in plans %}
+      <tr>
+        <td class="font-medium">{{ p.plan }}</td>
+        <td>{{ p.price|money }}/{{ p.interval }}</td>
+        <td>{{ p.active }}</td>
+        <td>{{ p.trialing }}</td>
+        <td>{% if p.cancelled_30d %}<span class="pill pill-warn">{{ p.cancelled_30d }}</span>{% else %}0{% endif %}</td>
+        <td class="font-medium">{{ p.mrr|money }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold mb-3">Trial funnel <span class="text-sm font-normal text-[color:var(--text-muted)]">(last 90 days)</span></h2>
+    <div class="grid grid-cols-3 gap-3 text-center">
+      <div><p class="text-2xl font-semibold">{{ trials.started }}</p><p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Started</p></div>
+      <div><p class="text-2xl font-semibold text-[color:var(--success)]">{{ trials.converted }}</p><p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Converted</p></div>
+      <div><p class="text-2xl font-semibold text-[color:var(--danger)]">{{ trials.cancelled_in_trial }}</p><p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Cancelled in trial</p></div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="trending-up" class="h-6 w-6"></i></div>
+    <h3>No subscription plans yet</h3>
+    <p>Create a subscription plan and start taking recurring orders — MRR, churn, and trial conversion will appear here.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

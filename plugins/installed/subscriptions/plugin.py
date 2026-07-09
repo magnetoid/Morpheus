@@ -82,6 +82,14 @@ class SubscriptionsPlugin(Plugin):
                 section='customers',
                 order=70,
             ),
+            DashboardPage(
+                label='Subscription analytics',
+                slug='analytics',
+                view='plugins.installed.subscriptions.views_analytics.subscription_analytics',
+                icon='trending-up',
+                section='analytics',
+                order=55,
+            ),
         ]
 
     def contribute_agent_tools(self) -> list:
