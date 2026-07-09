@@ -1,0 +1,46 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block content %}
+<section class="mx-auto max-w-5xl px-4 py-10 space-y-10">
+  <header class="space-y-2">
+    <h1 class="text-3xl font-semibold tracking-tight">Live shopping</h1>
+    <p class="text-neutral-500">Tune in to shop featured titles in real time.</p>
+  </header>
+
+  {% if upcoming %}
+  <div class="space-y-4">
+    <h2 class="text-sm font-medium uppercase tracking-wide text-neutral-500">Upcoming &amp; live</h2>
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% for event in upcoming %}
+      <a href="/live/{{ event.slug }}/" class="block rounded-xl border border-neutral-200 p-5 hover:border-neutral-400 transition">
+        <div class="flex items-center gap-2">
+          {% if event.status == 'live' %}<span class="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">● LIVE</span>{% endif %}
+          <span class="text-xs text-neutral-500">{{ event.scheduled_start }}</span>
+        </div>
+        <div class="mt-2 text-lg font-medium">{{ event.title }}</div>
+        {% if event.description %}<p class="mt-1 text-sm text-neutral-500 line-clamp-2">{{ event.description }}</p>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if past %}
+  <div class="space-y-4">
+    <h2 class="text-sm font-medium uppercase tracking-wide text-neutral-500">Replays</h2>
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% for event in past %}
+      <a href="/live/{{ event.slug }}/" class="block rounded-xl border border-neutral-200 p-5 hover:border-neutral-400 transition">
+        <div class="text-lg font-medium">{{ event.title }}</div>
+        <div class="mt-1 text-xs text-neutral-500">{% if event.recording_url %}Replay available{% else %}Ended{% endif %}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not upcoming and not past %}
+  <p class="text-neutral-500">No live events scheduled yet. Check back soon.</p>
+  {% endif %}
+</section>
+{% endblock %}

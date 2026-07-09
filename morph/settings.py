@@ -188,6 +188,9 @@ MORPHEUS_DEFAULT_PLUGINS = [
     # Per-install feature-usage aggregates + install-health score. No PII,
     # no fleet telemetry — single-install product analytics.
     'plugins.installed.feature_adoption',
+    # Live shopping events MVP: scheduled event + embedded stream + pinned
+    # buyable products; conversion via the existing UTM/attribution pipeline.
+    'plugins.installed.live_commerce',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

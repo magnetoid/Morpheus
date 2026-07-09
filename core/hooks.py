@@ -559,6 +559,11 @@ class MorpheusEvents:
     #   stockout-forecast task for slow-moving / dead stock; workflows can trigger a
     #   markdown/promo campaign off it.
     INVENTORY_OVERSTOCK_DETECTED = 'inventory.overstock_detected'
+    # LIVE_EVENT_STARTED / LIVE_EVENT_ENDED — kwargs: live_event=LiveEvent. Fired by
+    #   the live_commerce dashboard "go live" / "end" actions; subscribers can
+    #   push notifications, kick off a recording, or refresh a storefront cache.
+    LIVE_EVENT_STARTED = 'live_commerce.event_started'
+    LIVE_EVENT_ENDED = 'live_commerce.event_ended'
 
     # ── Auth (filter) ─────────────────────────────────────────────────────
     # AUTH_SECOND_FACTOR — filter, value=None|HttpResponse, kwargs:

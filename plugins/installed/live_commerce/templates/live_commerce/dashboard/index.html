@@ -1,0 +1,53 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Live commerce · Morpheus{% endblock %}
+{% block content %}
+<div class="space-y-4">
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="radio" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Live commerce</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">Scheduled live shopping events with an embedded stream and pinned products.</p>
+    </div>
+    <a href="/dashboard/live/new/" class="btn btn-primary">New event</a>
+  </div>
+
+  {% if events %}
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>Title</th><th>Status</th><th>Scheduled</th><th>Products</th><th></th></tr></thead>
+      <tbody>
+      {% for e in events %}
+        <tr>
+          <td class="font-medium"><a href="/dashboard/live/{{ e.id }}/">{{ e.title }}</a></td>
+          <td>
+            {% if e.status == 'live' %}<span class="pill pill-danger">Live</span>
+            {% elif e.status == 'ended' %}<span class="pill pill-neutral">Ended</span>
+            {% else %}<span class="pill pill-info">Scheduled</span>{% endif %}
+          </td>
+          <td>{{ e.scheduled_start }}</td>
+          <td>{{ e.products.count }}</td>
+          <td class="text-right whitespace-nowrap">
+            {% if e.status != 'live' %}
+            <form method="post" action="/dashboard/live/{{ e.id }}/status/" class="inline">{% csrf_token %}<input type="hidden" name="status" value="live"><button class="btn btn-sm">Go live</button></form>
+            {% endif %}
+            {% if e.status == 'live' %}
+            <form method="post" action="/dashboard/live/{{ e.id }}/status/" class="inline">{% csrf_token %}<input type="hidden" name="status" value="ended"><button class="btn btn-sm">End</button></form>
+            {% endif %}
+            <form method="post" action="/dashboard/live/{{ e.id }}/delete/" class="inline" onsubmit="return confirm('Delete this event?');">{% csrf_token %}<button class="btn btn-sm btn-danger">Delete</button></form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="radio" class="h-6 w-6"></i></div>
+    <h3>No live events yet</h3>
+    <p>Create your first scheduled live shopping event.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
