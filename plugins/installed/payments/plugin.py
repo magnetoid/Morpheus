@@ -32,12 +32,38 @@ class PaymentsPlugin(Plugin):
         try:
             from plugins.installed.payments.gateway import gateway_registry
             from plugins.installed.payments.gateways.manual_gateway import ManualGateway
+            from plugins.installed.payments.gateways.paypal_gateway import PayPalGateway
             from plugins.installed.payments.gateways.stripe_gateway import StripeGateway
 
             gateway_registry.register(ManualGateway())
             gateway_registry.register(StripeGateway())
+            gateway_registry.register(PayPalGateway())
         except Exception as e:  # noqa: BLE001
             logger.warning('payments: gateway registration failed: %s', e)
+
+        # Settings → Payments saves land in PluginConfig; enabled_gateways()
+        # reads PaymentGatewayConfig — project the paypal toggle across on
+        # every panel save (same bridge advanced_payments uses for cod/test).
+        try:
+            from django.db.models.signals import post_save
+
+            from plugins.models import PluginConfig
+
+            post_save.connect(
+                self._on_own_config_saved,
+                sender=PluginConfig,
+                dispatch_uid='payments-paypal-gateway-sync',
+                weak=False,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning('payments: paypal config-sync wiring failed: %s', e)
+
+    @staticmethod
+    def _on_own_config_saved(sender, instance, **kwargs):
+        if getattr(instance, 'plugin_name', None) == 'payments':
+            from plugins.installed.payments.services.paypal import sync_gateway_row
+
+            sync_gateway_row()
 
     def on_order_placed(self, order, **kwargs):
         """
@@ -121,6 +147,29 @@ class PaymentsPlugin(Plugin):
                     'default': 'automatic',
                     'title': 'Capture strategy',
                 },
+                'paypal_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Enable PayPal',
+                    'description': 'Offer PayPal at checkout (needs client ID + secret below).',
+                },
+                'paypal_client_id': {'type': 'string', 'title': 'PayPal Client ID'},
+                'paypal_client_secret': {
+                    'type': 'string',
+                    'format': 'password',
+                    'title': 'PayPal Client Secret',
+                },
+                'paypal_mode': {
+                    'type': 'string',
+                    'enum': ['sandbox', 'live'],
+                    'default': 'sandbox',
+                    'title': 'PayPal mode',
+                },
+                'paypal_webhook_id': {
+                    'type': 'string',
+                    'title': 'PayPal Webhook ID',
+                    'description': 'From the PayPal developer dashboard — enables the /payments/webhooks/paypal/ backstop.',
+                },
             },
         }
 
@@ -132,7 +181,7 @@ class PaymentsPlugin(Plugin):
         # page; NOT a duplicate (ADR 0003). Disabling either removes its card.
         return SettingsPanel(
             label='Payment gateways',
-            description='Stripe API keys and capture strategy. Test + cash-on-delivery live in the Advanced payments card below.',
+            description='Stripe + PayPal credentials and capture strategy. Test + cash-on-delivery live in the Advanced payments card below.',
             schema=self.get_config_schema(),
             category='payments',
         )

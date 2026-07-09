@@ -133,6 +133,7 @@ def checkout_one_page(request):
 
     order_no = payload.get('orderNumber') or ''
     client_secret = payload.get('paymentClientSecret') or ''
+    redirect_url = payload.get('paymentRedirectUrl') or ''
     request.session['checkout_order_number'] = order_no
     request.session['checkout_client_secret'] = client_secret
     for k in (
@@ -142,11 +143,17 @@ def checkout_one_page(request):
     ):
         request.session.pop(k, None)
 
-    if not client_secret:
+    if redirect_url:
+        # Redirect-based gateway (PayPal): the shopper approves off-site;
+        # the gateway's return view captures + lands on confirmation.
+        target = redirect_url
+    elif not client_secret:
         # No payment needed (free order / fully gift-carded). Send to
         # confirmation with public_token for guest access.
         return _redirect_to_confirmation(order_no)
-    return redirect('/checkout/payment/')
+    else:
+        target = '/checkout/payment/'
+    return redirect(target)
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +226,7 @@ def _submit_order(
       completeOrder(input: $input) {
         orderNumber
         paymentClientSecret
+        paymentRedirectUrl
         errors { code message }
       }
     }

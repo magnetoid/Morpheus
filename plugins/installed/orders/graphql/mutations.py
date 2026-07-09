@@ -77,6 +77,8 @@ class CartPayload:
 class OrderPayload:
     order_number: str = ''
     payment_client_secret: str = ''
+    # Redirect-based gateways (PayPal): send the shopper here to approve.
+    payment_redirect_url: str = ''
     errors: list[ErrorType] = strawberry.field(default_factory=list)
 
 
@@ -383,9 +385,11 @@ class OrdersMutationExtension:
                         pi.get('error') or 'Payment provider could not issue a payment intent.'
                     )
                 client_secret = pi.get('client_secret') or ''
+                redirect_url = pi.get('approval_url') or ''
             return OrderPayload(
                 order_number=order.order_number,
                 payment_client_secret=client_secret,
+                payment_redirect_url=redirect_url,
                 errors=[],
             )
         except Exception as e:  # noqa: BLE001
