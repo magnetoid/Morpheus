@@ -12,6 +12,44 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.3.0 — 2026-07-10
+
+### The analytics & intelligence wave — see what your store already knows
+
+- **NPS dashboard** (Post-purchase → NPS) — the surveys you were already
+  collecting finally add up: overall NPS with promoter/passive/detractor mix,
+  response rate, a 12-week trend, per-product scores, and a recent-detractors
+  feed so you can follow up while it still matters.
+- **Subscription analytics** — committed MRR, recognized-MRR trend from paid
+  invoices, churn rate, the trial→paid funnel, and a per-plan breakdown.
+- **Customer segments (RFM)** — every customer is scored nightly on recency,
+  frequency and monetary value and placed in a named segment (champions, loyal,
+  at-risk, lost, new, potential). Segment changes fire an event your workflows
+  can react to — e.g. a win-back campaign when someone slips to *at-risk*.
+- **Marketing attribution & ROAS** — order revenue is split across the
+  channels that touched the customer's journey under five attribution models
+  (last-touch, first-touch, linear, time-decay, position-based), and combined
+  with ad spend pulled from your connected Meta and Google accounts into a
+  per-channel ROAS view.
+- **Funnel drop-offs** — the conversion funnel now shows exactly where people
+  leave (step-to-step drop-off table) and how this period compares to the last.
+- **Overstock detection** — the stockout forecaster now also flags slow-moving
+  and dead stock (90+ days of cover), lists it on the forecast page, and fires
+  an event that can trigger a markdown or promo workflow.
+
+### New app: Feature adoption
+- An install-health score (0–100) on your dashboard home, plus an adoption
+  matrix showing which of your installed apps are actually used (7/30/90 days)
+  and which haven't been touched in 90 days — deprecation candidates. Tracking
+  is aggregate-only: no per-event rows, no personal data.
+
+### New app: Live commerce
+- Schedule **live shopping events**: an embedded stream (YouTube Live or any
+  HLS embed) with pinned, buyable products. Your storefront gets `/live/` and
+  a per-event page that flips to a replay when you add a recording; the home
+  page teases the next event automatically. Sales from an event are attributed
+  through the new attribution pipeline.
+
 ## v0.2.28 — 2026-07-08
 
 ### New: an About page for your platform
