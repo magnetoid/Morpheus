@@ -82,3 +82,19 @@ def detect_anomalies_task() -> int:
     if findings:
         logger.info('analytics: %d metric anomalies detected', len(findings))
     return len(findings)
+
+
+@app.task(name='analytics.collect_ad_spend', ignore_result=True, time_limit=120)
+def collect_ad_spend_task() -> int:
+    """Nightly: pull each channel's ad spend (ANALYTICS_AD_SPEND filter) → AdSpendSnapshot."""
+    from plugins.installed.analytics.services_attribution import collect_ad_spend
+
+    return collect_ad_spend()
+
+
+@app.task(name='analytics.attribute_revenue', ignore_result=True, time_limit=300, soft_time_limit=240)
+def attribute_revenue_task() -> int:
+    """Nightly: reconstruct journeys, apply every attribution model → DailyMetric."""
+    from plugins.installed.analytics.services_attribution import attribute_revenue
+
+    return attribute_revenue()

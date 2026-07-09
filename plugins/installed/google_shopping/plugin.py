@@ -49,6 +49,23 @@ class GoogleShoppingPlugin(Plugin):
             self.register_hook(evt, self._bust_feed_cache, priority=80)
         self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=10)
         self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=10)
+        self.register_hook(events.ANALYTICS_AD_SPEND, self._ad_spend, priority=10)
+
+    def _ad_spend(self, value, **_):
+        """Contribute Google Ads' 30-day spend to the attribution ROAS pipeline."""
+        try:
+            from plugins.installed.google_shopping.services.ads_api import (  # noqa: PLC0415
+                campaign_report,
+            )
+
+            rep = campaign_report(days=30)
+            t = (rep.get('totals') or {}) if rep.get('ok') else {}
+            spend = t.get('spend') or t.get('cost')
+            if spend:
+                value.append({'channel': 'google', 'spend': spend, 'days': 30})
+        except Exception as e:  # noqa: BLE001
+            logger.debug('google_shopping: ad_spend failed: %s', e)
+        return value
 
     def _channels_row(self, value, **_):
         row = {

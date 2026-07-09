@@ -1,0 +1,67 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}Attribution · Analytics{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="git-merge" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Marketing attribution</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">How each channel's ad spend converts to revenue, across attribution models. Journeys are reconstructed nightly from visitor UTM sources.</p>
+    </div>
+  </div>
+
+  <div class="tab-list overflow-x-auto" role="tablist">
+    {% for key, label in models %}
+    <a href="?model={{ key }}" class="tab{% if key == model %} is-active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if rows %}
+  <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Ad spend (30d)</p>
+      <p class="text-2xl font-semibold mt-1">{{ total_spend|money }}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Attributed revenue</p>
+      <p class="text-2xl font-semibold mt-1">{{ total_revenue|money }}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Blended ROAS</p>
+      <p class="text-2xl font-semibold mt-1">{% if blended_roas is not None %}{{ blended_roas }}×{% else %}—{% endif %}</p>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]"><h2 class="font-semibold">{{ model_label }} — by channel</h2></div>
+    <table class="morph-table">
+      <thead><tr><th>Channel</th><th>Spend</th><th>Attributed revenue</th><th>ROAS</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="font-medium">{{ r.channel }}</td>
+        <td>{{ r.spend|money }}</td>
+        <td>{{ r.revenue|money }}</td>
+        <td>{% if r.roas is not None %}{% if r.roas >= 1 %}<span class="pill pill-success">{{ r.roas }}×</span>{% else %}<span class="pill pill-danger">{{ r.roas }}×</span>{% endif %}{% else %}<span class="pill pill-neutral">no spend</span>{% endif %}</td>
+        <td><div style="background:var(--surface-2); height:8px; width:160px; border-radius:4px; overflow:hidden;"><div style="background:var(--brand); height:100%; width:{{ r.bar_pct }}%;"></div></div></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="git-merge" class="h-6 w-6"></i></div>
+    <h3>No attribution data yet</h3>
+    <p>The nightly job pulls ad spend from your connected channels and attributes purchase revenue across their touchpoints. Connect an ad channel and take a few orders to populate this.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

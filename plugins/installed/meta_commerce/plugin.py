@@ -48,6 +48,22 @@ class MetaCommercePlugin(Plugin):
         self.register_hook(events.BEGIN_CHECKOUT, self._on_begin_checkout, priority=90)
         self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=20)
         self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=20)
+        self.register_hook(events.ANALYTICS_AD_SPEND, self._ad_spend, priority=20)
+
+    def _ad_spend(self, value, **_):
+        """Contribute Meta's 30-day ad spend to the attribution ROAS pipeline."""
+        try:
+            from plugins.installed.meta_commerce.services.ads_api import (  # noqa: PLC0415
+                campaign_report,
+            )
+
+            rep = campaign_report(days=30)
+            spend = (rep.get('totals') or {}).get('spend') if rep.get('ok') else None
+            if spend:
+                value.append({'channel': 'meta', 'spend': spend, 'days': 30})
+        except Exception as e:  # noqa: BLE001
+            logger.debug('meta_commerce: ad_spend failed: %s', e)
+        return value
 
     def _channels_row(self, value, **_):
         row = {

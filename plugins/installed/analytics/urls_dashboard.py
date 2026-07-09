@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_attribution
 
 app_name = 'analytics_dash'
 urlpatterns = [
@@ -8,5 +8,6 @@ urlpatterns = [
     path('realtime/', views.realtime, name='realtime'),
     path('funnel/', views.funnel_view, name='funnel'),
     path('cohorts/', views.cohort_view, name='cohorts'),
+    path('attribution/', views_attribution.attribution_view, name='attribution'),
     path('export/', views.export_data, name='export_data'),
 ]

@@ -227,3 +227,21 @@ class AnalyticsExport(models.Model):
     filters = models.JSONField(default=dict, blank=True)
     last_run_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class AdSpendSnapshot(models.Model):
+    """Ad spend per (day, channel), collected nightly from channel plugins via the
+    ANALYTICS_AD_SPEND filter. Divides attributed revenue to give per-channel ROAS."""
+
+    day = models.DateField(db_index=True)
+    channel = models.CharField(max_length=40, db_index=True)
+    spend = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+    source_meta = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = 'analytics_ad_spend'
+        unique_together = ('day', 'channel')
+        ordering = ['-day']
+
+    def __str__(self) -> str:
+        return f'{self.day} {self.channel}: {self.spend}'

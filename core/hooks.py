@@ -508,6 +508,10 @@ class MorpheusEvents:
     #   row simply never appears. Fail-soft: the hook bus isolates a broken
     #   handler so one channel can't break the overview.
     CHANNELS_OVERVIEW = 'channels.overview'  # filter
+    # ANALYTICS_AD_SPEND — filter, value=list[dict], no kwargs. Each ad-channel
+    #   plugin appends its own {'channel': str, 'spend': number, 'days': int} for
+    #   the trailing window; analytics snapshots it into AdSpendSnapshot for ROAS.
+    ANALYTICS_AD_SPEND = 'analytics.collect_ad_spend'  # filter
     # CHANNELS_METRICS — filter, value=list[dict], no kwargs. EXPENSIVE: each
     #   channel plugin appends ITS OWN 30-day ads totals — {'name': str,
     #   'spend': float|None, 'clicks': float|None, 'conversions': float|None,

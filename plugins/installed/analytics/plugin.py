@@ -73,6 +73,15 @@ class AnalyticsPlugin(Plugin):
                 'schedule': 60 * 60 * 24,  # daily, after roll_daily has run
             },
         )
+        # Attribution: pull channel ad spend, then reconstruct journeys + attribute.
+        self.register_celery_beat(
+            'analytics:collect_ad_spend',
+            {'task': 'analytics.collect_ad_spend', 'schedule': 60 * 60 * 24},  # daily
+        )
+        self.register_celery_beat(
+            'analytics:attribute_revenue',
+            {'task': 'analytics.attribute_revenue', 'schedule': 60 * 60 * 24},  # daily, after spend
+        )
 
         # Dashboard-home presence: KPI tiles + anomaly activity — via the
         # filter bus, so a disabled plugin's tiles simply never render.
@@ -198,6 +207,14 @@ class AnalyticsPlugin(Plugin):
                 icon='users',
                 section='analytics',
                 order=40,
+            ),
+            DashboardPage(
+                label='Attribution',
+                slug='attribution',
+                view='plugins.installed.analytics.views_attribution.attribution_view',
+                icon='git-merge',
+                section='analytics',
+                order=50,
             ),
         ]
 
