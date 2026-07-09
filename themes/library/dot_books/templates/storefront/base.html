@@ -104,14 +104,6 @@
     transition: transform var(--motion-fast) var(--ease-out);
   }
   .nav a:hover::after { transform: scaleX(1); }
-  /* Marquee scroll for the top strip — slow continuous loop, no JS. */
-  .strip .wrap.strip-row {
-    overflow: hidden; white-space: nowrap;
-    display: flex !important; gap: 3rem;
-  }
-  @keyframes ko-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  /* Container marker — only animate when explicitly marked. */
-  .strip .wrap.strip-row.is-marquee > * { display: inline-block; }
   /* Image zoom-on-hover inside book cover-wraps. Subtle, 1.04×, 600ms ease. */
   @media (hover: hover) {
     .book .cover-wrap img { transition: transform 600ms var(--ease-out); }
@@ -348,11 +340,6 @@
   @media (min-width: 1600px) { .grid-books { grid-template-columns: repeat(6, 1fr); } }
   @media (min-width: 2000px) { .grid-books { grid-template-columns: repeat(7, 1fr); } }
 
-  /* Marquee strip */
-  .strip { background: var(--ink); color: var(--paper); }
-  .strip .strip-row { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 0; font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; gap: 1rem; }
-  .strip .dot { color: var(--accent); }
-
   /* Footer */
   footer { background: var(--paper-2); border-top: 1px solid var(--rule); margin-top: 6rem; }
   footer .col h2 { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 1rem; }
@@ -439,15 +426,6 @@
 {% tracking_consent_banner %}
 
 {% include "storefront/_admin_bar.html" %}
-
-<!-- Marquee strip -->
-<div class="strip" role="region" aria-label="Store announcements">
-  <div class="wrap strip-row">
-    <span>Free shipping over $40<span class="dot">.</span></span>
-    <span class="hidden md:inline" style="display:none">Independent &amp; reader-owned<span class="dot">.</span></span>
-    <span>New titles every Tuesday<span class="dot">.</span></span>
-  </div>
-</div>
 
 <!-- Top bar -->
 <header class="topbar">
