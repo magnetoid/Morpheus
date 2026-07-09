@@ -546,6 +546,11 @@ class MorpheusEvents:
     # CUSTOMER_LOGIN      — kwargs: customer=Customer.
     CUSTOMER_REGISTERED = 'customer.registered'
     CUSTOMER_LOGIN = 'customer.login'
+    # CUSTOMER_SEGMENT_CHANGED — kwargs: customer=Customer, old=str, new=str.
+    #                            Fired by customers.rfm on the nightly recompute
+    #                            when a customer crosses into a different RFM segment;
+    #                            the workflows plugin can trigger campaigns off it.
+    CUSTOMER_SEGMENT_CHANGED = 'customer.segment_changed'
 
     # ── Auth (filter) ─────────────────────────────────────────────────────
     # AUTH_SECOND_FACTOR — filter, value=None|HttpResponse, kwargs:

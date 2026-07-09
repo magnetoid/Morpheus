@@ -21,6 +21,30 @@ class CustomersPlugin(Plugin):
 
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=20)
 
+        # Nightly RFM re-scoring (04:30 — before the dynamics 3:30/4:00 jobs have
+        # long finished and orders have settled). Fires CUSTOMER_SEGMENT_CHANGED.
+        from celery.schedules import crontab  # noqa: PLC0415
+
+        self.register_celery_tasks('plugins.installed.customers.tasks')
+        self.register_celery_beat(
+            'customers:recompute_rfm',
+            {'task': 'customers.recompute_rfm', 'schedule': crontab(hour=4, minute=30)},
+        )
+
+    def contribute_dashboard_pages(self) -> list:
+        from morpheus import DashboardPage  # noqa: PLC0415
+
+        return [
+            DashboardPage(
+                label='Segments',
+                slug='segments',
+                view='plugins.installed.customers.views_rfm.segments_dashboard',
+                icon='users',
+                section='customers',
+                order=80,
+            ),
+        ]
+
     def contribute_agent_tools(self) -> list:
         from plugins.installed.customers.agent_tools import (  # noqa: PLC0415
             customers_get_tool,

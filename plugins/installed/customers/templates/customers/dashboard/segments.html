@@ -1,0 +1,54 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}Customer segments · Customers{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+
+  <div class="flex items-start gap-3">
+    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-lg" style="background:var(--brand-soft);color:var(--brand);">
+      <i data-lucide="users" class="h-5 w-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Customer segments</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-1">RFM (recency · frequency · monetary) segments, rescored nightly. Segment changes fire <code>customer.segment_changed</code> — trigger campaigns from Workflows.</p>
+    </div>
+  </div>
+
+  {% if total %}
+  <div class="reveal-stagger grid grid-cols-2 lg:grid-cols-3 gap-3">
+    {% for s in segments %}
+    <div class="card card-padded">
+      <div class="flex items-center justify-between">
+        <span class="pill pill-{{ s.tone }}">{{ s.label }}</span>
+        <span class="text-xs text-[color:var(--text-muted)]">{{ s.pct }}%</span>
+      </div>
+      <p class="text-2xl font-semibold mt-2">{{ s.n }}</p>
+      <p class="text-xs text-[color:var(--text-muted)]">{{ s.revenue|money }} lifetime value</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold mb-3">Segment moves <span class="text-sm font-normal text-[color:var(--text-muted)]">(last 30 days)</span></h2>
+    {% if moves %}
+    <div class="flex flex-wrap gap-2">
+      {% for mv in moves %}
+      <span class="pill pill-neutral">{{ mv.n }} → {{ mv.label }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">No segment changes yet — they appear after the nightly recompute detects a customer crossing segments.</p>
+    {% endif %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="users" class="h-6 w-6"></i></div>
+    <h3>No segments computed yet</h3>
+    <p>Once customers have placed orders, the nightly RFM job will score them into Champions, Loyal, At risk, and more.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

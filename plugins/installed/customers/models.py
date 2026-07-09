@@ -4,6 +4,7 @@ Morpheus CMS - Customer (Auth User) Model
 
 import uuid
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 
 from morpheus import models
@@ -171,3 +172,55 @@ class WishListItem(models.Model):
 
     def __str__(self):
         return f'{self.product.name} in {self.wishlist}'
+
+
+class CustomerSegment(models.Model):
+    """RFM scorecard + segment for one customer, recomputed nightly.
+
+    Scores from the CDP fields already on Customer (lifetime_value,
+    purchase_count, last_order_at) — no new event capture needed.
+    """
+
+    SEGMENTS = [
+        ('champions', 'Champions'),
+        ('loyal', 'Loyal'),
+        ('potential', 'Potential'),
+        ('new', 'New'),
+        ('at_risk', 'At risk'),
+        ('lost', 'Lost'),
+    ]
+
+    customer = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='rfm_segment'
+    )
+    r_score = models.PositiveSmallIntegerField(default=1)  # 1-5, recency quintile
+    f_score = models.PositiveSmallIntegerField(default=1)  # 1-5, frequency quintile
+    m_score = models.PositiveSmallIntegerField(default=1)  # 1-5, monetary quintile
+    segment = models.CharField(max_length=20, choices=SEGMENTS, db_index=True)
+    computed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'customers_rfm_segment'
+
+    def __str__(self):
+        return f'{self.customer_id}:{self.segment}'
+
+
+class SegmentMigration(models.Model):
+    """Append-only log of segment transitions — powers the migration summary
+    (there's no other way to see 'who moved where' without a history table)."""
+
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+'
+    )
+    old_segment = models.CharField(max_length=20, blank=True)
+    new_segment = models.CharField(max_length=20)
+    day = models.DateField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'customers_segment_migration'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.customer_id}: {self.old_segment}→{self.new_segment}'
