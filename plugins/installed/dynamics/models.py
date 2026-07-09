@@ -62,6 +62,7 @@ FREE_PICK_SURFACES = {'home_hero', 'home_featured'}
 
 # Strategies the engine implements (see services.recommend()).
 STRATEGY_CHOICES = [
+    ('smart', 'Smart (probability + trend + session, explainable)'),
     ('for_you', 'For you (personalized blend)'),
     ('manual', 'Manual / rule (filtered catalog)'),
     ('recently_viewed', 'Recently viewed'),

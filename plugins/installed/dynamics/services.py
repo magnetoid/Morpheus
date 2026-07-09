@@ -54,6 +54,7 @@ def recommend(block, *, request=None, customer=None, context_product=None) -> li
 
     strategy = block.strategy or 'for_you'
     dispatch = {
+        'smart': _smart,
         'manual': _manual,
         'recently_viewed': _recently_viewed,
         'related': _related,
@@ -276,10 +277,170 @@ def _autopilot(block, *, request, customer, limit, **_) -> list:
     )
 
 
+# ── Smart blend — the explainable surface default ─────────────────────────────
+
+# Blend weights (sum to 1). Research-backed transparent scorecard: nightly
+# purchase probability dominates, in-session affinity + trend personalize,
+# recency keeps the shelf fresh. See docs/analysis/dynamic-merchandising-
+# research-2026-07.md §2.
+SMART_WEIGHTS = {'probability': 0.50, 'trend': 0.20, 'session': 0.20, 'recency': 0.10}
+_SMART_POOL = 200
+_DEFAULT_EXPLORATION = 0.10
+
+
+def smart_scored(block, *, request=None) -> list:
+    """Ordered ``[(product_id, score, components)]`` for the smart blend.
+
+    Deterministic and fully explainable — ``components`` carries each factor
+    (probability / trend / session / recency, all 0..1) so the dashboard can
+    answer "why is this product here".
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    qs = _apply_filters(_base_active_qs(), block)
+    rows = list(qs.order_by('-created_at').values_list('pk', 'slug', 'category_id')[:_SMART_POOL])
+    if not rows:
+        return []
+    ids = [r[0] for r in rows]
+    prob = _propensity_map(ids)
+    views = _view_counts(timezone.now() - timedelta(days=7))
+    max_views = max((views.get(slug, 0) for _, slug, _ in rows), default=0)
+    session_cats = _session_category_ids(request)
+
+    n = len(rows)
+    scored = []
+    for idx, (pid, slug, cat_id) in enumerate(rows):  # rows are newest-first
+        components = {
+            'probability': float(prob.get(pid, 0.0)),
+            'trend': (views.get(slug, 0) / max_views) if max_views else 0.0,
+            'session': 1.0 if (cat_id and cat_id in session_cats) else 0.0,
+            'recency': 1.0 - (idx / (n - 1)) if n > 1 else 1.0,
+        }
+        score = sum(SMART_WEIGHTS[k] * v for k, v in components.items())
+        scored.append((pid, score, components))
+    scored.sort(key=lambda t: t[1], reverse=True)
+    return scored
+
+
+def _session_category_ids(request) -> set:
+    """Category ids of the products viewed in THIS session (consent-light,
+    in-session personalization — no profile required)."""
+    try:
+        session = getattr(request, 'session', None)
+        slugs = list((session.get('recently_viewed') if session else []) or [])[:20]
+        if not slugs:
+            return set()
+        return set(
+            _base_active_qs().filter(slug__in=slugs).values_list('category_id', flat=True)
+        ) - {None}
+    except Exception:  # noqa: BLE001 — affinity is optional
+        return set()
+
+
+def _smart(block, *, request, customer, limit, **_) -> list:
+    """The explainable blend + exploration floor + diversity cap.
+
+    Floor: ``ceil(exploration_rate × limit)`` tail positions go to the
+    least-exposed products (fewest bandit trials, newest first) so the
+    scorecard never permanently entombs new items (research §6/#7).
+    """
+    from math import ceil
+
+    scored = smart_scored(block, request=request)
+    if not scored:
+        return _for_you(
+            block, request=request, customer=customer, context_product=None, limit=limit
+        )
+    ordered = [pid for pid, _, _ in scored]
+
+    rate = block.exploration_rate if block.exploration_rate is not None else _DEFAULT_EXPLORATION
+    n_explore = min(ceil(rate * limit), limit - 1) if rate and rate > 0 and limit > 1 else 0
+    if n_explore:
+        keep = ordered[: limit - n_explore]
+        explore = exploration_picks(block, exclude=set(keep), count=n_explore)
+        chosen = set(keep) | set(explore)
+        ordered = keep + explore + [pid for pid in ordered if pid not in chosen]
+
+    cap = block.diversity_cap
+    if cap:
+        from plugins.installed.dynamics.reranker import _cap_by_category
+
+        ordered = _cap_by_category(ordered, _category_map(ordered), cap)
+    return ordered
+
+
+def exploration_picks(block, *, exclude: set, count: int) -> list:
+    """Least-exposed products for the exploration floor: fewest bandit trials
+    first (no arm = never shown = first in line), newest first within a tie."""
+    from django.db.models import Sum
+
+    from plugins.installed.dynamics.models import BanditArm
+
+    qs = _apply_filters(_base_active_qs(), block).exclude(pk__in=exclude)
+    pool = list(qs.order_by('-created_at').values_list('pk', flat=True)[:100])
+    if not pool:
+        return []
+    trials = dict(
+        BanditArm.objects.filter(product_id__in=pool)
+        .values('product_id')
+        .annotate(t=Sum('trials'))
+        .values_list('product_id', 't')
+    )
+    pool.sort(key=lambda pid: trials.get(pid, 0) or 0)  # stable → newest-first within ties
+    return pool[:count]
+
+
+def explain_block(block, *, request=None, customer=None) -> list[dict]:
+    """Dashboard preview: the block's picks with per-product score breakdown.
+
+    ``smart`` gets the full component breakdown + pinned/explore flags; other
+    strategies get rank + purchase probability (the shared signal).
+    """
+    products = recommend(block, request=request, customer=customer, context_product=None)
+    if not products:
+        return []
+    ids = [p.pk for p in products]
+    prob = _propensity_map(ids)
+
+    breakdown: dict = {}
+    explore_ids: set = set()
+    if block.strategy == 'smart':
+        scored = smart_scored(block, request=request)
+        breakdown = {pid: (score, comps) for pid, score, comps in scored}
+        try:
+            limit = max(1, min(int(block.limit or 4), MAX_LIMIT))
+        except (TypeError, ValueError):
+            limit = 4
+        rate = (
+            block.exploration_rate if block.exploration_rate is not None else _DEFAULT_EXPLORATION
+        )
+        if rate and rate > 0 and limit > 1:
+            from math import ceil
+
+            n_explore = min(ceil(rate * limit), limit - 1)
+            keep = [pid for pid, _, _ in scored][: limit - n_explore]
+            explore_ids = set(exploration_picks(block, exclude=set(keep), count=n_explore))
+
+    pinned = {str(x) for x in (block.pinned_product_ids or [])}
+    out = []
+    for p in products:
+        score, comps = breakdown.get(p.pk, (float(prob.get(p.pk, 0.0)), {}))
+        flags = []
+        if str(p.pk) in pinned:
+            flags.append('pinned')
+        if p.pk in explore_ids:
+            flags.append('explore')
+        out.append({'product': p, 'score': score, 'components': comps, 'flags': flags})
+    return out
+
+
 def reason_label(block) -> str:
     """A short shopper-facing 'why' label for a block's products (B3 show_reason).
     Strategy-derived — cheap, no per-product computation."""
     return {
+        'smart': 'Picked for you',
         'trending': 'Trending now',
         'new_arrivals': 'New arrival',
         'best_sellers': 'Bestseller',
