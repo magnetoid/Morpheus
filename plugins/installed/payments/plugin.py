@@ -28,6 +28,12 @@ class PaymentsPlugin(Plugin):
 
         # Mount /payments/webhooks/stripe/ for Stripe to POST events to.
         self.register_urls('plugins.installed.payments.urls', prefix='payments/')
+        # Apple Pay domain verification for the Payment Element wallets.
+        self.register_urls(
+            'plugins.installed.payments.urls_well_known',
+            prefix='.well-known/',
+            namespace='payments_well_known',
+        )
 
         try:
             from plugins.installed.payments.gateway import gateway_registry

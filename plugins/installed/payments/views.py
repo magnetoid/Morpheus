@@ -110,6 +110,35 @@ def paypal_return(request: HttpRequest) -> HttpResponse:
     return _confirmation_redirect(tx.order)
 
 
+def apple_pay_domain_association(request: HttpRequest) -> HttpResponse:
+    """Serve Stripe's Apple Pay domain-verification file.
+
+    Apple Pay in the Payment Element requires
+    ``/.well-known/apple-developer-merchantid-domain-association`` to serve
+    Stripe's canonical association file. It's identical for every Stripe
+    merchant, so we proxy stripe.com's copy with a 24h cache instead of
+    vendoring a blob that Stripe may rotate.
+    """
+    import requests  # noqa: PLC0415
+    from django.core.cache import cache  # noqa: PLC0415
+
+    cache_key = 'payments:apple_pay_domain_assoc'
+    content = cache.get(cache_key)
+    if content is None:
+        try:
+            resp = requests.get(
+                'https://stripe.com/files/apple-pay/apple-developer-merchantid-domain-association',
+                timeout=10,
+            )
+            resp.raise_for_status()
+            content = resp.content
+            cache.set(cache_key, content, 60 * 60 * 24)
+        except Exception as e:  # noqa: BLE001
+            logger.warning('apple pay domain association fetch failed: %s', e)
+            return HttpResponse(status=404)
+    return HttpResponse(content, content_type='text/plain')
+
+
 def paypal_cancel(request: HttpRequest) -> HttpResponse:
     """The shopper backed out on PayPal — return to checkout, cart intact."""
     from django.contrib import messages  # noqa: PLC0415

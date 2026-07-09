@@ -283,6 +283,31 @@ class PayPalWebhookTests(TestCase):
         self.assertEqual(resp.status_code, 200)
 
 
+class ApplePayDomainTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.rf = RequestFactory()
+
+    def test_serves_and_caches_stripe_file(self):
+        from plugins.installed.payments import views
+
+        with mock.patch('requests.get', return_value=_resp(None)) as rg:
+            rg.return_value.content = b'APPLE-PAY-BLOB'
+            r1 = views.apple_pay_domain_association(self.rf.get('/x'))
+            r2 = views.apple_pay_domain_association(self.rf.get('/x'))
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r1.content, b'APPLE-PAY-BLOB')
+        self.assertEqual(r2.content, b'APPLE-PAY-BLOB')
+        rg.assert_called_once()  # second hit served from cache
+
+    def test_fetch_failure_is_404(self):
+        from plugins.installed.payments import views
+
+        with mock.patch('requests.get', side_effect=OSError('down')):
+            resp = views.apple_pay_domain_association(self.rf.get('/x'))
+        self.assertEqual(resp.status_code, 404)
+
+
 class PayPalPickerTests(TestCase):
     def test_disabled_paypal_not_in_picker(self):
         PaymentGatewayConfig.objects.update_or_create(slug='paypal', defaults={'enabled': False})
