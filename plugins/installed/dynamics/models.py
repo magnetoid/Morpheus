@@ -32,12 +32,33 @@ from django.db import models
 SLOT_CHOICES = [
     ('home_above_grid', 'Home — above the grid'),
     ('home_below_grid', 'Home — below the grid'),
+    ('home_after_rails', 'Home — after the collection rails'),
     ('pdp_below_price', 'Product page — below price'),
     ('pdp_below_form', 'Product page — below add-to-cart'),
     ('pdp_above_long_description', 'Product page — above description'),
     ('cart_summary_extra', 'Cart — order summary'),
+    ('checkout_extra', 'Checkout — below the form'),
+    ('order_receipt_extra', 'Order confirmation — below the receipt'),
     ('global_below_body', 'Every page — end of body'),
 ]
+
+# Named theme placeholders (existing page furniture) a block can TAKE OVER via
+# the STOREFRONT_PRODUCTS hook — unlike slots, these don't render a new
+# carousel; they decide what fills a list the theme already renders.
+# free = dynamics picks the products; reorder = dynamics only reorders the
+# view's default list (paginated slices keep their filter semantics).
+SURFACE_CHOICES = [
+    ('home_hero', 'Home — hero carousel (free pick)'),
+    ('home_featured', 'Home — “New & notable” grid (free pick)'),
+    ('home_staff_picks', 'Home — staff picks grid (reorder)'),
+    ('plp_default', 'Shop — default product list (reorder, per page)'),
+    ('category_list', 'Category pages (reorder, per page)'),
+    ('collection_list', 'Collection pages (reorder, per page)'),
+    ('section_featured', 'Page-builder “Featured products” sections (reorder)'),
+]
+
+# Surfaces where dynamics may freely choose products (vs reorder-only).
+FREE_PICK_SURFACES = {'home_hero', 'home_featured'}
 
 # Strategies the engine implements (see services.recommend()).
 STRATEGY_CHOICES = [
@@ -83,7 +104,19 @@ class DynamicBlock(models.Model):
         max_length=40,
         choices=SLOT_CHOICES,
         db_index=True,
-        help_text='Where on the storefront this block renders.',
+        blank=True,
+        help_text='Where on the storefront this block renders (leave empty for a surface takeover).',
+    )
+    surface = models.CharField(
+        max_length=40,
+        choices=SURFACE_CHOICES,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text=(
+            'Existing theme placeholder this block takes over (hero, featured '
+            'grid, PLP order, …). Leave empty for a normal slot block.'
+        ),
     )
     strategy = models.CharField(
         max_length=20,

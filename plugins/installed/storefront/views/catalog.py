@@ -26,6 +26,29 @@ from morpheus.views import render
 from ._queries import PRODUCT_DETAIL_QUERY
 
 
+def _surface_reorder(request, surface, products):
+    """Merchandising takeover (STOREFRONT_PRODUCTS, reorder-only, fail-soft).
+
+    Lets a dynamics surface block re-rank the current page slice; with no
+    block (or dynamics disabled) the list passes through unchanged.
+    """
+    try:
+        from core.hooks import MorpheusEvents, hook_registry
+
+        return (
+            hook_registry.filter(
+                MorpheusEvents.STOREFRONT_PRODUCTS,
+                value=products,
+                surface=surface,
+                request=request,
+                limit=len(products) or 1,
+            )
+            or products
+        )
+    except Exception:
+        return products
+
+
 def product_list(request):
     """Product list with merchant-friendly facets: category, tag, price range,
     attribute facets (size/color/brand/...), and sort."""
@@ -182,6 +205,7 @@ def product_list(request):
             products = rank_for_visitor(request, products, surface='catalog_plp')
         except Exception:
             pass
+        products = _surface_reorder(request, 'plp_default', products)
 
     # Query-string base for pagination links — drops `page` so the template
     # can append it cleanly while preserving every active filter (search,
@@ -1071,6 +1095,7 @@ def category_detail(request, slug):
             products = rank_for_visitor(request, products, surface='category_plp')
         except Exception:
             pass
+        products = _surface_reorder(request, 'category_list', products)
 
     _attach_book_authors(products)
     intro = _CATEGORY_INTROS.get(slug, {})
@@ -1169,6 +1194,7 @@ def collection_detail(request, slug):
             products = rank_for_visitor(request, products, surface='collection_plp')
         except Exception:
             pass
+        products = _surface_reorder(request, 'collection_list', products)
 
     _attach_book_authors(products)
     breadcrumb_items = [

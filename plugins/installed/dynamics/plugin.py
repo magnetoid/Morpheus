@@ -46,10 +46,13 @@ logger = logging.getLogger('morpheus.dynamics')
 _SLOTS = [
     'home_above_grid',
     'home_below_grid',
+    'home_after_rails',
     'pdp_below_price',
     'pdp_below_form',
     'pdp_above_long_description',
     'cart_summary_extra',
+    'checkout_extra',
+    'order_receipt_extra',
     'global_below_body',
 ]
 
@@ -80,6 +83,12 @@ class DynamicsPlugin(Plugin):
         # normally written by advanced_ecommerce. We subscribe too so the
         # session signal survives advanced_ecommerce being disabled.
         self.register_hook(events.PRODUCT_VIEWED, self.on_product_viewed, priority=72)
+        # Surface takeover: control the theme's existing product placeholders
+        # (home hero/featured/staff picks, PLP ordering, page-builder sections)
+        # when a block is bound to the surface. See placeholders.py.
+        from plugins.installed.dynamics import placeholders  # noqa: PLC0415
+
+        self.register_hook(events.STOREFRONT_PRODUCTS, placeholders.provide, priority=40)
         # Automated propensity refresh: a nightly full recompute + a throttled
         # refresh after each order, so DynamicGridItem.purchase_probability tracks
         # real demand with zero merchant effort. Tasks live in tasks.py.

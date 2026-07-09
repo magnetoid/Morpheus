@@ -448,6 +448,17 @@ class MorpheusEvents:
     #   kwargs: request=HttpRequest, surface=str ('author'|'facet'|'related'|…).
     #   Subscribed by the personalisation plugin; consent-gated, no-op otherwise.
     PRODUCT_LIST_REORDER = 'product.list.reorder'  # filter
+    # STOREFRONT_PRODUCTS — filter. The merchandising-takeover hook: storefront
+    #   views fire it at every product placeholder so a merchandising owner
+    #   (the dynamics plugin) can control WHAT renders there.
+    #   kwargs: surface=str ('home_hero'|'home_featured'|'plp_default'|…),
+    #   request=HttpRequest, limit=int. Two modes by ``value``:
+    #     value=None        → free selection; subscriber returns list[Product]
+    #                         (or None to leave the view's default in place).
+    #     value=list[...]   → reorder-only (paginated slices); subscriber
+    #                         returns the same items reordered/filtered.
+    #   No subscriber / dynamics disabled → value passes through unchanged.
+    STOREFRONT_PRODUCTS = 'storefront.products'  # filter
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter

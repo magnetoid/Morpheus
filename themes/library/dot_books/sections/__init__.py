@@ -81,7 +81,25 @@ class FeaturedProductsSection(Section):
             else:
                 qs = qs.order_by('-created_at')
             count = max(1, min(int(merged.get('count') or 6), 24))
-            ctx['products'] = list(qs.prefetch_related('images')[:count])
+            products = list(qs.prefetch_related('images')[:count])
+            # Merchandising takeover (reorder-only): a dynamics surface block
+            # bound to 'section_featured' may re-rank the section's picks.
+            try:
+                from core.hooks import MorpheusEvents, hook_registry
+
+                products = (
+                    hook_registry.filter(
+                        MorpheusEvents.STOREFRONT_PRODUCTS,
+                        value=products,
+                        surface='section_featured',
+                        request=None,
+                        limit=count,
+                    )
+                    or products
+                )
+            except Exception:  # noqa: BLE001, S110 — merchandising never breaks a section
+                pass
+            ctx['products'] = products
         except Exception:  # noqa: BLE001
             ctx['products'] = []
         return ctx
