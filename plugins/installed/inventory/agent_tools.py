@@ -210,7 +210,9 @@ def stockout_forecast_tool(*, threshold_days: int = 14, limit: int = 25) -> Tool
 
     threshold_days = max(1, min(int(threshold_days or 14), 90))
     limit = max(1, min(int(limit or 25), 100))
-    rows = [r for r in forecast_all(threshold_days=threshold_days) if r.reorder_recommended][:limit]
+    all_rows = forecast_all(threshold_days=threshold_days)
+    rows = [r for r in all_rows if r.reorder_recommended][:limit]
+    overstock_rows = [r for r in all_rows if r.overstocked][:limit]
     out = [
         {
             'product': r.variant_label,
@@ -221,7 +223,16 @@ def stockout_forecast_tool(*, threshold_days: int = 14, limit: int = 25) -> Tool
         }
         for r in rows
     ]
+    overstock = [
+        {
+            'product': r.variant_label,
+            'available': r.available,
+            'days_of_cover': r.days_until_stockout,
+            'daily_velocity': round(r.daily_velocity, 2),
+        }
+        for r in overstock_rows
+    ]
     return ToolResult(
-        output={'threshold_days': threshold_days, 'at_risk': out},
-        display=f'{len(out)} SKU(s) projected to stock out within {threshold_days}d',
+        output={'threshold_days': threshold_days, 'at_risk': out, 'overstock': overstock},
+        display=f'{len(out)} at-risk · {len(overstock)} overstocked',
     )

@@ -36,5 +36,26 @@
     <p>No SKUs are projected to run out within the current reorder window.</p>
   </div>
   {% endif %}
+
+  {% if overstock %}
+  <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Overstocked <span class="text-sm font-normal text-[color:var(--text-muted)]">— slow-moving or dead stock; consider a markdown or promo</span></h2>
+    </div>
+    <table class="morph-table">
+      <thead><tr><th>Product</th><th>Available</th><th>Days of cover</th><th>Velocity / day</th></tr></thead>
+      <tbody>
+      {% for r in overstock %}
+        <tr>
+          <td>{{ r.variant_label }}</td>
+          <td>{{ r.available }}</td>
+          <td>{% if r.days_until_stockout is not None %}{{ r.days_until_stockout|floatformat:0 }}{% else %}<span class="pill pill-warn">no sales</span>{% endif %}</td>
+          <td>{{ r.daily_velocity|floatformat:2 }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

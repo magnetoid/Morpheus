@@ -180,4 +180,27 @@ def run_stockout_forecast() -> dict:
             )
         except Exception as exc:  # noqa: BLE001 — alerting never breaks the job
             logger.warning('run_stockout_forecast: notify failed: %s', exc, exc_info=True)
-    return {'opened': len(newly), 'resolved': result['resolved']}
+    # Overstock detection → one batch event for workflows (markdown/promo triggers).
+    overstock_count = 0
+    try:
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from plugins.installed.inventory.demand_forecast import forecast_all  # noqa: PLC0415
+
+        overstock = [r for r in forecast_all() if r.overstocked]
+        overstock_count = len(overstock)
+        if overstock:
+            hook_registry.fire(
+                MorpheusEvents.INVENTORY_OVERSTOCK_DETECTED,
+                variants=[
+                    {
+                        'variant_id': r.variant_id,
+                        'label': r.variant_label,
+                        'available': r.available,
+                        'daily_velocity': r.daily_velocity,
+                    }
+                    for r in overstock
+                ],
+            )
+    except Exception as exc:  # noqa: BLE001 — never break the beat
+        logger.warning('run_stockout_forecast: overstock detection failed: %s', exc, exc_info=True)
+    return {'opened': len(newly), 'resolved': result['resolved'], 'overstock': overstock_count}

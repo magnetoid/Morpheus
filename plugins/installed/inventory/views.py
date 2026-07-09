@@ -65,6 +65,7 @@ def stockout_forecast_view(request: HttpRequest) -> HttpResponse:
 
     @staff_member_required
     def _inner(req: HttpRequest) -> HttpResponse:
+        from plugins.installed.inventory.demand_forecast import forecast_all  # noqa: PLC0415
         from plugins.installed.inventory.models import StockoutAlert  # noqa: PLC0415
 
         alerts = list(
@@ -72,10 +73,11 @@ def stockout_forecast_view(request: HttpRequest) -> HttpResponse:
             .select_related('variant', 'variant__product')
             .order_by('days_of_cover')[:200]
         )
+        overstock = [r for r in forecast_all() if r.overstocked][:100]
         return render(
             req,
             'inventory/dashboard/stockout_forecast.html',
-            {'alerts': alerts, 'active_nav': 'apps'},
+            {'alerts': alerts, 'overstock': overstock, 'active_nav': 'apps'},
         )
 
     return _inner(request)

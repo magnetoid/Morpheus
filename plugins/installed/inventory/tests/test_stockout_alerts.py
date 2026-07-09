@@ -202,3 +202,34 @@ class StockoutAlertsEdgeCaseTests(TestCase):
         self.assertEqual(hi.output['threshold_days'], 90)
         lo = stockout_forecast_tool.invoke({'threshold_days': 0})
         self.assertEqual(lo.output['threshold_days'], 14)  # 0 is falsy → default 14
+
+
+class OverstockDetectionTests(TestCase):
+    def test_dead_stock_is_overstocked(self):
+        from plugins.installed.inventory.demand_forecast import forecast_all
+
+        # Stock on hand, zero sales in the window → dead stock → overstocked.
+        v = _variant('OS1')
+        wh = Warehouse.objects.create(name='WHOS', code='WHOS')
+        StockLevel.objects.create(variant=v, warehouse=wh, quantity=500, reorder_point=0)
+        rows = {r.variant_id: r for r in forecast_all()}
+        self.assertTrue(rows[str(v.pk)].overstocked)
+
+    def test_fast_mover_is_not_overstocked(self):
+        from plugins.installed.inventory.demand_forecast import forecast_all
+
+        v, _sl = _make_at_risk('OS2', on_hand=5, sold=140)  # high velocity, 1 day cover
+        rows = {r.variant_id: r for r in forecast_all()}
+        self.assertFalse(rows[str(v.pk)].overstocked)
+
+    def test_task_reports_overstock_count(self):
+        from unittest import mock
+
+        from plugins.installed.inventory import tasks
+
+        v = _variant('OS3')
+        wh = Warehouse.objects.create(name='WHOS3', code='WHOS3')
+        StockLevel.objects.create(variant=v, warehouse=wh, quantity=200, reorder_point=0)
+        with mock.patch.object(tasks, 'notify_all_staff', return_value=1):
+            result = tasks.run_stockout_forecast()
+        self.assertGreaterEqual(result['overstock'], 1)

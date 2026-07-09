@@ -61,6 +61,7 @@ class ForecastRow:
     suggested_reorder_qty: int
     sold_in_window: int
     window_days: int
+    overstocked: bool = False
 
 
 def forecast_all(
@@ -136,6 +137,17 @@ def forecast_all(
                 sold_in_window=sold,
                 window_days=window_days,
             )
+        )
+
+    # Overstock flag: has stock, at-or-below the median velocity, and >90 days of
+    # cover (or no velocity at all — dead stock). Additive; existing callers ignore it.
+    velocities = sorted(r.daily_velocity for r in out if r.daily_velocity > 0)
+    median_v = velocities[len(velocities) // 2] if velocities else 0.0
+    for r in out:
+        r.overstocked = bool(
+            r.available > 0
+            and r.daily_velocity <= median_v
+            and (r.days_until_stockout is None or r.days_until_stockout > 90)
         )
 
     # Sort reorders-first, then by days-until-stockout ascending.

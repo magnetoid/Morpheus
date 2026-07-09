@@ -555,6 +555,10 @@ class MorpheusEvents:
     #                            when a customer crosses into a different RFM segment;
     #                            the workflows plugin can trigger campaigns off it.
     CUSTOMER_SEGMENT_CHANGED = 'customer.segment_changed'
+    # INVENTORY_OVERSTOCK_DETECTED — kwargs: variants=list[dict]. Fired by the daily
+    #   stockout-forecast task for slow-moving / dead stock; workflows can trigger a
+    #   markdown/promo campaign off it.
+    INVENTORY_OVERSTOCK_DETECTED = 'inventory.overstock_detected'
 
     # ── Auth (filter) ─────────────────────────────────────────────────────
     # AUTH_SECOND_FACTOR — filter, value=None|HttpResponse, kwargs:
