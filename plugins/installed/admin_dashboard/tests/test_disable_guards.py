@@ -60,6 +60,11 @@ class DashboardNavGuardTests(TestCase):
     GUARDED_LINKS = {
         '/dashboard/reviews/': 'reviews_enabled',
         '/dashboard/draft-orders/': 'draft_orders_enabled',
+        # About link hardcoded into the top-right user dropdown. (The Version
+        # link is guarded by the same `release_notes_on` in the dropdown but is
+        # not listed here: the href also appears in the sidebar with a
+        # multi-line guard block that this inline check can't match.)
+        '/dashboard/apps/release_notes/about/': 'release_notes_on',
     }
 
     def test_plugin_nav_links_are_guarded(self):
