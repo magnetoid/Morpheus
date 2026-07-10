@@ -37,9 +37,14 @@ class JournalDictSeoTests(TestCase):
         self.assertTrue(image.startswith('https://'))
         self.assertTrue(image.endswith('/media/explicit.jpg'))
 
-    def test_author_falls_back_to_default(self):
+    def test_author_falls_back_to_store_name(self):
+        # The default byline derives from the store's own name, not a
+        # hardcoded brand (generic-platform genericity).
+        from core.models import StoreSettings
+
+        StoreSettings.objects.create(store_name='Acme Books')
         page = Page.objects.create(slug='n3', title='N3', state='published', body='x', metadata={})
-        self.assertEqual(journal_dict(page)['author'], 'dot books staff')
+        self.assertEqual(journal_dict(page)['author'], 'Acme Books staff')
 
     def test_date_label_shows_real_publish_date_and_read_time(self):
         from datetime import UTC, datetime

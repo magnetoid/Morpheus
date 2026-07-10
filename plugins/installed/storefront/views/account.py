@@ -12,7 +12,7 @@ import logging
 
 from morpheus.views import render
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('morpheus.storefront')
 
 
 def _login_required(request, target):

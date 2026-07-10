@@ -206,7 +206,7 @@ class OrdersMutationExtension:
         except Exception:  # noqa: BLE001 — coupon model not yet migrated
             import logging
 
-            logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+            logging.getLogger('morpheus.orders').warning('Suppressed exception', exc_info=True)
         return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Remove the applied coupon from a cart.')
@@ -347,7 +347,7 @@ class OrdersMutationExtension:
         except Exception:
             import logging
 
-            logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+            logging.getLogger('morpheus.orders').warning('Suppressed exception', exc_info=True)
 
         if input.shipping_rate_id:
             cart.metadata = dict(cart.metadata or {})

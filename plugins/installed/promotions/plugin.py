@@ -184,7 +184,7 @@ class PromotionsPlugin(Plugin):
         except Exception:
             import logging
 
-            logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+            logging.getLogger('morpheus.promotions').warning('Suppressed exception', exc_info=True)
 
         return value
 
@@ -215,7 +215,7 @@ class PromotionsPlugin(Plugin):
             except Exception:  # noqa: BLE001
                 import logging
 
-            logging.getLogger(__name__).warning('Suppressed exception', exc_info=True)
+            logging.getLogger('morpheus.promotions').warning('Suppressed exception', exc_info=True)
             return value
         except Exception as e:  # noqa: BLE001
             logger.warning('promotions: on_cart_total failed: %s', e, exc_info=True)

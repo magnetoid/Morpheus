@@ -233,9 +233,6 @@ THIRD_PARTY_APPS = [
     # staff_sso (OFF by default) creates the SAML SocialApp only when an IdP is
     # wired up. Hard-imports python3-saml (onelogin.saml2) at app load.
     'allauth.socialaccount.providers.saml',
-    'crispy_forms',
-    'crispy_bootstrap5',
-    'import_export',
 ]
 
 # Engine apps (no business logic — just infrastructure)
@@ -599,8 +596,6 @@ GRAPHQL_DISABLE_INTROSPECTION_IN_PROD = config(
 )
 
 # ── Crispy Forms ───────────────────────────────────────────────────────────────
-CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
-CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 # ── Payments ───────────────────────────────────────────────────────────────────
 STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='')

@@ -16,7 +16,7 @@ from plugins.installed.orders.models import CartItem
 
 from ._queries import CART_QUERY
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('morpheus.storefront')
 
 
 def cart(request):

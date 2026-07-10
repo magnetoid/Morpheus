@@ -364,7 +364,7 @@ def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str,
     except Exception as e:  # noqa: BLE001 — ai_content plugin optional
         import logging
 
-        logging.getLogger(__name__).debug('brand voice unavailable: %s', e)
+        logging.getLogger('morpheus.admin').debug('brand voice unavailable: %s', e)
     try:
         from plugins.installed.ai_assistant.services.llm import get_llm
 

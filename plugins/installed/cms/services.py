@@ -40,6 +40,14 @@ def _str_list(value) -> list[str]:
     return []
 
 
+def _default_author() -> str:
+    """Fallback byline for a journal entry with no explicit author — the
+    store's own name, not a hardcoded brand."""
+    from core.models import StoreSettings  # noqa: PLC0415
+
+    return f'{StoreSettings.get("store_name", "Morpheus Store")} staff'
+
+
 def journal_dict(page) -> dict:
     """The render/SEO dict for a journal ``Page``. Public — the storefront
     journal view builds its context from this."""
@@ -82,7 +90,7 @@ def journal_dict(page) -> dict:
         'published_at': pub,
         'updated_at': page.updated_at,
         'image': image,
-        'author': author or 'dot books staff',
+        'author': author or _default_author(),
         'author_same_as': author_same_as,
         'citations': citations,
         'word_count': word_count,

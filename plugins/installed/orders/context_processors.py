@@ -38,5 +38,5 @@ def cart_context(request):
     except Exception:
         import logging
 
-        logging.getLogger(__name__).warning('cart_context failed', exc_info=True)
+        logging.getLogger('morpheus.orders').warning('cart_context failed', exc_info=True)
     return {'cart_item_count': count}

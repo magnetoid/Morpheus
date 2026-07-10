@@ -68,7 +68,7 @@ class StoreSettings(models.Model):
     smtp_user = models.CharField(max_length=200, blank=True)
     smtp_password = models.CharField(max_length=200, blank=True)
     default_from_email = models.CharField(
-        max_length=200, blank=True, help_text='e.g. noreply@dotbooks.shop'
+        max_length=200, blank=True, help_text='e.g. noreply@example.com'
     )
 
     updated_at = models.DateTimeField(auto_now=True)

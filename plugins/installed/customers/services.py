@@ -152,7 +152,9 @@ def anonymise_customer(customer) -> None:
     if customer is None or not customer.pk:
         return
 
-    sentinel_email = f'deleted-{uuid.uuid4().hex}@dotbooks.invalid'
+    # RFC-2606 reserved .invalid TLD, brand-neutral (this is the generic
+    # customers plugin — not the dot_books store).
+    sentinel_email = f'deleted-{uuid.uuid4().hex}@deleted.invalid'
 
     # Each owning plugin scrubs/deletes its own rows (orders keep totals for
     # fiscal hold but lose PII; wishlist and stored payment methods delete;

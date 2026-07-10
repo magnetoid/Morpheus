@@ -80,3 +80,20 @@ UI stops offering a toggle that does nothing.
   registration is misleading. Delete or fire it.
 - Promote the module-local `'collection.updated'` string
   (`catalog/signals.py`) to a typed `MorpheusEvents` constant.
+
+
+## Deferred — storefront brand genericity (SEO/meta refactor)
+
+The generic storefront shell hardcodes "dot books" in ~27 SEO title /
+meta-description / data-export-filename sites (`storefront/views/catalog.py`,
+`content.py`, `vendor.py`, `account.py`), and the shared dashboard's
+AI-autofill prompts tell the LLM it's a "bookstore copywriter"
+(`admin_dashboard/views_split/products.py:980-1045`). A store other than
+dot_books inherits book-voiced copy and "— dot books" in its meta tags.
+
+Fix (own PR — it touches live SEO/meta output): a `store_name` context
+processor + interpolation for the storefront titles; neutralize the autofill
+prompts to "product copywriter" (or read the store vertical/brand-voice from
+settings, which `_shared.py:367` already looks up). Deferred from the
+2026-07-10 genericity batch, which fixed the contained leaks (deletion
+sentinel, CMS default byline, StoreSettings help text).
