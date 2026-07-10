@@ -13,12 +13,6 @@ from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-_TRAIL = [
-    {'label': 'Dashboard', 'url': '/dashboard/'},
-    {'label': 'Marketing', 'url': '/dashboard/marketing/'},
-    {'label': 'Newsletter'},
-]
-
 
 @staff_member_required
 def subscribers_view(request):
@@ -51,7 +45,6 @@ def subscribers_view(request):
             'total': sum(counts.values()),
             'status': status,
             'active_nav': 'marketing',
-            'breadcrumb_trail': _TRAIL,
         },
     )
 
@@ -83,7 +76,6 @@ def popups_view(request):
         {
             'popups': SignupPopup.objects.all(),
             'active_nav': 'marketing',
-            'breadcrumb_trail': _TRAIL,
         },
     )
 
@@ -127,6 +119,5 @@ def popup_edit_view(request, popup_id: str):
             'FREQUENCIES': SignupPopup.FREQUENCY_CHOICES,
             'AUDIENCES': SignupPopup.AUDIENCE_CHOICES,
             'active_nav': 'marketing',
-            'breadcrumb_trail': _TRAIL,
         },
     )
