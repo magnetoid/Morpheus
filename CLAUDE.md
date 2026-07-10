@@ -178,7 +178,11 @@ slice through the `BRAIN_SIGNALS` filter; ADR 0031); and
 processors and skips inactive owners; this is what finally makes that mechanism
 real). *Still leaking:* `core/assistant/tools/*` queries
 catalog/orders/cms/metafields/… models directly (fix: migrate each to the
-owning plugin's `contribute_agent_tools()`).
+owning plugin's `contribute_agent_tools()`). The full shell-leak /
+duplication debt map (bookvault, product_videos, metafields, cloudflare,
+seo shell imports; customers↔orders cycle; 6× channel `mapping.py`
+copy-paste) lives in `docs/plans/boundary-debt-2026-07.md` — repay from
+there, one PR per item.
 
 ---
 
