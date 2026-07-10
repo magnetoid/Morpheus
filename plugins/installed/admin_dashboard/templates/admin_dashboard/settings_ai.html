@@ -330,19 +330,10 @@
     catch { return { ok: false, error: `HTTP ${res.status}` }; }
   }
 
-  function cacheKey(p) { return `ai-models:${p}`; }
-  function loadCachedModels(p) {
-    try {
-      const raw = localStorage.getItem(cacheKey(p));
-      if (!raw) return null;
-      const obj = JSON.parse(raw);
-      if (Date.now() - obj.at > 7 * 24 * 3600 * 1000) return null;
-      return obj.ids || null;
-    } catch { return null; }
-  }
-  function saveCachedModels(p, ids) {
-    try { localStorage.setItem(cacheKey(p), JSON.stringify({ at: Date.now(), ids })); } catch {}
-  }
+  // The fetched-model dropdown is rendered + persisted server-side (Fetch
+  // saves the list to the provider config), so it's already populated on load
+  // and survives across browsers. paintPicker only repaints after a *new*
+  // fetch this session.
   function modelPicker(p) { return document.querySelector(`.ai-model-picker[data-provider="${p}"]`); }
   function modelInput(p) { return document.querySelector(`form[data-provider-form="${p}"] [data-model-input]`); }
   function paintPicker(p, ids) {
@@ -365,11 +356,6 @@
     if (row) row.hidden = false;
     sel.removeAttribute('hidden');
   }
-  document.querySelectorAll('[data-provider-form]').forEach(form => {
-    const p = form.dataset.providerForm;
-    const cached = loadCachedModels(p);
-    if (cached) paintPicker(p, cached);
-  });
   document.querySelectorAll('.ai-model-picker').forEach(sel => {
     sel.addEventListener('change', () => {
       const p = sel.dataset.provider;
@@ -396,9 +382,9 @@
           return;
         }
         const ids = (data.models || []).map(m => m.id).filter(Boolean);
-        if (ids.length) { paintPicker(p, ids); saveCachedModels(p, ids); }
+        if (ids.length) paintPicker(p, ids);  // server already persisted the list
         msg.className = 'ai-test-msg text-xs ok';
-        msg.textContent = `✓ ${ids.length} models`;
+        msg.textContent = `✓ ${ids.length} models saved`;
       } finally { btn.disabled = false; }
     });
   });

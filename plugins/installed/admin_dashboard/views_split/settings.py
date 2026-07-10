@@ -168,6 +168,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
 
     api_key = (request.POST.get('api_key') or '').strip()
     base_url = (request.POST.get('base_url') or '').strip()
+    ai_plugin = None
     try:
         from plugins.registry import plugin_registry
 
@@ -184,6 +185,16 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     from plugins.installed.ai_assistant.services.probe import probe
 
     result = probe(provider, api_key=api_key, base_url=base_url)
+    # Persist the fetched model list server-side so the "Pick from catalog"
+    # dropdown is permanent and cross-device — not just this browser's cache.
+    if ai_plugin is not None and result.get('ok') and result.get('models'):
+        try:
+            import json as _json
+
+            ids = [m.get('id') for m in result['models'] if m.get('id')]
+            ai_plugin.set_config(f'{provider}_fetched_models', _json.dumps(ids[:200]))
+        except Exception:  # noqa: BLE001 — persistence is best-effort, never blocks the probe
+            pass
     return JsonResponse(result)
 
 
@@ -271,7 +282,12 @@ _AI_PROVIDERS = [
         'help_url': 'https://openrouter.ai/keys',
         'placeholder_model': 'anthropic/claude-3.5-sonnet',
         'blurb': 'One key, hundreds of models. OpenAI-compatible.',
-        'models': ('anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'google/gemini-2.0-flash-exp', 'meta-llama/llama-3.3-70b-instruct'),
+        'models': (
+            'anthropic/claude-3.5-sonnet',
+            'openai/gpt-4o',
+            'google/gemini-2.0-flash-exp',
+            'meta-llama/llama-3.3-70b-instruct',
+        ),
     },
     {
         'slug': 'grok',
@@ -797,12 +813,23 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
     # "connected" once the merchant has set it up: an API key is present, or —
     # for key-optional providers (Ollama) — a base URL has been saved. The
     # panel shows only connected providers; the rest live behind "Add AI".
+    import json as _json
+
     cards = []
     for p in _AI_PROVIDERS:
         api_key = cfg.get(f'{p["slug"]}_api_key', '') or ''
         base_url = cfg.get(f'{p["slug"]}_base_url', '') or ''
         model = cfg.get(f'{p["slug"]}_model', '') or p.get('placeholder_model', '')
         configured = bool(api_key) or (p.get('api_key_optional') and bool(base_url))
+        # Models previously fetched from this provider's API (persisted by the
+        # Fetch button) → the permanent "Pick from catalog" dropdown.
+        fetched_raw = cfg.get(f'{p["slug"]}_fetched_models', '') or ''
+        try:
+            fetched_models = _json.loads(fetched_raw) if fetched_raw else []
+            if not isinstance(fetched_models, list):
+                fetched_models = []
+        except (ValueError, TypeError):
+            fetched_models = []
         cards.append(
             {
                 **p,
@@ -814,6 +841,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
                 'key_hint': _ai_key_fingerprint(api_key),
                 'base_url': base_url,
                 'model': model,
+                'fetched_models': fetched_models,
                 'configured': configured,
                 'is_active': p['slug'] == active,
                 'last_call': last_call_by_provider.get(p['slug']),

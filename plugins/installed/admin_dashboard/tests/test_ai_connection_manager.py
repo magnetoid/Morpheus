@@ -139,3 +139,50 @@ class ProviderCatalogUXTests(TestCase):
         for p in _AI_PROVIDERS:
             self.assertTrue(p.get('models'), f'{p["slug"]} has no curated models')
             self.assertTrue(p.get('blurb'), f'{p["slug"]} has no blurb')
+
+
+PROBE_URL = '/dashboard/settings/ai/probe/'
+
+
+class FetchedModelsPersistenceTests(TestCase):
+    """Fetch persists the provider's model list server-side, so the
+    'Pick from fetched models' dropdown is permanent + cross-device."""
+
+    def setUp(self):
+        self.c = Client()
+        self.staff = get_user_model().objects.create_user(
+            username='fm', email='fm@x.test', password='pw', is_staff=True, is_superuser=True
+        )
+        self.c.force_login(self.staff)
+        _ai().invalidate_config_cache()
+
+    def test_fetched_models_render_as_permanent_dropdown(self):
+        import json
+
+        ai = _ai()
+        ai.set_config('openai_api_key', 'sk-test')  # connected → card shows
+        ai.set_config('openai_fetched_models', json.dumps(['gpt-4o', 'o3-mini', 'gpt-4o-mini']))
+        ai.invalidate_config_cache()
+
+        html = self.c.get(AI_URL).content.decode()
+        # The dropdown is populated (not the empty hidden placeholder) and lists
+        # each fetched model as an <option>.
+        self.assertIn('Pick from fetched models', html)
+        self.assertIn('<option value="o3-mini"', html)
+        self.assertIn('3 available', html)
+
+    def test_probe_persists_returned_models_to_config(self):
+        from unittest.mock import patch
+
+        fake = {'ok': True, 'models': [{'id': 'gpt-4o'}, {'id': 'o1'}, {'id': ''}]}
+        with patch('plugins.installed.ai_assistant.services.probe.probe', return_value=fake):
+            resp = self.c.post(PROBE_URL, {'provider': 'openai', 'api_key': 'sk-x'})
+        self.assertEqual(resp.status_code, 200)
+
+        import json
+
+        ai = _ai()
+        ai.invalidate_config_cache()
+        saved = json.loads(ai.get_config().get('openai_fetched_models', '[]'))
+        # Empty ids are dropped; valid ones persisted.
+        self.assertEqual(saved, ['gpt-4o', 'o1'])

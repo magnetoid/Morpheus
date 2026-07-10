@@ -78,13 +78,17 @@ Expects `c` (provider card dict) and `mode`.
           <button type="button" class="btn ai-fetch-btn" data-provider="{{ c.slug }}"><i data-lucide="download" class="h-3.5 w-3.5"></i> Fetch</button>
           <button type="button" class="btn ai-test-btn" data-provider="{{ c.slug }}"><i data-lucide="zap" class="h-3.5 w-3.5"></i> Test</button>
         </div>
-        <div class="ai-model-picker-row mt-2" data-picker-row="{{ c.slug }}" hidden>
-          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Pick from catalog</label>
+        {% comment %}Permanent "Pick from catalog" dropdown, populated from the
+        models last fetched from this provider's API (persisted server-side, so
+        it survives reloads and appears on any device). Fetch refreshes it.{% endcomment %}
+        <div class="ai-model-picker-row mt-2" data-picker-row="{{ c.slug }}"{% if not c.fetched_models %} hidden{% endif %}>
+          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Pick from fetched models</label>
           <select class="input ai-model-picker w-full" data-provider="{{ c.slug }}">
-            <option value="">— select a model —</option>
+            <option value="">— select a model{% if c.fetched_models %} ({{ c.fetched_models|length }} available){% endif %} —</option>
+            {% for m in c.fetched_models %}<option value="{{ m }}"{% if m == c.model %} selected{% endif %}>{{ m }}</option>{% endfor %}
           </select>
         </div>
-        <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id, or click Fetch to list models the provider currently exposes.</p>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Type the model id, pick a suggestion, or click Fetch to pull the provider's live model list into the dropdown above.</p>
       </div>
     </div>
 
