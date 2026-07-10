@@ -392,6 +392,15 @@ for db_config in DATABASES.values():
     if db_config.get('ENGINE') == 'django.db.backends.postgresql':
         db_config.setdefault('OPTIONS', {})
         db_config['OPTIONS'].setdefault('sslmode', _DEFAULT_SSL_MODE)
+    elif db_config.get('ENGINE') == 'django.db.backends.sqlite3':
+        # File-backed sqlite (CI runs sqlite:///db.sqlite3) locks coarsely,
+        # so a concurrent writer — e.g. the eager outbox publisher writing
+        # back an event's retry status while a test holds its transaction —
+        # can raise "database table is locked" with the 5s default. A 30s
+        # busy_timeout makes the writer wait instead of erroring. Harmless
+        # for the in-memory test DB.
+        db_config.setdefault('OPTIONS', {})
+        db_config['OPTIONS'].setdefault('timeout', 30)
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
 AUTH_USER_MODEL = 'customers.Customer'
