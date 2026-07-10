@@ -12,6 +12,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.4.3 — 2026-07-10
+
+### Consistent icons in the ad-channel dashboards
+
+- The Google, Meta, TikTok, Pinterest, Microsoft, Snapchat and Reddit
+  dashboards now use the same crisp icon set as the rest of the admin
+  instead of emoji, so status markers render consistently everywhere.
+
 ## v0.4.2 — 2026-07-10
 
 ### Security hardening, order emails that actually send, and cleaner breadcrumbs
