@@ -32,7 +32,7 @@
   {% if verify %}
   <ul class="mt-3 text-sm" style="list-style:none;padding:0;margin:0;display:grid;gap:.35rem;">
     {% for key, r in verify.items %}
-    <li>{% if r.ok %}✅{% else %}❌{% endif %} <span class="font-medium">{{ key }}</span> — {{ r.detail }}</li>
+    <li>{% if r.ok %}<i data-lucide="check" class="inline-block h-4 w-4 align-text-bottom" style="color:var(--success);"></i>{% else %}<i data-lucide="x" class="inline-block h-4 w-4 align-text-bottom" style="color:var(--danger);"></i>{% endif %} <span class="font-medium">{{ key }}</span> — {{ r.detail }}</li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -63,7 +63,7 @@
       {% for iss in diagnostics.issues %}
       <tr><td class="font-medium">{{ iss.description }}</td><td>{{ iss.count }}</td></tr>
       {% empty %}
-      <tr><td colspan="2" class="text-sm text-[color:var(--text-muted)]">No item-level issues. 🎉</td></tr>
+      <tr><td colspan="2" class="text-sm text-[color:var(--text-muted)]">No item-level issues.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -87,7 +87,7 @@
       {% for gap in report.gaps %}
       <tr><td class="font-medium">{{ gap.attribute }}</td><td>{{ gap.count }}</td><td class="text-xs text-[color:var(--text-muted)]">{% for ex in gap.examples %}{{ ex.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
       {% empty %}
-      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes. 🎉</td></tr>
+      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes.</td></tr>
       {% endfor %}
     </tbody>
   </table>

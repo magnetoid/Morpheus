@@ -15,7 +15,7 @@
     <div>
       <h2 class="font-semibold">Google connection</h2>
       <p class="text-xs text-[color:var(--text-muted)]">
-        {% if connect.is_connected %}✅ Connected — Content API push, Merchant diagnostics and Ads are live.
+        {% if connect.is_connected %}<i data-lucide="check" class="inline-block h-4 w-4 align-text-bottom" style="color:var(--success);"></i> Connected — Content API push, Merchant diagnostics and Ads are live.
         {% elif connect.has_client %}OAuth client set. Click connect to grant Merchant + Ads access (one consent).
         {% else %}Add your OAuth client ID + secret in <a href="/dashboard/settings/channels/" class="underline">Settings → Channels</a>, then connect.{% endif %}
       </p>
@@ -61,7 +61,7 @@
       {% for iss in diagnostics.issues %}
       <tr><td class="font-medium">{{ iss.description }}</td><td>{{ iss.count }}</td><td class="text-xs text-[color:var(--text-muted)]">{{ iss.servability }}</td></tr>
       {% empty %}
-      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">No item-level issues. 🎉</td></tr>
+      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">No item-level issues.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -89,7 +89,7 @@
         <td class="text-xs text-[color:var(--text-muted)]">{% for ex in gap.examples %}{{ ex.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes. 🎉</td></tr>
+      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes.</td></tr>
       {% endfor %}
     </tbody>
   </table>

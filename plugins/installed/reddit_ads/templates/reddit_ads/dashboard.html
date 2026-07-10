@@ -29,7 +29,7 @@
   {% if verify %}
   <ul class="mt-3 text-sm" style="list-style:none;padding:0;margin:0;display:grid;gap:.35rem;">
     {% for key, r in verify.items %}
-    <li>{% if r.ok %}✅{% else %}❌{% endif %} <span class="font-medium">{{ key }}</span> — {{ r.detail }}</li>
+    <li>{% if r.ok %}<i data-lucide="check" class="inline-block h-4 w-4 align-text-bottom" style="color:var(--success);"></i>{% else %}<i data-lucide="x" class="inline-block h-4 w-4 align-text-bottom" style="color:var(--danger);"></i>{% endif %} <span class="font-medium">{{ key }}</span> — {{ r.detail }}</li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -37,7 +37,7 @@
 
 <div class="card mb-6">
   <div class="card-padded border-b border-[color:var(--border)]">
-    <h2 class="font-semibold">📚 Recommended book communities to target</h2>
+    <h2 class="font-semibold">Recommended book communities to target</h2>
     <p class="text-xs text-[color:var(--text-muted)]">Add these subreddits as <em>Communities</em> in your Reddit ad groups — that's where book buyers are.</p>
   </div>
   <div class="card-padded" style="display:grid;gap:.6rem;">

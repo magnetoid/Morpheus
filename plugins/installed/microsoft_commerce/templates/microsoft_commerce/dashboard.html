@@ -19,7 +19,7 @@
 <div class="card card-padded mb-6">
   <h2 class="font-semibold">Conversion tracking (UET)</h2>
   <p class="text-xs text-[color:var(--text-muted)]">
-    {% if settings.uet_enabled and uet_set %}✅ UET tag active — pageLoad everywhere + purchase on order confirmation.
+    {% if settings.uet_enabled and uet_set %}<i data-lucide="check" class="inline-block h-4 w-4 align-text-bottom" style="color:var(--success);"></i> UET tag active — pageLoad everywhere + purchase on order confirmation.
     {% elif uet_set %}UET tag ID set but the tag is disabled — enable it in settings.
     {% else %}Add your UET tag ID in <a href="/dashboard/settings/channels/" class="underline">Settings → Channels</a> and enable it.{% endif %}
   </p>
@@ -40,7 +40,7 @@
       {% for gap in report.gaps %}
       <tr><td class="font-medium">{{ gap.attribute }}</td><td>{{ gap.count }}</td><td class="text-xs text-[color:var(--text-muted)]">{% for ex in gap.examples %}{{ ex.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
       {% empty %}
-      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes. 🎉</td></tr>
+      <tr><td colspan="3" class="text-sm text-[color:var(--text-muted)]">Every eligible product has all recommended attributes.</td></tr>
       {% endfor %}
     </tbody>
   </table>
