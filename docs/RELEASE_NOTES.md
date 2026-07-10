@@ -12,6 +12,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.4.4 — 2026-07-10
+
+### A friendlier account menu
+
+- The top-right account menu now shows **your name** instead of your email
+  address (it falls back to email if you haven't set a name).
+- Added **About Morpheus OS** and **Version & updates** shortcuts right in
+  that menu, with the version you're running shown at a glance — one click
+  to the full, explained changelog.
+
 ## v0.4.3 — 2026-07-10
 
 ### Consistent icons in the ad-channel dashboards
