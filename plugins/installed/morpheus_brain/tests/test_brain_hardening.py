@@ -16,31 +16,32 @@ def _record(name='morpheus.foo', msg='boom', module='m', lineno=1):
 
 
 class ErrorLogHandlerTests(SimpleTestCase):
-    @patch('plugins.installed.observability.services.record_error')
+    # The handler writes through core.errors.services (ADR 0025) —
+    # record_message for plain log records, record_error when exc_info holds
+    # a live exception. Patch there, not the old observability path.
+    @patch('core.errors.services.record_message')
     def test_records_error_event(self, rec):
         ErrorEventLogHandler().emit(_record())
         self.assertEqual(rec.call_count, 1)
-        kw = rec.call_args.kwargs
+        args, kw = rec.call_args
         self.assertTrue(kw['source'].startswith('log:'))
-        self.assertEqual(kw['message'], 'boom')
+        self.assertEqual(args[0], 'boom')
 
-    @patch('plugins.installed.observability.services.record_error')
+    @patch('core.errors.services.record_message')
     def test_denylisted_logger_ignored(self, rec):
         # Its own subsystem's loggers must never re-enter (loop guard).
         for name in ('morpheus.observability.x', 'morpheus.brain', 'django.db.backends'):
             ErrorEventLogHandler().emit(_record(name=name))
         rec.assert_not_called()
 
-    @patch('plugins.installed.observability.services.record_error')
+    @patch('core.errors.services.record_message')
     def test_throttle_dedupes_same_fingerprint(self, rec):
         h = ErrorEventLogHandler()
         h.emit(_record())
         h.emit(_record())
         self.assertEqual(rec.call_count, 1)
 
-    @patch(
-        'plugins.installed.observability.services.record_error', side_effect=RuntimeError('db down')
-    )
+    @patch('core.errors.services.record_message', side_effect=RuntimeError('db down'))
     def test_fail_soft_never_raises(self, rec):
         ErrorEventLogHandler().emit(_record())  # must not raise
 

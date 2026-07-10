@@ -25,8 +25,8 @@ class HardGateSmoke(TestCase):
 
         Metafield.objects.set(product, namespace='book', key='isbn', value='123')
 
-        from plugins.installed.metafields.agent_tools import metafields_delete_tool
         from core.assistant.tools.filesystem import ToolError
+        from plugins.installed.metafields.agent_tools import metafields_delete_tool
 
         # confirmed=True alone is not enough — a refusal RAISES ToolError (the
         # runtime catches it and surfaces the message to the LLM).

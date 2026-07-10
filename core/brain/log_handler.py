@@ -12,9 +12,9 @@ denylist of its own subsystem's loggers), THROTTLED (one DB write per
 fingerprint per minute), and BOOT-SAFE (no-op until the app registry is ready).
 It writes only on ERROR+, so it never touches the request hot path for warnings.
 
-NB: there are two ``record_error`` functions — ``core.errors.services`` writes a
-DIFFERENT table the collector does NOT read. We deliberately use
-``plugins.installed.observability.services.record_error``.
+Since ADR 0025 the write path is ``core.errors.services`` (record_error for
+live exceptions, record_message otherwise) — the consolidated core error
+system the collector reads.
 """
 
 from __future__ import annotations

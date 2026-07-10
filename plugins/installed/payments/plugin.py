@@ -144,9 +144,17 @@ class PaymentsPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'stripe_secret_key': {'type': 'string', 'format': 'password', 'title': 'Stripe Secret Key'},
+                'stripe_secret_key': {
+                    'type': 'string',
+                    'format': 'password',
+                    'title': 'Stripe Secret Key',
+                },
                 'stripe_public_key': {'type': 'string', 'title': 'Stripe Public Key'},
-                'stripe_webhook_secret': {'type': 'string', 'format': 'password', 'title': 'Stripe Webhook Secret'},
+                'stripe_webhook_secret': {
+                    'type': 'string',
+                    'format': 'password',
+                    'title': 'Stripe Webhook Secret',
+                },
                 'capture_strategy': {
                     'type': 'string',
                     'enum': ['automatic', 'manual'],
