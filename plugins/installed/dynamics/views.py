@@ -19,8 +19,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from .models import (
     SLOT_CHOICES,
     STRATEGY_CHOICES,
+    SURFACE_CHOICES,
     DynamicBlock,
 )
+
+# Sensible default sizes when a merchant takes control of a surface.
+_SURFACE_LIMITS = {'home_hero': 4, 'home_featured': 8, 'home_staff_picks': 8}
 
 
 def _trail(*items):
@@ -35,14 +39,87 @@ def _trail(*items):
 
 @staff_member_required
 def index(request):
-    """List every configured block, grouped implicitly by slot ordering."""
+    """Merchandising console: surfaces takeover table + carousel blocks."""
     blocks = list(DynamicBlock.objects.prefetch_related('categories').all())
+    by_surface: dict = {}
+    for b in blocks:
+        if b.surface and b.enabled and b.surface not in by_surface:
+            by_surface[b.surface] = b
+    surfaces = [
+        {'key': key, 'label': label, 'block': by_surface.get(key)} for key, label in SURFACE_CHOICES
+    ]
+    slot_blocks = [b for b in blocks if b.slot]
     return render(
         request,
         'dynamics/index.html',
         {
-            'blocks': blocks,
+            'surfaces': surfaces,
+            'blocks': slot_blocks,
             'breadcrumb_trail': _trail(),
+            'active_section': 'settings',
+        },
+    )
+
+
+@staff_member_required
+def take_control(request, surface):
+    """One click: bind a smart-strategy block to a theme surface."""
+    valid = dict(SURFACE_CHOICES)
+    if request.method != 'POST' or surface not in valid:
+        return HttpResponseRedirect('/dashboard/dynamics/')
+    existing = (
+        DynamicBlock.objects.filter(surface=surface, enabled=True).order_by('sort_order').first()
+    )
+    if existing is not None:
+        return redirect(f'/dashboard/dynamics/{existing.pk}/')
+    block = DynamicBlock.objects.create(
+        name=valid[surface],
+        surface=surface,
+        strategy='smart',
+        limit=_SURFACE_LIMITS.get(surface, 12),
+        enabled=True,
+    )
+    messages.success(
+        request,
+        f'Dynamics now controls “{valid[surface]}” with the Smart strategy — tune it below.',
+    )
+    return redirect(f'/dashboard/dynamics/{block.pk}/')
+
+
+@staff_member_required
+def preview_block(request, block_id):
+    """Live preview: the block's picks with per-product score explanations.
+
+    ``?segment=`` previews an autopilot block as a specific visitor segment
+    (smart is segment-independent; the selector notes that).
+    """
+    from .segments import SEGMENT_CHOICES
+    from .services import explain_block
+
+    block = get_object_or_404(DynamicBlock, pk=block_id)
+    segment = (request.GET.get('segment') or '').strip()
+    if segment:
+        block.segment_override = segment  # in-memory only — preview, not saved
+    rows = explain_block(block, request=request)
+    # Template-friendly component bars: ordered [{label, value, pct}].
+    for r in rows:
+        r['bars'] = [
+            {'label': key, 'value': val, 'pct': int(round(val * 100))}
+            for key, val in (r['components'] or {}).items()
+        ]
+    return render(
+        request,
+        'dynamics/preview.html',
+        {
+            # 'blk', not 'block' — see edit_block.
+            'blk': block,
+            'rows': rows,
+            'segment': segment,
+            'segment_choices': SEGMENT_CHOICES,
+            'breadcrumb_trail': _trail(
+                {'label': block.name, 'url': f'/dashboard/dynamics/{block.pk}/'},
+                'Preview',
+            ),
             'active_section': 'settings',
         },
     )
@@ -69,8 +146,11 @@ def edit_block(request, block_id=None):
         request,
         'dynamics/edit.html',
         {
-            'block': block,
+            # 'blk', not 'block' — inside {% block %} tags Django shadows the
+            # context var 'block' with the template BlockNode.
+            'blk': block,
             'slot_choices': SLOT_CHOICES,
+            'surface_choices': SURFACE_CHOICES,
             'strategy_choices': STRATEGY_CHOICES,
             'categories': categories,
             'selected_cats': selected_cats,
@@ -106,12 +186,16 @@ def _save_from_post(request, block):
     or None if validation rejected it (a message is queued)."""
     name = (request.POST.get('name') or '').strip()
     slot = (request.POST.get('slot') or '').strip()
+    surface = (request.POST.get('surface') or '').strip()
     strategy = (request.POST.get('strategy') or '').strip()
 
     valid_slots = {s for s, _ in SLOT_CHOICES}
-    valid_strategies = {s for s, _ in STRATEGY_CHOICES}
-    if not name or slot not in valid_slots or strategy not in valid_strategies:
-        messages.error(request, 'Name, a valid slot, and a valid strategy are required.')
+    valid_surfaces = {s for s, _ in SURFACE_CHOICES}
+    slot_ok = slot in valid_slots or (not slot and surface)
+    surface_ok = not surface or surface in valid_surfaces
+    strategy_ok = strategy in {s for s, _ in STRATEGY_CHOICES}
+    if not name or not slot_ok or not surface_ok or not strategy_ok:
+        messages.error(request, 'Name, a valid strategy, and a slot or a surface are required.')
         return None
 
     try:
@@ -131,6 +215,7 @@ def _save_from_post(request, block):
     block.name = name[:120]
     block.heading = (request.POST.get('heading') or '').strip()[:160]
     block.slot = slot
+    block.surface = surface
     block.strategy = strategy
     block.limit = limit
     block.sort_order = sort_order

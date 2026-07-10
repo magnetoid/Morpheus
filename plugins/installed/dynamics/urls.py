@@ -13,6 +13,8 @@ urlpatterns = [
     path('proposals/', views.proposals, name='proposals'),
     path('proposals/<uuid:proposal_id>/', views.proposal_action, name='proposal_action'),
     path('new/', views.edit_block, {'block_id': None}, name='block_new'),
+    path('surface/<slug:surface>/take/', views.take_control, name='take_control'),
     path('<uuid:block_id>/', views.edit_block, name='block_edit'),
+    path('<uuid:block_id>/preview/', views.preview_block, name='block_preview'),
     path('<uuid:block_id>/delete/', views.delete_block, name='block_delete'),
 ]

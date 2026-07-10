@@ -12,6 +12,15 @@ agree.
 
 from __future__ import annotations
 
+# Every segment the bucketing can produce (device × day-part × auth) — for
+# the dashboard's preview-as-segment selector.
+SEGMENT_CHOICES = [
+    f'{dev}:{part}:{auth}'
+    for dev in ('mobile', 'tablet', 'desktop')
+    for part in ('morning', 'afternoon', 'evening', 'night')
+    for auth in ('anon', 'known')
+]
+
 
 def _daypart(hour: int) -> str:
     if hour < 5 or hour >= 22:  # noqa: PLR2004 — 22:00–04:59

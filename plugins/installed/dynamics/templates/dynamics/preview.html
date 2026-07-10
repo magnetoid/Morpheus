@@ -1,0 +1,79 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Preview · {{ blk.name }} · Morpheus admin{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Preview — {{ blk.name }}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        {{ blk.get_strategy_display }}{% if blk.surface %} · controls “{{ blk.get_surface_display }}”{% elif blk.slot %} · renders in “{{ blk.get_slot_display }}”{% endif %}
+        — exactly what this block would show right now, and why.
+      </p>
+    </div>
+    <a href="/dashboard/dynamics/{{ blk.pk }}/" class="btn btn-ghost text-xs">Tune block</a>
+  </div>
+
+  {% if blk.strategy == 'autopilot' %}
+  <form method="get" class="card card-padded flex items-center gap-3">
+    <label class="text-sm font-medium">Preview as segment</label>
+    <select name="segment" class="form-input max-w-xs">
+      <option value="">— my current segment —</option>
+      {% for seg in segment_choices %}
+      <option value="{{ seg }}" {% if seg == segment %}selected{% endif %}>{{ seg }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary text-xs">Preview</button>
+  </form>
+  {% elif blk.strategy == 'smart' %}
+  <p class="text-xs text-[color:var(--text-muted)]">Smart ranks per-session (probability + trend + this-session affinity) — the session component reflects <em>your</em> current browsing session.</p>
+  {% endif %}
+
+  {% if rows %}
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead>
+        <tr><th>#</th><th>Product</th><th>Score</th><th>Why is this here?</th></tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="text-[color:var(--text-muted)]">{{ forloop.counter }}</td>
+          <td class="font-medium">
+            {{ r.product.name }}
+            <div class="mt-0.5 flex gap-1">
+              {% if 'pinned' in r.flags %}<span class="pill pill-info">Pinned</span>{% endif %}
+              {% if 'explore' in r.flags %}<span class="pill pill-warn">Exploring</span>{% endif %}
+            </div>
+          </td>
+          <td class="whitespace-nowrap font-mono text-sm">{{ r.score|floatformat:3 }}</td>
+          <td class="min-w-[260px]">
+            {% if r.bars %}
+              {% for bar in r.bars %}
+              <div class="flex items-center gap-2 text-xs">
+                <span class="w-20 text-[color:var(--text-muted)]">{{ bar.label }}</span>
+                <div class="h-1.5 flex-1 rounded bg-[color:var(--border)] overflow-hidden">
+                  <div class="h-full rounded" style="width: {{ bar.pct }}%; background: var(--brand);"></div>
+                </div>
+                <span class="w-10 text-right font-mono">{{ bar.value|floatformat:2 }}</span>
+              </div>
+              {% endfor %}
+            {% else %}
+              <span class="text-xs text-[color:var(--text-muted)]">Purchase probability {{ r.score|floatformat:2 }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="eye-off" class="h-6 w-6"></i></div>
+    <h3>Nothing to show yet</h3>
+    <p>The strategy returned no products — check the block's filters, or add products to the catalog.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

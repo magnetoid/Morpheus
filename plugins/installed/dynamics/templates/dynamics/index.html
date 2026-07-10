@@ -1,22 +1,71 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Dynamics · Morpheus admin{% endblock %}
+{% block title %}Merchandising · Morpheus admin{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-4">
+<div class="max-w-6xl mx-auto space-y-6">
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold tracking-tight">Dynamics</h1>
+      <h1 class="text-xl font-semibold tracking-tight">Merchandising</h1>
       <p class="text-sm text-[color:var(--text-muted)]">
-        Personalized merchandising blocks. Each renders into a storefront slot and is
-        tuned per visitor. Disable the plugin and every block disappears.
+        AI ranks by default — you override surgically. Take control of any storefront
+        surface, or add carousel blocks into theme slots. Disable the plugin and every
+        takeover reverts to the theme default.
       </p>
     </div>
-    <a href="/dashboard/dynamics/new/" class="btn btn-primary text-xs">+ New block</a>
+    <div class="flex gap-2">
+      <a href="/dashboard/dynamics/proposals/" class="btn btn-ghost text-xs">Autopilot proposals</a>
+      <a href="/dashboard/dynamics/new/" class="btn btn-primary text-xs">+ New block</a>
+    </div>
   </div>
 
-  {% if blocks %}
   <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Storefront surfaces</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">The theme's existing product placeholders. “Take control” ranks one with the Smart strategy (purchase probability + trend + this-session affinity), explainably.</p>
+    </div>
+    <table class="morph-table">
+      <thead>
+        <tr><th>Surface</th><th>Controlled by</th><th>Strategy</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for s in surfaces %}
+        <tr>
+          <td class="font-medium">{{ s.label }}</td>
+          <td>
+            {% if s.block %}
+              <a href="/dashboard/dynamics/{{ s.block.pk }}/" class="hover:underline">{{ s.block.name }}</a>
+            {% else %}
+              <span class="text-[color:var(--text-muted)]">Theme default</span>
+            {% endif %}
+          </td>
+          <td>{% if s.block %}{{ s.block.get_strategy_display }}{% else %}—{% endif %}</td>
+          <td>
+            {% if s.block %}<span class="pill pill-success">Dynamics</span>
+            {% else %}<span class="pill pill-neutral">Default</span>{% endif %}
+          </td>
+          <td class="text-right whitespace-nowrap">
+            {% if s.block %}
+              <a href="/dashboard/dynamics/{{ s.block.pk }}/preview/" class="btn btn-ghost text-xs">Preview</a>
+              <a href="/dashboard/dynamics/{{ s.block.pk }}/" class="btn btn-ghost text-xs">Tune</a>
+            {% else %}
+              <form method="post" action="/dashboard/dynamics/surface/{{ s.key }}/take/" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary text-xs">Take control</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Carousel blocks <span class="text-sm font-normal text-[color:var(--text-muted)]">— extra product rows rendered into theme slots</span></h2>
+    </div>
+    {% if blocks %}
     <table class="morph-table">
       <thead>
         <tr>
@@ -47,7 +96,8 @@
               <span class="pill pill-neutral">Off</span>
             {% endif %}
           </td>
-          <td class="text-right">
+          <td class="text-right whitespace-nowrap">
+            <a href="/dashboard/dynamics/{{ block.pk }}/preview/" class="btn btn-ghost text-xs">Preview</a>
             <a href="/dashboard/dynamics/{{ block.pk }}/" class="btn btn-ghost text-xs">Edit</a>
             <form method="post" action="/dashboard/dynamics/{{ block.pk }}/delete/" class="inline"
                   onsubmit="return confirm('Delete this block?');">
@@ -59,16 +109,11 @@
         {% endfor %}
       </tbody>
     </table>
-  </div>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-icon"><i data-lucide="layout-grid" class="h-6 w-6"></i></div>
-    <h3>No dynamic blocks yet</h3>
-    <p>Create a merchandising block and it renders into a storefront slot, tuned per visitor.</p>
-    <div class="actions">
-      <a href="/dashboard/dynamics/new/" class="btn btn-primary">+ New block</a>
+    {% else %}
+    <div class="px-4 py-6 text-sm text-[color:var(--text-muted)]">
+      No carousel blocks yet — <a href="/dashboard/dynamics/new/" class="underline">create one</a> and it renders into a storefront slot, tuned per visitor.
     </div>
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 {% endblock %}

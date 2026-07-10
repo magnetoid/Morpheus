@@ -1,11 +1,11 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}{% if block %}Edit block{% else %}New block{% endif %} · Dynamics{% endblock %}
+{% block title %}{% if blk %}Edit block{% else %}New block{% endif %} · Dynamics{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-4">
 
   <h1 class="text-xl font-semibold tracking-tight">
-    {% if block %}Edit “{{ block.name }}”{% else %}New dynamic block{% endif %}
+    {% if blk %}Edit “{{ blk.name }}”{% else %}New dynamic block{% endif %}
   </h1>
 
   <form method="post" class="space-y-4">
@@ -13,13 +13,13 @@
 
     <div>
       <label class="block text-sm font-medium mb-1">Internal name</label>
-      <input type="text" name="name" required value="{{ block.name|default:'' }}"
+      <input type="text" name="name" required value="{{ blk.name|default:'' }}"
              class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
     </div>
 
     <div>
       <label class="block text-sm font-medium mb-1">Shopper-facing heading</label>
-      <input type="text" name="heading" value="{{ block.heading|default:'' }}"
+      <input type="text" name="heading" value="{{ blk.heading|default:'' }}"
              placeholder="Picked for you"
              class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
     </div>
@@ -29,15 +29,25 @@
         <label class="block text-sm font-medium mb-1">Strategy</label>
         <select name="strategy" class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
           {% for value, label in strategy_choices %}
-          <option value="{{ value }}" {% if block.strategy == value %}selected{% endif %}>{{ label }}</option>
+          <option value="{{ value }}" {% if blk.strategy == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Slot</label>
+        <label class="block text-sm font-medium mb-1">Slot <span class="text-xs text-[color:var(--text-muted)]">(new carousel row)</span></label>
         <select name="slot" class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+          <option value="" {% if not blk.slot %}selected{% endif %}>— none (surface takeover only) —</option>
           {% for value, label in slot_choices %}
-          <option value="{{ value }}" {% if block.slot == value %}selected{% endif %}>{{ label }}</option>
+          <option value="{{ value }}" {% if blk.slot == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Surface takeover <span class="text-xs text-[color:var(--text-muted)]">(control an existing placeholder)</span></label>
+        <select name="surface" class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
+          <option value="" {% if not blk.surface %}selected{% endif %}>— none —</option>
+          {% for value, label in surface_choices %}
+          <option value="{{ value }}" {% if blk.surface == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
@@ -46,17 +56,17 @@
     <div class="grid grid-cols-3 gap-3">
       <div>
         <label class="block text-sm font-medium mb-1">Limit</label>
-        <input type="number" name="limit" min="1" max="24" value="{{ block.limit|default:4 }}"
+        <input type="number" name="limit" min="1" max="24" value="{{ blk.limit|default:4 }}"
                class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Sort order</label>
-        <input type="number" name="sort_order" min="0" max="999" value="{{ block.sort_order|default:50 }}"
+        <input type="number" name="sort_order" min="0" max="999" value="{{ blk.sort_order|default:50 }}"
                class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
       </div>
       <div class="flex items-end pb-2">
         <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="enabled" {% if not block or block.enabled %}checked{% endif %}>
+          <input type="checkbox" name="enabled" {% if not blk or blk.enabled %}checked{% endif %}>
           Enabled
         </label>
       </div>
@@ -86,12 +96,12 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">Metafield key</label>
-          <input type="text" name="metafield_key" value="{{ block.metafield_key|default:'' }}"
+          <input type="text" name="metafield_key" value="{{ blk.metafield_key|default:'' }}"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Metafield value</label>
-          <input type="text" name="metafield_value" value="{{ block.metafield_value|default:'' }}"
+          <input type="text" name="metafield_value" value="{{ blk.metafield_value|default:'' }}"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
       </div>
@@ -102,18 +112,18 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">Min price</label>
-          <input type="number" step="0.01" name="price_min" value="{{ block.price_min|default:'' }}"
+          <input type="number" step="0.01" name="price_min" value="{{ blk.price_min|default:'' }}"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Max price</label>
-          <input type="number" step="0.01" name="price_max" value="{{ block.price_max|default:'' }}"
+          <input type="number" step="0.01" name="price_max" value="{{ blk.price_max|default:'' }}"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
       </div>
       <div class="flex flex-wrap gap-4 text-sm">
-        <label class="inline-flex items-center gap-2"><input type="checkbox" name="exclude_out_of_stock" {% if block.exclude_out_of_stock %}checked{% endif %}> Hide out-of-stock</label>
-        <label class="inline-flex items-center gap-2"><input type="checkbox" name="exclude_purchased" {% if block.exclude_purchased %}checked{% endif %}> Hide already-purchased</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="exclude_out_of_stock" {% if blk.exclude_out_of_stock %}checked{% endif %}> Hide out-of-stock</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="exclude_purchased" {% if blk.exclude_purchased %}checked{% endif %}> Hide already-purchased</label>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -135,19 +145,19 @@
         <div>
           <label class="block text-sm font-medium mb-1">Layout</label>
           <select name="layout" class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
-            <option value="carousel" {% if not block or block.layout == 'carousel' %}selected{% endif %}>Carousel</option>
-            <option value="grid" {% if block.layout == 'grid' %}selected{% endif %}>Grid</option>
+            <option value="carousel" {% if not block or blk.layout == 'carousel' %}selected{% endif %}>Carousel</option>
+            <option value="grid" {% if blk.layout == 'grid' %}selected{% endif %}>Grid</option>
           </select>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Columns (grid)</label>
-          <input type="number" name="columns" min="2" max="6" value="{{ block.columns|default:4 }}"
+          <input type="number" name="columns" min="2" max="6" value="{{ blk.columns|default:4 }}"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
       </div>
       <div class="flex flex-wrap gap-4 text-sm">
-        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_price" {% if not block or block.show_price %}checked{% endif %}> Show price</label>
-        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_reason" {% if block.show_reason %}checked{% endif %}> Show “why” label</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_price" {% if not block or blk.show_price %}checked{% endif %}> Show price</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_reason" {% if blk.show_reason %}checked{% endif %}> Show “why” label</label>
       </div>
     </fieldset>
 
@@ -156,17 +166,17 @@
       <div class="grid grid-cols-3 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">Exploration rate</label>
-          <input type="number" step="0.01" min="0" max="1" name="exploration_rate" value="{{ block.exploration_rate|default:'' }}" placeholder="default"
+          <input type="number" step="0.01" min="0" max="1" name="exploration_rate" value="{{ blk.exploration_rate|default:'' }}" placeholder="default"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Diversity cap</label>
-          <input type="number" min="1" max="12" name="diversity_cap" value="{{ block.diversity_cap|default:'' }}" placeholder="default"
+          <input type="number" min="1" max="12" name="diversity_cap" value="{{ blk.diversity_cap|default:'' }}" placeholder="default"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Segment override</label>
-          <input type="text" name="segment_override" value="{{ block.segment_override|default:'' }}" placeholder="per-visitor"
+          <input type="text" name="segment_override" value="{{ blk.segment_override|default:'' }}" placeholder="per-visitor"
                  class="w-full rounded border border-[color:var(--border)] bg-transparent px-3 py-2 text-sm">
         </div>
       </div>
