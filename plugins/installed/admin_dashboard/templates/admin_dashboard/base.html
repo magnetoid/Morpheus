@@ -536,7 +536,7 @@
     opacity: 1;
     margin: .15rem 0 .35rem;
   }
-  .nav-children .nav-link { font-weight: 400; padding: .3rem .6rem; font-size: .8125rem; color: var(--text-muted); }
+  .nav-children .nav-link { font-weight: 400; padding: .28rem .55rem; font-size: .8125rem; color: var(--text-muted); }
   /* Sub-header inside a .nav-children block — groups children under a
      small italic label. Used by Affiliates (People / Performance / Money)
      and any future parent that benefits from sub-grouping. */
@@ -550,7 +550,9 @@
     font-weight: 600;
   }
   .nav-children .nav-subheader:first-child { padding-top: .25rem; }
-  .nav-children .nav-link:hover { color: var(--text); }
+  /* Same hover affordance as the top-level rows: a subtle bg fill, not just
+     a text-colour shift (children used to darken text only — inconsistent). */
+  .nav-children .nav-link:hover { background: var(--nav-hover-bg); color: var(--text); }
   .nav-children .nav-link.active { color: var(--text); background: transparent; font-weight: 600; }
   .nav-children .nav-link.active::before { display: none; }
   .nav-children .nav-link.active::after {
@@ -578,13 +580,13 @@
   .nav-section-btn.collapsed .chev { transform: rotate(-90deg); }
   .nav-group {
     padding-left: 1.55rem;
-    margin: .1rem 0 .35rem;
+    margin: .15rem 0 .35rem;
     display: block;
     overflow: hidden;
   }
   .nav-group.collapsed { display: none; }
-  .nav-group .nav-link { font-weight: 400; padding: .3rem .6rem; font-size: .8125rem; color: var(--text-muted); }
-  .nav-group .nav-link:hover { color: var(--text); }
+  .nav-group .nav-link { font-weight: 400; padding: .28rem .55rem; font-size: .8125rem; color: var(--text-muted); }
+  .nav-group .nav-link:hover { background: var(--nav-hover-bg); color: var(--text); }
   .nav-group .nav-link.active { color: var(--text); background: transparent; font-weight: 600; }
   .nav-group .nav-link.active::before { display: none; }
   .nav-group .nav-link.active::after {
@@ -926,7 +928,7 @@
     <button id="sidebar-close" class="lg:hidden btn btn-ghost p-1.5"><i data-lucide="x" class="h-4 w-4"></i></button>
   </div>
   {# ── MAIN NAV (slides out when entering Settings) ─────────────────────── #}
-  <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0">
+  <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0.5">
     <a href="{% url 'admin_dashboard:home' %}"      class="nav-link {% if active_nav == 'home' %}active{% endif %}"><i data-lucide="home" class="h-4 w-4"></i> Home</a>
     {% comment %}
       AI surface promoted to the top of the rail — these are daily-use
@@ -1026,7 +1028,7 @@
   </nav>
 
   {# ── SETTINGS NAV (slides in when /dashboard/settings/ is open) ──────── #}
-  <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0" style="display:none;">
+  <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0.5" style="display:none;">
     {# Overview link: active only on the bare /dashboard/settings/ root, #}
     {# never on a category sub-page. #}
     <a href="{% url 'admin_dashboard:settings' %}" class="nav-link {% if active_nav == 'settings' and not active_settings_category %}active{% endif %}">
