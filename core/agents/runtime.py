@@ -115,7 +115,11 @@ class AgentRuntime:
         )
 
         tools = self.agent.get_tools()
+        # Index under BOTH the canonical dotted name and the provider-safe
+        # api_name (dots→__) — models echo back whichever spelling they were
+        # given in the schema.
         tools_by_name = {t.name: t for t in tools}
+        tools_by_name.update({t.api_name: t for t in tools})
 
         messages: list[LLMMessage] = []
         system_text = self.agent.get_system_prompt(context=context)

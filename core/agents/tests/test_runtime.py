@@ -91,6 +91,34 @@ class AgentRuntimeTests(TestCase):
         self.assertEqual(res.tool_calls, 1)
         self.assertEqual(called, [1])  # handler ran with the forwarded arg
 
+    def test_dotted_tool_name_is_api_safe_and_resolves_both_spellings(self):
+        # Regression: Anthropic 400s on dotted tool names ("tools.0.custom.name:
+        # String should match pattern '^[a-zA-Z0-9_-]{1,128}$'"), which cascaded
+        # through the fallback router as "[All AI providers degraded]". The
+        # schema now sends api_name (dots→__) and the runtime resolves BOTH
+        # spellings back to the tool.
+        import re
+
+        tool = _tool(name='orders.update_status')
+        self.assertEqual(tool.api_name, 'orders__update_status')
+        pattern = re.compile(r'^[a-zA-Z0-9_-]{1,128}$')
+        self.assertRegex(tool.to_anthropic_schema()['name'], pattern)
+        self.assertRegex(tool.to_openai_schema()['function']['name'], pattern)
+
+        # A model echoing the api_name spelling must dispatch, not "Unknown tool".
+        provider = MockLLMProvider(
+            [
+                LLMResponse(
+                    tool_calls=[LLMToolCall(id='c1', name='orders__update_status', arguments={})]
+                ),
+                LLMResponse(text='done'),
+            ]
+        )
+        res = self._run(_agent(tools=[tool]), provider)
+        self.assertEqual(res.state, 'completed')
+        self.assertEqual(res.tool_calls, 1)
+        self.assertFalse([s for s in res.trace.steps if s.metadata.get('failed')])
+
     def test_unknown_tool_recovers(self):
         provider = MockLLMProvider(
             [

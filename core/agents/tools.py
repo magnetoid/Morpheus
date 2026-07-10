@@ -78,12 +78,25 @@ class Tool:
     requires_approval: bool = False
     plugin: str = ''
 
+    @property
+    def api_name(self) -> str:
+        """Provider-safe spelling of `name`.
+
+        OpenAI and Anthropic both enforce ``^[a-zA-Z0-9_-]+$`` on tool
+        names, so the canonical dotted names (``orders.update_status``)
+        are sent with dots mapped to ``__``. Runtimes index tools under
+        BOTH spellings, so a model calling ``orders__update_status``
+        resolves to the same tool. (Anthropic 400s outright on a dotted
+        name: "String should match pattern '^[a-zA-Z0-9_-]{1,128}$'".)
+        """
+        return self.name.replace('.', '__')
+
     def to_openai_schema(self) -> dict[str, Any]:
         """Render this tool as an OpenAI function-calling spec."""
         return {
             'type': 'function',
             'function': {
-                'name': self.name,
+                'name': self.api_name,
                 'description': self.description,
                 'parameters': self.schema or {'type': 'object', 'properties': {}},
             },
@@ -92,7 +105,7 @@ class Tool:
     def to_anthropic_schema(self) -> dict[str, Any]:
         """Render this tool as an Anthropic tool-use spec."""
         return {
-            'name': self.name,
+            'name': self.api_name,
             'description': self.description,
             'input_schema': self.schema or {'type': 'object', 'properties': {}},
         }

@@ -31,15 +31,26 @@ class ToolSchemaTests(SimpleTestCase):
         )
 
     def test_openai_schema(self):
+        # Schemas carry the provider-safe api_name — OpenAI/Anthropic both
+        # reject dots in tool names (pattern ^[a-zA-Z0-9_-]+$).
         s = self.tool.to_openai_schema()
         self.assertEqual(s['type'], 'function')
-        self.assertEqual(s['function']['name'], 'catalog.find')
+        self.assertEqual(s['function']['name'], 'catalog__find')
         self.assertIn('q', s['function']['parameters']['properties'])
 
     def test_anthropic_schema(self):
         s = self.tool.to_anthropic_schema()
-        self.assertEqual(s['name'], 'catalog.find')
+        self.assertEqual(s['name'], 'catalog__find')
         self.assertIn('q', s['input_schema']['properties'])
+
+    def test_api_name_matches_provider_pattern_for_all_registered_tools(self):
+        # Every tool the platform actually registers must serialize to a name
+        # Anthropic/OpenAI accept — this is what turned into the prod
+        # "[All AI providers degraded … String should match pattern]" failure.
+        import re
+
+        pattern = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')  # 64 = the stricter (OpenAI) limit
+        self.assertRegex(self.tool.api_name, pattern)
 
 
 class MockProviderTests(SimpleTestCase):

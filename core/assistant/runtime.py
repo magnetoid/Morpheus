@@ -336,7 +336,10 @@ class Assistant:
             mode_slug = str(context.get('mode') or '').strip().lower()
         active_mode = get_mode(mode_slug)
         tools = filter_tools_by_mode(self.tools, mode_slug)
+        # Both spellings: canonical dotted name + provider-safe api_name
+        # (dots→__) — models echo back the api_name from the tool schema.
         tools_by_name = {t.name: t for t in tools}
+        tools_by_name.update({t.api_name: t for t in tools})
         logger.info(
             'assistant: mode=%s tool_count=%d/%d conversation=%s',
             active_mode.slug,
