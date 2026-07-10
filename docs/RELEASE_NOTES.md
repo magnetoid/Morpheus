@@ -12,6 +12,27 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.4.1 — 2026-07-10
+
+### Shipping rates now actually show at checkout, plus a deep decoupling pass
+
+- **Fixed: configured shipping rates never appeared at checkout.** A broken
+  internal call meant every checkout silently fell back to free "Standard
+  delivery" regardless of the zones and rates you set up. Your configured
+  rates (including live carrier quotes) now show; stores without matching
+  zones keep the free-standard fallback.
+- **Cleaner module boundaries across the platform** (invisible today,
+  faster and safer changes tomorrow): checkout's payment picker, search
+  ranking, "you might also like", per-visitor product ordering, the GDPR
+  data export/erasure, and the login cart hand-off all flow through the
+  platform event bus — so disabling a module now genuinely removes its
+  behaviour everywhere.
+- **One feed engine for all ad channels** — Google, Meta, Pinterest,
+  Snapchat, TikTok and Microsoft product feeds now share a single
+  resolver (verified byte-identical output), so feed fixes land once,
+  for every channel.
+- 28 new tests; full suite 2,008 green.
+
 ## v0.4.0 — 2026-07-10
 
 ### PayPal, a merchandising brain for every shelf, and a platform-wide quality pass
