@@ -1078,10 +1078,9 @@
       <span class="flex-1">Search orders, products, customers…</span>
       <kbd style="font-size: .7rem; padding: .1rem .35rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface);">⌘K</kbd>
     </button>
-    {# Inline AI affordance — context-aware "Ask the Assistant" button. #}
-    {% morph_ask %}
     {% comment %}Theme toggle moved into the user dropdown — 3 explicit choices (light / dark / system) instead of a topbar cycle button.{% endcomment %}
-    <a href="{% url 'admin_dashboard:settings' %}" class="btn btn-ghost p-1.5" aria-label="Settings"><i data-lucide="settings" class="h-4 w-4"></i></a>
+    {# margin-left:auto pushes the account cluster (settings, notifications, user menu) flush to the right edge. #}
+    <a href="{% url 'admin_dashboard:settings' %}" class="btn btn-ghost p-1.5" style="margin-left:auto;" aria-label="Settings"><i data-lucide="settings" class="h-4 w-4"></i></a>
     <div data-dropdown id="notif-bell" style="position: relative;">
       <button data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
               class="btn btn-ghost p-1.5" aria-label="Notifications"

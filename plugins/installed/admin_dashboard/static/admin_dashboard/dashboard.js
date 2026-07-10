@@ -354,16 +354,21 @@
         out.innerHTML = '<div class="mp-empty">No matches.</div>';
         return;
       }
-      // Group by kind; nav targets first.
-      const order = ['nav', 'order', 'product', 'customer'];
-      const titles = { nav: 'Go to', order: 'Orders', product: 'Products', customer: 'Customers' };
+      // Group by the backend-supplied `section` label, preserving the order
+      // sections first appear in the response. The backend owns grouping +
+      // order, so new result kinds render with no JS change.
+      const order = [];
       const groups = {};
-      hits.forEach(function (h) { (groups[h.kind] || (groups[h.kind] = [])).push(h); });
+      hits.forEach(function (h) {
+        const s = h.section || h.kind || 'Results';
+        if (!groups[s]) { groups[s] = []; order.push(s); }
+        groups[s].push(h);
+      });
       let html = '';
       let flatIdx = 0;
       order.forEach(function (k) {
         if (!groups[k]) return;
-        html += '<div class="mp-section-title">' + (titles[k] || k) + '</div>';
+        html += '<div class="mp-section-title">' + escapeHtml(k) + '</div>';
         groups[k].forEach(function (h) {
           html += (
             '<div class="mp-row" data-kind="' + h.kind + '" data-idx="' + flatIdx + '" data-url="' + h.url + '">'
