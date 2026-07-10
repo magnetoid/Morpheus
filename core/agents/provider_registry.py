@@ -73,6 +73,7 @@ _ENV_KEYS = {
     'apikey': 'APIKEY_FUN_API_KEY',
     'packy': 'PACKY_API_KEY',
     'deepseek': 'DEEPSEEK_API_KEY',
+    'hermes': 'HERMES_API_KEY',
 }
 
 _ENV_BASE = {
@@ -83,6 +84,7 @@ _ENV_BASE = {
     'apikey': 'APIKEY_FUN_BASE_URL',
     'packy': 'PACKY_BASE_URL',
     'deepseek': 'DEEPSEEK_BASE_URL',
+    'hermes': 'HERMES_BASE_URL',
 }
 
 

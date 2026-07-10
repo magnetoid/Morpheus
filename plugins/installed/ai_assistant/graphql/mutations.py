@@ -6,6 +6,8 @@ external AI agent (LLM, browser-use, MCP, A2A) to act against the platform.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import strawberry
 from djmoney.money import Money
 
@@ -104,7 +106,7 @@ class AIAssistantMutationExtension:
 
         estimated = None
         if input.estimated_amount is not None:
-            estimated = Money(input.estimated_amount, input.estimated_currency)
+            estimated = Money(Decimal(str(input.estimated_amount)), input.estimated_currency)
 
         intent = intent_service.propose(
             agent=agent,

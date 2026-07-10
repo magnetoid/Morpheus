@@ -339,7 +339,7 @@ def _bookvault_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
             return None
 
     cheapest = min(services, key=lambda s: s['amount'])
-    return Money(cheapest['amount'], str(subtotal.currency))
+    return Money(Decimal(str(cheapest['amount'])), str(subtotal.currency))
 
 
 def list_available_rates(*, cart, country: str, region: str = ''):
