@@ -186,6 +186,15 @@ class TestMagnitudeLimits:
         reasons = find_violations(small, ['plugins/installed/storefront/views.py'])
         assert reasons == []
 
+    def test_file_limit_flagged_for_generator_input(self) -> None:
+        # Regression: a one-shot generator was exhausted by the path loop, so
+        # the file-count gate silently saw zero files. It must be materialized.
+        files = (
+            f'plugins/installed/storefront/views{i}.py' for i in range(LARGE_DIFF_FILE_LIMIT + 1)
+        )
+        reasons = find_violations('+x = 1', files)
+        assert any('too many files' in r for r in reasons)
+
 
 # ---------------------------------------------------------------------------
 # Class blocklist

@@ -70,16 +70,16 @@ def recent_orders_tool(*, limit: int = 10) -> ToolResult:
         from plugins.installed.orders.models import Order
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'orders plugin unavailable: {e}') from e
-    rows = list(Order.objects.all().order_by('-created_at')[: max(1, min(int(limit or 10), 50))])
+    rows = list(Order.objects.all().order_by('-placed_at')[: max(1, min(int(limit or 10), 50))])
     return ToolResult(
         output={
             'orders': [
                 {
                     'order_number': o.order_number,
-                    'state': o.state,
+                    'state': o.status,
                     'total': str(getattr(o.total, 'amount', '')),
                     'currency': str(getattr(o.total, 'currency', '')),
-                    'created_at': o.created_at.isoformat(),
+                    'created_at': o.placed_at.isoformat(),
                     'customer_email': getattr(o.customer, 'email', '')
                     if o.customer_id
                     else o.email,

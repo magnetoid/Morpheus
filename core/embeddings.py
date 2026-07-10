@@ -59,8 +59,19 @@ def embed(text: str) -> list[float]:
             except Exception:  # noqa: BLE001, S110
                 pass
             client = OpenAI(api_key=api_key)
-            resp = client.embeddings.create(model=model, input=text)
-            return list(resp.data[0].embedding)
+            # Pin the output dimension so the OpenAI path honours the module's
+            # fixed-dimension contract (text-embedding-3-* default to 1536).
+            # Without this, hash-fallback rows (384) and OpenAI rows (1536)
+            # coexist and `cosine_similarity` compares mismatched vectors.
+            resp = client.embeddings.create(model=model, input=text, dimensions=EMBEDDING_DIM)
+            vec = list(resp.data[0].embedding)
+            if len(vec) == EMBEDDING_DIM:
+                return vec
+            logger.warning(
+                'OpenAI embed returned %d dims (expected %d); using fallback',
+                len(vec),
+                EMBEDDING_DIM,
+            )
         except Exception as e:  # noqa: BLE001
             logger.warning('OpenAI embed failed (%s); using fallback', e)
 
@@ -70,6 +81,11 @@ def embed(text: str) -> list[float]:
 def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
     import math
 
+    # Vectors of different lengths are not comparable — a stored embedding from
+    # one backend (e.g. 384-dim hash) vs a query embedding from another
+    # (e.g. 1536-dim OpenAI) would otherwise produce a silently garbage score.
+    if len(a) != len(b):
+        return 0.0
     dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))

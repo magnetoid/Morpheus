@@ -122,13 +122,26 @@ def _require_hard_gate(*, hard_gate_ack: str, target_name: str, echo: str) -> No
 # ── Orders ──────────────────────────────────────────────────────────────
 
 
+# Target status → the Order FSM transition method that reaches it. Statuses
+# with no entry here (e.g. 'refunded', 'pending') are not reachable via a
+# status poke — refunds route through the refund service.
+_ORDER_TRANSITIONS = {
+    'confirmed': 'confirm',
+    'processing': 'process',
+    'fulfilled': 'fulfill',
+    'shipped': 'ship',
+    'delivered': 'deliver',
+    'cancelled': 'cancel',
+}
+
+
 @tool(
     name='orders.update_status',
     description=(
-        'Transition an order to a new status. Pass `order_number`, '
-        '`status` (one of: pending, confirmed, processing, fulfilled, '
-        'shipped, delivered, cancelled, refunded), and `confirmed=True` '
-        'after the user has approved.'
+        'Transition an order to a new status along its lifecycle. Pass '
+        '`order_number`, `status` (one of: confirmed, processing, fulfilled, '
+        'shipped, delivered, cancelled), and `confirmed=True` after the user '
+        'has approved. Refunds route through the refund flow, not here.'
     ),
     scopes=['orders.write'],
     schema={
@@ -167,9 +180,23 @@ def orders_update_status_tool(
             changes=[{'object': _obj_ref(o), 'field': 'status', 'old': prev, 'new': status}],
             target=o,
         )
-    o.status = status
+    # Order.status is a protected FSMField — direct assignment raises. Go
+    # through the transition method for the target state, which also validates
+    # the move and logs the OrderEvent / runs side-effects a bare assign skips.
+    transition_name = _ORDER_TRANSITIONS.get(status)
+    if transition_name is None:
+        raise ToolError(
+            f'unsupported target status {status!r}; allowed: ' + ', '.join(_ORDER_TRANSITIONS)
+        )
     try:
-        o.save(update_fields=['status', 'updated_at'])
+        from django_fsm import TransitionNotAllowed
+    except Exception:  # noqa: BLE001 — degraded boot without django-fsm
+        TransitionNotAllowed = Exception  # type: ignore[assignment,misc]
+    try:
+        getattr(o, transition_name)()
+        o.save()
+    except TransitionNotAllowed as e:
+        raise ToolError(f'cannot move order #{order_number} from {prev} to {status}') from e
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'save failed: {e}') from e
     return ToolResult(
@@ -207,7 +234,7 @@ def orders_cancel_tool(
     if not staged:
         _require_confirmed(confirmed)
     try:
-        from plugins.installed.orders.models import Order, OrderEvent
+        from plugins.installed.orders.models import Order
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'orders plugin unavailable: {e}') from e
     try:
@@ -227,16 +254,21 @@ def orders_cancel_tool(
             changes=[{'object': _obj_ref(o), 'field': 'status', 'old': prev, 'new': 'cancelled'}],
             target=o,
         )
-    o.status = 'cancelled'
-    o.save(update_fields=['status', 'updated_at'])
-    try:  # noqa: SIM105
-        OrderEvent.objects.create(
-            order=o,
-            event_type='cancelled',
-            message=f'Cancelled by Assistant. Reason: {reason or "(none)"}',
-        )
-    except Exception:  # noqa: BLE001, S110
-        pass
+    # Go through the FSM transition (source='*' → 'cancelled'); it flips the
+    # protected status field, sets cancelled_at, and logs the OrderEvent —
+    # side-effects a direct `o.status = ...` assignment would skip (and which
+    # would in fact raise on the protected FSMField).
+    try:
+        from django_fsm import TransitionNotAllowed
+    except Exception:  # noqa: BLE001 — degraded boot without django-fsm
+        TransitionNotAllowed = Exception  # type: ignore[assignment,misc]
+    try:
+        o.cancel(reason=f'Assistant: {reason}' if reason else 'Cancelled by Assistant')
+        o.save()
+    except TransitionNotAllowed as e:
+        raise ToolError(f'cannot cancel order #{order_number} (status {prev})') from e
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'cancel failed: {e}') from e
     return ToolResult(
         output={
             'order_number': order_number,

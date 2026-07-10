@@ -174,6 +174,43 @@ class ChallengeFlow(TestCase):
         self.assertIsNone(self.client.session.get('_auth_user_id'))
 
 
+class SecondFactorFailClosed(TestCase):
+    """otp_verify must fail CLOSED when a second-factor subscriber raises.
+
+    Regression: the gate rode the fail-soft hook bus, so a raising handler was
+    swallowed, `filter` returned None (= "no second factor"), and the staffer
+    was logged in single-factor. otp_verify now passes raise_errors=True and
+    refuses login on any handler exception.
+    """
+
+    def test_raising_second_factor_handler_blocks_login(self):
+        from core.auth.services import issue_otp
+
+        def boom(value, **kwargs):
+            raise RuntimeError('second-factor backend down')
+
+        # Runs before the real subscriber (lower priority = earlier) so it is
+        # the first to raise; an unenrolled staffer would otherwise sail through.
+        hook_registry.register('auth.second_factor', boom, priority=1)
+        try:
+            email = 'boss@example.com'
+            _staff(email)
+            code, _ = issue_otp(email)
+            self.assertIsNotNone(code)
+
+            session = self.client.session
+            session['morph_otp_email'] = email
+            session['morph_otp_next'] = '/dashboard/'
+            session.save()
+
+            resp = self.client.post(reverse('core_auth:otp_verify'), {'code': code})
+            # Re-renders the verify page with an error; login refused.
+            self.assertEqual(resp.status_code, 200)
+            self.assertIsNone(self.client.session.get('_auth_user_id'))
+        finally:
+            hook_registry.unregister('auth.second_factor', boom)
+
+
 class AdminResetCommand(TestCase):
     def test_reset_clears_device(self):
         from io import StringIO

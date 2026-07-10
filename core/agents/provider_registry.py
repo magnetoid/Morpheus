@@ -45,7 +45,7 @@ _DEFAULT_BASE_URLS = {
     'ollama': 'http://localhost:11434',
     'grok': 'https://api.x.ai/v1',
     'apikey': 'https://api.apikey.fun/v1',
-    'packy': 'https://www.packyapi.com',
+    'packy': 'https://www.packyapi.com/v1',
     'hermes': 'https://openrouter.ai/api/v1',
     'deepseek': 'https://api.deepseek.com',
 }

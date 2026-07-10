@@ -185,6 +185,11 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
     # we render with the standard Django template engine so all the
     # `{{ order.total }}` placeholders keep working.
     db_subject, db_text, db_html = _db_override(template_base, ctx)
+    # A merchant who edited this email but left the HTML body blank wants their
+    # text to be the message — NOT the shipped default HTML template silently
+    # overriding it. So only fall back to the filesystem HTML when there is no
+    # DB override at all.
+    has_db_override = db_subject is not None or db_text is not None or db_html is not None
     if db_subject is not None:
         subject = db_subject
     text_body = db_text
@@ -196,7 +201,7 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
         except Exception as e:  # noqa: BLE001 — missing template is a soft failure
             logger.warning('emails: text template %s missing: %s', template_base, e)
             return
-    if html_body is None:
+    if html_body is None and not has_db_override:
         try:
             html_body = render_to_string(f'{template_base}.html', ctx)
         except Exception:  # noqa: BLE001 — HTML version is optional

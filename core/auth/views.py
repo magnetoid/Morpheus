@@ -168,19 +168,31 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
             # returning an HttpResponse (a redirect to its challenge view).
             # With no subscriber the value stays None and login proceeds
             # exactly as before — single-factor email-OTP.
-            second_factor = hook_registry.filter(
-                MorpheusEvents.AUTH_SECOND_FACTOR,
-                value=None,
-                request=request,
-                user=user,
-                next=nxt,
-            )
-            if second_factor is not None:
-                return second_factor
-            login(request, user)
-            request.session.pop('morph_otp_email', None)
-            request.session.pop('morph_otp_next', None)
-            return redirect(nxt)
+            # Fail CLOSED: if a second-factor subscriber raises, do NOT log the
+            # user in single-factor — the whole point of the gate is that an
+            # enrolled staffer can't slip through on the first factor alone.
+            try:
+                second_factor = hook_registry.filter(
+                    MorpheusEvents.AUTH_SECOND_FACTOR,
+                    value=None,
+                    request=request,
+                    user=user,
+                    next=nxt,
+                    raise_errors=True,
+                )
+            except Exception:
+                logger.exception(
+                    'otp_verify: second-factor resolution failed for %s; refusing login',
+                    email_lower,
+                )
+                error = 'We could not verify your second factor. Please try again.'
+            else:
+                if second_factor is not None:
+                    return second_factor
+                login(request, user)
+                request.session.pop('morph_otp_email', None)
+                request.session.pop('morph_otp_next', None)
+                return redirect(nxt)
 
     return render(
         request,

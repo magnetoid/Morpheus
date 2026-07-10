@@ -166,6 +166,8 @@ class AIAssistantPlugin(Plugin):
                 'apikey_api_key',
                 'packy_api_key',
                 'ollama_api_key',
+                'deepseek_api_key',
+                'hermes_api_key',
             )
         )
         return value

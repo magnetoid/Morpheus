@@ -195,6 +195,11 @@ def find_violations(diff_text: str, files_touched: Iterable[str] = ()) -> list[s
     """
     reasons: list[str] = []
 
+    # Materialize once: `files_touched` is typed Iterable, so a one-shot
+    # generator would be exhausted by the path loop below and the file-count
+    # gate would then silently see zero files.
+    files_touched = tuple(files_touched)
+
     # Path check
     for path in files_touched:
         if is_path_protected(path):

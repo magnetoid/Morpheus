@@ -87,8 +87,18 @@ def _llm_breaker(fn: Callable) -> Callable:
             try:
                 import hashlib
 
+                # Fold the generation params into the key: two calls with the
+                # same messages but different temperature/max_tokens are
+                # different requests (e.g. a caller raising temperature to get
+                # variation, or max_tokens for a longer answer) and must not
+                # collide on one cached response.
                 msg_str = json.dumps(
-                    [{'role': m.role, 'content': m.content} for m in messages], sort_keys=True
+                    {
+                        'messages': [{'role': m.role, 'content': m.content} for m in messages],
+                        'temperature': kwargs.get('temperature'),
+                        'max_tokens': kwargs.get('max_tokens'),
+                    },
+                    sort_keys=True,
                 )
                 cache_key = f'llm_cache_{self.name}_{self.model}_{hashlib.sha256(msg_str.encode()).hexdigest()}'
                 cached_resp = cache.get(cache_key)
@@ -720,12 +730,19 @@ class FallbackProviderRouter(LLMProvider):
         last_error_text = ''
 
         for provider in providers_to_try:
-            resp = provider.respond(
-                messages=messages,
-                tools=tools,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+            try:
+                resp = provider.respond(
+                    messages=messages,
+                    tools=tools,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+            except Exception as e:  # noqa: BLE001 — a raising provider must fail over, not abort
+                last_error_text = str(e)
+                logger.info(
+                    'FallbackRouter: Provider %s raised (%s), trying next.', provider.name, e
+                )
+                continue
             # Check if the circuit breaker tripped or there was a degradation error
             if '[Upstream AI provider is degraded' not in resp.text:
                 return resp

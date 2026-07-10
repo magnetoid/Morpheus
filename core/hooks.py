@@ -172,7 +172,7 @@ class HookRegistry:
                     exc_info=True,
                 )
 
-    def filter(self, event: str, value: Any, **kwargs: Any) -> Any:
+    def filter(self, event: str, value: Any, *, raise_errors: bool = False, **kwargs: Any) -> Any:
         """
         Filter an event — each handler receives the (potentially modified) value
         and returns a new value. Builds a transformation pipeline.
@@ -181,6 +181,12 @@ class HookRegistry:
         for the caller to receive the transformed result. async mode on a
         filter is rejected at registration time? — not yet; for now we
         silently treat any handler registered for a filter event as sync.
+
+        By default a raising handler is isolated (logged and skipped) so one
+        buggy subscriber can't break the pipeline. Pass ``raise_errors=True``
+        for *security-critical* filters (e.g. the MFA second-factor gate) that
+        must fail CLOSED: a handler exception propagates to the caller instead
+        of being swallowed and read as "no transformation".
         """
         for entry in self._handlers.get(event, []):
             _priority, handler, _mode, plugin = self._unpack(entry)
@@ -196,6 +202,8 @@ class HookRegistry:
                     e,
                     exc_info=True,
                 )
+                if raise_errors:
+                    raise
                 continue
             if result is not None:
                 value = result

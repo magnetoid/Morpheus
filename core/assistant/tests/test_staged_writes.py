@@ -189,6 +189,73 @@ class StagedOrderToolTests(TestCase):
         self.assertEqual(OpsProposal.objects.count(), 0)
 
 
+class UnstagedOrderToolTests(TestCase):
+    """The direct (confirmed=True) apply path goes through the order FSM.
+
+    Regression: the tools used to assign ``o.status = ...`` directly, which
+    raises on the protected FSMField — every real transition crashed. They now
+    call the transition method, which validates the move and logs the event.
+    """
+
+    def test_confirmed_update_status_transitions_and_logs_event(self):
+        from core.assistant.tools.ecommerce_writes import orders_update_status_tool
+        from plugins.installed.orders.models import OrderEvent
+
+        o = _order()
+        result = orders_update_status_tool.invoke(
+            {'order_number': o.order_number, 'status': 'confirmed', 'confirmed': True}
+        )
+        self.assertEqual(result.output['new_status'], 'confirmed')
+        o = type(o).objects.get(pk=o.pk)
+        self.assertEqual(o.status, 'confirmed')
+        # The FSM transition logged an OrderEvent (a bare assign would skip it).
+        self.assertTrue(OrderEvent.objects.filter(order=o, event_type='ORDER_CONFIRMED').exists())
+
+    def test_illegal_transition_raises_toolerror(self):
+        from core.assistant.tools.ecommerce_writes import orders_update_status_tool
+
+        o = _order()  # pending — cannot jump straight to 'delivered'
+        with self.assertRaises(ToolError):
+            orders_update_status_tool.invoke(
+                {'order_number': o.order_number, 'status': 'delivered', 'confirmed': True}
+            )
+        self.assertEqual(type(o).objects.get(pk=o.pk).status, 'pending')
+
+    def test_unsupported_status_raises_toolerror(self):
+        from core.assistant.tools.ecommerce_writes import orders_update_status_tool
+
+        o = _order()  # 'refunded' has no lifecycle transition — refunds route elsewhere
+        with self.assertRaises(ToolError):
+            orders_update_status_tool.invoke(
+                {'order_number': o.order_number, 'status': 'refunded', 'confirmed': True}
+            )
+
+    def test_confirmed_cancel_applies_and_sets_cancelled_at(self):
+        from core.assistant.tools.ecommerce_writes import orders_cancel_tool
+
+        o = _order()
+        orders_cancel_tool.invoke(
+            {'order_number': o.order_number, 'reason': 'duplicate', 'confirmed': True}
+        )
+        o = type(o).objects.get(pk=o.pk)
+        self.assertEqual(o.status, 'cancelled')
+        self.assertIsNotNone(o.cancelled_at)
+
+
+class RecentOrdersToolTests(TestCase):
+    def test_recent_orders_reads_status_not_missing_state_field(self):
+        # Regression: the tool read the non-existent ``Order.state`` attribute
+        # and crashed on any order present.
+        from core.assistant.tools.database import recent_orders_tool
+
+        o = _order()
+        result = recent_orders_tool.invoke({'limit': 5})
+        rows = result.output['orders']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['order_number'], o.order_number)
+        self.assertEqual(rows[0]['state'], 'pending')
+
+
 class StagedCustomerToolTests(TestCase):
     def test_staged_add_note(self):
         from core.assistant.tools.ecommerce_writes import customers_add_note_tool

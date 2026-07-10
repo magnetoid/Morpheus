@@ -85,7 +85,12 @@ def review_with(provider_name: str, proposal) -> dict:
     try:
         from core.agents.llm import LLMMessage, get_llm_provider
 
-        provider = get_llm_provider(provider_name)
+        # use_fallback=False is load-bearing: the whole point of the panel is
+        # N *independent* reviewers. With the default fallback router, a member
+        # whose circuit is open would transparently fall through to a shared
+        # secondary (anthropic/openai/gemini), so several "independent" verdicts
+        # would collapse into one provider's single opinion — a false quorum.
+        provider = get_llm_provider(provider_name, use_fallback=False)
         resp = provider.respond(
             messages=[
                 LLMMessage(role='system', content=_REVIEW_SYSTEM),
