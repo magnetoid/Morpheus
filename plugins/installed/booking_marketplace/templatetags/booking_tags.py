@@ -51,7 +51,7 @@ def booking_regions():
     Empty unless the deployment sets BOOKING_REGIONS (see models.REGIONS)."""
     from plugins.installed.booking_marketplace.models import REGIONS
 
-    return [{"key": k, "label": l} for k, l in REGIONS]
+    return [{'key': k, 'label': label} for k, label in REGIONS]
 
 
 @register.filter

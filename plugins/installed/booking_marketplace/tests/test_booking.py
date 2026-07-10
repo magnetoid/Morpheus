@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages.middleware import MessageMiddleware
 from django.contrib.sessions.middleware import SessionMiddleware
-from django.test import Client, RequestFactory, TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -57,7 +57,7 @@ class PricingCapacityTests(TestCase):
             _service(_vendor()), booking_date=_future(), guests=3, name='Ana', email='a@x.io'
         )
         self.assertEqual(b.subtotal, Money(150, 'EUR'))
-        self.assertEqual(b.service_fee, Money(18, 'EUR'))   # 12%
+        self.assertEqual(b.service_fee, Money(18, 'EUR'))  # 12%
         self.assertEqual(b.total_price, Money(168, 'EUR'))
         self.assertEqual(b.status, 'confirmed')
 
@@ -80,7 +80,9 @@ class PricingCapacityTests(TestCase):
             S.create_booking(
                 _service(_vendor()),
                 booking_date=timezone.localdate() - datetime.timedelta(days=1),
-                guests=1, name='A', email='a@x.io',
+                guests=1,
+                name='A',
+                email='a@x.io',
             )
 
     def test_weekday_restriction(self):
@@ -103,7 +105,15 @@ def _post(svc, data):
 class MarketplaceFlowTests(TestCase):
     def test_valid_booking_created(self):
         svc = _service(_vendor())
-        resp = _post(svc, {'booking_date': _future().isoformat(), 'guests': '2', 'name': 'Jo', 'email': 'jo@x.io'})
+        resp = _post(
+            svc,
+            {
+                'booking_date': _future().isoformat(),
+                'guests': '2',
+                'name': 'Jo',
+                'email': 'jo@x.io',
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Booking.objects.get().guests, 2)
 
@@ -135,8 +145,13 @@ class ReviewTests(TestCase):
         self.stranger = U.objects.create(**{U.USERNAME_FIELD: 'stranger@x.io'})
         self.svc = _service(_vendor(), slug='rev-svc')
         Booking.objects.create(
-            service=self.svc, customer=self.guest, customer_name='G',
-            customer_email='g@x.io', booking_date=_future(), guests=1, status='confirmed',
+            service=self.svc,
+            customer=self.guest,
+            customer_name='G',
+            customer_email='g@x.io',
+            booking_date=_future(),
+            guests=1,
+            status='confirmed',
         )
 
     def test_can_review_only_with_booking(self):

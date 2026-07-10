@@ -11,6 +11,7 @@ calls. O(1) over an indexed query.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections import Counter, defaultdict
 from datetime import timedelta
@@ -327,16 +328,14 @@ def pairs_with(product, request=None, k: int = 10):
     seen = {str(product.pk)}
     candidates: list = []
 
-    try:
+    with contextlib.suppress(Exception):
         for p in related_to(product, k=k):  # co-purchase — strongest buy signal
             if str(p.pk) not in seen:
                 seen.add(str(p.pk))
                 candidates.append(p)
-    except Exception:  # noqa: BLE001
-        pass
 
     if len(candidates) < k:
-        try:
+        with contextlib.suppress(Exception):
             from plugins.installed.ai_assistant.services.recommendations import (  # noqa: PLC0415
                 similar_to,
             )
@@ -345,13 +344,9 @@ def pairs_with(product, request=None, k: int = 10):
                 if str(p.pk) not in seen:
                     seen.add(str(p.pk))
                     candidates.append(p)
-        except Exception:  # noqa: BLE001
-            pass
 
     if request is not None and len(candidates) > 1:
-        try:
+        with contextlib.suppress(Exception):
             candidates = rank_for_visitor(request, candidates, surface='pairs')
-        except Exception:  # noqa: BLE001
-            pass
 
     return candidates[:k]

@@ -44,10 +44,10 @@ def _selection_lines(enquiry) -> str:
         parts.append(f'Departure: {enquiry.time_slot}')
     if enquiry.guests:
         parts.append(f'Guests: {enquiry.guests}')
-    for t in (enquiry.tier_breakdown or []):
-        parts.append(f"  · {t.get('qty')}× {t.get('name')}")
-    for a in (enquiry.addons or []):
-        parts.append(f"  + add-on: {a.get('qty')}× {a.get('name')}")
+    for t in enquiry.tier_breakdown or []:
+        parts.append(f'  · {t.get("qty")}× {t.get("name")}')
+    for a in enquiry.addons or []:
+        parts.append(f'  + add-on: {a.get("qty")}× {a.get("name")}')
     return '\n'.join(parts)
 
 

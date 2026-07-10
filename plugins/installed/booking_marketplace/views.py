@@ -35,12 +35,9 @@ def listing_mode() -> bool:
 
 def services_list(request):
     """Browse bookable experiences across all hosts."""
-    services = (
-        BookableService.objects.filter(
-            is_active=True, vendor__is_active=True, listing_kind='experience'
-        )
-        .select_related('vendor', 'category')
-    )
+    services = BookableService.objects.filter(
+        is_active=True, vendor__is_active=True, listing_kind='experience'
+    ).select_related('vendor', 'category')
     region = (request.GET.get('region') or '').strip()
     if region:
         services = services.filter(region=region)
@@ -80,12 +77,9 @@ def services_list(request):
 
 def products_list(request):
     """Browse product-kind listings (the Shop)."""
-    products = (
-        BookableService.objects.filter(
-            is_active=True, vendor__is_active=True, listing_kind='product'
-        )
-        .select_related('vendor', 'category')
-    )
+    products = BookableService.objects.filter(
+        is_active=True, vendor__is_active=True, listing_kind='product'
+    ).select_related('vendor', 'category')
     q = (request.GET.get('q') or '').strip()
     if q:
         products = products.filter(
@@ -168,9 +162,7 @@ def regions_index(request):
         .values_list('region', 'n')
     )
     # Configured order first, then any other regions present in the data.
-    keys = [k for k, _ in REGIONS if k in counts] + [
-        k for k in counts if k not in dict(REGIONS)
-    ]
+    keys = [k for k, _ in REGIONS if k in counts] + [k for k in counts if k not in dict(REGIONS)]
     regions = []
     for key in keys:
         cover = (
@@ -178,12 +170,14 @@ def regions_index(request):
             .exclude(image='')
             .first()
         )
-        regions.append({
-            'key': key,
-            'label': _region_label(key),
-            'count': counts.get(key, 0),
-            'image': cover.image.url if cover and cover.image else None,
-        })
+        regions.append(
+            {
+                'key': key,
+                'label': _region_label(key),
+                'count': counts.get(key, 0),
+                'image': cover.image.url if cover and cover.image else None,
+            }
+        )
     return render(
         request,
         'booking_marketplace/regions/index.html',
@@ -192,10 +186,9 @@ def regions_index(request):
 
 
 def region_detail(request, region):
-    services = (
-        BookableService.objects.filter(region=region, is_active=True, vendor__is_active=True)
-        .select_related('vendor', 'category')
-    )
+    services = BookableService.objects.filter(
+        region=region, is_active=True, vendor__is_active=True
+    ).select_related('vendor', 'category')
     # Accept a region that is either configured or present in the data.
     if region not in dict(REGIONS) and not services.exists():
         raise Http404('Unknown region')
@@ -246,10 +239,18 @@ def service_detail(request, slug):
 def _similar_services(service, limit=4):
     """Other active experiences for the 'Similar experiences' rail — same region
     first, topped up with bestsellers, excluding the current one."""
-    base = BookableService.objects.filter(
-        is_active=True, vendor__is_active=True, listing_kind=service.listing_kind
-    ).exclude(pk=service.pk).select_related('vendor')
-    picks = list(base.filter(region=service.region).order_by('-is_bestseller', '-rating')[:limit]) if service.region else []
+    base = (
+        BookableService.objects.filter(
+            is_active=True, vendor__is_active=True, listing_kind=service.listing_kind
+        )
+        .exclude(pk=service.pk)
+        .select_related('vendor')
+    )
+    picks = (
+        list(base.filter(region=service.region).order_by('-is_bestseller', '-rating')[:limit])
+        if service.region
+        else []
+    )
     if len(picks) < limit:
         seen = {s.pk for s in picks}
         for s in base.order_by('-is_bestseller', '-rating', '-review_count'):

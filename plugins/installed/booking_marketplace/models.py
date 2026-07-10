@@ -28,14 +28,18 @@ from djmoney.models.fields import MoneyField
 REGIONS = getattr(settings, 'BOOKING_REGIONS', [])
 
 # Generic destination types. Override per deployment via BOOKING_PLACE_TYPES.
-PLACE_TYPES = getattr(settings, 'BOOKING_PLACE_TYPES', [
-    ('coastal', 'Coastal'),
-    ('mountains', 'Mountains'),
-    ('national_parks', 'National Parks'),
-    ('cultural', 'Cultural Sites'),
-    ('lakes', 'Lakes & Rivers'),
-    ('cities', 'Cities & Towns'),
-])
+PLACE_TYPES = getattr(
+    settings,
+    'BOOKING_PLACE_TYPES',
+    [
+        ('coastal', 'Coastal'),
+        ('mountains', 'Mountains'),
+        ('national_parks', 'National Parks'),
+        ('cultural', 'Cultural Sites'),
+        ('lakes', 'Lakes & Rivers'),
+        ('cities', 'Cities & Towns'),
+    ],
+)
 
 
 class BookableService(models.Model):
@@ -57,13 +61,24 @@ class BookableService(models.Model):
         related_name='bookable_services',
     )
     region = models.CharField(max_length=20, choices=REGIONS, blank=True, default='', db_index=True)
-    location = models.CharField(max_length=120, blank=True, default='', help_text='Town or specific place.')
+    location = models.CharField(
+        max_length=120, blank=True, default='', help_text='Town or specific place.'
+    )
     image = models.ImageField(upload_to='experiences/', blank=True, null=True)
     duration_minutes = models.PositiveIntegerField(default=120)
-    duration_label = models.CharField(max_length=60, blank=True, default='', help_text="Display duration, e.g. '4 hours' / 'Full day'.")
+    duration_label = models.CharField(
+        max_length=60,
+        blank=True,
+        default='',
+        help_text="Display duration, e.g. '4 hours' / 'Full day'.",
+    )
     price = MoneyField(max_digits=10, decimal_places=2, default_currency='EUR', default=0)
     original_price = MoneyField(
-        max_digits=10, decimal_places=2, default_currency='EUR', null=True, blank=True,
+        max_digits=10,
+        decimal_places=2,
+        default_currency='EUR',
+        null=True,
+        blank=True,
         help_text='Optional was-price for a strikethrough discount.',
     )
     is_bestseller = models.BooleanField(default=False, db_index=True)
@@ -73,13 +88,20 @@ class BookableService(models.Model):
     highlights = models.JSONField(default=list, blank=True)
     included = models.JSONField(default=list, blank=True)
     not_included = models.JSONField(default=list, blank=True)
-    faqs = models.JSONField(default=list, blank=True, help_text='[{"q": "...", "a": "..."}] — shown as "Guest questions".')
+    faqs = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='[{"q": "...", "a": "..."}] — shown as "Guest questions".',
+    )
     LISTING_KINDS = [
         ('experience', 'Experience'),  # date + departure + guests + tiers
-        ('product', 'Product'),        # quantity + enquiry, no date/shipping
+        ('product', 'Product'),  # quantity + enquiry, no date/shipping
     ]
     listing_kind = models.CharField(
-        max_length=12, choices=LISTING_KINDS, default='experience', db_index=True,
+        max_length=12,
+        choices=LISTING_KINDS,
+        default='experience',
+        db_index=True,
         help_text='Experience (bookable by date) or product (quantity + enquiry).',
     )
     meeting_point = models.TextField(blank=True, default='')
@@ -87,7 +109,9 @@ class BookableService(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     languages = models.JSONField(default=list, blank=True)
     what_to_bring = models.JSONField(default=list, blank=True)
-    itinerary = models.JSONField(default=list, blank=True, help_text='[{"title": "...", "detail": "..."}]')
+    itinerary = models.JSONField(
+        default=list, blank=True, help_text='[{"title": "...", "detail": "..."}]'
+    )
     # Per-DATE seat capacity (a tour can take this many guests/day across all
     # bookings). max_guests_per_booking caps a single party.
     daily_capacity = models.PositiveIntegerField(default=10)
@@ -231,9 +255,7 @@ class ServiceReview(models.Model):
     booking in services.create_review (server-side trust, like the reference)."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    service = models.ForeignKey(
-        BookableService, on_delete=models.CASCADE, related_name='reviews'
-    )
+    service = models.ForeignKey(BookableService, on_delete=models.CASCADE, related_name='reviews')
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -273,7 +295,9 @@ class Place(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=140, unique=True)
     region = models.CharField(max_length=20, choices=REGIONS, blank=True, default='', db_index=True)
-    place_type = models.CharField(max_length=20, choices=PLACE_TYPES, blank=True, default='', db_index=True)
+    place_type = models.CharField(
+        max_length=20, choices=PLACE_TYPES, blank=True, default='', db_index=True
+    )
     summary = models.CharField(max_length=300, blank=True, default='')
     description = models.TextField(blank=True, default='')
     highlights = models.JSONField(default=list, blank=True)
@@ -293,9 +317,7 @@ class Place(models.Model):
 class ServiceImage(models.Model):
     """Gallery image for an experience (beyond the single cover `image`)."""
 
-    service = models.ForeignKey(
-        BookableService, on_delete=models.CASCADE, related_name='images'
-    )
+    service = models.ForeignKey(BookableService, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='experiences/gallery/')
     alt = models.CharField(max_length=160, blank=True, default='')
     sort_order = models.PositiveIntegerField(default=0)

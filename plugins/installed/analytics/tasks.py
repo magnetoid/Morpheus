@@ -92,7 +92,9 @@ def collect_ad_spend_task() -> int:
     return collect_ad_spend()
 
 
-@app.task(name='analytics.attribute_revenue', ignore_result=True, time_limit=300, soft_time_limit=240)
+@app.task(
+    name='analytics.attribute_revenue', ignore_result=True, time_limit=300, soft_time_limit=240
+)
 def attribute_revenue_task() -> int:
     """Nightly: reconstruct journeys, apply every attribution model → DailyMetric."""
     from plugins.installed.analytics.services_attribution import attribute_revenue

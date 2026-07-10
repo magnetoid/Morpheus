@@ -286,7 +286,9 @@ def crm_support_threads_tool(*, status: str = 'open', limit: int = 20) -> ToolRe
         }
         for t in qs[:n]
     ]
-    return ToolResult(output={'threads': rows, 'count': len(rows)}, display=f'{len(rows)} thread(s).')
+    return ToolResult(
+        output={'threads': rows, 'count': len(rows)}, display=f'{len(rows)} thread(s).'
+    )
 
 
 @tool(

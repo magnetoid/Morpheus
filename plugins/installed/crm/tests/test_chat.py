@@ -151,9 +151,7 @@ class SupportAgentToolTests(TestCase):
         self.assertTrue(out['replied'])
         thread.refresh_from_db()
         self.assertEqual(thread.status, 'closed')
-        self.assertTrue(
-            ChatMessage.objects.filter(thread=thread, sender='staff').exists()
-        )
+        self.assertTrue(ChatMessage.objects.filter(thread=thread, sender='staff').exists())
 
     def test_reply_unknown_thread_errors(self):
         from plugins.installed.crm.agent_tools import crm_reply_support_tool

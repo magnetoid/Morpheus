@@ -64,7 +64,9 @@ class ToolReliabilityViewTests(TestCase):
         run = _run(state='completed', duration_ms=900)
         # 2 tool calls; one of the results failed.
         AgentStep.objects.create(run=run, seq=1, kind='tool_call', name='catalog.find')
-        AgentStep.objects.create(run=run, seq=2, kind='tool_result', name='catalog.find', metadata={})
+        AgentStep.objects.create(
+            run=run, seq=2, kind='tool_result', name='catalog.find', metadata={}
+        )
         AgentStep.objects.create(run=run, seq=3, kind='tool_call', name='orders.refund')
         AgentStep.objects.create(
             run=run, seq=4, kind='tool_result', name='orders.refund', metadata={'failed': True}

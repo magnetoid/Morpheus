@@ -210,6 +210,7 @@ LLM_BREAKER = CircuitBreaker(
     cooldown_seconds=30,
 )
 
+
 def get_llm_breaker(provider_name: str) -> CircuitBreaker:
     """Get or create a circuit breaker specific to an LLM provider."""
     name = f'llm_{provider_name}'
@@ -221,6 +222,7 @@ def get_llm_breaker(provider_name: str) -> CircuitBreaker:
             cooldown_seconds=30,
         )
     return breaker
+
 
 # Outbound HTTP to merchant-defined webhooks. Higher tolerance — webhook
 # endpoints flap more than commercial APIs.

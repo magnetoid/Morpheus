@@ -32,7 +32,9 @@ class AffiliateAnalyticsTests(TestCase):
     def test_shows_link_in_top_links(self):
         from plugins.installed.affiliates.models import AffiliateLink
 
-        AffiliateLink.objects.create(affiliate=self.aff, label='Promo', click_count=12, conversion_count=3)
+        AffiliateLink.objects.create(
+            affiliate=self.aff, label='Promo', click_count=12, conversion_count=3
+        )
         r = self.client.get('/affiliates/me/analytics/')
         self.assertContains(r, 'Promo')
         self.assertContains(r, '12')  # clicks
