@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from morpheus.views import login_required, render
+from morpheus.views import render, staff_member_required
 
 
-@login_required
+@staff_member_required
 def promotions_index(request):
     from plugins.installed.promotions.models import Promotion, PromotionApplication
 

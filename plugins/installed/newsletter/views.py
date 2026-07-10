@@ -17,7 +17,16 @@ def subscribe_view(request):
     CSRF-exempt: a public, unauthenticated capture (like the analytics beacon)
     — it only creates a PENDING row, and nothing is mailable until the
     double-opt-in link is clicked, so there's no state-changing risk to forge.
+    Per-IP rate-limited: each call writes a row and sends a confirmation
+    email, so an unthrottled loop is a mail-amplification vector.
     """
+    from core.utils.rate_limit import RateLimitExceeded, check_and_consume  # noqa: PLC0415
+
+    ip = request.META.get('REMOTE_ADDR', '') or 'unknown'
+    try:
+        check_and_consume(key=f'newsletter:subscribe:{ip}', max_per_window=10, window_seconds=60)
+    except RateLimitExceeded:
+        return JsonResponse({'ok': False, 'error': 'Too many attempts.'}, status=429)
     from plugins.installed.newsletter.services import subscribe
 
     email = (request.POST.get('email') or '').strip()

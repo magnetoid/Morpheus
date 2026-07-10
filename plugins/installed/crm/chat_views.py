@@ -22,8 +22,16 @@ def _msg_json(m):
 @require_http_methods(['POST'])
 def chat_send(request):
     """Customer sends a message. CSRF-exempt public capture (like the analytics
-    beacon / newsletter): creates only a support thread, no privileged action."""
+    beacon / newsletter): creates only a support thread, no privileged action.
+    Per-IP rate-limited — every call writes thread+message rows."""
+    from core.utils.rate_limit import RateLimitExceeded, check_and_consume  # noqa: PLC0415
     from plugins.installed.crm.chat import post_customer_message, resolve_thread
+
+    ip = request.META.get('REMOTE_ADDR', '') or 'unknown'
+    try:
+        check_and_consume(key=f'crm:chat:{ip}', max_per_window=30, window_seconds=60)
+    except RateLimitExceeded:
+        return JsonResponse({'ok': False, 'error': 'Too many messages.'}, status=429)
 
     body = (request.POST.get('message') or '').strip()
     if not body:

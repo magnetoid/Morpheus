@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from morpheus.views import get_object_or_404, login_required, messages, redirect, render
+from morpheus.views import get_object_or_404, messages, redirect, render, staff_member_required
 from plugins.installed.draft_orders import services
 from plugins.installed.draft_orders.models import DraftOrder, DraftOrderLine
 
@@ -13,13 +13,13 @@ def _editable(draft) -> bool:
     return draft.status not in ('converted', 'cancelled')
 
 
-@login_required
+@staff_member_required
 def index(request):
     drafts = DraftOrder.objects.select_related('customer', 'channel').order_by('-created_at')[:200]
     return render(request, 'draft_orders/index.html', {'drafts': drafts})
 
 
-@login_required
+@staff_member_required
 def detail(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     # Variants for the "add line" picker. Limit to active products to avoid
@@ -46,7 +46,7 @@ def detail(request, number: str):
     )
 
 
-@login_required
+@staff_member_required
 def line_add(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method != 'POST':
@@ -108,7 +108,7 @@ def line_add(request, number: str):
     return redirect(f'/dashboard/draft-orders/{draft.number}/')
 
 
-@login_required
+@staff_member_required
 def line_delete(request, number: str, line_id: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method != 'POST':
@@ -123,7 +123,7 @@ def line_delete(request, number: str, line_id: str):
     return redirect(f'/dashboard/draft-orders/{draft.number}/')
 
 
-@login_required
+@staff_member_required
 def cancel(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method == 'POST' and _editable(draft):
@@ -133,7 +133,7 @@ def cancel(request, number: str):
     return redirect(f'/dashboard/draft-orders/{draft.number}/')
 
 
-@login_required
+@staff_member_required
 def convert(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method == 'POST':

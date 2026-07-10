@@ -52,6 +52,40 @@ class AgentCoreMutationExtension:
         request = getattr(info.context, 'request', None) or (
             info.context.get('request') if isinstance(info.context, dict) else None
         )
+
+        # Same posture as the REST twin (invoke_agent_view): audience gate +
+        # per-caller rate limit. Without these, this mutation was an
+        # unauthenticated, unthrottled LLM-cost surface.
+        def _denied(msg):
+            return AgentRunResultType(
+                run_id=strawberry.ID(''),
+                state='failed',
+                text='',
+                tool_call_count=0,
+                prompt_tokens=0,
+                completion_tokens=0,
+                error=msg,
+            )
+
+        agent = agent_registry.get_agent(input.agent_name)
+        if agent.audience == 'system':
+            return _denied('System agents cannot be invoked via the API.')
+        if agent.audience == 'merchant':
+            user = getattr(request, 'user', None) if request else None
+            if not (user and getattr(user, 'is_authenticated', False) and user.is_staff):
+                return _denied('Staff authentication required for this agent.')
+
+        if request is not None:  # no request = trusted internal call
+            from core.utils.rate_limit import RateLimitExceeded, check_and_consume  # noqa: PLC0415
+            from plugins.installed.agent_core.views import _agent_rate_key  # noqa: PLC0415
+
+            try:
+                check_and_consume(
+                    key=_agent_rate_key(request), max_per_window=20, window_seconds=60
+                )
+            except RateLimitExceeded:
+                return _denied('Agent rate limit exceeded — try again shortly.')
+
         history = history_for_conversation(input.conversation_id) if input.conversation_id else None
         try:
             result = run_agent(
