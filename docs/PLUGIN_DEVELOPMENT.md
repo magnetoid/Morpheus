@@ -81,7 +81,7 @@ python manage.py migrate
 
 # 3. Verify:
 python manage.py check                # plugin appears in the activation log
-python manage.py test plugins.installed.discount_engine
+DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.discount_engine
 ```
 
 That's it — the plugin is live.
@@ -770,7 +770,7 @@ class DiscountEngineTests(TestCase):
 Run:
 
 ```bash
-python manage.py test plugins.installed.discount_engine
+DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.discount_engine
 ```
 
 ### Permission boundary tests (mandatory)

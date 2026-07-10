@@ -1207,7 +1207,7 @@ def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
                 'updated_by': request.user if request.user.is_authenticated else None,
             },
         )
-        return HttpResponseRedirect('/dashboard/settings/email-templates/')
+        return redirect('admin_dashboard:email_templates_list')
 
     return render(
         request,

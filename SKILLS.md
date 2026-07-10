@@ -544,7 +544,7 @@ agent to do work in this repo.
 **Steps:**
 1. `python manage.py makemigrations --check --dry-run` before pushing.
 2. `ruff check . && ruff format --check .`.
-3. `python manage.py test --noinput`.
+3. `DATABASE_URL='sqlite:///:memory:' python manage.py test --noinput` (bare `manage.py test` reads the Docker `db` host from `.env` and hangs outside the container).
 **Validate:** GitHub Actions run on the PR is green. (CI billing on the account must be active.)
 
 ---
