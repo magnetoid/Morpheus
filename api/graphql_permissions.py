@@ -48,6 +48,13 @@ def is_authenticated(info: strawberry.Info) -> bool:
     return False
 
 
+def is_staff(info: strawberry.Info) -> bool:
+    """True when the request principal is a staff user."""
+    request = get_request(info)
+    user = getattr(request, 'user', None) if request else None
+    return bool(user and getattr(user, 'is_staff', False))
+
+
 def has_scope(info: strawberry.Info, scope: str) -> bool:
     """True when the caller has the given scope, or admin/staff equivalence."""
     request = get_request(info)

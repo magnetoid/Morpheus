@@ -25,7 +25,7 @@ class HardGateSmoke(TestCase):
 
         Metafield.objects.set(product, namespace='book', key='isbn', value='123')
 
-        from core.assistant.tools.ecommerce_writes import metafields_delete_tool
+        from plugins.installed.metafields.agent_tools import metafields_delete_tool
         from core.assistant.tools.filesystem import ToolError
 
         # confirmed=True alone is not enough — a refusal RAISES ToolError (the
@@ -55,7 +55,7 @@ class HardGateSmoke(TestCase):
 
         Metafield.objects.set(product, namespace='book', key='isbn', value='123')
 
-        from core.assistant.tools.ecommerce_writes import metafields_delete_tool
+        from plugins.installed.metafields.agent_tools import metafields_delete_tool
 
         result = metafields_delete_tool.invoke(
             {

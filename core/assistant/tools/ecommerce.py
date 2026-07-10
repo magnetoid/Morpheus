@@ -27,14 +27,6 @@ from typing import Any
 from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 
 
-def _money_str(value: Any) -> str:
-    """Convert a djmoney Money / Decimal / None into a flat string."""
-    if value is None:
-        return ''
-    amount = getattr(value, 'amount', value)
-    return str(amount)
-
-
 def _money_amount(value: Any) -> Decimal:
     """Pull the numeric amount out of a Money / Decimal / numeric value."""
     if value is None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import strawberry
 
+from api.graphql_permissions import is_staff as _is_staff
 from core.graphql.types import ErrorType
 from plugins.installed.orders.graphql.inputs import AddressInput
 from plugins.installed.orders.graphql.types import CartType
@@ -406,14 +407,6 @@ class OrderAdminResult:
     payment_status: str
     tracking_number: str
     error: str
-
-
-def _is_staff(info) -> bool:
-    request = getattr(info.context, 'request', None) or (
-        info.context.get('request') if isinstance(info.context, dict) else None
-    )
-    user = getattr(request, 'user', None) if request else None
-    return bool(user and getattr(user, 'is_staff', False))
 
 
 def _check_scope(info, required: list[str]) -> str:

@@ -14,17 +14,7 @@ from decimal import Decimal
 from djmoney.money import Money
 
 from core.agents import ToolError, ToolResult, tool
-
-
-def _money_str(value) -> str:
-    """Render a Money / Decimal / numeric amount as a plain decimal string."""
-    if value is None:
-        return ''
-    amount = getattr(value, 'amount', value)
-    try:
-        return str(Decimal(str(amount)))
-    except Exception:  # noqa: BLE001
-        return ''
+from core.money import money_str as _money_str
 
 
 @tool(

@@ -8,19 +8,8 @@ the agent registry, so her prompts/skills keep resolving.
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 from core.agents import ToolError, ToolResult, tool
-
-
-def _money_str(value) -> str:
-    if value is None:
-        return ''
-    amount = getattr(value, 'amount', value)
-    try:
-        return str(Decimal(str(amount)))
-    except Exception:  # noqa: BLE001
-        return str(amount)
+from core.money import money_str as _money_str
 
 
 @tool(

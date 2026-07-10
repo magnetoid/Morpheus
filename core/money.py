@@ -84,6 +84,21 @@ def money(amount: MoneyLike, currency: str = 'USD') -> Money:
     return quantize(amount, currency=currency)
 
 
+def money_str(value: MoneyLike | None) -> str:
+    """Render a Money / Decimal / numeric amount as a plain decimal string.
+
+    '' for None. The canonical copy of the `_money_str` helper the agent
+    tools repeat.
+    """
+    if value is None:
+        return ''
+    amount = getattr(value, 'amount', value)
+    try:
+        return str(Decimal(str(amount)))
+    except Exception:  # noqa: BLE001
+        return str(amount)
+
+
 def same_currency(a: Money, b: Money) -> bool:
     """True iff two Money values share a currency. Cheap str compare."""
     return str(a.currency) == str(b.currency)
