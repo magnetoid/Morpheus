@@ -56,21 +56,21 @@
         <input name="q" value="{{ search_query }}" placeholder="Search by title or author"
                style="width:100%; height: 44px; padding: 0 1rem 0 2.6rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
       </div>
-      <select name="category" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+      <select name="category" aria-label="Filter by genre" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
         <option value="">All genres</option>
         {% for c in categories %}
         <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}
       </select>
       {% if available_authors %}
-      <select name="author" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+      <select name="author" aria-label="Filter by author" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
         <option value="">All authors</option>
         {% for a in available_authors %}
         <option value="{{ a }}" {% if a == selected_author %}selected{% endif %}>{{ a }}</option>
         {% endfor %}
       </select>
       {% endif %}
-      <select name="sort" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+      <select name="sort" aria-label="Sort products" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
         <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Newest</option>
         <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Price ↑</option>
         <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Price ↓</option>
