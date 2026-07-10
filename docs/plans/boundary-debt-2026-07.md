@@ -62,7 +62,14 @@ Fix: cart-merge moves to an orders-owned login subscriber; CDP aggregation
 becomes a `CUSTOMER_METRICS` filter each plugin feeds (the ADR-0031
 `BRAIN_SIGNALS` pattern) so inactive owners drop out automatically.
 
-## 4. Channel-plugin feed mapper — 6 near-identical ~200-line files
+## 4. Channel-plugin feed mapper — DONE (2026-07-10)
+
+Consolidated into `plugins/feed_mapping.py` (FeedMapper + Google/Meta
+subclasses); the six files are now thin adapters. Behaviour verified
+byte-for-byte against pre-consolidation goldens
+(`google_shopping/tests/test_feed_mapping_shared.py`).
+
+### (was) 6 near-identical ~200-line files
 
 `{google_shopping,meta,pinterest,snapchat,tiktok,microsoft}_commerce/services/mapping.py`
 are ~96% identical (diffs: docstring, `_NS`, logger name). Same for the
