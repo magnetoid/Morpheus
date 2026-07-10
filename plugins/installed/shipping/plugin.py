@@ -38,7 +38,6 @@ class ShippingPlugin(Plugin):
             namespace='shipping_dashboard',
         )
 
-
     def on_checkout_rates(self, value, cart=None, address=None, **kwargs):
         """CHECKOUT_SHIPPING_RATES: normalized rate options for checkout.
 

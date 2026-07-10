@@ -221,7 +221,6 @@ class AIAssistantPlugin(Plugin):
             ]
         return value
 
-
     def on_search_ranked_ids(self, value, query='', limit=80, **kwargs):
         """SEARCH_RANKED_IDS: hybrid (BM25 + embeddings) ranking for search."""
         from plugins.installed.ai_assistant.services.search import hybrid_search  # noqa: PLC0415

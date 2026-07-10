@@ -79,7 +79,6 @@ class PaymentsPlugin(Plugin):
 
             sync_gateway_row()
 
-
     def on_checkout_gateways(self, value, **kwargs):
         """CHECKOUT_GATEWAYS: enabled-gateway dicts for the checkout picker."""
         from plugins.installed.payments.services.routing import picker_gateways  # noqa: PLC0415

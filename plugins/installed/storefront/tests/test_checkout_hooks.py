@@ -42,9 +42,7 @@ class ShippingRatesHookTests(TestCase):
 
         cart = Cart.objects.create()
         raw = [{'rate_id': 'r1', 'name': 'Express', 'amount': Money(12, 'EUR')}]
-        with patch(
-            'plugins.installed.shipping.services.list_available_rates', return_value=raw
-        ):
+        with patch('plugins.installed.shipping.services.list_available_rates', return_value=raw):
             rates = _available_shipping_rates(_request_with_cart(cart.id), {'country': 'DE'})
         self.assertEqual(
             rates,
@@ -58,9 +56,7 @@ class ShippingRatesHookTests(TestCase):
         from plugins.installed.storefront.views.checkout import _available_shipping_rates
 
         cart = Cart.objects.create()
-        with patch(
-            'plugins.installed.shipping.services.list_available_rates', return_value=[]
-        ):
+        with patch('plugins.installed.shipping.services.list_available_rates', return_value=[]):
             rates = _available_shipping_rates(_request_with_cart(cart.id), {'country': 'DE'})
         self.assertEqual(
             rates,
