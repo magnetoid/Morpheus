@@ -480,6 +480,18 @@ class MorpheusEvents:
     #   Subscriber (ai_assistant) returns content-similar products; absent →
     #   the PDP section self-hides.
     SIMILAR_PRODUCTS = 'storefront.similar_products'  # filter
+    # CUSTOMER_DATA_EXPORT — filter, value=dict {filename: data}. The GDPR
+    #   Art. 15 export: customers seeds account.json/addresses.json, then each
+    #   plugin folds ITS OWN file(s) (orders.json, reviews.json, loyalty.json,
+    #   …) into the dict. kwargs: customer=Customer. A disabled plugin's file
+    #   simply never appears — the bus gates on active state.
+    CUSTOMER_DATA_EXPORT = 'customer.data_export'  # filter
+    # CUSTOMER_ANONYMISE — fire, kwargs: customer=Customer, sentinel_email=str.
+    #   The GDPR Art. 17 erasure: each plugin scrubs/deletes ITS OWN rows for
+    #   the customer (orders scrub PII but keep totals for fiscal hold,
+    #   wishlist deletes, payments drops stored methods, …). customers then
+    #   anonymises the Customer row itself. Handlers must be idempotent.
+    CUSTOMER_ANONYMISE = 'customer.anonymise'  # fire
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter

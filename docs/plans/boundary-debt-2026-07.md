@@ -51,7 +51,15 @@ not *disable*):
   plain-catalog fallbacks. These are checkout-revenue paths: one at a
   time, each behind its own test.
 
-## 3. customers ↔ orders cycle + CDP fan-in
+## 3. customers ↔ orders cycle + GDPR fan-in — DONE (2026-07-10)
+
+Cart-merge-on-login moved to an orders-owned CUSTOMER_LOGIN subscriber;
+the GDPR export/erasure now assemble via CUSTOMER_DATA_EXPORT /
+CUSTOMER_ANONYMISE (each of orders/catalog/consent/wishlist/loyalty_points/
+affiliates/payments contributes its own gdpr.py slice). customers imports
+no sibling plugin. Guarded by customers/tests/test_gdpr_hooks.py.
+
+### (was) customers ↔ orders cycle + CDP fan-in
 
 `customers/signals.py:19-20` imports orders (cart merge on login) while
 orders `requires` customers — a requires-cycle in reverse. And

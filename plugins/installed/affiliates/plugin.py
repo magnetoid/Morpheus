@@ -21,6 +21,10 @@ class AffiliatesPlugin(Plugin):
     requires = ['orders', 'customers', 'catalog']
 
     def ready(self) -> None:
+        # GDPR slice: contribute this plugin's data to the export/erasure.
+        from plugins.installed.affiliates import gdpr  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=60)
         self.register_graphql_extension('plugins.installed.affiliates.graphql.queries')
         self.register_urls('plugins.installed.affiliates.urls', prefix='', namespace='affiliates')
         self.register_urls(

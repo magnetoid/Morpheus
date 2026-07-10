@@ -25,6 +25,13 @@ class OrdersPlugin(Plugin):
         # Contribute order count / open returns / store credit to the
         # storefront account-home summary.
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=10)
+        # GDPR slices (customer.data_export / customer.anonymise) + the
+        # login cart hand-off — orders-owned so customers never imports us.
+        from plugins.installed.orders import gdpr  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=10)
+        self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=10)
+        self.register_hook(events.CUSTOMER_LOGIN, self.on_customer_login, priority=30)
         # Nav-bar cart item count — contributed to every template (it reads
         # orders.Cart). The aggregator in plugins/context_processors.py runs it
         # only while orders is active, so the count vanishes on disable.
@@ -85,6 +92,22 @@ class OrdersPlugin(Plugin):
                 getattr(order, 'order_number', '?'),
                 e,
                 exc_info=True,
+            )
+
+    def on_customer_login(self, customer=None, request=None, **kwargs):
+        """CUSTOMER_LOGIN: adopt/merge the anonymous-session cart onto the
+        account. Fail-soft — a cart hiccup must never break login."""
+        try:
+            from plugins.installed.orders.services import (  # noqa: PLC0415
+                merge_session_cart_on_login,
+            )
+
+            merge_session_cart_on_login(request, customer)
+        except Exception:  # noqa: BLE001
+            import logging  # noqa: PLC0415
+
+            logging.getLogger('morpheus.orders').warning(
+                'cart merge on login failed', exc_info=True
             )
 
     def on_account_summary(self, value, user=None, **kwargs):

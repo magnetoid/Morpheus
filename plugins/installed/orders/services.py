@@ -498,3 +498,36 @@ class OrderService:
         order.confirm()  # FSM transition; raises if not in `pending`
         order.save()
         hook_registry.fire(MorpheusEvents.ORDER_CONFIRMED, order=order)
+
+
+def merge_session_cart_on_login(request, user) -> None:
+    """Reconcile the anonymous-session cart with the customer's cart.
+
+    Runs on CUSTOMER_LOGIN (see OrdersPlugin.on_customer_login). Cart has no
+    ``status`` field — there's at most one (customer,) cart per user today,
+    so we just match on ``customer=user``. Both lookups use ``.first()``
+    because neither side is guaranteed to exist.
+    """
+    from plugins.installed.orders.models import Cart  # noqa: PLC0415
+
+    session_key = getattr(getattr(request, 'session', None), 'session_key', '') or ''
+    if not session_key:
+        return
+
+    session_cart = Cart.objects.filter(session_key=session_key, customer=None).first()
+    if session_cart is None:
+        return
+
+    customer_cart = Cart.objects.filter(customer=user).first()
+
+    if customer_cart is None:
+        # No existing customer cart — adopt the session cart wholesale.
+        session_cart.customer = user
+        session_cart.session_key = ''
+        session_cart.save(update_fields=['customer', 'session_key', 'updated_at'])
+        return
+
+    if session_cart.pk == customer_cart.pk:
+        return
+
+    merge_carts(source_cart=session_cart, target_cart=customer_cart)

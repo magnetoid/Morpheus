@@ -22,6 +22,10 @@ class PaymentsPlugin(Plugin):
         # Refunds: when the dashboard records a Refund row it fires this
         # event so the gateway can actually return the money.
         self.register_hook('refund.requested', self.on_refund_requested, priority=20)
+        # GDPR slice: contribute this plugin's data to the export/erasure.
+        from plugins.installed.payments import gdpr  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=70)
         # Checkout payment-method picker — the storefront asks via this filter
         # instead of importing payments.services.routing, so the picker empties
         # on disable.

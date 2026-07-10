@@ -54,6 +54,10 @@ class LoyaltyPointsPlugin(Plugin):
         # Answer the canonical cart-total filter so a chosen point spend
         # becomes an order discount, alongside coupons + gift cards.
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=15)
+        # GDPR slice: contribute this plugin's data to the export/erasure.
+        from plugins.installed.loyalty_points import gdpr  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=50)
         # Own the customer-facing /account/points/ route (modular-os: the
         # route only exists while the plugin is enabled).
         self.register_urls(

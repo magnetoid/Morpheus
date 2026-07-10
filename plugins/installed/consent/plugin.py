@@ -19,7 +19,7 @@ so the banner controls real loading — not just downstream tags.
 
 from __future__ import annotations
 
-from morpheus import Plugin, StorefrontBlock
+from morpheus import Plugin, StorefrontBlock, events
 
 
 class ConsentPlugin(Plugin):
@@ -33,6 +33,10 @@ class ConsentPlugin(Plugin):
     )
 
     def ready(self) -> None:
+        # GDPR slice: contribute this plugin's data to the export/erasure.
+        from plugins.installed.consent import gdpr  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=30)
         self.register_urls(
             'plugins.installed.consent.urls',
             prefix='consent/',

@@ -10,6 +10,11 @@ class CatalogPlugin(Plugin):
 
     def ready(self):
         self.register_graphql_extension('plugins.installed.catalog.graphql.queries')
+        # GDPR slice: contribute this plugin's data to the export/erasure.
+        from plugins.installed.catalog import gdpr  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=20)
+        self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=20)
         self.register_graphql_extension('plugins.installed.catalog.graphql.mutations')
         # Dashboard-home tiles: active-products KPI, top-products panel,
         # first-product setup step.

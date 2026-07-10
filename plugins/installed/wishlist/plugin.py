@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import Plugin, StorefrontBlock
+from morpheus import Plugin, StorefrontBlock, events
 
 
 class WishlistPlugin(Plugin):
@@ -17,6 +17,11 @@ class WishlistPlugin(Plugin):
     requires = ['catalog', 'customers']
 
     def ready(self) -> None:
+        # GDPR slice: contribute this plugin's data to the export/erasure.
+        from plugins.installed.wishlist import gdpr  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=40)
+        self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=40)
         self.register_urls(
             'plugins.installed.wishlist.urls',
             prefix='wishlist/',
