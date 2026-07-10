@@ -12,6 +12,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.6.0 — 2026-07-11
+
+### Pick your AI model from a permanent dropdown
+
+- On the **Settings → AI** page, clicking **Fetch models** for a provider now
+  **saves that model list**, so the "Pick from fetched models" dropdown is
+  filled in every time you open the page — on any browser or device, not just
+  the one you fetched from. Your currently-selected model is pre-highlighted.
+- Previously the list was only remembered in the current browser and expired
+  after a week; now it's stored with the provider, permanently.
+
+---
+
 ## v0.5.2 — 2026-07-11
 
 ### Tidier left navigation
