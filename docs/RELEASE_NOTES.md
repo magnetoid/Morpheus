@@ -12,6 +12,55 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.4.0 — 2026-07-10
+
+### PayPal, a merchandising brain for every shelf, and a platform-wide quality pass
+
+**Payments**
+
+- **PayPal** — shoppers can now pay with PayPal at checkout. Enable it in
+  Settings → Payments with your client ID + secret; checkout redirects to
+  PayPal for approval and returns to the order confirmation. Refunds issued
+  from the dashboard flow back through PayPal automatically, and webhooks
+  keep order status in sync.
+- **Apple Pay readiness** — the storefront now serves the Apple Pay domain
+  verification file automatically, so enabling Apple Pay in Stripe "just
+  works" with no file uploads.
+
+**Dynamic merchandising (the Dynamics app, rebuilt)**
+
+- **Take control of any shelf** — Dynamics can now control every product
+  placeholder in the store (home hero, "New & notable", staff picks,
+  product-list ordering, category & collection pages, page-builder
+  sections) — not just its own carousels. One click per surface in
+  Dashboard → Dynamics; disable the plugin and every surface reverts to
+  the theme default.
+- **Smart strategy** — a transparent AI blend of purchase probability
+  (from your own analytics), 7-day trend, what the shopper is browsing
+  right now, and freshness — with a guaranteed exploration slot so new
+  products always get seen.
+- **"Why is this product here?"** — every block has a live preview showing
+  each product's score broken into bars (probability / trend / session /
+  recency) plus Pinned and Exploring badges, and autopilot blocks can be
+  previewed as any visitor segment.
+- The announcement strip above the home hero is gone — the hero breathes.
+
+**Quality & trust (platform-wide audit)**
+
+- **Secrets are now write-only everywhere** — 14 settings fields (AI
+  provider keys, Stripe secrets, Turnstile, ElevenLabs) no longer echo
+  stored values back into the settings form.
+- **Dashboard forms tell the truth** — invalid saves over AJAX (variants,
+  coupons, customers, addresses, password) now surface the validation
+  errors instead of a false "Saved".
+- **Accessibility** — the home hero carousel dots meet WCAG 2.2 touch-target
+  size and the shop filters are screen-reader labelled; the axe gate is
+  green again.
+- Under the hood: the full test suite (1,990 tests) and every CI gate is
+  green; money amounts from carriers/GraphQL are precision-safe; duplicated
+  helpers consolidated; 9 dead templates removed; the remaining
+  architecture debt is mapped in `docs/plans/boundary-debt-2026-07.md`.
+
 ## v0.3.0 — 2026-07-10
 
 ### The analytics & intelligence wave — see what your store already knows
