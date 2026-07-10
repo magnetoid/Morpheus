@@ -12,6 +12,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.5.2 — 2026-07-11
+
+### Tidier left navigation
+
+- Hovering an item in the left menu now looks the same everywhere. Sub-menu
+  links (e.g. Categories, Collections under Products) used to only change
+  text colour on hover while top-level items got a highlight — now every row
+  gets the same subtle highlight.
+- Even, consistent spacing between all navigation rows, and matching row
+  heights so the hover highlight is uniform top to bottom.
+
+---
+
 ## v0.5.1 — 2026-07-11
 
 ### Linda's tool-calling fixed (was failing on Anthropic)
