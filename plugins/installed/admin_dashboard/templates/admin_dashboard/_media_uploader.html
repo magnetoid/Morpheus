@@ -186,7 +186,7 @@ Usage from a parent template:
   }
   .muploader.is-dragover {
     background: rgba(197, 105, 78, .06);
-    outline-color: var(--accent, #c5694e);
+    outline-color: var(--accent);
   }
   .muploader.is-dragover::after {
     content: 'Drop to upload';
@@ -196,7 +196,7 @@ Usage from a parent template:
     place-items: center;
     font-size: 1.05rem;
     font-weight: 600;
-    color: var(--accent, #c5694e);
+    color: var(--accent);
     background: rgba(197, 105, 78, .08);
     backdrop-filter: blur(1px);
     border-radius: inherit;
@@ -216,7 +216,7 @@ Usage from a parent template:
     transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
   }
   .muploader-tile--add:hover {
-    border-color: var(--accent, #c5694e);
+    border-color: var(--accent);
     background: var(--surface);
     color: var(--text);
   }
@@ -249,7 +249,7 @@ Usage from a parent template:
     transform: translateY(-1px);
   }
   .muploader-tile.is-cover {
-    border-color: var(--accent, #c5694e);
+    border-color: var(--accent);
   }
   .muploader-tile.is-dragging { opacity: .4; }
   .muploader-tile__media {
@@ -321,8 +321,10 @@ Usage from a parent template:
   .muploader-tile--video .muploader-tile__quick-x { right: 2.5rem; } /* leaves space for VIDEO badge */
   .muploader-tile__cover-pill {
     position: absolute; top: .35rem; left: .35rem;
-    background: var(--accent, #c5694e);
-    color: #fff;
+    /* primary/primary-fg (not accent + #fff): --accent flips to a LIGHT gray
+       in dark mode, which made the white COVER label unreadable. */
+    background: var(--primary);
+    color: var(--primary-fg);
     font-size: .6rem;
     font-weight: 600;
     text-transform: uppercase;

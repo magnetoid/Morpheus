@@ -254,8 +254,8 @@
         <div class="flex items-start gap-3">
           <span class="inline-flex items-center justify-center text-xs font-semibold"
                 style="width: 1.7rem; height: 1.7rem; border-radius: 999px;
-                       background: {% if p.priority == 'critical' or p.priority == 'high' %}rgba(239,68,68,.12){% elif p.priority == 'medium' %}rgba(234,179,8,.12){% else %}rgba(34,197,94,.12){% endif %};
-                       color: {% if p.priority == 'critical' or p.priority == 'high' %}#dc2626{% elif p.priority == 'medium' %}#a16207{% else %}#16a34a{% endif %};
+                       background: {% if p.priority == 'critical' or p.priority == 'high' %}var(--danger-bg){% elif p.priority == 'medium' %}var(--warn-bg){% else %}var(--success-bg){% endif %};
+                       color: {% if p.priority == 'critical' or p.priority == 'high' %}var(--danger){% elif p.priority == 'medium' %}var(--warn){% else %}var(--success){% endif %};
                        flex-shrink: 0;">
             {{ forloop.counter }}
           </span>

@@ -199,7 +199,7 @@
     </div>
     <div class="card-padded space-y-3">
       {% if image_optimize_status %}
-      <p class="text-xs rounded px-3 py-2 bg-[color:var(--surface-2,#f5f5f4)]">
+      <p class="text-xs rounded px-3 py-2 bg-[color:var(--surface-2)]">
         {% if image_optimize_status.state == 'running' %}⏳ Optimization running…{% elif image_optimize_status.state == 'failed' %}⚠️ Last run failed: {{ image_optimize_status.summary }}{% else %}✓ Last run: {{ image_optimize_status.summary }}{% endif %}
       </p>
       {% endif %}

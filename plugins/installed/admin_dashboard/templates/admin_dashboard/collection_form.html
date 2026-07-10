@@ -69,7 +69,7 @@
     <div class="flex items-center justify-between gap-3">
       <button type="submit" class="btn btn-primary">{% if is_new %}Create collection{% else %}Save changes{% endif %}</button>
       {% if not is_new %}
-      <button type="submit" form="collection-delete-form" class="btn btn-ghost text-[color:var(--danger,#c0392b)]" onclick="return confirm('Delete this collection? Products are not deleted.');">Delete</button>
+      <button type="submit" form="collection-delete-form" class="btn btn-ghost text-[color:var(--danger)]" onclick="return confirm('Delete this collection? Products are not deleted.');">Delete</button>
       {% endif %}
     </div>
   </form>

@@ -12,26 +12,32 @@ Reusable empty-state block for list pages. Pass via {% include %} with:
                  list never claims the store has no data.
   clear_url    — where "Clear search" points (default: the current path)
   compact      — truthy → tighter vertical padding for in-card empties
-Renders inside an existing `card` container.
+Renders inside an existing `card` container. Uses the same .empty-state
+primitive as the hand-rolled empties (analytics, segments, release_notes…)
+so all empty states share one look.
 {% endcomment %}
-<div class="card-padded text-center {% if compact %}py-10{% else %}py-16{% endif %}">
+<div class="empty-state{% if compact %} empty-state--compact{% endif %}">
   {% if search %}
-  <i data-lucide="search-x" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-  <p class="font-medium">No results for &ldquo;{{ search }}&rdquo;</p>
-  <p class="text-sm text-[color:var(--text-muted)] mt-1 max-w-md mx-auto">Try a different search, or clear it to see everything.</p>
-  <a href="{{ clear_url|default:request.path }}" class="btn text-sm mt-4 inline-flex">
-    <i data-lucide="x" class="h-4 w-4"></i>
-    Clear search
-  </a>
+  <div class="empty-icon"><i data-lucide="search-x" class="h-6 w-6"></i></div>
+  <h3>No results for &ldquo;{{ search }}&rdquo;</h3>
+  <p>Try a different search, or clear it to see everything.</p>
+  <div class="actions">
+    <a href="{{ clear_url|default:request.path }}" class="btn text-sm">
+      <i data-lucide="x" class="h-4 w-4"></i>
+      Clear search
+    </a>
+  </div>
   {% else %}
-  <i data-lucide="{{ icon|default:'inbox' }}" class="h-10 w-10 mx-auto mb-3 text-[color:var(--text-subtle)]"></i>
-  <p class="font-medium">{{ title|default:"Nothing here yet" }}</p>
-  {% if hint %}<p class="text-sm text-[color:var(--text-muted)] mt-1 max-w-md mx-auto">{{ hint }}</p>{% endif %}
+  <div class="empty-icon"><i data-lucide="{{ icon|default:'inbox' }}" class="h-6 w-6"></i></div>
+  <h3>{{ title|default:"Nothing here yet" }}</h3>
+  {% if hint %}<p>{{ hint }}</p>{% endif %}
   {% if action_url and action_label %}
-  <a href="{{ action_url }}" class="btn btn-primary text-sm mt-4 inline-flex">
-    {% if action_icon %}<i data-lucide="{{ action_icon }}" class="h-4 w-4"></i>{% endif %}
-    {{ action_label }}
-  </a>
+  <div class="actions">
+    <a href="{{ action_url }}" class="btn btn-primary text-sm">
+      {% if action_icon %}<i data-lucide="{{ action_icon }}" class="h-4 w-4"></i>{% endif %}
+      {{ action_label }}
+    </a>
+  </div>
   {% endif %}
   {% endif %}
 </div>

@@ -33,6 +33,11 @@
      (config-driven) names fall back to a neutral dot. Loaded from jsdelivr
      (already in the dashboard CSP style/font-src). -->
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet">
+<!-- Inter variable font. The body font stack has always led with 'Inter' but the
+     face was never actually loaded, so most machines silently fell back to
+     system-ui and the cv11/ss01/tnum feature settings never applied. jsdelivr
+     is already in the dashboard CSP style-src + font-src. -->
+<link href="https://cdn.jsdelivr.net/npm/inter-ui@4.1.0/inter-variable.min.css" rel="stylesheet">
 <script>
 (function () {
   var MAP = {
@@ -421,6 +426,10 @@
   /* The small size step. Was referenced by templates but never defined —
      also absorbs the ad-hoc `btn text-xs` hacks. */
   .btn-sm { padding: .25rem .55rem; font-size: .75rem; gap: .3rem; }
+  /* Templates also shrink buttons ad-hoc via Tailwind (`btn text-xs`,
+     ~50 call sites). Give those combos the matching padding step so a small
+     label never sits inside full-size padding — one visual size system. */
+  .btn.text-xs { padding: .25rem .55rem; gap: .3rem; }
   .input-sm { height: 1.75rem; padding: 0 .5rem; font-size: .8125rem; }
   /* Focus rings use the brand accent — visible against both light + dark
      bg, satisfies WCAG 2.2 AA on the new neutral palette. One rule covers
@@ -468,7 +477,11 @@
     table.morph-table { min-width: max-content; }
   }
   table.morph-table { width:100%; border-collapse: separate; border-spacing:0; }
-  table.morph-table th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color: var(--text-muted); padding:.7rem .9rem; background: var(--surface-2); border-bottom:1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+  /* Sentence-case headers (12.5px / 500 / muted) — the uppercase micro-label
+     treatment is the dated pattern; Polaris/Linear/Stripe all moved to
+     sentence case. Numbers columns should add .num for right-alignment. */
+  table.morph-table th { text-align:left; font-size:.78rem; text-transform:none; letter-spacing:0; font-weight:500; color: var(--text-muted); padding:.6rem .9rem; background: var(--surface-2); border-bottom:1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+  table.morph-table th.num, table.morph-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
   table.morph-table td { padding:.75rem .9rem; font-size:.875rem; border-bottom:1px solid var(--border); vertical-align: middle; transition: background var(--motion-fast) var(--ease-out); }
   table.morph-table tbody tr:hover td { background: var(--surface-2); }
   table.morph-table tr:last-child td { border-bottom: none; }
@@ -479,6 +492,7 @@
      muted-text class doesn't read well at the small size we want, so
      this gets its own scoped styling. */
   .empty-state { text-align: center; padding: 3rem 1.5rem; max-width: 32rem; margin: 0 auto; }
+  .empty-state--compact { padding: 2rem 1.5rem; }
   .empty-state .empty-icon { width: 3rem; height: 3rem; margin: 0 auto 1rem; display:flex; align-items:center; justify-content:center; border-radius: 999px; background: var(--brand-soft); color: var(--brand); }
   .empty-state h3 { margin: 0 0 .35rem; font-size: 1rem; font-weight: 600; color: var(--text); }
   .empty-state p  { margin: 0 0 1rem; font-size: .875rem; color: var(--text-muted); line-height: 1.5; }
@@ -586,8 +600,11 @@
   }
   .sidebar-nav { transition: transform .25s ease, opacity .15s ease; }
   .sidebar-nav.slide-out-left { transform: translateX(-12px); opacity: 0; pointer-events: none; }
-  .input { width:100%; height:2rem; padding:0 .65rem; font-size:.8125rem; border-radius: var(--radius-sm); border:1px solid var(--border); background: var(--surface); color: var(--text); }
-  .input:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 2px rgba(0,0,0,.08); }
+  .input { width:100%; height:2rem; padding:0 .65rem; font-size:.8125rem; border-radius: var(--radius-sm); border:1px solid var(--border); background: var(--surface); color: var(--text); transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
+  /* One focus language everywhere: inputs get the same brand ring as the
+     global :focus-visible rule (the old gray 2px ring was a second, weaker
+     focus system — low contrast in dark mode). */
+  .input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent); }
   .input-search { padding-left: 2rem; }
   /* Multi-line variant — inherits .input look, drops the fixed height. */
   textarea.input { height: auto; padding: .5rem .75rem; line-height: 1.45; resize: vertical; }
@@ -777,32 +794,33 @@
 
   /* Tremor accent — used by .callout-info, focus rings, and brand emphasis.
      Falls back gracefully on dark mode via the existing surface token. */
+  /* Tremor tokens now ALIAS the core semantic tokens — previously this was a
+     second, parallel palette (two different blues meant "info", and its dark
+     overrides keyed on a data-color-mode attribute nothing ever sets). The
+     translucent backgrounds stay literal: they tint correctly over any
+     surface in both themes. */
   :root {
-    --tremor-blue:     #3b82f6;
+    --tremor-blue:     var(--info);
     --tremor-blue-bg:  rgba(59, 130, 246, .08);
-    --tremor-blue-fg:  #1d4ed8;
+    --tremor-blue-fg:  var(--info);
     --tremor-emerald-bg: rgba(16, 185, 129, .10);
-    --tremor-emerald-fg: #047857;
+    --tremor-emerald-fg: var(--success);
     --tremor-amber-bg:   rgba(245, 158, 11, .12);
-    --tremor-amber-fg:   #b45309;
+    --tremor-amber-fg:   var(--warn);
     --tremor-red-bg:     rgba(239, 68, 68, .10);
-    --tremor-red-fg:     #b91c1c;
-  }
-  html[data-theme="dark"], html[data-color-mode="dark"] {
-    --tremor-blue-fg:    #93c5fd;
-    --tremor-emerald-fg: #6ee7b7;
-    --tremor-amber-fg:   #fcd34d;
-    --tremor-red-fg:     #fca5a5;
+    --tremor-red-fg:     var(--danger);
   }
 
-  /* Tremor KPI card — label uppercase tracking-wide, then big number,
-     optional delta below. Wraps an existing .card so vendors keep working. */
+  /* Tremor KPI card — sentence-case label, then big number, optional delta
+     below. Wraps an existing .card so vendors keep working. (Labels used to
+     be uppercase micro-caps; sentence case reads calmer and matches the
+     table-header treatment.) */
   .kpi { display: grid; gap: .35rem; }
   .kpi__label {
-    font-size: .72rem;
+    font-size: .8125rem;
     font-weight: 500;
-    letter-spacing: .06em;
-    text-transform: uppercase;
+    letter-spacing: 0;
+    text-transform: none;
     color: var(--text-muted);
   }
   .kpi__value {
@@ -885,7 +903,7 @@
     content: ''; position: absolute;
     left: 0; right: 0; bottom: -1px;
     height: 2px;
-    background: var(--tremor-blue);
+    background: var(--brand); /* one accent — was tremor-blue, a second competing blue */
     border-radius: 2px 2px 0 0;
   }
 </style>
@@ -1165,7 +1183,7 @@
       position: absolute; bottom: calc(100% + 8px); left: 50%;
       transform: translateX(-50%) translateY(4px);
       z-index: 60; width: max-content; max-width: 280px; padding: .5rem .625rem;
-      background: var(--surface-2, #1f2937); color: var(--text, #f8fafc);
+      background: var(--surface-2); color: var(--text);
       border: 1px solid var(--border); border-radius: .5rem;
       box-shadow: 0 10px 28px rgba(0,0,0,.22);
       font-size: .75rem; line-height: 1.45; font-weight: 400; letter-spacing: normal;
@@ -1176,7 +1194,7 @@
     .context-help:hover .context-help-tooltip,
     .context-help:focus-within .context-help-tooltip,
     .context-help.is-open .context-help-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
-    .context-help-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--surface-2, #1f2937); }
+    .context-help-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--surface-2); }
   </style>
   <script>
     /* Click/tap toggles a context-help tooltip open (hover works via CSS).

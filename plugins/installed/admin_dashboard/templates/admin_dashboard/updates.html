@@ -23,7 +23,7 @@
     {# Git-channel platform status (phase 3). Degrades to 'unavailable' when the deployment has no .git. #}
     <div class="mt-3 pt-3 border-t border-[color:var(--border)] text-sm">
       {% if platform.available == 'yes' %}
-        <span class="pill" style="background:var(--warning-bg,#fef3c7);">Update available</span>
+        <span class="pill pill-warn">Update available</span>
         <span class="text-[color:var(--text-muted)]">{{ platform.behind }} commit(s) behind <code>{{ platform.upstream }}</code> · deployed <code>{{ platform.current }}</code></span>
         <div class="mt-2 flex items-center gap-2 flex-wrap">
           <form method="post" action="{% url 'admin_dashboard:updates_apply' %}" class="inline">
