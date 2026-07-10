@@ -44,12 +44,19 @@ not *disable*):
   `content.py` queries crm/cms/consent → each plugin contributes its own
   account page (own URL + template), summary already fixed via
   `ACCOUNT_SUMMARY_FIELDS`.
-- **storefront checkout/search** — `checkout.py:174` (shipping rates),
-  `checkout_one_page.py:303` (gateway picker), `catalog.py:296,854`
-  (hybrid_search / similar_to) → `CHECKOUT_SHIPPING_RATES`,
-  `CHECKOUT_GATEWAYS`, `PRODUCT_SEARCH`/`SIMILAR_PRODUCTS` filters with
-  plain-catalog fallbacks. These are checkout-revenue paths: one at a
-  time, each behind its own test.
+- **storefront checkout/search — DONE (2026-07-10)**: shipping rates,
+  gateway picker, hybrid search and PDP similars now flow through
+  `CHECKOUT_SHIPPING_RATES` / `CHECKOUT_GATEWAYS` / `SEARCH_RANKED_IDS` /
+  `SIMILAR_PRODUCTS` (tests: storefront/tests/test_checkout_hooks.py).
+  The rewire exposed that checkout's rates import (`compute_rates`) never
+  existed — configured shipping rates had silently never shown at checkout.
+- **storefront personalisation — DONE (2026-07-10)**: the four direct
+  `rank_for_visitor` imports (home featured, PLP, category, collection)
+  now fire `PRODUCT_LIST_REORDER` — the filter personalisation was already
+  subscribed to; the shell just wasn't using it.
+- **Still open in catalog.py**: book_product (9 sites), metafields (5),
+  product_videos (1) — the book-vertical data integrations; need a
+  facet/specs contribution design before migrating.
 
 ## 3. customers ↔ orders cycle + GDPR fan-in — DONE (2026-07-10)
 

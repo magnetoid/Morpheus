@@ -21,6 +21,7 @@ _metafield_search_ids). They're consumed by other modules in this package.
 from __future__ import annotations
 
 from api.client import internal_graphql
+from core.hooks import MorpheusEvents, hook_registry
 from morpheus.views import render
 
 from ._queries import PRODUCT_DETAIL_QUERY
@@ -199,12 +200,12 @@ def product_list(request):
 
     # Advanced Personalization: Reorder the page dynamically if 'for_you' intent sort is active
     if sort == 'for_you':
-        try:
-            from plugins.installed.personalisation.services import rank_for_visitor
-
-            products = rank_for_visitor(request, products, surface='catalog_plp')
-        except Exception:
-            pass
+        products = hook_registry.filter(
+            MorpheusEvents.PRODUCT_LIST_REORDER,
+            value=products,
+            request=request,
+            surface='catalog_plp',
+        )
         products = _surface_reorder(request, 'plp_default', products)
 
     # Query-string base for pagination links — drops `page` so the template
@@ -1094,12 +1095,12 @@ def category_detail(request, slug):
     products = list(page_obj.object_list)
 
     if sort == 'for_you':
-        try:
-            from plugins.installed.personalisation.services import rank_for_visitor
-
-            products = rank_for_visitor(request, products, surface='category_plp')
-        except Exception:
-            pass
+        products = hook_registry.filter(
+            MorpheusEvents.PRODUCT_LIST_REORDER,
+            value=products,
+            request=request,
+            surface='category_plp',
+        )
         products = _surface_reorder(request, 'category_list', products)
 
     _attach_book_authors(products)
@@ -1193,12 +1194,12 @@ def collection_detail(request, slug):
     products = list(page_obj.object_list)
 
     if sort == 'for_you':
-        try:
-            from plugins.installed.personalisation.services import rank_for_visitor
-
-            products = rank_for_visitor(request, products, surface='collection_plp')
-        except Exception:
-            pass
+        products = hook_registry.filter(
+            MorpheusEvents.PRODUCT_LIST_REORDER,
+            value=products,
+            request=request,
+            surface='collection_plp',
+        )
         products = _surface_reorder(request, 'collection_list', products)
 
     _attach_book_authors(products)

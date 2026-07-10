@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from api.client import internal_graphql
+from core.hooks import MorpheusEvents, hook_registry
 from morpheus.views import render
 
 
@@ -93,21 +94,14 @@ def home(request):
     if taken:
         data['featured_products'] = [_serialize_product(p) for p in taken]
     else:
-        # Advanced personalisation: reorder featured products for the individual
-        # visitor — turns the static grid into a per-visitor shelf. Optional: if the
-        # personalisation plugin is absent or errors, fall back to the default order.
-        try:
-            from plugins.installed.personalisation.services import rank_for_visitor
-
-            data['featured_products'] = rank_for_visitor(
-                request, data['featured_products'], surface='home_featured'
-            )
-        except Exception:  # noqa: BLE001 — optional personalisation, never break home
-            import logging
-
-            logging.getLogger('morpheus.storefront').debug(
-                'home personalisation skipped', exc_info=True
-            )
+        # Per-visitor reorder of the featured grid via PRODUCT_LIST_REORDER —
+        # personalisation subscribes; disabled/absent, the order passes through.
+        data['featured_products'] = hook_registry.filter(
+            MorpheusEvents.PRODUCT_LIST_REORDER,
+            value=data['featured_products'],
+            request=request,
+            surface='home_featured',
+        )
 
     # Hero: its own takeover surface (free pick); default = top 4 of featured.
     hero_taken = _surface_products(request, 'home_hero', value=None, limit=4)
