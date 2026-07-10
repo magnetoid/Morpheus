@@ -12,6 +12,32 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.5.1 — 2026-07-11
+
+### Linda's tool-calling fixed (was failing on Anthropic)
+
+- A provider mismatch made every AI action that used a tool fail with a
+  cryptic *"All AI providers degraded"* error when the active provider was
+  Claude (Anthropic) — and likely other strict providers. Internal tool
+  names contained dots (`orders.update_status`), which those providers
+  reject. Tool names are now sent in a provider-safe form, so Linda can run
+  order updates, catalog edits, and every other tool again. If Linda felt
+  "offline" despite a configured key, this was why.
+
+### A calmer, sharper dashboard
+
+- The dashboard now loads its intended typeface (Inter) everywhere — it was
+  silently falling back to the system font, so text is crisper and more
+  consistent across every page.
+- KPI labels and table headers switched from ALL-CAPS to sentence case, and
+  numeric columns align with even, tabular figures — easier to scan.
+- One consistent focus outline on inputs, one accent colour across tabs,
+  badges, and callouts (previously two slightly different blues), and several
+  spots that ignored dark mode (status dots, "update available" tags, image
+  "cover" labels) now theme correctly.
+
+---
+
 ## v0.5.0 — 2026-07-10
 
 ### Search that spans the whole platform
