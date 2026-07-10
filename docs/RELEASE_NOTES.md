@@ -12,6 +12,53 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.5.0 — 2026-07-10
+
+### Search that spans the whole platform
+
+- **Cmd/Ctrl + K** now opens a wide search across all of Morpheus OS. It finds
+  **every dashboard page** (pulled live from the plugin registry, so new pages
+  are searchable the moment they ship), plus live matches across **orders**
+  (by number or customer email), **products** (name or SKU), **customers**,
+  **categories**, **collections**, and **content pages** — grouped into tidy
+  sections.
+- Every search always offers a **"Search the shop for …"** action that jumps
+  straight to the storefront results.
+
+### A cleaner dashboard header
+
+- Removed the redundant "Ask Linda" button from the header — Linda is always a
+  keystroke away from the command bar.
+- The account cluster (settings, notifications, your menu) now sits flush to
+  the right edge.
+
+### Easier AI provider setup
+
+- Each AI provider now shows a **one-line description** in the "Add AI" picker
+  so it's clear what each one is for (which are OpenAI-compatible, which run
+  locally, relative cost/strengths).
+- The **default model** field offers **curated model suggestions** as a
+  dropdown, so you can pick a sensible model instantly — before you've even
+  pasted a key. **DeepSeek** and **Hermes** are fully selectable.
+
+### Reliability & security hardening (core)
+
+A pass over the platform kernel fixed a batch of verified defects, each covered
+by a new automated test:
+
+- **Staff two-factor now fails *closed*.** If the second-factor check ever
+  errored mid-sign-in, an enrolled staffer could previously slip through on the
+  first factor alone — that gap is closed.
+- **AI review panels are genuinely independent again** (a degraded provider no
+  longer silently collapses several reviewers into one opinion).
+- **Order status changes from the assistant** now follow the proper order
+  lifecycle (and log each transition) instead of failing.
+- Fixes to embeddings/semantic-search accuracy, AI provider failover, the
+  DeepSeek/Hermes "configured" indicator, merchant email overrides, and the
+  Packy provider endpoint.
+
+---
+
 ## v0.4.4 — 2026-07-10
 
 ### A friendlier account menu
