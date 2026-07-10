@@ -67,6 +67,11 @@ class AIAssistantPlugin(Plugin):
         # owned by the `analytics` plugin (the canonical persistence
         # path) and the `tracking` plugin (GA4 firing); ai_assistant
         # used to subscribe with stub tasks that only logged — removed.
+        # Storefront retrieval surfaces — search ranking + PDP similars flow
+        # through these filters instead of direct imports, so both degrade to
+        # the plain-catalog behaviour when this plugin is disabled.
+        self.register_hook(events.SEARCH_RANKED_IDS, self.on_search_ranked_ids, priority=10)
+        self.register_hook(events.SIMILAR_PRODUCTS, self.on_similar_products, priority=10)
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
         self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=80)
         self.register_hook(events.CART_ABANDONED, self.on_cart_abandoned, priority=80)
@@ -215,6 +220,21 @@ class AIAssistantPlugin(Plugin):
                 for i in MerchantInsight.objects.filter(is_read=False).order_by('-created_at')[:10]
             ]
         return value
+
+
+    def on_search_ranked_ids(self, value, query='', limit=80, **kwargs):
+        """SEARCH_RANKED_IDS: hybrid (BM25 + embeddings) ranking for search."""
+        from plugins.installed.ai_assistant.services.search import hybrid_search  # noqa: PLC0415
+
+        return [p.pk for p in hybrid_search(query, top_k=limit)]
+
+    def on_similar_products(self, value, product=None, limit=4, **kwargs):
+        """SIMILAR_PRODUCTS: content-similar products for the PDP."""
+        if product is None:
+            return None
+        from plugins.installed.ai_assistant.services.recommendations import similar_to  # noqa: PLC0415
+
+        return list(similar_to(product, limit=limit))
 
     def on_order_placed(self, order, **kwargs):
         """Update recommendation model after purchase."""

@@ -293,7 +293,7 @@ def _apply_search(qs, q: str):
     3. SKU exact / metafield substring — backstop.
     """
     from django.db.models import Case, IntegerField, Q, When  # noqa: PLC0415
-    from plugins.installed.ai_assistant.services.search import hybrid_search  # noqa: PLC0415
+    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
     from plugins.installed.catalog.search import (  # noqa: PLC0415
         get_backend as _search_backend,
         search as _catalog_search,
@@ -308,8 +308,13 @@ def _apply_search(qs, q: str):
             typesense_ids = []
 
     metafield_ids = list(_metafield_search_ids(q))
-    hybrid_products = hybrid_search(q, top_k=80) if not typesense_ids else []
-    hybrid_ids = [p.pk for p in hybrid_products]
+    # Hybrid ranking is contributed by ai_assistant via SEARCH_RANKED_IDS —
+    # disabled/absent, the filter returns [] and tier 3 takes over.
+    hybrid_ids = (
+        list(hook_registry.filter(MorpheusEvents.SEARCH_RANKED_IDS, [], query=q, limit=80))
+        if not typesense_ids
+        else []
+    )
 
     # Preserve Typesense ordering first, then hybrid, then metafield matches.
     union_ids = list(dict.fromkeys(typesense_ids + hybrid_ids + metafield_ids))
@@ -849,20 +854,20 @@ def _book_specs_from_metafields(slug, slugify, urlencode):
 
 
 def _related_products(current_slug: str, limit: int = 4, *, request=None) -> list[dict]:
-    """AI-driven 'you might also like' for the PDP, reordered per visitor."""
+    """'You might also like' for the PDP — candidates contributed by
+    ai_assistant via SIMILAR_PRODUCTS, reordered per visitor. No subscriber
+    (plugin disabled) → [] and the section self-hides."""
     try:
-        from plugins.installed.ai_assistant.services.recommendations import similar_to
+        from core.hooks import MorpheusEvents, hook_registry
         from plugins.installed.catalog.models import Product
-    except Exception:  # noqa: BLE001
-        return []
-    try:
+
         product = Product.objects.filter(slug=current_slug).first()
         if product is None:
             return []
-        rows = similar_to(product, limit=limit)
-        if request is not None:
-            from core.hooks import MorpheusEvents, hook_registry
-
+        rows = hook_registry.filter(
+            MorpheusEvents.SIMILAR_PRODUCTS, [], product=product, limit=limit
+        )
+        if request is not None and rows:
             rows = hook_registry.filter(
                 MorpheusEvents.PRODUCT_LIST_REORDER,
                 value=list(rows),

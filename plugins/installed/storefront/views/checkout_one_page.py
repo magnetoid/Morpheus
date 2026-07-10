@@ -298,11 +298,12 @@ def _render_form(request, *, addr: dict | None, rate_id: str, error: str, paymen
 
 
 def _payment_methods() -> list[dict]:
-    """Enabled gateways for the checkout picker (fail-soft to [])."""
-    try:
-        from plugins.installed.payments.services.routing import picker_gateways  # noqa: PLC0415
+    """Enabled gateways for the checkout picker via CHECKOUT_GATEWAYS.
 
-        return picker_gateways()
-    except Exception:  # noqa: BLE001 — never break checkout over the picker
-        logger.warning('checkout: could not load payment methods', exc_info=True)
-        return []
+    The payments plugin subscribes with its enabled-gateway dicts; the bus
+    isolates a broken handler and a disabled plugin simply never answers —
+    either way the picker degrades to [] instead of breaking checkout.
+    """
+    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+    return hook_registry.filter(MorpheusEvents.CHECKOUT_GATEWAYS, []) or []

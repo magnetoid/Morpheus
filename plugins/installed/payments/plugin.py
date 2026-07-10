@@ -22,6 +22,10 @@ class PaymentsPlugin(Plugin):
         # Refunds: when the dashboard records a Refund row it fires this
         # event so the gateway can actually return the money.
         self.register_hook('refund.requested', self.on_refund_requested, priority=20)
+        # Checkout payment-method picker — the storefront asks via this filter
+        # instead of importing payments.services.routing, so the picker empties
+        # on disable.
+        self.register_hook(events.CHECKOUT_GATEWAYS, self.on_checkout_gateways, priority=10)
 
         # Register GraphQL extensions if we want mutations like `processPayment`
         self.register_graphql_extension('plugins.installed.payments.graphql.mutations')
@@ -70,6 +74,13 @@ class PaymentsPlugin(Plugin):
             from plugins.installed.payments.services.paypal import sync_gateway_row
 
             sync_gateway_row()
+
+
+    def on_checkout_gateways(self, value, **kwargs):
+        """CHECKOUT_GATEWAYS: enabled-gateway dicts for the checkout picker."""
+        from plugins.installed.payments.services.routing import picker_gateways  # noqa: PLC0415
+
+        return picker_gateways()
 
     def on_order_placed(self, order, **kwargs):
         """

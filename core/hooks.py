@@ -459,6 +459,27 @@ class MorpheusEvents:
     #                         returns the same items reordered/filtered.
     #   No subscriber / dynamics disabled → value passes through unchanged.
     STOREFRONT_PRODUCTS = 'storefront.products'  # filter
+    # CHECKOUT_SHIPPING_RATES — filter, value=None. Checkout asks the shipping
+    #   owner for rate options. kwargs: cart=Cart, address=dict. Subscriber
+    #   (shipping) returns list[{'id','label','amount','currency'}] (may be
+    #   empty). value left None (plugin off / handler broke) → checkout falls
+    #   back to a free 'Standard delivery' rate so the flow never blocks.
+    CHECKOUT_SHIPPING_RATES = 'checkout.shipping_rates'  # filter
+    # CHECKOUT_GATEWAYS — filter, value=list. The checkout payment-method
+    #   picker. Subscriber (payments) returns its enabled gateway dicts
+    #   (payments.services.routing.picker_gateways). Plugin disabled → []
+    #   and the picker renders no gateway choices.
+    CHECKOUT_GATEWAYS = 'checkout.gateways'  # filter
+    # SEARCH_RANKED_IDS — filter, value=list. Semantic/hybrid ranking for
+    #   storefront search. kwargs: query=str, limit=int. Subscriber
+    #   (ai_assistant) returns ranked product pks; empty/absent → storefront
+    #   falls through to its SKU/metafield backstop.
+    SEARCH_RANKED_IDS = 'storefront.search_ranked_ids'  # filter
+    # SIMILAR_PRODUCTS — filter, value=list[Product]. 'You might also like'
+    #   candidates for the PDP. kwargs: product=Product, limit=int.
+    #   Subscriber (ai_assistant) returns content-similar products; absent →
+    #   the PDP section self-hides.
+    SIMILAR_PRODUCTS = 'storefront.similar_products'  # filter
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter

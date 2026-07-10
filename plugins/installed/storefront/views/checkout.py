@@ -169,27 +169,26 @@ def _stamp_checkout_email(request, email: str) -> None:
 
 
 def _available_shipping_rates(request, addr):
-    """Compute shipping rates; fall back to free standard if plugin off."""
-    try:
-        from plugins.installed.shipping.services import compute_rates
-        from plugins.installed.orders.models import Cart
+    """Rate options via the CHECKOUT_SHIPPING_RATES filter (shipping plugin).
 
-        cart_id = request.session.get('cart_id')
-        cart = Cart.objects.filter(id=cart_id).first() if cart_id else None
-        if cart is None:
-            return []
-        rates = compute_rates(cart=cart, address=addr) or []
-        return [
-            {
-                'id': r.get('id') or r.get('rate_id') or r.get('name') or 'standard',
-                'label': r.get('name') or r.get('label') or 'Standard',
-                'amount': r.get('amount') or r.get('price') or 0,
-                'currency': r.get('currency') or 'USD',
-            }
-            for r in rates
-        ]
-    except Exception:  # noqa: BLE001
+    The shipping plugin subscribes and returns normalized rate dicts. When no
+    rate owner answers — plugin disabled, absent, or its handler broke — the
+    value stays None and checkout falls back to free standard delivery, so
+    the flow never blocks on the plugin.
+    """
+    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+    from plugins.installed.orders.models import Cart  # noqa: PLC0415
+
+    cart_id = request.session.get('cart_id')
+    cart = Cart.objects.filter(id=cart_id).first() if cart_id else None
+    if cart is None:
+        return []
+    rates = hook_registry.filter(
+        MorpheusEvents.CHECKOUT_SHIPPING_RATES, None, cart=cart, address=addr
+    )
+    if rates is None:
         return [{'id': 'standard', 'label': 'Standard delivery', 'amount': 0, 'currency': 'USD'}]
+    return rates
 
 
 def checkout(request):

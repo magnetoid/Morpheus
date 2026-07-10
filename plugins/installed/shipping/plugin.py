@@ -29,11 +29,42 @@ class ShippingPlugin(Plugin):
         # CART_CALCULATE_TOTAL is deprecated — the canonical event is
         # CART_CALCULATE_BREAKDOWN, fired from OrderService since 2026-04.
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=30)
+        # Checkout rate options — the storefront asks via this filter instead
+        # of importing shipping.services, so rates vanish on disable.
+        self.register_hook(events.CHECKOUT_SHIPPING_RATES, self.on_checkout_rates, priority=10)
         self.register_urls(
             'plugins.installed.shipping.urls_dashboard',
             prefix='dashboard/shipping/',
             namespace='shipping_dashboard',
         )
+
+
+    def on_checkout_rates(self, value, cart=None, address=None, **kwargs):
+        """CHECKOUT_SHIPPING_RATES: normalized rate options for checkout.
+
+        Returns [{'id','label','amount','currency'}], or None when no zone
+        matches — leaving the filter value untouched so checkout falls back
+        to free standard delivery (the behaviour stores without configured
+        zones already rely on). Raising is fine — the bus isolates it.
+        """
+        from plugins.installed.shipping.services import list_available_rates  # noqa: PLC0415
+
+        address = address or {}
+        rates = list_available_rates(
+            cart=cart,
+            country=(address.get('country') or '').strip(),
+            region=(address.get('region') or address.get('state') or '').strip(),
+        )
+        normalized = [
+            {
+                'id': r['rate_id'],
+                'label': r['name'],
+                'amount': r['amount'].amount,
+                'currency': str(r['amount'].currency),
+            }
+            for r in rates or []
+        ]
+        return normalized or None
 
     def on_cart_breakdown(self, value, cart=None, address=None, shipping_rate_id=None, **kwargs):
         if cart is None or not isinstance(value, dict):
