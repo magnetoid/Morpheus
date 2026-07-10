@@ -147,10 +147,15 @@
     </div>
     <div id="add-ai-picker" class="card card-padded" hidden>
       <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-2">Choose a provider to connect</p>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {% for c in available_cards %}
-        <button type="button" class="btn btn-secondary justify-start ai-template-tile" data-provider="{{ c.slug }}">
-          <i data-lucide="{{ c.icon }}" class="h-4 w-4"></i> {{ c.label }}
+        <button type="button" class="ai-template-tile" data-provider="{{ c.slug }}"
+                style="display:flex; align-items:flex-start; gap:.6rem; text-align:left; padding:.7rem .8rem; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); cursor:pointer; width:100%;">
+          <span class="ai-tile-icon" style="flex:none;"><i data-lucide="{{ c.icon }}" class="h-4 w-4"></i></span>
+          <span style="min-width:0;">
+            <span style="display:block; font-weight:600; font-size:.85rem;">{{ c.label }}</span>
+            {% if c.blurb %}<span style="display:block; font-size:.72rem; color:var(--text-muted); margin-top:.1rem; line-height:1.35;">{{ c.blurb }}</span>{% endif %}
+          </span>
         </button>
         {% endfor %}
       </div>

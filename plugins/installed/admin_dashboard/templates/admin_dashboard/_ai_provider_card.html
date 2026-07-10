@@ -25,7 +25,7 @@ Expects `c` (provider card dict) and `mode`.
           <span class="ai-test-msg text-xs"></span>
         </div>
         <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
-          <a href="{{ c.help_url }}" target="_blank" rel="noopener" class="hover:underline">Get a key</a> · {{ c.placeholder_model }}
+          {% if c.blurb %}{{ c.blurb }} · {% endif %}<a href="{{ c.help_url }}" target="_blank" rel="noopener" class="hover:underline">Get a key</a>
         </p>
       </div>
     </div>
@@ -72,7 +72,9 @@ Expects `c` (provider card dict) and `mode`.
         <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Default model</label>
         <div class="flex items-center gap-2 mt-1">
           <input type="text" name="{{ c.slug }}_model" class="input flex-1 font-mono" value="{{ c.model }}"
-                 data-model-input placeholder="{{ c.placeholder_model }}" autocomplete="off">
+                 data-model-input placeholder="{{ c.placeholder_model }}" autocomplete="off" list="models-{{ c.slug }}">
+          {# Curated suggestions so a model can be picked instantly, before a key is even set — Fetch still pulls the provider's live list. #}
+          <datalist id="models-{{ c.slug }}">{% for m in c.models %}<option value="{{ m }}"></option>{% endfor %}</datalist>
           <button type="button" class="btn ai-fetch-btn" data-provider="{{ c.slug }}"><i data-lucide="download" class="h-3.5 w-3.5"></i> Fetch</button>
           <button type="button" class="btn ai-test-btn" data-provider="{{ c.slug }}"><i data-lucide="zap" class="h-3.5 w-3.5"></i> Test</button>
         </div>

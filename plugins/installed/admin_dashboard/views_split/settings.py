@@ -240,6 +240,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://platform.openai.com/api-keys',
         'placeholder_model': 'gpt-4o-mini',
+        'blurb': 'GPT-4o family — a strong all-round default.',
+        'models': ('gpt-4o-mini', 'gpt-4o', 'o3-mini', 'o1'),
     },
     {
         'slug': 'anthropic',
@@ -248,6 +250,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'model'),
         'help_url': 'https://console.anthropic.com/settings/keys',
         'placeholder_model': 'claude-3-5-sonnet-latest',
+        'blurb': 'Claude — excellent reasoning + long context.',
+        'models': ('claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'),
     },
     {
         'slug': 'gemini',
@@ -256,6 +260,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'model'),
         'help_url': 'https://aistudio.google.com/app/apikey',
         'placeholder_model': 'gemini-2.0-flash',
+        'blurb': 'Google Gemini — fast, generous free tier.',
+        'models': ('gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'),
     },
     {
         'slug': 'openrouter',
@@ -264,6 +270,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://openrouter.ai/keys',
         'placeholder_model': 'anthropic/claude-3.5-sonnet',
+        'blurb': 'One key, hundreds of models. OpenAI-compatible.',
+        'models': ('anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'google/gemini-2.0-flash-exp', 'meta-llama/llama-3.3-70b-instruct'),
     },
     {
         'slug': 'grok',
@@ -272,6 +280,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://console.x.ai',
         'placeholder_model': 'grok-4',
+        'blurb': 'xAI Grok — real-time knowledge.',
+        'models': ('grok-4', 'grok-2-latest', 'grok-beta'),
     },
     {
         'slug': 'apikey',
@@ -280,6 +290,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://apikey.fun/docs',
         'placeholder_model': 'gpt-4o-mini',
+        'blurb': 'apikey.fun gateway — OpenAI-compatible.',
+        'models': ('gpt-4o-mini', 'gpt-4o', 'claude-3-5-sonnet'),
     },
     {
         'slug': 'deepseek',
@@ -288,6 +300,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://platform.deepseek.com/api_keys',
         'placeholder_model': 'deepseek-chat',
+        'blurb': 'Very low cost, strong coding + reasoning.',
+        'models': ('deepseek-chat', 'deepseek-reasoner'),
     },
     {
         'slug': 'hermes',
@@ -296,6 +310,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://openrouter.ai/keys',
         'placeholder_model': 'nousresearch/hermes-3-llama-3.1-405b',
+        'blurb': 'Nous Hermes (open-weights) via OpenRouter.',
+        'models': ('nousresearch/hermes-3-llama-3.1-405b', 'nousresearch/hermes-3-llama-3.1-70b'),
     },
     {
         'slug': 'packy',
@@ -304,6 +320,8 @@ _AI_PROVIDERS = [
         'fields': ('api_key', 'base_url', 'model'),
         'help_url': 'https://www.packyapi.com',
         'placeholder_model': 'claude-3-5-sonnet-20241022',
+        'blurb': 'Packy gateway — OpenAI-compatible.',
+        'models': ('claude-3-5-sonnet-20241022', 'gpt-4o'),
     },
     {
         'slug': 'ollama',
@@ -312,6 +330,8 @@ _AI_PROVIDERS = [
         'fields': ('base_url', 'api_key', 'model'),
         'help_url': 'https://ollama.com',
         'placeholder_model': 'llama3.2',
+        'blurb': 'Run models locally — no API key needed.',
+        'models': ('llama3.2', 'llama3.1', 'mistral', 'qwen2.5'),
         'api_key_optional': True,
     },
 ]

@@ -111,3 +111,31 @@ class DisconnectPermissionBoundaryTests(TestCase):
         r = self.c.post(DISCONNECT_URL, {'provider': 'openai'})
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.json()['ok'])
+
+
+class ProviderCatalogUXTests(TestCase):
+    """Curated model suggestions + provider blurbs improve the connect flow."""
+
+    def setUp(self):
+        self.c = Client()
+        self.staff = get_user_model().objects.create_user(
+            username='cat', email='cat@x.test', password='pw', is_staff=True, is_superuser=True
+        )
+        self.c.force_login(self.staff)
+        _ai().invalidate_config_cache()
+
+    def test_model_datalist_and_blurb_render(self):
+        html = self.c.get(AI_URL).content.decode()
+        # Each provider offers a curated <datalist> of models bound to its input.
+        self.assertIn('list="models-deepseek"', html)
+        self.assertIn('<datalist id="models-deepseek">', html)
+        self.assertIn('deepseek-reasoner', html)  # a curated suggestion
+        # Provider blurb (what it's for) shows in the Add-AI picker + card.
+        self.assertIn('strong coding', html.lower())
+
+    def test_every_provider_has_models(self):
+        from plugins.installed.admin_dashboard.views_split.settings import _AI_PROVIDERS
+
+        for p in _AI_PROVIDERS:
+            self.assertTrue(p.get('models'), f'{p["slug"]} has no curated models')
+            self.assertTrue(p.get('blurb'), f'{p["slug"]} has no blurb')
