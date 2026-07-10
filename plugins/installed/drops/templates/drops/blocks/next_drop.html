@@ -1,8 +1,0 @@
-{% load i18n %}{% if next_drop %}
-<section class="morpheus-drops" aria-label="Next drop">
-  <h2>{{ settings.countdown_copy|default:'Dropping soon' }}</h2>
-  <time datetime="{{ next_drop.starts_at|date:'c' }}">{{ next_drop.starts_at|date:'SHORT_DATETIME_FORMAT' }}</time>
-  <p>{{ next_drop.product.name }}</p>
-  <a class="morpheus-drops__cta" href="/products/{{ next_drop.product.slug }}/">{% trans 'See it' %}</a>
-</section>
-{% endif %}
