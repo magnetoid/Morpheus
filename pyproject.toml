@@ -61,7 +61,10 @@ module = ["*.migrations.*"]
 ignore_errors = true
 
 [tool.bandit]
-exclude_dirs = ["venv", ".venv", "tests", "*/migrations/*", "db.sqlite3"]
+# `*/tests/*` (not bare "tests") so plugin test suites under
+# plugins/installed/*/tests/ are excluded too — they parse self-generated
+# feed/SOAP XML, not untrusted input. Keep in sync with the CI `-x` list.
+exclude_dirs = ["venv", ".venv", "*/tests/*", "*/migrations/*", "db.sqlite3"]
 skips = ["B101"]
 
 [tool.coverage.run]

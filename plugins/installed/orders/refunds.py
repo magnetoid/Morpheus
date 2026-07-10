@@ -10,7 +10,7 @@ Flow:
 3. Items physically arrive → `received`.
 4. Refund is created via `RefundService.process_for_return(...)` →
    Stripe refund call → state moves to `refunded`. Fires
-   `refund.processed` + `return.refunded` events.
+   `PAYMENT_REFUNDED` + `return.refunded` events.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from django.utils import timezone
 from djmoney.models.fields import MoneyField
 from djmoney.money import Money
 
-from core.hooks import hook_registry
+from core.hooks import MorpheusEvents, hook_registry
 
 logger = logging.getLogger('morpheus.orders.refunds')
 
@@ -158,8 +158,13 @@ class RefundService:
             refund.is_processed = True
             refund.processed_at = timezone.now()
             refund.save(update_fields=['is_processed', 'processed_at'])
+            # Canonical refund event. The three real subscribers (refund
+            # email, affiliate clawback, refund conversion pixel) all listen
+            # on PAYMENT_REFUNDED; this used to fire the string
+            # 'refund.processed', which nothing subscribed to, so all three
+            # silently never ran.
             hook_registry.fire(
-                'refund.processed',
+                MorpheusEvents.PAYMENT_REFUNDED,
                 refund=refund,
                 order=order,
                 amount=amount,

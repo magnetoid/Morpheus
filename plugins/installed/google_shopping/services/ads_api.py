@@ -83,8 +83,10 @@ def campaign_report(*, days: int = 30) -> dict:
     preset = {7: 'LAST_7_DAYS', 14: 'LAST_14_DAYS', 30: 'LAST_30_DAYS'}.get(
         int(days), 'LAST_30_DAYS'
     )
+    # GAQL, not SQL; `preset` is an allowlisted literal (dict.get with a fixed
+    # default), never user input — no injection surface.
     query = (
-        'SELECT campaign.id, campaign.name, campaign.status, '
+        'SELECT campaign.id, campaign.name, campaign.status, '  # nosec B608
         'campaign.advertising_channel_type, metrics.impressions, metrics.clicks, '
         'metrics.cost_micros, metrics.conversions, metrics.conversions_value '
         'FROM campaign WHERE segments.date DURING ' + preset + ' '

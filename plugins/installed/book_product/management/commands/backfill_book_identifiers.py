@@ -68,7 +68,7 @@ def _lookup(title: str, author: str, timeout: int = 15) -> list[dict]:
     req = urllib.request.Request(  # noqa: S310 — fixed https host (openlibrary.org)
         f'{OL_SEARCH}?{qs}', headers={'User-Agent': 'Morpheus/1.0'}
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — fixed https host
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310 — fixed https host
         return (json.loads(resp.read().decode('utf-8')) or {}).get('docs', []) or []
 
 

@@ -36,7 +36,7 @@ jobs:
         run: ruff format --check .
       - name: bandit (security)
         # B308/B703 (mark_safe) are covered per-site by ruff S308 noqa review.
-        run: bandit -q -r . -x ./venv,./tests,./.venv,./db.sqlite3 -ll -s B308,B703
+        run: bandit -q -r . -x '*/venv/*,*/.venv/*,*/tests/*,*/migrations/*,./db.sqlite3' -ll -s B308,B703
       - name: core boundary (no new core -> plugins.installed imports)
         # Baseline-and-ratchet: blocks NEW wrong-direction imports and stale
         # allowlist entries. Shrinks phase by phase. See CLAUDE.md compass.

@@ -60,6 +60,26 @@ class RefundServiceTests(TestCase):
         r2 = RefundService.process(order=order, amount=Money(Decimal('5'), 'USD'))
         self.assertEqual(r1.id, r2.id)
 
+    def test_process_fires_payment_refunded(self):
+        # Regression: the fire used to be the string 'refund.processed',
+        # which no handler subscribed to, so the refund email / affiliate
+        # clawback / conversion pixel never ran.
+        from core.hooks import MorpheusEvents, hook_registry
+
+        seen = []
+
+        def _handler(refund=None, order=None, **kwargs):
+            seen.append((refund, order))
+
+        hook_registry.register(MorpheusEvents.PAYMENT_REFUNDED, _handler, plugin=None)
+        try:
+            order, _ = _setup_order()
+            RefundService.process(order=order, amount=Money(Decimal('5'), 'USD'))
+        finally:
+            hook_registry.unregister(MorpheusEvents.PAYMENT_REFUNDED, _handler)
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(seen[0][1].pk, order.pk)
+
 
 class ReturnRequestTests(TestCase):
     def test_create_assigns_rma_number(self):

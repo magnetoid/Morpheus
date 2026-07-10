@@ -159,7 +159,7 @@ def _gutenberg_cover_bytes(gid: str) -> bytes | None:
         req = urllib.request.Request(  # noqa: S310 — fixed https host, literal scheme
             url, headers={'User-Agent': 'dotbooks-cover-backfill/1.0'}
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed https host
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310  # nosec B310 — fixed https host
             if resp.status != 200:
                 return None
             data = resp.read(2_000_000)

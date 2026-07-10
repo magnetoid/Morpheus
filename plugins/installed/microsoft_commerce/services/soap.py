@@ -81,7 +81,7 @@ def call(action: str, body_inner_xml: str, *, url: str = CAMPAIGN_MGMT_URL, ns: 
         # The body is a SOAP response from a fixed, authenticated Microsoft HTTPS
         # endpoint (campaign.api.bingads.microsoft.com) — not untrusted user
         # input — so the XML-attack premise of S314 doesn't apply here.
-        root = ET.fromstring(resp.content)  # noqa: S314
+        root = ET.fromstring(resp.content)  # noqa: S314  # nosec B314 — trusted first-party Microsoft Ads SOAP over HTTPS
         # Surface a SOAP Fault as the error reason.
         for el in root.iter():
             if _strip_ns(el.tag) in ('faultstring', 'Text') and (el.text or '').strip():

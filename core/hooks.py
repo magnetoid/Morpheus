@@ -637,10 +637,12 @@ class MorpheusEvents:
     #                       (including direct admin refunds, no RMA);
     #                       'return.refunded' fires per RMA closure.
     #                       Inventory subscribes to restock the items.
-    # 'refund.processed'  — kwargs: refund=Refund, order=Order, amount=Money,
-    #                       actor=User|None. Same payload as
-    #                       PAYMENT_REFUNDED — they're aliases for now.
-    #                       New code SHOULD subscribe to PAYMENT_REFUNDED.
+    # 'refund.processed'  — RETIRED. RefundService.process now fires the
+    #                       canonical PAYMENT_REFUNDED (kwargs: refund, order,
+    #                       amount, actor). The old string had zero subscribers
+    #                       while the real handlers waited on PAYMENT_REFUNDED,
+    #                       so refund email/clawback/pixel never ran. Subscribe
+    #                       to PAYMENT_REFUNDED.
 
     # ── Search (fire) ─────────────────────────────────────────────────────
     SEARCH_PERFORMED = 'search.performed'
