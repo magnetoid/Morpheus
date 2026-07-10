@@ -131,6 +131,7 @@ class AudiobooksPlugin(Plugin):
             'properties': {
                 'elevenlabs_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'default': '',
                     'title': 'ElevenLabs API key',
                     'description': 'Secret key used to generate narration. Stored server-side; redacted from the assistant.',

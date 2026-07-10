@@ -278,6 +278,7 @@ class AIAssistantPlugin(Plugin):
                 # ── OpenAI ────────────────────────────────────────────
                 'openai_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'OpenAI · API Key',
                     'description': 'Leave blank to use the OPENAI_API_KEY env var.',
                 },
@@ -294,6 +295,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Anthropic ─────────────────────────────────────────
                 'anthropic_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'Anthropic · API Key',
                     'description': 'Leave blank to use the ANTHROPIC_API_KEY env var.',
                 },
@@ -305,6 +307,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Google Gemini ─────────────────────────────────────
                 'gemini_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'Gemini · API Key',
                     'description': 'Google AI Studio key (GEMINI_API_KEY).',
                 },
@@ -316,6 +319,7 @@ class AIAssistantPlugin(Plugin):
                 # ── OpenRouter ────────────────────────────────────────
                 'openrouter_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'OpenRouter · API Key',
                     'description': 'Single-key access to many model vendors. https://openrouter.ai/keys',
                 },
@@ -332,6 +336,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Grok (xAI) ────────────────────────────────────────
                 'grok_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'Grok · API Key',
                     'description': 'xAI API key. https://console.x.ai',
                 },
@@ -349,6 +354,7 @@ class AIAssistantPlugin(Plugin):
                 # ── apikey.fun (unified OpenAI-compatible gateway) ────
                 'apikey_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'apikey.fun · API Key',
                     'description': 'apikey.fun API key. https://apikey.fun/docs',
                 },
@@ -366,6 +372,7 @@ class AIAssistantPlugin(Plugin):
                 # ── DeepSeek (OpenAI-compatible) ──────────────────────
                 'deepseek_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'DeepSeek · API Key',
                     'description': 'DeepSeek API key. https://platform.deepseek.com/api_keys',
                 },
@@ -383,6 +390,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Packy (www.packyapi.com — Chinese LLM gateway) ────
                 'packy_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'Packy · API Key',
                     'description': 'packyapi.com key. OpenAI-compatible gateway proxying Claude, GPT, Gemini etc.',
                 },
@@ -400,6 +408,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Hermes (NousResearch — native function-calling) ───
                 'hermes_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'Hermes · API Key',
                     'description': "NousResearch Hermes 3/4. Defaults to the OpenRouter gateway — paste an OpenRouter key, or point Base URL at Nous's own inference API.",
                 },
@@ -423,6 +432,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'ollama_api_key': {
                     'type': 'string',
+                    'format': 'password',
                     'title': 'Ollama · API Key',
                     'description': 'Required for Ollama Cloud only.',
                 },

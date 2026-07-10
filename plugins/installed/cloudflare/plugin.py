@@ -104,6 +104,7 @@ class CloudflarePlugin(Plugin):
                 },
                 'turnstile_secret_key': {
                     'type': 'string',
+                    'format': 'password',
                     'default': '',
                     'title': 'Turnstile secret key',
                     'description': 'Private key — used server-side to verify the challenge. Keep it secret.',
