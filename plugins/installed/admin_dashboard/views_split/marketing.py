@@ -17,6 +17,7 @@ from plugins.installed.admin_dashboard.forms import (
     CouponForm,
 )
 from plugins.installed.admin_dashboard.views_split._shared import (
+    ajax_form_errors,
     ajax_or_redirect,
     logger,
 )
@@ -76,6 +77,8 @@ def coupon_edit(request: HttpRequest, coupon_id: str) -> HttpResponse:
             form.save()
             messages.success(request, 'Coupon saved.')
             return ajax_or_redirect(request, 'admin_dashboard:coupon_edit', coupon_id=coupon.id)
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
     else:
         form = CouponForm(instance=coupon)
     return render(

@@ -16,7 +16,10 @@ from morpheus.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 
-from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
+from plugins.installed.admin_dashboard.views_split._shared import (
+    ajax_form_errors,
+    ajax_or_redirect,
+)
 
 from plugins.installed.admin_dashboard.forms import (
     AddressForm,
@@ -361,14 +364,8 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             )
             messages.success(request, 'Product saved.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
-        # Invalid form over AJAX: return the errors as JSON (400) so the client
-        # shows WHY it failed. Without this the data-ajax handler reads the
-        # re-rendered HTML page as a (false) success and the merchant sees
-        # "Saved" while nothing was saved.
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.http import JsonResponse
-
-            return JsonResponse({'ok': False, 'errors': form.errors.get_json_data()}, status=400)
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
     else:
         form = ProductForm(instance=product)
     categories, vendors = _product_form_choices()
@@ -511,6 +508,8 @@ def variant_new(request: HttpRequest, product_id: str) -> HttpResponse:
                 product.save(update_fields=['product_type', 'updated_at'])
             messages.success(request, 'Variant added.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
     else:
         form = VariantForm(product=product)
     return render(
@@ -537,6 +536,8 @@ def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> Http
             form.save()
             messages.success(request, 'Variant saved.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
     else:
         form = VariantForm(instance=variant, product=product)
     return render(

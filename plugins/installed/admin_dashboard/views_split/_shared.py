@@ -53,6 +53,23 @@ def ajax_or_redirect(
     return redirect(*redirect_args, **redirect_kwargs)
 
 
+def ajax_form_errors(request: HttpRequest, form) -> HttpResponse | None:
+    """The error-path twin of :func:`ajax_or_redirect`.
+
+    An invalid form submitted over AJAX must get the errors back as JSON
+    (400) — otherwise the data-ajax client reads the re-rendered HTML page
+    as a (false) success and the merchant sees "Saved" while nothing was
+    saved. Returns None for non-AJAX requests so the caller falls through
+    to re-rendering the form page:
+
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
+    """
+    if _is_ajax(request):
+        return JsonResponse({'ok': False, 'errors': form.errors.get_json_data()}, status=400)
+    return None
+
+
 logger = logging.getLogger('morpheus.admin')
 
 # Display label + day-window for each preset. Order matters — it drives

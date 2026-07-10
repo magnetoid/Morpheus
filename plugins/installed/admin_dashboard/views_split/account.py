@@ -12,7 +12,7 @@ from django.contrib.auth.views import LoginView  # noqa: F401 — re-exported fo
 from django.shortcuts import render
 
 from morpheus.views import HttpRequest, HttpResponse, staff_member_required
-from plugins.installed.admin_dashboard.views_split._shared import ajax_or_redirect
+from plugins.installed.admin_dashboard.views_split._shared import ajax_form_errors, ajax_or_redirect
 
 
 @staff_member_required
@@ -32,12 +32,8 @@ def my_account(request: HttpRequest) -> HttpResponse:
             update_session_auth_hash(request, pwd_form.user)
             messages.success(request, 'Password updated.')
             return ajax_or_redirect(request, '/dashboard/me/')
-
-    recent_logins = []
-    try:  # noqa: SIM105
-        pass  # not the right place but useful
-    except Exception:  # noqa: S110
-        pass
+        if (error_response := ajax_form_errors(request, pwd_form)) is not None:
+            return error_response
 
     return render(
         request,
@@ -45,7 +41,6 @@ def my_account(request: HttpRequest) -> HttpResponse:
         {
             'account_user': user,
             'pwd_form': pwd_form,
-            'recent_logins': recent_logins,
             'active_nav': 'account',
         },
     )
