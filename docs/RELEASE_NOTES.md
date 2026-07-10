@@ -12,6 +12,36 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.4.2 — 2026-07-10
+
+### Security hardening, order emails that actually send, and cleaner breadcrumbs
+
+**Security**
+- Closed four access holes: draft-order pages (including converting a draft
+  into a real order), the promotions dashboard, a payment-intent lookup, and
+  the agent GraphQL endpoint were reachable more broadly than intended —
+  all now properly staff-/owner-scoped. Newsletter signup and support chat
+  got rate limits.
+
+**Order notifications that were silently broken**
+- The **"your order shipped"** and **order-cancelled** emails, the
+  **stock-reservation release on cancel**, and the **refund confirmation /
+  affiliate clawback** all had templates and handlers but were never actually
+  triggered — the underlying events weren't firing. They fire now, so those
+  emails and side-effects work for the first time. (Reminder: there's still
+  no dedicated "shipped with tracking" email — tracked as a follow-up.)
+
+**Dashboard breadcrumbs**
+- Breadcrumbs now follow where a page sits in the sidebar (e.g.
+  "Dashboard › Multivendor › Vendors") instead of exposing internal routing
+  ("Dashboard › Apps › Marketplace › Vendors").
+
+**Under the hood**
+- Restored the security-lint CI gate, fixed a flaky test, pinned a
+  previously-transitive dependency, removed three unused ones, and
+  de-branded a few generic-layer defaults so the platform reads neutrally
+  for non-dot-books operators. Full suite 2,016 tests green.
+
 ## v0.4.1 — 2026-07-10
 
 ### Shipping rates now actually show at checkout, plus a deep decoupling pass
