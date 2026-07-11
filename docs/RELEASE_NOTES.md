@@ -12,6 +12,42 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.8.1 — 2026-07-12
+
+### Linda fails gracefully — and her actions are on the record
+
+- **No more raw error dumps in chat.** When every AI provider is down, Linda
+  now says what's wrong and what to do ("The active AI provider has no API
+  key configured — open Settings → AI…") instead of printing
+  `[All AI providers degraded …]` with a stack trace. The failure also
+  reports the *configured* provider's real error — previously an
+  unconfigured fallback's noise masked the actual cause.
+- **Fallback only uses providers you've configured.** Providers without an
+  API key no longer join the failover chain (each one used to burn a full
+  timeout before failing).
+- **Everything the AI writes is auditable.** Linda's write-tool calls,
+  background Workers' actions, and their real outputs now land in the audit
+  log — previously chat transcripts were the only record.
+- **Sandbox locked down.** Linda's script sandbox is read-only for real:
+  three tools that could quietly write or delete rows from inside scripts
+  are now correctly gated. The legacy `/api/mcp/tools/*` endpoint (which
+  accepted unauthenticated requests) now requires a staff session.
+- **Settings tell the truth.** Two switches that were connected to nothing
+  ("Agent purchases require approval", "Memory confidence decay") have been
+  removed until the code behind them exists.
+
+### The self-improvement loop actually heals now
+
+- **Fixed an inert pipeline.** The engine's analyzer and its healers used
+  two different naming schemes, so every approved fix ended in "no healer
+  found" — the loop scanned, planned, and then did nothing. SEO gaps now
+  route to the alt-text and meta-description healers, zero-result searches
+  to the synonym healer, dead links to the redirect healer.
+- **The safety boundary reaches your commits.** A new pre-commit gate blocks
+  hardcoded secrets, raw destructive SQL, and `os.system` from ever being
+  committed — and `extra_protected_paths` in settings now genuinely extends
+  the AI-write protection boundary.
+
 ## v0.8.0 — 2026-07-11
 
 ### The storefront feels alive — microanimations everywhere
