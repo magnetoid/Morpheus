@@ -86,5 +86,37 @@ def get_healer(class_name: str) -> Healer | None:
     return cls() if cls else None
 
 
+# Which healers can serve which RECOMMENDATION class. The analyzer names
+# classes after the problem (recommend._SOURCE_TO_CLASS: 'seo_gap',
+# 'zero_search', …) while healers register under their capability
+# ('alt_text', 'meta_description', …) — two taxonomies that never matched,
+# so get_healer(rec.class_name) found nothing and EVERY approved
+# recommendation blocked 'no_healer' (the whole heal loop was inert).
+# resolve_healers() bridges them: an exact-name registration still wins,
+# then the mapped candidates are offered in order — heal.run_one picks the
+# first whose safe_to_apply() accepts (healers self-select their targets
+# from evidence_signal_ids and refuse cleanly when their slice is empty).
+CLASS_HEALERS: dict[str, tuple[str, ...]] = {
+    'seo_gap': ('alt_text', 'meta_description'),
+    'zero_search': ('synonym',),
+    'dead_link': ('redirect',),
+}
+
+
+def resolve_healers(class_name: str) -> list[Healer]:
+    """All healers that could serve `class_name`, exact match first."""
+    names = [class_name, *CLASS_HEALERS.get(class_name, ())]
+    out: list[Healer] = []
+    seen: set[str] = set()
+    for n in names:
+        if n in seen:
+            continue
+        seen.add(n)
+        h = get_healer(n)
+        if h is not None:
+            out.append(h)
+    return out
+
+
 def known_classes() -> list[str]:
     return sorted(_REGISTRY)

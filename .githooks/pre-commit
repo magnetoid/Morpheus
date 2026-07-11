@@ -157,6 +157,16 @@ if [[ ${#admin_html_files[@]} -gt 0 ]]; then
   fi
 fi
 
+# ── Check: safety-boundary forbidden patterns (subset) ──────────────────────
+#
+# core/safety.py promised for months that "pre-commit re-runs the boundary
+# on staged diffs" while no hook existed (the July 2026 AI-core audit caught
+# it). This runs the HUMAN-applicable subset (PRECOMMIT_FORBIDDEN_PATTERNS:
+# hardcoded secrets, raw destructive SQL, os.system) on staged ADDED lines.
+if ! python3 scripts/check_forbidden_diff.py; then
+  errors=$((errors + 1))
+fi
+
 if [[ $errors -gt 0 ]]; then
   red ""
   red "[pre-commit] $errors check(s) failed. Fix the above or set SKIP_HOOK=1 to bypass."

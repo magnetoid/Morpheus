@@ -50,7 +50,7 @@ def execute_queue() -> dict:
 def run_one(rec: Any) -> str:  # noqa: PLR0911 — one return per phase is the point
     """Walk the healing phases for one recommendation. Returns the
     final outcome ('ok' / 'blocked' / 'failed')."""
-    from core.self_improvement.healers.base import get_healer  # noqa: PLC0415
+    from core.self_improvement.healers.base import resolve_healers  # noqa: PLC0415
     from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
 
     run_id = uuid.uuid4()
@@ -62,17 +62,29 @@ def run_one(rec: Any) -> str:  # noqa: PLR0911 — one return per phase is the p
         _mark_failed(rec, 'class_blocklist')
         return 'blocked'
 
-    healer = get_healer(rec.class_name)
-    if healer is None:
+    # Phase: gate — candidate arbitration. resolve_healers() bridges the
+    # analyzer's problem taxonomy ('seo_gap', 'zero_search', …) to healer
+    # capabilities ('alt_text', 'meta_description', …); the first candidate
+    # whose safe_to_apply() accepts runs. A mixed-evidence recommendation
+    # heals one slice per run — remaining gaps re-surface via the collectors.
+    candidates = resolve_healers(rec.class_name)
+    if not candidates:
         _log(rec, 'gate', 'blocked', run_id, details={'reason': 'no_healer'})
         _mark_failed(rec, 'no_healer')
         return 'blocked'
 
-    # Phase: gate
-    ok, why = healer.safe_to_apply(rec)
-    if not ok:
-        _log(rec, 'gate', 'blocked', run_id, details={'reason': why})
-        _mark_failed(rec, f'gate:{why}')
+    healer = None
+    gate_reasons: dict[str, str] = {}
+    for cand in candidates:
+        ok, why = cand.safe_to_apply(rec)
+        if ok:
+            healer = cand
+            break
+        gate_reasons[cand.class_name] = why
+    if healer is None:
+        why = '; '.join(f'{k}: {v}' for k, v in gate_reasons.items()) or 'gate_refused'
+        _log(rec, 'gate', 'blocked', run_id, details={'reason': why, 'candidates': gate_reasons})
+        _mark_failed(rec, f'gate:{why}'[:500])
         return 'blocked'
 
     hook_registry.fire(

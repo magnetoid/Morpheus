@@ -102,6 +102,20 @@ FORBIDDEN_DIFF_PATTERNS: tuple[str, ...] = (
     r'migrations\.RunPython',
 )
 
+# The subset of FORBIDDEN_DIFF_PATTERNS that also applies to HUMAN commits
+# (enforced by the pre-commit hook on staged added lines). Deliberately
+# narrow: `.delete()`, `subprocess.`, `eval(` etc. are legitimate in
+# hand-written code, but nobody — human or AI — should commit hardcoded
+# secrets or raw destructive SQL.
+PRECOMMIT_FORBIDDEN_PATTERNS: tuple[str, ...] = (
+    r'SECRET_KEY\s*=\s*["\'][^"\']+["\']',  # a LITERAL secret, not config(...)
+    r'stripe\.api_key\s*=\s*["\']',
+    r'STRIPE_SECRET\s*=\s*["\'][^"\']+["\']',
+    r'DROP\s+TABLE',
+    r'TRUNCATE\s+TABLE',
+    r'\bos\.system\s*\(',
+)
+
 # Issue classes the engine refuses to even analyze.
 CLASS_BLOCKLIST: frozenset[str] = frozenset(
     {
@@ -176,15 +190,41 @@ def _compile_path_pattern(pat: str) -> re.Pattern[str]:
 
 _COMPILED_PROTECTED = tuple(_compile_path_pattern(p) for p in PROTECTED_PATHS)
 
+# Ops-extendable protections (settings.SELF_IMPROVEMENT['extra_protected_paths']).
+# Always a SUPERSET of the static tuple — settings can add protections, never
+# relax them. Compiled lazily and memoised per distinct pattern tuple so
+# override_settings in tests takes effect; returns () when Django settings
+# are unavailable (this module stays importable by static tools).
+_EXTRA_COMPILED_CACHE: dict[tuple[str, ...], tuple[re.Pattern[str], ...]] = {}
+
+
+def _extra_protected_patterns() -> tuple[re.Pattern[str], ...]:
+    try:
+        from django.conf import settings  # noqa: PLC0415
+
+        extra = tuple(
+            (getattr(settings, 'SELF_IMPROVEMENT', {}) or {}).get('extra_protected_paths') or ()
+        )
+    except Exception:  # noqa: BLE001 — settings not configured (static analysis, hooks)
+        return ()
+    if not extra:
+        return ()
+    if extra not in _EXTRA_COMPILED_CACHE:
+        _EXTRA_COMPILED_CACHE[extra] = tuple(_compile_path_pattern(p) for p in extra)
+    return _EXTRA_COMPILED_CACHE[extra]
+
 
 def is_path_protected(path: str) -> bool:
-    """Return True if `path` falls inside any PROTECTED_PATHS entry.
+    """Return True if `path` falls inside any PROTECTED_PATHS entry
+    (static tuple + settings.SELF_IMPROVEMENT['extra_protected_paths']).
 
     Matching uses the compiled regex set above. Patterns are checked in
     PROTECTED_PATHS order; the first match wins.
     """
     norm = path.removeprefix('./')
-    return any(p.match(norm) for p in _COMPILED_PROTECTED)
+    if any(p.match(norm) for p in _COMPILED_PROTECTED):
+        return True
+    return any(p.match(norm) for p in _extra_protected_patterns())
 
 
 def find_violations(diff_text: str, files_touched: Iterable[str] = ()) -> list[str]:
@@ -235,7 +275,10 @@ def assert_diff_safe(diff_text: str, files_touched: Iterable[str] = ()) -> None:
       1. Pre-plan filter in recommend.py rejects clusters in PROTECTED_PATHS.
       2. The LLM prompt advises the constraints (advisory only).
       3. *This function* enforces them programmatically after the LLM returns.
-      4. Pre-commit / CI hooks re-run this check on staged diffs.
+      4. Pre-commit runs the PRECOMMIT_FORBIDDEN_PATTERNS subset on staged
+         added lines (scripts/check_forbidden_diff.py) — the FULL boundary
+         cannot gate human commits (humans legitimately edit core/ and write
+         `.delete()`); path/class/magnitude rules stay runtime AI gates.
       5. Permission boundary tests verify the rejection path.
     """
     reasons = find_violations(diff_text, files_touched)

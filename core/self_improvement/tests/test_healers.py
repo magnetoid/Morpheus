@@ -41,6 +41,30 @@ class RegistryTests(TestCase):
         self.assertIn('redirect', classes)
         self.assertIn('synonym', classes)
 
+    def test_analyzer_classes_resolve_to_healers(self):
+        # Regression (July 2026 audit): the analyzer emits PROBLEM classes
+        # ('seo_gap', 'zero_search', …) while healers register CAPABILITY
+        # names ('alt_text', …). get_healer(rec.class_name) never matched, so
+        # every approved recommendation blocked 'no_healer' and the heal loop
+        # was inert. resolve_healers() bridges the two taxonomies.
+        from core.self_improvement.healers import (  # noqa: F401, PLC0415
+            alt_text,
+            meta_description,
+            redirect,
+            synonym,
+        )
+        from core.self_improvement.healers.base import resolve_healers  # noqa: PLC0415
+
+        self.assertEqual(
+            [h.class_name for h in resolve_healers('seo_gap')],
+            ['alt_text', 'meta_description'],
+        )
+        self.assertEqual([h.class_name for h in resolve_healers('zero_search')], ['synonym'])
+        self.assertEqual([h.class_name for h in resolve_healers('dead_link')], ['redirect'])
+        # Exact capability names still resolve to themselves.
+        self.assertEqual([h.class_name for h in resolve_healers('alt_text')], ['alt_text'])
+        self.assertEqual(resolve_healers('upstream_sync'), [])  # no executor shipped yet
+
     def test_get_healer_returns_correct_subclass(self):
         from core.self_improvement.healers import alt_text  # noqa: F401, PLC0415
 
@@ -241,6 +265,26 @@ class RunOneOrchestrationTests(TestCase):
         log = SiActionLog.objects.filter(recommendation=self.rec, phase='gate').first()
         self.assertIsNotNone(log)
         self.assertEqual(log.details.get('reason'), 'no_healer')
+
+    def test_run_one_seo_gap_arbitrates_candidates_instead_of_no_healer(self):
+        # 'seo_gap' resolves to (alt_text, meta_description). With no
+        # evidence both candidates refuse at their own gates, so the block
+        # reason is the per-candidate map — the old outcome was a flat
+        # 'no_healer' that made the whole loop inert.
+        from core.self_improvement.heal import run_one  # noqa: PLC0415
+        from core.self_improvement.models import SiActionLog  # noqa: PLC0415
+
+        self.rec.class_name = 'seo_gap'
+        self.rec.save(update_fields=['class_name'])
+
+        outcome = run_one(self.rec)
+        self.assertEqual(outcome, 'blocked')
+
+        log = SiActionLog.objects.filter(recommendation=self.rec, phase='gate').first()
+        self.assertIsNotNone(log)
+        self.assertNotEqual(log.details.get('reason'), 'no_healer')
+        self.assertIn('alt_text', log.details.get('candidates', {}))
+        self.assertIn('meta_description', log.details.get('candidates', {}))
 
     def test_run_one_happy_path_with_stub_healer(self):
         from core.self_improvement.heal import run_one  # noqa: PLC0415

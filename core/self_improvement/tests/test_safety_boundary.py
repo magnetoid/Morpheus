@@ -303,3 +303,74 @@ class TestBoundaryInvariants:
             'RunSQL',
         ):
             assert required in joined, f'forbidden pattern lost: {required}'
+
+
+class TestExtraProtectedPaths:
+    """settings.SELF_IMPROVEMENT['extra_protected_paths'] extends (never
+    relaxes) the static boundary — it was a dead knob until July 2026."""
+
+    def test_extra_paths_are_honored(self) -> None:
+        from django.test import override_settings
+
+        from core.safety import is_path_protected
+
+        assert not is_path_protected('plugins/installed/payments_v2/models.py')
+        with override_settings(
+            SELF_IMPROVEMENT={'extra_protected_paths': ('plugins/installed/payments_v2/',)}
+        ):
+            assert is_path_protected('plugins/installed/payments_v2/models.py')
+        # Back out of the override → protection gone again (no sticky cache).
+        assert not is_path_protected('plugins/installed/payments_v2/models.py')
+
+    def test_static_boundary_unaffected_by_settings(self) -> None:
+        from django.test import override_settings
+
+        from core.safety import is_path_protected
+
+        with override_settings(SELF_IMPROVEMENT={'extra_protected_paths': ()}):
+            assert is_path_protected('core/safety.py')
+
+
+class TestPrecommitSubset:
+    """PRECOMMIT_FORBIDDEN_PATTERNS — the human-applicable subset enforced
+    by scripts/check_forbidden_diff.py on staged added lines."""
+
+    def test_catches_hardcoded_secrets_and_destructive_sql(self) -> None:
+        import re
+
+        from core.safety import PRECOMMIT_FORBIDDEN_PATTERNS
+
+        compiled = [re.compile(p) for p in PRECOMMIT_FORBIDDEN_PATTERNS]
+
+        def hits(line: str) -> bool:
+            return any(p.search(line) for p in compiled)
+
+        assert hits("SECRET_KEY = 'django-insecure-abc123'")
+        assert hits('stripe.api_key = "sk_live_x"')
+        assert hits('cursor.execute("DROP TABLE orders")')
+        assert hits("os.system('rm -rf /tmp/x')")
+        # …but everyday idioms humans legitimately commit stay allowed:
+        assert not hits("SECRET_KEY = config('SECRET_KEY')")
+        assert not hits('stale_rows.delete()')
+        assert not hits('subprocess.run([...], check=False)')
+        assert not hits('parse_llm_json = eval_safe(text)')
+
+    def test_precommit_script_parses_added_lines(self) -> None:
+        import importlib.util
+        from pathlib import Path
+
+        spec = importlib.util.spec_from_file_location(
+            'check_forbidden_diff',
+            Path(__file__).resolve().parents[3] / 'scripts' / 'check_forbidden_diff.py',
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        diff = (
+            'diff --git a/x.py b/x.py\n'
+            '--- a/x.py\n'
+            '+++ b/x.py\n'
+            '@@ -1 +1,2 @@\n'
+            '+added = 1\n'
+            '-removed = 2\n'
+        )
+        assert mod.added_lines(diff) == [('x.py', 'added = 1')]
