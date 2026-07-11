@@ -20,7 +20,7 @@
     <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
       {{ entry.title }}<span class="text-accent">.</span>
     </h1>
-    <div itemprop="articleBody" style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
+    <div itemprop="articleBody" class="journal-prose" style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
       {% if entry.is_html %}
         {{ entry.body|safe }}
       {% else %}

@@ -459,6 +459,83 @@
   /* Add-to-cart confirmation state — the cart-drawer JS flips the button
      to "✓ Added" for a beat after a successful add. */
   .btn.is-added, .btn.is-added:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; transform: none; }
+
+  /* ── Print & paper — the physical layer ────────────────────────────────
+     The shop should feel printed, not rendered: paper with tooth, covers
+     with spines, a contents-page genre index, drop caps, and a colophon. */
+
+  /* Paper grain — a faint fractal-noise tooth on the page background.
+     SVG data-URI, ~5% black; solid surfaces (cards, covers) sit on top,
+     which is exactly how print stock behaves. */
+  body {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 240px 240px;
+  }
+
+  /* Spine + edge light on every book cover — a dark crease at the bound
+     edge with a highlight beside it, so covers read as physical objects
+     instead of flat rectangles. Pointer-transparent overlay. */
+  .book .cover-wrap::after,
+  .hero-feature__cover::after,
+  .pdp-hero__slide::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(90deg,
+      rgba(14,14,14,.20) 0, rgba(255,255,255,.16) 2.2%,
+      rgba(14,14,14,.08) 4.5%, transparent 9%);
+  }
+  .pdp-hero__slide { position: relative; }
+  .book .ribbon { z-index: 1; } /* keep badges above the spine overlay */
+
+  /* Missing covers become set title pages instead of apologies: a double
+     hairline frame, the title in Fraunces, and the brand period beneath. */
+  .book .cover-wrap .placeholder {
+    flex-direction: column; gap: .35rem; padding: 1.1rem; text-align: center;
+    font-style: normal; font-weight: 500; font-size: 1.15rem; line-height: 1.3;
+    letter-spacing: -.01em; color: var(--ink-2);
+    outline: 1px solid var(--rule); outline-offset: -8px;
+  }
+  .book .cover-wrap .placeholder::after {
+    content: '.'; color: var(--accent); font-family: var(--serif);
+    font-size: 2.2rem; line-height: .3; font-weight: 700;
+  }
+
+  /* Eyebrows get a short accent tick — a running-head device that marks
+     every section the same way. */
+  .eyebrow::before {
+    content: ''; display: inline-block; width: 1.1em; height: 1px;
+    background: var(--accent); vertical-align: .28em; margin-right: .55em;
+  }
+
+  /* Prices set in the serif — numbers as part of the typography, not UI. */
+  .book .price { font-family: var(--serif); font-size: 1.05rem; }
+
+  /* Drop cap for long-form reading (PDP About + journal entries). */
+  .pdp-long-desc > p:first-of-type::first-letter,
+  .journal-prose > p:first-of-type::first-letter {
+    font-family: var(--serif); font-weight: 500; color: var(--ink);
+    float: left; font-size: 3.1em; line-height: .84;
+    padding: .04em .14em 0 0;
+  }
+
+  /* Genre index — the home "contents page": serif entries over hairline
+     rules, an accent arrow surfacing on hover. */
+  .genre-index { margin-top: 2rem; display: grid; grid-template-columns: 1fr; column-gap: 3rem; }
+  @media (min-width: 700px)  { .genre-index { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1100px) { .genre-index { grid-template-columns: repeat(3, 1fr); } }
+  .genre-index__item {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+    padding: .85rem .15rem; border-top: 1px solid var(--rule);
+    font-family: var(--serif); font-size: 1.35rem; font-weight: 500; letter-spacing: -.01em;
+    color: var(--ink);
+  }
+  .genre-index__item:hover { color: var(--accent-ink); }
+  .genre-index__arrow {
+    font-family: var(--sans); font-size: 1rem; color: var(--accent-ink);
+    opacity: 0; transform: translateX(-6px);
+    transition: opacity var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
+  }
+  .genre-index__item:hover .genre-index__arrow { opacity: 1; transform: none; }
 </style>
 {% block extra_head %}{% endblock %}
 
@@ -880,6 +957,7 @@
   </div>
   <div class="wrap signoff">
     <span>© {{ now|default:"2026" }} dot books<span class="text-accent">.</span> All rights reserved.</span>
+    <span style="font-family: var(--serif); font-style: italic;">Set in Fraunces &amp; Inter, printed on warm paper<span class="text-accent">.</span></span>
     <span>Made by readers, for readers<span class="text-accent">.</span></span>
   </div>
 </footer>

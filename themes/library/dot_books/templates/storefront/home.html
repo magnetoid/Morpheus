@@ -665,6 +665,27 @@
 {# Plugin-contributed shoppable rails (e.g. advanced_ecommerce featured-collection sliders). #}
 {% storefront_blocks "home_after_rails" %}
 
+<!-- Genre index — the shop's contents page. Renders the top-level
+     categories the Home query already fetches; hidden when none exist. -->
+{% if categories %}
+<section class="tight">
+  <div class="wrap">
+    <div data-reveal>
+      <p class="eyebrow">Find your section</p>
+      <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shelves<span class="text-accent">.</span></h2>
+    </div>
+    <div class="genre-index" data-reveal>
+      {% for c in categories %}
+      <a class="genre-index__item" href="/genre/{{ c.slug }}/">
+        <span>{{ c.name }}</span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- Manifesto block — placed after the shoppable rails so product density leads. -->
 <section style="background: var(--paper-2); padding: 6rem 0;">
   <div class="wrap" style="text-align: center;">
@@ -696,13 +717,14 @@
     </div>
 
     <div style="display:grid; gap: 2rem; grid-template-columns: 1fr; margin-top: 2rem;" class="journal-grid">
-      {% for i in '123' %}
+      {% comment %}Real entries — published CMS journal pages, falling back to the seeded editorial set (journal_teasers, set in views/home.py). Same links as /journal/.{% endcomment %}
+      {% for entry in journal_teasers %}
       <article class="journal-card" data-reveal {% if forloop.counter == 2 %}style="--reveal-delay: 90ms;"{% elif forloop.counter == 3 %}style="--reveal-delay: 180ms;"{% endif %}>
-        <p class="meta">April · 4 min read</p>
+        <p class="meta">{{ entry.date_label }}</p>
         <h3 style="font-family: var(--serif); font-size: 1.6rem; font-weight: 500; line-height: 1.2; margin: 0.6rem 0;">
-          <a href="/journal/">{% if forloop.counter == 1 %}A short note on patience and the long sentence{% elif forloop.counter == 2 %}Why we don't carry books we haven't read{% else %}The case for the small press, made in numbers{% endif %}</a>
+          <a href="/journal/{{ entry.slug }}/">{{ entry.title }}</a>
         </h3>
-        <p style="color: var(--ink-2); line-height: 1.55;">{% if forloop.counter == 1 %}On Cusk, on Sebald, on the way a long paragraph teaches you how to wait. {% elif forloop.counter == 2 %}A diary of how the shelf gets curated, and why it's a small one on purpose. {% else %}Three years of receipts, and what they say about who's actually publishing the work that lasts. {% endif %}</p>
+        <p style="color: var(--ink-2); line-height: 1.55;">{{ entry.excerpt }}</p>
       </article>
       {% endfor %}
     </div>
