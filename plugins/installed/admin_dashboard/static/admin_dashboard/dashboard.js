@@ -235,12 +235,29 @@
         }
         el.dispatchEvent(new Event('input', { bubbles: true }));
       });
-      this._bar.hidden = true;
+      this.reset();
+    },
+    // Clear save-bar state without touching form values (used after a
+    // successful save/leave, or when the active form is swapped away).
+    reset: function () {
+      if (this._bar) this._bar.hidden = true;
       this._activeForm = null;
+      this._snapshot = null;
       document.body.classList.remove('has-save-bar');
     },
     saveActive: function () {
-      if (this._activeForm) this._activeForm.submit();
+      const form = this._activeForm;
+      if (!form) return;
+      // requestSubmit() (not native submit()) fires the submit event, so a
+      // `data-ajax` form still goes through the XHR/JSON+toast path instead
+      // of doing a full native POST. Fall back to clicking the submit button.
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        const btn = form.querySelector('[type=submit]')
+          || document.querySelector('[type=submit][form="' + form.id + '"]');
+        if (btn) btn.click(); else form.submit();
+      }
     },
   };
 
@@ -459,6 +476,40 @@
     document.querySelectorAll('form[data-morph-dirty]').forEach(function (f) {
       Morph.dirty.attach(f);
     });
+
+    // Cmd/Ctrl+S saves the active dirty form (== the save bar's Save button).
+    // Only intercepted when something is actually dirty, so the browser's
+    // Save-page shortcut is left alone on non-form pages.
+    document.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's'
+          && Morph.dirty && Morph.dirty._activeForm) {
+        e.preventDefault();
+        Morph.dirty.saveActive();
+      }
+    });
+
+    // Guard boosted (in-app) navigation while a form is dirty. hx-boost swaps
+    // #main-content via XHR, so `beforeunload` never fires — a sidebar/link
+    // click would silently discard edits. htmx:confirm fires before every
+    // request; we intercept link navigations only (not the dirty form's own
+    // submit, nor htmx widgets) and ask before leaving.
+    document.body.addEventListener('htmx:confirm', function (e) {
+      if (!Morph.dirty || !Morph.dirty._activeForm) return;
+      var elt = e.detail.elt;
+      if (!elt || elt.tagName !== 'A') return;  // only guard link navigations
+      e.preventDefault();
+      Morph.confirm({
+        title: 'Leave with unsaved changes?',
+        message: 'Your edits on this page will be lost.',
+        cta: 'Leave',
+        danger: true,
+      }).then(function (ok) {
+        if (ok) {
+          Morph.dirty.reset();
+          e.detail.issueRequest(true);  // skip re-confirmation, proceed
+        }
+      });
+    });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
@@ -499,6 +550,16 @@
         }
       });
       root.dataset._morphBound = '1';
+    });
+    // A boosted navigation swaps #main-content, so any form that was dirty is
+    // now gone — clear stale save-bar state, then wire the save bar to any
+    // dirty-tracked form in the freshly-swapped content (otherwise the save
+    // bar only ever worked on a full page load, not after in-app nav).
+    if (Morph.dirty && Morph.dirty._activeForm && !document.contains(Morph.dirty._activeForm)) {
+      Morph.dirty.reset();
+    }
+    scope.querySelectorAll('form[data-morph-dirty]').forEach(function (f) {
+      try { Morph.dirty.attach(f); } catch (_) { /* swallow */ }
     });
   };
 
