@@ -153,9 +153,14 @@
      the glyph inside its own box on the interactive surfaces (the icon box is
      already vertically centered by the control's own flex, so this only lifts
      the glyph to that box's true center). */
-  :is(.btn, .nav-link, .pill, .dropdown-item, .rte-btn) i[data-lucide] {
+  :is(.btn, .nav-link, .nav-section-btn, .pill, .dropdown-item, .rte-btn) i[data-lucide] {
     display: inline-flex; align-items: center; justify-content: center; line-height: 1;
   }
+  /* Optical centering: the icon box centers on the text line box, but text
+     glyphs (cap-height, no descenders on most labels) sit high in that box, so
+     a box-centered icon reads a touch low. A 1px lift aligns the icon to the
+     visual centre of the label. */
+  :is(.nav-link, .nav-section-btn) i[data-lucide] { margin-top: -1px; }
 
   /* ── Micro-interaction flows ──────────────────────────────────────────
      Tasteful, GPU-cheap (transform/opacity only), fully disabled under
@@ -169,8 +174,8 @@
     :is(.nav-link, .btn, a, button) i[data-lucide] {
       transition: transform .18s var(--ease-out, cubic-bezier(.2,.8,.2,1)), color .15s ease;
     }
-    :is(.nav-link, .btn):hover i[data-lucide] { transform: scale(1.15); }
-    .nav-link.active i[data-lucide] { transform: scale(1.06); }
+    :is(.nav-link, .nav-section-btn, .btn):hover i[data-lucide] { transform: scale(1.15); }
+    :is(.nav-link.active, .nav-section-btn.has-active) i[data-lucide] { transform: scale(1.06); }
 
     /* Glyph-specific character */
     :is(a, button, .btn, .nav-link):hover > i[data-lucide="bell"] {
@@ -203,9 +208,12 @@
     :is(a, button, .btn):hover > i[data-lucide="upload"] { animation: mi-bob .6s ease; }
     @keyframes mi-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px)} }
 
-    /* Nav rows nudge in on hover */
-    .nav-link { transition: background var(--motion-fast,.14s) ease, color var(--motion-fast,.14s) ease, padding-left .16s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
-    .nav-link:hover { padding-left: calc(.65rem + 4px); }
+    /* Nav rows nudge in on hover — applied to EVERY row type (top-level links,
+       section buttons, and submenu children) so the micro-animation is uniform
+       across the whole menu. Base matches the real .55rem row padding so the
+       nudge is a clean, smooth +4px slide, not a jump. */
+    :is(.nav-link, .nav-section-btn) { transition: background var(--motion-fast,.14s) ease, color var(--motion-fast,.14s) ease, padding-left .16s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
+    :is(.nav-link, .nav-section-btn):hover { padding-left: calc(.55rem + 4px); }
 
     /* Page entrance is owned by the view transition on #main-content (see
        mc-vt-in below) — the old per-card mi-rise stagger stacked a second
@@ -500,6 +508,20 @@
   /* Sidebar — Shopify-style: tight, subtle, with an arrow indicator
      for the active item and indented submenu links under each parent. */
   .sidebar { background: var(--sidebar-bg); }
+  /* Uniform 2px rhythm between TOP-LEVEL rows only. Applying it to the direct
+     row elements (not a container `space-y`) means collapsed submenu <div>s —
+     which stay in the flow at height 0 — never inject a phantom extra gap, so
+     the space after a parent-with-submenu matches every other row. Submenu
+     divs get their own margin when open (below); the inline-styled Settings
+     separator keeps its larger gap. */
+  .sidebar-nav > .nav-link + .nav-link,
+  .sidebar-nav > .nav-link + .nav-section-btn,
+  .sidebar-nav > .nav-section-btn + .nav-link,
+  .sidebar-nav > .nav-section-btn + .nav-section-btn,
+  .sidebar-nav > .nav-children + .nav-link,
+  .sidebar-nav > .nav-children + .nav-section-btn,
+  .sidebar-nav > .nav-group + .nav-link,
+  .sidebar-nav > .nav-group + .nav-section-btn { margin-top: 2px; }
   .nav-link {
     display: flex; align-items: center; gap: .5rem;
     padding: .28rem .55rem; border-radius: var(--radius-sm);
@@ -702,7 +724,12 @@
      behave like the section-group buttons. Box-sized hit area + pointer. */
   .nav-link .nav-chev {
     margin-left: auto; opacity: .5; flex: none;
-    box-sizing: content-box; padding: .35rem; margin-right: -.35rem;
+    /* Vertical padding kept small so the chevron's click hit-area doesn't
+       grow taller than the text line and inflate the row (parents with a
+       chevron were 32px vs 25px for plain rows). Horizontal padding keeps a
+       comfortable target width. */
+    box-sizing: content-box; padding: .12rem .35rem; margin-right: -.35rem;
+    line-height: 1;
     cursor: pointer; border-radius: 4px;
     transition: transform var(--motion-fast) var(--ease-out), opacity var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
     transform: rotate(-90deg);
@@ -928,7 +955,7 @@
     <button id="sidebar-close" class="lg:hidden btn btn-ghost p-1.5"><i data-lucide="x" class="h-4 w-4"></i></button>
   </div>
   {# ── MAIN NAV (slides out when entering Settings) ─────────────────────── #}
-  <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0.5">
+  <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2">
     <a href="{% url 'admin_dashboard:home' %}"      class="nav-link {% if active_nav == 'home' %}active{% endif %}"><i data-lucide="home" class="h-4 w-4"></i> Home</a>
     {% comment %}
       AI surface promoted to the top of the rail — these are daily-use
@@ -1028,7 +1055,7 @@
   </nav>
 
   {# ── SETTINGS NAV (slides in when /dashboard/settings/ is open) ──────── #}
-  <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2 space-y-0.5" style="display:none;">
+  <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2" style="display:none;">
     {# Overview link: active only on the bare /dashboard/settings/ root, #}
     {# never on a category sub-page. #}
     <a href="{% url 'admin_dashboard:settings' %}" class="nav-link {% if active_nav == 'settings' and not active_settings_category %}active{% endif %}">
