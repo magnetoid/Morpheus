@@ -44,9 +44,10 @@
       <a href="/products/" class="chip chip-clear">Clear all</a>
     </div>
     <style>
-      .chip { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .8rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper); font-size:.8rem; color:var(--ink-2); transition:border-color .15s, color .15s; }
-      .chip:hover { border-color:var(--ink); color:var(--ink); }
+      .chip { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .8rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper); font-size:.8rem; color:var(--ink-2); transition:border-color .15s, color .15s, transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+      .chip:hover { border-color:var(--ink); color:var(--ink); transform: translateY(-1px); box-shadow: 0 4px 10px -6px rgba(14,14,14,.3); }
       .chip-clear { color:var(--accent); border-style:dashed; }
+      .chip-clear:hover { color:var(--accent-ink); border-color:var(--accent-ink); }
     </style>
     {% endif %}
 

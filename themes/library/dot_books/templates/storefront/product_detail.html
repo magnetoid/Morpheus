@@ -67,7 +67,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:""|safe }}</p>
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
-          <span data-pdp-price style="font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</span>
+          <span data-pdp-price style="display:inline-block; font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</span>
           <span data-pdp-compare class="meta" style="text-decoration: line-through;{% if not product.isOnSale %} display:none;{% endif %}">{% if product.isOnSale %}{{ product.compareAtPrice|money }}{% endif %}</span>
         </div>
         {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}
@@ -148,7 +148,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 
         {# Trust strip: 3 icon+copy cells near the CTA. Sourced from Baymard 2026 PDP research. #}
         <div class="trust-strip">
-          <div class="trust-strip__item">
+          <div class="trust-strip__item" data-reveal>
             <span class="trust-strip__icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>
             </span>
@@ -157,7 +157,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
               <p>Tracked, signed-for delivery on every order</p>
             </div>
           </div>
-          <div class="trust-strip__item">
+          <div class="trust-strip__item" data-reveal style="--reveal-delay: 90ms;">
             <span class="trust-strip__icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-2"/><path d="M4 12l3 3 5-7"/></svg>
             </span>
@@ -166,7 +166,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
               <p>Send it back if it didn't land</p>
             </div>
           </div>
-          <div class="trust-strip__item">
+          <div class="trust-strip__item" data-reveal style="--reveal-delay: 180ms;">
             <span class="trust-strip__icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z"/></svg>
             </span>
@@ -478,7 +478,13 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 @media (max-width: 767px) {
   .pdp-sticky-cart { display: flex; }
   body.has-pdp-sticky main { padding-bottom: 5rem; }
+  /* Slide the bar up after the page settles, so it registers as an
+     arrival rather than pre-existing chrome. */
+  @media (prefers-reduced-motion: no-preference) {
+    .pdp-sticky-cart { animation: pdp-sticky-in 460ms var(--ease-out) 500ms both; }
+  }
 }
+@keyframes pdp-sticky-in { from { transform: translateY(110%); } to { transform: none; } }
 .pdp-sticky-cart__price {
   font-family: var(--serif); font-size: 1.15rem; font-weight: 600;
   flex: 1; min-width: 0;
@@ -523,7 +529,19 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
       hiddenInput.value = card.dataset.variantId;
     }
     var p = card.dataset.variantPrice;
-    if (p && priceMain) priceMain.textContent = p;
+    if (p && priceMain) {
+      var changed = priceMain.textContent !== p;
+      priceMain.textContent = p;
+      // A short tick when the number actually changes — confirms the
+      // edition swap without pulling focus from the picker.
+      if (changed && priceMain.animate
+          && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        priceMain.animate(
+          [{ transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }],
+          { duration: 260, easing: 'ease-out' }
+        );
+      }
+    }
     // Sale-price swap: show the variant's compare-at when this variant
     // is on sale, hide it otherwise. Keeps the top price block in sync
     // with the picker — a non-sale variant after a sale variant must
@@ -624,9 +642,14 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
   .faq-row:last-child { border-bottom: 1px solid var(--rule); }
   .faq-row summary { cursor: pointer; font-family: var(--serif); font-size: 1.1rem; font-weight: 500; list-style: none; display:flex; justify-content: space-between; gap: 1rem; }
   .faq-row summary::-webkit-details-marker { display: none; }
-  .faq-row summary::after { content: '+'; font-weight: 300; opacity: .6; }
-  .faq-row[open] summary::after { content: '–'; }
+  /* The '+' rotates into a '×' when open — same glyph, so it can animate. */
+  .faq-row summary::after { content: '+'; font-weight: 300; opacity: .6; transition: transform var(--motion-med) var(--ease-out); }
+  .faq-row[open] summary::after { transform: rotate(45deg); }
+  .faq-row summary:hover::after { opacity: 1; }
   .faq-answer { margin-top: .75rem; line-height: 1.65; color: var(--ink-2); }
+  @media (prefers-reduced-motion: no-preference) {
+    .faq-row[open] .faq-answer { animation: ko-reveal-up 280ms var(--ease-out) both; }
+  }
 </style>
 {% endif %}
 

@@ -622,7 +622,7 @@
 <!-- Curated row 1 -->
 <section>
   <div class="wrap">
-    <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;">
+    <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;" data-reveal>
       <div>
         <p class="eyebrow">Now on the shelf</p>
         <h2 class="display display-m" style="margin-top: 0.6rem;">New &amp; notable<span class="text-accent">.</span></h2>
@@ -645,7 +645,7 @@
 {% if staff_picks %}
 <section>
   <div class="wrap">
-    <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;">
+    <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;" data-reveal>
       <div>
         <p class="eyebrow">From the editor</p>
         <h2 class="display display-m" style="margin-top: 0.6rem;">Staff picks<span class="text-accent">.</span></h2>
@@ -668,14 +668,14 @@
 <!-- Manifesto block — placed after the shoppable rails so product density leads. -->
 <section style="background: var(--paper-2); padding: 6rem 0;">
   <div class="wrap" style="text-align: center;">
-    <p class="eyebrow">A note from us</p>
+    <p class="eyebrow" data-reveal>A note from us</p>
     <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
       We don't sell books that need a marketing budget to be worth reading<span class="text-accent">.</span>
     </h2>
-    <p class="lede" style="margin: 0 auto;">
+    <p class="lede" style="margin: 0 auto;" data-reveal>
       Every title here was read by at least one of us before it made it onto the shelf. That's both a constraint and a promise. If we put it in front of you, it earned the spot.
     </p>
-    <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;">
+    <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;" data-reveal>
       <a href="/about/" class="btn-link">Read the manifesto →</a>
       <a href="/vendors/" class="btn-link">Meet the publishers →</a>
     </div>
@@ -697,7 +697,7 @@
 
     <div style="display:grid; gap: 2rem; grid-template-columns: 1fr; margin-top: 2rem;" class="journal-grid">
       {% for i in '123' %}
-      <article style="border-top: 1px solid var(--rule); padding-top: 1.25rem;">
+      <article class="journal-card" data-reveal {% if forloop.counter == 2 %}style="--reveal-delay: 90ms;"{% elif forloop.counter == 3 %}style="--reveal-delay: 180ms;"{% endif %}>
         <p class="meta">April · 4 min read</p>
         <h3 style="font-family: var(--serif); font-size: 1.6rem; font-weight: 500; line-height: 1.2; margin: 0.6rem 0;">
           <a href="/journal/">{% if forloop.counter == 1 %}A short note on patience and the long sentence{% elif forloop.counter == 2 %}Why we don't carry books we haven't read{% else %}The case for the small press, made in numbers{% endif %}</a>
@@ -711,6 +711,18 @@
 
 <style>
 @media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }
+/* Journal teaser cards — the grey top rule "inks in" with accent red on
+   hover, sweeping left to right like a pen stroke; the headline follows. */
+.journal-card { position: relative; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
+.journal-card::before {
+  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: 0 50%;
+  transition: transform var(--motion-slow) var(--ease-out);
+}
+.journal-card:hover::before { transform: scaleX(1); }
+.journal-card h3 a { transition: color var(--motion-fast) var(--ease-out); }
+.journal-card:hover h3 a { color: var(--accent-ink); }
 </style>
 
 {% storefront_blocks "home_below_grid" %}

@@ -32,6 +32,7 @@ form post + redirect when JS is off.
   #cart-drawer-backdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1100;
     opacity: 0; transition: opacity .2s ease-out;
+    backdrop-filter: blur(2px);
   }
   #cart-drawer-backdrop.is-shown { opacity: 1; }
   #cart-drawer {
@@ -45,7 +46,21 @@ form post + redirect when JS is off.
     transition: transform .25s ease-out;
     font-family: var(--sans, system-ui), sans-serif;
   }
-  #cart-drawer.is-shown { transform: translateX(0); }
+  /* Opening rides the damped spring from base.html; closing keeps the
+     quick ease-out so dismissal feels immediate. */
+  #cart-drawer.is-shown { transform: translateX(0); transition: transform .5s var(--spring, ease-out); }
+  @media (prefers-reduced-motion: no-preference) {
+    /* Line items cascade in behind the sheet. --i is set per-row by
+       render(); replays on re-render as a "contents changed" cue. */
+    #cart-drawer.is-shown ul li {
+      animation: cart-item-in 380ms var(--ease-out, ease-out) both;
+      animation-delay: calc(120ms + var(--i, 0) * 45ms);
+    }
+  }
+  @keyframes cart-item-in {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: none; }
+  }
   #cart-drawer header {
     padding: 1.15rem 1.25rem;
     border-bottom: 1px solid var(--rule, #e5e0d6);
@@ -87,6 +102,7 @@ form post + redirect when JS is off.
   #cart-drawer footer .row {
     display: flex; justify-content: space-between; align-items: baseline;
   }
+  #cart-drawer-subtotal { display: inline-block; } /* transformable for the value-change pop */
   #cart-drawer footer .meta { font-size: .8rem; color: var(--muted, #777); margin: 0; }
   #cart-drawer footer .btn { display: block; text-align: center; padding: .75rem 1rem; }
 </style>
@@ -125,8 +141,9 @@ form post + redirect when JS is off.
     }
     emptyEl.hidden = true;
     footerEl.hidden = false;
-    items.forEach(function (it) {
+    items.forEach(function (it, idx) {
       var li = document.createElement('li');
+      li.style.setProperty('--i', idx);
       var img = it.product && it.product.primaryImage && it.product.primaryImage.url;
       li.innerHTML = (
         '<div class="cart-drawer-thumb">'
@@ -143,7 +160,17 @@ form post + redirect when JS is off.
       );
       listEl.appendChild(li);
     });
-    subtotalEl.textContent = fmtMoney(cart.subtotal);
+    var newSubtotal = fmtMoney(cart.subtotal);
+    // Pop the subtotal when its value actually changes — the eye lands on
+    // the number that moved, not on a silent swap.
+    if (subtotalEl.textContent !== newSubtotal && subtotalEl.animate
+        && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      subtotalEl.animate(
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+        { duration: 320, easing: 'ease-out' }
+      );
+    }
+    subtotalEl.textContent = newSubtotal;
   }
 
   function open() {
@@ -243,13 +270,24 @@ form post + redirect when JS is off.
         return r.json().then(function (d) { return { ok: r.ok, data: d }; });
       })
       .then(function (res) {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = btn.dataset._origText || 'Add to cart';
-        }
         if (!res.ok || (res.data && res.data.error)) {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = btn.dataset._origText || 'Add to cart';
+          }
           alert((res.data && res.data.error) || 'Sorry — couldn\'t add that.');
           return;
+        }
+        // Confirmation beat: the button flips to "✓ Added" while the cover
+        // flies, then settles back to its resting label.
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '✓ Added';
+          btn.classList.add('is-added');
+          setTimeout(function () {
+            btn.classList.remove('is-added');
+            btn.textContent = btn.dataset._origText || 'Add to cart';
+          }, 1500);
         }
         var cart = (res.data && res.data.cart) || {};
         var count = (cart.items || []).reduce(function (n, it) { return n + (it.quantity || 0); }, 0);

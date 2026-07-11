@@ -366,6 +366,99 @@
   .center { text-align: center; }
   .stack-3 > * + * { margin-top: 0.75rem; }
   .stack-6 > * + * { margin-top: 1.5rem; }
+
+  /* ── Motion II — storefront-wide microanimation layer ─────────────────
+     Scroll-reveal choreography, the dot-stamp signature, topbar elevation,
+     the reading ribbon, and hover polish. Everything is transform+opacity
+     (never reflow), gated behind html.has-motion (set by JS at the end of
+     <body>, so no-JS visitors always see content) and wrapped in
+     prefers-reduced-motion: no-preference. */
+  @media (prefers-reduced-motion: no-preference) {
+    /* Scroll reveal. JS tags managed elements with .will-reveal (manual
+       [data-reveal] hooks + every .grid-books child present at init) and
+       flips .is-in when they enter the viewport. Above-the-fold elements
+       get .is-in in the same synchronous pass, so they never paint hidden
+       and LCP is untouched. */
+    html.has-motion .will-reveal {
+      opacity: 0; transform: translateY(14px);
+      transition: opacity 520ms var(--ease-out), transform 520ms var(--ease-out);
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+    html.has-motion .will-reveal.is-in { opacity: 1; transform: none; }
+
+    /* The signature: every display heading ends in the brand period.
+       When the heading scrolls into view, the period stamps itself —
+       oversized, slightly rotated, pressed down into place like a type
+       slug hitting paper. One bold move; everything else stays quiet. */
+    html.has-motion .display > .text-accent {
+      display: inline-block; opacity: 0; transform-origin: 60% 78%;
+    }
+    html.has-motion .display.is-in > .text-accent {
+      animation: dot-stamp 520ms var(--ease-out) 160ms both;
+    }
+    @keyframes dot-stamp {
+      0%   { opacity: 0; transform: scale(2.6) rotate(10deg) translateY(-.06em); }
+      55%  { opacity: 1; transform: scale(.8)  rotate(-3deg) translateY(.015em); }
+      78%  { transform: scale(1.08) rotate(1deg); }
+      100% { opacity: 1; transform: none; }
+    }
+
+    /* Reading ribbon — a 2px bookmark of accent red that grows along the
+       underside of the topbar as you read down the page. CSS-only
+       scroll-driven animation; browsers without support just skip it. */
+    @supports (animation-timeline: scroll()) {
+      .topbar::after {
+        content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+        height: 2px; background: var(--accent);
+        transform-origin: 0 50%; transform: scaleX(0);
+        animation: ribbon-grow linear both;
+        animation-timeline: scroll(root);
+      }
+      @keyframes ribbon-grow { to { transform: scaleX(1); } }
+    }
+
+    /* Quick-search hits cascade in as results render. */
+    .quicksearch__hit { animation: ko-reveal-up 220ms var(--ease-out) both; }
+    .quicksearch__hit:nth-child(2) { animation-delay: 30ms; }
+    .quicksearch__hit:nth-child(3) { animation-delay: 60ms; }
+    .quicksearch__hit:nth-child(4) { animation-delay: 90ms; }
+    .quicksearch__hit:nth-child(5) { animation-delay: 120ms; }
+    .quicksearch__hit:nth-child(n+6) { animation-delay: 150ms; }
+
+    /* Mobile drawer links cascade after the sheet slides down. */
+    .drawer .nav-mobile a { opacity: 0; transform: translateY(10px); transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out); }
+    .drawer.open .nav-mobile a { opacity: 1; transform: none; }
+    .drawer.open .nav-mobile a:nth-child(1)  { transition-delay: 70ms; }
+    .drawer.open .nav-mobile a:nth-child(2)  { transition-delay: 110ms; }
+    .drawer.open .nav-mobile a:nth-child(3)  { transition-delay: 150ms; }
+    .drawer.open .nav-mobile a:nth-child(4)  { transition-delay: 190ms; }
+    .drawer.open .nav-mobile a:nth-child(5)  { transition-delay: 230ms; }
+    .drawer.open .nav-mobile a:nth-child(6)  { transition-delay: 270ms; }
+    .drawer.open .nav-mobile a:nth-child(7)  { transition-delay: 310ms; }
+    .drawer.open .nav-mobile a:nth-child(8)  { transition-delay: 350ms; }
+    .drawer.open .nav-mobile a:nth-child(n+9) { transition-delay: 390ms; }
+  }
+
+  /* Topbar elevation once the page scrolls — the bar goes slightly
+     translucent (its backdrop blur starts reading) and lifts. */
+  .topbar { transition: box-shadow var(--motion-med) var(--ease-out), background var(--motion-med) var(--ease-out); }
+  .topbar.is-scrolled {
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    box-shadow: 0 12px 32px -20px rgba(14,14,14,.38);
+  }
+
+  /* Hover polish — footer links nudge, icon buttons lift, ghost buttons
+     invert to ink. All declared after the base rules so they win ties. */
+  footer .col a { transition: transform var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
+  footer .col a:hover { transform: translateX(4px); }
+  .icon-btn { transition: background .15s, border-color .15s, transform var(--motion-fast) var(--ease-out); }
+  .icon-btn:hover { transform: translateY(-1px); }
+  .btn-ghost { transition: transform var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out); }
+  .btn-ghost:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); transform: translateY(-1px); }
+
+  /* Add-to-cart confirmation state — the cart-drawer JS flips the button
+     to "✓ Added" for a beat after a successful add. */
+  .btn.is-added, .btn.is-added:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; transform: none; }
 </style>
 {% block extra_head %}{% endblock %}
 
@@ -844,6 +937,80 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
       });
     });
   }).observe(document.documentElement, {childList: true, subtree: true});
+})();
+</script>
+
+<script>
+/* Motion II — scroll-reveal engine, dot-stamp trigger, topbar elevation,
+   and PLP→PDP cover-morph wiring. Kept as one small IIFE at the end of
+   <body> so it runs after the DOM exists and before first user scroll. */
+(function () {
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Gates the CSS initial-hidden states — without JS nothing is ever hidden.
+  document.documentElement.classList.add('has-motion');
+
+  /* Scroll reveal. Targets: manual [data-reveal] hooks, every .grid-books
+     child present now (staggered per row position), and .display headings
+     (which only stamp their brand period — the heading itself never hides).
+     Elements already in the viewport get .is-in in this same synchronous
+     pass so they never paint hidden (LCP-safe); the rest reveal on entry. */
+  var reveal = [];
+  var stamp = [];
+  document.querySelectorAll('[data-reveal]').forEach(function (el) { reveal.push(el); });
+  document.querySelectorAll('.grid-books').forEach(function (grid) {
+    Array.prototype.forEach.call(grid.children, function (el, i) {
+      el.style.setProperty('--reveal-delay', (i % 12 < 8 ? i % 12 : 8) * 55 + 'ms');
+      reveal.push(el);
+    });
+  });
+  document.querySelectorAll('.display').forEach(function (el) { stamp.push(el); });
+
+  reveal.forEach(function (el) { el.classList.add('will-reveal'); });
+  var all = reveal.concat(stamp);
+  if (reduced || !('IntersectionObserver' in window)) {
+    all.forEach(function (el) { el.classList.add('is-in'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        en.target.classList.add('is-in');
+        io.unobserve(en.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+    all.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight * 0.95 && r.bottom > 0) el.classList.add('is-in');
+      else io.observe(el);
+    });
+  }
+
+  /* Topbar elevation once the page has scrolled a beat. */
+  var bar = document.querySelector('.topbar');
+  if (bar) {
+    var scrolled = null;
+    var onScroll = function () {
+      var s = window.scrollY > 12;
+      if (s !== scrolled) { scrolled = s; bar.classList.toggle('is-scrolled', s); }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* Cover morph — the PDP gallery already names its hero image
+     `cover-<slug>` for cross-document view transitions; give the clicked
+     card's cover the matching name at click time (not statically, so a
+     product repeated across two rails never creates a duplicate name,
+     which would abort the whole transition). */
+  if (!reduced) {
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="/products/"]');
+      if (!a) return;
+      var m = (a.getAttribute('href') || '').match(/^\/products\/([\w-]+)\/$/);
+      if (!m) return;
+      var img = a.querySelector('.cover-wrap img');
+      if (img) img.style.viewTransitionName = 'cover-' + m[1];
+    }, true);
+  }
 })();
 </script>
 
