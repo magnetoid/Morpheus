@@ -12,6 +12,36 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.7.0 — 2026-07-11
+
+### A real account page
+
+- **Settings → Your account** is now editable. Set your **first and last name,
+  phone, and company** — saving your name means the top-right menu finally
+  shows it instead of your email. The page also shows your account details, a
+  **two-factor authentication** shortcut, and **your recent activity**.
+
+### Unsaved-changes save bar
+
+- Editing a product (or other forms) now shows a sticky **"Unsaved changes —
+  Save / Discard"** bar, and warns before you navigate away with unsaved edits.
+  **⌘S / Ctrl+S** saves. Previously the bar only worked on a full page load;
+  now it works when you open a form from the sidebar too.
+
+### Skip the setup checklist
+
+- The **"Set up your store"** first-run checklist now has a **Skip** button, so
+  stores that don't need it can hide it for good (you can still reach each step
+  from Settings).
+
+### Sidebar polish
+
+- The left menu now has **uniform row heights and spacing**, a **consistent
+  hover highlight and micro-animation across every item** (top-level, sections,
+  and sub-items alike), and tighter **icon-to-label alignment**.
+
+---
+
 ## v0.6.0 — 2026-07-11
 
 ### Pick your AI model from a permanent dropdown
