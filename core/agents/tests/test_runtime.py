@@ -261,3 +261,14 @@ class AgentRuntimeTests(TestCase):
         results = [s for s in res.trace.steps if s.kind == 'tool_result']
         self.assertEqual(results[-1].output, {'n': 7})
         self.assertEqual(results[-1].content, 'seven')
+
+    def test_degraded_sentinel_is_a_failure_not_a_final_answer(self):
+        # The breaker/fallback-router return outage sentinels as response
+        # TEXT; the loop must fail the run, never record the sentinel as the
+        # agent's answer.
+        provider = MockLLMProvider(
+            [LLMResponse(text='[All AI providers degraded. Last error: primary: boom]')]
+        )
+        res = self._run(_agent(), provider)
+        self.assertEqual(res.state, 'failed')
+        self.assertNotIn('[All AI providers degraded', res.text)

@@ -41,6 +41,20 @@ logger = logging.getLogger('morpheus.agents.llm')
 # the LLM call failing with a recoverable error.
 LLM_HTTP_TIMEOUT_SECS = 20
 
+# Degraded-response sentinels. The breaker and the fallback router return
+# these as response TEXT (not exceptions) so a mid-run agent loop can keep
+# its transcript consistent. Anything that surfaces LLM text to a human
+# MUST check `is_degraded_response()` first — a sentinel is an outage
+# marker, never an answer (shipping it raw to the chat was a real bug).
+DEGRADED_SENTINEL_CIRCUIT = '[Upstream AI provider is degraded'
+DEGRADED_SENTINEL_ALL = '[All AI providers degraded'
+_DEGRADED_SENTINELS = (DEGRADED_SENTINEL_CIRCUIT, DEGRADED_SENTINEL_ALL)
+
+
+def is_degraded_response(text: str | None) -> bool:
+    """True when `text` is an outage sentinel rather than model output."""
+    return (text or '').lstrip().startswith(_DEGRADED_SENTINELS)
+
 
 def _openai_client(api_key: str = '', base_url: str = '', **extra):
     """Construct an `openai.OpenAI` client with prod-sane defaults.
@@ -132,7 +146,7 @@ def _llm_breaker(fn: Callable) -> Callable:
                 exc,
             )
             return LLMResponse(
-                text=f'[Upstream AI provider is degraded — circuit open. {exc}]',
+                text=f'{DEGRADED_SENTINEL_CIRCUIT} — circuit open. {exc}]',
                 model=getattr(self, 'model', '') or 'unknown',
             )
 
@@ -727,7 +741,11 @@ class FallbackProviderRouter(LLMProvider):
         max_tokens: int = 1024,
     ) -> LLMResponse:
         providers_to_try = [self.primary] + self.secondaries
-        last_error_text = ''
+        # When everything fails, report the PRIMARY's error — that's the
+        # provider the merchant actually configured, so its failure is the
+        # actionable one. (Previously the LAST secondary's error won, so a
+        # fallback's missing-API-key noise masked the real cause.)
+        primary_error = ''
 
         for provider in providers_to_try:
             try:
@@ -738,19 +756,21 @@ class FallbackProviderRouter(LLMProvider):
                     max_tokens=max_tokens,
                 )
             except Exception as e:  # noqa: BLE001 — a raising provider must fail over, not abort
-                last_error_text = str(e)
+                if not primary_error:
+                    primary_error = f'{provider.name}: {e}'
                 logger.info(
                     'FallbackRouter: Provider %s raised (%s), trying next.', provider.name, e
                 )
                 continue
-            # Check if the circuit breaker tripped or there was a degradation error
-            if '[Upstream AI provider is degraded' not in resp.text:
+            # Circuit tripped / degraded response → try the next provider.
+            if not is_degraded_response(resp.text):
                 return resp
-            last_error_text = resp.text
+            if not primary_error:
+                primary_error = f'{provider.name}: {resp.text}'
             logger.info('FallbackRouter: Provider %s degraded, trying next.', provider.name)
 
         return LLMResponse(
-            text=f'[All AI providers degraded. Last error: {last_error_text}]',
+            text=f'{DEGRADED_SENTINEL_ALL}. Last error: {primary_error}]',
             model='fallback_router_failed',
         )
 
@@ -784,8 +804,13 @@ def get_llm_provider(
         if not use_fallback:
             return primary
 
-        # Automated fallback configuration
-        # Attempt to instantiate fallback providers if they are configured
+        # Automated fallback configuration: a provider only qualifies as a
+        # secondary if it has an API key actually configured. The old check
+        # (`hasattr(secondary, '_client')`) passed for OpenAI/Anthropic even
+        # with NO key — their SDK clients construct fine and defer auth — so
+        # unconfigured fallbacks joined the chain, burned a timeout each, and
+        # their "could not resolve authentication" noise masked the primary's
+        # real error in the degraded sentinel.
         secondaries = []
         fallback_choices = ['anthropic', 'openai', 'gemini']
         fallback_choices = [c for c in fallback_choices if c != chosen]
@@ -793,13 +818,11 @@ def get_llm_provider(
         for fallback_name in fallback_choices:
             fallback_cls = _PROVIDER_CLASSES.get(fallback_name)
             try:
-                # Instantiating might fail if no API key is configured
-                secondary = fallback_cls()
-                # Check if it has a valid API key config by verifying it didn't throw
-                # Some providers like Gemini throw if no key. Others might just pass empty strings.
-                if getattr(secondary, '_api_key', None) or hasattr(secondary, '_client'):
-                    # Basic check if it has client initialized
-                    secondaries.append(secondary)
+                from core.agents.provider_registry import get_provider_config
+
+                if not (get_provider_config(fallback_name).api_key or '').strip():
+                    continue  # unconfigured — would only fail at call time
+                secondaries.append(fallback_cls())
             except Exception:  # noqa: S110 — fallback provider is optional; skip if unconfigured
                 pass
 

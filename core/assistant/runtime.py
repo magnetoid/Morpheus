@@ -64,6 +64,12 @@ def _friendly_provider_error(raw: str) -> str:  # noqa: PLR0911
             "/dashboard/settings/ai/ and check the active provider's "
             'key.'
         )
+    if 'could not resolve authentication' in text or 'api_key' in text:
+        return (
+            'The active AI provider has no API key configured. Open '
+            '/dashboard/settings/ai/, paste a key for the active '
+            'provider (or switch providers), and try again.'
+        )
     if '402' in text or 'quota' in text or 'insufficient' in text:
         return (
             'The AI provider says quota / billing is exhausted. '
@@ -409,6 +415,42 @@ class Assistant:
 
             prompt_tokens += getattr(resp, 'prompt_tokens', 0) or 0
             completion_tokens += getattr(resp, 'completion_tokens', 0) or 0
+
+            # A degraded sentinel is an outage marker, not an answer. The
+            # breaker/fallback-router return it as response TEXT (so agent
+            # transcripts stay consistent), which means it arrives here
+            # looking like a normal completion — without this check the raw
+            # "[All AI providers degraded. Last error: …]" string (stack
+            # trace included) ships straight into the chat. Route it through
+            # the same friendly-error path as a raised provider exception.
+            try:
+                from core.agents.llm import is_degraded_response
+            except Exception:  # noqa: BLE001 — kernel import must never break Linda
+                is_degraded_response = lambda _t: False  # noqa: E731
+            if is_degraded_response(getattr(resp, 'text', '')):
+                friendly = _friendly_provider_error(resp.text)
+                self.store.append(
+                    conversation_key=conversation_key,
+                    message=StoredMessage(role='assistant', content=friendly),
+                )
+                self._emit_failure_signal(
+                    reason='provider_degraded',
+                    conversation_key=conversation_key,
+                    detail=resp.text[:500],
+                )
+                yield {
+                    'type': 'error',
+                    'result': AssistantRunResult(
+                        text=friendly,
+                        state='failed',
+                        error=resp.text[:500],
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        tool_call_count=tool_calls,
+                        duration_ms=int((time.monotonic() - started) * 1000),
+                    ),
+                }
+                return
 
             if not getattr(resp, 'tool_calls', None):
                 final = resp.text or ''

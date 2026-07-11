@@ -38,7 +38,13 @@ from typing import Any
 from core.agents.base import MorpheusAgent
 from core.agents.compaction import compact
 from core.agents.events import AgentEvents
-from core.agents.llm import LLMMessage, LLMProvider, LLMToolCall, get_llm_provider
+from core.agents.llm import (
+    LLMMessage,
+    LLMProvider,
+    LLMToolCall,
+    get_llm_provider,
+    is_degraded_response,
+)
 from core.agents.policies import BudgetExceeded, ScopeDenied, enforce_budget, enforce_policy
 from core.agents.tools import Tool, ToolError, ToolResult
 from core.agents.trace import AgentTrace, TraceStep
@@ -161,6 +167,12 @@ class AgentRuntime:
 
             trace.prompt_tokens += response.prompt_tokens
             trace.completion_tokens += response.completion_tokens
+
+            # A degraded sentinel from the breaker/fallback-router is an
+            # outage marker returned as response TEXT — never treat it as
+            # the agent's final answer.
+            if is_degraded_response(response.text):
+                return self._fail(trace, run_id, context, _humanise_provider_error(response.text))
 
             if not response.tool_calls:
                 # Final answer.

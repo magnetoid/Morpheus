@@ -49,6 +49,33 @@ class AssistantRunTests(TestCase):
         self.assertEqual(result.state, 'failed')
         self.assertIn('provider down', result.error)
 
+    def test_degraded_sentinel_becomes_friendly_error_not_an_answer(self):
+        # Regression (prod, 2026-07-12): the fallback router returns
+        # "[All AI providers degraded. Last error: …]" as response TEXT, and
+        # Linda shipped it into the chat verbatim as a completed answer. It
+        # must fail the turn with the friendly provider-error copy instead.
+        from core.agents.llm import LLMResponse
+
+        class _Degraded:
+            def respond(self, **kw):
+                return LLMResponse(
+                    text='[All AI providers degraded. Last error: anthropic: '
+                    'Could not resolve authentication method. Expected one of '
+                    'api_key, auth_token, or credentials to be set.]',
+                    model='fallback_router_failed',
+                )
+
+        a = Assistant(provider=_Degraded(), tools=[])
+        result = a.run(message='can you send emails?', conversation_key='test:degraded')
+        self.assertEqual(result.state, 'failed')
+        self.assertNotIn('[All AI providers degraded', result.text)
+        self.assertIn('/dashboard/settings/ai/', result.text)
+        # The persisted assistant message is the friendly copy too — history
+        # replays must not resurface the raw sentinel.
+        history = a.store.history(conversation_key='test:degraded', limit=10)
+        stored = [m.content for m in history if m.role == 'assistant']
+        self.assertTrue(stored and '[All AI providers degraded' not in stored[-1])
+
     def test_history_persists(self):
         a = Assistant(provider=MockAssistantProvider(), tools=[])
         a.run(message='first', conversation_key='test:hist')

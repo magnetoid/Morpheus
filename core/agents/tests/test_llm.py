@@ -157,3 +157,107 @@ class ProviderResolutionTests(SimpleTestCase):
         with patch('core.agents.provider_registry.get_provider_config', return_value=cfg):
             provider = get_llm_provider('deepseek', use_fallback=False)
         self.assertEqual(provider.name, 'deepseek')
+
+
+class DegradedSentinelTests(SimpleTestCase):
+    def test_is_degraded_response_truth_table(self):
+        from core.agents.llm import is_degraded_response
+
+        self.assertTrue(is_degraded_response('[All AI providers degraded. Last error: x]'))
+        self.assertTrue(is_degraded_response('[Upstream AI provider is degraded — circuit open]'))
+        self.assertTrue(is_degraded_response('  [All AI providers degraded...'))
+        self.assertFalse(is_degraded_response('Here is your answer about degraded providers.'))
+        self.assertFalse(is_degraded_response(''))
+        self.assertFalse(is_degraded_response(None))
+
+
+class FallbackRouterTests(SimpleTestCase):
+    def _provider(self, name, *, raises=None, text='ok'):
+        from core.agents.llm import LLMProvider
+
+        class _P(LLMProvider):
+            def respond(self, **_kw):
+                if raises:
+                    raise raises
+                return LLMResponse(text=text, model='m')
+
+        p = _P()
+        p.name = name
+        p.model = 'm'
+        return p
+
+    def test_failover_to_working_secondary(self):
+        from core.agents.llm import FallbackProviderRouter
+
+        router = FallbackProviderRouter(
+            self._provider('primary', raises=RuntimeError('primary down')),
+            [self._provider('secondary', text='rescued')],
+        )
+        resp = router.respond(messages=[], tools=[])
+        self.assertEqual(resp.text, 'rescued')
+
+    def test_sentinel_reports_primary_error_not_last_secondary(self):
+        # Regression: prod showed "Could not resolve authentication method" —
+        # an UNCONFIGURED secondary's auth noise — masking the primary's real
+        # failure. The sentinel must carry the primary's error.
+        from core.agents.llm import FallbackProviderRouter
+
+        router = FallbackProviderRouter(
+            self._provider('primary', raises=RuntimeError('primary: real cause')),
+            [
+                self._provider(
+                    'anthropic', raises=RuntimeError('Could not resolve authentication method')
+                )
+            ],
+        )
+        resp = router.respond(messages=[], tools=[])
+        self.assertIn('[All AI providers degraded', resp.text)
+        self.assertIn('real cause', resp.text)
+        self.assertNotIn('Could not resolve authentication', resp.text)
+
+    def test_unconfigured_fallbacks_are_not_added_as_secondaries(self):
+        # Regression: OpenAI/Anthropic SDK clients construct fine with NO key
+        # (auth is deferred), so the old `hasattr(_client)` check admitted
+        # unconfigured providers into the fallback chain.
+        from unittest.mock import patch
+
+        from core.agents.llm import FallbackProviderRouter
+        from core.agents.provider_registry import ProviderConfig
+
+        def _cfg(provider=None):
+            # Primary (deepseek) has a key; every would-be fallback does not.
+            key = 'sk-test' if provider == 'deepseek' else ''
+            return ProviderConfig(
+                provider=provider or 'deepseek',
+                api_key=key,
+                base_url='',
+                model='deepseek-chat',
+                embedding_model='',
+            )
+
+        with patch('core.agents.provider_registry.get_provider_config', side_effect=_cfg):
+            provider = get_llm_provider('deepseek', use_fallback=True)
+        self.assertNotIsInstance(provider, FallbackProviderRouter)
+        self.assertEqual(provider.name, 'deepseek')
+
+    def test_configured_fallback_is_added(self):
+        from unittest.mock import patch
+
+        from core.agents.llm import FallbackProviderRouter
+        from core.agents.provider_registry import ProviderConfig
+
+        def _cfg(provider=None):
+            # Primary + anthropic configured; openai/gemini not.
+            key = 'sk-test' if provider in ('deepseek', 'anthropic') else ''
+            return ProviderConfig(
+                provider=provider or 'deepseek',
+                api_key=key,
+                base_url='',
+                model='m',
+                embedding_model='',
+            )
+
+        with patch('core.agents.provider_registry.get_provider_config', side_effect=_cfg):
+            provider = get_llm_provider('deepseek', use_fallback=True)
+        self.assertIsInstance(provider, FallbackProviderRouter)
+        self.assertEqual([s.name for s in provider.secondaries], ['anthropic'])
