@@ -120,6 +120,22 @@ def _execute_worker_run(  # noqa: PLR0915
             )
         except DatabaseError as e:  # noqa: BLE001
             logger.warning('spawn: persist step failed: %s', e)
+        # Spawned Workers' tool calls must reach core.audit like every other
+        # AI decision — before this, only Linda's own runs (via agent_core's
+        # _persist_step) were audited and parallel Workers were invisible to
+        # the compliance trail. record_ai_decision never raises.
+        if step.kind == 'tool_result':
+            from core.audit.services import record_ai_decision
+
+            record_ai_decision(
+                agent=getattr(agent, 'name', '') or 'worker',
+                tool=step.name or '',
+                run_id=str(run.pk),
+                args=step.arguments or {},
+                output=output if isinstance(output, (dict, list, str, int, float, bool)) else '',
+                duration_ms=(step.metadata or {}).get('duration_ms'),
+                target=f'agent_run/{run.pk}',
+            )
 
     provider = get_llm_provider(agent.provider, model=agent.model or None)
     runtime = AgentRuntime(agent, provider=provider, on_step=_mirror)

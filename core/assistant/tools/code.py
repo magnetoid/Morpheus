@@ -83,7 +83,13 @@ def run_python_tool(*, code: str, agent=None, context=None, description: str = '
     by_name = _available_tools(agent)
     calls: list[dict] = []
 
-    agent_scopes = set(getattr(agent, 'scopes', None) or [])
+    # Distinguish "no scope model" from "explicitly empty scopes": kernel
+    # Workers declare `.scopes` (empty = deny scoped tools), while Linda's
+    # Assistant has no such attribute at all — her catalog is curated +
+    # mode-filtered upstream, so the bridge must not dead-letter her.
+    _declared_scopes = getattr(agent, 'scopes', None)
+    agent_scopes = set(_declared_scopes or [])
+    has_scope_model = _declared_scopes is not None
 
     def call(name, **kwargs):
         if len(calls) >= _MAX_TOOL_CALLS:
@@ -95,8 +101,13 @@ def run_python_tool(*, code: str, agent=None, context=None, description: str = '
                 f'(read/safe tools only — see list_tools())'
             )
         # Defence in depth: Tool.invoke() does NOT enforce scopes (the runtime
-        # does, pre-dispatch). The bridge bypasses that path, so re-check here.
-        if agent is not None and not set(t.scopes or []).issubset(agent_scopes):
+        # does, pre-dispatch). The bridge bypasses that path, so re-check here —
+        # but only when the caller actually models scopes (kernel Workers do;
+        # an explicitly EMPTY scope list still means "deny scoped tools").
+        # Linda's Assistant declares no `.scopes` at all; the old
+        # `agent is not None` guard treated her as empty-scoped and wrongly
+        # refused every scoped read tool, dead-lettering the bridge.
+        if has_scope_model and not set(t.scopes or []).issubset(agent_scopes):
             raise RuntimeError(f'missing scope for {name!r}')
         res = t.invoke(dict(kwargs), agent=agent, context=context)
         calls.append({'tool': name})

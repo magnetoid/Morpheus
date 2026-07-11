@@ -685,7 +685,50 @@ class Assistant:
                 role='tool', tool_name=tool_name, tool_args=args, tool_output=payload
             ),
         )
+        self._audit_write_tool(
+            tool=tool,
+            args=args,
+            payload=payload,
+            error_msg=error_msg,
+            conversation_key=conversation_key,
+            context=context,
+        )
         return payload, error_msg
+
+    def _audit_write_tool(
+        self, *, tool, args, payload, error_msg, conversation_key, context
+    ) -> None:
+        """Record write-tool invocations to core.audit (fail-soft).
+
+        Chat transcripts are Linda's only record otherwise — a merchant
+        auditing "what did the AI change?" must be able to answer from the
+        audit log, not by re-reading conversations. Read tools are skipped
+        (volume, no state change).
+        """
+        try:
+            is_write = bool(getattr(tool, 'requires_approval', False)) or any(
+                'write' in s or s in ('orders.cancel', 'selfdev')
+                for s in (getattr(tool, 'scopes', None) or [])
+            )
+            if not is_write:
+                return
+            from core.audit.services import record
+
+            user = (context or {}).get('user')
+            record(
+                event_type='assistant.tool_write',
+                actor=user if getattr(user, 'pk', None) else None,
+                target=getattr(tool, 'name', ''),
+                severity='warning' if error_msg else 'info',
+                metadata={
+                    'args': json.dumps(args, default=str)[:2000],
+                    'output_head': json.dumps(payload, default=str)[:500],
+                    'error': (error_msg or '')[:300],
+                    'conversation': conversation_key,
+                },
+            )
+        except Exception:  # noqa: BLE001 — auditing must never break the turn
+            logger.debug('assistant: write-tool audit skipped', exc_info=True)
 
 
 def run_assistant(

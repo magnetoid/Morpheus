@@ -539,16 +539,13 @@ class AIAssistantPlugin(Plugin):
                         'leave off.'
                     ),
                 },
-                'agent_purchase_requires_approval': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Agent purchases require approval',
-                },
-                'memory_confidence_decay_days': {
-                    'type': 'integer',
-                    'default': 90,
-                    'title': 'Memory confidence decay (days)',
-                },
+                # NOTE: `agent_purchase_requires_approval` and
+                # `memory_confidence_decay_days` were removed (2026-07) —
+                # both rendered in Settings but were consumed by NOTHING.
+                # A "Recommended on" switch that does nothing is a
+                # credibility bug; re-add only together with the code that
+                # reads it. (Purchase gating today = the per-tool
+                # `confirmed`/hard-gate flow in core/assistant/tools.)
             },
         }
 

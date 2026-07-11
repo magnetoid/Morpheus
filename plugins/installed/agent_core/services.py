@@ -98,7 +98,11 @@ def _persist_step(*, run, seq: int, step: TraceStep) -> None:
         metadata=step.metadata or {},
     )
 
-    if step.kind == 'tool_call':
+    # Audit on the RESULT step, not the call step: a `tool_call` TraceStep is
+    # pre-invocation, so its output is always None — every agents.decision
+    # row used to carry an empty `output`. The tool_result step has the real
+    # outcome (args live on the AgentStep rows either way).
+    if step.kind == 'tool_result':
         from core.audit.services import record_ai_decision
 
         record_ai_decision(

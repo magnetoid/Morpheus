@@ -217,7 +217,9 @@ def record_skill_outcome(name: str, success: bool):
         'Outcomes accumulate; a skill that keeps failing is auto-retired so it stops '
         'being offered. Call this after a Worker that used a skill finishes.'
     ),
-    scopes=['system.read'],
+    # Mutates LearnedSkill stats (and can auto-retire a skill) — a write
+    # scope keeps it out of run_python's read-only sandbox bridge.
+    scopes=['system.write'],
     schema={
         'type': 'object',
         'properties': {

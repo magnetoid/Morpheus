@@ -909,12 +909,8 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
             'Generate synthetic shopper sessions to load-test the agent. Coming soon — not yet wired.',
             True,
         ),
-        (
-            'agent_purchase_requires_approval',
-            'Agent purchases require approval',
-            'Require your explicit approval before any AI agent completes a purchase. Recommended on.',
-            False,
-        ),
+        # 'agent_purchase_requires_approval' removed — it was consumed by
+        # nothing (purchase gating is the per-tool confirmed/hard-gate flow).
     ]
     features = [
         {'key': k, 'label': lbl, 'description': desc, 'coming_soon': cs, 'value': bool(cfg.get(k))}

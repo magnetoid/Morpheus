@@ -31,7 +31,10 @@ _SEMANTIC_FLOOR = 0.25
         'Use sparingly — only for stable preferences ("prefers Postmark", '
         '"runs Black Friday in mid-November"), not transient state.'
     ),
-    scopes=['system.read'],
+    # A write scope — this MUTATES rows. The label matters: run_python's
+    # sandbox admits only read-scoped tools, so a 'system.read' tag here let
+    # scripts write memory (a real leak, fixed 2026-07).
+    scopes=['system.write'],
     schema={
         'type': 'object',
         'properties': {
@@ -145,7 +148,7 @@ def memory_recall_tool(*, query: str = '', scope: str = '', limit: int = 50) -> 
 @tool(
     name='memory.forget',
     description='Delete a remembered fact by (scope, key).',
-    scopes=['system.read'],
+    scopes=['system.write'],  # deletes rows — see memory.remember's scope note
     schema={
         'type': 'object',
         'properties': {
