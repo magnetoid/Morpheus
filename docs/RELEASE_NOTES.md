@@ -12,6 +12,43 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.8.0 — 2026-07-11
+
+### The storefront feels alive — microanimations everywhere
+
+- **Covers morph into the product page.** Click any book on the shelf and its
+  cover glides into place as the product page opens (cross-document view
+  transitions), instead of a hard cut.
+- **The brand period stamps itself.** Every big heading ends in the red
+  dot-books period — it now presses into the page as the heading scrolls into
+  view, like a type slug hitting paper.
+- **The page responds as you read.** Product grids cascade in with a gentle
+  stagger, a 2px red *reading ribbon* under the top bar tracks your progress
+  down the page, and the top bar lifts and goes translucent once you scroll.
+- **Adding to cart finally confirms.** The button flips to **“✓ Added”** while
+  the cover flies to the bag, the drawer springs open with items cascading in,
+  and the subtotal pops when its value changes.
+- **Dozens of small touches** — prices tick when you switch editions, FAQ
+  answers unfold, footer links nudge, ghost buttons invert to ink, search
+  results and the mobile menu cascade in. Everything honours
+  *prefers-reduced-motion* and works without JavaScript.
+
+### The storefront feels printed — visual craft + real content
+
+- **Paper with tooth.** The warm background now carries a faint print-stock
+  grain; covers get a **spine crease and edge light** so books read as
+  physical objects.
+- **Missing covers become title pages.** Products without an image render a
+  set title page — hairline frame, the title in Fraunces, the red period
+  beneath — instead of an apologetic “No image yet”.
+- **Bookish typography.** Drop caps open the product description and journal
+  entries, prices are set in the serif, every section eyebrow carries a short
+  red tick, and the footer signs off with a colophon.
+- **Real content on the home page.** The journal teaser now shows your actual
+  latest journal entries (with correct links and dates), and a new **“Browse
+  the shelves”** genre index renders your top-level categories as a
+  contents page.
+
 ## v0.7.0 — 2026-07-11
 
 ### A real account page
