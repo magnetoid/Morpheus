@@ -110,6 +110,47 @@ class DashboardHomeModularityTests(TestCase):
         self.assertFalse(steps[1]['done'])
 
 
+class SetupChecklistSkipTests(TestCase):
+    """The first-run 'Set up your store' checklist can be skipped for good."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from django.test import Client
+
+        self.client = Client()
+        u = get_user_model().objects.create_user(
+            username='setupstaff', email='setup@x.test', password='pw', is_staff=True
+        )
+        self.client.force_login(u)
+        from plugins.registry import plugin_registry
+
+        self._adm = plugin_registry.get('admin_dashboard')
+        self._adm.set_config('setup_guide_dismissed', False)
+        self._adm.invalidate_config_cache()
+
+    def test_widget_shows_then_hides_after_skip_and_persists(self):
+        # Fresh store (no products/orders/keys) → checklist is visible.
+        html = self.client.get('/dashboard/').content.decode()
+        self.assertIn('Set up your store', html)
+        self.assertIn('/dashboard/setup/dismiss/', html)  # the Skip form
+
+        # Skip it.
+        resp = self.client.post('/dashboard/setup/dismiss/')
+        self.assertEqual(resp.status_code, 302)
+        self._adm.invalidate_config_cache()
+        self.assertTrue(self._adm.get_config_value('setup_guide_dismissed', False))
+
+        # Gone now — and stays gone on the next load (persisted server-side).
+        html2 = self.client.get('/dashboard/').content.decode()
+        self.assertNotIn('Set up your store', html2)
+
+    def test_dismiss_requires_post(self):
+        # A GET must not mutate state (CSRF-safe).
+        self.client.get('/dashboard/setup/dismiss/')
+        self._adm.invalidate_config_cache()
+        self.assertFalse(self._adm.get_config_value('setup_guide_dismissed', False))
+
+
 class RecentOrdersEmailCellTests(TestCase):
     """Regression: the recent-orders email cell must not 500 on a guest order
     (no customer + empty email). `default:o.customer.email` resolved the arg

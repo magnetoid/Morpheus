@@ -11,6 +11,7 @@ import contextlib
 from morpheus.views import (
     HttpRequest,
     HttpResponse,
+    redirect,
     render,
     staff_member_required,
 )
@@ -81,6 +82,8 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     setup_done = sum(1 for s in setup_steps if s['done'])
     setup_total = len(setup_steps)
     setup_all_done = setup_total > 0 and setup_done == setup_total
+    # Merchant can skip the first-run checklist even before it's complete.
+    setup_dismissed = _setup_guide_dismissed()
 
     activity = _compute_activity_feed(limit=20)
 
@@ -99,6 +102,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
             'setup_done': setup_done,
             'setup_total': setup_total,
             'setup_all_done': setup_all_done,
+            'setup_dismissed': setup_dismissed,
             'activity': activity,
             'briefing': briefing,
             'pulse': panels.get('pulse', []),
@@ -132,6 +136,37 @@ def _compute_activity_feed(limit: int = 20) -> list:
         items.sort(key=lambda it: it['when'], reverse=True)
         items = items[:limit]
     return items
+
+
+_SETUP_DISMISS_KEY = 'setup_guide_dismissed'
+
+
+def _setup_guide_dismissed() -> bool:
+    """True once a merchant has skipped the first-run setup checklist.
+
+    Stored on the admin_dashboard plugin config (store-wide, no migration).
+    """
+    with _safe_block('setup.dismissed'):
+        from plugins.registry import plugin_registry
+
+        adm = plugin_registry.get('admin_dashboard')
+        if adm is not None:
+            return bool(adm.get_config_value(_SETUP_DISMISS_KEY, False))
+    return False
+
+
+@staff_member_required
+def setup_dismiss(request: HttpRequest) -> HttpResponse:
+    """Skip the first-run 'Set up your store' checklist for good."""
+    if request.method != 'POST':
+        return redirect('/dashboard/')
+    with _safe_block('setup.dismiss'):
+        from plugins.registry import plugin_registry
+
+        adm = plugin_registry.get('admin_dashboard')
+        if adm is not None:
+            adm.set_config(_SETUP_DISMISS_KEY, True)
+    return redirect('/dashboard/')
 
 
 def _compute_setup_steps() -> list:

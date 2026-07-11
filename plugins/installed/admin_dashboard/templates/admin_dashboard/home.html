@@ -42,18 +42,27 @@
     </div>
   </form>
 
-  {# First-run checklist. Hidden once every step is done so the home #}
-  {# stays clean for established stores. #}
-  {% if setup_steps and not setup_all_done %}
+  {# First-run checklist. Hidden once every step is done — or once the #}
+  {# merchant skips it — so the home stays clean for established stores. #}
+  {% if setup_steps and not setup_all_done and not setup_dismissed %}
   <div class="card card-padded">
-    <div class="flex items-center justify-between mb-2">
-      <div>
+    <div class="flex items-center justify-between mb-2 gap-3">
+      <div class="min-w-0">
         <h2 class="font-semibold text-sm">Set up your store</h2>
         <p class="text-xs text-[color:var(--text-muted)]">A few quick steps before your first real sale.</p>
       </div>
-      <span class="text-xs font-medium tabular-nums text-[color:var(--text-muted)]">
-        {{ setup_done }} of {{ setup_total }} complete
-      </span>
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <span class="text-xs font-medium tabular-nums text-[color:var(--text-muted)]">
+          {{ setup_done }} of {{ setup_total }} complete
+        </span>
+        <form method="post" action="{% url 'admin_dashboard:setup_dismiss' %}" class="m-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-ghost btn-sm text-[color:var(--text-muted)]"
+                  title="Hide this checklist — you can still reach these from Settings">
+            Skip
+          </button>
+        </form>
+      </div>
     </div>
     <div style="height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-bottom: 1rem;">
       <div style="height: 100%;
