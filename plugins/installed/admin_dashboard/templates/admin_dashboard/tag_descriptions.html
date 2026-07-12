@@ -1,0 +1,49 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Tag descriptions · Morpheus{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Tag descriptions</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Give each product tag an attractive title + description. It renders below the title on the tag page (<code>/products/?tag=&lt;tag&gt;</code>). Tags without copy just show their bare name.</p>
+    </div>
+  </div>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+      <input name="q" value="{{ search }}" placeholder="Search tags" class="input input-search">
+    </div>
+    <button class="btn btn-primary">Search</button>
+  </form>
+
+  {% if rows %}
+  <form method="post" class="space-y-3">
+    {% csrf_token %}
+    <div class="card overflow-hidden divide-y divide-[color:var(--border)]">
+      {% for row in rows %}
+      <div class="p-4 grid gap-3 md:grid-cols-[minmax(0,220px)_1fr] items-start">
+        <div class="space-y-1.5">
+          <label class="text-xs uppercase tracking-wide text-[color:var(--text-subtle)]">Tag · <code>{{ row.slug }}</code></label>
+          <input name="name__{{ row.slug }}" value="{{ row.name }}" class="input w-full" placeholder="Display name">
+          {% if row.has_copy %}<span class="text-[11px] text-[color:var(--text-subtle)]">Has description</span>{% endif %}
+        </div>
+        <textarea name="desc__{{ row.slug }}" rows="3" class="input w-full" placeholder="Write an attractive description shown on the {{ row.name }} tag page…">{{ row.description }}</textarea>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="flex items-center gap-3 sticky bottom-0 py-3 bg-[color:var(--bg)]">
+      <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save descriptions</button>
+      <span class="text-sm text-[color:var(--text-muted)]">{{ rows|length }} tag{{ rows|length|pluralize }}{% if search %} matching &ldquo;{{ search }}&rdquo;{% endif %}</span>
+    </div>
+  </form>
+  {% else %}
+  <div class="card card-padded text-center text-[color:var(--text-muted)]">
+    <p class="text-sm">{% if search %}No tags match &ldquo;{{ search }}&rdquo;.{% else %}No tags yet — tag a few products first, then write their descriptions here.{% endif %}</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -106,6 +106,48 @@ class Collection(models.Model):
         super().save(*args, **kwargs)
 
 
+class TagProfile(models.Model):
+    """Editorial copy for a product tag.
+
+    taggit's ``Tag`` has no description, so a tag landing page (the ``?tag=`` PLP)
+    has nothing to show below its title. This side-table gives every tag an
+    optional display name + attractive description, keyed by the tag's slug so
+    it survives the tag being renamed/re-created. One row per tag the merchant
+    wants to write copy for; tags without a row just render their bare name.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slug = models.SlugField(max_length=200, unique=True, db_index=True)
+    name = models.CharField(max_length=200, help_text='Display name shown as the page title.')
+    description = models.TextField(blank=True, help_text='Shown below the title on the tag page.')
+    meta_description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def for_tag(cls, value: str):
+        """Resolve the profile for a ``?tag=`` value (a tag name or slug).
+
+        The tag filter matches by name case-insensitively while product cards
+        link by slug, so normalise through slugify to hit the keyed row either
+        way. Returns None when no editorial copy exists for the tag.
+        """
+        if not value:
+            return None
+        return cls.objects.filter(slug=slugify(value)).first()
+
+
 class AttributeGroup(models.Model):
     """Groups attributes (e.g. 'Clothing Sizes', 'Colors')."""
 

@@ -96,8 +96,17 @@ def product_list(request):
 
     # Tag filter
     tag_slug = (request.GET.get('tag') or '').strip()
+    selected_tag_obj = None
     if tag_slug:
-        qs = qs.filter(tags__name__iexact=tag_slug)
+        # Match by slug OR name — product cards link by tag.slug while the tag
+        # itself is stored by name, so a name-only filter missed slugged links.
+        from django.db.models import Q  # noqa: PLC0415
+
+        qs = qs.filter(Q(tags__name__iexact=tag_slug) | Q(tags__slug__iexact=tag_slug))
+        # Editorial copy for the tag landing (title + description below it).
+        from plugins.installed.catalog.models import TagProfile  # noqa: PLC0415
+
+        selected_tag_obj = TagProfile.for_tag(tag_slug)
 
     # Book filters — `?author=Hanna Rieder`, `?publisher=Pelican Press`.
     # Model-first (BookProduct) with a legacy book.* metafield fallback.
@@ -263,6 +272,7 @@ def product_list(request):
             'selected_category': cat_slug,
             'selected_category_obj': selected_cat,
             'selected_tag': tag_slug,
+            'selected_tag_obj': selected_tag_obj,
             'selected_author': book_filter.get('author', ''),
             'selected_publisher': book_filter.get('publisher', ''),
             'selected_sort': sort,

@@ -1012,6 +1012,7 @@
     <div class="nav-children {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' or active_nav == 'collections' or active_nav == 'book_taxonomies' %}open{% endif %}">
       <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' and request.path != '/dashboard/products/content-audit/' %}active{% endif %}">All products</a>
       <a href="{% url 'admin_dashboard:categories' %}" class="nav-link {% if active_nav == 'categories' %}active{% endif %}">Categories</a>
+      <a href="{% url 'admin_dashboard:tag_descriptions' %}" class="nav-link {% if request.path == '/dashboard/tags/descriptions/' %}active{% endif %}">Tag descriptions</a>
       <a href="{% url 'admin_dashboard:collections' %}" class="nav-link {% if active_nav == 'collections' %}active{% endif %}">Collections</a>
       {# Plugin-contributed Products children (e.g. book_product's Book taxonomies), placed by each plugin via DashboardPage(section='products', order=…) — ADR 0016. #}
       {% for p in products_nav_children %}<a href="{{ p.url }}" class="nav-link {% if p.is_active %}active{% endif %}">{{ p.label }}</a>{% endfor %}

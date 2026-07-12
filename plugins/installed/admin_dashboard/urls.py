@@ -233,6 +233,7 @@ urlpatterns = [
     ),
     path('categories/', views.categories_list, name='categories'),
     path('categories/<uuid:category_id>/edit/', views.category_edit, name='category_edit'),
+    path('tags/descriptions/', views.tag_descriptions, name='tag_descriptions'),
     path('collections/', views.collections_list, name='collections'),
     path('collections/new/', views.collection_new, name='collection_new'),
     path('collections/<uuid:collection_id>/edit/', views.collection_edit, name='collection_edit'),
