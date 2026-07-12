@@ -140,6 +140,13 @@ class DigitalProductsPlugin(Plugin):
         from django.utils import timezone
         from plugins.installed.digital_products.models import DownloadToken
 
+        # Idempotent: ORDER_PAID can fire more than once (a manual "mark paid"
+        # after a gateway payment, a second successful transaction) and this used
+        # to mint a fresh set of tokens + send a duplicate download email each
+        # time. If this order already has tokens, do nothing.
+        if DownloadToken.objects.filter(order=order).exists():
+            return
+
         cfg = self.get_config()
         ttl_hours = int(cfg.get('token_ttl_hours', 168) or 168)
         max_dl = int(cfg.get('max_downloads_per_token', 5) or 5)

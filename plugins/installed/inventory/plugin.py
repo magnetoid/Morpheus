@@ -31,15 +31,9 @@ class InventoryPlugin(Plugin):
         self.register_hook('return.refunded', self.on_return_refunded, priority=5)
         self.register_celery_tasks('plugins.installed.inventory.tasks')
 
-        # Beat schedules: detect abandoned carts every 30 min; apply price
-        # schedules every 5 min. Operators can override via Django settings.
-        self.register_celery_beat(
-            'inventory:find_abandoned_carts',
-            {
-                'task': 'inventory.find_abandoned_carts',
-                'schedule': 60 * 30,
-            },
-        )
+        # Beat schedules: apply price schedules every 5 min. (Abandoned-cart
+        # detection is owned solely by the cart_abandonment plugin — inventory's
+        # duplicate, un-stamped detector was removed; see tasks.py.)
         self.register_celery_beat(
             'inventory:apply_price_schedules',
             {

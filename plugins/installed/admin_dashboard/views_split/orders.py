@@ -223,6 +223,26 @@ def order_new(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _mark_order_paid(order) -> bool:
+    """Mark an order paid out-of-band (COD, bank transfer, manual) and fire
+    ORDER_PAID exactly once. Every fulfillment side-effect — digital download
+    tokens, loyalty points, CDP lifetime-value, ad-channel conversion pixels,
+    the payment-confirmed email — hangs off ORDER_PAID, so simply flipping
+    ``payment_status`` (as this used to) silently delivered nothing. Idempotent:
+    a no-op (returns False) when the order is already paid, so a double click
+    can't double-fire the event.
+    """
+    if order.payment_status == 'paid':
+        return False
+    from core.hooks import MorpheusEvents, hook_registry
+
+    order.payment_status = 'paid'
+    order.save(update_fields=['payment_status', 'updated_at'])
+    order.log_event('PAYMENT_MARKED_PAID', message='Marked paid via dashboard')
+    hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
+    return True
+
+
 @staff_member_required
 def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
     """POST-only side-effects on an existing order (cancel, mark paid, …)."""
@@ -261,9 +281,7 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
             order.save()
             messages.success(request, f'Order #{order.order_number} marked as delivered.')
         elif action == 'mark_paid':
-            order.payment_status = 'paid'
-            order.save(update_fields=['payment_status', 'updated_at'])
-            order.log_event('PAYMENT_MARKED_PAID', message='Marked paid via dashboard')
+            _mark_order_paid(order)
             messages.success(request, f'Order #{order.order_number} marked paid.')
         elif action == 'add_tracking':
             tracking = (request.POST.get('tracking_number') or '').strip()[:200]
@@ -372,17 +390,27 @@ def orders_bulk(request: HttpRequest) -> HttpResponse:
         return redirect('admin_dashboard:orders')
 
     if action == 'mark_paid':
-        qs.update(payment_status='paid')
-        messages.success(request, f'Marked {count} order(s) as paid.')
+        # Per-order (not qs.update) so ORDER_PAID fires for each — a bulk
+        # payment_status update skipped all fulfillment side-effects.
+        paid = 0
+        for o in qs:
+            try:
+                if _mark_order_paid(o):
+                    paid += 1
+            except Exception:  # noqa: BLE001, S112 — one bad order must not abort the batch
+                continue
+        messages.success(request, f'Marked {paid} order(s) as paid.')
     elif action == 'cancel':
-        # Transition each order — FSM is per-instance so we loop.
+        # Go through the FSM (order.cancel) — direct `o.status = 'cancelled'` on
+        # the protected FSMField raises and was silently swallowed, so nothing
+        # cancelled and no ORDER_CANCELLED (stock release / email) fired.
         ok = 0
         for o in qs:
             try:
-                o.status = 'cancelled'
-                o.save(update_fields=['status'])
+                o.cancel(reason='Bulk cancel from dashboard')
+                o.save()
                 ok += 1
-            except Exception:  # noqa: BLE001, S112
+            except Exception:  # noqa: BLE001, S112 — skip orders in a non-cancellable state
                 continue
         messages.success(request, f'Cancelled {ok} order(s).')
     elif action == 'export':

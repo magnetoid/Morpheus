@@ -113,43 +113,12 @@ def reconcile_redis_stock() -> dict:
         return {'checked': 0, 'in_sync': 0, 'drift': []}
 
 
-@app.task(
-    name='inventory.find_abandoned_carts', ignore_result=True, time_limit=120, soft_time_limit=60
-)
-def find_abandoned_carts() -> int:
-    """Mark carts > 1h old as abandoned and fire the cart.abandoned event."""
-    from datetime import timedelta
-
-    from core.hooks import MorpheusEvents, hook_registry
-
-    try:
-        from plugins.installed.orders.models import Cart
-    except ImportError:
-        return 0
-    threshold = timezone.now() - timedelta(hours=1)
-    candidates = (
-        Cart.objects.filter(
-            updated_at__lt=threshold,
-        )
-        .exclude(items__isnull=True)
-        .distinct()[:200]
-    )
-    fired = 0
-    for cart in candidates:
-        try:
-            # Standard CART_ABANDONED contract: every fire site passes
-            # both `cart=` AND `email=` so subscribers (recovery email,
-            # CRM, AI) can opt to use either without crashing.
-            email = getattr(getattr(cart, 'customer', None), 'email', '') or ''
-            hook_registry.fire(
-                MorpheusEvents.CART_ABANDONED,
-                cart=cart,
-                email=email or None,
-            )
-            fired += 1
-        except Exception as e:  # noqa: BLE001
-            logger.warning('inventory: cart.abandoned fire failed: %s', e)
-    return fired
+# NOTE: abandoned-cart detection lives solely in the cart_abandonment plugin
+# (scan_abandoned_carts), which fires CART_ABANDONED exactly once per cart and
+# stamps metadata['abandoned_emitted']. inventory used to run a second detector
+# with NO idempotency stamp, re-firing CART_ABANDONED for every stale cart on
+# every 30-min run — spamming CRM follow-up tasks and recurring LLM recovery
+# runs. Removed; there is one owner now.
 
 
 @app.task(
