@@ -21,6 +21,7 @@ from djmoney.models.fields import MoneyField
 from morpheus import models
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
+from taggit.models import GenericUUIDTaggedItemBase, TaggedItemBase
 
 
 class Vendor(models.Model):
@@ -204,6 +205,22 @@ class AttributeValue(models.Model):
         return f'{self.attribute.name}: {self.name}'
 
 
+class UUIDTaggedItem(GenericUUIDTaggedItemBase, TaggedItemBase):
+    """Taggit through-model with a UUID ``object_id``.
+
+    ``Product`` has a ``UUIDField`` primary key, but taggit's default
+    ``taggit.TaggedItem`` stores ``object_id`` as an ``IntegerField``. On
+    Postgres that makes every ``tags__…`` join (and ``tags.add()``) a
+    ``uuid = integer`` type error — a 500. sqlite's loose typing hides it, so
+    it slipped through tests. Routing the manager through this UUID-typed
+    through-model makes the join ``uuid = uuid`` and the tag filter work.
+    """
+
+    class Meta:
+        verbose_name = 'Tagged item'
+        verbose_name_plural = 'Tagged items'
+
+
 class Product(models.Model):
     """Core product model."""
 
@@ -269,7 +286,7 @@ class Product(models.Model):
         help_text='Extra categories this product is listed under, in addition to its primary category.',
     )
     collections = models.ManyToManyField(Collection, blank=True, related_name='products')
-    tags = TaggableManager(blank=True)
+    tags = TaggableManager(through=UUIDTaggedItem, blank=True)
     attributes = models.ManyToManyField(Attribute, blank=True, through='ProductAttribute')
 
     # Multi-Tenancy

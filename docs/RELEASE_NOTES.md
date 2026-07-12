@@ -12,6 +12,22 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.11.1 — 2026-07-13
+
+### Fix: tag pages returned a 500 on production
+
+The v0.11.0 tag landing pages (`/products/?tag=…`) crashed with a server error
+on the live site. Root cause: products use a UUID primary key, but the tag
+system (taggit) was wired through its default table whose object-id column is an
+integer — so every tag lookup asked Postgres to compare a UUID against an
+integer and failed. (Local SQLite is loosely typed and silently accepted it, so
+tests passed while production broke — the classic "SQLite hid a Postgres bug".)
+
+Tags now route through a UUID-typed join, so tag pages load and products can
+actually be tagged. No action needed; existing data is unaffected.
+
+---
+
 ## v0.11.0 — 2026-07-13
 
 ### Tag pages get a proper title + description
