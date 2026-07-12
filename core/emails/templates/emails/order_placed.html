@@ -30,4 +30,9 @@
   </table>
 
   <p class="muted" style="margin-top:18px;">You'll get another email once payment is confirmed and your order ships.</p>
+  {% if track_url %}
+  <p style="margin-top:18px;">
+    <a href="{{ track_url }}" style="display:inline-block;background:#0e0e0e;color:#f6f1e7;text-decoration:none;padding:12px 22px;border-radius:9999px;font-size:14px;font-weight:600;">Track your order</a>
+  </p>
+  {% endif %}
 {% endblock %}

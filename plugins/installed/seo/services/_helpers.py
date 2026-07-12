@@ -178,8 +178,22 @@ def _seo_plugin_cfg() -> dict:
         return {}
 
 
+# Same escaping Django's json_script applies: neutralise the three characters
+# that can break out of a <script type="application/ld+json"> element, plus the
+# two line separators that are invalid raw in a <script> body. json.dumps
+# escapes quotes/backslashes but passes </script> through verbatim, so free-text
+# fields (product name/description) could otherwise inject a closing tag + script.
+_JSONLD_ESCAPES = {
+    0x3C: '\\u003C',  # <
+    0x3E: '\\u003E',  # >
+    0x26: '\\u0026',  # &
+    0x2028: '\\u2028',  # line separator (invalid raw in a <script> body)
+    0x2029: '\\u2029',  # paragraph separator
+}
+
+
 def _jsonld_dump(obj: dict) -> str:
-    return json.dumps(obj, separators=(',', ':'), ensure_ascii=False)
+    return json.dumps(obj, separators=(',', ':'), ensure_ascii=False).translate(_JSONLD_ESCAPES)
 
 
 def ai_answer_for(obj) -> str:

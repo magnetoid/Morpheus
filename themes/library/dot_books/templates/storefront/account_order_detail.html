@@ -15,7 +15,7 @@
     </p>
     <h1 class="display display-l" style="margin: .5rem 0 1rem;">Order #{{ order.order_number }}<span class="text-accent">.</span></h1>
     <p class="lede" style="margin-bottom: 2rem;">
-      Placed {{ order.created_at|date:"F j, Y" }} · status: <strong>{{ order.state }}</strong>
+      Placed {{ order.created_at|date:"F j, Y" }} · status: <strong>{{ order.get_status_display }}</strong>
     </p>
 
     <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem;">

@@ -20,7 +20,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
           <div>
             <p style="font-family: var(--serif); font-size: 1.1rem;">#{{ o.order_number }}</p>
-            <p class="meta" style="margin-top: .25rem;">{{ o.created_at|date:"F j, Y" }} · {{ o.state }}</p>
+            <p class="meta" style="margin-top: .25rem;">{{ o.created_at|date:"F j, Y" }} · {{ o.get_status_display }}</p>
           </div>
           <div style="text-align: right;">
             <p style="font-family: var(--serif); font-size: 1.25rem; font-weight: 600;">{{ o.total }}</p>

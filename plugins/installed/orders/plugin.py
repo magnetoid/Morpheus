@@ -19,7 +19,11 @@ class OrdersPlugin(Plugin):
         self.register_graphql_extension('plugins.installed.orders.graphql.queries')
         self.register_graphql_extension('plugins.installed.orders.graphql.mutations')
         self.register_hook('payment.captured', self.on_payment_captured, priority=10)
-        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=15)
+        # NOTE: the order-confirmation email is owned solely by the core
+        # transactional spine (core/emails/handlers.on_order_placed) — sent async
+        # on commit with retries. This plugin no longer subscribes ORDER_PLACED
+        # for email (it used to send a duplicate, synchronously, inside the
+        # order-placement transaction).
         # Contribute order + return activity to the dashboard home feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=10)
         # Contribute order count / open returns / store credit to the
@@ -79,20 +83,6 @@ class OrdersPlugin(Plugin):
         from plugins.installed.orders.services import OrderService  # noqa: PLC0415
 
         OrderService.confirm_order(payment.order)
-
-    def on_order_placed(self, order, **kwargs):
-        """Send the customer their order-confirmation email."""
-        try:
-            from plugins.installed.orders.email import send_order_confirmation  # noqa: PLC0415
-
-            send_order_confirmation(order)
-        except Exception as e:  # noqa: BLE001 — email never blocks order placement
-            logger.warning(
-                'orders: confirmation email failed for %s: %s',
-                getattr(order, 'order_number', '?'),
-                e,
-                exc_info=True,
-            )
 
     def on_customer_login(self, customer=None, request=None, **kwargs):
         """CUSTOMER_LOGIN: adopt/merge the anonymous-session cart onto the

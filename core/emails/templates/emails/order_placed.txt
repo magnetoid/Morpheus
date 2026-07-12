@@ -14,5 +14,8 @@ Tax:      {{ order.tax_total }}
 Total:    {{ order.total }}
 
 You'll get another email once payment is confirmed and your order ships.
-
+{% if track_url %}
+Track your order any time:
+{{ track_url }}
+{% endif %}
 — The team

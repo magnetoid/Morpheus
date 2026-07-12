@@ -1,4 +1,3 @@
-# ruff: noqa: PLC0415 — inline import in on_order_placed keeps the tasks module lazy.
 from morpheus import Plugin
 
 
@@ -15,12 +14,9 @@ class StorefrontPlugin(Plugin):
 
     def ready(self):
         self.register_urls('plugins.installed.storefront.urls', prefix='')
-        self.register_hook('order.placed', self.on_order_placed, priority=20)
-
-    def on_order_placed(self, order, **kwargs):
-        from plugins.installed.storefront.tasks import send_order_confirmation
-
-        send_order_confirmation.delay(str(order.id))
+        # NOTE: order-confirmation email is owned by the core transactional spine
+        # (core/emails/handlers.on_order_placed). The storefront used to subscribe
+        # ORDER_PLACED to send a second, duplicate copy — removed.
 
     def get_config_schema(self):
         return {

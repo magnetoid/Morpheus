@@ -12,7 +12,7 @@ import os
 from typing import Any
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
 from django.template.loader import render_to_string
 
 from core.hooks import hook_registry
@@ -45,11 +45,21 @@ def register_handlers() -> None:
 
 
 def on_order_placed(order: Any, **kwargs: Any) -> None:
+    # Guests have no account — their only durable link to the order is this
+    # tokenised URL (constant-time-compared in the confirmation view).
+    from core.utils.site import site_base_url  # noqa: PLC0415 — avoid import cycle at app load
+
+    track_url = ''
+    token = getattr(order, 'public_token', '')
+    if token:
+        track_url = (
+            f'{site_base_url().rstrip("/")}/order/confirmation/{order.order_number}/?token={token}'
+        )
     _send(
         template_base='emails/order_placed',
         subject=f'Order #{order.order_number} received',
         to=_order_recipient(order),
-        ctx={'order': order},
+        ctx={'order': order, 'track_url': track_url},
     )
 
 
@@ -207,13 +217,34 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
         except Exception:  # noqa: BLE001 — HTML version is optional
             html_body = None
 
-    try:
-        msg = EmailMultiAlternatives(subject, text_body, from_email, [to])
-        if html_body:
-            msg.attach_alternative(html_body, 'text/html')
-        msg.send(fail_silently=True)
-    except Exception as e:  # noqa: BLE001
-        logger.warning('emails: send for %s to %s failed: %s', template_base, redact_email(to), e)
+    # Render here (fast, no I/O), but defer the SMTP round-trip to Celery: a
+    # slow/dead mail host must not hold the order-placement transaction (and the
+    # HTTP request) open, and the send gets real retries instead of a silent
+    # swallow. In prod we enqueue on commit so a rolled-back order never emails;
+    # under tests (CELERY_TASK_ALWAYS_EAGER) .delay() runs inline, so we call it
+    # directly to keep mail.outbox populated synchronously.
+    from core.emails.tasks import (
+        deliver_email,  # noqa: PLC0415 — avoid celery import at module load
+    )
+
+    def _enqueue():
+        try:
+            deliver_email.delay(
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                from_email=from_email,
+                to=to,
+            )
+        except Exception as e:  # noqa: BLE001 — broker down must never break the caller
+            logger.warning(
+                'emails: could not enqueue %s to %s: %s', template_base, redact_email(to), e
+            )
+
+    if getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False):
+        _enqueue()
+    else:
+        transaction.on_commit(_enqueue)
 
 
 def _db_override(template_base: str, ctx: dict) -> tuple[str | None, str | None, str | None]:

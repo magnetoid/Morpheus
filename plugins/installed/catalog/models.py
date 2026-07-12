@@ -14,6 +14,7 @@ Products, Variants, Categories, Collections, Attributes, Reviews
 # - I001: legacy import order kept for git-blame stability.
 import uuid
 
+from core.utils.html import sanitize_richtext
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.text import slugify
 from djmoney.models.fields import MoneyField
@@ -325,6 +326,11 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
+        # description / short_description are rendered `|safe` on the PDP —
+        # sanitise on save so a compromised staff session, a GraphQL/agent
+        # write, or prompt-injected LLM output can't persist stored XSS.
+        self.description = sanitize_richtext(self.description)
+        self.short_description = sanitize_richtext(self.short_description)
         super().save(*args, **kwargs)
 
     @property
