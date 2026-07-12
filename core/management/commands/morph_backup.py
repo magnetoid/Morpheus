@@ -31,13 +31,17 @@ logger = logging.getLogger('morpheus.backup')
 
 
 class Command(BaseCommand):
-    help = 'Dump database + media to MORPHEUS_BACKUP_DIR (default /tmp/morpheus-backups).'
+    help = 'Dump database + media to MORPHEUS_BACKUP_DIR (default /app/backups).'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--dest',
-            default=os.environ.get('MORPHEUS_BACKUP_DIR', '/tmp/morpheus-backups'),  # noqa: S108  # nosec B108
-        )  # noqa: S108
+            # Default to a path that is volume-mounted in compose so dumps SURVIVE
+            # a redeploy. /tmp lived inside the container and was wiped on every
+            # deploy (and every merge to main is a deploy), so a "successful"
+            # backup was gone within the day.
+            default=os.environ.get('MORPHEUS_BACKUP_DIR', '/app/backups'),
+        )
         parser.add_argument(
             '--keep', type=int, default=int(os.environ.get('MORPHEUS_BACKUP_KEEP', '7'))
         )

@@ -44,6 +44,22 @@ def run_backup(self) -> dict:
         msg = out.getvalue().strip().splitlines()[-1] if out.getvalue() else ''
         logger.info('backups.run_backup: %s', msg)
         return {'ok': True, 'last_line': msg[:200]}
-    except Exception as e:  # noqa: BLE001 — log + retry next day
+    except Exception as e:
+        # A failed backup is a data-loss risk and must be LOUD — the old code
+        # swallowed the exception and returned ok:False, so Celery saw success
+        # and the nightly backup silently failed for the plugin's whole life
+        # (the runtime image had no pg_dump). Surface it to the error log AND
+        # re-raise so the task shows as FAILED in monitoring.
         logger.error('backups.run_backup failed: %s', e, exc_info=True)
-        return {'ok': False, 'error': str(e)[:200]}
+        try:
+            from core.errors.services import record_message
+
+            record_message(
+                f'Nightly backup failed: {e}',
+                level='error',
+                source='backups.run_backup',
+                exception_class=type(e).__name__,
+            )
+        except Exception:  # noqa: BLE001 — observability write must not mask the original
+            logger.error('backups.run_backup: could not record error event', exc_info=True)
+        raise

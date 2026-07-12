@@ -34,10 +34,23 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# postgresql-client-16 (for pg_dump used by the nightly backup task) is NOT in
+# Debian bookworm's default repos — it ships client-15, and pg_dump 15 REFUSES to
+# dump a server 16 (our postgres:16). Add the PGDG apt repo to get a matching
+# client. Without pg_dump the backup task throws FileNotFoundError on every run.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       libpq5 \
       curl \
+      ca-certificates \
+      gnupg \
+ && install -d /usr/share/postgresql-common/pgdg \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+ && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-16 \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system morpheus \
  && useradd --system --gid morpheus --home-dir /app --no-create-home morpheus

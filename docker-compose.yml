@@ -159,6 +159,10 @@ services:
       OTEL_SERVICE_NAME: morpheus-worker
     volumes:
       - media_data:/app/media
+      # Nightly DB/media dumps land here — a named volume so they SURVIVE a
+      # redeploy (the old /tmp path was wiped on every deploy). Off-host/S3
+      # copies still need configuring separately for host-loss protection.
+      - backup_data:/app/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -224,4 +228,5 @@ volumes:
   postgres_data:
   redis_data:
   media_data:
+  backup_data:
   # nats_data:
