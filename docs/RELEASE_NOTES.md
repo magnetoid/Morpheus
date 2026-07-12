@@ -12,6 +12,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.11.0 — 2026-07-13
+
+### Tag pages get a proper title + description
+
+Every browse taxonomy — categories, collections, genres, topics — already showed
+an editorial description below its title. **Tags** were the exception: a tag page
+(`/products/?tag=<tag>`) had only a generic header. Now each tag can have its own
+attractive title + description, written under **Products → Tag descriptions** in
+the dashboard and shown below the title on the tag page. Tag links also resolve
+more reliably (matched by slug or name).
+
 ## v0.10.0 — 2026-07-12
 
 ### Storefront polish + a round of fulfilment fixes
