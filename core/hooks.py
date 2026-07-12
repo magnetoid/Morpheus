@@ -277,9 +277,19 @@ class HookRegistry:
             return
 
         try:
+            from django.core.cache import cache
             from django.db import transaction
 
-            endpoints = WebhookEndpoint.objects.filter(is_active=True)
+            # Skip the per-fire endpoint query on the common path (no webhooks
+            # configured). Cached for 30s so a newly-added endpoint is picked up
+            # quickly without hitting the DB on every hot-path event (cart-add,
+            # product-view, …). None on a cache backend miss → fall through and
+            # query, so correctness never depends on the cache.
+            has_webhooks = cache.get('core:has_active_webhooks')
+            if has_webhooks is None:
+                has_webhooks = WebhookEndpoint.objects.filter(is_active=True).exists()
+                cache.set('core:has_active_webhooks', has_webhooks, 30)
+            endpoints = WebhookEndpoint.objects.filter(is_active=True) if has_webhooks else []
             for endpoint in endpoints:
                 if event in endpoint.events or '*' in endpoint.events:
                     # Defer the Celery enqueue until the surrounding DB transaction
@@ -295,10 +305,19 @@ class HookRegistry:
         except Exception as e:  # noqa: BLE001 — DB outage must not break local handlers
             logger.warning('Webhook dispatch failed for %s: %s', event, e, exc_info=True)
 
-        try:
-            OutboxEvent.objects.create(event_type=event, payload=payload)
-        except Exception as e:  # noqa: BLE001 — outbox failure logged, do not abort
-            logger.warning('Outbox write failed for %s: %s', event, e, exc_info=True)
+        # Only write the transactional outbox when NATS is actually configured
+        # to drain it. Prod ships without NATS, so this row would otherwise be
+        # written on EVERY hook fire (cart-add, product-view, login, …) and NEVER
+        # consumed — the table grew unbounded with the store's traffic. When NATS
+        # is deployed, the outbox resumes; the only loss is transient events fired
+        # while it was off, which have no consumer anyway.
+        import os
+
+        if os.environ.get('NATS_URL'):
+            try:
+                OutboxEvent.objects.create(event_type=event, payload=payload)
+            except Exception as e:  # noqa: BLE001 — outbox failure logged, do not abort
+                logger.warning('Outbox write failed for %s: %s', event, e, exc_info=True)
 
     def has_handlers(self, event: str) -> bool:
         return bool(self._handlers.get(event))
@@ -360,6 +379,16 @@ class MorpheusEvents:
     ORDER_PAID = 'order.paid'
     ORDER_CANCELLED = 'order.cancelled'
     ORDER_FULFILLED = 'order.fulfilled'
+
+    # ── Stock gate (filter, fail-closed) ───────────────────────────────────
+    # ORDER_RESERVE_STOCK — value=int, kwargs: order=Order. Fired via
+    #   `filter(..., raise_errors=True)` INSIDE create_from_cart's transaction,
+    #   before ORDER_PLACED. The inventory plugin's subscriber reserves stock and
+    #   raises InsufficientStockError on a short, which propagates and rolls back
+    #   the order (the plain ORDER_PLACED bus swallows handler exceptions, so a
+    #   reservation fired there could never actually block checkout → oversell).
+    #   No subscriber (inventory disabled) → value passes through, order proceeds.
+    ORDER_RESERVE_STOCK = 'order.reserve_stock'
 
     # ── Payments (fire) ────────────────────────────────────────────────────
     # PAYMENT_CAPTURED  — kwargs: payment=Payment.

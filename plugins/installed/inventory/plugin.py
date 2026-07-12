@@ -19,7 +19,11 @@ class InventoryPlugin(Plugin):
         )
         self.register_graphql_extension('plugins.installed.inventory.graphql.queries')
         self.register_graphql_extension('plugins.installed.inventory.graphql.mutations')
-        self.register_hook('order.placed', self.on_order_placed, priority=5)
+        # Fail-closed stock gate: reserve inside create_from_cart's transaction
+        # via a raise_errors filter so a short-stock order actually rolls back
+        # (the plain order.placed bus swallows the InsufficientStockError → the
+        # old subscription could never block an oversell).
+        self.register_hook(events.ORDER_RESERVE_STOCK, self.reserve_stock_filter, priority=5)
         # Dashboard-home low-stock tile.
         self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=50)
         self.register_hook('order.paid', self.on_order_paid, priority=5)
@@ -84,11 +88,15 @@ class InventoryPlugin(Plugin):
         value['low_stock_threshold'] = threshold
         return value
 
-    def on_order_placed(self, order, **kwargs):
-        # Reserve stock when the order is created (before payment).
+    def reserve_stock_filter(self, value=0, order=None, **kwargs):
+        # Reserve stock when the order is created (before payment). Raises
+        # InsufficientStockError on a short — the filter is fired with
+        # raise_errors=True so that propagates and rolls back the order.
         from plugins.installed.inventory.services import InventoryService  # noqa: PLC0415
 
-        InventoryService.reserve_for_order(order)
+        if order is None:
+            return value
+        return InventoryService.reserve_for_order(order)
 
     def on_order_paid(self, order, **kwargs):
         # Convert reservations into permanent decrements once payment lands.

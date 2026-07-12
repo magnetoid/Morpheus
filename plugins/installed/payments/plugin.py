@@ -142,12 +142,27 @@ class PaymentsPlugin(Plugin):
             logger.info('refund: gateway %r does not support refunds — manual.', slug)
             return
 
-        result = gateway.refund(transaction=tx, amount=refund.amount)
+        # Idempotency key is bound to the REFUND, not the transaction — a second
+        # partial refund on the same payment must not replay the first key.
+        result = gateway.refund(
+            transaction=tx, amount=refund.amount, idempotency_key=f'morph-refund-{refund.id}'
+        )
         if result.get('success'):
             refund.is_processed = True
             refund.processed_at = timezone.now()
             refund.save(update_fields=['is_processed', 'processed_at'])
             order.log_event('REFUND_GATEWAY_OK', message=f'{refund.amount}')
+            # Canonical post-refund event — refund email, affiliate clawback and
+            # refund conversion pixel all listen here. Fired ONLY after the money
+            # actually moved, so no "refunded" email is sent for a failed refund.
+            from core.hooks import MorpheusEvents, hook_registry
+
+            hook_registry.fire(
+                MorpheusEvents.PAYMENT_REFUNDED,
+                refund=refund,
+                order=order,
+                amount=refund.amount,
+            )
         else:
             order.log_event(
                 'REFUND_GATEWAY_FAILED',

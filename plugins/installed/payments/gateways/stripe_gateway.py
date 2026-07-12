@@ -25,12 +25,14 @@ class StripeGateway(PaymentGateway):
 
         We don't store the charge_id on PaymentTransaction (no schema change
         needed) — instead we retrieve the intent at refund time and read
-        ``latest_charge``. Idempotency key is bound to the local transaction
-        so retries don't double-refund.
+        ``latest_charge``. Idempotency key is bound to the specific refund
+        (passed by the caller) so a second partial refund on the same payment
+        doesn't replay the first key, while a retry of the SAME refund is safe.
         """
         try:
             import stripe
 
+            from plugins.installed.payments.services.money import amount_to_minor
             from plugins.installed.payments.services.stripe import PaymentService
 
             stripe.api_key = PaymentService.get_stripe_api_key()
@@ -49,12 +51,13 @@ class StripeGateway(PaymentGateway):
             if not charge_id:
                 return {'success': False, 'error': 'no charge on intent (uncaptured?)'}
 
-            from decimal import Decimal
-
+            idem = kwargs.get('idempotency_key') or f'morph-refund-{transaction.id}'
+            # Zero-decimal (JPY) and 3-decimal (BHD) currencies make a blanket
+            # ×100 wrong — use the shared minor-unit helper the charge path uses.
             stripe.Refund.create(
                 charge=charge_id,
-                amount=int(Decimal(str(amount.amount)) * 100),
-                idempotency_key=f'morph-refund-{transaction.id}',
+                amount=amount_to_minor(amount.amount, str(amount.currency)),
+                idempotency_key=idem,
             )
             return {'success': True}
         except Exception as e:  # noqa: BLE001

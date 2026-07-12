@@ -67,6 +67,16 @@ class InventoryService:
                 continue
             plan = plan_allocation(item.variant_id, item.quantity)
             if not plan:
+                # An empty plan is ambiguous: either (a) NO StockLevel exists —
+                # the variant is untracked, so skip; or (b) StockLevels exist but
+                # nothing is available (fully reserved / zero on hand) — a genuine
+                # stockout that MUST block the order. The old code skipped both,
+                # so a sold-out tracked variant sailed through → oversell.
+                if StockLevel.objects.filter(variant_id=item.variant_id).exists():
+                    raise InsufficientStockError(
+                        f'Out of stock for variant {item.variant_id}: '
+                        f'wanted {item.quantity}, none available'
+                    )
                 logger.warning(
                     'inventory: no StockLevel for variant %s on order %s',
                     item.variant_id,

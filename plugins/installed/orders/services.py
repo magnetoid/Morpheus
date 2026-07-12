@@ -22,6 +22,21 @@ from plugins.installed.orders.models import Cart, CartItem, Order, OrderItem
 
 logger = logging.getLogger('morpheus.orders')
 
+
+class CouponNoLongerValid(ValueError):
+    """Raised at capture time when a coupon's usage limit is reached, so the
+    order rolls back instead of shipping the discount without recording a use
+    (the concurrent-checkout race that let a limit-1 coupon apply twice)."""
+
+
+class GiftCardRedeemFailed(ValueError):
+    """Raised when a gift card fails to redeem at checkout (expired/disabled/
+    spent, or a balance race). The discount is already in order.total, so we
+    roll the order back rather than charge the discounted amount and eat the
+    card. (Order has no metadata field — the old 'flag it and let the caller
+    refuse' path silently no-op'd because the flag write always failed.)"""
+
+
 # Canonical "this order represents a completed purchase" status set — the single
 # source of truth for recommendation / analytics / co-purchase consumers, which
 # otherwise hardcoded divergent sets (personalisation referenced the non-existent
@@ -400,37 +415,56 @@ class OrderService:
                     # both bypass `usage_limit` (each would otherwise read
                     # times_used=N, both apply, both increment).
                     locked = Coupon.objects.select_for_update().filter(id=cart.coupon_id).first()
-                    if locked is not None and (
-                        not locked.usage_limit or locked.times_used < locked.usage_limit
-                    ):
-                        if order.customer_id:
-                            _, created = CouponUsage.objects.get_or_create(
-                                coupon_id=cart.coupon_id,
-                                customer_id=order.customer_id,
-                                order=order,
-                                defaults={'discount_amount': Money(coupon_discount, currency)},
+                    over_global = locked is None or (
+                        locked.usage_limit and locked.times_used >= locked.usage_limit
+                    )
+                    over_per_customer = False
+                    if locked is not None and order.customer_id and locked.usage_limit_per_customer:
+                        used_by_customer = (
+                            CouponUsage.objects.filter(
+                                coupon_id=cart.coupon_id, customer_id=order.customer_id
                             )
-                            if created:
-                                Coupon.objects.filter(id=cart.coupon_id).update(
-                                    times_used=F('times_used') + 1,
-                                )
-                        else:
+                            .exclude(order=order)
+                            .count()
+                        )
+                        over_per_customer = used_by_customer >= locked.usage_limit_per_customer
+                    if over_global or over_per_customer:
+                        # The discount is already baked into order.total. If the
+                        # limit was reached (a concurrent checkout raced us), we
+                        # must NOT charge the discounted amount without recording
+                        # a use — roll back and make the shopper retry. Raising a
+                        # dedicated type so the broad except below re-raises it.
+                        raise CouponNoLongerValid(
+                            'This coupon is no longer valid (usage limit reached). '
+                            'Please remove it and try again.'
+                        )
+                    if order.customer_id:
+                        _, created = CouponUsage.objects.get_or_create(
+                            coupon_id=cart.coupon_id,
+                            customer_id=order.customer_id,
+                            order=order,
+                            defaults={'discount_amount': Money(coupon_discount, currency)},
+                        )
+                        if created:
                             Coupon.objects.filter(id=cart.coupon_id).update(
                                 times_used=F('times_used') + 1,
                             )
+                    else:
+                        Coupon.objects.filter(id=cart.coupon_id).update(
+                            times_used=F('times_used') + 1,
+                        )
+        except CouponNoLongerValid:
+            raise
         except Exception as e:  # noqa: BLE001
             logger.warning('orders: promotions/coupon recording failed: %s', e)
 
         # Redeem the applied gift card. The cart's gift-card discount is
-        # already baked into `order.total` at this point; a redeem
-        # failure (card disabled / expired / insufficient balance race)
-        # means the customer is about to be charged a discounted amount
-        # without us actually consuming a gift card. We narrow the
-        # except, write the failure to BOTH the order metadata AND the
-        # audit log (not just a logger.warning that nobody reads), and
-        # flag the order with `gift_card_redeem_failed=True` so the
-        # checkout caller can refuse to capture and the merchant can
-        # reconcile manually.
+        # already baked into `order.total` at this point; a redeem failure
+        # (card disabled / expired / insufficient balance race) means the
+        # customer is about to be charged a discounted amount without us
+        # actually consuming a gift card — so we abort the order (raise, which
+        # rolls back this atomic block) rather than let the merchant eat the
+        # card. The narrow except only catches the redeem's own failure modes.
         gift_card_meta = (breakdown.get('meta') or {}).get('gift_card') or {}
         if gift_card_meta and getattr(cart, 'gift_card_id', None):
             try:
@@ -448,34 +482,20 @@ class OrderService:
                         actor=cart.customer,
                     )
             except (ValueError, LookupError, ImportError) as e:
+                # The redeem failed but the discount is already baked into
+                # order.total. Abort the whole order (rolls back this atomic
+                # block) rather than charge the discounted amount without
+                # consuming a card. The shopper retries with a re-validated cart.
                 logger.warning(
                     'orders: gift-card redeem failed for order %s: %s',
                     order.order_number,
                     e,
                     exc_info=True,
                 )
-                try:
-                    order.metadata = order.metadata or {}
-                    order.metadata['gift_card_redeem_failed'] = True
-                    order.metadata['gift_card_redeem_error'] = str(e)[:200]
-                    order.save(update_fields=['metadata'])
-                except Exception:  # noqa: BLE001
-                    pass
-                try:
-                    from core.audit.services import record as audit_record
-
-                    audit_record(
-                        event_type='order.gift_card_redeem_failed',
-                        actor_user=getattr(cart, 'customer', None),
-                        target=order,
-                        metadata={
-                            'order_number': order.order_number,
-                            'gift_card_code': gift_card_meta.get('code') or '',
-                            'error': str(e)[:500],
-                        },
-                    )
-                except Exception:  # noqa: BLE001
-                    pass
+                raise GiftCardRedeemFailed(
+                    'Your gift card could not be applied (it may be expired, '
+                    'disabled, or already spent). Please review your cart and try again.'
+                ) from e
 
         cart.items.all().delete()
         if (
@@ -489,6 +509,17 @@ class OrderService:
                 k: v for k, v in (cart.metadata or {}).items() if k != 'shipping_rate_id'
             }
             cart.save(update_fields=['coupon', 'gift_card', 'metadata', 'updated_at'])
+
+        # Hard stock gate — reserve inventory INSIDE this transaction so a
+        # short-stock order rolls back before it can be returned to the caller
+        # and charged. Fired as a raise_errors filter because the plain
+        # ORDER_PLACED bus swallows handler exceptions (which is exactly why the
+        # reservation used to be unenforceable → two concurrent checkouts of the
+        # last unit could both succeed and both be charged). No inventory plugin
+        # → no subscriber → value passes through and the order proceeds.
+        hook_registry.filter(
+            MorpheusEvents.ORDER_RESERVE_STOCK, value=0, order=order, raise_errors=True
+        )
 
         hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)
         return order

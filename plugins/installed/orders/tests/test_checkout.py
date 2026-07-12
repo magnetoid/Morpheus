@@ -149,6 +149,33 @@ class CheckoutFlowTests(TestCase):
         self.stock.refresh_from_db()
         self.assertEqual(self.stock.reserved_quantity, 0)
 
+    def test_oversell_is_blocked_at_checkout(self):
+        # The stock gate must ROLL BACK a short-stock order, not create+charge
+        # it. Previously reservation fired on the plain order.placed bus, which
+        # swallows the InsufficientStockError, so two shoppers could both buy the
+        # last unit. Now it's a raise_errors filter inside the order transaction.
+        from plugins.installed.inventory.services import InsufficientStockError
+        from plugins.installed.orders.models import Order
+
+        self.stock.quantity = 1
+        self.stock.save(update_fields=['quantity'])
+
+        c1 = CartService.get_or_create_cart(session_key='os-1')
+        CartService.add_item(c1, str(self.product.id), quantity=1, variant_id=str(self.variant.id))
+        OrderService.create_from_cart(
+            cart=c1, email='a@example.com', shipping_address={}, billing_address={}
+        )
+        n_after_first = Order.objects.count()
+
+        c2 = CartService.get_or_create_cart(session_key='os-2')
+        CartService.add_item(c2, str(self.product.id), quantity=1, variant_id=str(self.variant.id))
+        with self.assertRaises(InsufficientStockError):
+            OrderService.create_from_cart(
+                cart=c2, email='b@example.com', shipping_address={}, billing_address={}
+            )
+        # The second order must not exist — the gate rolled it back.
+        self.assertEqual(Order.objects.count(), n_after_first)
+
     @skipIf(_IS_SQLITE, 'cascade delete + UUID + taggit overflows SQLite — postgres path')
     def test_order_confirmation_email_is_sent(self):
         cart = CartService.get_or_create_cart(session_key='s-7')

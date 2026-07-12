@@ -375,6 +375,9 @@ class OrdersMutationExtension:
                     shipping_address=ship,
                     billing_address=bill,
                 )
+                # (create_from_cart raises GiftCardRedeemFailed / CouponNoLongerValid
+                # / InsufficientStockError directly on a bad checkout, rolling this
+                # block back — the caller-level except turns it into CHECKOUT_FAILED.)
                 # Route to the shopper-selected gateway. Empty / unknown /
                 # disabled slug → default (stripe), so the live Stripe path
                 # is unchanged when no method is picked.

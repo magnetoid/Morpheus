@@ -25,7 +25,7 @@ from django.utils import timezone
 from djmoney.models.fields import MoneyField
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from core.hooks import hook_registry
 
 logger = logging.getLogger('morpheus.orders.refunds')
 
@@ -135,6 +135,22 @@ class RefundService:
         provider can never be billed twice."""
         from plugins.installed.orders.models import Refund
 
+        # Guard against over-refunding: the sum of already-processed refunds
+        # plus this one must not exceed what was charged (order.total). The
+        # dashboard form enforces this, but the returns portal / agent / MCP
+        # paths reach process() directly and used to bypass any cap.
+        already = sum(
+            (r.amount.amount for r in order.refunds.filter(is_processed=True)),
+            Decimal('0'),
+        )
+        ceiling = Decimal(order.total.amount)
+        if already + Decimal(amount.amount) > ceiling:
+            remaining = ceiling - already
+            raise ValueError(
+                f'Refund of {amount} exceeds the remaining refundable balance '
+                f'({remaining} {amount.currency}) on order {order.order_number}.'
+            )
+
         # Dedup regardless of `is_processed` — if a previous attempt
         # crashed mid-flight it'll be a row with `is_processed=False`,
         # and we want to RESUME it, not create a sibling.
@@ -153,68 +169,24 @@ class RefundService:
         elif refund.is_processed:
             return refund
 
-        provider_ok = cls._provider_refund(order=order, amount=amount, refund=refund)
-        if provider_ok:
-            refund.is_processed = True
-            refund.processed_at = timezone.now()
-            refund.save(update_fields=['is_processed', 'processed_at'])
-            # Canonical refund event. The three real subscribers (refund
-            # email, affiliate clawback, refund conversion pixel) all listen
-            # on PAYMENT_REFUNDED; this used to fire the string
-            # 'refund.processed', which nothing subscribed to, so all three
-            # silently never ran.
-            hook_registry.fire(
-                MorpheusEvents.PAYMENT_REFUNDED,
-                refund=refund,
-                order=order,
-                amount=amount,
-                actor=actor,
+        # Drive the ACTUAL provider refund through the payments plugin — the
+        # same 'refund.requested' path the dashboard uses. This used to call a
+        # broken inline `_provider_refund` that filtered payments by statuses
+        # the model never uses and read a `stripe_charge_id` nothing writes, so
+        # it always short-circuited to success-without-a-call: the customer got
+        # a "refunded" email while zero money moved. The payments handler now
+        # marks is_processed on gateway success and fires PAYMENT_REFUNDED (the
+        # refund email / affiliate clawback / conversion pixel) — exactly once,
+        # only when money actually moved.
+        hook_registry.fire('refund.requested', refund=refund, actor=actor)
+        refund.refresh_from_db()
+        if not refund.is_processed:
+            logger.warning(
+                'orders: refund %s recorded but no gateway refund completed '
+                '(COD/manual order, or gateway failure) — left for reconciliation',
+                refund.id,
             )
-        else:
-            logger.warning('orders: refund %s recorded but provider call failed', refund.id)
         return refund
-
-    @staticmethod
-    def _provider_refund(*, order, amount: Money, refund) -> bool:
-        """Best-effort: call Stripe if a charge exists; otherwise success-with-log.
-
-        We don't import stripe at module scope so the orders plugin remains
-        usable without Stripe configured.
-        """
-        try:
-            payment = (
-                order.payments.filter(
-                    status__in=('succeeded', 'completed', 'paid'),
-                )
-                .order_by('-created_at')
-                .first()
-                if hasattr(order, 'payments')
-                else None
-            )
-            charge_id = (payment.metadata or {}).get('stripe_charge_id') if payment else None
-            if not charge_id:
-                logger.info(
-                    'orders: no stripe charge on order %s; skipping provider call', order.id
-                )
-                return True
-
-            import stripe  # type: ignore
-            from django.conf import settings as dj_settings
-
-            stripe.api_key = getattr(dj_settings, 'STRIPE_SECRET_KEY', '') or ''
-            if not stripe.api_key:
-                logger.warning('orders: STRIPE_SECRET_KEY missing; skipping refund call')
-                return False
-            stripe.Refund.create(
-                charge=charge_id,
-                amount=int(Decimal(amount.amount) * 100),
-                idempotency_key=f'refund-{refund.id}',
-                metadata={'order_id': str(order.id), 'refund_id': str(refund.id)},
-            )
-            return True
-        except Exception as e:  # noqa: BLE001
-            logger.warning('orders: provider refund failed: %s', e, exc_info=True)
-            return False
 
 
 class ReturnService:

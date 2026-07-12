@@ -43,16 +43,54 @@ def _setup_order(amount='25', qty=2):
     return order, item
 
 
+def _succeeded_stripe_tx(order):
+    """Give the order a successful Stripe transaction so a gateway refund
+    has something to refund against."""
+    from plugins.installed.payments.models import PaymentTransaction
+
+    return PaymentTransaction.objects.create(
+        order=order,
+        amount=order.total,
+        status=PaymentTransaction.Status.SUCCEEDED,
+        provider='stripe',
+        provider_transaction_id='pi_test_123',
+    )
+
+
 class RefundServiceTests(TestCase):
-    def test_process_creates_refund(self):
+    def test_gateway_backed_refund_moves_money_and_marks_processed(self):
+        # The returns/agent path must issue a REAL gateway refund. It used to
+        # short-circuit to is_processed=True without ever calling the provider
+        # (phantom refund: customer emailed "refunded" while no money moved).
+        from unittest.mock import patch
+
+        from plugins.installed.payments.gateways.stripe_gateway import StripeGateway
+
         order, _ = _setup_order()
-        refund = RefundService.process(
-            order=order,
-            amount=Money(Decimal('10'), 'USD'),
-            reason='customer_request',
-        )
-        self.assertEqual(refund.amount.amount, Decimal('10'))
+        _succeeded_stripe_tx(order)
+        with patch.object(StripeGateway, 'refund', return_value={'success': True}) as m:
+            refund = RefundService.process(order=order, amount=Money(Decimal('10'), 'USD'))
+        self.assertTrue(m.called)
+        refund.refresh_from_db()
         self.assertTrue(refund.is_processed)
+
+    def test_no_transaction_leaves_refund_unprocessed(self):
+        # A COD/manual/unpaid order has no gateway transaction — the refund row
+        # is recorded but NOT marked processed, and no "refunded" email fires.
+        order, _ = _setup_order()
+        refund = RefundService.process(order=order, amount=Money(Decimal('10'), 'USD'))
+        refund.refresh_from_db()
+        self.assertFalse(refund.is_processed)
+
+    def test_over_refund_is_rejected(self):
+        order, _ = _setup_order(amount='25', qty=2)  # total = 50
+        RefundService.process(
+            order=order, amount=Money(Decimal('50'), 'USD')
+        )  # unprocessed (no tx)
+        # Even without a gateway tx, a refund exceeding the order total must be
+        # refused outright (the returns/agent paths used to bypass any cap).
+        with self.assertRaises(ValueError):
+            RefundService.process(order=order, amount=Money(Decimal('60'), 'USD'))
 
     def test_process_is_idempotent(self):
         order, _ = _setup_order()
@@ -60,11 +98,13 @@ class RefundServiceTests(TestCase):
         r2 = RefundService.process(order=order, amount=Money(Decimal('5'), 'USD'))
         self.assertEqual(r1.id, r2.id)
 
-    def test_process_fires_payment_refunded(self):
-        # Regression: the fire used to be the string 'refund.processed',
-        # which no handler subscribed to, so the refund email / affiliate
-        # clawback / conversion pixel never ran.
+    def test_gateway_success_fires_payment_refunded_once(self):
+        # PAYMENT_REFUNDED (refund email / affiliate clawback / pixel) fires
+        # exactly once, and ONLY after the gateway confirmed the refund.
+        from unittest.mock import patch
+
         from core.hooks import MorpheusEvents, hook_registry
+        from plugins.installed.payments.gateways.stripe_gateway import StripeGateway
 
         seen = []
 
@@ -74,7 +114,9 @@ class RefundServiceTests(TestCase):
         hook_registry.register(MorpheusEvents.PAYMENT_REFUNDED, _handler, plugin=None)
         try:
             order, _ = _setup_order()
-            RefundService.process(order=order, amount=Money(Decimal('5'), 'USD'))
+            _succeeded_stripe_tx(order)
+            with patch.object(StripeGateway, 'refund', return_value={'success': True}):
+                RefundService.process(order=order, amount=Money(Decimal('5'), 'USD'))
         finally:
             hook_registry.unregister(MorpheusEvents.PAYMENT_REFUNDED, _handler)
         self.assertEqual(len(seen), 1)
