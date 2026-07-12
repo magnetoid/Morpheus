@@ -340,6 +340,53 @@
   @media (min-width: 1600px) { .grid-books { grid-template-columns: repeat(6, 1fr); } }
   @media (min-width: 2000px) { .grid-books { grid-template-columns: repeat(7, 1fr); } }
 
+  /* Book rail — a horizontal scroll-snap carousel variant of .grid-books.
+     Keeps the .grid-books class so the reveal engine still hooks it, but flips
+     the grid to a snapping flex scroller. Touch users swipe; desktop gets
+     progressively-enhanced prev/next buttons. */
+  .book-rail-wrap { position: relative; }
+  .grid-books--rail {
+    display: flex;
+    grid-template-columns: none;
+    gap: 1.6rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0.5rem 0.25rem 1.25rem;  /* room for the card lift-shadow + snap edge */
+    margin: 0 -0.25rem;
+    /* fade the trailing edge to hint there's more to scroll */
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 93%, transparent 100%);
+            mask-image: linear-gradient(90deg, #000 0, #000 93%, transparent 100%);
+  }
+  .grid-books--rail::-webkit-scrollbar { display: none; }
+  .grid-books--rail > .book {
+    flex: 0 0 auto;
+    width: 46vw; max-width: 210px;
+    scroll-snap-align: start;
+  }
+  @media (min-width: 640px)  { .grid-books--rail > .book { width: 220px; } }
+  @media (min-width: 1024px) { .grid-books--rail > .book { width: 232px; } }
+
+  .book-rail-nav {
+    position: absolute; top: 34%; z-index: 3;
+    width: 46px; height: 46px; border-radius: 999px;
+    display: none; align-items: center; justify-content: center;
+    background: var(--ink); color: var(--paper);
+    border: none; cursor: pointer; font-size: 1.15rem; line-height: 1;
+    box-shadow: 0 10px 26px -10px rgba(14,14,14,0.5);
+    transition: transform 0.18s var(--ease-out), opacity 0.2s;
+  }
+  .book-rail-nav:hover { transform: scale(1.09); }
+  .book-rail-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .book-rail-nav--prev { left: -12px; }
+  .book-rail-nav--next { right: -12px; }
+  .book-rail-nav[disabled] { opacity: 0; pointer-events: none; }
+  /* Arrows only where there's a real pointer + room; touch = swipe. */
+  @media (min-width: 1024px) and (hover: hover) { .book-rail-nav { display: flex; } }
+  @media (prefers-reduced-motion: reduce) { .grid-books--rail { scroll-behavior: auto; } }
+
   /* Footer */
   footer { background: var(--paper-2); border-top: 1px solid var(--rule); margin-top: 6rem; }
   footer .col h2 { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 1rem; }
@@ -1035,7 +1082,10 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
   var reveal = [];
   var stamp = [];
   document.querySelectorAll('[data-reveal]').forEach(function (el) { reveal.push(el); });
-  document.querySelectorAll('.grid-books').forEach(function (grid) {
+  // Skip rail (.grid-books--rail) children: in a horizontal scroller the
+  // off-screen-right cards would never satisfy the vertical in-view check and
+  // could stay hidden. The rail wrapper carries its own [data-reveal] instead.
+  document.querySelectorAll('.grid-books:not(.grid-books--rail)').forEach(function (grid) {
     Array.prototype.forEach.call(grid.children, function (el, i) {
       el.style.setProperty('--reveal-delay', (i % 12 < 8 ? i % 12 : 8) * 55 + 'ms');
       reveal.push(el);
@@ -1061,6 +1111,25 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
       else io.observe(el);
     });
   }
+
+  /* Book-rail carousels — prev/next scroll + fade the arrow at each end. */
+  document.querySelectorAll('[data-book-rail]').forEach(function (rail) {
+    var wrap = rail.closest('.book-rail-wrap');
+    if (!wrap) return;
+    var prev = wrap.querySelector('[data-rail-prev]');
+    var next = wrap.querySelector('[data-rail-next]');
+    var step = function () { return Math.max(rail.clientWidth * 0.8, 240); };
+    var sync = function () {
+      var max = rail.scrollWidth - rail.clientWidth - 2;
+      if (prev) prev.disabled = rail.scrollLeft <= 2;
+      if (next) next.disabled = rail.scrollLeft >= max;
+    };
+    if (prev) prev.addEventListener('click', function () { rail.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    if (next) next.addEventListener('click', function () { rail.scrollBy({ left: step(), behavior: 'smooth' }); });
+    rail.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync, { passive: true });
+    sync();
+  });
 
   /* Topbar elevation once the page has scrolled a beat. */
   var bar = document.querySelector('.topbar');

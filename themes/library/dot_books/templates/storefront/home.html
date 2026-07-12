@@ -12,7 +12,11 @@
 {% endblock %}
 
 {% block content %}
-{% storefront_blocks "home_above_grid" %}
+{% comment %}
+The home_above_grid slot (a dynamics "Recommended for you" block) used to sit
+ABOVE the hero — removed so the editor's-picks hero leads the page. Personalised
+recommendations still render lower via the home_after_rails / home_below_grid slots.
+{% endcomment %}
 
 {% if hero_products %}
 <!-- Editor's pick -->
@@ -629,14 +633,18 @@
       </div>
       <a href="/products/?featured=true" class="btn-link">See all</a>
     </div>
-    <div class="grid-books">
-      {% for product in featured_products %}
-      {% include "storefront/_product_card.html" with product=product %}
-      {% empty %}
-      <div style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
-        <p class="lede" style="margin: 0 auto;">The shelf is being restocked. Check back tomorrow.</p>
+    <div class="book-rail-wrap" data-reveal>
+      <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
+      <div class="grid-books grid-books--rail" data-book-rail>
+        {% for product in featured_products %}
+        {% include "storefront/_product_card.html" with product=product %}
+        {% empty %}
+        <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px; flex: 1 1 100%;">
+          <p class="lede" style="margin: 0 auto;">The shelf is being restocked. Check back tomorrow.</p>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+      <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="Scroll right" data-rail-next>&rarr;</button>
     </div>
   </div>
 </section>
@@ -653,10 +661,14 @@
       </div>
       <a href="/staff-picks/" class="btn-link">All picks</a>
     </div>
-    <div class="grid-books">
-      {% for product in staff_picks %}
-      {% include "storefront/_product_card.html" with product=product %}
-      {% endfor %}
+    <div class="book-rail-wrap" data-reveal>
+      <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
+      <div class="grid-books grid-books--rail" data-book-rail>
+        {% for product in staff_picks %}
+        {% include "storefront/_product_card.html" with product=product %}
+        {% endfor %}
+      </div>
+      <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="Scroll right" data-rail-next>&rarr;</button>
     </div>
   </div>
 </section>
