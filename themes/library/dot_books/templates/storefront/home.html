@@ -130,8 +130,14 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
 
 <style>
   .hero-feature {
-    padding: clamp(2.5rem, 5vw, 4rem) 0;
+    /* Full-height hero: fill the viewport below the 64px + 1px sticky topbar,
+       and vertically centre the shell within it for a poised, editorial stage. */
+    min-height: calc(100svh - 65px);
+    display: flex;
+    align-items: center;
+    padding: clamp(2rem, 4vw, 3.5rem) 0;
   }
+  .hero-feature > .wrap { width: 100%; }
   .hero-feature__shell {
     display: grid;
     gap: 2.5rem;
@@ -217,8 +223,16 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
   }
   .hero-feature__title {
     margin: 0;
-    max-width: 11ch;
+    /* Use the whole copy column; a JS fitter (fitHeroTitle) then shrinks the
+       font so ANY title — one word or ten — settles into ≤3 tidy lines without
+       overflowing or dwindling to nothing. --hero-title-max is the ceiling for
+       short titles; the fitter only ever scales down from it. */
+    max-width: 100%;
     text-wrap: balance;
+    overflow-wrap: break-word; /* a single very long word still breaks cleanly */
+    --hero-title-max: clamp(2.3rem, 3.2vw + 1.1rem, 4.2rem);
+    font-size: var(--hero-title-size, var(--hero-title-max));
+    line-height: 1.04;
     /* Isolate the per-letter scramble's rewrites from the surrounding layout. */
     contain: layout;
   }
@@ -323,10 +337,35 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
     min-width: 0;
   }
   .hero-feature__media-stage {
+    position: relative;
     max-width: min(100%, 420px);
     margin: 0 auto;
   }
+  /* 3D shadow — a soft dark mass behind the cover that slowly drifts, so the
+     book reads as floating and lit from a moving source. Absolutely positioned
+     (out of the grid flow), sits under the covers (z-index:0 vs panel z-index:1). */
+  .hero-feature__media-stage::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    left: 8%;
+    right: 8%;
+    top: 12%;
+    bottom: -8%;
+    border-radius: 16px;
+    background: radial-gradient(58% 58% at 50% 42%, rgba(14, 14, 14, 0.42), rgba(14, 14, 14, 0) 72%);
+    filter: blur(30px);
+    pointer-events: none;
+    will-change: transform, opacity;
+    animation: hero-shadow-drift 11s ease-in-out infinite alternate;
+  }
+  @keyframes hero-shadow-drift {
+    0%   { transform: translate3d(-4%, 3%, 0) rotate(-2deg) scale(1);    opacity: 0.78; }
+    100% { transform: translate3d(5%, -4%, 0) rotate(2deg)  scale(1.08); opacity: 1; }
+  }
   .hero-feature__media-panel {
+    position: relative;
+    z-index: 1;
     display: block;
     opacity: 0;
     pointer-events: none;
@@ -394,6 +433,7 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
   }
   @media (prefers-reduced-motion: reduce) {
     .dl--pop { animation: none !important; }
+    .hero-feature__media-stage::before { animation: none !important; }
     .hero-feature__copy-panel,
     .hero-feature__copy-item,
     .hero-feature__media-panel,
@@ -612,6 +652,37 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
       document.addEventListener('visibilitychange', function () {
         if (document.hidden) stopAuto();
         else startAuto();
+      });
+
+      // Auto-fit every hero title: start from the CSS ceiling (--hero-title-max)
+      // and shrink the font (via --hero-title-size) until the title settles into
+      // at most 3 lines. Makes long and short book names both read cleanly and
+      // professionally without hand-tuning per title. All panels are rendered
+      // (grid-stacked), so inactive titles measure correctly too.
+      var titles = Array.prototype.slice.call(root.querySelectorAll('.hero-feature__title'));
+      function fitHeroTitle(el) {
+        if (!el) return;
+        el.style.setProperty('--hero-title-size', 'var(--hero-title-max)');
+        var cs = window.getComputedStyle(el);
+        var lh = parseFloat(cs.lineHeight);
+        var size = parseFloat(cs.fontSize);
+        if (!lh || isNaN(lh)) lh = size * 1.04;
+        var maxH = lh * 3 + 1;
+        var guard = 0;
+        while (el.scrollHeight > maxH && size > 20 && guard < 60) {
+          size -= 2;
+          el.style.setProperty('--hero-title-size', size + 'px');
+          guard++;
+        }
+      }
+      function fitHeroTitles() { titles.forEach(fitHeroTitle); }
+      fitHeroTitles();
+      // Re-fit after webfonts finish (metrics shift once Fraunces loads).
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeroTitles);
+      var fitRaf = null;
+      window.addEventListener('resize', function () {
+        if (fitRaf) cancelAnimationFrame(fitRaf);
+        fitRaf = requestAnimationFrame(fitHeroTitles);
       });
 
       show(0);

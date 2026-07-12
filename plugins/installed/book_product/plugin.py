@@ -9,7 +9,7 @@ from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
 class BookProductPlugin(Plugin):
     name = 'book_product'
     label = 'Book Product'
-    version = '0.1.0'
+    version = '0.2.0'
     description = (
         'Book product-type extension: author, print/paper type, page count, '
         'a cover-PDF 3D preview, and a dashboard book widget. Book attributes '
