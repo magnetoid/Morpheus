@@ -1,0 +1,51 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}Download my data{% endblock %}
+
+{% block seo %}{% seo_meta robots="noindex, nofollow" fallback_title="Download my data" %}{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <a href="/account/privacy/" style="color: var(--muted);">Privacy &amp; data</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Download my data</span>
+    </nav>
+
+    <p class="eyebrow">Privacy</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Download my data<span class="text-accent">.</span></h1>
+
+    <p class="lede" style="margin-bottom: 2rem;">
+      Get a copy of everything we have on file for you — account profile, orders, reviews, addresses, consent decisions, and anything else tied to your customer record. GDPR Article 15. CCPA's "right to know". Every right-to-access law any of us know about.
+    </p>
+
+    <div style="padding: 2rem; border: 1px solid var(--rule); border-radius: 8px; margin: 2rem 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">What you'll get</h2>
+      <ul style="color: var(--ink-2); margin: 0 0 1.5rem; padding-left: 1.25rem;">
+        <li style="margin-bottom: .35rem;"><code>account.json</code> — name, email, profile fields</li>
+        <li style="margin-bottom: .35rem;"><code>orders.json</code> — every order you've placed, with items + totals</li>
+        <li style="margin-bottom: .35rem;"><code>addresses.json</code> — shipping/billing addresses on file</li>
+        <li style="margin-bottom: .35rem;"><code>reviews.json</code> — reviews you've written</li>
+        <li style="margin-bottom: .35rem;"><code>consent.json</code> — your cookie/privacy decisions</li>
+        <li style="margin-bottom: .35rem;">…and any other category tied to your account (only enabled features appear)</li>
+      </ul>
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary" style="padding: .8rem 2rem;">Download my data (ZIP)</button>
+      </form>
+      <p style="font-size: .8rem; color: var(--muted); margin: 1rem 0 0;">
+        Files arrive as JSON inside a ZIP. Free, instant, no support ticket required.
+      </p>
+    </div>
+
+    <p style="font-size: .85rem; color: var(--muted); margin-top: 2rem;">
+      Want to permanently delete your account instead? <a href="/account/delete/" style="color: var(--accent); text-decoration: underline;">Go to delete account →</a>
+    </p>
+
+  </div>
+</section>
+{% endblock %}

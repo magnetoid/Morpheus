@@ -22,7 +22,7 @@ class ConsentGatingTests(TestCase):
         self.assertIsNone(evt.session_id)
 
     def test_consented_visitor_gets_one_session(self):
-        self.client.cookies['cookie_consent'] = 'true'
+        self.client.cookies['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
         self.client.get('/')
         self.client.get('/')
         self.assertEqual(AnalyticsSession.objects.count(), 1)

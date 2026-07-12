@@ -12,6 +12,56 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.9.0 — 2026-07-12
+
+### Your shop now protects money, data, and shoppers' rights
+
+A platform-wide correctness and compliance pass. The headline items are things
+that could quietly lose money or data before this release.
+
+**Money is safe at checkout and in refunds.**
+
+- **No more overselling.** Two shoppers can no longer both buy the last copy.
+  Stock is now reserved inside the order transaction with a hard gate — a
+  short-stock order is refused and rolled back instead of being created and
+  charged.
+- **Refunds actually move money.** Refunds issued from the returns portal or by
+  the AI assistant used to email the customer "refunded" while nothing happened
+  at the payment provider. They now route through the real gateway, exactly like
+  the dashboard refund button, and only send the "refunded" email once the money
+  has genuinely moved.
+- **No over-refunds.** A refund can never exceed what was actually paid, on any
+  path (returns, assistant, or dashboard).
+- **Gift cards can't be given away free.** If a gift card fails to apply at
+  checkout (expired, disabled, already spent), the order is refused rather than
+  charging the discounted total and eating the card.
+- **Coupon limits hold under load.** A limit-one coupon can no longer be used
+  twice by two simultaneous checkouts.
+- Refund amounts now use the correct minor-unit conversion for every currency
+  (yen, dinar, …), and each refund has its own idempotency key.
+
+**Security.** Closed two stored-cross-site-scripting holes: product rich text is
+now sanitised on save, and structured-data (SEO) output is properly escaped, so
+a malicious product name or description can't run scripts on shoppers.
+
+**GDPR / privacy (new `gdpr` module).** A self-service privacy hub in the account
+area: shoppers can **download all their data** and **delete their account**, and
+the storefront footer now carries **Privacy, Terms, and cookie-preference**
+links (seeded legal pages included). Every request is logged for your records.
+Cookie consent is now honoured correctly end-to-end — "Accept all" actually
+enables analytics and personalisation (three mismatched consent signals were
+unified into one). Turn the whole surface on or off under Settings → General.
+
+**Order emails & account.** Order-confirmation emails are no longer sent two or
+three times, and are sent reliably in the background with retries instead of
+holding up checkout. Order status now shows correctly on the account pages
+(it was blank).
+
+**Operations.** Database backups are fixed: the image now ships `pg_dump`,
+backups are written to a persistent volume that survives redeploys, and a failed
+backup is now loud (logged + surfaced) instead of silently reporting success.
+An internal event table that grew forever on every page view is now bounded.
+
 ## v0.8.1 — 2026-07-12
 
 ### Linda fails gracefully — and her actions are on the record

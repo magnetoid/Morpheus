@@ -43,7 +43,7 @@ class ClassifierTests(TestCase):
 class SessionStampingTests(TestCase):
     def _visit(self, **extra):
         client = Client()
-        client.cookies['cookie_consent'] = 'true'  # consented visitor
+        client.cookies['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'  # consented visitor
         return client.get('/', **extra)
 
     def test_ai_referral_lands_in_utm_source(self):
@@ -56,7 +56,7 @@ class SessionStampingTests(TestCase):
         self._visit(HTTP_REFERER='https://chatgpt.com/c/x')  # arrives via ?utm too
         AnalyticsSession.objects.all().delete()
         consented = Client()
-        consented.cookies['cookie_consent'] = 'true'
+        consented.cookies['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
         consented.get('/?utm_source=newsletter', HTTP_REFERER='https://chatgpt.com/c/x')
         s = AnalyticsSession.objects.latest('first_seen_at')
         self.assertEqual(s.utm_source, 'newsletter')

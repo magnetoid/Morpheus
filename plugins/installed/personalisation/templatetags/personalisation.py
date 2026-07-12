@@ -41,19 +41,31 @@ def pairs_with(context, product, count: int = 10) -> list:
 
 
 def _has_consent(request) -> bool:
-    """Check the consent cookie set by the consent plugin.
+    """Check the visitor's 'functional' consent via the consent plugin.
 
-    Falls open in dev (no consent cookie present) — production behaviour
-    is determined by settings.PERSONALISATION_REQUIRES_CONSENT (default
-    True). The consent plugin sets `morph_consent` cookie with the JSON
-    {'functional': bool, 'analytics': bool, 'marketing': bool}.
+    Reads the ONE canonical consent cookie through
+    ``consent.services.read_consent_from_cookie`` (single source of truth). This
+    used to read a cookie named ``morph_consent`` that the consent banner never
+    sets (it writes ``morpheus_consent``), so personalisation always fell back to
+    the PERSONALISATION_REQUIRES_CONSENT default — silently disabled in prod.
+
+    Falls open in dev when the banner hasn't been answered yet — production
+    behaviour is governed by ``settings.PERSONALISATION_REQUIRES_CONSENT``
+    (default True).
     """
     if request is None:
         return False
-    raw = request.COOKIES.get('morph_consent', '')
-    if not raw:
-        # No banner-set cookie. Default: allow only if not enforced.
-        from django.conf import settings  # noqa: PLC0415
+    try:
+        from plugins.installed.consent.services import (  # noqa: PLC0415
+            has_decided,
+            read_consent_from_cookie,
+        )
 
-        return not getattr(settings, 'PERSONALISATION_REQUIRES_CONSENT', True)
-    return 'functional' in raw or 'all' in raw
+        if not has_decided(request):
+            from django.conf import settings  # noqa: PLC0415
+
+            return not getattr(settings, 'PERSONALISATION_REQUIRES_CONSENT', True)
+        decision = read_consent_from_cookie(request)
+        return bool(decision.get('functional') or decision.get('analytics'))
+    except Exception:  # noqa: BLE001 — consent plugin missing/disabled → deny
+        return False

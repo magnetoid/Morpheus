@@ -21,7 +21,7 @@ class ServerEmitterTests(TestCase):
     def _request(self):
         req = self.rf.get('/products/test-book/')
         req.user = type('Anon', (), {'is_authenticated': False})()
-        req.COOKIES['cookie_consent'] = 'true'
+        req.COOKIES['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
         req.COOKIES['morph_aid'] = 'ck-emitter-test-0000000000000000'
         return req
 

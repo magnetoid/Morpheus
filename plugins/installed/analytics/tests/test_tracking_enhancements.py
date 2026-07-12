@@ -24,7 +24,7 @@ class AnalyticsTrackingTests(TestCase):
         request = self.factory.get('/')
         request.META['HTTP_CF_IPCOUNTRY'] = 'US'
         request.META['HTTP_USER_AGENT'] = 'Mozilla/5.0'
-        request.COOKIES['cookie_consent'] = 'true'
+        request.COOKIES['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
         request.user = self.user
 
         session = get_or_create_session(request)

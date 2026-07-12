@@ -46,7 +46,9 @@ def _viewed(cookie_id, product):
 def _request(*, consent=True, cookie_id='visitor-1'):
     cookies = {'morph_aid': cookie_id}
     if consent:
-        cookies['morph_consent'] = '{"functional": true}'
+        # The canonical consent cookie is 'morpheus_consent' (set by the consent
+        # plugin); personalisation reads it via consent.services now.
+        cookies['morpheus_consent'] = '{"functional": true}'
     req = RequestFactory().get('/')
     req.COOKIES.update(cookies)
     return req

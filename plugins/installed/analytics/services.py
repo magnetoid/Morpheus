@@ -105,12 +105,28 @@ def _inferred_ai_source(request) -> str:
     return f'ai:{src}' if src else ''
 
 
+def _analytics_consent_granted(request) -> bool:
+    """True when the visitor granted the 'analytics' consent category.
+
+    Reads the ONE canonical consent cookie via the consent plugin (single source
+    of truth). This used to check a cookie named 'cookie_consent' that nothing
+    ever set — so analytics tracking was permanently off even after "Accept all".
+    Fail-soft: if the consent plugin is absent/disabled, deny (privacy-safe).
+    """
+    try:
+        from plugins.installed.consent.services import read_consent_from_cookie
+
+        return bool(read_consent_from_cookie(request).get('analytics'))
+    except Exception:  # noqa: BLE001 — consent plugin missing/disabled → deny
+        return False
+
+
 def get_or_create_session(request, *, response=None):
     """Resolve the visitor's analytics session. Sets the cookie if missing."""
     from plugins.installed.analytics.models import AnalyticsSession
 
     cookie_id = (request.COOKIES.get(COOKIE_NAME) or '').strip()
-    is_consented = request.COOKIES.get('cookie_consent') == 'true'
+    is_consented = _analytics_consent_granted(request)
 
     # GDPR/ePrivacy: no consent → no visitor-level persistence. Events still
     # record session-less (aggregate counts stay honest) and server-side

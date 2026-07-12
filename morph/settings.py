@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.8.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.9.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -133,6 +133,7 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.pwa',
     'plugins.installed.webstories',
     'plugins.installed.consent',
+    'plugins.installed.gdpr',
     # ── Vibe-coding roadmap (added 2026-06-12) ────────────────────────────
     # These plugins implement the F1-F20 vibe-coding feature roadmap in
     # docs/analysis/vibe_coding_gap_assessment.md. They all follow the
