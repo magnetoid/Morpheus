@@ -9,15 +9,13 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
+from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+
 _FIELDS = ('eyebrow', 'heading', 'body', 'image_url', 'layout')
 
 
-def _trail(*leaf):
-    base = [
-        {'label': 'Dashboard', 'url': '/dashboard/'},
-        {'label': 'Product stories', 'url': '/dashboard/stories/'},
-    ]
-    return base[:-1] + [{'label': 'Product stories'}] if not leaf else base + list(leaf)
+def _trail(*items):
+    return build_trail('Product stories', '/dashboard/stories/', *items)
 
 
 @staff_member_required

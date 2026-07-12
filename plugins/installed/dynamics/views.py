@@ -16,6 +16,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 
+from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+
 from .models import (
     SLOT_CHOICES,
     STRATEGY_CHOICES,
@@ -28,13 +30,7 @@ _SURFACE_LIMITS = {'home_hero': 4, 'home_featured': 8, 'home_staff_picks': 8}
 
 
 def _trail(*items):
-    trail = [
-        {'label': 'Dashboard', 'url': '/dashboard/'},
-        {'label': 'Dynamics', 'url': '/dashboard/dynamics/'},
-    ]
-    for item in items:
-        trail.append(item if isinstance(item, dict) else {'label': str(item)})
-    return trail
+    return build_trail('Dynamics', '/dashboard/dynamics/', *items)
 
 
 @staff_member_required

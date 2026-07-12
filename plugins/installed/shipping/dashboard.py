@@ -15,17 +15,13 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
+from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+
 logger = logging.getLogger('morpheus.shipping')
 
 
 def _trail(*items):
-    trail = [
-        {'label': 'Dashboard', 'url': '/dashboard/'},
-        {'label': 'Shipping', 'url': '/dashboard/shipping/zones/'},
-    ]
-    for item in items:
-        trail.append(item if isinstance(item, dict) else {'label': str(item)})
-    return trail
+    return build_trail('Shipping', '/dashboard/shipping/zones/', *items)
 
 
 def _parse_csv(raw: str) -> list[str]:

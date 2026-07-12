@@ -15,17 +15,13 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
+from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+
 logger = logging.getLogger('morpheus.tax')
 
 
 def _trail(*items):
-    trail = [
-        {'label': 'Dashboard', 'url': '/dashboard/'},
-        {'label': 'Tax', 'url': '/dashboard/tax/regions/'},
-    ]
-    for item in items:
-        trail.append(item if isinstance(item, dict) else {'label': str(item)})
-    return trail
+    return build_trail('Tax', '/dashboard/tax/regions/', *items)
 
 
 def _norm_country(raw: str) -> str:

@@ -16,18 +16,13 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
+from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+
 logger = logging.getLogger('morpheus.marketplace')
 
 
 def _trail(*items):
-    """Standard breadcrumb: Dashboard / Marketplace / <leaf>."""
-    trail = [
-        {'label': 'Dashboard', 'url': '/dashboard/'},
-        {'label': 'Marketplace', 'url': '/dashboard/apps/marketplace/vendors/'},
-    ]
-    for item in items:
-        trail.append(item if isinstance(item, dict) else {'label': str(item)})
-    return trail
+    return build_trail('Marketplace', '/dashboard/apps/marketplace/vendors/', *items)
 
 
 def _default_commission_percent() -> Decimal:

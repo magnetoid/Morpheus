@@ -14,16 +14,11 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
+from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+
 
 def _trail(*items):
-    """Build a breadcrumb trail with Dashboard / Affiliates / <leaf> shape."""
-    trail = [
-        {'label': 'Dashboard', 'url': '/dashboard/'},
-        {'label': 'Affiliates', 'url': '/dashboard/apps/affiliates/list/'},
-    ]
-    for item in items:
-        trail.append(item if isinstance(item, dict) else {'label': str(item)})
-    return trail
+    return build_trail('Affiliates', '/dashboard/apps/affiliates/list/', *items)
 
 
 def _affiliate_commission_override(affiliate):

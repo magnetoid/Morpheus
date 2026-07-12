@@ -14,6 +14,9 @@ import logging
 import re
 import time
 
+from plugins.capi_shared import line_items as _line_items
+from plugins.capi_shared import money_tuple as _money
+
 from .api import creds
 from .oauth import access_token, is_connected
 
@@ -29,29 +32,6 @@ def capi_connected() -> bool:
 
 def _sha256(value: str) -> str:
     return hashlib.sha256((value or '').strip().lower().encode('utf-8')).hexdigest()
-
-
-def _money(m) -> tuple[float, str]:
-    amount = getattr(m, 'amount', None)
-    return (float(amount) if amount is not None else 0.0), str(getattr(m, 'currency', '') or 'USD')
-
-
-def _line_items(obj):
-    rel = getattr(obj, 'items', None)
-    if rel is None:
-        rel = getattr(obj, 'lines', None)
-    if hasattr(rel, 'all'):
-        rel = list(rel.all())
-    out = []
-    for line in rel or []:
-        sku = (
-            getattr(line, 'sku', '')
-            or getattr(getattr(line, 'variant', None), 'sku', '')
-            or getattr(getattr(line, 'product', None), 'sku', '')
-        )
-        if sku:
-            out.append((sku, int(getattr(line, 'quantity', 1) or 1)))
-    return out
 
 
 def _post(event: dict) -> dict:
