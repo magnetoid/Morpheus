@@ -12,6 +12,32 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.10.0 — 2026-07-12
+
+### Storefront polish + a round of fulfilment fixes
+
+**Storefront.** The homepage no longer opens with a "Recommended for you" block
+above the hero — the editor's-picks hero leads the page again. The "New &
+notable" and "Staff picks" rows are now horizontal **carousel sliders** (swipe on
+touch, arrow buttons on desktop) instead of tall grids.
+
+**Order fulfilment (fixes).**
+
+- **Manual "mark paid" now actually delivers.** Marking an order paid from the
+  dashboard (for COD, bank transfer, or any out-of-band payment) used to only
+  flip a flag — it never ran the fulfilment steps, so digital downloads weren't
+  sent, loyalty points weren't awarded, and the payment-confirmed email never
+  went out. Now it completes the order properly, once.
+- **Bulk cancel works.** Cancelling several orders at once was silently doing
+  nothing (and still reporting success); it now cancels them and releases their
+  stock.
+- **No more duplicate download emails** if an order's payment is confirmed twice.
+- **Fixed runaway abandoned-cart processing** that was re-notifying and re-running
+  recovery on every stale cart every half hour.
+
+**Under the hood.** Consolidated duplicated internal helpers (conversions-API
+payload builders, dashboard breadcrumbs) — no behaviour change.
+
 ## v0.9.0 — 2026-07-12
 
 ### Your shop now protects money, data, and shoppers' rights
