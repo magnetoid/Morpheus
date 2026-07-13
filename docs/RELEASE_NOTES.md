@@ -12,6 +12,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.4 — 2026-07-13
+
+### SEO: real return policy in product structured data + sitemap cleanup
+
+- **Return policy now appears in Product structured data.** Google's 2026
+  merchant listings expect a return policy; product markup now carries the
+  store's actual return window (read from the Returns plugin's configured
+  window — never a fabricated value, and it disappears if that plugin is
+  disabled). Previously it was omitted unless a separate SEO field was set.
+- **Image sitemap trimmed to what Google still uses.** Dropped the
+  `<image:caption>` and `<image:title>` tags Google deprecated (only
+  `<image:loc>` carries meaning now).
+
+---
+
 ## v0.12.3 — 2026-07-13
 
 ### Dashboard sidebar: submenus stay open across navigation

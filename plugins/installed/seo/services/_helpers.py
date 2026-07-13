@@ -222,14 +222,12 @@ def ai_answer_for(obj) -> str:
         return ''
 
 
-def _seo_plugin():
-    """Resolve the live SEO plugin instance via the plugin registry.
+def _plugin(name: str):
+    """Resolve any live plugin instance by name via the registry.
 
     Wrapper around the two registry accessor names (legacy ``get`` vs
-    new ``get_plugin``) so callers don't have to repeat the
-    fallback dance. Returns ``None`` when the registry isn't ready —
-    every caller has to treat that as "config not available, use
-    defaults"."""
+    new ``get_plugin``). Returns ``None`` when the registry isn't ready
+    or the plugin is absent — callers treat that as "use defaults"."""
     try:
         from plugins.registry import plugin_registry
 
@@ -237,7 +235,7 @@ def _seo_plugin():
             fn = getattr(plugin_registry, attr, None)
             if callable(fn):
                 try:
-                    p = fn('seo')
+                    p = fn(name)
                 except Exception:  # noqa: BLE001
                     continue
                 if p is not None:
@@ -245,3 +243,33 @@ def _seo_plugin():
     except Exception:  # noqa: BLE001
         pass
     return None
+
+
+def _seo_plugin():
+    """Resolve the live SEO plugin instance via the plugin registry."""
+    return _plugin('seo')
+
+
+def _return_window_days() -> int:
+    """The store's real return window (days) from the returns_portal plugin, or
+    0 if that plugin is absent, inactive, or unconfigured.
+
+    Lets Product JSON-LD carry the merchant's ACTUAL return policy (Google 2026
+    merchant-listing recommendation) sourced from the plugin that owns returns —
+    never a fabricated value. Disable-safe: a disabled returns_portal contributes
+    no return policy to the markup."""
+    try:
+        from plugins.registry import plugin_registry
+
+        is_active = getattr(plugin_registry, 'is_active', None)
+        if callable(is_active) and not is_active('returns_portal'):
+            return 0
+    except Exception:  # noqa: BLE001
+        pass
+    rp = _plugin('returns_portal')
+    if rp is None:
+        return 0
+    try:
+        return int(rp.get_config_value('return_window_days', 0) or 0)
+    except Exception:  # noqa: BLE001
+        return 0

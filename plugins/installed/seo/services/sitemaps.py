@@ -539,12 +539,11 @@ def render_image_sitemap_xml() -> str:
                     continue
                 if not src.startswith('http'):
                     src = base + src
+                # Only <image:loc> is still meaningful — Google deprecated
+                # <image:caption>/<image:title>/<image:geo_location>/<image:license>
+                # (they're ignored now), so we emit just the location.
                 parts.append('<image:image>')
                 parts.append(f'<image:loc>{escape(src)}</image:loc>')
-                caption = (getattr(img, 'alt_text', '') or p.name or '').strip()
-                if caption:
-                    parts.append(f'<image:caption>{escape(caption[:200])}</image:caption>')
-                parts.append(f'<image:title>{escape(p.name[:80])}</image:title>')
                 parts.append('</image:image>')
             parts.append('</url>')
     except Exception:  # noqa: BLE001

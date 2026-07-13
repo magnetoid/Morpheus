@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 
 from ._helpers import (
+    _return_window_days,
     _seo_plugin,
     _seo_plugin_cfg,
     _site_base_url,
@@ -319,7 +320,10 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
         # for Merchant free listings + AI shopping comparisons. Values
         # live in the SEO plugin's PluginConfig JSON so no migration.
         commerce_cfg = _seo_plugin_cfg()
-        return_days = int(commerce_cfg.get('return_days') or 0)
+        # Prefer an explicit SEO return_days override; otherwise use the real
+        # return window configured in the returns_portal plugin (its policy), so
+        # the merchant listing carries a return policy without a duplicate setting.
+        return_days = int(commerce_cfg.get('return_days') or 0) or _return_window_days()
         ship_fee = commerce_cfg.get('shipping_fee_amount') or '0'
         free_over = commerce_cfg.get('free_shipping_over') or '0'
         country = (commerce_cfg.get('shipping_country') or 'US').upper()
