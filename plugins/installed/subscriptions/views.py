@@ -67,7 +67,7 @@ def subscriptions_dashboard(request):
 
     plans = list(Plan.objects.all().order_by('-is_active', 'name'))
     subs = list(
-        Subscription.objects.select_related('customer', 'plan').order_by('-created_at')[:100]
+        Subscription.objects.select_related('customer', 'plan').order_by('-started_at')[:100]
     )
     invoices = list(
         SubscriptionInvoice.objects.select_related(

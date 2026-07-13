@@ -12,6 +12,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.2 — 2026-07-13
+
+### Fix: Subscriptions dashboard page returned a 500
+
+The **Subscriptions** dashboard page (`/dashboard/apps/subscriptions/`) crashed
+with a server error: the view sorted subscriptions by a `created_at` field the
+model doesn't have. Now sorted by `started_at` (the subscription's actual
+creation timestamp). No data change.
+
+---
+
 ## v0.12.1 — 2026-07-13
 
 ### Verified external references on book pages (SEO)
