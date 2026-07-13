@@ -12,6 +12,40 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.0 — 2026-07-13
+
+### Storefront hero: full-height, auto-fitting titles, a floating book
+
+The home hero now fills the viewport, and each featured title **auto-fits** —
+long or short book names both settle into a tidy, professional block instead of
+overflowing or shrinking to nothing. A soft 3D shadow drifts slowly behind the
+cover so the book reads as floating (respects reduced-motion).
+
+### Book form: searchable Genre & Topic pickers
+
+In the dashboard product form, **Genres** and **Topics** are now searchable
+multi-select dropdowns — type to filter, tick several — instead of long checkbox
+walls.
+
+### SEO fixes
+
+- **Filtered listing pages now get a real title.** Tag, author, publisher, and
+  search result pages were all titled "All books"; they now reflect the actual
+  filter (and so do the page's structured-data name, breadcrumb, and social
+  preview). Tag pages also use their editorial copy as the meta description.
+- **Pagination no longer hides deep products.** Page 2+ of a listing used to
+  canonicalise back to page 1 (which can de-index later products); each page now
+  self-canonicalises, per current Google guidance.
+
+### DeepSeek AI provider
+
+Selecting **DeepSeek** in Settings → AI now works. The provider was offered in
+the picker but had no driver wired up, so it errored with "Unknown AI provider";
+it's now a first-class OpenAI-compatible provider (deepseek-chat /
+deepseek-reasoner).
+
+---
+
 ## v0.11.1 — 2026-07-13
 
 ### Fix: tag pages returned a 500 on production

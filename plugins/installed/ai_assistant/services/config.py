@@ -34,6 +34,8 @@ _DEFAULT_BASE_URLS = {
     'grok': 'https://api.x.ai/v1',
     # apikey.fun — unified gateway, OpenAI-compatible chat-completions endpoint.
     'apikey': 'https://api.apikey.fun/v1',
+    # DeepSeek — OpenAI-compatible Chat Completions API.
+    'deepseek': 'https://api.deepseek.com/v1',
     # Packy — unified LLM gateway. Wired via its ANTHROPIC-compatible Messages
     # API (serves Claude models); the SDK appends /v1/messages to this root.
     'packy': 'https://www.packyapi.com',
@@ -50,6 +52,7 @@ _DEFAULT_MODELS = {
     'ollama': 'llama3.2',
     'grok': 'grok-4',
     'apikey': 'gpt-4o-mini',
+    'deepseek': 'deepseek-chat',
     'packy': 'claude-3-5-sonnet-20241022',
     'hermes': 'nousresearch/hermes-3-llama-3.1-405b',
 }
@@ -112,6 +115,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'ollama': 'OLLAMA_API_KEY',
             'grok': 'XAI_API_KEY',
             'apikey': 'APIKEY_FUN_API_KEY',
+            'deepseek': 'DEEPSEEK_API_KEY',
             'packy': 'PACKY_API_KEY',
         }
         api_key = getattr(settings, env_keys.get(name, ''), '') or ''
@@ -123,6 +127,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'openrouter': 'OPENROUTER_BASE_URL',
             'grok': 'XAI_BASE_URL',
             'apikey': 'APIKEY_FUN_BASE_URL',
+            'deepseek': 'DEEPSEEK_BASE_URL',
             'packy': 'PACKY_BASE_URL',
         }
         base_url = getattr(settings, env_base.get(name, ''), '') or _DEFAULT_BASE_URLS.get(name, '')

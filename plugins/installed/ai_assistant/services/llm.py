@@ -356,6 +356,30 @@ class ApikeyFunGateway(OpenAIGateway):
         raise NotImplementedError('apikey.fun: configure OpenAI or Ollama for embeddings.')
 
 
+class DeepSeekGateway(OpenAIGateway):
+    """DeepSeek exposes an OpenAI-compatible Chat Completions API at
+    https://api.deepseek.com/v1 — same client, different base URL + model
+    (deepseek-chat / deepseek-reasoner). Default model is set here so it works
+    even before the merchant fills in a model in Settings → AI providers."""
+
+    def __init__(self, cfg: ProviderConfig | None = None):
+        cfg = cfg or get_provider_config('deepseek')
+        if not cfg.base_url:
+            cfg.base_url = 'https://api.deepseek.com/v1'
+        if not cfg.model:
+            cfg.model = 'deepseek-chat'
+        super().__init__(cfg)
+
+    def embed(self, text: str) -> list[float]:
+        # DeepSeek has no public embeddings endpoint; fall back to OpenAI/Ollama.
+        oa = get_provider_config('openai')
+        if oa.api_key:
+            return OpenAIGateway(oa).embed(text)
+        raise NotImplementedError(
+            'DeepSeek has no embeddings endpoint. Configure OpenAI or Ollama.'
+        )
+
+
 class PackyGateway(AnthropicGateway):
     """Packy (www.packyapi.com) via its Anthropic-compatible Messages API — a
     unified gateway that serves Claude (and other) models. Set the API key,
@@ -433,6 +457,7 @@ _GATEWAYS = {
     'openrouter': OpenRouterGateway,
     'grok': GrokGateway,
     'apikey': ApikeyFunGateway,
+    'deepseek': DeepSeekGateway,
     'packy': PackyGateway,
     'ollama': OllamaGateway,
 }
