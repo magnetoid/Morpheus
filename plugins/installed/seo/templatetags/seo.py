@@ -102,14 +102,19 @@ def _canonical_from_request(request) -> tuple[str, bool]:
         pass
 
     if strip_all:
-        # Aggressive: drop EVERY query param from the canonical. Still
-        # raises the noindex flag when one of the blocklisted params
-        # was present so faceted views get noindex,follow.
+        # Aggressive: drop marketing/facet query params from the canonical, but
+        # KEEP pagination so each paginated page self-canonicalises. Google
+        # dropped rel=next/prev in 2019 and de-indexes deep products when
+        # ?page=N collapses to page 1, so page 2+ must canonicalise to itself,
+        # not to page 1. ?page=1 (and blanks) still collapse to the clean URL.
+        # Still raises the noindex flag when a blocklisted param was present so
+        # faceted views get noindex,follow.
         from urllib.parse import parse_qsl
 
         pairs = parse_qsl(parts.query, keep_blank_values=True)
         had_blocked = any(k in blocklist for k, _ in pairs) if blocklist else False
-        rebuilt = urlunsplit(parts._replace(query=''))
+        kept = [(k, v) for k, v in pairs if k == 'page' and v not in ('', '1')]
+        rebuilt = urlunsplit(parts._replace(query=urlencode(kept)))
         return rebuilt, had_blocked
 
     if not blocklist:

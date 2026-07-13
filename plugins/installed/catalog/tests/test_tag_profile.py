@@ -73,3 +73,12 @@ class TagPageRenderTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Ray guns and big ideas.')  # description renders below title
         self.assertContains(resp, 'Science Fiction')  # tag name renders as the title
+        # The <title> must reflect the tag, not the generic "All books" — the
+        # PLP title is emitted by {% seo_meta %} from seo_title (plp_name), which
+        # used to ignore the tag filter (regression guard for the plp_name fix).
+        import re
+
+        title = re.search(rb'<title>(.*?)</title>', resp.content)
+        self.assertIsNotNone(title)
+        self.assertIn(b'Science Fiction', title.group(1))
+        self.assertNotIn(b'All books', title.group(1))

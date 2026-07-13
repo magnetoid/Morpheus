@@ -236,7 +236,27 @@ def product_list(request):
         pass
 
     selected_cat = next((c for c in categories_list if c.slug == cat_slug), None)
-    plp_name = selected_cat.name if selected_cat else 'All books'
+    # SEO title/name for the listing. This drives the <title> (via seo_title →
+    # {% seo_meta %}), the CollectionPage JSON-LD name, and the OG title — the
+    # theme's {% block title %} is NOT what renders <title> (base.html emits it
+    # through seo_meta), so this must mirror that block's precedence or filtered
+    # PLPs all title as "All books". Order: author > publisher > category > tag
+    # > search > default.
+    _author_label = book_filter.get('author', '')
+    _publisher_label = book_filter.get('publisher', '')
+    _tag_label = (selected_tag_obj.name if selected_tag_obj else '') or tag_slug
+    if _author_label:
+        plp_name = f'Books by {_author_label}'
+    elif _publisher_label:
+        plp_name = f'{_publisher_label} titles'
+    elif selected_cat:
+        plp_name = selected_cat.name
+    elif _tag_label:
+        plp_name = _tag_label
+    elif q:
+        plp_name = f'Search: {q}'
+    else:
+        plp_name = 'All books'
     plp_items = [
         {
             'name': p.name,
@@ -286,9 +306,13 @@ def product_list(request):
             'breadcrumb_items': breadcrumb_items,
             'seo_title': f'{plp_name} — dot books',
             'seo_description': (
-                selected_cat.description
-                if selected_cat and selected_cat.description
-                else 'The full dot books shelf — independent press, curated by readers.'
+                (selected_cat.description if selected_cat and selected_cat.description else '')
+                or (
+                    selected_tag_obj.meta_description or selected_tag_obj.description
+                    if selected_tag_obj
+                    else ''
+                )
+                or 'The full dot books shelf — independent press, curated by readers.'
             )[:160],
         },
     )
