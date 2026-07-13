@@ -12,6 +12,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.5 — 2026-07-13
+
+### Accessibility: wordmark link name matches its visible text
+
+The header logo link advertised the accessible name "Home" while showing the
+"dot books" wordmark, so voice-control users saying "click dot books" couldn't
+activate it (Lighthouse `label-content-name-mismatch`). Its accessible name is
+now the visible wordmark — the storefront PDP now passes Lighthouse at 100 for
+Accessibility, Best Practices, and SEO.
+
+---
+
 ## v0.12.4 — 2026-07-13
 
 ### SEO: real return policy in product structured data + sitemap cleanup
