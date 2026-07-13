@@ -1402,6 +1402,11 @@
       let collapsed;
       if (hasActiveChild) {
         collapsed = false;
+        // Sticky-open: persist the active section as open so it STAYS expanded
+        // when you navigate to a page in another section (accordion no longer
+        // auto-collapses the submenu you were just browsing). Manual collapse
+        // still wins on the next visit (writes '1').
+        try { localStorage.setItem(key, '0'); } catch (_) { /* storage off */ }
       } else if (persisted !== null) {
         collapsed = persisted === '1';
       } else {
@@ -1436,6 +1441,10 @@
       // Active route wins; otherwise honour the persisted manual choice.
       if (!children.classList.contains('open')) {
         if (localStorage.getItem(key) === '1') children.classList.add('open');
+      } else {
+        // Sticky-open: the active parent persists open so it stays expanded
+        // after you navigate into another submenu.
+        try { localStorage.setItem(key, '1'); } catch (_) { /* storage off */ }
       }
       chev.addEventListener('click', (e) => {
         e.preventDefault();

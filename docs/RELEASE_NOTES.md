@@ -12,6 +12,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.3 — 2026-07-13
+
+### Dashboard sidebar: submenus stay open across navigation
+
+Opening a sidebar submenu no longer collapses when you move to a page in a
+different section. The section (and hardcoded parents like Orders/Products) you
+were browsing stays expanded as you navigate; collapsing one still sticks until
+you reopen it.
+
+---
+
 ## v0.12.2 — 2026-07-13
 
 ### Fix: Subscriptions dashboard page returned a 500
