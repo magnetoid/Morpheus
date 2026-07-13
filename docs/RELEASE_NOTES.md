@@ -12,6 +12,20 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.1 — 2026-07-13
+
+### Verified external references on book pages (SEO)
+
+New `apply_external_links` tool adds a "Sources and references" section to book
+descriptions, linking out to authoritative sources — Open Library, WorldCat, and
+(when confirmed to exist) the author's Wikipedia page. Every link is built from
+identifiers we already store or verified live before it's written, so there are
+no broken/invented outbound links. Available to the dashboard AI as
+`seo.apply_external_links` (approval-gated) and preserved across description
+regenerations.
+
+---
+
 ## v0.12.0 — 2026-07-13
 
 ### Storefront hero: full-height, auto-fitting titles, a floating book

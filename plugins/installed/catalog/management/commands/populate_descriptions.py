@@ -85,22 +85,31 @@ def _book_meta(product) -> tuple[str, str, str]:
 
 
 def _extract_related_reading(body: str) -> str:
-    """Return the trailing 'Related reading' block (HTML or Markdown
-    form) from ``body``, or '' if none is present. Used to preserve
-    internal-link work across description regenerations.
+    """Return the trailing link block(s) from ``body``, or '' if none.
+
+    Preserves BOTH the 'Related reading' section (internal links, written by
+    apply_internal_links) and the 'Sources & references' section (verified
+    external links, written by apply_external_links) across a description
+    regeneration — returning from the EARLIEST heading to the end keeps every
+    appended block. Otherwise a --force regenerate silently drops the link work.
     """
     if not body:
         return ''
     import re as _re
 
-    # HTML form first — TipTap-stored descriptions.
-    m = _re.search(r'<h2[^>]*>\s*Related reading\s*</h2>', body, flags=_re.I)
-    if m:
-        return body[m.start() :].rstrip() + '\n'
+    starts = []
+    # HTML form (TipTap-stored) — either heading.
+    for heading in ('Related reading', 'Sources and references'):
+        m = _re.search(rf'<h2[^>]*>\s*{_re.escape(heading)}\s*</h2>', body, flags=_re.I)
+        if m:
+            starts.append(m.start())
     # Markdown form (legacy / LLM Markdown).
-    idx = body.find('## Related reading')
-    if idx >= 0:
-        return body[idx:].rstrip() + '\n'
+    for marker in ('## Related reading', '## Sources and references'):
+        idx = body.find(marker)
+        if idx >= 0:
+            starts.append(idx)
+    if starts:
+        return body[min(starts) :].rstrip() + '\n'
     return ''
 
 

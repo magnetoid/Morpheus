@@ -348,6 +348,74 @@ def apply_internal_links_tool(*, slugs: list[str] | None = None, force: bool = F
     )
 
 
+@tool(
+    name='seo.apply_external_links',
+    description=(
+        'Append a "Sources and references" section of VERIFIED external links to '
+        'each active book description. Links are built ONLY from stored, '
+        'reconciled identifiers (Open Library work id, OCLC, ISBN-13) plus the '
+        "author's Wikipedia page confirmed via the Wikipedia API — never "
+        'invented URLs. Idempotent: skips books already done. Returns counts.'
+    ),
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'slugs': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Optional list of product slugs to restrict to.',
+            },
+            'verify_web': {
+                'type': 'boolean',
+                'default': True,
+                'description': 'Also add the verified Wikipedia author link (needs outbound HTTPS).',
+            },
+            'force': {
+                'type': 'boolean',
+                'default': False,
+                'description': 'Rebuild the references block even if already applied.',
+            },
+            'limit': {
+                'type': 'integer',
+                'default': 0,
+                'description': 'Stop after N writes (0 = all).',
+            },
+        },
+    },
+    requires_approval=True,
+)
+def apply_external_links_tool(
+    *,
+    slugs: list[str] | None = None,
+    verify_web: bool = True,
+    force: bool = False,
+    limit: int = 0,
+) -> ToolResult:
+    import re
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    buf = StringIO()
+    kwargs = {'force': bool(force), 'limit': int(limit or 0), 'stdout': buf, 'stderr': buf}
+    if not verify_web:
+        kwargs['no_verify_web'] = True
+    if slugs:
+        kwargs['slugs'] = ','.join(s for s in slugs if s)
+    call_command('apply_external_links', **kwargs)
+    out = buf.getvalue()
+    summary = {}
+    for token in ('applied', 'skipped', 'no_links'):
+        m = re.search(rf'{token}=(\d+)', out)
+        if m:
+            summary[token] = int(m.group(1))
+    return ToolResult(
+        output={'summary': summary, 'log_tail': out[-600:]},
+        display=f'applied={summary.get("applied", 0)} skipped={summary.get("skipped", 0)}',
+    )
+
+
 # ── Sitemap (migrated from core/assistant/tools/admin_ops.py, arch-debt refactor).
 #    Was defined in core but never surfaced in get_default_tools(); now a proper,
 #    disable-safe seo agent tool (registry-contributed, seo-scoped). ────────────

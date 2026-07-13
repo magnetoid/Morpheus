@@ -216,6 +216,7 @@ class SeoPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.seo.agent_tools import (  # noqa: PLC0415
+            apply_external_links_tool,
             apply_internal_links_tool,
             audit_all_tool,
             audit_product_tool,
@@ -238,6 +239,7 @@ class SeoPlugin(Plugin):
             bulk_set_meta_tool,
             set_site_settings_tool,
             apply_internal_links_tool,
+            apply_external_links_tool,
             seo_regenerate_sitemap_tool,
         ]
 
@@ -249,6 +251,7 @@ class SeoPlugin(Plugin):
         """
         from core.agents import Skill  # noqa: PLC0415
         from plugins.installed.seo.agent_tools import (  # noqa: PLC0415
+            apply_external_links_tool,
             apply_internal_links_tool,
             audit_all_tool,
             audit_product_tool,
@@ -275,6 +278,7 @@ class SeoPlugin(Plugin):
                     bulk_set_meta_tool,
                     set_site_settings_tool,
                     apply_internal_links_tool,
+                    apply_external_links_tool,
                 ),
                 system_prompt_prelude=(
                     'You are working on SEO for this store. Standard workflow:\n'
