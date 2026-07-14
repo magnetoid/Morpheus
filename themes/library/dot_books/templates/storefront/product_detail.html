@@ -50,7 +50,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 
       <!-- Details -->
       <div>
-        {% with genre=product.book.genres.first %}<p class="eyebrow">{{ genre.name|default:product.category.name|default:"Independent press" }}</p>{% endwith %}
+        {% with genre=product.book.genres.first %}<p class="eyebrow">{% firstof genre.name product.category.name "Independent press" %}</p>{% endwith %}
         <h1 class="display display-l" style="margin: 1rem 0 0.75rem;">{{ product.name }}<span class="text-accent">.</span></h1>
 
         {% if review_summary %}

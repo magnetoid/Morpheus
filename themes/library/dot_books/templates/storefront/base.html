@@ -211,6 +211,8 @@
 
   .wrap { max-width: var(--max); margin: 0 auto; padding: 0 1.5rem; }
   @media (min-width: 768px) { .wrap { padding: 0 2.25rem; } }
+  @media (min-width: 1280px) { .wrap { padding: 0 3.25rem; } }
+  @media (min-width: 1600px) { .wrap { padding: 0 4.5rem; } }
 
   /* Wordmark */
   .wordmark { font-family: var(--serif); font-weight: 600; font-size: 1.4rem; letter-spacing: -0.02em; line-height: 1; display: inline-flex; align-items: baseline; }
@@ -337,8 +339,6 @@
   @media (min-width: 640px) { .grid-books { grid-template-columns: repeat(3, 1fr); } }
   @media (min-width: 1024px) { .grid-books { grid-template-columns: repeat(4, 1fr); } }
   @media (min-width: 1280px) { .grid-books { grid-template-columns: repeat(5, 1fr); } }
-  @media (min-width: 1600px) { .grid-books { grid-template-columns: repeat(6, 1fr); } }
-  @media (min-width: 2000px) { .grid-books { grid-template-columns: repeat(7, 1fr); } }
 
   /* Book rail — a horizontal scroll-snap carousel variant of .grid-books.
      Keeps the .grid-books class so the reveal engine still hooks it, but flips
@@ -389,6 +389,9 @@
 
   /* Footer */
   footer { background: var(--paper-2); border-top: 1px solid var(--rule); margin-top: 6rem; }
+  /* Footer content is capped + centered so it doesn't sprawl edge-to-edge on
+     wide screens (the site is otherwise full-bleed, --max: 100%). */
+  footer .wrap { max-width: 1400px; }
   footer .col h2 { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 1rem; }
   footer .col a { color: var(--ink-2); display: block; padding: 0.25rem 0; font-size: 0.92rem; }
   footer .col a:hover { color: var(--accent-ink); }
@@ -939,7 +942,7 @@
         <input type="email" name="email" placeholder="your@email.com" aria-label="Email" required>
         <button type="submit">Subscribe</button>
       </form>
-      <p id="footer-newsletter-msg" class="meta" style="margin-top:.65rem; min-height:1.1em;" aria-live="polite"></p>
+      <p id="footer-newsletter-msg" class="meta" style="margin-top:.65rem;" aria-live="polite"></p>
       <script>
       (function () {
         var f = document.getElementById('footer-newsletter');

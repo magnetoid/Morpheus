@@ -12,6 +12,27 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.7 — 2026-07-15
+
+- **Fix — book pages with no category no longer 500.** The PDP eyebrow used
+  `{{ genre.name|default:product.category.name|default:… }}`; Django resolves
+  every `|default:` argument eagerly, so `product.category.name` was evaluated
+  even when a genre existed — and any book with **no category** (`category` is
+  `None`) crashed with `VariableDoesNotExist`. Rewritten with `{% firstof %}`,
+  which resolves each candidate with `ignore_failures=True` and tolerates a
+  `None` category. (Only `giants-bread` was affected today, but it was a latent
+  crash for every category-less book.)
+- **Storefront grid — capped at 5 across + roomier edges.** The book grid
+  (`.grid-books`, all listing pages) no longer expands to 6/7 columns on very
+  wide screens — it holds at **5 per row** from 1280px up, so covers stay a
+  legible size. Page gutters widen on large desktops (3.25rem ≥1280px, 4.5rem
+  ≥1600px) for more breathing room at the edges; mobile/tablet unchanged.
+- **Footer — capped width, no empty gap.** The footer columns and sign-off no
+  longer stretch edge-to-edge on wide screens; content is capped at 1400px and
+  centered. The newsletter confirmation line no longer reserves a blank gap
+  under the Subscribe form when empty (its `aria-live` announcement still fires
+  on success).
+
 ## v0.12.6 — 2026-07-14
 
 ### Product page: cleaner recommendations + full-height cover
