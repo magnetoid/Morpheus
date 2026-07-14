@@ -152,7 +152,10 @@ Backward compatible with single-image / no-image products:
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    /* Fit the WHOLE cover at full height (never crop the book) — covers that
+       aren't exactly 2:3 sit centred on the paper backdrop rather than being
+       clipped. */
+    object-fit: contain;
   }
   /* Video slides — same aspect frame as image slides; iframe/video
      fills the box. Override aspect when content is landscape (most

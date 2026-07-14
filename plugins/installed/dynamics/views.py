@@ -274,6 +274,7 @@ def _apply_option_fields(block, request) -> None:
     block.layout = 'grid' if request.POST.get('layout') == 'grid' else 'carousel'
     block.columns = _int('columns', 2, 6, 4)
     block.show_price = _checked(request, 'show_price')
+    block.show_title = _checked(request, 'show_title')
     block.show_reason = _checked(request, 'show_reason')
     # B4 — autopilot overrides (blank → default)
     rate = _dec('exploration_rate')

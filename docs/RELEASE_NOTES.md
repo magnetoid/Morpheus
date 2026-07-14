@@ -12,6 +12,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.12.6 — 2026-07-14
+
+### Product page: cleaner recommendations + full-height cover
+
+- **Dynamic product blocks can now hide titles** (new "Show title" toggle in
+  Merchandising, alongside "Show price"). Turn both off for a clean
+  image-only recommendation grid.
+- **Product cover shows in full.** The main image on the product page now fits
+  the whole cover at full height instead of cropping it to fill.
+
+---
+
 ## v0.12.5 — 2026-07-13
 
 ### Accessibility: wordmark link name matches its visible text

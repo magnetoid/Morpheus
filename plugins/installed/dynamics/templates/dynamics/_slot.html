@@ -4,5 +4,5 @@
 {% load dynamics %}
 {% dynamic_blocks_for block.slot request product as rendered_blocks %}
 {% for entry in rendered_blocks %}
-  {% include "dynamics/_carousel.html" with heading=entry.block.heading products=entry.products layout=entry.block.layout columns=entry.block.columns show_price=entry.block.show_price reason=entry.reason %}
+  {% include "dynamics/_carousel.html" with heading=entry.block.heading products=entry.products layout=entry.block.layout columns=entry.block.columns show_price=entry.block.show_price show_title=entry.block.show_title reason=entry.reason %}
 {% endfor %}

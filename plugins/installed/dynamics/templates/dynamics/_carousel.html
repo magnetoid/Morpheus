@@ -20,8 +20,9 @@
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}
         </div>
+        {% if show_title or show_title == None or reason or show_price or show_price == None %}
         <div>
-          <p class="title">{{ product.name }}</p>
+          {% if show_title or show_title == None %}<p class="title">{{ product.name }}</p>{% endif %}
           {% if reason %}<p class="reason" style="font-size:.72rem; opacity:.65; margin:.25rem 0 0;">{{ reason }}</p>{% endif %}
           {% if show_price or show_price == None %}
           <p class="price">
@@ -29,6 +30,7 @@
           </p>
           {% endif %}
         </div>
+        {% endif %}
       </a>
       {% endfor %}
     </div>

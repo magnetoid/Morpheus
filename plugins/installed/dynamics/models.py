@@ -195,6 +195,9 @@ class DynamicBlock(models.Model):
         default=4, help_text='Items per row when the layout is Grid (2–6).'
     )
     show_price = models.BooleanField(default=True)
+    show_title = models.BooleanField(
+        default=True, help_text='Show the product name under each cover (off = image-only grid).'
+    )
     show_reason = models.BooleanField(
         default=False, help_text='Show a short "why" label under each product (e.g. “Trending”).'
     )

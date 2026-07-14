@@ -156,7 +156,8 @@
         </div>
       </div>
       <div class="flex flex-wrap gap-4 text-sm">
-        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_price" {% if not block or blk.show_price %}checked{% endif %}> Show price</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_title" {% if not blk or blk.show_title %}checked{% endif %}> Show title</label>
+        <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_price" {% if not blk or blk.show_price %}checked{% endif %}> Show price</label>
         <label class="inline-flex items-center gap-2"><input type="checkbox" name="show_reason" {% if blk.show_reason %}checked{% endif %}> Show “why” label</label>
       </div>
     </fieldset>
