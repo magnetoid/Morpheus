@@ -301,6 +301,11 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
      the bar's 32px height so the cover doesn't slide behind it. */
   body.has-admin-bar .pdp-grid > div:first-child { top: 116px; }
 }
+/* Blocks contributed into the PDP columns (dynamics "Recommended for you", the
+   audiobook player, …) wrap their content in .wrap, whose page-level max-width +
+   auto-margins + horizontal padding would indent/centre them inside the column.
+   Neutralise it so they sit flush-left with the rest of the column's content. */
+.pdp-grid .wrap { max-width: none; margin: 0; padding: 0; }
 @media (prefers-reduced-motion: reduce) {
   /* Sticky doesn't animate, so reduced-motion users still get the pin —
      no override needed. Listed here as documentation. */
@@ -702,18 +707,18 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 {% endif %}
 {% endcache %}
 
-{# Recently Viewed — localStorage; rendered empty server-side; JS hydrates from the visitor's last 8 PDP visits. #}
+{# Recently Viewed — localStorage; rendered empty server-side; JS hydrates a horizontal carousel from the visitor's last 20 PDP visits. #}
 <section class="recently-viewed-section" data-recently-viewed-section hidden>
   <div class="wrap">
     <p class="eyebrow">Picking up where you left off</p>
     <h2 class="display display-m" style="margin: .5rem 0 2rem;">Recently viewed<span class="text-accent">.</span></h2>
-    <div class="grid-books" data-recently-viewed-list></div>
+    <div class="grid-books grid-books--rail" data-recently-viewed-list></div>
   </div>
 </section>
 
 <script>
 /* Recently Viewed — runs on every PDP. Two responsibilities:
-   1. Push the current product onto a per-visitor localStorage list (cap 8).
+   1. Push the current product onto a per-visitor localStorage list (cap 21).
    2. Render the OTHER (non-current) entries into the rail.
 
    We store the bare minimum to render a card — no server fetch needed.
@@ -733,7 +738,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
   if (!Array.isArray(list)) list = [];
 
   // Render OTHERS (everything except current) before pushing current.
-  var others = list.filter(function (p) { return p && p.slug && p.slug !== current.slug; }).slice(0, 8);
+  var others = list.filter(function (p) { return p && p.slug && p.slug !== current.slug; }).slice(0, 20);
   var wrap = document.querySelector('[data-recently-viewed-section]');
   var ul   = document.querySelector('[data-recently-viewed-list]');
   if (wrap && ul && others.length) {
@@ -759,9 +764,9 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
     wrap.hidden = false;
   }
 
-  // Now push current to the front, dedupe by slug, cap at 8.
+  // Now push current to the front, dedupe by slug, cap at 21 (current + 20).
   var deduped = [current].concat(list.filter(function (p) { return p && p.slug && p.slug !== current.slug; }));
-  try { localStorage.setItem(KEY, JSON.stringify(deduped.slice(0, 8))); } catch (_) { /* quota or private mode */ }
+  try { localStorage.setItem(KEY, JSON.stringify(deduped.slice(0, 21))); } catch (_) { /* quota or private mode */ }
 })();
 </script>
 

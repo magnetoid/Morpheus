@@ -49,7 +49,7 @@ class GdprPlugin(Plugin):
                 priority=90,
             ),
             StorefrontBlock(
-                slot='footer_extra',
+                slot='footer_legal',
                 template='gdpr/blocks/footer_links.html',
                 priority=90,
             ),

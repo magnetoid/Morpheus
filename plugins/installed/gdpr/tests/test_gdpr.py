@@ -118,14 +118,14 @@ class DisableTests(TestCase):
 
     def test_surfaces_present_while_active(self):
         self.assertTrue(self._gdpr_blocks('account_nav'), 'account tile missing while active')
-        self.assertTrue(self._gdpr_blocks('footer_extra'), 'footer links missing while active')
+        self.assertTrue(self._gdpr_blocks('footer_legal'), 'footer links missing while active')
         self.assertIsNotNone(plugin_registry.settings_panel('gdpr'))
 
     def test_surfaces_vanish_on_disable(self):
         self.addCleanup(plugin_registry.activate, 'gdpr')
         plugin_registry.deactivate('gdpr')
         self.assertEqual(self._gdpr_blocks('account_nav'), [])
-        self.assertEqual(self._gdpr_blocks('footer_extra'), [])
+        self.assertEqual(self._gdpr_blocks('footer_legal'), [])
         self.assertIsNone(plugin_registry.settings_panel('gdpr'))
 
 

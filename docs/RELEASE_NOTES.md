@@ -12,6 +12,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.13.3 — 2026-07-15
+
+- **Footer rebuilt.** Removed the duplicate **Imprint / Imprints** link and split
+  the overloaded "The press" column into clean **Explore** and **Sell** columns
+  (Shop · Explore · Sell · Help). Legal links (Privacy, Terms, Imprint, Cookie
+  preferences) moved out of the nav columns into the **bottom bar** where they
+  belong — contributed via a new `footer_legal` slot (still disable-safe: turning
+  off GDPR removes them). This also fixes the `Imprint`/`Imprints` collision.
+- **Product page — "Recommended for you" aligns left.** It no longer indents/
+  centres inside the details column: contributed PDP blocks now sit flush-left
+  with the rest of the column.
+- **Product page — "Recently viewed" is now a carousel of up to 20.** The
+  recently-viewed rail switched from a fixed grid of 8 to a horizontal,
+  scroll-snap **carousel** remembering the visitor's last **20** books.
+
 ## v0.13.2 — 2026-07-15
 
 - **Fix — audiobook sample player never appeared on the storefront.** The PDP
