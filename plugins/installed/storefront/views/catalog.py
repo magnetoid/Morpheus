@@ -1182,9 +1182,10 @@ def category_detail(request, slug):
                 ('price_desc', 'Price: high to low'),
                 ('name', 'Title A–Z'),
             ],
-            'intro_eyebrow': category.description
-            and 'On the shelf'
-            or intro.get('eyebrow', 'On the shelf'),
+            # Kind eyebrow — same vocabulary as the other shelf pages
+            # (Collection / Genre / Author / Tag), was a convoluted
+            # description-dependent expression that always said "On the shelf".
+            'intro_eyebrow': intro.get('eyebrow', 'Category'),
             'intro_lede': category.description or intro.get('lede', ''),
             'breadcrumb_items': breadcrumb_items,
             'collection_items': collection_items,

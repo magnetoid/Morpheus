@@ -11,12 +11,17 @@
 {% block content %}
 <section style="padding: 4rem 0 2rem;">
   <div class="wrap" style="max-width: 720px;">
-    <p class="meta" style="margin-bottom: 1rem;">
-      <a href="/" style="color: var(--muted);">Home</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/products/" style="color: var(--muted);">All books</a>
-    </p>
-    <p class="eyebrow">On the shelf</p>
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    <p class="eyebrow">Author</p>
     <h1 class="display display-xl" style="margin: 1rem 0 1rem;">
       {{ author_name }}<span class="text-accent">.</span>
     </h1>

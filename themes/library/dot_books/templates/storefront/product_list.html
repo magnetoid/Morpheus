@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% load i18n %}{% load seo %}{% load tracking %}
+{% load i18n %}{% load seo %}{% load tracking %}{% load book_extras %}
 {% block title %}{% if selected_author %}Books by {{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }} titles{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}{% elif search_query %}Search: {{ search_query }}{% else %}All books{% endif %} — dot books{% endblock %}
 
 {% block extra_head %}
@@ -23,7 +23,10 @@
         {% endif %}
       {% endfor %}
     </nav>
-    <p class="eyebrow">{% if selected_tag %}Tagged{% else %}The shelf{% endif %}</p>
+    {% comment %}Kind eyebrow — same vocabulary as every other shelf page
+       (Category / Genre / Author / Publisher / Tag / Collection), so filtered
+       views read as first-class shelf pages.{% endcomment %}
+    <p class="eyebrow">{% if selected_author %}Author{% elif selected_publisher %}Publisher{% elif selected_category_obj %}Genre{% elif selected_tag %}Tag{% elif search_query %}Search{% else %}The shelf{% endif %}</p>
     <h1 class="display display-l" style="margin: 1rem 0;">
       {% if selected_author %}Books by {{ selected_author }}<span class="text-accent">.</span>
       {% elif selected_publisher %}{{ selected_publisher }} titles<span class="text-accent">.</span>
@@ -32,7 +35,13 @@
       {% elif search_query %}Results for "<em>{{ search_query }}</em>"<span class="text-accent">.</span>
       {% else %}Every book on the shelf<span class="text-accent">.</span>{% endif %}
     </h1>
-    <p class="lede">{% if selected_author %}Every title we shelf by {{ selected_author }}.{% elif selected_publisher %}From {{ selected_publisher }} — only the editions we'd hand a friend.{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Every book on the shelf we've tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% else %}Independent, modern, hand-curated. Filter by genre or publisher. The shelf rotates every Tuesday.{% endif %}</p>
+    {% comment %}Ledes prefer the dashboard-editable description for the term
+       (authors + publishers: Products → Book taxonomies; tags: Tag descriptions;
+       categories + collections on their own pages), falling back to house
+       copy.{% endcomment %}
+    {% if selected_author %}{% book_term_lede 'author' selected_author as author_lede %}{% endif %}
+    {% if selected_publisher %}{% book_term_lede 'publisher' selected_publisher as publisher_lede %}{% endif %}
+    <p class="lede">{% if selected_author %}{% firstof author_lede %}{% if not author_lede %}Every title we shelf by {{ selected_author }}.{% endif %}{% elif selected_publisher %}{% firstof publisher_lede %}{% if not publisher_lede %}From {{ selected_publisher }} — only the editions we'd hand a friend.{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Every book on the shelf we've tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% else %}Independent, modern, hand-curated. Filter by genre or publisher. The shelf rotates every Tuesday.{% endif %}</p>
 
     {# Active filter chips — clickable to remove. Shown when any filter is active. #}
     {% if selected_author or selected_publisher or selected_category or selected_tag or search_query %}

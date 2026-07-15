@@ -20,7 +20,9 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
       {% if product.primary_image.image %}
         {% seo_responsive_image product.primary_image.image alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
       {% elif img %}
-        <img src="{{ img }}" alt="{{ product.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+        {% comment %}GraphQL dict shape — img is a raw /media/ URL string. Route it
+           through the same responsive proxy; the raw originals are multi-MB PNGs.{% endcomment %}
+        {% seo_responsive_image img alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
       {% elif PRODUCT_PLACEHOLDER_IMAGE %}
         <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ product.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
       {% else %}
@@ -34,8 +36,11 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
       <p class="title">{{ product.name }}</p>
       {% if product.author_name %}<p class="author">{{ product.author_name }}</p>{% endif %}
     </a>
-    {% firstof product.short_description product.shortDescription "" as shortdesc %}
-    {% if shortdesc %}<p class="book__excerpt">{{ shortdesc|first_sentence }}</p>{% endif %}
+    {% comment %}if/elif, NOT firstof-as — firstof-as stores an escaped string that
+       then escapes again on output (visible &lt;p&gt; / &amp;#x27; on cards).
+       first_sentence also normalises entities/markup to plain text.{% endcomment %}
+    {% if product.short_description %}<p class="book__excerpt">{{ product.short_description|first_sentence }}</p>
+    {% elif product.shortDescription %}<p class="book__excerpt">{{ product.shortDescription|first_sentence }}</p>{% endif %}
     <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if product.display_price %}{{ product.display_price|money }}{% elif product.price %}{{ product.price|money }}{% endif %}</p>
     <div class="book__actions">
       <form method="post" action="/cart/add/{{ product.id }}/" class="book__add">

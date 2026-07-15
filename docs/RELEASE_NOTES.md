@@ -12,6 +12,38 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.13.4 — 2026-07-15
+
+**Storefront design deep-dive — bugs found on the live site, fixed at the root.**
+
+- **Card excerpts no longer show raw code.** Product cards across the home
+  rails, author pages and facet pages displayed literal `&lt;p&gt;` /
+  `&#x27;` fragments. Three-layer fix: the `first_sentence` filter now
+  normalises stored copy to plain text (unescape entities twice + strip
+  markup), the card template avoids the `{% firstof … as %}` double-escape,
+  and 13 catalog rows storing pre-escaped HTML in `short_description` were
+  cleaned in place.
+- **Card covers load ~30× lighter.** Cards fed by GraphQL dicts (home rails,
+  hero shelf) rendered the raw `/media/` originals — multi-megabyte PNGs
+  (Moby-Dick: 2.9 MB) that painted as blank cream boxes while downloading.
+  They now go through the same AVIF/WebP responsive proxy as everything else
+  (~65 KB at grid size).
+- **Add-to-cart buttons align** across a card row regardless of title/excerpt
+  length (card body flexes, actions pin to the bottom).
+- **Shelf pages standardized** — categories, collections, genres, topics,
+  authors, publishers, series and tags now share one hero pattern: breadcrumb,
+  kind eyebrow (Category / Genre / Author / Tag / …), display title with the
+  accent dot, and the **dashboard-editable description** as the lede. Filtered
+  shelf views (`/products/?author=…`, `?publisher=…`) now show the same
+  editable copy as the term's own landing page instead of generic filler.
+  Every kind was already editable in the dashboard (Categories, Collections,
+  Book taxonomies, Tag descriptions) — the storefront just never showed some
+  of it.
+- **Home "Browse the shelves" fixed** — it linked top-level *categories* to
+  `/genre/…` URLs (wrong page) and showed a single lonely chip; it now renders
+  the curated genre index (same source as the mega-menu) and hides below 3
+  entries.
+
 ## v0.13.3 — 2026-07-15
 
 - **Footer rebuilt.** Removed the duplicate **Imprint / Imprints** link and split

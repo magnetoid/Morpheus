@@ -328,8 +328,10 @@
   .book .price .compare { color: var(--muted); text-decoration: line-through; margin-left: 0.35rem; font-weight: 400; }
   /* Shared card actions (Add to cart) — used by _product_card.html. */
   .book__cover, .book__titlelink { display: block; color: inherit; text-decoration: none; }
-  .book__body { display: flex; flex-direction: column; }
-  .book__actions { display: grid; gap: 0.4rem; margin-top: 0.7rem; }
+  /* body fills the card and pins actions to the bottom, so Add-to-cart buttons
+     align across a row even when titles/excerpts wrap to different heights. */
+  .book__body { display: flex; flex-direction: column; flex: 1; }
+  .book__actions { display: grid; gap: 0.4rem; margin-top: auto; padding-top: 0.7rem; }
   .book__actions .btn { width: 100%; justify-content: center; }
   .book__add { margin: 0; }
   .btn-sm { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
