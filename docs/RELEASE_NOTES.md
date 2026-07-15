@@ -32,6 +32,11 @@ surfaced in **Dashboard → Settings → Version & updates**.
   centered. The newsletter confirmation line no longer reserves a blank gap
   under the Subscribe form when empty (its `aria-live` announcement still fires
   on success).
+- **Dashboard — micro-animation polish.** Sub-nav **tabs** now grow their
+  underline from the left (faint on hover, full on active) instead of snapping;
+  the **confirm dialog** backdrop fades in with the card's pop; **KPI stat
+  tiles** deepen their shadow on hover so they feel alive. All interaction-only
+  (no new page-load animations) and neutralised under `prefers-reduced-motion`.
 
 ## v0.12.6 — 2026-07-14
 

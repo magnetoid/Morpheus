@@ -928,13 +928,34 @@
   }
   .tab:hover { color: var(--text); }
   .tab.is-active { color: var(--text); }
-  .tab.is-active::after {
+  /* Underline grows from the left — faint on hover, full on active — instead of
+     snapping in. Reduced-motion is neutralised by the global reduce block. */
+  .tab::after {
     content: ''; position: absolute;
     left: 0; right: 0; bottom: -1px;
     height: 2px;
     background: var(--brand); /* one accent — was tremor-blue, a second competing blue */
     border-radius: 2px 2px 0 0;
+    transform: scaleX(0); transform-origin: left center;
+    transition: transform var(--motion-med) var(--ease-out),
+                opacity var(--motion-fast) var(--ease-out);
   }
+  .tab:hover::after     { transform: scaleX(1); opacity: .35; }
+  .tab.is-active::after { transform: scaleX(1); opacity: 1; }
+
+  /* ── Micro-animation polish (interaction only; entrances are handled by the
+     #main-content view-transition + .reveal-stagger, so nothing here duplicates
+     a page-load animation). All durations honour the global reduced-motion
+     block above. ─────────────────────────────────────────────────────────── */
+  /* Confirm-modal backdrop fades in with the card's overlay-in pop. */
+  @keyframes mc-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+  #morph-confirm-modal:not([hidden]) [data-mc-backdrop] {
+    animation: mc-backdrop-in var(--motion-med) var(--ease-out);
+  }
+  /* KPI stat tiles react to the cursor with a faint shadow deepen — alive, but
+     no lift/pointer since they aren't clickable. (.kpi is the .card element.) */
+  .kpi { transition: box-shadow var(--motion-med) var(--ease-out); }
+  .kpi:hover { box-shadow: var(--shadow-pop); }
 </style>
 </head>
 <body class="min-h-screen flex guided-ux" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
