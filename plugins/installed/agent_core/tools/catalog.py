@@ -763,7 +763,10 @@ def create_variant_tool(
             'price_amount': {'type': 'string'},
             'price_currency': {'type': 'string'},
             'compare_at_amount': {'type': 'string'},
-            'variant_type': {'type': 'string', 'enum': ['physical', 'digital', 'virtual']},
+            'variant_type': {
+                'type': 'string',
+                'enum': ['physical', 'digital', 'audiobook', 'virtual'],
+            },
             'requires_shipping': {'type': 'boolean'},
             'is_taxable': {'type': 'boolean'},
             'inventory_policy': {'type': 'string', 'enum': ['deny', 'continue']},

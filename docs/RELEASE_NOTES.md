@@ -12,6 +12,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.13.2 — 2026-07-15
+
+- **Fix — audiobook sample player never appeared on the storefront.** The PDP
+  passes `product` as a GraphQL dict, but the `audiobook_for` tag filtered the
+  variant FK by that dict — which raised and was silently swallowed, so the
+  "🎧 Listen to a sample" block rendered nothing even for a ready audiobook. The
+  tag now resolves the id from either a dict or a model.
+- **Audiobook editions are their own variant type.** An audiobook edition is no
+  longer created as a generic **Digital** variant — it's now `variant_type =
+  'audiobook'`, so it reads as an audiobook everywhere (dashboard, agent tools,
+  API). It still behaves as a downloadable, no-shipping edition: checkout skips
+  inventory reservation and the download is delivered exactly as for digital
+  variants. (Metadata-only migration; existing digital audiobook variants keep
+  working — re-save or run the backfill to re-type them.)
+
 ## v0.13.1 — 2026-07-15
 
 - **Storefront — book shadows.** The hero slider now casts a **different strange

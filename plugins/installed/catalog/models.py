@@ -584,6 +584,7 @@ class ProductVariant(models.Model):
     VARIANT_TYPE_CHOICES = [
         ('physical', 'Physical — ships to a customer address'),
         ('digital', 'Digital — downloadable file'),
+        ('audiobook', 'Audiobook — downloadable narration edition'),
         ('virtual', 'Virtual — service, gift card, booking, no shipment'),
     ]
     INVENTORY_POLICY_CHOICES = [

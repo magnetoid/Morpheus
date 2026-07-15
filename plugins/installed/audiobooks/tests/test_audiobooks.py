@@ -71,7 +71,7 @@ class ProductFormHandlerTests(TestCase):
         BookProduct.objects.create(product=product, author='An Author')
         return product
 
-    def test_saved_handler_creates_digital_audiobook_variant(self):
+    def test_saved_handler_creates_audiobook_variant(self):
         from plugins.installed.audiobooks.models import Audiobook
         from plugins.installed.audiobooks.plugin import AudiobooksPlugin
 
@@ -87,9 +87,25 @@ class ProductFormHandlerTests(TestCase):
         )
         ab = Audiobook.objects.get(variant__product=product)
         self.assertEqual(ab.narrator, 'Jane')
-        self.assertEqual(ab.variant.variant_type, 'digital')
+        # Its own edition type (not a generic 'digital' variant) — but still a
+        # downloadable, no-shipping edition.
+        self.assertEqual(ab.variant.variant_type, 'audiobook')
         self.assertFalse(ab.variant.requires_shipping)
         self.assertEqual(str(ab.variant.price.amount), '14.99')
+
+    def test_audiobook_variant_is_digital_behaving_at_checkout(self):
+        """The new 'audiobook' type must behave like 'digital' where it matters:
+        checkout skips inventory reservation (else it would demand stock/shipping
+        for a download). Regression guard for the variant-type split."""
+        from plugins.installed.audiobooks.services import (
+            get_or_create_audiobook_edition,
+        )
+        from plugins.installed.orders.services import _is_inventoried
+
+        product = self._book()
+        ab = get_or_create_audiobook_edition(product, sku='AB-INV-1')
+        self.assertEqual(ab.variant.variant_type, 'audiobook')
+        self.assertFalse(_is_inventoried(product, ab.variant))
 
     def test_non_book_product_is_ignored(self):
         # No BookProduct → product.book raises (AttributeError subclass) → the
@@ -141,6 +157,34 @@ class StorefrontPlayerTests(TestCase):
         ab.status = 'ready'
         ab.save()
         self.assertEqual(audiobook_for(product), ab)
+
+    def test_audiobook_for_accepts_graphql_dict_product(self):
+        """The storefront PDP passes `product` as a GraphQL dict, not the model.
+        The tag must still resolve the audiobook — regression: filtering an FK by
+        a dict raised, the bare except swallowed it, and the player never showed."""
+        from plugins.installed.audiobooks.models import Audiobook
+        from plugins.installed.audiobooks.templatetags.audiobooks import audiobook_for
+        from plugins.installed.catalog.models import Product, ProductVariant
+
+        product = Product.objects.create(
+            name='Dict Book',
+            slug='ab-dict',
+            sku='ABD-1',
+            status='active',
+            price=Money(Decimal('9.99'), 'USD'),
+        )
+        variant = ProductVariant.objects.create(
+            product=product,
+            name='Audiobook',
+            sku='ABD-1-A',
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        ab = Audiobook.objects.create(
+            variant=variant, status='ready', audio_file='audiobooks/x.mp3'
+        )
+        product_dict = {'id': str(product.pk), 'name': product.name}
+        self.assertEqual(audiobook_for(product_dict), ab)
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())

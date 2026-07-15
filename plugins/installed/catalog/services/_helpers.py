@@ -73,7 +73,7 @@ _PRODUCT_SCALAR_FIELDS = {
 
 _VALID_PRODUCT_TYPES = {'simple', 'variable', 'digital', 'bundle'}
 _VALID_STATUSES = {'draft', 'active', 'archived'}
-_VALID_VARIANT_TYPES = {'physical', 'digital', 'virtual'}
+_VALID_VARIANT_TYPES = {'physical', 'digital', 'audiobook', 'virtual'}
 _VALID_INVENTORY_POLICIES = {'deny', 'continue'}
 
 

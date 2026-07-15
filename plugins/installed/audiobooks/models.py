@@ -1,9 +1,11 @@
-"""Audiobook model — the narration attached to a digital ``ProductVariant``.
+"""Audiobook model — the narration attached to an audiobook ``ProductVariant``.
 
-The audiobook EDITION is a real, purchasable catalog variant
-(``variant_type='digital'``); this row attaches the narration audio + player
-metadata to that variant. A disabled plugin removes the player/generation while
-the variant stays a plain digital edition. See docs/plans/audiobooks-2026-06.md.
+The audiobook EDITION is a real, purchasable catalog variant with its own
+``variant_type='audiobook'`` (a downloadable, digital-behaving edition — no
+shipping, delivered as a download); this row attaches the narration audio +
+player metadata to that variant. A disabled plugin removes the player/generation
+while the variant stays a plain audiobook edition. See
+docs/plans/audiobooks-2026-06.md.
 """
 
 from __future__ import annotations

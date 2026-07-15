@@ -75,7 +75,7 @@ def get_or_create_audiobook_edition(product, *, sku: str):
             product=product,
             name='Audiobook',
             sku=sku[:100],
-            variant_type='digital',
+            variant_type='audiobook',
             requires_shipping=False,
         )
         ab = Audiobook.objects.create(variant=variant)

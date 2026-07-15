@@ -163,7 +163,9 @@ class DigitalProductsPlugin(Plugin):
             # (lets a single product sell PDF + EPUB + MP3 as separate
             # variants); falls back to the product-level digital_file
             # (single-SKU digital products).
-            variant_is_digital = bool(variant and getattr(variant, 'variant_type', '') == 'digital')
+            variant_is_digital = bool(
+                variant and getattr(variant, 'variant_type', '') in ('digital', 'audiobook')
+            )
             variant_has_file = bool(variant and getattr(variant, 'digital_file', None))
             product_has_file = bool(getattr(product, 'digital_file', None))
 

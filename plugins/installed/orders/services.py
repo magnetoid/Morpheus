@@ -179,7 +179,7 @@ def _is_inventoried(product, variant) -> bool:
     Returns False (skip reservation) when:
       - the product is digital, virtual, or bundle;
       - the product or variant doesn't require shipping;
-      - the variant's variant_type is digital or virtual;
+      - the variant's variant_type is digital, audiobook, or virtual;
       - the merchant turned track_inventory off on the product.
 
     The DB-side reserve_for_order at checkout is still the correctness
@@ -192,7 +192,7 @@ def _is_inventoried(product, variant) -> bool:
     if getattr(product, 'requires_shipping', True) is False:
         return False
     variant_type = getattr(variant, 'variant_type', 'physical')
-    if variant_type in ('digital', 'virtual'):
+    if variant_type in ('digital', 'audiobook', 'virtual'):
         return False
     return getattr(variant, 'requires_shipping', True) is not False
 
