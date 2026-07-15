@@ -49,6 +49,14 @@ class AIAssistantPlugin(Plugin):
 
         provider_config_registry.register(get_provider_config, get_active_provider_name)
 
+        # RAG — register the knowledge retriever into the core seam. Core's
+        # runtime injects retrieved chunks into Linda's prompt; if this plugin
+        # is absent/disabled the seam simply returns [] (additive, disable-safe).
+        from core.assistant.knowledge import register_retriever
+        from plugins.installed.ai_assistant.services.rag import retrieve as _kb_retrieve
+
+        register_retriever(_kb_retrieve)
+
         # GraphQL extensions
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.queries')
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.mutations')

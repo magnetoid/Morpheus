@@ -454,6 +454,37 @@ class ProductEmbedding(models.Model):
         ordering = ['-updated_at']
 
 
+class KnowledgeChunk(models.Model):
+    """A chunk of unstructured knowledge for Linda's RAG index.
+
+    One row per heading-sized slice of a source document (platform docs, ADRs,
+    release notes, product long-copy, or any plugin-contributed source via the
+    KNOWLEDGE_SOURCES filter). ``vector`` is a JSON list of floats — same shape
+    as ``ProductEmbedding``; a future pgvector migration swaps it for a
+    VectorField + HNSW index (Phase 2, see docs/plans/rag-knowledge-base.md).
+    ``(source, ref)`` identifies the chunk for idempotent upserts.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source = models.CharField(max_length=64, db_index=True)
+    ref = models.CharField(max_length=200)
+    title = models.CharField(max_length=300, blank=True)
+    text = models.TextField()
+    vector = models.JSONField(default=list)
+    dim = models.PositiveIntegerField(default=0)
+    source_text_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['source', 'ref']
+        constraints = [
+            models.UniqueConstraint(fields=['source', 'ref'], name='uniq_knowledge_source_ref')
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f'{self.source}:{self.ref}'
+
+
 class DynamicPriceRule(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.OneToOneField(

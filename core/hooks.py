@@ -615,6 +615,17 @@ class MorpheusEvents:
     #   model — the inverse of the old hard-coded imports (ADR 0017).
     BRAIN_SIGNALS = 'brain.signals'  # filter
 
+    # KNOWLEDGE_SOURCES — filter, value=list (accumulates knowledge documents
+    #   for Linda's RAG index). Each subscriber APPENDS dicts of the shape
+    #   {source: str, ref: str, title: str, text: str} for the unstructured
+    #   knowledge it owns (docs, help articles, policies, product long-copy) and
+    #   returns the list. The ai_assistant plugin ingests + embeds the result;
+    #   a disabled contributor's slice simply never appears (bus skips inactive
+    #   owners). Structured data (orders/inventory) stays on live tool-calls —
+    #   this is only for text Linda can't otherwise see. See
+    #   docs/plans/rag-knowledge-base.md.
+    KNOWLEDGE_SOURCES = 'knowledge.sources'  # filter
+
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,
     #                     session_key=str. Fires from the storefront PDP.

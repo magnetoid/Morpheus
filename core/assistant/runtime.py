@@ -133,6 +133,31 @@ def _format_recent_memories(query: str = '') -> str:
     return '\n'.join(lines)
 
 
+def _format_knowledge(query: str = '') -> str:
+    """Compact list of retrieved knowledge chunks, injected each turn.
+
+    Complements the structured tools + remembered facts with *unstructured*
+    knowledge (docs, policies, product long-copy) surfaced by the RAG retriever
+    a plugin registered in ``core.assistant.knowledge``. Empty string when no
+    retriever is registered or nothing matches — RAG is strictly additive.
+    """
+    try:
+        from core.assistant.knowledge import retrieve
+
+        chunks = retrieve(query, k=4)
+    except Exception:  # noqa: BLE001
+        return ''
+    if not chunks:
+        return ''
+    lines = ['RETRIEVED KNOWLEDGE — cite only if relevant, never invent:']
+    for c in chunks:
+        title = (c.get('title') or c.get('ref') or '').strip()
+        text = (c.get('text') or '').strip()
+        if text:
+            lines.append(f'  • {title}: {text}' if title else f'  • {text}')
+    return '\n'.join(lines) if len(lines) > 1 else ''
+
+
 def _page_context_system(context: dict[str, Any] | None) -> str:
     """Compose the one-line system prefix carrying the URL+title of the
     dashboard page Linda was opened from.
@@ -190,6 +215,11 @@ def _to_llm_messages(
     memo = _format_recent_memories(user_message)
     if memo:
         msgs.append(LLMMessage(role='system', content=memo))
+    # Inject retrieved unstructured knowledge (RAG) for the current message.
+    # No-op unless a plugin registered a retriever (ai_assistant); additive.
+    know = _format_knowledge(user_message)
+    if know:
+        msgs.append(LLMMessage(role='system', content=know))
     # Inject the page context (URL + title) if the caller supplied one
     # so Linda can answer about "this product / order / page".
     page_ctx = _page_context_system(context)

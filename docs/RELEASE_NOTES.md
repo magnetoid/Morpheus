@@ -12,6 +12,23 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.13.0 — 2026-07-15
+
+- **Linda gets a knowledge base (RAG, phase 1).** Linda can now retrieve
+  **unstructured** knowledge — the platform docs (Architecture, Plugin
+  Development, Release Notes, API, Quick Start) and any plugin-contributed
+  sources — and cite it in-chat, complementing her existing live tool-calls
+  (structured data like orders/inventory stays on exact tool-calls; RAG only
+  adds what she otherwise can't see). Architecture per ADR 0017: the retriever
+  **seam lives in core** (`core/assistant/knowledge.py`) and the ai_assistant
+  plugin registers the actual retriever in its `ready()` — so core imports no
+  plugin, and disabling ai_assistant cleanly removes the knowledge block from
+  the prompt. Plugins contribute their own documents through the new
+  `KNOWLEDGE_SOURCES` filter (same pattern as `BRAIN_SIGNALS`). Build/refresh the
+  index with `python manage.py rebuild_knowledge`. Embeddings are stored as JSON
+  (Python cosine) at current scale; a pgvector index is the planned phase 2
+  (`docs/plans/rag-knowledge-base.md`).
+
 ## v0.12.7 — 2026-07-15
 
 - **Fix — book pages with no category no longer 500.** The PDP eyebrow used
