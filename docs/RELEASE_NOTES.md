@@ -12,6 +12,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.13.1 — 2026-07-15
+
+- **Storefront — book shadows.** The hero slider now casts a **different strange
+  3D shadow behind each slide** — every featured cover gets its own organic
+  blob shape, tint, offset and drift, so the shadow visibly morphs as the slider
+  advances (crossfades with the active slide; disabled under
+  `prefers-reduced-motion`). Book covers in the grids now carry a **minimal**
+  resting shadow that grows **slightly** on hover, replacing the heavier lift.
+
 ## v0.13.0 — 2026-07-15
 
 - **Linda gets a knowledge base (RAG, phase 1).** Linda can now retrieve
