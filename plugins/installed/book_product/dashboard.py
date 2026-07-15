@@ -139,6 +139,28 @@ def _facets(book, slugify) -> list[dict]:
     return out
 
 
+def _apply_translation_of(book, raw) -> None:
+    """Link a language edition to the ORIGINAL work by product slug.
+
+    Fail-soft: an unknown slug links nothing; an empty value unlinks; pointing
+    at self is ignored; pointing at another translation resolves to its
+    original so the edition graph stays one level deep."""
+    from plugins.installed.book_product.models import BookProduct  # noqa: PLC0415
+
+    slug = (raw or '').strip()
+    if not slug:
+        book.translation_of = None
+        return
+    target = (
+        BookProduct.objects.filter(product__slug=slug)
+        .exclude(pk=book.pk)
+        .select_related('translation_of')
+        .first()
+    )
+    if target is not None:
+        book.translation_of = target.translation_of or target
+
+
 def save_book_fields(product, post, files=None) -> None:
     """Upsert the BookProduct from the product form's book.* inputs.
 
@@ -169,6 +191,9 @@ def save_book_fields(product, post, files=None) -> None:
 
     if files and files.get('cover_pdf'):
         book.cover_pdf = files['cover_pdf']
+
+    if 'translation_of' in post:
+        _apply_translation_of(book, post.get('translation_of'))
 
     book.save()
 

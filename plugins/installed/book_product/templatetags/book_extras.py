@@ -47,6 +47,46 @@ def _attr(product, name):
     return getattr(product, name, None)
 
 
+@register.filter
+def language_name(code):
+    """Human-readable local name for a language code ('fr' → 'français');
+    falls back to the code itself. Used by the PDP language switcher."""
+    code = (str(code or '')).strip().lower()
+    if not code:
+        return ''
+    try:
+        from django.utils.translation import get_language_info  # noqa: PLC0415
+
+        return get_language_info(code)['name_local']
+    except Exception:  # noqa: BLE001 — unknown code: show it as-is
+        return code
+
+
+@register.simple_tag
+def book_language_editions(product):
+    """All language editions of this product's work (original first), each as
+    ``{language, name, slug, current}``. Empty list when the product isn't a
+    book or has no linked editions — the PDP switcher self-gates on this."""
+    book = book_for_product(product)
+    if book is None:
+        return []
+    try:
+        editions = book.language_editions()
+    except Exception:  # noqa: BLE001 — never break a PDP render
+        return []
+    if len(editions) < 2:
+        return []
+    return [
+        {
+            'language': e.language or 'en',
+            'name': e.product.name,
+            'slug': e.product.slug,
+            'current': e.pk == book.pk,
+        }
+        for e in editions
+    ]
+
+
 @register.simple_tag
 def book_term_lede(taxonomy, name):
     """Return the stored description for a taxonomy term (author/publisher/…)

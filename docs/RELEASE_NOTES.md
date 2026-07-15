@@ -12,6 +12,23 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.0 — 2026-07-16
+
+- **Language editions — customers can buy books in their own language.** A
+  translated edition is a full product (its own page, own-language copy, and
+  its own **print / e-book / audiobook** variants), linked to the original via
+  the new **"Translation of"** field on the book card (enter the original's
+  slug; linking to a translation resolves to the original automatically).
+  Linked editions get:
+  - a **"Read it in your language"** switcher on the product page (edition
+    chips with native language names — *français*, *deutsch*, …), contributed
+    by the book_product plugin so it disappears if the plugin is disabled;
+  - **`hreflang` alternate links** between all editions of the work — the SEO
+    item deferred since the 2026-07 audit now ships where it's real.
+- **Product page — variant badges.** Audiobook variants now show an
+  **Audiobook** badge (they wrongly showed "Physical"); physical editions now
+  read **Print**. (book_product plugin 0.2.0 → 0.3.0.)
+
 ## v0.13.4 — 2026-07-15
 
 **Storefront design deep-dive — bugs found on the live site, fixed at the root.**

@@ -7,6 +7,25 @@ interactive 3D cover. Self-gating: no BookProduct / no cover PDF → nothing.
 {% endcomment %}
 {% load book_extras %}
 {% book_for_product product as book %}
+{% book_language_editions product as lang_editions %}
+{% if lang_editions %}
+{% comment %}Language switcher — every edition of this work (original +
+translations linked via BookProduct.translation_of). Each edition is a full
+product with its own print/ebook/audiobook variants, so the customer buys in
+their own language. Self-gates: fewer than 2 editions → nothing.{% endcomment %}
+<section style="margin:1.5rem 0;">
+  <p class="eyebrow" style="margin:0 0 .6rem;">Read it in your language</p>
+  <div style="display:flex; flex-wrap:wrap; gap:.5rem;">
+    {% for e in lang_editions %}
+    {% if e.current %}
+    <span class="chip" aria-current="true" style="border-color:var(--ink); font-weight:600;">{{ e.language|language_name }}</span>
+    {% else %}
+    <a href="/products/{{ e.slug }}/" class="chip" title="{{ e.name }}">{{ e.language|language_name }}</a>
+    {% endif %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 {% if book.cover_pdf %}
 <section style="margin:2rem 0; border-top:1px solid var(--rule); padding-top:1.75rem;">
   <h2 style="font-family:var(--serif); font-size:1.3rem; margin:0 0 1rem;">Preview this edition</h2>

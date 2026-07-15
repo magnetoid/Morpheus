@@ -158,6 +158,11 @@ submit with the product form; persisted by on_product_form_saved.{% endcomment %
           <input type="text" name="language" class="input" value="{{ book_widget.book.language|default:'' }}" placeholder="en">
         </div>
         <div>
+          <label class="block text-sm font-medium mb-1">Translation of</label>
+          <input type="text" name="translation_of" class="input" value="{{ book_widget.book.translation_of.product.slug|default:'' }}" placeholder="original book's slug">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Links this edition to the original work — powers the storefront language switcher. Leave blank for the original.</p>
+        </div>
+        <div>
           <label class="block text-sm font-medium mb-1">Edition</label>
           <input type="text" name="edition" class="input" value="{{ book_widget.book.edition|default:'' }}">
         </div>

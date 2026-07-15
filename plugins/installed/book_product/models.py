@@ -102,6 +102,18 @@ class BookProduct(models.Model):
     publication_date = models.DateField(null=True, blank=True)
     edition = models.CharField(max_length=100, blank=True)
     language = models.CharField(max_length=20, blank=True, default='en')
+    # Language editions: a translated edition points at the ORIGINAL work's
+    # book row. Each edition is a full Product (own slug, own-language copy,
+    # own print/ebook/audiobook variants); this link powers the PDP language
+    # switcher + hreflang alternates. SET_NULL: deleting the original leaves
+    # translations standalone rather than cascading whole products away.
+    translation_of = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='translations',
+    )
     series = models.CharField(max_length=200, blank=True)
     series_position = models.CharField(max_length=40, blank=True)
     synopsis = models.TextField(blank=True)
@@ -131,6 +143,20 @@ class BookProduct(models.Model):
 
     def __str__(self) -> str:
         return f'{self.author} — {self.product_id}' if self.author else str(self.product_id)
+
+    def language_editions(self) -> list[BookProduct]:
+        """Every edition of this work (the original + all translations),
+        including self, with an active product — original first, then by
+        language. Powers the PDP language switcher + hreflang alternates."""
+        original = self.translation_of or self
+        ids = [original.pk, *original.translations.values_list('pk', flat=True)]
+        rows = list(
+            BookProduct.objects.filter(pk__in=ids, product__status='active').select_related(
+                'product'
+            )
+        )
+        rows.sort(key=lambda b: (b.pk != original.pk, b.language or ''))
+        return rows
 
 
 class BookTaxonomy(models.TextChoices):

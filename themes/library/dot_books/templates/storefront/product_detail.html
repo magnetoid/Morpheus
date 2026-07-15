@@ -1,8 +1,13 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load book_extras %}
 
 {% block extra_head %}
 {% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
+{% comment %}hreflang alternates — one per language edition of this work
+(BookProduct.translation_of graph). Only renders when 2+ editions exist.{% endcomment %}
+{% book_language_editions product as lang_alternates %}
+{% for e in lang_alternates %}<link rel="alternate" hreflang="{{ e.language }}" href="{{ request.scheme }}://{{ request.get_host }}/products/{{ e.slug }}/">
+{% endfor %}
 {% seo_product_jsonld product product_seo_extra %}
 {% if book_jsonld_data %}{% seo_book_jsonld book_jsonld_data %}{% endif %}
 {% if video_seo %}{% seo_video_jsonld video_seo %}{% endif %}
@@ -94,7 +99,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
                     data-variant-desc="{{ v.shortDescription|default:''|escape }}">
               {% if v.imageUrl %}<span class="pdp-variant__thumb"><img src="{{ v.imageUrl }}" alt="" loading="lazy"></span>{% endif %}
               <span class="pdp-variant__badge pdp-variant__badge--{{ v.variantType|default:'physical' }}">
-                {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'virtual' %}Access{% else %}Physical{% endif %}
+                {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'audiobook' %}Audiobook{% elif v.variantType == 'virtual' %}Access{% else %}Print{% endif %}
               </span>
               {% if v.isOnSale and v.discountPercentage %}
                 <span class="pdp-variant__sale-pill" title="On sale">−{{ v.discountPercentage }}%</span>
@@ -375,6 +380,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
   background: rgba(0, 0, 0, .04);
 }
 .pdp-variant__badge--digital { background: rgba(99, 102, 241, .12); color: #4338ca; }
+.pdp-variant__badge--audiobook { background: rgba(217, 119, 6, .14); color: #92400e; }
 .pdp-variant__badge--virtual { background: rgba(20, 184, 166, .12); color: #0f766e; }
 .pdp-variant__name {
   font-family: var(--serif); font-size: 1.1rem; font-weight: 500; line-height: 1.25;
