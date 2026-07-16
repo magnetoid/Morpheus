@@ -34,6 +34,11 @@ class WorkflowsPlugin(Plugin):
         except Exception as e:  # noqa: BLE001
             logger.warning('workflows: hook listener registration failed: %s', e)
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.workflows.agent_tools import workflows_run_tool  # noqa: PLC0415
+
+        return [workflows_run_tool]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(

@@ -8,19 +8,28 @@ orphan-template removal, stale test import). What remains below is the
 work that touches live-revenue paths or needs a design decision — do each
 as its own PR with tests, not as a sweep.
 
-## 1. bookvault shell leak — the named ADR-0023 open item
+## 1. bookvault shell leak — DONE (2026-07-16)
 
-`admin_dashboard/views_split/products.py:96,404` hard-imports
+New `PRODUCT_LIST_COLUMNS` filter (mirrors `PRODUCT_FORM_CARDS`; supports an
+optional per-column `bulk_action`); bookvault contributes its link-status
+column + "Send to Bookvault" bulk action there and its fulfilment card via
+`PRODUCT_FORM_CARDS`. products.html/product_form.html render contributed
+columns/cards generically — zero bookvault references remain in the shell
+(no `{% plugin_enabled %}` needed). The rewire exposed that the leak was
+worse than "survives disable": with bookvault boot-disabled its URLconf never
+registered, so the always-rendered `{% url 'bookvault:bulk_link' %}` NoReverseMatch-
+**500'd the whole product list**. Guarded by
+`bookvault/tests/test_dashboard_contributions.py` (end-to-end incl. the
+disabled-→-200 case) + `test_disable_guards.py::ProductShellContributionGuards`
+(structural: no coupling tokens in the shell).
+
+### (was) the named ADR-0023 open item
+
+`admin_dashboard/views_split/products.py:96,404` hard-imported
 `bookvault.services` + models to render the product-list status column and
-the fulfilment card; `products.html:45` posts to `{% url 'bookvault:bulk_link' %}`
-and `product_form.html:761` hard-codes the card. Self-hides on
-`is_authenticated()` but survives disable-while-configured.
-
-Fix (as CLAUDE.md prescribes): move the card to
-`PRODUCT_FORM_CARDS`/`PRODUCT_FORM_SAVED`, add a `PRODUCT_LIST_COLUMNS`
-filter for the list column (new hook, mirrors `PRODUCT_FORM_CARDS`), wrap
-the remaining template references in `{% plugin_enabled "bookvault" %}`.
-Verify with a disable-guard test alongside `test_disable_guards.py`.
+the fulfilment card; `products.html:45` posted to `{% url 'bookvault:bulk_link' %}`
+and `product_form.html:761` hard-coded the card. Self-hid on
+`is_authenticated()` but survived disable-while-configured.
 
 ## 2. Other shared-shell leaks (same class, same fix pattern)
 
@@ -100,9 +109,12 @@ snapshotting current feed output *before* the merge, then diff after.
 
 ## 5. Smaller consolidations
 
-- `_trail(*items)` breadcrumb builder: 8 plugin copies + 1 variant. Home:
-  `morpheus` plugin SDK (where `DashboardPage` lives) so plugins don't
-  import admin_dashboard. Signature: `dashboard_trail(root_label, root_url, *items)`.
+- `_trail(*items)` breadcrumb builder — DONE (2026-07-16): now
+  `morpheus.dashboard_trail(section_label, section_url, *items)` in the
+  plugin SDK (`plugins/contributions.py`, beside `DashboardPage`). An interim
+  consolidation had homed it in `admin_dashboard.breadcrumbs`, which made the
+  8 plugins import a sibling plugin; that module is deleted and all 8 call the
+  SDK. Guarded by `morpheus/tests/test_dashboard_trail.py`.
 - `zip(names, prices)` row-parsing style in dashboards: leave; noted only.
 
 ## 6. Decisions needed (not code yet)
@@ -112,6 +124,7 @@ snapshotting current feed output *before* the merge, then diff after.
   Register it (it ships a "Demo data" app to prod) or move it out of
   `plugins/installed/` to a dev-fixtures location. Owner call.
 - **core/assistant/tools/*** → `contribute_agent_tools()` migration
-  continues (baseline is ratchet-only, 11 entries left; `bf5e9c3f` shows
+  continues (baseline is ratchet-only, 9 entries left; `bf5e9c3f` shows
   the pattern — and remember its lesson: grep *all* test imports when
-  moving a tool).
+  moving a tool). `workflows.run` moved 2026-07-16
+  (`workflows/agent_tools.py` + `tests/test_agent_tools.py`, −2 rows).

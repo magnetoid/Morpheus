@@ -60,7 +60,6 @@ def get_default_tools() -> list:
         theme_activate_tool,
         updates_apply_tool,
         updates_status_tool,
-        workflows_run_tool,
     )
     from core.assistant.tools.code import (
         code_apply_proposal_tool,
@@ -132,7 +131,6 @@ def get_default_tools() -> list:
         settings_set_tool,
         plugins_toggle_tool,
         theme_activate_tool,
-        workflows_run_tool,
         orders_refund_tool,
         # Delegate — fan out N parallel Workers, then collect their results.
         # spawn_workers_tool is the primary path; invoke_agent_tool is a
@@ -169,6 +167,7 @@ def get_default_tools() -> list:
         'cms.publish_page',
         'cms.unpublish_page',
         'email.templates',
+        'workflows.run',
     ]
     tools += [t for t in (agent_registry.get_tool(n) for n in _migrated_names) if t is not None]
     return tools

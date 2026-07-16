@@ -151,19 +151,8 @@ class ThemeActivateTests(TestCase):
         self.assertTrue(ThemeConfig.objects.get(theme_name='dot_books').is_active)
 
 
-class WorkflowsRunTests(TestCase):
-    def test_unknown_workflow(self):
-        from core.assistant.tools.admin_ops import workflows_run_tool
-
-        with self.assertRaises(ToolError):
-            workflows_run_tool.invoke({'name': 'does-not-exist'})
-
-    def test_live_run_requires_confirmation(self):
-        from core.assistant.tools.admin_ops import workflows_run_tool
-
-        # dry_run=False without confirmed must refuse before touching anything.
-        with self.assertRaises(ToolError):
-            workflows_run_tool.invoke({'name': 'whatever', 'dry_run': False})
+# WorkflowsRunTests moved to plugins/installed/workflows/tests/test_agent_tools.py
+# with the tool itself (boundary ratchet).
 
 
 class OrdersRefundTests(TestCase):

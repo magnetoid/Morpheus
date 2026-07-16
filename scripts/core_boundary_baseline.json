@@ -18,14 +18,6 @@
       "imports": "plugins.installed.orders.refunds"
     },
     {
-      "file": "core/assistant/tools/admin_ops.py",
-      "imports": "plugins.installed.workflows.engine"
-    },
-    {
-      "file": "core/assistant/tools/admin_ops.py",
-      "imports": "plugins.installed.workflows.models"
-    },
-    {
       "file": "core/assistant/tools/database.py",
       "imports": "plugins.installed.orders.models"
     },
