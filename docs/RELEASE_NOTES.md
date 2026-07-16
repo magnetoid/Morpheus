@@ -12,6 +12,29 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.3 — 2026-07-16
+
+- **One subscription system.** Two parallel, incompatible `Subscription`
+  models had shipped (the billing one in `subscriptions`, and a never-wired
+  replenish/curated skeleton in `subscriptions_plus`). Merged: the
+  Subscriptions app now owns delivery subscriptions too — a `kind` on every
+  subscription (plan / replenish / curated box), box contents
+  (`SubscriptionLine`), a shipment schedule, and a pause/skip/swap audit log,
+  plus the "Subscribe & save" PDP block and the cadence/swap-window settings.
+  The `subscriptions_plus` plugin is deleted. *(Post-deploy one-off: its four
+  empty tables can be dropped — `subscriptions_plus_subscription`, `_line`,
+  `_shipment`, `_event` — plus their `django_migrations`/`content_types`
+  rows; they held zero rows.)*
+- **Guest purchases now count in experiments.** Checkout stamps the anonymous
+  visitor id onto the order (`Order.metadata['visitor_id']`, new `metadata`
+  field), so A/B-test conversions from customers who never log in are finally
+  attributed — the loop the merchandising autopilot learns from. Previously
+  only signed-in conversions counted.
+- **"Bought together" counts every real purchase.** The co-purchase job
+  filtered on two order statuses that don't exist and missed
+  processing/shipped/delivered orders; it now uses the canonical paid-status
+  set, so recommendations learn from every actual sale.
+
 ## v0.14.2 — 2026-07-16
 
 - **Mega-menu covers load ~100× lighter.** The Featured-books thumbnails in
