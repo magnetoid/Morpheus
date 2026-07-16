@@ -1,4 +1,4 @@
-{% comment %}Topics mega-menu panel. Params: label (default "Topics"). Reads nav_topics, nav_featured_books from context (book_product plugin).{% endcomment %}
+{% load seo %}{% comment %}Topics mega-menu panel. Params: label (default "Topics"). Reads nav_topics, nav_featured_books from context (book_product plugin).{% endcomment %}
 {% if nav_topics %}
 <div class="nav-mega">
   <a href="/topics/" class="nav-mega__trigger" aria-haspopup="true">{{ label|default:"Topics" }}
@@ -16,7 +16,7 @@
       <div class="nav-mega__covers">
         {% for b in nav_featured_books %}
         <a class="nav-mega__cover" href="/products/{{ b.slug }}/" title="{{ b.name }}">
-          <img src="{{ b.image }}" alt="{{ b.name }}" loading="lazy" decoding="async">
+          {% seo_responsive_image b.image alt=b.name widths="200,400" sizes="120px" %}
           <span>{{ b.name }}</span>
         </a>
         {% endfor %}

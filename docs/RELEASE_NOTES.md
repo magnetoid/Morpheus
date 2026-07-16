@@ -12,6 +12,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.2 — 2026-07-16
+
+- **Mega-menu covers load ~100× lighter.** The Featured-books thumbnails in
+  the Authors/Genres/Topics dropdown menus were the last images on the
+  storefront still loading raw multi-MB `/media/` PNGs. They now go through
+  the responsive-image proxy like the product cards (AVIF/WebP, 200/400px
+  renditions sized for the ~120px tiles).
+
 ## v0.14.1 — 2026-07-16
 
 Internal hardening release — plugin-boundary debt repayment. No new features,

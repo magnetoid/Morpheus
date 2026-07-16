@@ -1,4 +1,4 @@
-{% comment %}Authors mega-menu panel. Params: label (default "Authors"). Reads nav_authors + nav_featured_books from context.{% endcomment %}
+{% load seo %}{% comment %}Authors mega-menu panel. Params: label (default "Authors"). Reads nav_authors + nav_featured_books from context.{% endcomment %}
 {% if nav_authors %}
 <div class="nav-mega">
   <a href="/products/" class="nav-mega__trigger" aria-haspopup="true">{{ label|default:"Authors" }}
@@ -16,7 +16,7 @@
       <div class="nav-mega__covers">
         {% for b in nav_featured_books %}
         <a class="nav-mega__cover" href="/products/{{ b.slug }}/" title="{{ b.name }}">
-          <img src="{{ b.image }}" alt="{{ b.name }}" loading="lazy" decoding="async">
+          {% seo_responsive_image b.image alt=b.name widths="200,400" sizes="120px" %}
           <span>{{ b.name }}</span>
         </a>
         {% endfor %}
