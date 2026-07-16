@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.14.2')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.14.3')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -154,7 +154,6 @@ MORPHEUS_DEFAULT_PLUGINS = [
     #   F15  referrals              — Give-5, Get-5 customer referrals
     #   F12  smart_shipping         — live rates + carbon display
     #   F20  returns_portal         — returns as a retention surface
-    #   F18  subscriptions_plus     — replenish + curated subscriptions
     #   F9   lookbook               — editorial product bundles
     #   F13  post_checkout_upsell   — single in-checkout + post-order upsell
     #   F16  drops                  — scheduled drops + waitlist
@@ -177,7 +176,6 @@ MORPHEUS_DEFAULT_PLUGINS = [
     'plugins.installed.referrals',
     'plugins.installed.smart_shipping',
     'plugins.installed.returns_portal',
-    'plugins.installed.subscriptions_plus',
     'plugins.installed.lookbook',
     'plugins.installed.post_checkout_upsell',
     'plugins.installed.drops',

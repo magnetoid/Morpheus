@@ -57,7 +57,15 @@ class Plan(models.Model):
 
 
 class Subscription(models.Model):
-    """A customer's active or past subscription to a Plan."""
+    """A customer's active or past subscription to a Plan.
+
+    THE one subscription model (the old ``subscriptions_plus`` plugin shipped
+    a second, parallel ``Subscription`` — the PR-#62 class of bug; merged here
+    2026-07-16). ``kind`` distinguishes a pure billing subscription ('plan')
+    from product-delivery flavours ('replenish' — re-ships every N days;
+    'curated' — merchant-rotated box). Delivery subscriptions carry their box
+    contents in ``lines`` and their schedule in ``shipments``.
+    """
 
     STATE_CHOICES = [
         ('trialing', 'Trialing'),
@@ -66,6 +74,11 @@ class Subscription(models.Model):
         ('paused', 'Paused'),
         ('cancelled', 'Cancelled'),
         ('expired', 'Expired'),
+    ]
+    KIND_CHOICES = [
+        ('plan', 'Plan (billing only)'),
+        ('replenish', 'Replenish'),
+        ('curated', 'Curated box'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -78,6 +91,11 @@ class Subscription(models.Model):
     state = models.CharField(
         max_length=10, choices=STATE_CHOICES, default='trialing', db_index=True
     )
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default='plan')
+    # Delivery cadence in days for replenish/curated kinds; 0 = ship/bill per
+    # the plan's interval.
+    cadence_days = models.PositiveIntegerField(default=0)
+    next_ship_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     started_at = models.DateTimeField(auto_now_add=True)
     current_period_start = models.DateTimeField(null=True, blank=True)
@@ -125,3 +143,69 @@ class SubscriptionInvoice(models.Model):
             models.Index(fields=['subscription', '-period_start']),
             models.Index(fields=['state', 'period_end']),
         ]
+
+
+class SubscriptionLine(models.Model):
+    """A product in a delivery subscription's box (replenish/curated kinds).
+
+    Absorbed from the deleted ``subscriptions_plus`` plugin (2026-07-16) —
+    now FKs THE Subscription instead of a parallel one.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='lines')
+    variant = models.ForeignKey(
+        'catalog.ProductVariant', on_delete=models.PROTECT, related_name='+'
+    )
+    quantity = models.PositiveIntegerField(default=1)
+
+
+class SubscriptionShipment(models.Model):
+    """One scheduled (or fulfilled) delivery of a subscription box."""
+
+    STATE_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('prepared', 'Prepared'),
+        ('shipped', 'Shipped'),
+        ('skipped', 'Skipped'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription = models.ForeignKey(
+        Subscription, on_delete=models.CASCADE, related_name='shipments'
+    )
+    ship_at = models.DateTimeField(db_index=True)
+    state = models.CharField(max_length=10, choices=STATE_CHOICES, default='scheduled')
+    order = models.ForeignKey(
+        'orders.Order',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
+    class Meta:
+        ordering = ['ship_at']
+
+
+class SubscriptionEvent(models.Model):
+    """Audit log of self-serve pause / skip / swap / cancel actions —
+    drives the churn-save prompt."""
+
+    KIND_CHOICES = [
+        ('created', 'Created'),
+        ('paused', 'Paused'),
+        ('resumed', 'Resumed'),
+        ('skipped', 'Skipped'),
+        ('swapped', 'Swapped'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='events')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    at = models.DateTimeField(auto_now_add=True)
+    meta = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-at']

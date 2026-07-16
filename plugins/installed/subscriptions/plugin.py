@@ -10,8 +10,11 @@ class SubscriptionsPlugin(Plugin):
     label = 'Subscriptions'
     version = '1.0.0'
     description = (
-        'Recurring billing: Plan, Subscription, SubscriptionInvoice. '
-        'Manual provider out of the box; Stripe Billing adapter slot ready.'
+        'Recurring billing + delivery subscriptions: Plan, Subscription '
+        '(plan / replenish / curated-box kinds, with lines, shipments, and a '
+        'pause/skip/swap audit log), SubscriptionInvoice. Manual provider out '
+        'of the box; Stripe Billing adapter slot ready. (Absorbed the parallel '
+        'subscriptions_plus plugin, 2026-07-16.)'
     )
     has_models = True
     requires = ['customers']
@@ -69,6 +72,15 @@ class SubscriptionsPlugin(Plugin):
                 slot='footer_extra',
                 template='subscriptions/blocks/footer_link.html',
                 priority=50,
+            ),
+            # "Subscribe & save" cadence picker on the PDP (absorbed from
+            # subscriptions_plus). Self-gates on product.subscription_eligible,
+            # so it renders nothing until a product opts in.
+            StorefrontBlock(
+                slot='pdp_below_form',
+                template='subscriptions/blocks/subscribe_save.html',
+                priority=15,
+                context_keys=['product'],
             ),
         ]
 
@@ -155,6 +167,28 @@ class SubscriptionsPlugin(Plugin):
                     'type': 'boolean',
                     'title': 'Only email customers with marketing consent',
                     'default': True,
+                },
+                # Delivery-subscription knobs (absorbed from subscriptions_plus).
+                'default_cadence_days': {
+                    'type': 'integer',
+                    'default': 30,
+                    'title': 'Default delivery cadence (days)',
+                },
+                'allowed_cadences_days': {
+                    'type': 'array',
+                    'items': {'type': 'integer'},
+                    'default': [14, 30, 45, 60, 90],
+                    'title': 'Cadences offered to the shopper',
+                },
+                'swap_window_days': {
+                    'type': 'integer',
+                    'default': 2,
+                    'title': 'Swap window (days before next ship the customer can swap)',
+                },
+                'churn_save_prompt': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Show a churn-save prompt on pause / cancel',
                 },
             },
         }

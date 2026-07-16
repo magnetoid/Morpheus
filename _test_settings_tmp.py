@@ -15,7 +15,6 @@ _BROKEN = {
     'plugins.installed.returns_portal',
     'plugins.installed.rich_post_purchase',
     'plugins.installed.save_for_later',
-    'plugins.installed.subscriptions_plus',
     'plugins.installed.ugc_reviews',
 }
 INSTALLED_APPS = [a for a in INSTALLED_APPS if a not in _BROKEN]  # noqa: F405
