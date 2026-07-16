@@ -174,6 +174,7 @@ class BookvaultPlugin(Plugin):
             'properties': {
                 'token': {
                     'type': 'string',
+                    'format': 'password',  # write-only: never echo the stored credential
                     'default': '',
                     'title': 'BV client token',
                     'description': 'Minted by auth.bookvault.app/api/WooAuth. Click "Connect" on the overview page rather than pasting here.',

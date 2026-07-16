@@ -12,6 +12,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.7 — 2026-07-16
+
+- **Bookvault token is now write-only in Settings.** The stored API token
+  was echoed back into the settings form; it now renders masked and a blank
+  submit keeps the existing secret (house `format: password` convention —
+  found by the UX/settings audit).
+- **Dashboard & Settings consistency audit.** A four-track audit (components,
+  settings surfaces, navigation, copy/feedback) produced a ranked, phased
+  polish plan at `docs/plans/dashboard-ux-consistency-2026-07.md` — P0 bug
+  fixes through copy standards, each with an enforcement test so fixes stick.
+
 ## v0.14.6 — 2026-07-16
 
 - **Fixed: cart totals API crash during checkout.** The `cartTotals` GraphQL
