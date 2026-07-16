@@ -53,7 +53,7 @@ class JournalPlugin(Plugin):
         return SettingsPanel(
             label='Journal',
             description='Enable/disable journal, default block types, schedule preview window.',
-            category='content',
+            category='channels',
             schema=self.get_config_schema(),
         )
 

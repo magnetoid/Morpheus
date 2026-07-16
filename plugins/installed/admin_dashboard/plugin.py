@@ -14,6 +14,10 @@ class AdminDashboardPlugin(Plugin):
         # Surface "a new Morpheus version is available" (from the daily
         # core.tasks.check_for_updates cache) in the dashboard activity feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=95)
+        # Contribution-taxonomy system check: a SettingsPanel with an unknown
+        # category (or a DashboardPage with an unknown nav) renders nowhere —
+        # fail `manage.py check` instead of hiding the surface silently.
+        from plugins.installed.admin_dashboard import checks  # noqa: F401, PLC0415
 
     def on_activity_feed(self, value, limit=20, **kwargs):
         """Append an "Update available" item when the cached daily update check

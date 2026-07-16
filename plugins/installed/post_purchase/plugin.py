@@ -37,7 +37,7 @@ class PostPurchasePlugin(Plugin):
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='Post-purchase journey',
-            category='customers',
+            category='marketing',
             description=(
                 'Per-shop timing + on/off controls for each step of the '
                 'post-purchase automation chain.'

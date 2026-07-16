@@ -186,10 +186,9 @@ class TrackingPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                # Legacy mirrors of the TrackingSettings model — kept for
-                # back-compat. The model is the source of truth.
-                'measurement_id': {'type': 'string', 'title': 'GA4 Measurement ID (mirror)'},
-                'gtm_container_id': {'type': 'string', 'title': 'GTM Container ID (mirror)'},
+                # GA4/GTM main settings live on the TrackingSettings model at
+                # /dashboard/tracking/ — no mirror fields here (editing a
+                # mirror was a silent no-op; nothing ever read it back).
                 # Google Ads — live ONLY in PluginConfig (no model migration
                 # needed). Read by the conversion-pixel template tag below.
                 'google_ads_conversion_id': {

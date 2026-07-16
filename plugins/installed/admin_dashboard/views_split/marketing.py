@@ -52,7 +52,11 @@ def coupon_new(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             coupon = form.save()
             messages.success(request, f'Coupon "{coupon.code}" created.')
-            return redirect('admin_dashboard:coupon_edit', coupon_id=coupon.id)
+            return ajax_or_redirect(
+                request, 'admin_dashboard:coupon_edit', coupon_id=coupon.id, follow=True
+            )
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
     else:
         form = CouponForm()
     return render(

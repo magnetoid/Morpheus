@@ -202,17 +202,17 @@
     </div>
   </form>
 
-  {% comment %}Brand voice — owned by the ai_content plugin, surfaced here as a widget so the AI page is the single home for AI config. POSTs to ai_content.{% endcomment %}
-  {% if brand_voice %}
-  <form method="post" action="{{ brand_voice.submit_url }}" class="card overflow-hidden">
+  {% comment %}Every category='ai' plugin panel — brand voice (ai_content), AI stylist, and future siblings — is surfaced here as a widget so the AI page is the single home for AI config. Each form POSTs to its owning plugin's settings endpoint.{% endcomment %}
+  {% for p in ai_panels %}
+  <form method="post" action="{{ p.submit_url }}" class="card overflow-hidden">
     {% csrf_token %}
     <input type="hidden" name="_next" value="/dashboard/settings/ai/">
     <div class="card-padded border-b border-[color:var(--border)]">
-      <h2 class="font-semibold flex items-center gap-2"><i data-lucide="megaphone" class="h-4 w-4"></i> {{ brand_voice.label }}</h2>
-      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ brand_voice.description }} Applied to every AI generation — product copy, emails, Linda's replies.</p>
+      <h2 class="font-semibold flex items-center gap-2"><i data-lucide="{{ p.icon }}" class="h-4 w-4"></i> {{ p.label }}</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ p.description }}</p>
     </div>
     <div class="card-padded space-y-3">
-      {% for field in brand_voice.fields %}
+      {% for field in p.fields %}
       <div class="space-y-1">
         <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">{{ field.title }}</label>
         {% if field.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.description }}</p>{% endif %}
@@ -220,6 +220,9 @@
         <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="{{ field.key }}" {% if field.value %}checked{% endif %}> Enabled</label>
         {% elif field.kind == 'enum' %}
         <select name="{{ field.key }}" class="input">{% for option in field.enum %}<option value="{{ option }}" {% if option == field.value %}selected{% endif %}>{{ option }}</option>{% endfor %}</select>
+        {% elif field.kind == 'password' %}
+        {# Write-only secret: no pre-filled value; blank submit keeps the stored secret. #}
+        <input type="password" autocomplete="new-password" name="{{ field.key }}" class="input" placeholder="{% if field.has_value %}••••••• (unchanged){% endif %}">
         {% elif field.kind == 'text_long' or field.key == 'brand_voice_guidelines' %}
         <textarea name="{{ field.key }}" class="input" rows="3" placeholder="{{ field.placeholder|default:'' }}">{{ field.value }}</textarea>
         {% else %}
@@ -229,10 +232,10 @@
       {% endfor %}
     </div>
     <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
-      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-3.5 w-3.5"></i> Save brand voice</button>
+      <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-3.5 w-3.5"></i> Save</button>
     </div>
   </form>
-  {% endif %}
+  {% endfor %}
 
 </div>
 

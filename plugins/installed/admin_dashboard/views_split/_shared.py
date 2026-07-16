@@ -33,6 +33,7 @@ def ajax_or_redirect(
     request: HttpRequest,
     *redirect_args,
     payload: dict | None = None,
+    follow: bool = False,
     **redirect_kwargs,
 ) -> HttpResponse:
     """If the request is an AJAX submit, return JSON ``{ok: true, ...}``.
@@ -44,9 +45,18 @@ def ajax_or_redirect(
 
     Pass ``payload={'id': str(obj.id)}`` to surface freshly-created
     identifiers to the JS client.
+
+    Pass ``follow=True`` on create-style saves: the AJAX payload then
+    carries ``redirect: <resolved url>`` and dashboard.js navigates there.
+    A successful create must land on the record's edit page — staying on
+    the still-filled New form invites a duplicate second submit.
     """
     if _is_ajax(request):
         body = {'ok': True}
+        if follow:
+            from django.shortcuts import resolve_url
+
+            body['redirect'] = resolve_url(*redirect_args, **redirect_kwargs)
         if payload:
             body.update(payload)
         return JsonResponse(body)

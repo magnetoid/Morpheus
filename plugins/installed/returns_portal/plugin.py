@@ -44,7 +44,7 @@ class ReturnsPortalPlugin(Plugin):
         return SettingsPanel(
             label='Returns portal',
             description='Return window, exchange preference, store-credit incentive copy.',
-            category='checkout',
+            category='payments',
             schema=self.get_config_schema(),
         )
 

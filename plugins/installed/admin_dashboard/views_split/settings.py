@@ -917,24 +917,41 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         for k, lbl, desc, cs in feature_flags
     ]
 
-    # Brand voice — owned by the ai_content plugin, which contributes a
-    # category='ai' SettingsPanel. Render its fields here (via the shared
-    # panel-field helper) so the AI page is the single home for AI config;
-    # the form POSTs back to ai_content's own settings endpoint (no
-    # cross-plugin model import — plugin ownership preserved).
-    brand_voice = None
-    try:
-        bv_plugin = plugin_registry.get('ai_content')
-        bv_panel = plugin_registry.settings_panel('ai_content')
-        if bv_plugin is not None and bv_panel is not None:
-            brand_voice = {
-                'label': bv_panel.label,
-                'description': bv_panel.description,
-                'fields': _build_panel_fields(bv_plugin, bv_panel.schema),
-                'submit_url': '/dashboard/settings/ai_content/',
-            }
-    except Exception:  # noqa: BLE001 — ai_content may be disabled
-        brand_voice = None
+    # Every category='ai' SettingsPanel renders on this page (via the shared
+    # panel-field helper) so it stays the single home for AI config — brand
+    # voice (ai_content), AI stylist, and any future sibling. Each form POSTs
+    # back to its owner's settings endpoint (no cross-plugin model import —
+    # plugin ownership preserved). ai_assistant is skipped: its config IS the
+    # provider cards rendered above.
+    ai_panels = []
+    for entry in _panels_by_category().get('ai', []):
+        if entry['plugin'] == 'ai_assistant':
+            continue
+        try:
+            owner = plugin_registry.get(entry['plugin'])
+            panel = entry['panel']
+            description = panel.description
+            if entry['plugin'] == 'ai_content':
+                description = (
+                    f'{description} Applied to every AI generation — '
+                    "product copy, emails, Linda's replies."
+                )
+            ai_panels.append(
+                {
+                    'label': panel.label,
+                    'description': description,
+                    'icon': 'megaphone' if entry['plugin'] == 'ai_content' else 'sparkles',
+                    'fields': _build_panel_fields(owner, panel.schema),
+                    'submit_url': f'/dashboard/settings/{entry["plugin"]}/',
+                }
+            )
+        except Exception as e:  # noqa: BLE001 — one broken panel must not 500 the AI page
+            import logging
+
+            logging.getLogger('morpheus.admin').warning(
+                'settings_ai: panel %s failed to build: %s', entry['plugin'], e, exc_info=True
+            )
+            continue
 
     return render(
         request,
@@ -947,7 +964,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
             'active_provider': active,
             'active_banner': active_banner,
             'features': features,
-            'brand_voice': brand_voice,
+            'ai_panels': ai_panels,
             'usage': _ai_usage_summary(days=30),
             'active_nav': 'settings',
         },

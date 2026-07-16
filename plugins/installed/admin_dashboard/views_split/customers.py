@@ -174,7 +174,11 @@ def customer_new(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             customer = form.save()
             messages.success(request, f'Customer "{customer.email}" created.')
-            return redirect('admin_dashboard:customer_edit', customer_id=customer.id)
+            return ajax_or_redirect(
+                request, 'admin_dashboard:customer_edit', customer_id=customer.id, follow=True
+            )
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
     else:
         form = CustomerForm()
     return render(

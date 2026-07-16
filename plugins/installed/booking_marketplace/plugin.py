@@ -43,6 +43,6 @@ class BookingMarketplacePlugin(Plugin):
                 icon='calendar-check',
                 section='marketplace',
                 order=60,
-                nav='marketplace',
+                nav='main',
             ),
         ]

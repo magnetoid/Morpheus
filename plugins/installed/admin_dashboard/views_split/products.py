@@ -217,7 +217,11 @@ def product_new(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             product = form.save()
             messages.success(request, f'Product "{product.name}" created.')
-            return redirect('admin_dashboard:product_edit', product_id=product.id)
+            return ajax_or_redirect(
+                request, 'admin_dashboard:product_edit', product_id=product.id, follow=True
+            )
+        if (error_response := ajax_form_errors(request, form)) is not None:
+            return error_response
     else:
         form = ProductForm()
     categories, vendors = _product_form_choices()

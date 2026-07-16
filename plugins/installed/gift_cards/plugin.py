@@ -64,6 +64,10 @@ class GiftCardsPlugin(Plugin):
                 icon='gift',
                 section='marketing',
                 order=50,
+                # Canonical URL — the routes live under register_urls'
+                # dashboard/gift-cards/ prefix; without this override the
+                # sidebar linked the doubled /dashboard/apps/gift_cards/gift_cards/.
+                url='/dashboard/gift-cards/',
             ),
         ]
 

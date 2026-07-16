@@ -46,7 +46,7 @@ class TrustSignalsPlugin(Plugin):
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='Trust signals',
-            category='storefront',
+            category='general',
             description='Per-store control over which trust signals to render on PDPs.',
             schema={
                 'show_rating': {

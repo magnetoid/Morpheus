@@ -21,6 +21,14 @@ any of it, so every new plugin drifts. The plan is therefore: fix the broken
 
 ## P0 — Actually broken (small fixes, user-facing bugs) — 1 batch
 
+> ✅ **Shipped 2026-07-16 (v0.14.8), all 8 items.** Includes the P4 #1/#2
+> enforcement (`morpheus.E001`/`E002` system check in
+> `admin_dashboard/checks.py`) and regression tests
+> (`test_create_form_ajax.py`, `test_contribution_taxonomy.py`). The
+> create-form fix also added the missing success-navigation: dashboard.js
+> now follows a `redirect` key on `{ok: true}` payloads
+> (`ajax_or_redirect(..., follow=True)`), so creates land on the edit page.
+
 1. **False "Saved" on the three `data-ajax` CREATE forms.** `dashboard.js:632`
    treats any 200 non-JSON as success; `product_new`
    (`admin_dashboard/views_split/products.py:214-234`), `customer_new`
@@ -149,10 +157,11 @@ already made above). MINOR release each.*
 The audits prove conventions don't survive without gates. Add, in the same
 batches as their contracts:
 
-1. System check: `SettingsPanel.category` must be a registered category
-   (kills P0#2 forever).
-2. System check: `DashboardPage.nav` ∈ {main, settings, hidden}; `section`
-   in the registered taxonomy (warns on one-page sections).
+1. ✅ System check: `SettingsPanel.category` must be a registered category
+   (kills P0#2 forever). Shipped v0.14.8 as `morpheus.E001`.
+2. ✅ System check: `DashboardPage.nav` ∈ {main, settings, hidden} — shipped
+   v0.14.8 as `morpheus.E002`. (Section-taxonomy warning still open; do it
+   with P1.4.)
 3. Structural test: no `confirm(` in dashboard templates (allowlist empty).
 4. Structural test: no `messages.error(request, str(e`)-pattern; no
    singular-`'error'` JSON key in dashboard views (baseline-and-ratchet,

@@ -17,7 +17,7 @@ class FraudRulesPlugin(Plugin):
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='Fraud rules',
-            category='security',
+            category='developer',
             description='Tune the merchant-specific thresholds.',
             schema={
                 'high_risk_bins': {

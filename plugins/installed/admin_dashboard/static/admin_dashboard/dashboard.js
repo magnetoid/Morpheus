@@ -632,6 +632,10 @@
       if (res.ok && (!data || data.ok !== false)) {
         _setBtnState(btn, 'ok');
         form.dispatchEvent(new CustomEvent('morph:saved', { detail: data, bubbles: true }));
+        // Create-style saves send back the record's canonical URL — follow
+        // it so the merchant lands on the edit page instead of staying on
+        // the still-filled New form (where a second submit would duplicate).
+        if (data && data.redirect) { window.location.assign(data.redirect); }
       } else {
         _setBtnState(btn, 'fail');
         // Surface the server's validation errors so the merchant sees WHY it

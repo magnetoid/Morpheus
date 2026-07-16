@@ -50,7 +50,7 @@ class PostCheckoutUpsellPlugin(Plugin):
         return SettingsPanel(
             label='Post-checkout upsell',
             description='In-checkout + post-checkout upsell target (a single product slug each).',
-            category='checkout',
+            category='payments',
             schema=self.get_config_schema(),
         )
 

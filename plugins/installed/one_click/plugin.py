@@ -41,7 +41,7 @@ class OneClickPlugin(Plugin):
         return SettingsPanel(
             label='One-click returning shopper',
             description='Master switch, token rotation period, offer-after-N-orders threshold.',
-            category='checkout',
+            category='payments',
             schema=self.get_config_schema(),
         )
 

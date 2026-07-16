@@ -71,7 +71,7 @@ class AgenticCheckoutPlugin(Plugin):
                 'acp.checkout scope. The money path needs a Stripe ACP '
                 'enrollment (Phase 2).'
             ),
-            category='checkout',
+            category='payments',
             schema=self.get_config_schema(),
         )
 
