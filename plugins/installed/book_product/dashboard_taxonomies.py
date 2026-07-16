@@ -42,6 +42,8 @@ def _curated_model(kind):
 def _curated_groups():
     from django.urls import reverse
 
+    from plugins.installed.book_product.tasks import MAX_BATCH
+
     groups = []
     for kind, _singular, label, prefix, root_url in _CURATED:
         model = _curated_model(kind)
@@ -62,6 +64,7 @@ def _curated_groups():
                     ),
                 }
             )
+        missing = sum(1 for t in terms if t['count'] and not t['has_seo'])
         groups.append(
             {
                 'key': kind,
@@ -69,7 +72,17 @@ def _curated_groups():
                 'terms': terms,
                 'is_curated': True,
                 'root_url': root_url,
+                # Curated kinds get a landing-page editor too — their index
+                # intro lives in BookTaxonomyRoot exactly like /authors/.
+                'root_edit_url': reverse('book_product_dashboard:taxonomy_root_edit', args=[kind]),
                 'add_url': reverse('book_product_dashboard:curated_add', args=[kind]),
+                'backfill_url': reverse('book_product_dashboard:curated_backfill', args=[kind]),
+                # Terms that carry books but have no intro — the backfill's
+                # workload. `batch` is what ONE run actually writes (the task
+                # caps each run); the button states that number rather than the
+                # full backlog, so a 1500-term kind doesn't promise 1500.
+                'missing_copy': missing,
+                'backfill_batch': min(missing, MAX_BATCH),
             }
         )
     return groups
@@ -82,7 +95,12 @@ _ROOT_URL = {
     'publisher': '/publishers/',
     'series': '/series/',
     'imprint': '/imprints/',
+    'genre': '/genres/',
+    'topic': '/topics/',
 }
+# Plural, page-facing label per root kind — the curated ones carry theirs in
+# _CURATED (singular is used for term editing, plural titles the index page).
+_ROOT_LABELS = {**_LABELS, **{k: plural for k, _singular, plural, *_ in _CURATED}}
 
 
 @staff_member_required
@@ -181,15 +199,18 @@ def taxonomy_edit(request: HttpRequest, taxonomy: str, slug: str) -> HttpRespons
 
 @staff_member_required
 def taxonomy_root_edit(request: HttpRequest, taxonomy: str) -> HttpResponse:
-    """Edit the landing page for a whole taxonomy kind (e.g. /authors/) —
-    its intro blurb, SEO, and hero image. The BookTaxonomyRoot row is created
-    only on first save."""
-    from plugins.installed.book_product.models import BookTaxonomy, BookTaxonomyRoot
+    """Edit the landing page for a whole taxonomy kind (e.g. /authors/,
+    /genres/) — its intro blurb, SEO, and hero image. The BookTaxonomyRoot row
+    is created only on first save. Validates against BookRootTaxonomy (the
+    six kinds with an index page), NOT BookTaxonomy (the four that can have
+    term overlays) — gating on the latter is what made /genres/ + /topics/
+    uneditable."""
+    from plugins.installed.book_product.models import BookRootTaxonomy, BookTaxonomyRoot
 
-    if taxonomy not in BookTaxonomy.values:
+    if taxonomy not in BookRootTaxonomy.values:
         return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
 
-    label = _LABELS.get(taxonomy, taxonomy)
+    label = _ROOT_LABELS.get(taxonomy, taxonomy)
     root = BookTaxonomyRoot.objects.filter(taxonomy=taxonomy).first()
 
     if request.method == 'POST':
@@ -296,6 +317,39 @@ def curated_edit(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
 
 
 @staff_member_required
+def curated_backfill(request: HttpRequest, kind: str) -> HttpResponse:
+    """Queue the bulk copy backfill for a curated kind (Genres/Topics).
+
+    Hand-writing ~1500 topic intros isn't realistic and the per-page Generate
+    button is one-at-a-time, so this enqueues a batch — most-stocked terms
+    first. Runs on the worker: each term is an LLM call, far past a request's
+    budget. The list page's SEO pill shows progress on refresh.
+    """
+    if _curated_model(kind) is None or request.method != 'POST':
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+    try:
+        limit = int(request.POST.get('limit') or 25)
+    except (TypeError, ValueError):
+        limit = 25
+
+    from plugins.installed.book_product.tasks import MAX_BATCH, backfill_taxonomy_copy
+
+    limit = max(1, min(limit, MAX_BATCH))
+    try:
+        backfill_taxonomy_copy.delay(kind, limit)
+    except Exception as e:  # noqa: BLE001 — no broker (dev without Redis)
+        messages.error(request, f"Couldn't queue the copy backfill: {e}")
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+    messages.success(
+        request,
+        f'Writing intro copy for up to {limit} {_CURATED_LABELS[kind].lower()} '
+        'pages in the background, most-stocked first. Refresh in a minute to '
+        'see them land.',
+    )
+    return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
+
+
+@staff_member_required
 def curated_delete(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
     model = _curated_model(kind)
     if model is not None and request.method == 'POST':
@@ -309,96 +363,28 @@ def taxonomy_generate(request: HttpRequest, taxonomy: str, slug: str = '') -> Ht
     """AI-generate the intro + SEO for a taxonomy page — a term when `slug` is
     given, otherwise the root/index page. Returns JSON
     {description, meta_title, meta_description}. Fail-soft: a {error} payload
-    (HTTP 200) the editor surfaces when the AI provider isn't configured."""
-    import json  # noqa: F401
+    (HTTP 200) the editor surfaces when the AI provider isn't configured.
 
+    The prompt lives in services_copy so this button and the bulk backfill
+    task write identical copy."""
     from django.http import JsonResponse
 
-    from plugins.installed.book_product.compat import (
-        distinct_values,
-        product_ids_for,
-        resolve_slug,
+    from plugins.installed.book_product.services_copy import (
+        CopyGenerationError,
+        generate_copy,
     )
-    from plugins.installed.book_product.models import BookTaxonomy
-    from plugins.installed.catalog.models import Product
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required.'}, status=405)
-    if taxonomy not in BookTaxonomy.values and taxonomy not in _CURATED_LABELS:
-        return JsonResponse({'error': 'Unknown taxonomy.'}, status=400)
-
-    if taxonomy in _CURATED_LABELS:
-        # Curated Genre/Topic — titles come from the M2M, not a string field.
-        label = _CURATED_LABELS[taxonomy]
-        model = _curated_model(taxonomy)
-        if slug:
-            obj = model.objects.filter(slug=slug).first()
-            if obj is None:
-                return JsonResponse({'error': 'Unknown term.'}, status=400)
-            name = obj.name
-            titles = [t for t in obj.books.values_list('product__name', flat=True)[:12] if t]
-            subject = f'the {label} page for "{name}"'
-            context_line = f'Books on this page: {", ".join(titles) or "(none yet)"}.'
-        else:
-            name = f'All {label}s'
-            terms = list(model.objects.values_list('name', flat=True)[:15])
-            subject = f'the {label} index page, which lists every {label.lower()}'
-            context_line = f'{label}s include: {", ".join(terms) or "(none yet)"}.'
-    elif slug:
-        label = _LABELS.get(taxonomy, taxonomy)
-        name = resolve_slug(taxonomy, slug) or slug
-        ids = product_ids_for(taxonomy, name)[:12]
-        titles = list(Product.objects.filter(id__in=ids).values_list('name', flat=True)[:12])
-        subject = f'the {label} page for "{name}"'
-        context_line = f'Books on this page: {", ".join(titles) or "(none yet)"}.'
-    else:
-        label = _LABELS.get(taxonomy, taxonomy)
-        name = f'All {label}'
-        terms = distinct_values(taxonomy)[:15]
-        subject = f'the {label} index page, which lists every {label.lower()} entry'
-        context_line = f'{label} include: {", ".join(terms) or "(none yet)"}.'
-
-    mode = request.POST.get('mode', 'generate')
-    existing = (request.POST.get('existing') or '').strip()
-    if mode == 'rewrite' and existing:
-        # Rewrite just the intro the merchant already has — keep their facts,
-        # improve the prose. Returns only {description}.
-        prompt = (
-            f'Rewrite and improve this intro for {subject} on dot books, an '
-            'independent online bookshop. Keep it warm, concise (2-3 sentences) '
-            'and specific; preserve the facts. Return STRICT JSON {"description": '
-            '"..."} and nothing else.\n\nCurrent text:\n' + existing
-        )
-    else:
-        prompt = (
-            f'Write storefront copy for {subject} on an independent online bookshop '
-            f'called dot books.\n{context_line}\n\n'
-            'Return STRICT JSON (no markdown, nothing outside the JSON) with keys:\n'
-            '  "description": a warm, specific 2-3 sentence editorial intro (plain text),\n'
-            '  "meta_title": an SEO title, max 60 characters,\n'
-            '  "meta_description": an SEO meta description, max 155 characters.'
-        )
     try:
-        from plugins.installed.ai_assistant.services.llm import get_llm
-
-        raw = get_llm().complete(
-            prompt,
-            system='You write concise, warm, specific bookshop copy. Output JSON only.',
-            max_tokens=400,
-            temperature=0.7,
+        payload = generate_copy(
+            taxonomy,
+            slug,
+            mode=request.POST.get('mode', 'generate'),
+            existing=(request.POST.get('existing') or '').strip(),
         )
-    except Exception as e:  # noqa: BLE001 — provider missing/misconfigured
+    except LookupError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except CopyGenerationError as e:
         return JsonResponse({'error': f'AI provider unavailable ({e}).'}, status=200)
-
-    from core.llm_parsing import parse_llm_json
-
-    data = parse_llm_json(raw) if raw else None
-    if not isinstance(data, dict):
-        data = {'description': (raw or '').strip()[:600]}
-    return JsonResponse(
-        {
-            'description': (data.get('description') or '').strip()[:600],
-            'meta_title': (data.get('meta_title') or '').strip()[:200],
-            'meta_description': (data.get('meta_description') or '').strip()[:320],
-        }
-    )
+    return JsonResponse(payload)

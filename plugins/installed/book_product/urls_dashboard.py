@@ -13,6 +13,7 @@ urlpatterns = [
     # Curated taxonomies (Genre, Topic) — add/edit/delete (prefixed to avoid
     # clashing with the auto-discovered <taxonomy>/<slug>/ routes below).
     path('curated/<slug:kind>/new/', views.curated_add, name='curated_add'),
+    path('curated/<slug:kind>/backfill/', views.curated_backfill, name='curated_backfill'),
     path('curated/<slug:kind>/<slug:slug>/edit/', views.curated_edit, name='curated_edit'),
     path('curated/<slug:kind>/<slug:slug>/delete/', views.curated_delete, name='curated_delete'),
     path('<slug:taxonomy>/landing/', views.taxonomy_root_edit, name='taxonomy_root_edit'),

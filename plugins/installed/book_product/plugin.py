@@ -43,6 +43,8 @@ class BookProductPlugin(Plugin):
             prefix='dashboard/book-taxonomies/',
             namespace='book_product_dashboard',
         )
+        # Bulk taxonomy-copy backfill runs on the worker (one LLM call per term).
+        self.register_celery_tasks('plugins.installed.book_product.tasks')
 
     def on_product_form_cards(self, value, product=None, **kwargs):
         """Contribute the 'Book details' card. Shown for every product (any

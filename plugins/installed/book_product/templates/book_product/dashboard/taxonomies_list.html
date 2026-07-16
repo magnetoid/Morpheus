@@ -15,14 +15,23 @@
       <h2 class="font-semibold text-sm">{{ group.label }} <span class="text-[color:var(--text-muted)] font-normal">({{ group.terms|length }})</span></h2>
       <div class="flex items-center gap-1 whitespace-nowrap">
         <a href="{{ group.root_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-xs">View index</a>
+        {% comment %}Every kind has an index page whose intro is editable — curated ones (Genres/Topics) included. This button used to live only in the non-curated branch, which is why /genres/ and /topics/ had no reachable editor.{% endcomment %}
+        <a href="{{ group.root_edit_url }}" class="btn btn-ghost text-xs">Edit landing page</a>
         {% if group.is_curated %}
+        {% if group.missing_copy %}
+        <form method="post" action="{{ group.backfill_url }}" class="flex items-center gap-1"
+              data-confirm="Write intro copy for the {{ group.backfill_batch }} most-stocked {{ group.label|lower }} that have books but no intro{% if group.missing_copy > group.backfill_batch %} ({{ group.missing_copy }} lack one in total — run this again for the next batch){% endif %}. Each page is one AI call; anything you've already written is left alone."
+              data-confirm-title="Generate missing copy" data-confirm-cta="Generate">
+          {% csrf_token %}
+          <input type="hidden" name="limit" value="{{ group.backfill_batch }}">
+          <button type="submit" class="btn btn-ghost text-xs"><i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Write {{ group.backfill_batch }} missing intro{{ group.backfill_batch|pluralize }}</button>
+        </form>
+        {% endif %}
         <form method="post" action="{{ group.add_url }}" class="flex items-center gap-1">
           {% csrf_token %}
           <input type="text" name="name" required placeholder="New {{ group.label|lower|slice:':-1' }}…" class="input text-xs py-1 w-40">
           <button type="submit" class="btn btn-primary text-xs"><i data-lucide="plus" class="h-3.5 w-3.5"></i> Add</button>
         </form>
-        {% else %}
-        <a href="{{ group.root_edit_url }}" class="btn btn-ghost text-xs">Edit landing page</a>
         {% endif %}
       </div>
     </div>

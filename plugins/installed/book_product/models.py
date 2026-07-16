@@ -160,10 +160,32 @@ class BookProduct(models.Model):
 
 
 class BookTaxonomy(models.TextChoices):
+    """The taxonomies derived from BookProduct string fields — the only kinds
+    that can have a BookTaxonomyTerm overlay. Genre/Topic are curated models
+    carrying their own SEO, so they are deliberately NOT members here."""
+
     AUTHOR = 'author', 'Author'
     PUBLISHER = 'publisher', 'Publisher'
     SERIES = 'series', 'Series'
     IMPRINT = 'imprint', 'Imprint'
+
+
+class BookRootTaxonomy(models.TextChoices):
+    """Every taxonomy kind that has a *listing* page, keyed for BookTaxonomyRoot.
+
+    A superset of BookTaxonomy: the four derived kinds plus curated Genre/Topic.
+    Terms only exist for the derived four, but all six index pages (/authors/,
+    /genres/, /topics/, …) need an editable intro — which is why the root is
+    keyed separately. Genre/Topic were previously unrepresentable here, so
+    /genres/ and /topics/ had no way to hold intro copy at all.
+    """
+
+    AUTHOR = 'author', 'Author'
+    PUBLISHER = 'publisher', 'Publisher'
+    SERIES = 'series', 'Series'
+    IMPRINT = 'imprint', 'Imprint'
+    GENRE = 'genre', 'Genre'
+    TOPIC = 'topic', 'Topic'
 
 
 class BookTaxonomyTerm(models.Model):
@@ -196,15 +218,15 @@ class BookTaxonomyTerm(models.Model):
 
 
 class BookTaxonomyRoot(models.Model):
-    """The landing page for a whole taxonomy kind (e.g. /authors/).
+    """The landing page for a whole taxonomy kind (e.g. /authors/, /genres/).
 
-    One row per BookTaxonomy kind, holding the editable intro blurb, SEO, and
-    hero image the listing page renders — the same widgets as a term, but for
-    the root listing rather than a single author/publisher/series/imprint.
+    One row per BookRootTaxonomy kind, holding the editable intro blurb, SEO,
+    and hero image the listing page renders — the same widgets as a term, but
+    for the root listing rather than a single author/genre/publisher/…
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    taxonomy = models.CharField(max_length=20, choices=BookTaxonomy.choices, unique=True)
+    taxonomy = models.CharField(max_length=20, choices=BookRootTaxonomy.choices, unique=True)
     description = models.TextField(blank=True)
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)

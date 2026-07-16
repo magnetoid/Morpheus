@@ -227,11 +227,15 @@ def _taxonomy_root(request, *, key, label):
 # --- Genre / Topic (curated multi-value taxonomies) ------------------------
 # Unlike author/publisher/… (auto-discovered string fields), Genre and Topic are
 # real M2M models — so they get their own listing + detail pages, reusing the
-# same templates. Each carries its own landing-page SEO (no BookTaxonomyRoot).
+# same templates. Each TERM carries its own SEO on the model row; the INDEX page
+# intro lives in BookTaxonomyRoot, same as /authors/ (keyed by BookRootTaxonomy,
+# which is why genre/topic are members there but not in BookTaxonomy).
 
 
-def _curated_root(request, *, model, label, detail_prefix):
+def _curated_root(request, *, model, key, label, detail_prefix):
     from django.db.models import Count, Q  # noqa: PLC0415
+
+    from plugins.installed.book_product.models import BookTaxonomyRoot  # noqa: PLC0415
 
     # One annotated query, most-stocked first — not 1500 per-term COUNT()s.
     # Empty terms are excluded (their detail pages would be bare).
@@ -251,19 +255,21 @@ def _curated_root(request, *, model, label, detail_prefix):
         }
         for obj in rows
     ]
+    root = BookTaxonomyRoot.objects.filter(taxonomy=key).first()
     return render(
         request,
         'storefront/taxonomy_root.html',
         {
             'root_label': label,
-            'root': None,
+            'root': root,
             'terms': terms,
             'jsonld_items': [
                 {'name': t['name'], 'url': t['url'], 'image': t['image'].url if t['image'] else ''}
                 for t in terms
             ],
-            'seo_title': f'{label} — dot books',
-            'seo_description': f'Browse books by {label.lower()} at dot books.',
+            'seo_title': root.meta_title if (root and root.meta_title) else f'{label} — dot books',
+            'seo_description': (root.meta_description if root else '')
+            or f'Browse books by {label.lower()} at dot books.',
         },
     )
 
@@ -283,13 +289,13 @@ def _curated_detail(request, *, model, slug, label, index_url):
 def genres_root(request):
     from plugins.installed.book_product.models import Genre  # noqa: PLC0415
 
-    return _curated_root(request, model=Genre, label='Genres', detail_prefix='/genre/')
+    return _curated_root(request, model=Genre, key='genre', label='Genres', detail_prefix='/genre/')
 
 
 def topics_root(request):
     from plugins.installed.book_product.models import Topic  # noqa: PLC0415
 
-    return _curated_root(request, model=Topic, label='Topics', detail_prefix='/topic/')
+    return _curated_root(request, model=Topic, key='topic', label='Topics', detail_prefix='/topic/')
 
 
 def genre_detail(request, slug):
