@@ -12,6 +12,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.15.2 — 2026-07-17
+
+- **AI copy generation: the retry now gets time to finish.** v0.15.1 taught the
+  gateway to retry when a reasoning model spends its whole token budget
+  thinking — but thinking that long also outruns the 20 second network timeout,
+  so half the retries traded an empty answer for a timed-out one. The retry now
+  carries its own 45 second budget (still inside the 60 second request limit, so
+  it returns copy instead of killing the worker). Measured on the live store:
+  the genre backfill went from 1-of-5 pages written to writing them properly.
+
 ## v0.15.1 — 2026-07-17
 
 - **Fixed: AI features silently produced nothing on reasoning models.** Found

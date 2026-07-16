@@ -20,6 +20,7 @@ from django.test import TestCase
 from plugins.installed.ai_assistant.services.config import ProviderConfig
 from plugins.installed.ai_assistant.services.llm import (
     _REASONING_MIN_TOKENS,
+    _REASONING_RETRY_TIMEOUT_SECS,
     OpenAIGateway,
     _truncated_while_reasoning,
 )
@@ -87,6 +88,13 @@ class ReasoningRetryTests(TestCase):
         self.assertGreaterEqual(
             create.call_args_list[1].kwargs['max_tokens'], _REASONING_MIN_TOKENS
         )
+        # Thinking that long outruns the client's 20s default, so the retry
+        # must carry its own timeout or it just swaps empty for timed-out —
+        # and must stay under gunicorn's 60s, which kills the worker.
+        retry_timeout = create.call_args_list[1].kwargs['timeout']
+        self.assertEqual(retry_timeout, _REASONING_RETRY_TIMEOUT_SECS)
+        self.assertLess(retry_timeout, 60)
+        self.assertNotIn('timeout', create.call_args_list[0].kwargs)
 
     @patch('plugins.installed.ai_assistant.services.llm.LLMGateway._log', MagicMock())
     def test_retries_at_most_once(self):

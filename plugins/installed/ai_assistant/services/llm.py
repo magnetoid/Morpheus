@@ -27,6 +27,12 @@ logger = logging.getLogger('morpheus.ai.llm')
 # its hidden thinking PLUS the answer; ~900 completion tokens was typical for a
 # 2-3 sentence reply in practice, so this leaves comfortable headroom.
 _REASONING_MIN_TOKENS = 4000
+# ...and thinking that long takes longer than the 20s default the shared client
+# uses (measured ~20-30s), so the retry needs its own budget or it just trades
+# an empty answer for a timeout. Capped below gunicorn's 60s worker timeout:
+# the dashboard's Generate buttons call this inside a request, and a hold past
+# 60s kills the worker instead of returning copy.
+_REASONING_RETRY_TIMEOUT_SECS = 45
 
 
 def _truncated_while_reasoning(response) -> bool:
@@ -169,6 +175,7 @@ class OpenAIGateway(LLMGateway):
                     messages=messages,
                     temperature=temperature,
                     max_tokens=retry_tokens,
+                    timeout=_REASONING_RETRY_TIMEOUT_SECS,
                 )
                 result = response.choices[0].message.content or ''
             elapsed = int((time.monotonic() - start) * 1000)
