@@ -12,6 +12,50 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.9 — 2026-07-16
+
+- **Storefront hero: the per-slide 3D shadows are actually visible now.**
+  v0.13.1's "strange shadow behind each featured book" shipped invisible,
+  twice over: the blob's dense core sat *behind* the opaque cover (only its
+  near-transparent fringe ever reached the page), and the grid-card
+  "minimal cover shadow" rule silently out-ranked the hero cover's base
+  shadow. Each slide's shadow mass now emerges from behind the book's edge
+  into the open left flank of the hero — a different organic shape, tint,
+  offset and blur per slide (compact low slump / tall violet drape / sharp
+  low pool / floating rust overhang), still drifting and crossfading with
+  the slides. Tuned and verified against the live storefront at every
+  slide position.
+
+## v0.14.8 — 2026-07-16
+
+UX plan P0 batch — every item is a user-facing bug from the
+`dashboard-ux-consistency-2026-07` audit:
+
+- **Creating a product, customer, or coupon no longer fakes success.** The
+  three New forms returned HTML to their AJAX submits, so invalid input
+  showed "Saved" while nothing was saved. They now return the real
+  validation errors, and a successful create navigates straight to the new
+  record's edit page (staying on the filled-in form invited an accidental
+  duplicate).
+- **8 hidden settings panels are visible again.** Agentic Commerce Protocol,
+  one-click checkout, post-checkout upsell, and returns portal (now under
+  Payments), journal (Sales channels), fraud rules (Developer),
+  post-purchase flows (Marketing), and trust signals (General) had declared
+  categories that don't exist — no card, no nav entry, dead URL.
+- **AI settings page shows every AI plugin's panel.** It previously
+  hardcoded brand voice only; AI stylist's settings were unreachable.
+- **Deleting a webhook now asks first** (proper confirm dialog with
+  consequences, danger-styled button).
+- **Gift cards sidebar entry links to the real page** instead of a doubled
+  `/apps/gift_cards/gift_cards/` path; Bookings nav entry declared a valid
+  sidebar target.
+- **Tracking settings dropped two do-nothing fields** (GA4/GTM "mirror"
+  inputs that were never read — the real settings live at Tracking).
+- **Enforcement so this can't regress:** a new `manage.py check` rule fails
+  the build when a settings panel declares an unknown category or a
+  dashboard page an unknown nav target (`morpheus.E001`/`E002`), with tests
+  pinning the contract.
+
 ## v0.14.7 — 2026-07-16
 
 - **Bookvault token is now write-only in Settings.** The stored API token

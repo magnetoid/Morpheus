@@ -344,49 +344,55 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
   /* Strange 3D shadow — a different projected dark mass behind each slide's
      cover. Lives on the panel's own ::before so it crossfades with the active
      slide (inherits the panel's opacity group); z-index:-1 tucks it behind the
-     cover. Each :nth-child gets its own blob shape, tint, offset, blur and
-     drift, so the shadow visibly morphs as the slider advances. */
+     cover. The cover is OPAQUE and fills the panel, so any mass centered
+     behind it is invisible — each gradient's dense core must straddle the
+     cover's edge, biased LEFT/below-left (the only breathing room the hero
+     layout gives; the right column hugs the viewport and the bottom sits at
+     the fold). Each :nth-child leans its own way — shape, tint, offset,
+     blur — so the shadow visibly morphs as the slider advances. */
   .hero-feature__media-panel::before {
     content: '';
     position: absolute;
     z-index: -1;
-    inset: 8% -4% -10% -4%;
+    inset: 18% -10% -8% -34%;
     border-radius: 46% 54% 58% 42% / 55% 48% 52% 45%;
-    background: radial-gradient(60% 60% at 50% 42%, rgba(14,14,14,0.44), rgba(14,14,14,0) 72%);
-    filter: blur(30px);
+    background: radial-gradient(42% 48% at 27% 66%, rgba(14,14,14,0.6), rgba(14,14,14,0) 72%);
+    filter: blur(24px);
     pointer-events: none;
     will-change: transform, opacity;
     animation: hero-shadow-drift 11s ease-in-out infinite alternate;
   }
   .hero-feature__media-panel:nth-child(1)::before {
-    inset: 10% 2% -12% -8%;
+    inset: 40% -8% -10% -36%;
     border-radius: 60% 40% 55% 45% / 62% 44% 56% 38%;
-    background: radial-gradient(55% 62% at 42% 46%, rgba(14,14,14,0.46), rgba(14,14,14,0) 70%);
-    filter: blur(26px); animation-duration: 12s;
+    background: radial-gradient(46% 56% at 28% 76%, rgba(14,14,14,0.66), rgba(14,14,14,0) 70%);
+    filter: blur(20px); animation-duration: 12s;
   }
   .hero-feature__media-panel:nth-child(2)::before {
-    inset: 6% -10% -8% 4%;
+    inset: 6% -6% -8% -34%;
     border-radius: 42% 58% 40% 60% / 48% 60% 40% 52%;
-    background: radial-gradient(62% 55% at 60% 40%, rgba(18,14,20,0.44), rgba(18,14,20,0) 74%);
-    filter: blur(34px); animation-duration: 9.5s; animation-direction: alternate-reverse;
+    background: radial-gradient(40% 56% at 25% 62%, rgba(24,16,30,0.66), rgba(24,16,30,0) 72%);
+    filter: blur(22px); animation-duration: 9.5s; animation-direction: alternate-reverse;
   }
   .hero-feature__media-panel:nth-child(3)::before {
-    inset: 14% -2% -14% -2%;
+    inset: 30% -14% -6% -40%;
     border-radius: 50% 50% 66% 34% / 40% 40% 62% 60%;
-    background: radial-gradient(48% 68% at 50% 56%, rgba(12,16,16,0.50), rgba(12,16,16,0) 68%);
-    filter: blur(22px); animation-duration: 13.5s;
+    background: radial-gradient(52% 44% at 30% 78%, rgba(10,18,14,0.68), rgba(10,18,14,0) 68%);
+    filter: blur(16px); animation-duration: 13.5s;
   }
   .hero-feature__media-panel:nth-child(4)::before {
-    inset: 4% -8% -6% -12%;
+    inset: -16% -6% 40% -34%;
     border-radius: 66% 34% 48% 52% / 58% 52% 48% 42%;
-    background: radial-gradient(64% 50% at 38% 38%, rgba(16,14,12,0.42), rgba(16,14,12,0) 76%);
-    filter: blur(38px); animation-duration: 10.5s; animation-direction: alternate-reverse;
+    background: radial-gradient(44% 54% at 26% 32%, rgba(26,15,8,0.58), rgba(26,15,8,0) 72%);
+    filter: blur(30px); animation-duration: 10.5s; animation-direction: alternate-reverse;
   }
   .hero-feature__media-panel:nth-child(5)::before {
-    inset: 12% -6% -16% 6%;
+    inset: 22% -18% -8% -22%;
     border-radius: 38% 62% 62% 38% / 66% 40% 60% 34%;
-    background: radial-gradient(52% 64% at 56% 52%, rgba(14,12,18,0.48), rgba(14,12,18,0) 70%);
-    filter: blur(28px); animation-duration: 11.5s;
+    background:
+      radial-gradient(34% 44% at 84% 74%, rgba(14,12,22,0.58), rgba(14,12,22,0) 70%),
+      radial-gradient(26% 36% at 14% 62%, rgba(14,12,22,0.44), rgba(14,12,22,0) 72%);
+    filter: blur(22px); animation-duration: 11.5s;
   }
   @keyframes hero-shadow-drift {
     0%   { transform: translate3d(-5%, 4%, 0) rotate(-3deg) scale(1);     opacity: 0.72; }
@@ -415,8 +421,17 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
     position: relative;
     aspect-ratio: 2 / 3;
     overflow: hidden;
+  }
+  /* Radius + contact shadow live on a .cover-wrap descendant selector: the
+     hero cover carries BOTH classes ("cover-wrap hero-feature__cover") and
+     the grid-card rule `.book .cover-wrap` (specificity 0,2,0) silently beat
+     `.hero-feature__cover` (0,1,0) — which is how v0.13.1's "minimal" grid
+     shadow accidentally erased the hero shadow entirely. Same specificity,
+     declared later, so this wins; the ::before blob above does the character
+     work and this just grounds the book. */
+  .hero-feature__media-panel .cover-wrap {
     border-radius: 8px;
-    box-shadow: 0 30px 60px -20px rgba(14,14,14,0.45);
+    box-shadow: 0 16px 34px -20px rgba(14,14,14,0.35);
   }
   .hero-feature__cover img,
   .hero-feature__cover picture {
