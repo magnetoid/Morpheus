@@ -12,6 +12,35 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.15.0 — 2026-07-16
+
+**Every listing page can have an intro now — and the AI can write the backlog.**
+An audit of why category/collection/author/genre pages showed no description
+found three different causes; this fixes all three.
+
+- **Genres and Topics landing pages can hold intro copy at all.** `/genres/`
+  and `/topics/` looked supported but were dead through three layers: the view
+  discarded the intro, the model couldn't store one (its choices omitted both
+  kinds), and the dashboard hid the "Edit landing page" button for exactly
+  those two. All three are open — edit them under **Products → Book
+  taxonomies → Edit landing page**, same as Authors or Publishers.
+- **The /products/, /vendors/ and /journal/ intros are editable.** These pages
+  own no record of their own, so their intro prose — and their search-result
+  description — were hardcoded with no way in. They now read a **CMS → Blocks**
+  entry (`products_intro`, `vendors_intro`, `journal_intro`); the house copy
+  stands in until you write one.
+- **New: write missing intros in bulk.** Products → Book taxonomies now offers
+  *"Write N missing intros"* per Genres/Topics — it writes the most-stocked
+  pages first (the ones shoppers actually land on), runs in the background, and
+  never touches copy you wrote yourself. Batched, because each page is one AI
+  call; run it again for the next batch.
+- Under the hood: the per-page Generate button and the bulk backfill now share
+  one prompt, so they write in the same voice.
+
+*Why most pages looked blank:* the plumbing was mostly fine and the copy was
+simply never written — 1,526 of 1,527 topics and 36 of 43 genres had no intro.
+The bulk writer above is the fix for that part.
+
 ## v0.14.9 — 2026-07-16
 
 - **Storefront hero: the per-slide 3D shadows are actually visible now.**
