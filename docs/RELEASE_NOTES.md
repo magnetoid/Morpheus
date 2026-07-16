@@ -12,6 +12,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.5 — 2026-07-16
+
+- **Fixed: "AI provider error … All AI providers degraded".** Continuing a
+  conversation in which Linda had used a tool could crash every strict AI
+  provider (DeepSeek et al. reject a `tool` message that doesn't directly
+  follow its `tool_calls`): replayed history never carried the tool-call
+  ids, and long-conversation compaction could split a tool-call pair at the
+  summary boundary. Tool history now replays as assistant-visible text
+  (same recall, always valid), and compaction keeps tool-call pairs
+  together. Guarded by `core/assistant/tests/test_message_contract.py`.
+
 ## v0.14.4 — 2026-07-16
 
 - **Linda's knowledge stays fresh automatically.** Her RAG knowledge index

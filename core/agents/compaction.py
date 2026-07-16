@@ -57,6 +57,16 @@ def compact(
         return messages  # only the recent window + head remain; nothing to drop
 
     middle, recent = body[:-keep_recent], body[-keep_recent:]
+    # The kept window must never START with `tool` messages — the index cut
+    # can land between an assistant tool_calls message and its tool results,
+    # and once the assistant half is summarized away the orphaned tool rows
+    # violate the OpenAI-compatible contract (strict providers 400 the whole
+    # request). Shift the boundary so the pair stays together in the middle,
+    # where it becomes plain summary text.
+    while recent and getattr(recent[0], 'role', '') == 'tool':
+        middle.append(recent.pop(0))
+    if not recent:
+        return messages
     summary = _summarize(middle, summarizer)
     if summary is None:
         # Truncation fallback — drop the oldest middle entirely.

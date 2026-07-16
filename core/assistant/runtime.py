@@ -227,11 +227,21 @@ def _to_llm_messages(
         msgs.append(LLMMessage(role='system', content=page_ctx))
     for h in history:
         if h.role == 'tool':
+            # Replayed tool results can NOT be sent as role='tool': the
+            # OpenAI-compatible contract requires a `tool` message to directly
+            # follow the assistant message carrying its matching tool_calls,
+            # and the store never persisted tool_call ids (assistant replies
+            # are stored as plain text). Strict providers (DeepSeek & co.)
+            # hard-400 the dangling pair — "Messages with role 'tool' must be
+            # a response to a preceding message with 'tool_calls'" — which
+            # cascaded into "All AI providers degraded". Fold them into an
+            # assistant-visible text record instead: same recall value,
+            # always contract-valid.
+            output = json.dumps(h.tool_output, default=str)[:8000]
             msgs.append(
                 LLMMessage(
-                    role='tool',
-                    content=json.dumps(h.tool_output, default=str)[:8000],
-                    name=h.tool_name or '',
+                    role='assistant',
+                    content=f'[tool {h.tool_name or "unknown"} result] {output}',
                 )
             )
         else:
