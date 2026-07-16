@@ -12,6 +12,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.4 — 2026-07-16
+
+- **Linda's knowledge stays fresh automatically.** Her RAG knowledge index
+  now rebuilds itself nightly (4:30am) — previously it had no refresh
+  schedule at all, freezing at the last manual rebuild, so books, language
+  editions, and descriptions added after a deploy were invisible to her.
+  The rebuild is incremental (unchanged content is skipped, removed content
+  is pruned). The production index was also refreshed immediately
+  (174 → 183 chunks).
+
 ## v0.14.3 — 2026-07-16
 
 - **One subscription system.** Two parallel, incompatible `Subscription`

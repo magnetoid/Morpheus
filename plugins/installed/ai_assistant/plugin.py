@@ -57,6 +57,20 @@ class AIAssistantPlugin(Plugin):
 
         register_retriever(_kb_retrieve)
 
+        # Keep that index fresh: rag.rebuild() is idempotent, so a nightly beat
+        # keeps Linda's knowledge tracking the catalog instead of freezing at
+        # the last manual `rebuild_knowledge` run (it had no refresh schedule).
+        from celery.schedules import crontab
+
+        self.register_celery_tasks('plugins.installed.ai_assistant.tasks')
+        self.register_celery_beat(
+            'ai_assistant:rebuild_knowledge',
+            {
+                'task': 'ai_assistant.rebuild_knowledge',
+                'schedule': crontab(hour=4, minute=30),
+            },
+        )
+
         # GraphQL extensions
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.queries')
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.mutations')

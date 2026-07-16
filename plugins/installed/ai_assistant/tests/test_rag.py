@@ -69,3 +69,18 @@ class CoreSeamTests(TestCase):
     def test_blank_query_is_noop(self):
         self.assertEqual(knowledge.retrieve('', k=3), [])
         self.assertEqual(knowledge.retrieve('   ', k=3), [])
+
+
+class KnowledgeBeatTests(TestCase):
+    """The RAG index refreshes nightly — before this beat existed it froze at
+    the last manual rebuild, so post-deploy catalog changes were invisible."""
+
+    def test_nightly_rebuild_task_and_beat_registered(self):
+        from django.conf import settings as dj_settings
+
+        from plugins.installed.ai_assistant.tasks import rebuild_knowledge
+
+        self.assertEqual(rebuild_knowledge.name, 'ai_assistant.rebuild_knowledge')
+        self.assertIn('ai_assistant:rebuild_knowledge', dj_settings.CELERY_BEAT_SCHEDULE)
+        entry = dj_settings.CELERY_BEAT_SCHEDULE['ai_assistant:rebuild_knowledge']
+        self.assertEqual(entry['task'], 'ai_assistant.rebuild_knowledge')

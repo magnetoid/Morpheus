@@ -37,8 +37,16 @@ Optional plugins rendered by direct import instead of contribution
 (~74 import lines; the try/except ImportError guards protect *absence*,
 not *disable*):
 
-- **product_videos** — `products.py:386,723,762,805`, `storefront/views/catalog.py:453`
-  → `PRODUCT_FORM_CARDS` + a storefront block.
+- **product_videos** — `products.py` (edit-context + video_add/delete/edit
+  views), `storefront/views/catalog.py` (PDP context) → NOT the mechanical
+  bookvault move it looks like (scoped 2026-07-16): the dashboard surface is
+  the shell's *unified media uploader*, which deliberately composes catalog
+  images + plugin videos in one card (the old videos card is legacy-hidden),
+  and the PDP `videos` feed **product_gallery's** `_pdp_hero_slider.html`
+  (a third plugin composes them into the gallery). Needs design first: a
+  `PDP_GALLERY_MEDIA`-style filter product_videos feeds, plus an uploader
+  contribution point (or `plugin_enabled`-gating of the video tab) — then
+  the CRUD views/URLs move to the plugin (same paths, new namespace).
 - **metafields** — `products.py:259-263,288`, `storefront/views/catalog.py`
   (5 sites), `vendor.py:22` → form card + contributed block.
 - **cloudflare** — `settings.py:435-436,458-459,572,584,602`

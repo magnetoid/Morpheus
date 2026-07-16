@@ -212,3 +212,20 @@ def evaluate_all_product_prices():
     products = Product.objects.filter(status='active')
     for product in products:
         DynamicPricingService.evaluate_product_price(product)
+
+
+@shared_task(name='ai_assistant.rebuild_knowledge')
+def rebuild_knowledge():
+    """Nightly refresh of Linda's RAG knowledge index.
+
+    rag.rebuild() is idempotent (hash-skips unchanged chunks, prunes refs
+    that vanished), so this simply keeps the index tracking catalog/docs
+    changes. Before this beat existed the index had NO refresh schedule —
+    it froze at the last manual `manage.py rebuild_knowledge` run, so every
+    book/edition/description added since a deploy was invisible to Linda.
+    """
+    from plugins.installed.ai_assistant.services import rag
+
+    total = rag.rebuild()
+    logger.info('AI Task: knowledge index rebuilt (%s chunks)', total)
+    return total
