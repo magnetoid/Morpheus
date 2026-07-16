@@ -12,6 +12,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.15.3 — 2026-07-17
+
+- **Fixed: a garbled AI reply could publish itself.** When the model returned
+  broken or cut-off JSON, the copy writer fell back to using that raw text as
+  the intro — which briefly put a literal `{` on the live Drama genre page. A
+  reply that can't be read, or is too short to be an intro, now counts as a
+  failed generation: the page keeps its existing copy and the run reports a
+  skip, so re-running just picks it up. (A model that answers in plain prose
+  instead of JSON is still accepted — that's what the fallback is for.) The one
+  affected page has been cleared.
+
 ## v0.15.2 — 2026-07-17
 
 - **AI copy generation: the retry now gets time to finish.** v0.15.1 taught the

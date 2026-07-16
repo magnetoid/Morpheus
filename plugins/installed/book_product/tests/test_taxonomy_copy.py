@@ -231,3 +231,60 @@ class CopyServiceTests(TestCase):
 
         with self.assertRaises(LookupError):
             _subject_for('nonsense', '')
+
+
+class MalformedResponseTests(TestCase):
+    """Junk must never reach a storefront page.
+
+    A truncated reply ('{') once parsed to nothing, fell through the raw-text
+    fallback, and published a literal '{' as the intro on /genre/drama/.
+    """
+
+    def setUp(self):
+        product = Product.objects.create(
+            name='A Play', slug='a-play', sku='MAL-1', price=5, status='active'
+        )
+        book = BookProduct.objects.create(product=product)
+        self.genre = Genre.objects.create(name='Drama', slug='drama')
+        book.genres.add(self.genre)
+
+    def _generate_returning(self, raw):
+        from plugins.installed.book_product.services_copy import generate_copy
+
+        gateway = type('G', (), {'complete': lambda self, *a, **k: raw})()
+        with patch('plugins.installed.ai_assistant.services.llm.get_llm', return_value=gateway):
+            return generate_copy('genre', 'drama')
+
+    def test_truncated_json_raises_instead_of_publishing_it(self):
+        from plugins.installed.book_product.services_copy import CopyGenerationError
+
+        with self.assertRaises(CopyGenerationError):
+            self._generate_returning('{')
+
+    def test_broken_json_raises(self):
+        from plugins.installed.book_product.services_copy import CopyGenerationError
+
+        with self.assertRaises(CopyGenerationError):
+            self._generate_returning('{"description": "half a sen')
+
+    def test_too_short_answer_raises(self):
+        from plugins.installed.book_product.services_copy import CopyGenerationError
+
+        with self.assertRaises(CopyGenerationError):
+            self._generate_returning('{"description": "Drama."}')
+
+    def test_plain_prose_is_still_accepted(self):
+        """A model that ignores the JSON instruction but writes real copy is
+        fine — that's what the raw fallback is legitimately for."""
+        prose = 'Plays that argue with the audience, from Ibsen to the present day.'
+        self.assertEqual(self._generate_returning(prose)['description'], prose)
+
+    def test_backfill_skips_a_malformed_row(self):
+        from plugins.installed.book_product.tasks import backfill_taxonomy_copy
+
+        gateway = type('G', (), {'complete': lambda self, *a, **k: '{'})()
+        with patch('plugins.installed.ai_assistant.services.llm.get_llm', return_value=gateway):
+            result = backfill_taxonomy_copy('genre', limit=5)
+        self.assertEqual(result['written'], 0)
+        self.genre.refresh_from_db()
+        self.assertEqual(self.genre.description, '')

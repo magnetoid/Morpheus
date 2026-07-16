@@ -20,8 +20,13 @@ _DERIVED_LABELS = {
 }
 
 
+# Shortest believable 2-3 sentence intro. Anything under this is a truncated
+# or malformed answer, not copy — publishing it puts junk on a storefront page.
+_MIN_DESCRIPTION_CHARS = 40
+
+
 class CopyGenerationError(RuntimeError):
-    """The AI provider was unavailable or misconfigured."""
+    """The AI provider was unavailable, or returned nothing usable as copy."""
 
 
 def _curated_model(kind):
@@ -130,9 +135,21 @@ def generate_copy(
 
     data = parse_llm_json(raw) if raw else None
     if not isinstance(data, dict):
-        data = {'description': (raw or '').strip()[:600]}
+        # A model that answered in plain prose instead of JSON is still usable.
+        # One that emitted BROKEN or truncated JSON is a failed generation, and
+        # must never be written as copy — the raw-text fallback put a literal
+        # '{' on the live /genre/drama/ page.
+        text = (raw or '').strip()
+        if not text or text.startswith(('{', '[', '```')):
+            raise CopyGenerationError(f'unparseable response: {text[:80]!r}')
+        data = {'description': text[:600]}
+    description = (data.get('description') or '').strip()[:600]
+    if len(description) < _MIN_DESCRIPTION_CHARS:
+        # Too short to be a 2-3 sentence intro — a truncated or empty answer
+        # wearing a valid-JSON costume. Fail rather than publish it.
+        raise CopyGenerationError(f'description too short: {description!r}')
     return {
-        'description': (data.get('description') or '').strip()[:600],
+        'description': description,
         'meta_title': (data.get('meta_title') or '').strip()[:200],
         'meta_description': (data.get('meta_description') or '').strip()[:320],
     }
