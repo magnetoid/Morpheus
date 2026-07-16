@@ -21,10 +21,11 @@
     </nav>
     <p class="eyebrow">The makers</p>
     <h1 class="display display-l" style="margin: 1rem 0 1rem;">Publishers we work with<span class="text-accent">.</span></h1>
+    {% comment %}page_intro is merchant-edited copy (CMS → Blocks, key vendors_intro), supplied by the view via the STOREFRONT_PAGE_INTRO filter. House copy stands in until one is written.{% endcomment %}
     <p class="lede" style="max-width: 60ch; margin-bottom: 1.75rem;">
-      Every book on the shelf came from one of these presses — independent publishers,
+      {% if page_intro %}{{ page_intro|linebreaksbr }}{% else %}Every book on the shelf came from one of these presses — independent publishers,
       university imprints, antiquarians, and small bookshops. Click into one to see
-      their full list with us.
+      their full list with us.{% endif %}
     </p>
     <form method="get" action="" class="vendor-search" role="search" aria-label="Search publishers">
       <input type="search" name="q" value="{{ query|default:'' }}"

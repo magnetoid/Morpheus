@@ -558,6 +558,16 @@ class MorpheusEvents:
     #   element stays None). cms subscribes with its EmailTemplate rows;
     #   first subscriber to fill the tuple wins.
     EMAIL_TEMPLATE_OVERRIDE = 'email.template_override'  # filter
+    # STOREFRONT_PAGE_INTRO — filter, value=dict {'body': '', 'meta_description':
+    #   ''}, kwargs: page=str (a stable key: 'products' | 'vendors' | 'journal').
+    #   Supplies merchant-edited intro copy + meta for the built-in storefront
+    #   LISTING pages, which own no model of their own (unlike a Category or a
+    #   BookTaxonomyRoot) and so had their prose hardcoded in the theme with no
+    #   way to edit it. cms subscribes with its Block rows (key
+    #   '<page>_intro'); the view falls back to the theme's static copy while
+    #   every element stays empty. Storefront fires it rather than importing
+    #   cms, so a disabled cms degrades to the fallback instead of 500ing.
+    STOREFRONT_PAGE_INTRO = 'storefront.page_intro'  # filter
     # ACTIVITY_FEED — filter, value=list[dict], kwargs: limit=int. The
     #   dashboard-home activity feed. Each plugin subscriber appends ITS OWN
     #   recent-event dicts — {'kind': str, 'icon': str, 'label': str,

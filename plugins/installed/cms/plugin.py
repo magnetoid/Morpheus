@@ -39,6 +39,9 @@ class CmsPlugin(Plugin):
         self.register_hook(
             events.EMAIL_TEMPLATE_OVERRIDE, self.on_email_template_override, priority=50
         )
+        # Supply merchant-edited intro copy for the built-in storefront listing
+        # pages (/products/, /vendors/, /journal/) from Block rows.
+        self.register_hook(events.STOREFRONT_PAGE_INTRO, self.on_storefront_page_intro, priority=50)
         # Theme sections register on import. Pull the active theme's
         # section bundle so the section_registry is populated before
         # any page render tries to look up a section_id. Other themes
@@ -52,6 +55,31 @@ class CmsPlugin(Plugin):
             importlib.import_module(f'themes.library.{theme}.sections')
         except Exception as exc:  # noqa: BLE001 — theme may not ship sections
             logger.debug('cms: no sections module for theme: %s', exc)
+
+    def on_storefront_page_intro(self, value, page=None, **kwargs):
+        """Supply the intro copy for a built-in storefront listing page.
+
+        Subscribes to ``STOREFRONT_PAGE_INTRO`` (a filter): look up the active
+        ``Block`` keyed ``<page>_intro`` and return its body as the page's
+        editorial intro, plus an optional ``metadata['meta_description']``
+        override. Leaves ``value`` untouched when no row matches, so the theme
+        keeps its static fallback copy.
+        """
+        if not page or (value and value.get('body')):
+            return value
+        from plugins.installed.cms.models import Block
+
+        try:
+            block = Block.objects.filter(key=f'{page}_intro', is_active=True).first()
+        except Exception:  # noqa: BLE001 — model not migrated yet, etc.
+            return value
+        if block is None:
+            return value
+        meta = block.metadata if isinstance(block.metadata, dict) else {}
+        return {
+            'body': (block.body or '').strip(),
+            'meta_description': (meta.get('meta_description') or '').strip(),
+        }
 
     def on_email_template_override(self, value, key=None, ctx=None, **kwargs):
         """Supply merchant-edited copy for a transactional email.

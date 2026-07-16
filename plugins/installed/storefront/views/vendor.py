@@ -8,6 +8,7 @@ from django.db.models import Count, Prefetch, Q, Sum
 
 from morpheus.views import Http404, render
 from plugins.installed.catalog.models import Product, Vendor
+from plugins.installed.storefront.services import page_intro
 
 # Optional sibling plugins — marketplace ships VendorOrder for the
 # "books sold" stat, metafields drives editorial FAQ overrides. Both
@@ -98,6 +99,7 @@ def vendors_directory(request):
         {'name': 'Marketplace', 'url': request.build_absolute_uri('/marketplace/')},
         {'name': 'Publishers', 'url': request.build_absolute_uri(request.path)},
     ]
+    intro = page_intro(request, 'vendors')
     return render(
         request,
         'storefront/vendors.html',
@@ -105,8 +107,13 @@ def vendors_directory(request):
             'vendors': vendors,
             'query': q,
             'breadcrumb_items': breadcrumb_items,
+            'page_intro': intro['body'],
             'seo_title': 'Publishers & makers — dot books',
-            'seo_description': 'The independent presses, university imprints, and small publishers we work with. Every title on the shelf comes from one of these makers.',
+            'seo_description': (
+                intro['meta_description']
+                or intro['body']
+                or 'The independent presses, university imprints, and small publishers we work with. Every title on the shelf comes from one of these makers.'
+            )[:160],
             'seo_og_type': 'website',
         },
     )

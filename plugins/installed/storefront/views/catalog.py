@@ -23,6 +23,7 @@ from __future__ import annotations
 from api.client import internal_graphql
 from core.hooks import MorpheusEvents, hook_registry
 from morpheus.views import render
+from plugins.installed.storefront.services import page_intro
 
 from ._queries import PRODUCT_DETAIL_QUERY
 
@@ -280,6 +281,12 @@ def product_list(request):
                 'url': request.build_absolute_uri(f'/products/?category={selected_cat.slug}'),
             }
         )
+    # Only the unfiltered shelf uses the page-level intro — a filtered view is
+    # already introduced by its own Category/Tag/author copy just below the h1.
+    _is_filtered = bool(q or cat_slug or tag_slug or book_filter)
+    _intro = (
+        {'body': '', 'meta_description': ''} if _is_filtered else page_intro(request, 'products')
+    )
     return render(
         request,
         'storefront/product_list.html',
@@ -304,6 +311,10 @@ def product_list(request):
             'paginator': paginator,
             'paginator_base_qs': paginator_base_qs,
             'breadcrumb_items': breadcrumb_items,
+            # Unfiltered /products/ has no model of its own — its intro comes
+            # from the STOREFRONT_PAGE_INTRO filter. The filtered variants
+            # already have one (a Category/Tag/BookTaxonomyTerm row).
+            'page_intro': _intro['body'],
             'seo_title': f'{plp_name} — dot books',
             'seo_description': (
                 (selected_cat.description if selected_cat and selected_cat.description else '')
@@ -312,6 +323,8 @@ def product_list(request):
                     if selected_tag_obj
                     else ''
                 )
+                or _intro['meta_description']
+                or _intro['body']
                 or 'The full dot books shelf — independent press, curated by readers.'
             )[:160],
         },

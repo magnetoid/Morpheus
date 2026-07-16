@@ -176,6 +176,9 @@ def journal_index(request):
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'Journal', 'url': request.build_absolute_uri(request.path)},
     ]
+    from plugins.installed.storefront.services import page_intro
+
+    intro = page_intro(request, 'journal')
     return render(
         request,
         'storefront/journal_index.html',
@@ -183,8 +186,13 @@ def journal_index(request):
             'entries': entries,
             'post_items': post_items,
             'breadcrumb_items': breadcrumb_items,
+            'page_intro': intro['body'],
             'seo_title': 'Journal — dot books',
-            'seo_description': "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
+            'seo_description': (
+                intro['meta_description']
+                or intro['body']
+                or "Notes, essays, short pieces from the booksellers. Updated when there's something to say."
+            )[:160],
             'seo_og_type': 'website',
         },
     )
