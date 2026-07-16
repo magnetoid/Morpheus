@@ -368,12 +368,20 @@ class OrdersMutationExtension:
                 create_payment_intent_for,
             )
 
+            # Anonymous experiment/recommendation attribution — same literal-
+            # cookie pattern as morph_aff above (experiments.services.VISITOR_COOKIE;
+            # frozen by experiments' test_visitor_cookie_contract).
+            visitor_id = ''
+            if request is not None:
+                visitor_id = (request.COOKIES.get('morph_visitor') or '').strip()
+
             with transaction.atomic():
                 order = OrderService.create_from_cart(
                     cart=cart,
                     email=input.email,
                     shipping_address=ship,
                     billing_address=bill,
+                    visitor_id=visitor_id,
                 )
                 # (create_from_cart raises GiftCardRedeemFailed / CouponNoLongerValid
                 # / InsufficientStockError directly on a bad checkout, rolling this

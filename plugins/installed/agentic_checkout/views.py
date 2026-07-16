@@ -775,7 +775,15 @@ def _create_order_for_completion(cart, request: HttpRequest):
     # the completed/declined response still carries the purchased line items.
     session = _serialize(cart, request, breakdown=breakdown)
     try:
-        order = OrderService.create_from_cart(cart, email, address, address)
+        order = OrderService.create_from_cart(
+            cart,
+            email,
+            address,
+            address,
+            # Agent checkouts rarely carry the storefront visitor cookie, but
+            # stamp it when present so experiments can attribute the purchase.
+            visitor_id=(request.COOKIES.get('morph_visitor') or '').strip(),
+        )
     except ValueError as e:
         msg = ser.message_error('invalid', str(e))
         return (

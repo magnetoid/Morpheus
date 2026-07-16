@@ -313,6 +313,8 @@ class OrderService:
         email: str,
         shipping_address: dict,
         billing_address: dict,
+        *,
+        visitor_id: str = '',
     ) -> Order:
         if not cart.items.exists():
             raise ValueError('Cannot place an order from an empty cart.')
@@ -359,6 +361,10 @@ class OrderService:
             coupon_code=coupon_code,
             shipping_method=shipping_method,
             source=source,
+            # Anonymous attribution (autopilot-plan follow-up): experiments'
+            # ORDER_PLACED handler reads metadata['visitor_id'] to credit
+            # `v:` assignments — without it, anonymous conversions are lost.
+            metadata={'visitor_id': visitor_id} if visitor_id else {},
         )
 
         for cart_item in items:

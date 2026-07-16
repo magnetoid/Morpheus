@@ -186,6 +186,10 @@ class Order(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     source = models.CharField(max_length=50, default='web')  # web, api, pos, etc.
+    # Free-form slot (mirrors Cart.metadata). Known keys: 'visitor_id' — the
+    # anonymous morph_visitor cookie stamped at checkout so experiments can
+    # attribute `v:` conversions (its ORDER_PLACED handler reads it).
+    metadata = models.JSONField(default=dict, blank=True)
 
     placed_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

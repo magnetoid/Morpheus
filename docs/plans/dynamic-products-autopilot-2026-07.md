@@ -182,6 +182,15 @@ now orders by a data-driven score; nightly + event refresh wired.
 > ADR 0029 respected (the LLM is a bounded text call, not a new agent class). The
 > visitor-id-on-order attribution fix (for counterfactual bandit rewards) remains
 > a follow-up, as does Phase 4 (LightGBM).
+>
+> **Follow-ups repaid (2026-07-16):** (1) anonymous attribution — checkout now
+> stamps the `morph_visitor` cookie into the new `Order.metadata['visitor_id']`
+> (field + migration 0012; both checkout call sites), which the experiments
+> ORDER_PLACED handler already read — guest conversions now credit `v:`
+> assignments (`experiments/tests/test_order_attribution.py`). (2) the Phase-1
+> deferral — `personalisation.recompute_copurchases` now filters the canonical
+> `orders.PAID_STATUSES` instead of the invalid `'paid'/'completed'` tuple
+> (`test_copurchase_statuses.py`). Phase 4 (LightGBM) stays deferred.
 
 
 **Files:**

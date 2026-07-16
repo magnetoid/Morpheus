@@ -88,6 +88,26 @@ class CheckoutFlowTests(TestCase):
         self.assertEqual(order.total.amount, Decimal('40'))
         self.assertEqual(cart.items.count(), 0)
 
+    def test_create_from_cart_stamps_visitor_id_into_metadata(self):
+        # Anonymous attribution: experiments' ORDER_PLACED handler reads
+        # metadata['visitor_id'] to credit `v:` assignments.
+        addr = {'first_name': 'V', 'last_name': 'H', 'line1': '1 Main', 'country': 'US'}
+        cart = CartService.get_or_create_cart(session_key='s-vis')
+        CartService.add_item(
+            cart, str(self.product.id), quantity=1, variant_id=str(self.variant.id)
+        )
+        order = OrderService.create_from_cart(cart, 'v@example.com', addr, addr, visitor_id='vc1')
+        self.assertEqual(order.metadata.get('visitor_id'), 'vc1')
+
+        cart2 = CartService.get_or_create_cart(session_key='s-vis2')
+        CartService.add_item(
+            cart2, str(self.product.id), quantity=1, variant_id=str(self.variant.id)
+        )
+        order2 = OrderService.create_from_cart(cart2, 'v2@example.com', addr, addr)
+        # No cookie → no visitor stamp (other subscribers, e.g. fraud_rules,
+        # may add their own metadata keys after placement).
+        self.assertNotIn('visitor_id', order2.metadata)
+
     def test_order_placement_reserves_stock(self):
         cart = CartService.get_or_create_cart(session_key='s-3')
         CartService.add_item(

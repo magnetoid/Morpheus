@@ -38,12 +38,17 @@ def recompute_copurchases(
     incrementalise. Returns a dict with counts for the scheduler log.
     """
     from plugins.installed.orders.models import OrderItem  # noqa: PLC0415
+    from plugins.installed.orders.services import PAID_STATUSES  # noqa: PLC0415
     from plugins.installed.personalisation.models import CoPurchaseScore  # noqa: PLC0415
 
     cutoff = timezone.now() - timedelta(days=window_days)
+    # PAID_STATUSES is the canonical "counts as a purchase" set (orders plugin).
+    # The old hardcoded tuple included two statuses that don't exist on the
+    # Order FSM ('paid'/'completed') and missed processing/shipped/delivered —
+    # silently under-counting co-purchases (autopilot-plan Phase 1 follow-up).
     qs = OrderItem.objects.filter(
         order__placed_at__gte=cutoff,
-        order__status__in=('confirmed', 'paid', 'fulfilled', 'completed'),
+        order__status__in=PAID_STATUSES,
     ).values('order_id', 'product_id')
 
     # Group product ids per order.
