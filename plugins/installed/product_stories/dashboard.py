@@ -9,13 +9,13 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
-from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+from morpheus import dashboard_trail
 
 _FIELDS = ('eyebrow', 'heading', 'body', 'image_url', 'layout')
 
 
 def _trail(*items):
-    return build_trail('Product stories', '/dashboard/stories/', *items)
+    return dashboard_trail('Product stories', '/dashboard/stories/', *items)
 
 
 @staff_member_required

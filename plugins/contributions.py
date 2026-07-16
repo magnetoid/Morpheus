@@ -134,3 +134,24 @@ class EmailTemplateDef:
     group: str = 'Other'  # display group in the central list — e.g. 'Loyalty'
     description: str = ''  # what triggers it (shown as a hint)
     plugin: str = ''  # set by the registry
+
+
+def dashboard_trail(section_label: str, section_url: str, *items) -> list[dict]:
+    """``[Dashboard › <section> › <items…>]`` for a view's ``breadcrumb_trail``.
+
+    The one shared breadcrumb builder for plugin dashboard pages. Every
+    dashboard-contributing plugin used to carry its own ``_trail()`` copy;
+    the first consolidation homed it in ``admin_dashboard.breadcrumbs``,
+    which made eight plugins import a sibling plugin — so it lives here in
+    the SDK instead (beside ``DashboardPage``, the thing it decorates).
+
+    ``items`` are either ready-made ``{'label': …, 'url': …}`` dicts or
+    plain strings (rendered as an unlinked leaf crumb).
+    """
+    trail = [
+        {'label': 'Dashboard', 'url': '/dashboard/'},
+        {'label': section_label, 'url': section_url},
+    ]
+    for item in items:
+        trail.append(item if isinstance(item, dict) else {'label': str(item)})
+    return trail

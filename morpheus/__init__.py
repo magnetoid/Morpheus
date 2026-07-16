@@ -48,6 +48,7 @@ from plugins.contributions import (
     EmailTemplateDef,
     SettingsPanel,
     StorefrontBlock,
+    dashboard_trail,
 )
 
 # `events` and `hooks` are exposed as submodules (see morpheus/events.py
@@ -60,6 +61,7 @@ __all__ = [
     'EmailTemplateDef',
     'SettingsPanel',
     'StorefrontBlock',
+    'dashboard_trail',
     '__version__',
 ]
 

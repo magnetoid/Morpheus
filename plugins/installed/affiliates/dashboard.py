@@ -14,11 +14,11 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
-from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+from morpheus import dashboard_trail
 
 
 def _trail(*items):
-    return build_trail('Affiliates', '/dashboard/apps/affiliates/list/', *items)
+    return dashboard_trail('Affiliates', '/dashboard/apps/affiliates/list/', *items)
 
 
 def _affiliate_commission_override(affiliate):

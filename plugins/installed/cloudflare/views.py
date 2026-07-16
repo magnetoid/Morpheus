@@ -17,7 +17,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 
-from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+from morpheus import dashboard_trail
 
 logger = logging.getLogger('morpheus.cloudflare')
 
@@ -71,7 +71,7 @@ def _install_graphql_cache_rule(zone) -> None:
 
 
 def _trail(*items):
-    return build_trail('Cloudflare', '/dashboard/cloudflare/', *items)
+    return dashboard_trail('Cloudflare', '/dashboard/cloudflare/', *items)
 
 
 @staff_member_required

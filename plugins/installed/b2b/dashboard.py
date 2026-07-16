@@ -16,13 +16,13 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 
-from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+from morpheus import dashboard_trail
 
 logger = logging.getLogger('morpheus.b2b')
 
 
 def _trail(*items):
-    return build_trail('B2B', '/dashboard/apps/b2b/pricelists/', *items)
+    return dashboard_trail('B2B', '/dashboard/apps/b2b/pricelists/', *items)
 
 
 @staff_member_required

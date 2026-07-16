@@ -16,13 +16,13 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
-from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+from morpheus import dashboard_trail
 
 logger = logging.getLogger('morpheus.marketplace')
 
 
 def _trail(*items):
-    return build_trail('Marketplace', '/dashboard/apps/marketplace/vendors/', *items)
+    return dashboard_trail('Marketplace', '/dashboard/apps/marketplace/vendors/', *items)
 
 
 def _default_commission_percent() -> Decimal:

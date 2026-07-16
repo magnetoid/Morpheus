@@ -16,7 +16,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 
-from plugins.installed.admin_dashboard.breadcrumbs import build_trail
+from morpheus import dashboard_trail
 
 from .models import (
     SLOT_CHOICES,
@@ -30,7 +30,7 @@ _SURFACE_LIMITS = {'home_hero': 4, 'home_featured': 8, 'home_staff_picks': 8}
 
 
 def _trail(*items):
-    return build_trail('Dynamics', '/dashboard/dynamics/', *items)
+    return dashboard_trail('Dynamics', '/dashboard/dynamics/', *items)
 
 
 @staff_member_required
