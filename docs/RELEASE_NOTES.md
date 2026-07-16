@@ -12,6 +12,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.6 — 2026-07-16
+
+- **Fixed: cart totals API crash during checkout.** The `cartTotals` GraphQL
+  query (used by the checkout page's totals refresh) crashed on every call —
+  the resolver reached its sibling through `self`, which is empty for root
+  queries. Found via a production log sweep during a checkout audit; the
+  lookup is now a shared helper and the query executes against the real
+  schema in a regression test.
+
 ## v0.14.5 — 2026-07-16
 
 - **Fixed: "AI provider error … All AI providers degraded".** Continuing a

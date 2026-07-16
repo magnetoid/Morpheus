@@ -48,6 +48,52 @@ def _scoped_orders_qs(info: strawberry.Info):
     return qs.filter(customer=customer)
 
 
+def _resolve_cart(info: strawberry.Info, id=None):
+    """Permission-checked cart lookup shared by the `cart` and `cartTotals`
+    resolvers. Module-level on purpose: strawberry invokes root Query
+    resolvers with ``self`` = the schema's root_value (None here), so a
+    sibling call like ``self.cart(...)`` crashes with
+    "'NoneType' object has no attribute 'cart'" — which broke cartTotals
+    in production (the checkout JS's totals refresh)."""
+    request = (
+        info.context.get('request')
+        if isinstance(info.context, dict)
+        else getattr(info.context, 'request', None)
+    )
+    qs = Cart.objects.select_related(*_CART_RELATED).prefetch_related(*_CART_PREFETCH)
+
+    if id is not None:
+        try:
+            cart = qs.get(id=id)
+        except Cart.DoesNotExist:
+            return None
+        # Carts are session-scoped: only the owning session/user may read them.
+        if cart.customer_id is not None:
+            user = getattr(request, 'user', None) if request else None
+            if (  # noqa: SIM102
+                not user
+                or not getattr(user, 'is_authenticated', False)
+                or user.pk != cart.customer_id
+            ):  # noqa: SIM102
+                if not has_scope(info, 'read:carts'):
+                    raise PermissionDenied('Not allowed to read this cart')
+        elif request is not None and getattr(request, 'session', None) is not None:
+            if cart.session_key and cart.session_key != request.session.session_key:  # noqa: SIM102
+                if not has_scope(info, 'read:carts'):
+                    raise PermissionDenied('Not allowed to read this cart')
+        return cart
+
+    if request is not None and getattr(request, 'session', None) is not None:
+        cart_id = request.session.get('cart_id')
+        if cart_id:
+            try:
+                return qs.get(id=cart_id)
+            except Cart.DoesNotExist:
+                del request.session['cart_id']
+                return None
+    return None
+
+
 @strawberry.type
 class OrdersQueryExtension:
     @strawberry.field(description='Get an order by its order number')
@@ -74,43 +120,7 @@ class OrdersQueryExtension:
         info: strawberry.Info,
         id: strawberry.ID | None = None,
     ) -> CartType | None:
-        request = (
-            info.context.get('request')
-            if isinstance(info.context, dict)
-            else getattr(info.context, 'request', None)
-        )
-        qs = Cart.objects.select_related(*_CART_RELATED).prefetch_related(*_CART_PREFETCH)
-
-        if id is not None:
-            try:
-                cart = qs.get(id=id)
-            except Cart.DoesNotExist:
-                return None
-            # Carts are session-scoped: only the owning session/user may read them.
-            if cart.customer_id is not None:
-                user = getattr(request, 'user', None) if request else None
-                if (  # noqa: SIM102
-                    not user
-                    or not getattr(user, 'is_authenticated', False)
-                    or user.pk != cart.customer_id
-                ):  # noqa: SIM102
-                    if not has_scope(info, 'read:carts'):
-                        raise PermissionDenied('Not allowed to read this cart')
-            elif request is not None and getattr(request, 'session', None) is not None:
-                if cart.session_key and cart.session_key != request.session.session_key:  # noqa: SIM102
-                    if not has_scope(info, 'read:carts'):
-                        raise PermissionDenied('Not allowed to read this cart')
-            return cart
-
-        if request is not None and getattr(request, 'session', None) is not None:
-            cart_id = request.session.get('cart_id')
-            if cart_id:
-                try:
-                    return qs.get(id=cart_id)
-                except Cart.DoesNotExist:
-                    del request.session['cart_id']
-                    return None
-        return None
+        return _resolve_cart(info, id)
 
     @strawberry.field(description='Calculate cart totals (shipping/tax/discount) for an address')
     def cart_totals(
@@ -123,7 +133,7 @@ class OrdersQueryExtension:
         from core.graphql.types import MoneyType
         from plugins.installed.orders.services import OrderService
 
-        cart = self.cart(info, id=cart_id)
+        cart = _resolve_cart(info, cart_id)
         if cart is None:
             return None
 
