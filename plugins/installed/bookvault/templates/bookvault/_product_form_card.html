@@ -1,0 +1,56 @@
+{% comment %}
+Bookvault POD fulfilment card — contributed via PRODUCT_FORM_CARDS (ADR 0023);
+was a hardcoded block in admin_dashboard's product_form.html. Parent card only
+on non-variable products (data-pt-show).
+{% endcomment %}
+<div class="card card-padded space-y-3" id="bookvault-card"
+     data-pt-show="simple,digital,bundle">
+  <div class="flex items-start justify-between gap-3">
+    <div>
+      <h2 class="font-semibold text-sm">Bookvault fulfilment</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Where Bookvault will print + ship each edition. Configured on
+        <a href="https://portal.bookvault.app/apps" target="_blank" rel="noopener" class="underline">bookvault.app</a>;
+        this panel reflects the latest webhook from BV.
+      </p>
+    </div>
+    <a href="{{ bv_bulk_link_url }}" target="_blank" rel="noopener" class="btn btn-secondary">
+      <i data-lucide="external-link" class="h-3 w-3"></i> Edit on Bookvault
+    </a>
+  </div>
+  {% if bv_links %}
+    {% for link in bv_links %}
+    <div class="rounded border border-[color:var(--border)] p-3 space-y-2">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-medium">
+          {% if link.variant %}{{ link.variant.name }}{% if link.variant.size %} · {{ link.variant.size }}{% endif %}
+          {% else %}Parent product{% endif %}
+          <span class="text-xs text-[color:var(--text-muted)] ml-2">
+            {% if link.variant %}<code>{{ link.variant.sku }}</code>{% else %}<code>{{ product.sku }}</code>{% endif %}
+          </span>
+        </div>
+        {% if link.is_linked %}
+          <span class="pill pill-success">Linked</span>
+        {% else %}
+          <span class="pill pill-warn">Pending</span>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs">
+        {% for loc in bv_locations %}
+          {% if loc.id in link.locations %}
+            <span class="pill pill-info">{{ loc.name }}</span>
+          {% else %}
+            <span class="pill pill-neutral" style="opacity:.4;">{{ loc.name }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">
+      This product hasn't been linked to a Bookvault title yet. Click
+      <strong>Edit on Bookvault</strong> to pick a BV title (cover +
+      interior PDF) for each edition.
+    </p>
+  {% endif %}
+</div>

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import logging
 
+from django.urls import reverse
+
 from morpheus import DashboardPage, Plugin, SettingsPanel, events
 
 logger = logging.getLogger('morpheus.bookvault')
@@ -43,6 +45,21 @@ class BookvaultPlugin(Plugin):
             self.on_order_paid,
             priority=80,
         )
+        # Dashboard product surfaces — contributed via the bus so both are
+        # disable-safe (ADR 0023). Previously hard-imported by admin_dashboard's
+        # products view, which survived disable-while-configured and NoReverseMatch-
+        # 500'd the product list when bookvault was boot-disabled (its `{% url %}`
+        # target was never registered).
+        self.register_hook(
+            events.PRODUCT_LIST_COLUMNS,
+            self.on_product_list_columns,
+            priority=50,
+        )
+        self.register_hook(
+            events.PRODUCT_FORM_CARDS,
+            self.on_product_form_cards,
+            priority=60,
+        )
 
     def on_order_paid(self, order=None, **kwargs):
         if order is None:
@@ -58,6 +75,70 @@ class BookvaultPlugin(Plugin):
                 e,
                 exc_info=True,
             )
+
+    def on_product_list_columns(self, value, products=None, **kwargs):
+        """Contribute the per-row BV link-status column to the dashboard
+        product list — only when BV is configured + authed, so non-BV stores
+        see no noise. Annotates each product with ``bv_link_status`` for the
+        cell template. (Django templates reject underscore-prefixed attrs,
+        hence the public name.)"""
+        from plugins.installed.bookvault import services as bv_services
+
+        if not bv_services.is_authenticated():
+            return value
+        products = products or []
+        status = bv_services.bulk_link_status_for([p.id for p in products])
+        for p in products:
+            p.bv_link_status = status.get(p.id, 'Unlinked')
+        value.append(
+            {
+                'label': 'BV',
+                'cell_template': 'bookvault/_product_list_cell.html',
+                'order': 50,
+                'bulk_action': {
+                    'label': 'Send to Bookvault',
+                    'icon': 'book-open',
+                    'url': reverse('bookvault:bulk_link'),
+                    'field': 'ids',  # bulk_link_products reads POST.getlist('ids')
+                },
+            }
+        )
+        return value
+
+    def on_product_form_cards(self, value, product=None, **kwargs):
+        """Contribute the 'Bookvault fulfilment' card to the product form.
+        Pulls every BookvaultProductLink row for this product (one per variant
+        + one for the parent) so the card can render the fulfilment-locations +
+        linked-status block the WP plugin's ``bvlt_product_meta`` showed."""
+        if product is None:
+            return value
+        from plugins.installed.bookvault import services as bv_services
+        from plugins.installed.bookvault.models import (
+            BV_LOCATION_CHOICES,
+            BookvaultProductLink,
+        )
+
+        if not bv_services.is_authenticated():
+            return value
+        links = list(
+            BookvaultProductLink.objects.filter(product=product)
+            .select_related('variant')
+            .order_by('variant__sort_order', 'variant__name')
+        )
+        value.append(
+            {
+                'template': 'bookvault/_product_form_card.html',
+                'context': {
+                    'bv_links': links,
+                    'bv_locations': [
+                        {'id': lid, 'name': name} for lid, name in BV_LOCATION_CHOICES
+                    ],
+                    'bv_bulk_link_url': bv_services.bulk_products_link([str(product.id)]),
+                },
+                'order': 60,
+            }
+        )
+        return value
 
     def contribute_dashboard_pages(self) -> list:
         return [

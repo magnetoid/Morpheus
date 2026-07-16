@@ -114,11 +114,10 @@ this way; fixed by moving it to `PRODUCT_FORM_CARDS`/`PRODUCT_FORM_SAVED`).
 Render an optional plugin's surface via its hook/contribution, never a
 try/except import (a `try/except ImportError` guards *absence*, not *disable* —
 a disabled plugin is still importable). Guarded by
-`core/tests/test_hook_disable_gating.py`. Still-open example: `bookvault`'s
-product-list column + fulfilment card (imported in
-`admin_dashboard/views_split/products.py`) — self-hides on `is_authenticated()`
-but leaks if disabled-while-configured; migrate to `PRODUCT_FORM_CARDS` +
-a `PRODUCT_LIST_COLUMNS`-style hook.
+`core/tests/test_hook_disable_gating.py`. (bookvault — the old still-open
+example — is repaid: its list column + fulfilment card + bulk action arrive
+via `PRODUCT_LIST_COLUMNS` / `PRODUCT_FORM_CARDS`, guarded by
+`test_disable_guards.py::ProductShellContributionGuards`.)
 
 **Landmine — a new sign-in path silently bypasses MFA.** Staff second factor
 (staff_mfa) hangs off the `AUTH_SECOND_FACTOR` filter, fired in
@@ -179,10 +178,11 @@ processors and skips inactive owners; this is what finally makes that mechanism
 real). *Still leaking:* `core/assistant/tools/*` queries
 catalog/orders/cms/metafields/… models directly (fix: migrate each to the
 owning plugin's `contribute_agent_tools()`). The full shell-leak /
-duplication debt map (bookvault, product_videos, metafields, cloudflare,
-seo shell imports; customers↔orders cycle; 6× channel `mapping.py`
-copy-paste) lives in `docs/plans/boundary-debt-2026-07.md` — repay from
-there, one PR per item.
+duplication debt map (still open: product_videos, metafields, cloudflare,
+seo shell imports; storefront account sub-pages; catalog.py book-vertical
+sites) lives in `docs/plans/boundary-debt-2026-07.md` — repay from there,
+one PR per item; bookvault, customers↔orders, the channel `mapping.py`
+copy-paste, and the `_trail` builder are already repaid there.
 
 ---
 

@@ -1,0 +1,4 @@
+{# Per-row BV link-status cell (PRODUCT_LIST_COLUMNS) — reads the bv_link_status annotation set by the plugin's subscriber. #}
+{% if product.bv_link_status == 'Linked' %}<span class="pill pill-success">Linked</span>
+{% elif product.bv_link_status == 'Partial' %}<span class="pill pill-warn">Partial</span>
+{% else %}<span class="pill pill-neutral">Unlinked</span>{% endif %}

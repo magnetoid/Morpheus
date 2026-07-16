@@ -3,7 +3,7 @@
 # ruff: noqa: PLC0415, I001, F401, S110, PLR0912, PLR0915
 # Inline imports throughout: every view imports only what it needs to
 # stay fast at startup + avoid circular deps with catalog / product_videos
-# / bookvault / seo / core.agents. The `_shared` re-exports cover legacy
+# / seo / core.agents. The `_shared` re-exports cover legacy
 # import paths that other modules still reach for. S110 on optional
 # integrations + PLR0912 on the hot-path catalog editing flows.
 from __future__ import annotations
@@ -91,23 +91,11 @@ def products_list(request: HttpRequest) -> HttpResponse:
         products = []
         load_error = True
 
-    # Bookvault is an optional plugin. Surface the per-row link status
-    # column only when BV is configured + authed; otherwise the column
-    # is hidden so non-BV stores don't see noise.
-    bv_authed = False
-    try:
-        from plugins.installed.bookvault import services as bv_services
-
-        bv_authed = bv_services.is_authenticated()
-        if bv_authed and products:
-            bv_status = bv_services.bulk_link_status_for([p.id for p in products])
-            # Annotate each product so the template can read it without
-            # needing a dict-lookup filter. (Django templates reject
-            # attrs that start with an underscore, hence the public name.)
-            for p in products:
-                p.bv_link_status = bv_status.get(p.id, 'Unlinked')
-    except Exception:  # noqa: BLE001 — never break the product list if BV is wedged
-        bv_authed = False
+    # Plugin-contributed list columns (PRODUCT_LIST_COLUMNS) — e.g. bookvault's
+    # link-status column. Contributed via the bus so each column (and its bulk
+    # action) vanishes when its plugin is disabled (ADR 0023).
+    extra_product_columns = _collect_product_list_columns(products, request)
+    extra_bulk_actions = [c['bulk_action'] for c in extra_product_columns if c.get('bulk_action')]
 
     return render(
         request,
@@ -119,7 +107,8 @@ def products_list(request: HttpRequest) -> HttpResponse:
             'status_choices': PRODUCT_STATUS_CHOICES,
             'status_counts': status_counts,
             'search': search,
-            'bv_authed': bv_authed,
+            'extra_product_columns': extra_product_columns,
+            'extra_bulk_actions': extra_bulk_actions,
             'active_nav': 'products',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -340,6 +329,40 @@ def _collect_product_form_cards(product, request) -> list:
     return out
 
 
+def _collect_product_list_columns(products, request) -> list:
+    """Render plugin-contributed product-list columns (PRODUCT_LIST_COLUMNS filter).
+
+    Same contract as _collect_product_form_cards: a plugin appends
+    {'label', 'cell_template', 'order', optional 'bulk_action'} and may
+    annotate `products` in place; cells are pre-rendered here (one per
+    product) onto ``p.extra_cells`` so the template needs no dict-lookup
+    filter. Fail-soft per column — one broken column can't break the list.
+    """
+    from django.template.loader import render_to_string
+
+    from core.hooks import MorpheusEvents, hook_registry
+
+    cols = hook_registry.filter(
+        MorpheusEvents.PRODUCT_LIST_COLUMNS, value=[], products=products, request=request
+    )
+    out: list = []
+    rendered: list[list[str]] = []
+    for col in sorted(cols or [], key=lambda c: c.get('order', 100)):
+        tpl = col.get('cell_template')
+        if not tpl:
+            continue
+        try:
+            cells = [render_to_string(tpl, {'product': p}, request=request) for p in products]
+        except Exception as e:  # noqa: BLE001 — one bad column can't break the list
+            logger.warning('product_list_column render failed (%s): %s', tpl, e, exc_info=True)
+            continue
+        out.append(col)
+        rendered.append(cells)
+    for i, p in enumerate(products):
+        p.extra_cells = [cells[i] for cells in rendered]
+    return out
+
+
 @staff_member_required
 def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
@@ -388,37 +411,10 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     except Exception:  # noqa: BLE001
         pass
 
-    # Bookvault per-product panel — same gate as the product list.
-    # Pulls every BookvaultProductLink row for this product (one per
-    # variant + one for the parent) so the template can render the
-    # fulfilment-locations + linked-status block the WP plugin's
-    # `bvlt_product_meta` showed.
-    bv_authed = False
-    bv_links: list = []
-    bv_locations: list = []
-    bv_bulk_link_url = ''
-    try:
-        from plugins.installed.bookvault import services as bv_services
-        from plugins.installed.bookvault.models import (
-            BookvaultProductLink,
-            BV_LOCATION_CHOICES,
-        )
-
-        bv_authed = bv_services.is_authenticated()
-        if bv_authed:
-            bv_locations = [{'id': lid, 'name': name} for lid, name in BV_LOCATION_CHOICES]
-            bv_links = list(
-                BookvaultProductLink.objects.filter(product=product)
-                .select_related('variant')
-                .order_by('variant__sort_order', 'variant__name')
-            )
-            bv_bulk_link_url = bv_services.bulk_products_link([str(product.id)])
-    except Exception:  # noqa: BLE001 — never break the product page if BV is wedged
-        bv_authed = False
-
     # Plugin-contributed product-form cards (modular extension point) — includes
-    # book_product's Book details card, contributed via PRODUCT_FORM_CARDS so it
-    # disappears when the plugin is disabled.
+    # book_product's Book details card and bookvault's fulfilment panel, both
+    # contributed via PRODUCT_FORM_CARDS so each disappears when its plugin is
+    # disabled (ADR 0023).
     extra_product_cards = _collect_product_form_cards(product, request)
 
     return render(
@@ -435,10 +431,6 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             'videos': videos,
             'front_image': front_image,
             'back_image': back_image,
-            'bv_authed': bv_authed,
-            'bv_links': bv_links,
-            'bv_locations': bv_locations,
-            'bv_bulk_link_url': bv_bulk_link_url,
             'seo_defaults': _seo_field_defaults(product),
             'identifier_fields': _identifier_fields(product),
             'seo_tokens': _seo_tokens(product),

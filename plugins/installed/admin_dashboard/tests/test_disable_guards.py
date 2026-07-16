@@ -141,3 +141,35 @@ class HotEnableTests(TestCase):
 
     def test_activate_unknown_plugin_returns_false(self):
         self.assertFalse(plugin_registry.activate('does_not_exist'))
+
+
+class ProductShellContributionGuards(TestCase):
+    """The products list/form shell must carry NO direct bookvault reference —
+    its column, fulfilment card, and bulk action arrive via
+    PRODUCT_LIST_COLUMNS / PRODUCT_FORM_CARDS contributions, which the bus
+    drops when the plugin is inactive (ADR 0023). A direct reference is
+    exactly the leak this repaid: the column survived disable-while-configured
+    and a boot-disabled bookvault NoReverseMatch-500'd the product list."""
+
+    SHELL_FILES = (
+        'templates/admin_dashboard/products.html',
+        'templates/admin_dashboard/product_form.html',
+        'views_split/products.py',
+    )
+    # Load-bearing coupling tokens (imports, URL namespace, shell state) —
+    # prose mentions in comments are fine, these are not.
+    FORBIDDEN = (
+        'plugins.installed.bookvault',
+        'bookvault:',
+        'bv_authed',
+        'bv_links',
+        'bv_locations',
+        'bv_bulk_link_url',
+    )
+
+    def test_products_shell_free_of_bookvault(self):
+        base = Path(settings.BASE_DIR) / 'plugins/installed/admin_dashboard'
+        for rel in self.SHELL_FILES:
+            text = (base / rel).read_text(encoding='utf-8').lower()
+            for token in self.FORBIDDEN:
+                self.assertNotIn(token, text, f'{rel} couples to bookvault via {token!r}')

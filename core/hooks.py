@@ -542,6 +542,15 @@ class MorpheusEvents:
     #   files=MultiValueDict. Fired after a product is saved in the dashboard so
     #   a plugin can persist its own product-form fields (its card's inputs).
     PRODUCT_FORM_SAVED = 'product.form_saved'  # fire
+    # PRODUCT_LIST_COLUMNS — filter, value=list[dict], kwargs:
+    #   products=list[Product], request=HttpRequest. A plugin appends
+    #   {'label': str, 'cell_template': '<path>', 'order': int, optional
+    #   'bulk_action': {'label', 'url', 'field', 'icon'}} to add a column to
+    #   the dashboard product list without admin_dashboard importing it
+    #   (ADR 0023 — the disable-safe replacement for the hardcoded bookvault
+    #   column). The subscriber may annotate `products` in place for its cell
+    #   template to read; the view pre-renders one cell per product.
+    PRODUCT_LIST_COLUMNS = 'product.list_columns'  # filter
     # EMAIL_TEMPLATE_OVERRIDE — filter, value=(subject, text, html) tuple
     #   starting as (None, None, None), kwargs: key=str, ctx=dict. Lets a
     #   plugin supply merchant-edited copy for a transactional email
