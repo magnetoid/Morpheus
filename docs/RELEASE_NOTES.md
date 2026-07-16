@@ -12,6 +12,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.15.1 — 2026-07-17
+
+- **Fixed: AI features silently produced nothing on reasoning models.** Found
+  while running the new bulk copy writer against the live store, which wrote 1
+  page and skipped 4. Reasoning models (the configured `deepseek-v4-pro`,
+  DeepSeek's reasoner, OpenAI's o-series) spend tokens *thinking* before they
+  answer, and that thinking counts against the reply's token budget. Every
+  Morpheus AI feature asks for a small budget sized for ordinary models — 400
+  to 600 tokens — so the model used the entire allowance reasoning and returned
+  a **successful but empty** answer. Nothing errored; the copy just never
+  appeared. Any dashboard "Generate" button, product-description writer or SEO
+  draft on such a model was affected. The gateway now recognises that exact
+  response and retries once with room to finish (measured: ~915 tokens needed
+  where 400 was offered).
+
 ## v0.15.0 — 2026-07-16
 
 **Every listing page can have an intro now — and the AI can write the backlog.**

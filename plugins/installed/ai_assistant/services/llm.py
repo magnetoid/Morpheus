@@ -23,6 +23,31 @@ from plugins.installed.ai_assistant.services.config import (
 
 logger = logging.getLogger('morpheus.ai.llm')
 
+# Floor for the reasoning-model retry below. A reasoning model needs room for
+# its hidden thinking PLUS the answer; ~900 completion tokens was typical for a
+# 2-3 sentence reply in practice, so this leaves comfortable headroom.
+_REASONING_MIN_TOKENS = 4000
+
+
+def _truncated_while_reasoning(response) -> bool:
+    """True when a completion came back empty because the model hit its token
+    ceiling mid-reasoning.
+
+    OpenAI-compatible reasoning models bill hidden reasoning against
+    ``max_tokens`` and report it under
+    ``usage.completion_tokens_details.reasoning_tokens``. When the ceiling is
+    reached before the answer starts, the API returns HTTP 200, empty
+    ``content``, and ``finish_reason == 'length'`` — a success the caller can't
+    distinguish from "no answer". Detect that exact shape.
+    """
+    try:
+        if getattr(response.choices[0], 'finish_reason', '') != 'length':
+            return False
+        details = getattr(response.usage, 'completion_tokens_details', None)
+        return bool(getattr(details, 'reasoning_tokens', 0) or 0)
+    except (AttributeError, IndexError, TypeError):
+        return False
+
 
 class LLMGateway(ABC):
     """Abstract base — all providers implement this interface."""
@@ -122,6 +147,30 @@ class OpenAIGateway(LLMGateway):
                 max_tokens=max_tokens,
             )
             result = response.choices[0].message.content or ''
+            if not result and _truncated_while_reasoning(response):
+                # A reasoning model (deepseek-reasoner / -v4-pro, o-series)
+                # spends completion tokens on hidden reasoning BEFORE writing
+                # its answer, and that reasoning counts against max_tokens. A
+                # budget sized for a non-reasoning model is therefore eaten
+                # entirely by thinking, and the API returns a SUCCESSFUL
+                # response with empty content — which every caller reads as
+                # "the model had nothing to say" and silently drops. Retry
+                # once with headroom instead of lying to the caller.
+                retry_tokens = max(max_tokens * 8, _REASONING_MIN_TOKENS)
+                logger.warning(
+                    '%s: empty completion — %s burned all %s tokens reasoning; retrying once at %s',
+                    type(self).__name__,
+                    self.model,
+                    max_tokens,
+                    retry_tokens,
+                )
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=retry_tokens,
+                )
+                result = response.choices[0].message.content or ''
             elapsed = int((time.monotonic() - start) * 1000)
             usage = response.usage
             cost = self._estimate_cost(
