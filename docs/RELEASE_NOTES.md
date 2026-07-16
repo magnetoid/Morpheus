@@ -12,6 +12,26 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.14.1 — 2026-07-16
+
+Internal hardening release — plugin-boundary debt repayment. No new features,
+nothing to reconfigure.
+
+- **Apps now unplug cleanly from the Products screen.** The product list's
+  Bookvault column, its "Send to Bookvault" bulk action, and the fulfilment
+  panel on the product form are contributed through the plugin bus (new
+  `PRODUCT_LIST_COLUMNS` extension point + the existing product-form cards)
+  instead of being hard-coded into the dashboard. Disabling the Bookvault app
+  now removes every trace of it — and this fixes a lurking crash where the
+  whole Products page could error out if the app was disabled while still
+  configured.
+- **One breadcrumb builder.** Eight apps carried their own copy of the
+  dashboard breadcrumb helper; it's now a single SDK function
+  (`morpheus.dashboard_trail`). No visual change.
+- **Linda's `workflows.run` tool moved into the Workflows app** — owned by the
+  app it drives, like the earlier metafields tool move. The core→plugin import
+  baseline shrank from 11 to 9 entries.
+
 ## v0.14.0 — 2026-07-16
 
 - **Language editions — customers can buy books in their own language.** A
