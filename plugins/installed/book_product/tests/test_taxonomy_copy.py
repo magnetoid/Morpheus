@@ -60,7 +60,11 @@ class CuratedRootRendersIntroTests(TestCase):
     """The storefront /genres/ + /topics/ pages must render their intro."""
 
     def setUp(self):
-        product = Product.objects.create(name='A Book', slug='a-book', price=5, status='active')
+        # Product.sku is unique — an omitted sku defaults to '' and the second
+        # fixture collides, so every fixture below names one.
+        product = Product.objects.create(
+            name='A Book', slug='a-book', sku='TAX-1', price=5, status='active'
+        )
         book = BookProduct.objects.create(product=product)
         self.genre = Genre.objects.create(name='Fiction', slug='fiction')
         self.topic = Topic.objects.create(name='Love', slug='love')
@@ -130,7 +134,7 @@ class BulkCopyBackfillTests(TestCase):
         self.stocked, self.bare = [], []
         for i in range(3):
             product = Product.objects.create(
-                name=f'Book {i}', slug=f'book-{i}', price=5, status='active'
+                name=f'Book {i}', slug=f'book-{i}', sku=f'BULK-{i}', price=5, status='active'
             )
             book = BookProduct.objects.create(product=product)
             genre = Genre.objects.create(name=f'Genre {i}', slug=f'genre-{i}')
@@ -212,7 +216,9 @@ class CopyServiceTests(TestCase):
     def test_prompt_is_grounded_in_the_actual_books(self):
         from plugins.installed.book_product.services_copy import _subject_for
 
-        product = Product.objects.create(name='Tender Buttons', slug='tb', price=5, status='active')
+        product = Product.objects.create(
+            name='Tender Buttons', slug='tb', sku='COPY-1', price=5, status='active'
+        )
         book = BookProduct.objects.create(product=product)
         genre = Genre.objects.create(name='Poetry', slug='poetry')
         book.genres.add(genre)
