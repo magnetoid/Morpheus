@@ -18,7 +18,7 @@ audit is automatic.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus import Plugin, SettingsPanel
 
 
 class AiStylistPlugin(Plugin):
@@ -34,13 +34,14 @@ class AiStylistPlugin(Plugin):
     requires = ['ai_assistant', 'core.audit', 'consent']
 
     def contribute_storefront_blocks(self) -> list:
-        return [
-            StorefrontBlock(
-                slot='global_below_body',
-                template='ai_stylist/blocks/widget.html',
-                priority=5,
-            ),
-        ]
+        # Widget withheld: the template ships no CSS/JS and there is no
+        # shopper-facing backend endpoint yet, so it rendered as raw unstyled
+        # markup ("Aria / Ask me anything…") in the page's bottom-left corner.
+        # Until the panel styling, the send/poll script, and a consent-gated,
+        # rate-limited storefront endpoint land, this contributes nothing to the
+        # storefront (the crm plugin already provides a working "Chat with us"
+        # widget). Restore the StorefrontBlock once the surface is finished.
+        return []
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(

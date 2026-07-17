@@ -73,6 +73,11 @@ urlpatterns = [
         views.account_order_return,
         name='account_order_return',
     ),
+    path(
+        'account/orders/<str:order_number>/cancel/',
+        views.account_order_cancel,
+        name='account_order_cancel',
+    ),
     path('account/addresses/', views.account_addresses, name='account_addresses'),
     path('account/addresses/new/', views.account_address_form, name='account_address_new'),
     path(

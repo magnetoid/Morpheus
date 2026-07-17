@@ -23,6 +23,13 @@ def _login_required(request, target):
     return None
 
 
+# Order states in which a customer may still cancel their own order — i.e.
+# before it has been dispatched. This is the EU right of withdrawal exercised
+# pre-shipment; once the order is fulfilled/shipped the customer uses the
+# return flow (account_order_return) instead.
+_CANCELLABLE_STATES = frozenset({'pending', 'confirmed', 'processing'})
+
+
 def _account_summary(user) -> dict:
     """Counts + balances for the account home dashboard.
 
@@ -106,7 +113,60 @@ def account_order_detail(request, order_number):
         order_number=order_number,
         customer=request.user,
     )
-    return render(request, 'storefront/account_order_detail.html', {'order': order})
+    return render(
+        request,
+        'storefront/account_order_detail.html',
+        {'order': order, 'can_cancel': order.status in _CANCELLABLE_STATES},
+    )
+
+
+def account_order_cancel(request, order_number):
+    """Customer-initiated pre-dispatch cancellation (EU right of withdrawal).
+
+    Only valid before the order ships (``_CANCELLABLE_STATES``); a paid order
+    is refunded in full through the same idempotent ``RefundService`` the
+    dashboard uses, so the provider can never be double-billed. A dispatched
+    order is refused here and routed to the return flow. The refund
+    confirmation reaches the customer through the standard PAYMENT_REFUNDED
+    email, so this view just redirects back to the (now-cancelled) order.
+    """
+    redirect_resp = _login_required(request, f'/account/orders/{order_number}/')
+    if redirect_resp is not None:
+        return redirect_resp
+    from django.shortcuts import get_object_or_404, redirect as _redirect
+    from plugins.installed.orders.models import Order
+
+    order = get_object_or_404(Order, order_number=order_number, customer=request.user)
+    detail = _redirect('storefront:account_order_detail', order_number=order_number)
+    if request.method != 'POST' or order.status not in _CANCELLABLE_STATES:
+        # A GET, or an already-dispatched/cancelled order: nothing to do. The
+        # button is only rendered while cancellable, so this is the guard for a
+        # stale form or a hand-crafted POST.
+        return detail
+
+    order.cancel(reason='Customer withdrawal (pre-dispatch)')
+    order.save()
+
+    if order.payment_status == 'paid':
+        from plugins.installed.orders.refunds import RefundService
+
+        try:
+            RefundService.process(
+                order=order,
+                amount=order.total,
+                reason='customer_request',
+                notes='Pre-dispatch cancellation / right of withdrawal.',
+                actor=request.user,
+            )
+        except Exception as e:  # noqa: BLE001 — order is already cancelled; the
+            # refund row is recorded and left for reconciliation rather than
+            # blocking the customer or crashing the request.
+            logger.warning(
+                'account_order_cancel: refund for %s did not complete: %s',
+                order.order_number,
+                e,
+            )
+    return detail
 
 
 def account_addresses(request):

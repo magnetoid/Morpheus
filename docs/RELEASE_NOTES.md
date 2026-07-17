@@ -12,6 +12,36 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.16.0 — 2026-07-17
+
+**Cancel an order (right of withdrawal)** — Batch 2 of the professionalism
+roadmap, EU consumer-law compliance.
+
+- Customers can now **cancel an order themselves before it's dispatched**, from
+  the order page in their account — the pre-shipment right of withdrawal that EU
+  consumer law requires. A cancelled order that was already paid is **refunded
+  in full automatically**, through the same safe, idempotent refund path the
+  dashboard uses (the payment provider can't be double-charged); the refund
+  confirmation arrives by email as usual.
+- The button only appears while the order can still be cancelled — once it has
+  shipped, the customer uses "Request a return" instead. The confirmation step
+  is a plain expand-to-confirm control (no accidental one-click cancels, and no
+  JavaScript required).
+
+**Fixed**
+
+- **A broken chat widget in the storefront's bottom-left corner is gone.** The
+  unfinished "AI stylist" assistant was contributing a storefront widget that
+  shipped without any styling or behaviour, so it rendered as raw stray text
+  ("Aria / Ask me anything…") stacked in the page corner. It's withheld until
+  the feature is actually built — the working "Chat with us" widget is
+  unaffected.
+
+*Still ahead in Batch 2 (needs your input):* a product-safety panel on book
+pages (GPSR — requires appointing an EU Responsible Person), a digital-download
+withdrawal-waiver checkbox at checkout, an accessibility (WCAG 2.1 AA) pass, and
+real legal copy to replace the seeded placeholders.
+
 ## v0.15.5 — 2026-07-17
 
 **Trust & deploy-safety quick wins** — first code batch of the July
