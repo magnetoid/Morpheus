@@ -12,6 +12,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.17.1 — 2026-07-18
+
+**Fix: the mood-search landing is now reachable.** In v0.17.0 the natural-language
+"describe what you're in the mood for" panel lived on the `/search/` empty state,
+but a query-less `/search/` was 302-redirecting straight to `/products/` — so no
+one clicking **Search** ever saw it. `/search/` now renders the mood-search
+landing; a keyword search (`/search/?q=…`) still bounces to the rich product-list
+page as before. Regression-guarded by `storefront/tests/test_search_landing.py`.
+
+---
+
 ## v0.17.0 — 2026-07-18
 
 **Book-native quick wins** — first batch from the ideas roadmap (research-backed:

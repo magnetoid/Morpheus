@@ -979,12 +979,13 @@ def search(request):
         except Exception:  # noqa: BLE001, S110
             pass
 
-    # Plain keyword search bounces to /products/?q=… so it lands on the rich PLP.
-    if not use_semantic:
+    # A plain keyword search bounces to /products/?q=… so it lands on the rich
+    # PLP. A query-less /search/ falls through to render the mood-search landing
+    # (the empty-state panel) instead of bouncing to /products/.
+    if q and not use_semantic:
         from django.shortcuts import redirect as _redirect
 
-        target = f'/products/?q={q}' if q else '/products/'
-        return _redirect(target)
+        return _redirect(f'/products/?q={q}')
 
     data = (
         internal_graphql(
