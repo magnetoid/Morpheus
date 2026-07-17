@@ -1,7 +1,10 @@
 # Loyalty redemption — remaining checkout wiring (Wave 1.3)
 
-**Status:** spec'd, not started. Money path — ships as its own focused release
-(own tests, own deploy). Do NOT bundle with unrelated changes.
+**Status:** implemented in **v0.18.0** (verifying). The apply/remove endpoints,
+order-time debit, and cancel-reversal all shipped; the ledger helpers are
+`redeem_points_for_order` / `reverse_redemption_for_order` in `services_redeem.py`.
+Covered by `loyalty_points/tests/test_redeem_checkout.py`. Money path — shipped
+as its own focused release.
 
 ## What already exists (verified 2026-07-18)
 
@@ -30,11 +33,21 @@ Write `cart.metadata['loyalty_points_redeem']` (int), bounded by
 - Add to `loyalty_points/urls.py`: `checkout/points/apply/` + `checkout/points/remove/`
   (root-mounted, so disable-safe — 404 when the plugin is off).
 - Add `apply_points` / `remove_points` views in `loyalty_points/views.py`.
-  Resolve the active cart the way orders' other checkout endpoints do (find the
-  cart resolver in `plugins/installed/orders/` — do NOT re-implement it).
-  Auth-only (redeem requires an authenticated customer). Clamp to
-  `max_redeemable`. Return JSON on both success and failure
-  (dashboard-ajax-json-contract landmine) — these are AJAX from the cart.
+  **Mechanical template:** the coupon/gift-card apply endpoints at
+  [storefront/views/checkout.py:272-321](../../plugins/installed/storefront/views/checkout.py#L272)
+  — POST-only, resolve the cart via `request.session.get('cart_id')`, mutate,
+  then `redirect(HTTP_REFERER split on '?')` with an `?…=invalid` inline-error
+  bounce (the theme has no messages framework). Mirror that redirect-back UX.
+  **But do NOT copy their location:** those live in the storefront shell (a
+  boundary smell — they'd survive a gift_cards/coupon disable). The loyalty
+  endpoints MUST live in the loyalty plugin so the route vanishes on disable.
+  Resolve the cart with `CartService.get_or_create_cart(session_key=…,
+  customer=request.user)` ([orders/services.py:61](../../plugins/installed/orders/services.py#L61)),
+  set `cart.metadata['loyalty_points_redeem'] = clamp(int, 0, max_redeemable(...))`,
+  `cart.save(update_fields=['metadata', 'updated_at'])`. Auth-only (redeem needs
+  an authenticated customer). `cart.metadata` is the established extension point
+  (coupons, gift cards, shipping_rate_id all live there), so writing the key is
+  in-contract, not a boundary breach.
 - Storefront trigger: a `StorefrontBlock(slot='cart_summary_extra')` "use my
   points" control (same slot as the free-shipping bar) OR a checkout control —
   pick the slot the checkout total actually renders, verify with a grep.

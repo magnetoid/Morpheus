@@ -70,6 +70,9 @@ class LoyaltyPointsPlugin(Plugin):
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=50)
         # Contribute points-earned activity to the dashboard home feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=50)
+        # Re-credit spent points when an order is cancelled — never leave a
+        # shopper out the points for an order that never shipped. Idempotent.
+        self.register_hook(events.ORDER_CANCELLED, self.on_order_cancelled, priority=50)
 
     def on_account_summary(self, value, user=None, **kwargs):
         """Fold this customer's points balance into the account summary.
@@ -114,14 +117,46 @@ class LoyaltyPointsPlugin(Plugin):
             )
         return value
 
+    def on_order_cancelled(self, order=None, **kwargs):
+        """Reverse any loyalty redemption on a cancelled order (idempotent).
+
+        Subscribes to ``ORDER_CANCELLED`` (fired centrally by the orders FSM
+        receiver). Fail-soft — a reversal problem must never block the cancel.
+        """
+        if order is None:
+            return
+        try:
+            from plugins.installed.loyalty_points.services_redeem import (
+                reverse_redemption_for_order,
+            )
+
+            reverse_redemption_for_order(order)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.loyalty').warning(
+                'loyalty cancel reversal failed for order %s: %s',
+                getattr(order, 'order_number', '?'),
+                exc,
+                exc_info=True,
+            )
+
     def contribute_storefront_blocks(self) -> list:
-        # Account-home tile → /account/points/. Lives with the plugin so a
-        # disabled plugin drops the tile (registry-gated contribution).
+        # Both tiles live with the plugin so a disabled plugin drops them
+        # (registry-gated contributions).
         return [
+            # Account-home tile → /account/points/.
             StorefrontBlock(
                 slot='account_nav',
                 template='loyalty_points/blocks/account_nav.html',
                 priority=50,
+            ),
+            # Cart-side "spend your points" control (below the free-shipping
+            # bar, which owns the same slot at priority 20).
+            StorefrontBlock(
+                slot='cart_summary_extra',
+                template='loyalty_points/blocks/cart_redeem.html',
+                priority=30,
             ),
         ]
 

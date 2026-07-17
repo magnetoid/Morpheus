@@ -59,3 +59,56 @@ def account_points(request):
             'txns': txns,
         },
     )
+
+
+def _back(request, default='/cart/'):
+    """The referring page, minus any query (mirrors the coupon/gift-card
+    endpoints — the theme has no messages framework)."""
+    ref = request.META.get('HTTP_REFERER', default) or default
+    return ref.split('?')[0]
+
+
+def apply_points(request):
+    """POST /checkout/points/apply/ — stash the shopper's chosen point spend
+    on the cart, capped to their balance.
+
+    The breakdown hook turns ``cart.metadata['loyalty_points_redeem']`` into a
+    discount and re-caps it against the live order total; the order-time debit
+    consumes the result. Auth-only — guests have no balance to spend.
+    """
+    if request.method != 'POST' or not request.user.is_authenticated:
+        return redirect('/cart/')
+    try:
+        from plugins.installed.loyalty_points.services_redeem import max_redeemable
+        from plugins.installed.orders.services import CartService
+
+        try:
+            want = int(request.POST.get('points') or 0)
+        except (TypeError, ValueError):
+            want = 0
+        cart = CartService.get_or_create_cart(customer=request.user)
+        want = max(0, min(want, max_redeemable(request.user)))
+        md = dict(cart.metadata or {})
+        md['loyalty_points_redeem'] = want
+        cart.metadata = md
+        cart.save(update_fields=['metadata', 'updated_at'])
+    except Exception as e:  # noqa: BLE001
+        logger.warning('apply_points failed: %s', e, exc_info=True)
+    return redirect(_back(request))
+
+
+def remove_points(request):
+    """POST /checkout/points/remove/ — clear a pending point redemption."""
+    if request.method != 'POST' or not request.user.is_authenticated:
+        return redirect('/cart/')
+    try:
+        from plugins.installed.orders.services import CartService
+
+        cart = CartService.get_or_create_cart(customer=request.user)
+        md = dict(cart.metadata or {})
+        if md.pop('loyalty_points_redeem', None) is not None:
+            cart.metadata = md
+            cart.save(update_fields=['metadata', 'updated_at'])
+    except Exception as e:  # noqa: BLE001
+        logger.warning('remove_points failed: %s', e, exc_info=True)
+    return redirect(_back(request))

@@ -37,6 +37,13 @@ class GiftCardRedeemFailed(ValueError):
     refuse' path silently no-op'd because the flag write always failed.)"""
 
 
+class LoyaltyRedeemFailed(ValueError):
+    """Raised when a loyalty-points redemption fails at checkout (balance
+    race). Like the gift-card case, the points discount is already baked into
+    order.total, so we roll the order back rather than charge the discounted
+    amount without debiting the ledger."""
+
+
 # Canonical "this order represents a completed purchase" status set — the single
 # source of truth for recommendation / analytics / co-purchase consumers, which
 # otherwise hardcoded divergent sets (personalisation referenced the non-existent
@@ -501,6 +508,35 @@ class OrderService:
                 raise GiftCardRedeemFailed(
                     'Your gift card could not be applied (it may be expired, '
                     'disabled, or already spent). Please review your cart and try again.'
+                ) from e
+
+        # Debit redeemed loyalty points. Same contract as the gift card above:
+        # the breakdown hook already baked the points discount into order.total
+        # and stashed the (capped) spend in meta['loyalty_points'], so a debit
+        # failure means charging the discounted total without consuming the
+        # points — abort (raise → rolls back this atomic block). Disable-safe:
+        # a disabled loyalty plugin's breakdown hook never fires, so the meta
+        # key is absent and this block is skipped. Idempotent debit tolerates a
+        # checkout retry.
+        loyalty_meta = (breakdown.get('meta') or {}).get('loyalty_points') or {}
+        if loyalty_meta and cart.customer_id:
+            try:
+                from plugins.installed.loyalty_points.services_redeem import (
+                    redeem_points_for_order,
+                )
+
+                points = int(loyalty_meta.get('points') or 0)
+                if points > 0:
+                    redeem_points_for_order(cart.customer, points, order=order)
+            except (ValueError, ImportError) as e:
+                logger.warning(
+                    'orders: loyalty redeem failed for order %s: %s',
+                    order.order_number,
+                    e,
+                    exc_info=True,
+                )
+                raise LoyaltyRedeemFailed(
+                    'Your points could not be applied. Please review your cart and try again.'
                 ) from e
 
         cart.items.all().delete()

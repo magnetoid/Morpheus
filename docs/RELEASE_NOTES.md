@@ -12,6 +12,29 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.18.0 — 2026-07-18
+
+**Spend your reader points at checkout.** Loyalty points have been earnable
+for a while, but there was no way to *spend* them — the discount math existed,
+the checkout wiring didn't. This completes the money path:
+
+- **Cart control** — a "You have N reader points (worth $X)" panel in the cart
+  lets a signed-in shopper apply points toward their order (capped to their
+  balance), or remove them. Self-hides for guests and zero-balance customers.
+- **Ledger debit at checkout** — when an order is placed, the redeemed points
+  are actually debited from the balance (a single `spend_order` ledger row),
+  inside the same atomic block as gift-card redemption. Idempotent: a retried
+  checkout never double-spends.
+- **Automatic reversal on cancel** — cancel an order that spent points and the
+  points come straight back (a shopper is never out points for an order that
+  didn't ship). Idempotent against a paid cancel firing both cancel + refund.
+
+The whole flow is disable-safe (the control, routes, debit, and reversal all
+vanish if the loyalty plugin is turned off) and covered by 13 tests, including
+the real `create_from_cart` and `order.cancel()` paths.
+
+---
+
 ## v0.17.1 — 2026-07-18
 
 **Fix: the mood-search landing is now reachable.** In v0.17.0 the natural-language

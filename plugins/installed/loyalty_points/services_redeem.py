@@ -8,6 +8,8 @@ Public surface:
     max_redeemable(customer, order_total=None) → int (capped by balance + policy)
     redeem_points(customer, points, *, order=None, reason='') → Money
     reverse_redemption(customer, points, *, order=None, reason='') → PointsTransaction
+    redeem_points_for_order(customer, points, *, order) → Money|None (idempotent)
+    reverse_redemption_for_order(order) → PointsTransaction|None (idempotent)
 
 The discount math is intentionally separate from the checkout wiring.
 ``redeem_points`` only touches the ledger; the *application* of the
@@ -188,4 +190,58 @@ def reverse_redemption(customer, points: int, *, order=None, reason: str = ''):
         reason='adjust',
         order_number=order_number,
         note=(reason or f'+{points} pts redemption reversed')[:200],
+    )
+
+
+def redeem_points_for_order(customer, points: int, *, order):
+    """Idempotent order-time debit — spend ``points`` against ``order`` once.
+
+    The discount is already baked into ``order.total`` by the breakdown
+    hook; this is the ledger side. Safe on a checkout retry: a second call
+    for the same order is a no-op (returns ``None``). The caller
+    (``OrderService.create_from_cart``) treats a raised ``ValueError`` —
+    e.g. a balance race — as fatal and rolls the order back rather than
+    charge the discounted total without consuming the points.
+    """
+    from plugins.installed.loyalty_points.models import PointsTransaction
+
+    order_number = str(getattr(order, 'order_number', '') or getattr(order, 'pk', ''))
+    if PointsTransaction.objects.filter(
+        customer=customer, reason='spend_order', order_number=order_number
+    ).exists():
+        return None
+    return redeem_points(customer, points, order=order, reason=f'Order {order_number}')
+
+
+def reverse_redemption_for_order(order):
+    """Re-credit whatever points were spent on ``order`` — idempotent.
+
+    Fired from the loyalty ``ORDER_CANCELLED`` subscriber so a shopper
+    isn't out the points for an order that never shipped. A no-op when
+    nothing was spent or the reversal already happened (a paid cancel fires
+    both ``ORDER_CANCELLED`` and a refund).
+    """
+    from django.db.models import Sum
+
+    from plugins.installed.loyalty_points.models import PointsTransaction
+
+    customer = getattr(order, 'customer', None)
+    if customer is None:
+        return None
+    order_number = str(getattr(order, 'order_number', '') or getattr(order, 'pk', ''))
+    if PointsTransaction.objects.filter(
+        customer=customer, reason='adjust', order_number=order_number
+    ).exists():
+        return None
+    spent = (
+        PointsTransaction.objects.filter(
+            customer=customer, reason='spend_order', order_number=order_number
+        ).aggregate(total=Sum('points'))['total']
+        or 0
+    )
+    points = -int(spent)  # spend rows are negative
+    if points <= 0:
+        return None
+    return reverse_redemption(
+        customer, points, order=order, reason=f'Order {order_number} cancelled'
     )

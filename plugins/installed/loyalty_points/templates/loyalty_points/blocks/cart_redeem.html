@@ -1,0 +1,26 @@
+{% load loyalty %}{% load morph %}
+{% loyalty_redeem_state as pts %}
+{% if pts %}
+<div style="margin: .85rem 0; padding: .75rem .9rem; border: 1px solid var(--rule); border-radius: 8px; font-family: var(--sans); font-size: .85rem;">
+  {% if pts.applied %}
+    <p style="margin: 0 0 .5rem; color: var(--ink);">
+      <strong>{{ pts.applied }}</strong> points applied — <strong>&minus;{{ pts.applied_worth|money }}</strong>
+    </p>
+    <form method="post" action="/checkout/points/remove/" style="margin: 0;">
+      {% csrf_token %}
+      <button type="submit" style="background: none; border: none; color: var(--ink-2); text-decoration: underline; cursor: pointer; padding: 0; font: inherit;">Remove points</button>
+    </form>
+  {% else %}
+    <p style="margin: 0 0 .55rem; color: var(--ink-2);">
+      You have <strong>{{ pts.balance }}</strong> reader points (worth {{ pts.worth|money }}).
+    </p>
+    <form method="post" action="/checkout/points/apply/" style="display: flex; gap: .5rem; align-items: center; margin: 0;">
+      {% csrf_token %}
+      <label for="loyalty-pts" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Points to redeem</label>
+      <input id="loyalty-pts" type="number" name="points" min="0" max="{{ pts.max }}" value="{{ pts.max }}"
+             style="width: 6rem; padding: .4rem .5rem; border: 1px solid var(--rule); border-radius: 6px; font: inherit;">
+      <button type="submit" class="btn btn-primary" style="padding: .4rem .9rem;">Apply points</button>
+    </form>
+  {% endif %}
+</div>
+{% endif %}

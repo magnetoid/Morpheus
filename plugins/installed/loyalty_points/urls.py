@@ -16,4 +16,6 @@ app_name = 'loyalty_points'
 
 urlpatterns = [
     path('account/points/', views.account_points, name='account_points'),
+    path('checkout/points/apply/', views.apply_points, name='apply_points'),
+    path('checkout/points/remove/', views.remove_points, name='remove_points'),
 ]
