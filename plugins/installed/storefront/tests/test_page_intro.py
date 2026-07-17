@@ -70,6 +70,32 @@ class PageIntroRenderTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn('Unfiltered shelf copy.', resp.content.decode())
 
+    def test_every_filter_suppresses_the_sitewide_intro(self):
+        """EVERY filter this view accepts must count as filtered — not just the
+        ones with their own lede. genre/topic/collection are the primary browse
+        axes, and they were missed: /products/?genre=x rendered the sitewide
+        "everything we shelve" copy under a genre's results, and shipped it as
+        that page's meta description too.
+        """
+        Block.objects.create(key='products_intro', label='p', body='Unfiltered shelf copy.')
+        for qs in (
+            '?genre=fiction',
+            '?topic=love',
+            '?collection=staff-picks',
+            '?category=poetry',
+            '?tag=gift',
+            '?q=austen',
+            '?price_min=5',
+            '?price_max=40',
+        ):
+            resp = self.client.get(f'/products/{qs}')
+            self.assertEqual(resp.status_code, 200, qs)
+            self.assertNotIn(
+                'Unfiltered shelf copy.',
+                resp.content.decode(),
+                f'{qs} is a filtered view — it must not show the sitewide intro',
+            )
+
     def test_journal_index_renders_the_block(self):
         Block.objects.create(key='journal_intro', label='j', body='Dispatches from the desk.')
         resp = self.client.get('/journal/')

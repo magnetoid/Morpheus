@@ -282,8 +282,23 @@ def product_list(request):
             }
         )
     # Only the unfiltered shelf uses the page-level intro — a filtered view is
-    # already introduced by its own Category/Tag/author copy just below the h1.
-    _is_filtered = bool(q or cat_slug or tag_slug or book_filter)
+    # introduced by its own Category/Tag/author copy just below the h1, and a
+    # sitewide "everything we shelve" lede under a genre's results is simply
+    # wrong (it also leaked into that variant's meta description). EVERY filter
+    # this view accepts has to be listed here, not just the ones with their own
+    # lede: genre/topic/collection are the primary browse axes.
+    _is_filtered = bool(
+        q
+        or cat_slug
+        or genre_slug
+        or topic_slug
+        or col_slug
+        or tag_slug
+        or book_filter
+        or pmin
+        or pmax
+        or selected_attrs
+    )
     _intro = (
         {'body': '', 'meta_description': ''} if _is_filtered else page_intro(request, 'products')
     )

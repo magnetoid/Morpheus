@@ -40,20 +40,26 @@ def _curated_model(kind):
 
 
 def _curated_groups():
+    from django.db.models import Count, Q
     from django.urls import reverse
 
-    from plugins.installed.book_product.tasks import MAX_BATCH
+    from plugins.installed.book_product.tasks import MAX_BATCH, missing_copy_queryset
 
     groups = []
     for kind, _singular, label, prefix, root_url in _CURATED:
         model = _curated_model(kind)
         terms = []
-        for obj in model.objects.all():
+        # Annotate the book count in one query — `obj.books.count()` per row was
+        # a query per term, i.e. ~1500 of them on the Topics group alone.
+        rows = model.objects.annotate(
+            _books=Count('books', filter=Q(books__product__status='active'))
+        )
+        for obj in rows:
             terms.append(
                 {
                     'name': obj.name,
                     'slug': obj.slug,
-                    'count': obj.books.count(),
+                    'count': obj._books,
                     'has_seo': bool(obj.description or obj.meta_title or obj.meta_description),
                     'page_url': f'{prefix}{obj.slug}/',
                     'edit_url': reverse(
@@ -64,7 +70,9 @@ def _curated_groups():
                     ),
                 }
             )
-        missing = sum(1 for t in terms if t['count'] and not t['has_seo'])
+        # Counted with the backfill's OWN predicate, so the button can never
+        # promise work the task won't do.
+        missing = missing_copy_queryset(kind).count()
         groups.append(
             {
                 'key': kind,
@@ -332,12 +340,31 @@ def curated_backfill(request: HttpRequest, kind: str) -> HttpResponse:
     except (TypeError, ValueError):
         limit = 25
 
-    from plugins.installed.book_product.tasks import MAX_BATCH, backfill_taxonomy_copy
+    from django.core.cache import cache
+
+    from plugins.installed.book_product.tasks import (
+        BACKFILL_LOCK_SECS,
+        MAX_BATCH,
+        backfill_taxonomy_copy,
+    )
 
     limit = max(1, min(limit, MAX_BATCH))
+    # One run per kind at a time. Every term is a paid LLM call, and the button
+    # sits on a page that invites a re-click while the first batch is still
+    # working — without this, refresh-and-click queues overlapping runs that
+    # bill for the same pages twice.
+    lock = f'book_product:backfill:{kind}'
+    if not cache.add(lock, '1', BACKFILL_LOCK_SECS):
+        messages.info(
+            request,
+            f'A {_CURATED_LABELS[kind].lower()} copy run is already working. '
+            'Give it a minute and refresh — the SEO column fills in as pages land.',
+        )
+        return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
     try:
         backfill_taxonomy_copy.delay(kind, limit)
     except Exception as e:  # noqa: BLE001 — no broker (dev without Redis)
+        cache.delete(lock)  # nothing queued — don't hold the lock for nothing
         messages.error(request, f"Couldn't queue the copy backfill: {e}")
         return HttpResponseRedirect(reverse('book_product_dashboard:taxonomies'))
     messages.success(

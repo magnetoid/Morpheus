@@ -12,6 +12,44 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.15.4 — 2026-07-17
+
+**Storefront hero**
+
+- **The book's shadow is physical now.** Each slide threw its shadow in its own
+  direction — slide 4 threw it *upward*, putting the sun underneath the book —
+  in its own colour (violet, green, rust), while the whole thing crawled around
+  on an endless loop. One fixed light now lights every slide, so the shadow
+  always falls the same way, in one neutral ink. Slides still differ, but along
+  the axis that stays honest: how high the book floats — a higher float throws
+  further, blurs wider and lands fainter, as a real shadow does. The shadow is
+  also the book's own silhouette rather than a round smudge beside it.
+- **It fades in and settles.** The shadow slides out from under the book as it
+  fades, like the book rising into its float — then stops. Reduced-motion
+  keeps the shadow, drops the drift.
+- **The copy no longer jumps between slides.** Book titles run one to three
+  lines and the sale badge only exists on discounted books, so the price and
+  buttons landed at a different height on every slide. Every slide now reserves
+  the same space, so the staggered fade-in reads as choreography instead of the
+  page reflowing under you.
+
+**Fixes found by an adversarial review of this batch**
+
+- **Filtered book lists showed the wrong intro.** `/products/?genre=…`,
+  `?topic=…`, `?collection=…` and price filters were treated as unfiltered, so
+  a genre's results carried the sitewide "everything we shelve" intro — and
+  shipped it as that page's search-result description too.
+- **"Write N missing intros" could promise work it would never do.** The button
+  counted terms differently from the job it starts: a genre whose books were all
+  drafts was advertised as missing an intro that the job then skipped forever,
+  so the number never moved however often you clicked. Both now read from one
+  definition. The same page also stopped issuing one query per row (~1,500 on
+  Topics).
+- **Re-clicking the button no longer double-bills.** A run now holds a lock, so
+  an impatient second click can't queue an overlapping batch of paid AI calls.
+- **A stunted AI answer can't auto-publish**, while the Generate button still
+  shows you whatever came back — the guard belongs where nobody is reviewing.
+
 ## v0.15.3 — 2026-07-17
 
 - **Fixed: a garbled AI reply could publish itself.** When the model returned

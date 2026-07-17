@@ -143,9 +143,14 @@ class BulkCopyBackfillTests(TestCase):
         # A genre with no books — its page would be bare, so skip it.
         self.empty = Genre.objects.create(name='Unused', slug='unused')
 
+    # Realistic length on purpose: the backfill refuses to auto-publish an
+    # answer too short to be the 2-3 sentence intro it asked for, so a toy
+    # fixture would be rejected and test nothing.
+    FAKE_INTRO = 'Novels that argue with the reader, from Melville to the present day.'
+
     def _fake_copy(self, *args, **kwargs):
         return {
-            'description': 'Warm specific intro.',
+            'description': self.FAKE_INTRO,
             'meta_title': 'Gen',
             'meta_description': 'Meta.',
         }
@@ -163,7 +168,7 @@ class BulkCopyBackfillTests(TestCase):
         self.assertEqual(self.empty.description, '', 'a term with no books gets no page copy')
         for genre in self.stocked:
             genre.refresh_from_db()
-            self.assertEqual(genre.description, 'Warm specific intro.')
+            self.assertEqual(genre.description, self.FAKE_INTRO)
 
     def test_never_overwrites_existing_copy(self):
         from plugins.installed.book_product.tasks import backfill_taxonomy_copy
@@ -210,6 +215,92 @@ class BulkCopyBackfillTests(TestCase):
         from plugins.installed.book_product.tasks import backfill_taxonomy_copy
 
         self.assertEqual(backfill_taxonomy_copy('nonsense')['written'], 0)
+
+
+class BackfillCountHonestyTests(TestCase):
+    """The button's number and the task's target set must be the SAME set.
+
+    They were computed from different predicates: the dashboard counted any
+    term with books (any status) lacking SEO, while the task only writes terms
+    with ACTIVE books lacking a description. A genre whose books were all
+    drafts was advertised as a missing intro the task would never write — the
+    count never moved however often you clicked.
+    """
+
+    def setUp(self):
+        self.client = _staff_client('countstaff')
+        # Books exist, but none are active — the task will never target this.
+        draft = Product.objects.create(
+            name='Draft Book', slug='draft-book', sku='CNT-1', price=5, status='draft'
+        )
+        BookProduct.objects.create(product=draft).genres.add(
+            Genre.objects.create(name='Noir', slug='noir')
+        )
+        # A real target: active book, no intro.
+        live = Product.objects.create(
+            name='Live Book', slug='live-book', sku='CNT-2', price=5, status='active'
+        )
+        BookProduct.objects.create(product=live).genres.add(
+            Genre.objects.create(name='Westerns', slug='westerns')
+        )
+
+    def test_count_matches_what_the_task_targets(self):
+        from plugins.installed.book_product.dashboard_taxonomies import _curated_groups
+        from plugins.installed.book_product.tasks import missing_copy_queryset
+
+        group = next(g for g in _curated_groups() if g['key'] == 'genre')
+        self.assertEqual(group['missing_copy'], missing_copy_queryset('genre').count())
+        self.assertEqual(group['missing_copy'], 1, 'only the active-book genre counts')
+
+    def test_draft_only_genre_is_not_advertised(self):
+        from plugins.installed.book_product.tasks import missing_copy_queryset
+
+        targets = [o.slug for o in missing_copy_queryset('genre')]
+        self.assertIn('westerns', targets)
+        self.assertNotIn('noir', targets, 'a genre with no active books is not writable work')
+
+
+class BackfillLockTests(TestCase):
+    """Every term is a paid LLM call, so a re-click must not queue a second run."""
+
+    def setUp(self):
+        self.client = _staff_client('lockstaff')
+        from django.core.cache import cache
+
+        cache.delete('book_product:backfill:genre')
+        product = Product.objects.create(
+            name='Locked', slug='locked', sku='LCK-1', price=5, status='active'
+        )
+        BookProduct.objects.create(product=product).genres.add(
+            Genre.objects.create(name='Essays', slug='essays')
+        )
+
+    def test_second_click_while_running_does_not_queue_again(self):
+        url = reverse('book_product_dashboard:curated_backfill', args=['genre'])
+        with patch('plugins.installed.book_product.tasks.backfill_taxonomy_copy.delay') as delay:
+            self.client.post(url, {'limit': 5})
+            self.client.post(url, {'limit': 5})
+        self.assertEqual(delay.call_count, 1, 'the second click must be refused by the lock')
+
+    def test_lock_is_released_when_the_run_finishes(self):
+        from django.core.cache import cache
+
+        from plugins.installed.book_product.tasks import backfill_taxonomy_copy
+
+        cache.add('book_product:backfill:genre', '1', 60)
+        with patch(
+            'plugins.installed.book_product.services_copy.generate_copy',
+            side_effect=lambda *a, **k: {
+                'description': 'A long enough intro sentence for the guard.',
+                'meta_title': 'E',
+                'meta_description': 'M',
+            },
+        ):
+            backfill_taxonomy_copy('genre', limit=5)
+        self.assertIsNone(
+            cache.get('book_product:backfill:genre'),
+            'a finished run must free the lock, not hold it for the full TTL',
+        )
 
 
 class CopyServiceTests(TestCase):
@@ -267,11 +358,23 @@ class MalformedResponseTests(TestCase):
         with self.assertRaises(CopyGenerationError):
             self._generate_returning('{"description": "half a sen')
 
-    def test_too_short_answer_raises(self):
-        from plugins.installed.book_product.services_copy import CopyGenerationError
+    def test_a_terse_answer_is_returned_to_the_human(self):
+        """The length guard lives in the AUTO-PUBLISH path, not here: the
+        dashboard's Generate button puts the result in front of a person who
+        can judge it, so the service must not censor short copy."""
+        self.assertEqual(
+            self._generate_returning('{"description": "Drama."}')['description'], 'Drama.'
+        )
 
-        with self.assertRaises(CopyGenerationError):
-            self._generate_returning('{"description": "Drama."}')
+    def test_backfill_refuses_to_publish_a_too_short_answer(self):
+        from plugins.installed.book_product.tasks import backfill_taxonomy_copy
+
+        gateway = type('G', (), {'complete': lambda self, *a, **k: '{"description": "Drama."}'})()
+        with patch('plugins.installed.ai_assistant.services.llm.get_llm', return_value=gateway):
+            result = backfill_taxonomy_copy('genre', limit=5)
+        self.assertEqual(result['written'], 0)
+        self.genre.refresh_from_db()
+        self.assertEqual(self.genre.description, '', 'nobody reviewed this — it must not go live')
 
     def test_plain_prose_is_still_accepted(self):
         """A model that ignores the JSON instruction but writes real copy is
