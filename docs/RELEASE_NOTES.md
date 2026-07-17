@@ -12,6 +12,31 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.17.0 — 2026-07-18
+
+**Book-native quick wins** — first batch from the ideas roadmap (research-backed:
+Baymard AOV data, review-conversion studies, book-discovery patterns).
+
+- **"Add €X for free shipping" progress bar in the cart.** When a free-shipping
+  threshold is configured, the cart now shows how close the order is with a
+  progress bar — the cheapest proven lever for average order value (shoppers add
+  items to qualify), and it kills the "unexpected shipping cost" surprise that's
+  the #1 cart-abandonment driver. Self-hides when no free-shipping rule is set.
+- **The review-request email now links straight to each book's review form.**
+  The post-purchase "how was your order?" email (sent ~2 weeks after delivery)
+  used to be a generic nudge; it now lists every book on the order with a
+  one-click link to write that review. Reviews are the single biggest
+  conversion asset for books.
+- **Mood search — "just describe what you're in the mood for."** The search
+  page now invites natural-language queries ("a short novel that feels big",
+  "like Normal People but hopeful") with example prompts, routed through the
+  existing AI/semantic search. A genuinely indie-bookshop way to discover, and
+  something the big retailers' keyword filters can't do.
+
+*Ops (no code):* recovered from a disk-full production outage — freed 37GB,
+deleted the compromised crawl4ai container permanently, and added automated
+disk pruning + a disk-space alert so it can't recur silently.
+
 ## v0.16.0 — 2026-07-17
 
 **Cancel an order (right of withdrawal)** — Batch 2 of the professionalism

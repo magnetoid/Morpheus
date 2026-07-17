@@ -1,0 +1,18 @@
+{% load shipping %}{% load morph %}
+{% if cart and cart.subtotal %}
+  {% free_shipping_progress cart.subtotal as fs %}
+  {% if fs %}
+  <div style="margin: .85rem 0; padding: .75rem .9rem; border: 1px solid var(--rule); border-radius: 8px; font-family: var(--sans); font-size: .85rem;">
+    {% if fs.qualified %}
+      <p style="margin: 0; color: var(--ink);">Your order qualifies for <strong>free shipping</strong>.</p>
+    {% else %}
+      <p style="margin: 0 0 .55rem; color: var(--ink-2);">Add <strong>{{ fs.remaining|money }}</strong> more for <strong>free shipping</strong>.</p>
+    {% endif %}
+    <div role="progressbar" aria-valuenow="{{ fs.pct }}" aria-valuemin="0" aria-valuemax="100"
+         aria-label="Progress toward free shipping"
+         style="height: 6px; background: var(--paper-2); border-radius: 999px; overflow: hidden;">
+      <div style="height: 100%; width: {{ fs.pct }}%; background: var(--ink); transition: width .3s ease;"></div>
+    </div>
+  </div>
+  {% endif %}
+{% endif %}

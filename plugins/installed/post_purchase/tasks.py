@@ -105,15 +105,48 @@ def _send_delivered_followup(step) -> str:
     return 'sent'
 
 
+def _review_links(order) -> str:
+    """One 'Title — <review URL>' line per book on the order.
+
+    Deep-links straight to each product's review form (`reviews:add`) so the
+    reader lands one click from writing. Wrapped so a disabled reviews plugin
+    (no mounted URL) degrades to an empty list rather than erroring.
+    """
+    from core.utils.site import site_base_url  # noqa: PLC0415
+
+    base = site_base_url().rstrip('/')
+    lines = []
+    for item in order.items.all():
+        pid = getattr(item, 'product_id', None)
+        if not pid:
+            continue
+        name = (
+            getattr(item, 'product_name', '')
+            or (getattr(item.product, 'name', '') if getattr(item, 'product', None) else '')
+            or 'your book'
+        )
+        try:
+            url = base + reverse('reviews:add', kwargs={'product_id': pid})
+        except Exception:  # noqa: BLE001, S112 — reviews disabled / no route: skip line
+            continue
+        lines.append(f'• {name} — {url}')
+    return '\n'.join(lines)
+
+
 def _send_review_request(step) -> str:
     order = step.order
+    links = _review_links(order)
+    body = (
+        f"Hi,\n\nWe'd love your honest review of your recent order "
+        f'#{order.order_number}. A few words help other readers choose.\n'
+    )
+    if links:
+        body += '\nReview your books:\n' + links + '\n'
+    body += '\nThank you,\nThe dot books team\n'
     _send_email(
         order=order,
         subject=f'How was order #{order.order_number}?',
-        body=(
-            f"Hi,\n\nWe'd love your honest review of order #{order.order_number}. "
-            f'A few words help future customers make better choices.\n'
-        ),
+        body=body,
         kind='review_request',
     )
     return 'sent'

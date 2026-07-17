@@ -151,6 +151,20 @@ class ShippingPlugin(Plugin):
 
         return [list_zones_tool, add_flat_rate_tool]
 
+    def contribute_storefront_blocks(self) -> list:
+        # "Add X for free shipping" progress bar in the cart summary. Self-hides
+        # when no free_over rate is configured. Attacks the top cart-abandonment
+        # driver (unexpected shipping cost) and nudges AOV toward the threshold.
+        from morpheus import StorefrontBlock  # noqa: PLC0415
+
+        return [
+            StorefrontBlock(
+                slot='cart_summary_extra',
+                template='shipping/blocks/free_progress.html',
+                priority=20,
+            ),
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         from morpheus import DashboardPage  # noqa: PLC0415
 
