@@ -62,6 +62,8 @@ logs.json
 
 # Playwright MCP browser-session artifacts (snapshots, console logs)
 .playwright-mcp/
+# AI-session visual-verification screenshots
+.claude-screens/
 
 # Generated README artifacts (markdown → HTML → PDF; regenerable)
 README.pdf

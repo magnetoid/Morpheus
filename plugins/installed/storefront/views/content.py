@@ -6,9 +6,28 @@ newsletter capture, and the generic coming-soon placeholder.
 
 from __future__ import annotations
 
+from django.http import HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from morpheus.views import render
+
+# Served at the conventional /favicon.ico path — browsers request it unprompted
+# on every visit, and without it each page load logs a 404. Colors are the
+# dot_books brand tokens (ink + accent); a theme wanting its own mark overrides
+# the <link rel="icon"> in its base template.
+_FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    '<rect width="64" height="64" rx="14" fill="#0e0e0e"/>'
+    '<circle cx="32" cy="32" r="15" fill="#e63946"/>'
+    '</svg>'
+)
+
+
+def favicon(request):
+    resp = HttpResponse(_FAVICON_SVG, content_type='image/svg+xml')
+    resp['Cache-Control'] = 'public, max-age=604800, immutable'
+    return resp
+
 
 # Hardcoded journal entries — TODO: extract to a CMS plugin with editable posts.
 _JOURNAL_ENTRIES = [

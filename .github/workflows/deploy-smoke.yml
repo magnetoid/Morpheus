@@ -1,0 +1,22 @@
+name: deploy-smoke
+
+# A merge to main IS a production deploy (Coolify watches the repo). This job
+# waits for production to converge on the version in the pushed commit, then
+# asserts basic health — it turns a missed webhook, failed build, or boot-time
+# 503 into a red X on the commit instead of a silent outage.
+on:
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: deploy-smoke
+  cancel-in-progress: true # a newer push supersedes the wait for the old one
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for production to serve this version, then smoke it
+        run: bash scripts/deploy_smoke.sh

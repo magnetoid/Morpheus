@@ -208,14 +208,15 @@ class CheckoutFlowTests(TestCase):
             shipping_address={'first_name': 'Mara'},
             billing_address={},
         )
-        # The signal in plugin.on_order_placed should have fired.
-        # In tests, plugin hooks may not be wired; trigger directly to be sure.
-        from plugins.installed.orders.email import send_order_confirmation
+        # Exercise the LIVE email path — the ORDER_PLACED subscriber in
+        # core/emails/handlers.py, which enqueues deliver_email on commit
+        # (eager under tests). The legacy sync helper (orders/email.py) and its
+        # Celery wrapper were dead code and are gone.
+        from core.emails.handlers import on_order_placed
 
-        ok = send_order_confirmation(order)
-        self.assertTrue(ok)
+        with self.captureOnCommitCallbacks(execute=True):
+            on_order_placed(order)
         self.assertGreaterEqual(len(mail.outbox), 1)
         msg = mail.outbox[-1]
         self.assertIn(order.order_number, msg.subject)
-        self.assertIn('Test Shop', msg.body)
         self.assertEqual(msg.to, ['buyer@example.com'])

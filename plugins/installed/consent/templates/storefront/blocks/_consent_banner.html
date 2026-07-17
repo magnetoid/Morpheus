@@ -44,8 +44,9 @@ even when GTM/analytics never load (which is the default state).
     </div>
 
     <div style="display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end;">
-      <button type="submit" name="reject_all" value="1" class="btn"
-              style="padding: .55rem 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: .88rem; cursor: pointer;">
+      {# Reject must be as prominent as Accept (GDPR/CNIL parity — same fill, same size). #}
+      <button type="submit" name="reject_all" value="1" class="btn btn-primary"
+              style="padding: .55rem 1rem; border: 1px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-family: var(--sans); font-size: .88rem; cursor: pointer;">
         Reject all
       </button>
       <button type="submit" class="btn"

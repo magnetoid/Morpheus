@@ -13,6 +13,7 @@ urlpatterns = [
         name='affiliate_terms',
     ),
     path('sw.js', sw.service_worker_js, name='service_worker'),
+    path('favicon.ico', content_views.favicon, name='favicon'),
     path('offline/', sw.offline_page, name='offline'),
     path('', views.home, name='home'),
     path('products/', views.product_list, name='product_list'),

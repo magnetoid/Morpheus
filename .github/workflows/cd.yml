@@ -1,19 +1,32 @@
 name: cd
 
+# Main-branch image builds run only after the ci workflow SUCCEEDS (a red CI no
+# longer produces a "latest" image). Tag pushes and manual dispatch build
+# immediately. Note: the Coolify production deploy is triggered by the git push
+# itself, not by this workflow — post-deploy verification lives in
+# deploy-smoke.yml.
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
     tags: ["v*"]
+  workflow_run:
+    workflows: ["ci"]
+    types: [completed]
+    branches: ["main"]
 
 jobs:
   build-and-push:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # workflow_run checks out the default branch tip by default — pin to
+          # the commit CI actually validated.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -25,5 +38,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/morpheus:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/morpheus:${{ github.event.workflow_run.head_sha || github.sha }}
             ghcr.io/${{ github.repository_owner }}/morpheus:latest

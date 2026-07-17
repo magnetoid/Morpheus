@@ -126,8 +126,16 @@ def readyz(request: HttpRequest) -> JsonResponse:
         logger.warning('readyz: cache check failed: %s', e)
 
     ok = all(checks.values())
+    from django.conf import settings  # noqa: PLC0415 — probe stays import-light
+
     return JsonResponse(
-        {'status': 'ok' if ok else 'degraded', 'checks': checks},
+        # version lets the post-deploy smoke (scripts/deploy_smoke.sh) assert
+        # that production actually converged on the pushed commit.
+        {
+            'status': 'ok' if ok else 'degraded',
+            'checks': checks,
+            'version': settings.MORPHEUS_VERSION,
+        },
         status=200 if ok else 503,
     )
 

@@ -12,6 +12,43 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.15.5 — 2026-07-17
+
+**Trust & deploy-safety quick wins** — first code batch of the July
+professionalism roadmap (see `docs/plans/` research: Baymard, EAA/GDPR, CWV).
+
+- **Branded 404 and 500 pages.** A mistyped or expired URL used to dead-end on
+  Django's bare one-line "Not Found"; a crash showed a blank server error. Both
+  now land on dot-books-styled pages — the 404 offers search and a way back to
+  the shelf, the 500 is fully standalone so it renders even when the app can't.
+- **The shop has a favicon.** Every visit requested `/favicon.ico` and got a
+  404 (visible in every browser console). A dot-books mark (ink tile, red dot)
+  now serves at the conventional path and is week-cached.
+- **"Reject all" is as prominent as "Accept all"** in the cookie banner — same
+  fill, same size. Regulators (CNIL) fine asymmetric banners; ours no longer
+  visually nudges toward consent.
+- **Deploys verify themselves.** `/api/readyz` now reports the running version,
+  and a new `deploy-smoke` workflow polls production after every push to main
+  until it converges on the pushed version and the homepage answers 200 —
+  a missed webhook or wedged build queue is now a red X instead of a silent
+  stale deploy. GHCR image builds also wait for CI to pass instead of
+  publishing `latest` from red commits.
+- **Sentry is one env var away.** The error-tracking wiring already shipped;
+  `.env.coolify.example` and the operations runbook now document the
+  `SENTRY_DSN` switch that turns it on.
+- **Operations runbook rewritten** to match the real production topology
+  (Coolify, not the aspirational k8s notes) including stuck-deploy-queue
+  recovery, rollback, and backup-restore practice.
+- Removed the dead synchronous order-email path (`orders/email.py` + its
+  Celery wrapper) — production has long sent all order mail through the
+  retrying `deliver_email` queue; the order-confirmation test now exercises
+  that live path.
+
+*Shop operations shipped alongside (no code):* the footer's Privacy / Terms /
+Imprint links now resolve (pages seeded and published), outbound mail is
+DKIM-signed (selector published in DNS, joining existing SPF + DMARC), and the
+server no longer advertises its stack in response headers.
+
 ## v0.15.4 — 2026-07-17
 
 **Storefront hero**

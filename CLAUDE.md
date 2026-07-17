@@ -248,7 +248,11 @@ MUST bump `MORPHEUS_VERSION` and add a matching dated
 `docs/RELEASE_NOTES.md` entry** (ADR 0032) — Settings → Version & updates
 reads both, so an unversioned deploy silently ships changes users can't
 see in the changelog. Batch local commits into one deploy carrying one
-bump (PATCH = fix/polish, MINOR = feature, MAJOR = breaking).
+bump (PATCH = fix/polish, MINOR = feature, MAJOR = breaking). The
+`deploy-smoke` workflow polls `/readyz` after every main push and fails
+red if prod never converges on the pushed `MORPHEUS_VERSION` — stuck-queue
+recovery (zombie `in_progress` builds wedge Coolify's whole app queue) is in
+`docs/OPERATIONS_RUNBOOK.md`.
 
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`

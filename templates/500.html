@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+{% comment %}
+Site-wide 500. Django's server_error view renders this with an EMPTY context —
+no request, no context processors — so it must stand alone: inline CSS only,
+no extends, no static, no variables.
+{% endcomment %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Something went wrong &mdash; dot books.</title>
+<style>
+  body { margin: 0; background: #f6f1e7; color: #0e0e0e; font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 6rem 1.5rem 7rem; text-align: center; }
+  .eyebrow { font-size: .78rem; letter-spacing: .18em; text-transform: uppercase; color: #62625c; margin: 0 0 1.4rem; }
+  h1 { font-family: 'Fraunces', 'Georgia', 'Times New Roman', serif; font-weight: 500; font-size: clamp(2.3rem, 6vw, 3.6rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1.1rem; }
+  h1 span { color: #e63946; }
+  p { color: #62625c; font-size: 1.02rem; line-height: 1.6; max-width: 32rem; margin: 0 auto 2.4rem; }
+  a { display: inline-block; padding: .7rem 1.4rem; border: 1px solid #0e0e0e; border-radius: 999px; background: #0e0e0e; color: #f6f1e7; text-decoration: none; font-size: .95rem; }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">&mdash; 500 &mdash;</p>
+  <h1>The shelf tipped over<span>.</span></h1>
+  <p>Something broke on our side &mdash; not yours. It has been logged the
+     moment it happened; give it a minute and try again.</p>
+  <a href="/">Back to the front table</a>
+</main>
+</body>
+</html>

@@ -177,3 +177,17 @@ class DRFExceptionHandlerTests(TestCase):
         self.assertEqual(body['status'], 'error')
         self.assertEqual(body['code'], 'NotAuthenticated')
         self.assertIn('request_id', body)
+
+
+class ReadyzTests(TestCase):
+    def test_readyz_reports_version_for_deploy_smoke(self):
+        # scripts/deploy_smoke.sh asserts this key to confirm production
+        # converged on the pushed commit — removing it breaks the deploy gate.
+        from django.conf import settings
+
+        resp = self.client.get('/readyz')
+        self.assertIn(resp.status_code, (200, 503))  # 503 = degraded, still JSON
+        data = resp.json()
+        self.assertEqual(data['version'], settings.MORPHEUS_VERSION)
+        self.assertIn(data['status'], ('ok', 'degraded'))
+        self.assertIn('checks', data)
