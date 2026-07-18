@@ -12,6 +12,28 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.22.2 — 2026-07-18
+
+**Agent tool-surface hardening** (the isolated, verified findings from the
+core-kernel audit — the deeper agent-authorization work is tracked separately).
+
+- **The AI file-read tool can no longer read secrets.** `fs.read_file` now
+  refuses any path on the safety boundary (`.env`, keys, credentials, and the
+  financial/auth source) — closing a path where an injected agent turn could
+  exfiltrate secrets into transcripts. The resolve-then-check order means `../`
+  can't dodge it.
+- **The AI plugin-disable tool honours the protected-plugin list.** Disabling
+  `admin_dashboard`/`orders`/`rbac`/`customers` soft-bricks the platform; the
+  tool now refuses them (before even prompting for confirmation), same guard the
+  registry and CLI use.
+- **OTP issuance is now rate-limited.** `/auth/otp/` was missing from the auth
+  rate rules — since issuance sends an email, that was an email-bombing relay.
+  Now throttled per IP like login/signup.
+
+Guarded by 6 new regression tests.
+
+---
+
 ## v0.22.1 — 2026-07-18
 
 **Storefront visual consistency** (batch B of the UI/UX pass — pure polish).

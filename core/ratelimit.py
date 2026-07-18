@@ -36,7 +36,10 @@ logger = logging.getLogger('morpheus.ratelimit')
 # /graphql + /api are already covered by api.rate_limit.RateLimitMiddleware
 # with auth-aware limits — we deliberately don't double-count them here.
 _RULES = [
-    (re.compile(r'^/auth/(login|signup|password/reset)/?'), 'auth', 10),
+    # `otp` mounts at /auth/otp/ (issue) + /auth/otp/verify/. Issuance sends an
+    # email, so an un-throttled path is an email-bombing relay — throttle per IP
+    # like the other auth entry points.
+    (re.compile(r'^/auth/(login|signup|password/reset|otp)/?'), 'auth', 10),
     (re.compile(r'^/search/?'), 'search', 30),
 ]
 _GLOBAL_BUCKET = 'global'

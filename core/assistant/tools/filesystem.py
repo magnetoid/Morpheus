@@ -67,6 +67,15 @@ def _safe_path(raw: str) -> Path:
 )
 def read_file_tool(*, path: str) -> ToolResult:
     p = _safe_path(path)
+    # Refuse to read the safety-boundary's protected paths — .env / key material
+    # / credentials (exfiltration into AgentStep rows + transcripts), plus the
+    # financial/auth source. `_safe_path` already resolved the path, so this
+    # matcher sees the normalized form (no ../ evasion).
+    from core.safety import is_path_protected  # noqa: PLC0415
+
+    rel = str(p.relative_to(_PROJECT_ROOT))
+    if is_path_protected(rel):
+        raise ToolError(f'refused: {rel} is a protected path (secrets / financial / auth)')
     if not p.exists() or not p.is_file():
         raise ToolError(f'not a file: {path}')
     try:

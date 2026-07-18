@@ -82,6 +82,14 @@ def disable_plugin_tool(*, name: str, hard_gate_ack: str = '', echo: str = '') -
     # Hard-gated — second confirmation + name echo required.
     from core.assistant.tools.ecommerce_writes import _require_hard_gate
 
+    # Never disable a protected plugin (admin_dashboard/orders/…): disabling it
+    # soft-bricks the platform. Checked before the confirmation gate so it fails
+    # fast. Single source of truth is core.safety — the guard the registry + CLI
+    # must also honour (plugin_toggle_softbrick).
+    from core.safety import is_plugin_protected  # noqa: PLC0415
+
+    if is_plugin_protected(name):
+        raise ToolError(f'refused: {name} is a protected plugin and cannot be disabled')
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=name, echo=echo)
     try:
         from plugins.models import PluginConfig
