@@ -32,8 +32,12 @@ from api.client import internal_graphql
 from plugins.installed.storefront.views._queries import CART_QUERY
 from plugins.installed.storefront.views.checkout import (
     _available_shipping_rates,
+    _cart_has_digital,
     _cart_requires_shipping,
     _checkout_base_context,
+    _withdrawal_waiver,
+    record_waiver,
+    waiver_gate,
 )
 
 logger = logging.getLogger('morpheus.storefront.checkout_one_page')
@@ -83,7 +87,10 @@ def checkout_one_page(request):
     payment_method = (request.POST.get('payment_method') or '').strip()
     no_shipping = not _cart_requires_shipping(request)
 
-    error = _validate(addr, no_shipping=no_shipping)
+    # EU digital-goods withdrawal waiver: a digital cart must carry the ticked
+    # acknowledgement before we may supply the content ahead of the 14-day
+    # window. Folded into the same error gate; recorded on the order below.
+    error = _validate(addr, no_shipping=no_shipping) or waiver_gate(request)
     if error:
         return _render_form(
             request, addr=addr, rate_id=rate_id, error=error, payment_method=payment_method
@@ -132,6 +139,7 @@ def checkout_one_page(request):
         )
 
     order_no = payload.get('orderNumber') or ''
+    record_waiver(order_no)  # no-op when order_no is empty
     client_secret = payload.get('paymentClientSecret') or ''
     redirect_url = payload.get('paymentRedirectUrl') or ''
     request.session['checkout_order_number'] = order_no
@@ -276,6 +284,9 @@ def _redirect_to_confirmation(order_no: str):
 def _render_form(request, *, addr: dict | None, rate_id: str, error: str, payment_method: str = ''):
     ctx = _checkout_base_context(request)
     ctx['no_shipping_required'] = not _cart_requires_shipping(request)
+    _waiver = _withdrawal_waiver()
+    ctx['show_withdrawal_waiver'] = _waiver['enabled'] and _cart_has_digital(request)
+    ctx['withdrawal_waiver_text'] = _waiver['text']
     ctx['form'] = addr or {}
     ctx['selected_rate_id'] = rate_id
     ctx['error'] = error

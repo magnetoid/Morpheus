@@ -12,6 +12,29 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.21.0 — 2026-07-18
+
+**EU digital-goods withdrawal waiver at checkout.** Selling downloadable books
+(ebooks, audiobooks) in the EU requires the buyer's express consent to
+immediate access *and* their acknowledgement that this waives the 14-day right
+of withdrawal (Directive 2011/83/EU art. 16(m)) — otherwise a customer can
+download the file and still demand a refund. Now:
+
+- When a cart contains any digital/downloadable item, a **required
+  acknowledgement checkbox** appears at checkout (both the one-page and
+  multi-step flows). The order can't be placed until it's ticked.
+- The exact wording is **merchant-editable** (Settings → Checkout & cart) —
+  ships with a common default, which you should review with your own counsel.
+- The accepted acknowledgement (the exact text shown + a timestamp) is
+  **recorded on the order** as the compliance artifact.
+- Physical-only carts are never gated.
+
+**Ships disabled by default** — enable it under Settings → Checkout & cart once
+you've finalised the wording. The mechanism is in place; no checkbox appears at
+checkout until you switch it on.
+
+---
+
 ## v0.20.0 — 2026-07-18
 
 **Sales surfaces: sellable gift cards + the receipt-page upsell.**

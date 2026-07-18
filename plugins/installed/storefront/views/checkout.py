@@ -67,6 +67,95 @@ def _cart_requires_shipping(request) -> bool:
         return True
 
 
+def _cart_has_digital(request) -> bool:
+    """True if the cart contains at least one downloadable/digital item
+    (``requires_shipping=False``). Unlike ``_cart_requires_shipping`` (which
+    is False only for an all-digital cart), this catches a MIXED cart too —
+    the EU withdrawal-waiver applies whenever any digital item is present."""
+    try:
+        from plugins.installed.orders.models import Cart
+
+        cart_id = request.session.get('cart_id')
+        if not cart_id:
+            return False
+        cart = (
+            Cart.objects.filter(id=cart_id)
+            .prefetch_related('items__product', 'items__variant')
+            .first()
+        )
+        if cart is None:
+            return False
+        for item in cart.items.all():
+            target = item.variant if item.variant is not None else item.product
+            if not getattr(target, 'requires_shipping', True):
+                return True
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _withdrawal_waiver() -> dict:
+    """Merchant-configured digital withdrawal-waiver: ``{enabled, text}``.
+    Off by default (the merchant enables it once the wording is finalised);
+    falls back to the schema defaults so checkout never breaks on config."""
+    enabled, text = False, ''
+    try:
+        from plugins.registry import plugin_registry
+
+        plugin = plugin_registry.get('orders')
+        if plugin is not None:
+            enabled = bool(plugin.get_config_value('digital_withdrawal_waiver_enabled', False))
+            text = str(plugin.get_config_value('digital_withdrawal_waiver_text', '') or '')
+    except Exception:  # noqa: BLE001
+        enabled, text = False, ''
+    if not text:
+        text = (
+            'I expressly request immediate access to the digital content in my '
+            'order, and I acknowledge that I thereby lose my 14-day right of '
+            'withdrawal once the download or streaming begins.'
+        )
+    return {'enabled': enabled, 'text': text}
+
+
+def waiver_gate(request) -> str:
+    """'' unless the cart needs the digital withdrawal-waiver and the POST
+    didn't tick it. Shared by both checkout paths."""
+    waiver = _withdrawal_waiver()
+    needed = waiver['enabled'] and _cart_has_digital(request)
+    if needed and request.POST.get('digital_withdrawal_waiver') != '1':
+        return 'Please confirm the digital-content acknowledgement to continue.'
+    return ''
+
+
+def record_waiver(order_no: str) -> None:
+    """Stamp the accepted digital withdrawal-waiver onto the order (exact text
+    shown + timestamp) — the compliance artifact. Uses QuerySet.update to skip
+    the protected FSM status field; fail-soft, no-op on empty order_no."""
+    if not order_no:
+        return
+    try:
+        from django.utils import timezone
+
+        from plugins.installed.orders.models import Order
+
+        order = Order.objects.filter(order_number=order_no).first()
+        if order is None:
+            return
+        meta = dict(order.metadata or {})
+        meta['digital_withdrawal_waiver'] = {
+            'accepted': True,
+            'text': _withdrawal_waiver()['text'],
+            'at': timezone.now().isoformat(),
+        }
+        Order.objects.filter(pk=order.pk).update(metadata=meta)
+    except Exception as e:  # noqa: BLE001 — never break the confirmation redirect
+        import logging
+
+        logging.getLogger('morpheus.storefront.checkout').warning(
+            'checkout: withdrawal-waiver record failed for %s: %s', order_no, e
+        )
+
+
 def _checkout_base_context(request):
     """Common context for every checkout step — cart summary + prefill."""
     cart_data = internal_graphql(CART_QUERY, request=request) or {}
@@ -392,8 +481,11 @@ def checkout_review(request):
     error = ''
     if request.method == 'POST':
         cart_id = (cart.get('id') or request.session.get('cart_id') or '').strip()
+        waiver_err = waiver_gate(request)
         if not cart_id:
             error = 'Your cart has expired — add items again to continue.'
+        elif waiver_err:
+            error = waiver_err
         else:
             mutation = """
             mutation Complete($input: CompleteOrderInput!) {
@@ -432,6 +524,7 @@ def checkout_review(request):
                 error = '; '.join(e.get('message', 'Order failed.') for e in errs)
             else:
                 order_no = payload.get('orderNumber') or ''
+                record_waiver(order_no)  # no-op when order_no is empty / non-digital
                 client_secret = payload.get('paymentClientSecret') or ''
                 request.session['checkout_order_number'] = order_no
                 request.session['checkout_client_secret'] = client_secret
@@ -466,6 +559,7 @@ def checkout_review(request):
                     return redirect('/account/orders/')
                 return redirect('/checkout/payment/')
 
+    _waiver = _withdrawal_waiver()
     return render(
         request,
         'storefront/checkout_review.html',
@@ -474,6 +568,8 @@ def checkout_review(request):
             'address': addr,
             'rate_label': rate_label,
             'error': error,
+            'show_withdrawal_waiver': _waiver['enabled'] and _cart_has_digital(request),
+            'withdrawal_waiver_text': _waiver['text'],
         },
     )
 

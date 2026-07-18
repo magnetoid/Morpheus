@@ -68,6 +68,35 @@ class OrdersPlugin(Plugin):
                         'their email.'
                     ),
                 },
+                'digital_withdrawal_waiver_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Require a withdrawal-waiver for digital goods',
+                    'description': (
+                        'EU consumer law (Directive 2011/83/EU art. 16(m)): to '
+                        'supply digital content before the 14-day withdrawal '
+                        'period ends, the buyer must expressly consent and '
+                        'acknowledge they lose the right of withdrawal. When on, '
+                        'a required checkbox appears at checkout whenever the cart '
+                        'contains a downloadable/digital item, and the '
+                        'acknowledgement is recorded on the order.'
+                    ),
+                },
+                'digital_withdrawal_waiver_text': {
+                    'type': 'string',
+                    'title': 'Withdrawal-waiver checkbox text',
+                    'description': (
+                        'The exact wording shown next to the checkbox and stored '
+                        'on the order. Review with your own legal counsel — this '
+                        'default is a common formulation, not legal advice.'
+                    ),
+                    'default': (
+                        'I expressly request immediate access to the digital '
+                        'content in my order, and I acknowledge that I thereby '
+                        'lose my 14-day right of withdrawal once the download or '
+                        'streaming begins.'
+                    ),
+                },
             },
         }
 

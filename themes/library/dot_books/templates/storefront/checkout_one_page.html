@@ -130,8 +130,15 @@
         {% endif %}
 
         {% if user.is_authenticated %}
-        <label style="display:flex; align-items:center; gap:.5rem; margin-bottom:2rem;">
+        <label style="display:flex; align-items:center; gap:.5rem; margin-bottom:1.25rem;">
           <input type="checkbox" name="save_info" value="1" checked> Save this info for next time
+        </label>
+        {% endif %}
+
+        {% if show_withdrawal_waiver %}
+        <label style="display:flex; align-items:flex-start; gap:.6rem; margin-bottom:2rem; padding:.85rem 1rem; border:1px solid var(--rule); border-radius:8px; font-size:.88rem; line-height:1.4;">
+          <input type="checkbox" name="digital_withdrawal_waiver" value="1" required style="margin-top:.2rem;">
+          <span>{{ withdrawal_waiver_text }}</span>
         </label>
         {% endif %}
 
