@@ -67,6 +67,14 @@ class CampaignSendTests(TestCase):
         self.assertFalse(out['ok'])  # status guard: already sent
         self.assertEqual(len(mail.outbox), 1)
 
+    def test_already_sending_is_not_reblasted(self):
+        # A campaign another worker is mid-send on (status='sending') must not be
+        # blasted again — the guard + atomic claim prevent a duplicate send.
+        campaign = _campaign(status='sending')
+        out = send_campaign.delay(str(campaign.id)).get()
+        self.assertFalse(out['ok'])
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_ledger_skips_already_sent_recipient(self):
         campaign = _campaign()
         CampaignSend.objects.create(campaign=campaign, email='reader@example.com')

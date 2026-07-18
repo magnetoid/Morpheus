@@ -267,7 +267,7 @@ def _order_payload(order) -> dict:
         'shipping_address': shipping,
         'billing_address': billing,
         'customer_email': (
-            getattr(order, 'customer_email', '')
+            getattr(order, 'email', '')  # Order's field is `email`; customer_email never existed
             or getattr(getattr(order, 'customer', None), 'email', '')
             or ''
         ),

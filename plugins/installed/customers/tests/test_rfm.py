@@ -74,6 +74,22 @@ class RecomputeTests(TestCase):
         )
         fired = [c.args[0] for c in mock_fire.call_args_list if c.args]
         self.assertIn(MorpheusEvents.CUSTOMER_SEGMENT_CHANGED, fired)
+        # Contract (core/hooks.py): customer=<Customer>, not a bare pk. The
+        # win-back subscriber dereferences customer.email, so passing customer_id
+        # silently no-op'd every subscriber (the bug this now guards). Crashing c1
+        # reshuffles quintiles so several customers flip — assert the contract on
+        # every fire, and that c1's flip is among them.
+        seg_calls = [
+            c
+            for c in mock_fire.call_args_list
+            if c.args and c.args[0] == MorpheusEvents.CUSTOMER_SEGMENT_CHANGED
+        ]
+        self.assertTrue(seg_calls)
+        for c in seg_calls:
+            self.assertIn('customer', c.kwargs)  # object, not customer_id
+            self.assertNotIn('customer_id', c.kwargs)
+            self.assertTrue(hasattr(c.kwargs['customer'], 'email'))
+        self.assertIn(self.c1.pk, [c.kwargs['customer'].pk for c in seg_calls])
 
 
 class SegmentsPageTests(TestCase):

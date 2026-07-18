@@ -76,7 +76,17 @@ def send_campaign(self, campaign_id: str) -> dict:
     if not from_email:
         return {'ok': False, 'error': 'no-from-email'}
 
-    EmailCampaign.objects.filter(pk=campaign.pk).update(status='sending')
+    # Atomically CLAIM the campaign: only the worker that flips draft/scheduled →
+    # sending proceeds. A conditional UPDATE is the lock — a double-click "Send"
+    # or a Celery retry firing alongside the first run gets 0 rows here and bails,
+    # instead of both passing the read-check above and blasting the whole list
+    # twice. (A crash after this leaves the campaign 'sending'; the CampaignSend
+    # ledger below still de-dupes a manual re-send once it's reset to draft.)
+    claimed = EmailCampaign.objects.filter(
+        pk=campaign.pk, status__in=('draft', 'scheduled')
+    ).update(status='sending')
+    if not claimed:
+        return {'ok': False, 'error': 'already-claimed'}
 
     already = set(CampaignSend.objects.filter(campaign=campaign).values_list('email', flat=True))
     sent = failed = 0

@@ -109,11 +109,21 @@ def issue_for_order(order) -> list:
             wanted.extend([item.unit_price] * int(item.quantity or 0))
     if not wanted:
         return []
-    existing = GiftCard.objects.filter(note=note).count()
+    from plugins.installed.orders.models import Order
+
+    # Serialize per order: lock the order row so a concurrent ORDER_PAID (e.g. a
+    # double-clicked manual "mark paid", which — unlike the Stripe/PayPal webhook
+    # path — holds no lock) can't both read existing=0 and mint duplicate
+    # real-money cards. On Postgres this blocks the second caller until the first
+    # commits; it then sees existing=len(wanted) and issues nothing.
     issued = []
-    for amount in wanted[existing:]:
-        card = issue(amount=amount, email=email, note=note)
-        issued.append(card)
+    with transaction.atomic():
+        Order.objects.select_for_update().filter(pk=order.pk).first()
+        existing = GiftCard.objects.filter(note=note).count()
+        for amount in wanted[existing:]:
+            issued.append(issue(amount=amount, email=email, note=note))
+    # Deliver outside the lock (send is deferred to on_commit anyway).
+    for card in issued:
         _send_delivery(card, order)
     if issued:
         logger.info('gift_cards: issued %s card(s) for order %s', len(issued), order.order_number)

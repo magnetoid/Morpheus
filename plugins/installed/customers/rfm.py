@@ -81,18 +81,24 @@ def recompute_all() -> dict:
             changed += 1
         elif row.segment != seg or (row.r_score, row.f_score, row.m_score) != (r, f, m):
             if row.segment != seg:
-                # A genuine flip — log it and let workflows react.
+                # A genuine flip — log it and let subscribers react. The hook
+                # contract is customer=<Customer> (core/hooks.py), which the
+                # win-back subscriber dereferences (.email/.first_name); passing
+                # the bare pk here silently no-op'd every subscriber. Only real
+                # flips reach this branch (rare), so the per-flip load is cheap.
                 migrations.append(
                     SegmentMigration(
                         customer_id=pk, old_segment=row.segment, new_segment=seg, day=today
                     )
                 )
-                hook_registry.fire(
-                    MorpheusEvents.CUSTOMER_SEGMENT_CHANGED,
-                    customer_id=pk,
-                    old=row.segment,
-                    new=seg,
-                )
+                customer = User.objects.filter(pk=pk).first()
+                if customer is not None:
+                    hook_registry.fire(
+                        MorpheusEvents.CUSTOMER_SEGMENT_CHANGED,
+                        customer=customer,
+                        old=row.segment,
+                        new=seg,
+                    )
                 changed += 1
             row.r_score, row.f_score, row.m_score, row.segment = r, f, m, seg
             to_update.append(row)

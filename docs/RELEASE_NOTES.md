@@ -12,6 +12,36 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.21.2 — 2026-07-18
+
+**Deep-debug pass — seven real bugs fixed** (found by auditing production logs +
+adversarially reviewing the recent releases):
+
+- **Security (critical): guest cart cache leak.** The GraphQL query cache still
+  cached anonymous `cart` queries, which resolve from the session — so one
+  guest's cart (items *and* applied gift-card codes) could be served to the next
+  guest. Cart/shipping (session-scoped) queries are now never cached; catalog
+  queries still are.
+- **Win-back emails were dead in production.** The nightly segment rescore fired
+  `CUSTOMER_SEGMENT_CHANGED` with the wrong argument shape, so the win-back flow
+  (shipped in v0.19.0) never actually ran. Fixed to the documented contract.
+- **Campaign double-send race.** A double-clicked "Send" (or a task retry) could
+  blast the whole list twice; sending is now claimed atomically so only one run
+  proceeds.
+- **Gift-card double-issue race.** A double-fired payment could mint duplicate
+  real-money gift cards; issuance now locks the order so it can't.
+- **"Recently viewed" rail was broken** on the homepage (a template loaded the
+  wrong tag library) — it silently rendered nothing on every visit. Fixed.
+- **Fraud velocity check was dead** — it queried a non-existent Order field and
+  errored every time, and also missed guest-order emails. Fixed to the real
+  field.
+- **Guest orders sent no email to the print-on-demand vendor** (same wrong-field
+  bug). Fixed.
+
+All guarded by new/strengthened regression tests.
+
+---
+
 ## v0.21.1 — 2026-07-18
 
 **Faster product listings** (performance). Every product card reads its cover

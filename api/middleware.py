@@ -47,6 +47,18 @@ class GraphQLCacheMiddleware:
             if not query or 'mutation' in query.strip().lower()[:20] or '__schema' in query:
                 return self.get_response(request)
 
+            # Never cache SESSION-SCOPED queries. The `cart`/`cartTotals`
+            # resolvers fall back to request.session['cart_id'] when no id arg is
+            # given, and `shippingRates` takes a cartId — all resolve to the
+            # caller's own cart. With a key of only query+variables, an anonymous
+            # `query { cart {...} }` (zero variables) hashes identically for every
+            # guest, so one guest's cart (items + gift-card codes) would be served
+            # to the next. Any query referencing a cart is per-session — skip it;
+            # catalog/product queries (the hot path this cache exists for) don't
+            # mention a cart and stay cached + shared.
+            if 'cart' in query.lower():
+                return self.get_response(request)
+
             variables = body.get('variables', {})
 
             # Create a unique SHA-256 hash for this specific query + variables combination

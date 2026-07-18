@@ -124,11 +124,7 @@ def _email_velocity(order) -> int:
     cutoff = timezone.now() - timedelta(hours=24)
     from plugins.installed.orders.models import Order  # noqa: PLC0415
 
-    return (
-        Order.objects.filter(customer_email=email, placed_at__gte=cutoff)
-        .exclude(pk=order.pk)
-        .count()
-    )
+    return Order.objects.filter(email=email, placed_at__gte=cutoff).exclude(pk=order.pk).count()
 
 
 def _address_mismatch(order) -> bool:
@@ -228,7 +224,10 @@ def _order_ip(order) -> str:
 
 
 def _order_email(order) -> str:
-    direct = getattr(order, 'customer_email', '')
+    # Order's canonical field is `email` (set for guest AND account orders);
+    # there is no `customer_email` on Order, so the old getattr always fell
+    # through and missed every guest order's address.
+    direct = getattr(order, 'email', '') or ''
     if direct:
         return direct
     cust = getattr(order, 'customer', None)

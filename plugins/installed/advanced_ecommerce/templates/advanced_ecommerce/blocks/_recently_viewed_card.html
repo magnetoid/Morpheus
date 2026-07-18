@@ -1,5 +1,5 @@
 {# Single product card for the recently-viewed rail. Looked up by slug. #}
-{% load morph %}
+{% load advanced_ecommerce morph %}
 {% recently_viewed_product slug as product %}
 {% if product %}
 <a href="/products/{{ product.slug }}/" class="book">
@@ -12,7 +12,7 @@
   </div>
   <div>
     <p class="title">{{ product.name }}</p>
-    <p class="price">{{ product.price }}</p>
+    <p class="price">{{ product.price|money }}</p>
   </div>
 </a>
 {% endif %}

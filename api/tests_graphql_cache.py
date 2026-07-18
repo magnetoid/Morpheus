@@ -44,10 +44,31 @@ class GraphQLCacheIsolationTests(TestCase):
         request.user = user if user is not None else AnonymousUser()
         return self.mw(request)
 
+    def _post_query(self, query):
+        request = self.factory.post(
+            '/graphql/', data=json.dumps({'query': query}), content_type='application/json'
+        )
+        request.user = AnonymousUser()
+        return self.mw(request)
+
     def test_anonymous_requests_are_cached(self):
         self._post()
         self._post()
         self.assertEqual(self.calls, 1)  # second hit served from cache
+
+    def test_cart_query_never_cached(self):
+        # Session-scoped: `cart` resolves from request.session — a shared cache
+        # entry would leak one guest's cart (incl. gift-card codes) to the next.
+        self._post_query('query { cart { id items { quantity } } }')
+        self._post_query('query { cart { id items { quantity } } }')
+        self.assertEqual(self.calls, 2)  # every cart query hits downstream
+
+    def test_shipping_rates_query_never_cached(self):
+        # shippingRates(cartId:) is per-cart / reads session — never cache it.
+        q = 'query { shippingRates(cartId: "x") { name } }'
+        self._post_query(q)
+        self._post_query(q)
+        self.assertEqual(self.calls, 2)
 
     def test_authenticated_request_bypasses_cache_both_ways(self):
         user = get_user_model().objects.create_user(
