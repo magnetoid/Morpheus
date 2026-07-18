@@ -145,6 +145,82 @@ Phone: [phone number]</p>
 <p>[Name of the person responsible for editorial content]</p>
 </div>"""
 
+_COOKIES_BODY = """\
+<div class="wrap" style="max-width: 760px;">
+<p class="eyebrow">Legal</p>
+<p><em>Placeholder cookie policy — review with counsel before you rely on it.</em></p>
+
+<h3>What cookies we use</h3>
+<p>We group cookies into three kinds, and you choose which non-essential ones to
+allow from the consent banner:</p>
+<ul style="padding-left:1.5rem; line-height:1.8;">
+  <li><strong>Essential</strong> — needed for the cart, checkout, sign-in and
+      security. These are always on; the store can't work without them.</li>
+  <li><strong>Analytics</strong> — help us understand which pages and titles
+      readers use, so we can improve the store. Only set with your consent.</li>
+  <li><strong>Marketing</strong> — let us measure and tailor promotions. Only
+      set with your consent.</li>
+</ul>
+
+<h3>Managing your choices</h3>
+<p>You can review or change your consent at any time from
+<a href="/consent/preferences/">your cookie preferences</a>. Withdrawing consent
+does not affect the essential cookies the store needs to function.</p>
+
+<h3>More detail</h3>
+<p>For how we handle the data behind these cookies, see our
+<a href="/p/privacy/">privacy policy</a>.</p>
+</div>"""
+
+_ACCESSIBILITY_BODY = """\
+<div class="wrap" style="max-width: 760px;">
+<p class="eyebrow">Accessibility</p>
+
+<h3>Our commitment</h3>
+<p>We want everyone to be able to browse and buy books here, whatever device or
+assistive technology you use. We aim to meet the Web Content Accessibility
+Guidelines (WCAG) 2.2 at level AA as a target across the storefront.</p>
+
+<h3>What we do</h3>
+<ul style="padding-left:1.5rem; line-height:1.8;">
+  <li>Keyboard-navigable menus, dialogs and the cart drawer.</li>
+  <li>Visible focus states and labelled form fields.</li>
+  <li>Text alternatives for meaningful images and clear colour contrast.</li>
+  <li>Respect for your "reduce motion" system setting.</li>
+</ul>
+
+<h3>Found a barrier?</h3>
+<p>Accessibility is ongoing and we don't always get it right. If something is
+hard to use, please tell us at <a href="mailto:{email}">{email}</a> or through our
+<a href="/contact/">contact page</a> and we'll fix it as a priority.</p>
+</div>"""
+
+_FAQ_BODY = """\
+<div class="wrap" style="max-width: 760px;">
+<p class="eyebrow">Help</p>
+
+<h3>How long does delivery take?</h3>
+<p>Delivery times and costs depend on your location and the option you pick at
+checkout. See our <a href="/shipping/">shipping page</a> for the details.</p>
+
+<h3>Can I return a book?</h3>
+<p>Yes — see our <a href="/returns/">returns &amp; refunds policy</a> for how to
+send an item back and how refunds are issued.</p>
+
+<h3>Where is my order?</h3>
+<p>You'll get an email when your order ships. Signed-in customers can also see
+order status any time from <a href="/account/">your account</a>.</p>
+
+<h3>Do you sell e-books and audiobooks?</h3>
+<p>Where a title offers a digital edition, you'll see it on the book's page.
+Digital items are available to download or stream from your account after
+purchase.</p>
+
+<h3>How do I get in touch?</h3>
+<p>Email us or use the <a href="/contact/">contact page</a> — we're happy to
+help with anything not covered here.</p>
+</div>"""
+
 
 def _pages() -> list[tuple[str, str, str, str]]:
     controller = _cfg('data_controller_name', 'This store')
@@ -164,6 +240,24 @@ def _pages() -> list[tuple[str, str, str, str]]:
             _TERMS_BODY.format(**fmt),
         ),
         ('imprint', 'Imprint', 'Legal operator and contact details.', _IMPRINT_BODY.format(**fmt)),
+        (
+            'cookies',
+            'Cookie Policy',
+            'The cookies we use and how to manage your consent.',
+            _COOKIES_BODY.format(**fmt),
+        ),
+        (
+            'accessibility',
+            'Accessibility Statement',
+            'Our commitment to an accessible store, and how to report a barrier.',
+            _ACCESSIBILITY_BODY.format(**fmt),
+        ),
+        (
+            'faq',
+            'Frequently Asked Questions',
+            'Answers to common questions about orders, delivery and returns.',
+            _FAQ_BODY.format(**fmt),
+        ),
     ]
 
 
