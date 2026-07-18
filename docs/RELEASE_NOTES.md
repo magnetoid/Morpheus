@@ -12,6 +12,32 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.22.0 — 2026-07-18
+
+**Storefront accessibility & feedback** (batch A of a UI/UX pass, from a
+three-track design analysis of the theme).
+
+- **Both slide-out drawers are now proper dialogs.** The mobile navigation and
+  the cart drawer gained `role="dialog"`/`aria-modal`, correct `aria-hidden`/
+  `aria-expanded` toggling, focus moved in on open and **restored to the trigger
+  on close**, a **focus trap**, and Escape-to-close — so keyboard and screen-
+  reader users can actually use them and never get lost behind the overlay.
+- **Search is a real combobox.** The quick-search input now exposes
+  `role="combobox"`, `aria-expanded`, and `aria-activedescendant`, and each
+  suggestion is a labelled option with `aria-selected`, so arrowing through
+  results is announced.
+- **One global feedback toast.** A polite `aria-live` region now surfaces
+  post-action notices (cart, coupon, subscribe) and replaces the jarring native
+  `alert()` on an add-to-cart failure.
+- **Bigger tap targets** — the header icon buttons meet the 44px minimum.
+- **Fix:** the order-history page showed the total unformatted (`10.00` instead
+  of `$10.00`).
+
+No visual redesign — these are correctness + usability. (Batch B: visual
+consistency + polish, next.)
+
+---
+
 ## v0.21.3 — 2026-07-18
 
 **Code-quality pass** (consistency + consolidation; no behaviour change). A

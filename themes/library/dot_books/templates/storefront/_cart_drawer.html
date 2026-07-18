@@ -6,9 +6,9 @@ form post + redirect when JS is off.
 {% endcomment %}
 <div id="cart-drawer-root">
   <div id="cart-drawer-backdrop" hidden></div>
-  <aside id="cart-drawer" hidden aria-label="Cart" aria-hidden="true">
+  <aside id="cart-drawer" hidden role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title" aria-hidden="true">
     <header>
-      <p class="eyebrow" style="margin: 0;">Your bag</p>
+      <p class="eyebrow" id="cart-drawer-title" style="margin: 0;">Your bag</p>
       <button id="cart-drawer-close" type="button" aria-label="Close">×</button>
     </header>
     <div id="cart-drawer-empty" hidden>
@@ -173,7 +173,9 @@ form post + redirect when JS is off.
     subtotalEl.textContent = newSubtotal;
   }
 
+  var lastFocus = null;
   function open() {
+    lastFocus = document.activeElement;
     drawer.hidden = false;
     backdrop.hidden = false;
     drawer.setAttribute('aria-hidden', 'false');
@@ -182,6 +184,7 @@ form post + redirect when JS is off.
       backdrop.classList.add('is-shown');
     });
     document.body.style.overflow = 'hidden';
+    if (closeBtn) closeBtn.focus();
   }
   function close() {
     drawer.classList.remove('is-shown');
@@ -192,12 +195,21 @@ form post + redirect when JS is off.
       backdrop.hidden = true;
     }, 220);
     document.body.style.overflow = '';
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
 
   closeBtn.addEventListener('click', close);
   backdrop.addEventListener('click', close);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && !drawer.hidden) close();
+    if (drawer.hidden) return;
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key !== 'Tab') return;
+    // Trap Tab within the open drawer.
+    var items = drawer.querySelectorAll('a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])');
+    if (!items.length) return;
+    var first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
 
   // Fly-to-cart animation: clone the nearest product image, spring it
@@ -275,7 +287,8 @@ form post + redirect when JS is off.
             btn.disabled = false;
             btn.textContent = btn.dataset._origText || 'Add to cart';
           }
-          alert((res.data && res.data.error) || 'Sorry — couldn\'t add that.');
+          var emsg = (res.data && res.data.error) || 'Sorry — couldn\'t add that.';
+          if (window.sfToast) { window.sfToast(emsg, 'error'); } else { alert(emsg); }
           return;
         }
         // Confirmation beat: the button flips to "✓ Added" while the cover
