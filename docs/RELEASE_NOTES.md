@@ -12,6 +12,62 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.20.0 — 2026-07-18
+
+**Sales surfaces: sellable gift cards + the receipt-page upsell.**
+
+- **Gift cards are now sellable.** Create a virtual product with the SKU
+  `GIFT-CARD` (configurable under Settings → Gift cards) and every paid unit
+  auto-issues a real gift card worth its price, emailed to the buyer with the
+  code (merchant-editable template). Idempotent against webhook replays —
+  one card per unit, never doubles. Books are gift-native; now the shop is too.
+- **"You might also like" on the order confirmation page.** The receipt now
+  renders the post-order upsell: the merchant-configured pick (Settings →
+  Post-checkout upsell), falling back to the newest arrival the customer
+  didn't just buy. Renders through the `order_receipt_extra` block slot —
+  previously contributed but never rendered by the theme — so any plugin can
+  now add receipt-page surfaces, and disabling the upsell plugin removes it.
+
+---
+
+## v0.19.0 — 2026-07-18
+
+**The email marketing engine is live.** Morpheus could capture subscribers and
+send transactional email, but campaigns had no send path — the biggest missing
+marketing primitive. This release completes it:
+
+- **Send campaigns.** New dashboard page (Marketing → Send campaigns) targets
+  any Email Campaign at your confirmed, double-opt-in subscriber list — with a
+  **test-send to yourself** first. Sending is queued, idempotent (a re-run or
+  double-click never double-mails anyone), counts recipients, and marks the
+  campaign sent.
+- **Inbox-compliant by construction.** Every bulk send carries the RFC 8058
+  one-click-unsubscribe headers Gmail/Yahoo require, plus a visible
+  unsubscribe footer; the unsubscribe endpoint now honours the one-click POST.
+  The core email sender gained a `headers` passthrough for this.
+- **Win-back flow.** When a customer slips into the at-risk RFM segment
+  (nightly rescore), confirmed subscribers get a warm "we saved some books for
+  you" email — consent-gated (no subscription, no email), max one per address
+  per 30 days, with an optional configured coupon code (Newsletter settings).
+
+Owned by the newsletter plugin end-to-end (disable it and the send page,
+routes, win-back, and emails all vanish). Covered by 8 new tests including
+header assertions and dedupe windows.
+
+**Security fixes** (from the July application audit, verified then patched):
+
+- **GraphQL cache isolation.** The query cache keyed on query+variables only,
+  so an authenticated caller's response could be served to other users for up
+  to 5 minutes. Authenticated sessions and Bearer-token callers now bypass the
+  cache entirely (read and write); anonymous storefront traffic keeps it.
+  Regression-guarded by cross-user isolation tests.
+- **Bulk customer delete now respects the staff guard.** Single-record delete
+  always refused staff/superuser accounts; the bulk action didn't — a sweep
+  selection could hard-delete an admin. Bulk delete now skips staff accounts
+  with a warning, exactly like the single-record path.
+
+---
+
 ## v0.18.0 — 2026-07-18
 
 **Spend your reader points at checkout.** Loyalty points have been earnable

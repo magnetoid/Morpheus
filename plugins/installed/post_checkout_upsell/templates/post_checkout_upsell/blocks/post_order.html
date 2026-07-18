@@ -1,13 +1,22 @@
-{% load i18n %}{% if post_order_upsell %}
-<section class="morpheus-upsell" aria-label="Post-order upsell">
-  <p>{{ settings.post_order_copy|default:'' }}</p>
-  <article class="morpheus-upsell__card" data-product-slug="{{ post_order_upsell.slug }}">
-    <img src="{{ post_order_upsell.hero_image|default:'' }}" alt="" loading="lazy" />
-    <h3>{{ post_order_upsell.name }}</h3>
-    <span>{{ post_order_upsell.price|default:"" }}</span>
-    <button type="button" data-action="add" data-product-id="{{ post_order_upsell.id }}">
-      {% trans 'One-tap add' %}
-    </button>
-  </article>
+{% load post_checkout_upsell %}{% load morph %}
+{% post_order_upsell_pick order as up %}
+{% if up %}
+<section aria-label="You might also like" style="margin: 2rem 0 0; padding: 1rem 1.1rem; border: 1px solid var(--rule); border-radius: 12px; font-family: var(--sans); text-align: left;">
+  <p class="eyebrow" style="margin: 0 0 .75rem;">{{ up.copy }}</p>
+  <div style="display: flex; gap: 1rem; align-items: center;">
+    {% if up.image_url %}
+    <a href="/products/{{ up.slug }}/" style="flex: 0 0 auto;">
+      <img src="{{ up.image_url }}" alt="" loading="lazy"
+           style="width: 64px; height: 92px; object-fit: cover; border-radius: 6px; display: block;">
+    </a>
+    {% endif %}
+    <div style="min-width: 0;">
+      <p style="margin: 0 0 .15rem; font-family: var(--serif); font-weight: 600;">
+        <a href="/products/{{ up.slug }}/" style="color: inherit; text-decoration: none;">{{ up.name }}</a>
+      </p>
+      {% if up.price %}<p style="margin: 0 0 .5rem; color: var(--ink-2); font-size: .9rem;">{{ up.price|money }}</p>{% endif %}
+      <a class="btn" href="/products/{{ up.slug }}/" style="font-size: .85rem;">Take a look</a>
+    </div>
+  </div>
 </section>
 {% endif %}

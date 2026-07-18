@@ -1,0 +1,11 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Your gift card{% endblock %}
+{% block preheader %}Your gift card code is inside.{% endblock %}
+{% block body %}
+  <p>Thank you for your purchase (order {{ order_number }}).</p>
+  <p>Here is your gift card, worth <strong>{{ amount }}</strong>:</p>
+  <p style="font-size:22px;letter-spacing:3px;"><strong>{{ code }}</strong></p>
+  <p>It can be spent at checkout any time — just enter the code in the
+     gift-card field.</p>
+  <p><a href="{{ store_url }}">Browse the shop</a></p>
+{% endblock %}

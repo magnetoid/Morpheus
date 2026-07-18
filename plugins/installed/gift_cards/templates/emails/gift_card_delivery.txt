@@ -1,0 +1,12 @@
+Thank you for your purchase (order {{ order_number }}).
+
+Here is your gift card, worth {{ amount }}:
+
+  {{ code }}
+
+It can be spent at checkout any time — just enter the code in the
+gift-card field.
+
+{{ store_url }}
+
+— The {{ site_name|default:'dot books' }} team

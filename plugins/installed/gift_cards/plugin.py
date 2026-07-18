@@ -28,6 +28,70 @@ class GiftCardsPlugin(Plugin):
         # plugin is enabled, so disabling gift_cards removes the tile — instead
         # of storefront hard-coding the query (ADR 0013, the disable test).
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=40)
+        # Sellable gift cards: when a paid order contains an item whose SKU is
+        # in the configured set, issue one card per unit + email the code.
+        self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=60)
+
+    def on_order_paid(self, order=None, **kwargs):
+        """Issue purchased gift cards on payment (idempotent; fail-soft —
+        a card problem must never break webhook processing)."""
+        if order is None:
+            return
+        try:
+            from plugins.installed.gift_cards.services import issue_for_order
+
+            issue_for_order(order)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.gift_cards').warning(
+                'gift-card issuance for order %s failed: %s',
+                getattr(order, 'order_number', '?'),
+                exc,
+                exc_info=True,
+            )
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'sellable_skus': {
+                    'type': 'string',
+                    'title': 'Gift-card product SKUs',
+                    'description': (
+                        'Comma-separated SKUs that mean "this order item is a '
+                        'gift-card purchase" — each paid unit is issued as a '
+                        'card worth its price and emailed to the buyer. '
+                        'Create a virtual product with one of these SKUs to '
+                        'sell gift cards on the storefront.'
+                    ),
+                    'default': 'GIFT-CARD',
+                },
+            },
+        }
+
+    def contribute_settings_panel(self):
+        from morpheus import SettingsPanel
+
+        return SettingsPanel(
+            label='Gift cards',
+            description='Sell gift cards on the storefront: which SKUs auto-issue a card.',
+            schema=self.get_config_schema(),
+            category='marketing',
+        )
+
+    def contribute_email_templates(self) -> list:
+        from morpheus import EmailTemplateDef
+
+        return [
+            EmailTemplateDef(
+                key='gift_card_delivery',
+                label='Gift card — delivery',
+                default_subject='Your gift card',
+                group='Gift cards',
+                description='Sent to the buyer with the card code once their order is paid.',
+            ),
+        ]
 
     def on_account_summary(self, value, user=None, **kwargs):
         """Fold this customer's active gift cards into the account summary.
