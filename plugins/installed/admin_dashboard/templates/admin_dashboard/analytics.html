@@ -21,11 +21,11 @@
     {% for m in metrics %}
     <div class="card card-padded">
       <div class="flex items-center justify-between text-[color:var(--text-muted)]">
-        <span class="text-xs uppercase tracking-wide font-medium">{{ m.label }}</span>
+        <span class="kpi__label">{{ m.label }}</span>
         <i data-lucide="{{ m.icon }}" class="h-4 w-4"></i>
       </div>
       <div class="mt-2 flex items-end justify-between gap-2">
-        <div class="text-2xl font-semibold">{{ m.value }}</div>
+        <div class="kpi__value">{{ m.value }}</div>
         {% if m.series %}{% sparkline m.series stroke=m.trend %}{% endif %}
       </div>
       {% if m.delta %}
@@ -42,11 +42,7 @@
     </div>
     {% empty %}
     <div class="col-span-full">
-      <div class="empty-state">
-        <div class="empty-icon"><i data-lucide="bar-chart-3" class="h-6 w-6"></i></div>
-        <h3>No data yet</h3>
-        <p>Once you ship your first order, summaries will appear here.</p>
-      </div>
+      {% include "admin_dashboard/_empty_state.html" with icon="bar-chart-3" title="No data yet" hint="Once you ship your first order, summaries will appear here." %}
     </div>
     {% endfor %}
   </div>

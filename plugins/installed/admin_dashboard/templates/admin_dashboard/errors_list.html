@@ -15,20 +15,20 @@
   {# only when the tab is visible (htmx skips the swap on hidden tabs). #}
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3" hx-get="?{{ request.GET.urlencode }}" hx-trigger="every 30s [document.visibilityState=='visible']" hx-select="#errors-summary,#errors-sparkline,#errors-table" hx-target="this" hx-swap="none">
     <div class="card card-padded" id="errors-summary-total">
-      <p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Total</p>
-      <p class="text-2xl font-semibold tabular-nums mt-1">{{ counts.total }}</p>
+      <p class="kpi__label">Total</p>
+      <p class="kpi__value mt-1">{{ counts.total }}</p>
     </div>
     <div class="card card-padded">
-      <p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Last 24h</p>
-      <p class="text-2xl font-semibold tabular-nums mt-1">{{ counts.last_24h }}</p>
+      <p class="kpi__label">Last 24h</p>
+      <p class="kpi__value mt-1">{{ counts.last_24h }}</p>
     </div>
     <div class="card card-padded">
-      <p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Last 7 days</p>
-      <p class="text-2xl font-semibold tabular-nums mt-1">{{ counts.last_7d }}</p>
+      <p class="kpi__label">Last 7 days</p>
+      <p class="kpi__value mt-1">{{ counts.last_7d }}</p>
     </div>
     <div class="card card-padded">
-      <p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Server / Client</p>
-      <p class="text-2xl font-semibold tabular-nums mt-1">
+      <p class="kpi__label">Server / Client</p>
+      <p class="kpi__value mt-1">
         <span class="text-[color:var(--danger)]">{{ counts.server }}</span>
         <span class="text-[color:var(--text-muted)] text-base"> · </span>
         <span class="text-[color:var(--warn)]">{{ counts.client }}</span>
@@ -39,7 +39,7 @@
   {# 24-hour sparkline — inline SVG, no chart-library dep. #}
   <div class="card card-padded" id="errors-sparkline">
     <div class="flex items-center justify-between">
-      <p class="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Last 24 hours</p>
+      <p class="kpi__label">Last 24 hours</p>
       <p class="text-xs text-[color:var(--text-muted)]">peak {{ spark_max }}/hr</p>
     </div>
     <svg viewBox="0 0 480 60" preserveAspectRatio="none" style="width:100%; height:60px; display:block; margin-top:8px;">

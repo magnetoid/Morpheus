@@ -68,16 +68,16 @@
     {% if u.has_data %}
     <div class="card-padded grid grid-cols-2 sm:grid-cols-3 gap-4 border-b border-[color:var(--border)]">
       <div>
-        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Est. cost</p>
-        <p class="text-xl font-semibold mt-0.5" style="font-variant-numeric:tabular-nums;">${{ u.total_cost|floatformat:2 }}</p>
+        <p class="kpi__label">Est. cost</p>
+        <p class="kpi__value mt-0.5">${{ u.total_cost|floatformat:2 }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Tokens</p>
-        <p class="text-xl font-semibold mt-0.5" style="font-variant-numeric:tabular-nums;">{{ u.total_tokens }}</p>
+        <p class="kpi__label">Tokens</p>
+        <p class="kpi__value mt-0.5">{{ u.total_tokens }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Calls</p>
-        <p class="text-xl font-semibold mt-0.5" style="font-variant-numeric:tabular-nums;">{{ u.calls }}</p>
+        <p class="kpi__label">Calls</p>
+        <p class="kpi__value mt-0.5">{{ u.calls }}</p>
       </div>
     </div>
     <table class="morph-table">
