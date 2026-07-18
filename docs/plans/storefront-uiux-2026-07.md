@@ -5,7 +5,13 @@ Consolidated from a 3-track deep analysis (visual, UX flows, a11y/technical) of
 signature, letterpress decode hero, physical cover shadows, focus-visible +
 reduced-motion + skip-link done). These are refinements, batched into releases.
 
-## Batch A — Accessibility + feedback (v0.22.0) — highest value, mostly in base.html
+> **Status:** Batch A **shipped v0.22.0** (live, verified) · Batch B **shipped
+> v0.22.1** (live). Batches C (UX quick wins) + D (technical: CSS extraction,
+> self-host CDN, nonces) remain. A7 (checkout field aria-invalid), A6 (mega-menu
+> aria-expanded), B5–B8 (add-to-cart reveal, section-head/input-pill extraction,
+> Fraunces variation, unify card markup) still open.
+
+## Batch A — Accessibility + feedback (v0.22.0 ✅) — highest value, mostly in base.html
 
 - **A1. Mobile nav drawer a11y** (`base.html:915`, JS `:1036`): add `role="dialog"
   aria-modal`, toggle `aria-hidden` + burger `aria-expanded`, move focus in on
