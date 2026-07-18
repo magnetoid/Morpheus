@@ -235,6 +235,8 @@ def _order_payload(order) -> dict:
     which BV's webhook is built for. We approximate the same envelope
     so BV doesn't need a separate Morpheus mapping — it can stay on
     its WC parser."""
+    from core.utils.orders import order_email
+
     items = []
     for item in order.items.all().select_related('product', 'variant'):
         variant = item.variant
@@ -266,11 +268,7 @@ def _order_payload(order) -> dict:
         'line_items': items,
         'shipping_address': shipping,
         'billing_address': billing,
-        'customer_email': (
-            getattr(order, 'email', '')  # Order's field is `email`; customer_email never existed
-            or getattr(getattr(order, 'customer', None), 'email', '')
-            or ''
-        ),
+        'customer_email': order_email(order),
         'date_created': order.created_at.isoformat() if getattr(order, 'created_at', None) else '',
     }
 

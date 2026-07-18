@@ -488,6 +488,21 @@ class PluginRegistry:
     def get(self, name: str) -> MorpheusPlugin | None:
         return self._plugins.get(name)
 
+    def config_value(self, name: str, key: str, default=None):
+        """One plugin's config value, fail-soft.
+
+        Returns ``default`` when the plugin is absent or any lookup error
+        occurs, so a config read can never crash the caller (checkout, payment,
+        rendering). Collapses the registry-get + None-guard + try/except that
+        was hand-rolled at every call site — a site that forgets the guard is
+        exactly how a config read takes down a payment flow.
+        """
+        try:
+            plugin = self._plugins.get(name)
+            return plugin.get_config_value(key, default) if plugin is not None else default
+        except Exception:  # noqa: BLE001 — a config read must never break a caller
+            return default
+
     def is_active(self, name: str) -> bool:
         return name in self._active
 

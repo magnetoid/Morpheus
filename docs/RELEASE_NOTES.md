@@ -12,6 +12,30 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.21.3 — 2026-07-18
+
+**Code-quality pass** (consistency + consolidation; no behaviour change). A
+four-angle review of the recent releases surfaced repeated patterns worth
+unifying:
+
+- **One fail-soft plugin-config accessor.** The "read a plugin's config value,
+  never crash the caller" try/except was hand-rolled in six places (a seventh
+  that forgot the guard is how a config read takes down checkout). Collapsed to
+  `plugin_registry.config_value(name, key, default)`.
+- **One order-email helper.** Three call sites re-derived an order's contact
+  email by hand — the exact drift that caused last release's `customer_email`
+  bugs. Now a single `core.utils.orders.order_email(order)`.
+- **Checkout cart-checks share one loader.** The shipping and digital-item
+  checks each re-loaded + re-prefetched the same cart; they now load it once via
+  a shared helper, with consistent iteration.
+- **Campaign send hoists constant work out of the per-recipient loop** (the body
+  `strip_tags` is computed once, not per subscriber), and the loyalty cart widget
+  drops a duplicate balance query.
+
+All guarded by the existing test suites (no behaviour change).
+
+---
+
 ## v0.21.2 — 2026-07-18
 
 **Deep-debug pass — seven real bugs fixed** (found by auditing production logs +

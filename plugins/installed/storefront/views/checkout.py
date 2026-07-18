@@ -19,50 +19,39 @@ from ._queries import CART_QUERY
 logger = logging.getLogger('morpheus.storefront.checkout')
 
 
+def _load_cart_items(request):
+    """The session cart with items + product/variant prefetched, or None.
+    Shared by the shipping/digital checks so each loads the cart the same way."""
+    from plugins.installed.orders.models import Cart
+
+    cart_id = request.session.get('cart_id')
+    if not cart_id:
+        return None
+    return (
+        Cart.objects.filter(id=cart_id).prefetch_related('items__product', 'items__variant').first()
+    )
+
+
+def _item_ships(item) -> bool:
+    """Whether one cart item needs shipping (variant overrides product)."""
+    target = item.variant if item.variant is not None else item.product
+    return bool(getattr(target, 'requires_shipping', True))
+
+
 def _cart_requires_shipping(request) -> bool:
     """Returns True if any cart item needs a shipping address. Digital /
     virtual carts skip the shipping-address step + rate picker."""
+    from plugins.registry import plugin_registry
+
+    # Merchant override: if skip-shipping-for-digital is switched off, the
+    # shipping step is always shown.
+    if plugin_registry.config_value('orders', 'skip_shipping_for_digital_carts', True) is False:
+        return True
     try:
-        from plugins.registry import plugin_registry
-
-        plugin = None
-        for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
-            if callable(fn):
-                try:
-                    plugin = fn('orders')
-                except Exception:  # noqa: BLE001
-                    continue
-                if plugin is not None:
-                    break
-        if plugin is not None:
-            cfg = plugin.get_config() or {}
-            if cfg.get('skip_shipping_for_digital_carts') is False:
-                return True
-    except Exception:  # noqa: BLE001
-        pass
-
-    try:
-        from plugins.installed.orders.models import Cart
-
-        cart_id = request.session.get('cart_id')
-        if not cart_id:
-            return True
-        cart = (
-            Cart.objects.filter(id=cart_id)
-            .prefetch_related('items__product', 'items__variant')
-            .first()
-        )
+        cart = _load_cart_items(request)
         if cart is None or not cart.items.all():
             return True
-        for item in cart.items.all():
-            if item.variant is not None:
-                if getattr(item.variant, 'requires_shipping', True):
-                    return True
-            else:
-                if getattr(item.product, 'requires_shipping', True):
-                    return True
-        return False
+        return any(_item_ships(item) for item in cart.items.all())
     except Exception:  # noqa: BLE001
         return True
 
@@ -73,23 +62,10 @@ def _cart_has_digital(request) -> bool:
     is False only for an all-digital cart), this catches a MIXED cart too —
     the EU withdrawal-waiver applies whenever any digital item is present."""
     try:
-        from plugins.installed.orders.models import Cart
-
-        cart_id = request.session.get('cart_id')
-        if not cart_id:
-            return False
-        cart = (
-            Cart.objects.filter(id=cart_id)
-            .prefetch_related('items__product', 'items__variant')
-            .first()
-        )
+        cart = _load_cart_items(request)
         if cart is None:
             return False
-        for item in cart.items.all():
-            target = item.variant if item.variant is not None else item.product
-            if not getattr(target, 'requires_shipping', True):
-                return True
-        return False
+        return any(not _item_ships(item) for item in cart.items.all())
     except Exception:  # noqa: BLE001
         return False
 
@@ -98,16 +74,12 @@ def _withdrawal_waiver() -> dict:
     """Merchant-configured digital withdrawal-waiver: ``{enabled, text}``.
     Off by default (the merchant enables it once the wording is finalised);
     falls back to the schema defaults so checkout never breaks on config."""
-    enabled, text = False, ''
-    try:
-        from plugins.registry import plugin_registry
+    from plugins.registry import plugin_registry
 
-        plugin = plugin_registry.get('orders')
-        if plugin is not None:
-            enabled = bool(plugin.get_config_value('digital_withdrawal_waiver_enabled', False))
-            text = str(plugin.get_config_value('digital_withdrawal_waiver_text', '') or '')
-    except Exception:  # noqa: BLE001
-        enabled, text = False, ''
+    enabled = bool(
+        plugin_registry.config_value('orders', 'digital_withdrawal_waiver_enabled', False)
+    )
+    text = str(plugin_registry.config_value('orders', 'digital_withdrawal_waiver_text', '') or '')
     if not text:
         text = (
             'I expressly request immediate access to the digital content in my '

@@ -75,15 +75,9 @@ def lookup(code: str) -> GiftCard | None:  # noqa: F821
 def sellable_skus() -> set[str]:
     """The configured set of order-item SKUs that mean "this is a gift-card
     purchase" (Settings → Gift cards). Upper-cased; empty set disables."""
-    raw = 'GIFT-CARD'
-    try:
-        from plugins.registry import plugin_registry
+    from plugins.registry import plugin_registry
 
-        plugin = plugin_registry.get('gift_cards')
-        if plugin is not None:
-            raw = str(plugin.get_config_value('sellable_skus', raw) or '')
-    except Exception:  # noqa: BLE001 — config read must never break payment flow
-        raw = 'GIFT-CARD'
+    raw = str(plugin_registry.config_value('gift_cards', 'sellable_skus', 'GIFT-CARD') or '')
     return {s.strip().upper() for s in raw.split(',') if s.strip()}
 
 
@@ -96,12 +90,13 @@ def issue_for_order(order) -> list:
     ``note='Purchased in order <number>'`` — a re-fired ORDER_PAID (webhook
     replay) issues only the missing remainder, in deterministic item order.
     """
+    from core.utils.orders import order_email
     from plugins.installed.gift_cards.models import GiftCard
 
     skus = sellable_skus()
     if not skus:
         return []
-    email = (getattr(order, 'email', '') or '').strip()
+    email = order_email(order)
     note = f'Purchased in order {order.order_number}'
     wanted = []  # one entry per unit, deterministic ordering
     for item in order.items.all().order_by('pk'):
@@ -133,11 +128,12 @@ def issue_for_order(order) -> list:
 def _send_delivery(card, order) -> None:
     """Email the purchased card's code to the buyer (merchant-editable)."""
     from core.emails import send_templated_email
+    from core.utils.orders import order_email
     from core.utils.site import site_base_url
 
     send_templated_email(
         'gift_card_delivery',
-        to=(getattr(order, 'email', '') or '').strip() or None,
+        to=order_email(order) or None,
         subject='Your gift card',
         ctx={
             'code': card.code,

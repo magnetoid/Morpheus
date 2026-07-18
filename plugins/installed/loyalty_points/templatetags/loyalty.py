@@ -21,10 +21,7 @@ def loyalty_redeem_state(context):
         return None
     try:
         from plugins.installed.loyalty_points.services import get_balance
-        from plugins.installed.loyalty_points.services_redeem import (
-            max_redeemable,
-            points_to_amount,
-        )
+        from plugins.installed.loyalty_points.services_redeem import points_to_amount
 
         balance = get_balance(user)
         if balance <= 0:
@@ -36,7 +33,10 @@ def loyalty_redeem_state(context):
             'worth': points_to_amount(balance),
             'applied': applied,
             'applied_worth': points_to_amount(applied) if applied else None,
-            'max': max_redeemable(user),
+            # max_redeemable(user) with no order total == the balance we already
+            # have — reuse it instead of a second get_balance aggregate. The
+            # order-total cap is applied later by on_cart_breakdown.
+            'max': balance,
         }
     except Exception:  # noqa: BLE001 — a widget must never break the cart page
         return None

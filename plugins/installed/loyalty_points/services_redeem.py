@@ -41,14 +41,15 @@ def redemption_rate() -> int:
     a positive int — a misconfigured 0/negative rate falls back to the
     default so we never divide by zero.
     """
-    rate = DEFAULT_REDEMPTION_RATE
-    try:
-        from plugins.registry import plugin_registry
+    from plugins.registry import plugin_registry
 
-        plugin = plugin_registry.get('loyalty_points')
-        if plugin is not None:
-            rate = int(plugin.get_config_value('redemption_rate', DEFAULT_REDEMPTION_RATE))
-    except Exception:  # noqa: BLE001 — config read must never break checkout math
+    try:
+        rate = int(
+            plugin_registry.config_value(
+                'loyalty_points', 'redemption_rate', DEFAULT_REDEMPTION_RATE
+            )
+        )
+    except (TypeError, ValueError):
         rate = DEFAULT_REDEMPTION_RATE
     return rate if rate > 0 else DEFAULT_REDEMPTION_RATE
 
@@ -59,14 +60,13 @@ def max_redeem_fraction() -> Decimal:
     1.0 (default) means points can pay the whole order; 0.5 caps at half.
     Clamped to (0, 1].
     """
-    frac = Decimal('1')
-    try:
-        from plugins.registry import plugin_registry
+    from plugins.registry import plugin_registry
 
-        plugin = plugin_registry.get('loyalty_points')
-        if plugin is not None:
-            frac = Decimal(str(plugin.get_config_value('max_redeem_fraction', '1')))
-    except Exception:  # noqa: BLE001
+    try:
+        frac = Decimal(
+            str(plugin_registry.config_value('loyalty_points', 'max_redeem_fraction', '1'))
+        )
+    except (TypeError, ValueError, ArithmeticError):
         frac = Decimal('1')
     if frac <= 0 or frac > 1:
         return Decimal('1')

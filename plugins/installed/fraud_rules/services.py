@@ -224,14 +224,9 @@ def _order_ip(order) -> str:
 
 
 def _order_email(order) -> str:
-    # Order's canonical field is `email` (set for guest AND account orders);
-    # there is no `customer_email` on Order, so the old getattr always fell
-    # through and missed every guest order's address.
-    direct = getattr(order, 'email', '') or ''
-    if direct:
-        return direct
-    cust = getattr(order, 'customer', None)
-    return getattr(cust, 'email', '') if cust else ''
+    from core.utils.orders import order_email
+
+    return order_email(order)
 
 
 def _country(addr) -> str:

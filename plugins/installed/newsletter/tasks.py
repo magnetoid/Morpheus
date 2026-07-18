@@ -39,17 +39,26 @@ def _unsubscribe_headers(token: str) -> dict:
     }
 
 
-def _bodies_with_footer(campaign, token: str) -> tuple[str, str | None]:
-    """Campaign text/html with a visible per-recipient unsubscribe footer."""
+def _base_bodies(campaign) -> tuple[str, str | None]:
+    """The campaign's text/html bodies, constant across recipients. Computed
+    once per send so the strip_tags fallback isn't re-run per subscriber."""
+    text = (campaign.text_body or strip_tags(campaign.html_body or '')).strip()
+    html = (campaign.html_body or '').strip() or None
+    return text, html
+
+
+def _with_footer(base_text: str, base_html: str | None, token: str) -> tuple[str, str | None]:
+    """Append this recipient's one-click unsubscribe footer to the base bodies."""
     from plugins.installed.newsletter.services import _unsubscribe_url
 
     url = _unsubscribe_url(token)
-    text = (campaign.text_body or strip_tags(campaign.html_body or '')).strip()
-    text = f'{text}\n\n—\nUnsubscribe: {url}\n'
-    html = (campaign.html_body or '').strip()
-    if html:
-        html = f'{html}\n<p style="font-size:12px;color:#777;"><a href="{url}">Unsubscribe</a></p>'
-    return text, html or None
+    text = f'{base_text}\n\n—\nUnsubscribe: {url}\n'
+    html = (
+        f'{base_html}\n<p style="font-size:12px;color:#777;"><a href="{url}">Unsubscribe</a></p>'
+        if base_html
+        else None
+    )
+    return text, html
 
 
 @shared_task(bind=True, time_limit=600, soft_time_limit=540)
@@ -89,12 +98,13 @@ def send_campaign(self, campaign_id: str) -> dict:
         return {'ok': False, 'error': 'already-claimed'}
 
     already = set(CampaignSend.objects.filter(campaign=campaign).values_list('email', flat=True))
+    base_text, base_html = _base_bodies(campaign)  # constant — computed once, not per row
     sent = failed = 0
     for sub in NewsletterSubscriber.objects.filter(status='confirmed').iterator():
         if sub.email in already:
             continue
         try:
-            text, html = _bodies_with_footer(campaign, sub.confirm_token)
+            text, html = _with_footer(base_text, base_html, sub.confirm_token)
             deliver_email.delay(
                 subject=campaign.subject,
                 text_body=text,
@@ -141,11 +151,11 @@ def send_campaign_test(self, campaign_id: str, to: str) -> dict:
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or ''
     if not from_email or not to:
         return {'ok': False, 'error': 'no-address'}
-    text = (campaign.text_body or strip_tags(campaign.html_body or '')).strip()
+    text, html = _base_bodies(campaign)  # no footer/headers on a test copy
     deliver_email.delay(
         subject=f'[test] {campaign.subject}',
         text_body=text,
-        html_body=(campaign.html_body or '').strip() or None,
+        html_body=html,
         from_email=from_email,
         to=to,
     )
@@ -176,15 +186,9 @@ def send_winback(customer) -> bool:
     ).exists():
         return False
 
-    coupon_code = ''
-    try:
-        from plugins.registry import plugin_registry
+    from plugins.registry import plugin_registry
 
-        plugin = plugin_registry.get('newsletter')
-        if plugin is not None:
-            coupon_code = str(plugin.get_config_value('winback_coupon_code', '') or '')
-    except Exception:  # noqa: BLE001 — config read must never block the send
-        coupon_code = ''
+    coupon_code = str(plugin_registry.config_value('newsletter', 'winback_coupon_code', '') or '')
 
     from core.emails import send_templated_email
     from core.utils.site import site_base_url
