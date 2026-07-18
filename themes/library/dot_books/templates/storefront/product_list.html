@@ -153,9 +153,14 @@
     {% endif %}
 
     {% else %}
-    <div style="text-align: center; padding: 6rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
-      <p class="display display-m" style="margin: 0 0 1rem;">Nothing here yet<span class="text-accent">.</span></p>
-      <p class="lede" style="margin: 0 auto;">Either we sold out or we're between issues. Try the homepage for what's currently shelved.</p>
+    <div class="empty-shelf">
+      <div class="glyph" aria-hidden="true">❦</div>
+      <h2>Nothing here yet.</h2>
+      <p>Either we sold out or we're between issues. Try the full shelf for what's in stock right now.</p>
+      <div class="actions">
+        <a href="/products/" class="btn btn-primary">Browse all books</a>
+        <a href="/" class="btn">Back home</a>
+      </div>
     </div>
     {% endif %}
   </div>

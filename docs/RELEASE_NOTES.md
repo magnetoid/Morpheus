@@ -12,6 +12,26 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.22.1 — 2026-07-18
+
+**Storefront visual consistency** (batch B of the UI/UX pass — pure polish).
+
+- **De-duplicated conflicting design tokens.** The display type scale
+  (`.display-xl/-l/-m`) and `.eyebrow` were each defined twice with different
+  values; consolidated to a single source of truth so headings render
+  predictably.
+- **The on-sale badge now uses the house red.** The product-card discount ribbon
+  was paper-on-grey (invisible) and the PDP sale pill used an off-palette red
+  (`#b91c1c`); both now use the brand accent — the one place a card *should* draw
+  the eye.
+- **Refined product-card hierarchy.** The title is a touch smaller and lighter,
+  and the author is set in italic serif so it reads distinctly from the sans
+  excerpt instead of blurring together.
+- **Empty product listings** now use the theme's proper `.empty-shelf` treatment
+  (fleuron + heading + actions) instead of an ad-hoc dashed box.
+
+---
+
 ## v0.22.0 — 2026-07-18
 
 **Storefront accessibility & feedback** (batch A of a UI/UX pass, from a
