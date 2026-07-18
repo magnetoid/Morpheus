@@ -12,6 +12,26 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.23.0 — 2026-07-19
+
+**Eco impact, Kimi AI provider, more legal pages, and a dashboard polish pass.**
+
+- **Plant a tree at checkout + book footprint on every product page.** A new
+  *Eco impact* plugin estimates each book's production footprint — paper, wood,
+  and CO₂ — from its weight and dimensions, and shows it under the price. At
+  checkout, shoppers can opt in to a flat "plant a tree" offset; the
+  contributions are pooled as a tracked fund you fulfil, with a public
+  **/save-the-planet/** page showing the running total and how it's calculated.
+  Turn the badge on/off and set the offset amount in Settings → Eco impact.
+- **Moonshot (Kimi) is now a selectable AI provider.** Pick it in
+  Settings → AI providers and paste your Moonshot key — long-context, strong
+  agentic reasoning, OpenAI-compatible (China endpoint supported).
+- **Cookie Policy, Accessibility Statement, and FAQ pages** now ship as editable
+  content pages, and the footer's FAQ link (previously a dead 404) works. Edit
+  the copy any time under Dashboard → Pages.
+- **Dashboard consistency pass.** Stat tiles, card headers, empty states, and the
+  Users filter tabs now share one visual system across every admin page.
+
 ## v0.22.2 — 2026-07-18
 
 **Agent tool-surface hardening** (the isolated, verified findings from the
