@@ -389,8 +389,19 @@ def customers_bulk(request: HttpRequest) -> HttpResponse:
         qs.update(accepts_marketing=False)
         messages.success(request, f'{count} customer(s) opted out of marketing.')
     elif action == 'delete':
-        qs.delete()
-        messages.success(request, f'Deleted {count} customer(s).')
+        # Same guard as the single-record delete: staff/superuser accounts can
+        # never be removed through the customers surface — a bulk selection
+        # that sweeps one in must not bypass that.
+        victims = qs.filter(is_staff=False, is_superuser=False)
+        n = victims.count()
+        protected = count - n
+        victims.delete()
+        if protected:
+            messages.warning(
+                request,
+                f'Skipped {protected} staff account(s) — staff cannot be deleted from here.',
+            )
+        messages.success(request, f'Deleted {n} customer(s).')
     else:
         messages.warning(request, f'Unknown action: {action!r}.')
     return redirect('admin_dashboard:customers')

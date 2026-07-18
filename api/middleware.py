@@ -26,6 +26,19 @@ class GraphQLCacheMiddleware:
         if request.method != 'POST':
             return self.get_response(request)
 
+        # Never cache for authenticated callers — the cache key is only
+        # query+variables, so a shared entry would replay one user's
+        # (authorization-dependent) result to everybody. This middleware sits
+        # after AuthenticationMiddleware/AgentAuthMiddleware, so request.user
+        # is resolved; the Authorization-header check also skips bearer-token
+        # agents whatever their user resolution. Anonymous storefront traffic
+        # (the hot path this cache exists for) still gets the 5-min cache.
+        user = getattr(request, 'user', None)
+        if (user is not None and getattr(user, 'is_authenticated', False)) or request.headers.get(
+            'Authorization'
+        ):
+            return self.get_response(request)
+
         try:
             body = json.loads(request.body)
             query = body.get('query', '')
