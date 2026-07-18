@@ -1,0 +1,61 @@
+{% extends "storefront/base.html" %}
+{% load morph seo %}
+{% block title %}Save the planet — dot books{% endblock %}
+{% block seo %}{% seo_meta fallback_title="Save the planet — Dot Books" fallback_description="How we measure the footprint of every book, and how you can plant a tree at checkout to offset your order." %}{% endblock %}
+{% block content %}
+<section style="max-width:52rem; margin:0 auto; padding:2.5rem 1.25rem; font-family:var(--serif, Georgia, serif);">
+
+  <header style="text-align:center; margin-bottom:2.25rem;">
+    <div style="font-size:2rem;" aria-hidden="true">🌍</div>
+    <h1 style="font-family:var(--display, var(--serif)); font-size:clamp(1.8rem, 4vw, 2.6rem); margin:.4rem 0 .6rem; color:var(--ink);">Save the planet, one book at a time</h1>
+    <p style="font-family:var(--sans); color:var(--ink-2); font-size:1rem; line-height:1.6; max-width:38rem; margin:0 auto;">
+      Every printed book has a footprint &mdash; paper, wood, and the carbon of making it.
+      We estimate it for each title, and at checkout you can plant a tree to offset your order.
+    </p>
+  </header>
+
+  {% if totals.trees %}
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(9rem, 1fr)); gap:1rem; margin-bottom:2.5rem; font-family:var(--sans);">
+    <div style="text-align:center; padding:1.25rem 1rem; border:1px solid var(--rule); border-radius:12px;">
+      <div style="font-size:2rem; font-weight:700; color:var(--ink);">{{ totals.trees }}</div>
+      <div style="font-size:.8rem; color:var(--ink-2); margin-top:.25rem;">trees pledged</div>
+    </div>
+    <div style="text-align:center; padding:1.25rem 1rem; border:1px solid var(--rule); border-radius:12px;">
+      <div style="font-size:2rem; font-weight:700; color:var(--ink);">{{ totals.co2_offset_kg|floatformat:0 }}</div>
+      <div style="font-size:.8rem; color:var(--ink-2); margin-top:.25rem;">kg CO<sub>2</sub> offset</div>
+    </div>
+    <div style="text-align:center; padding:1.25rem 1rem; border:1px solid var(--rule); border-radius:12px;">
+      <div style="font-size:2rem; font-weight:700; color:var(--ink);">{{ totals.contributors }}</div>
+      <div style="font-size:.8rem; color:var(--ink-2); margin-top:.25rem;">readers planting with us</div>
+    </div>
+  </div>
+  {% else %}
+  <div style="text-align:center; font-family:var(--sans); color:var(--ink-2); margin-bottom:2.5rem; padding:1.5rem; border:1px dashed var(--rule); border-radius:12px;">
+    Be the first &mdash; add &ldquo;plant a tree&rdquo; to your next order and start our forest.
+  </div>
+  {% endif %}
+
+  <div style="font-family:var(--sans); color:var(--ink-2); line-height:1.7; font-size:.95rem;">
+    <h2 style="font-family:var(--display, var(--serif)); font-size:1.3rem; color:var(--ink); margin:0 0 .6rem;">How we measure it</h2>
+    <p style="margin:0 0 1rem;">
+      For each book we estimate the paper mass from its recorded weight and size, then derive
+      the wood used (about {{ wood_factor }}&thinsp;kg of wood per kg of paper) and the carbon
+      of producing it (about {{ co2_per_kg_paper }}&thinsp;kg CO<sub>2</sub> per kg of paper, plus
+      printing and binding). These are <em>estimates</em>, sourced from published paper-industry
+      figures &mdash; not a precise per-copy measurement.
+    </p>
+    <h2 style="font-family:var(--display, var(--serif)); font-size:1.3rem; color:var(--ink); margin:1.5rem 0 .6rem;">Planting a tree</h2>
+    <p style="margin:0 0 1rem;">
+      At checkout you can add <strong>{{ tree_price|money }}</strong> to plant a tree. A maturing
+      tree sequesters roughly {{ kg_co2_per_tree|floatformat:0 }}&thinsp;kg of CO<sub>2</sub> a
+      year &mdash; comfortably more than a typical book order&rsquo;s footprint. We pool these
+      contributions and direct them to reforestation. It&rsquo;s always optional, and never
+      added without your choice.
+    </p>
+    <p style="text-align:center; margin-top:2rem;">
+      <a href="/products/" class="btn btn-primary" style="display:inline-block; padding:.6rem 1.4rem; text-decoration:none;">Browse books</a>
+    </p>
+  </div>
+
+</section>
+{% endblock %}

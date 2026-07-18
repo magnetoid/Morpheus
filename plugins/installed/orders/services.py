@@ -539,6 +539,29 @@ class OrderService:
                     'Your points could not be applied. Please review your cart and try again.'
                 ) from e
 
+        # Eco impact: record the plant-a-tree pledge when the shopper opted in.
+        # meta['eco_impact'] is present only when eco_impact's breakdown
+        # subscriber fired, so a disabled/absent plugin skips this. Fail-soft —
+        # a small optional offset must never break an otherwise-paid order.
+        eco_meta = (breakdown.get('meta') or {}).get('eco_impact') or {}
+        if eco_meta:
+            try:
+                from plugins.installed.eco_impact.services import record_pledge
+
+                record_pledge(
+                    order,
+                    trees=int(eco_meta.get('trees') or 1),
+                    amount=eco_meta.get('amount') or 0,
+                    currency=str(breakdown.get('currency') or 'USD'),
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    'orders: eco pledge record failed for order %s: %s',
+                    order.order_number,
+                    e,
+                    exc_info=True,
+                )
+
         cart.items.all().delete()
         if (
             cart.coupon_id

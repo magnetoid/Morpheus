@@ -190,6 +190,9 @@ MORPHEUS_DEFAULT_PLUGINS = [
     # Live shopping events MVP: scheduled event + embedded stream + pinned
     # buyable products; conversion via the existing UTM/attribution pipeline.
     'plugins.installed.live_commerce',
+    # Book production-footprint badge (paper/wood/CO₂) + opt-in plant-a-tree
+    # checkout offset with a merchant-fulfilled tree fund + public impact page.
+    'plugins.installed.eco_impact',
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────

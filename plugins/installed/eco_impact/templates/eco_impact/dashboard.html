@@ -1,0 +1,53 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}Eco impact — Morpheus admin{% endblock %}
+{% block content %}
+<div class="space-y-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Eco impact</h1>
+      <p class="meta mt-1">Trees pledged by shoppers who opted into the checkout offset. You fulfil the planting.</p>
+    </div>
+    <a href="/save-the-planet/" target="_blank" rel="noopener" class="btn text-sm">
+      <i data-lucide="external-link" class="h-4 w-4"></i> View public page
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Trees pledged</span>
+      <span class="kpi__value">{{ totals.trees }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">CO₂ offset (kg)</span>
+      <span class="kpi__value">{{ totals.co2_offset_kg|floatformat:0 }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Contributing orders</span>
+      <span class="kpi__value">{{ totals.contributors }}</span>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if pledges %}
+    <table class="morph-table">
+      <thead>
+        <tr><th>Order</th><th class="num">Trees</th><th class="num">Amount</th><th>When</th></tr>
+      </thead>
+      <tbody>
+        {% for p in pledges %}
+        <tr>
+          <td>{{ p.order_number }}</td>
+          <td class="num">{{ p.trees }}</td>
+          <td class="num">{{ p.amount }} {{ p.currency }}</td>
+          <td>{{ p.created_at|date:"M j, Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {% include "admin_dashboard/_empty_state.html" with icon="leaf" title="No tree pledges yet" hint="They appear here once a shopper opts into the plant-a-tree offset at checkout." %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
