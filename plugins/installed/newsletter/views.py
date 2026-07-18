@@ -53,8 +53,13 @@ def confirm_view(request, token: str):
     )
 
 
-@require_http_methods(['GET'])
+@csrf_exempt
+@require_http_methods(['GET', 'POST'])
 def unsubscribe_view(request, token: str):
+    """One-click unsubscribe — GET from the email footer link, POST from the
+    RFC 8058 ``List-Unsubscribe-Post`` flow (Gmail/Yahoo hit the URL with a
+    bare POST and no CSRF token; the unguessable token IS the auth, and the
+    action is idempotent + only ever *removes* consent)."""
     from plugins.installed.newsletter.services import unsubscribe
 
     sub = unsubscribe(token)

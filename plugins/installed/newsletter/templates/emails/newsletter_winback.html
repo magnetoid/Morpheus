@@ -1,0 +1,14 @@
+{% extends "emails/_layout.html" %}
+{% block title %}We saved some books for you{% endblock %}
+{% block preheader %}It's been a while — come see what's new on the shelves.{% endblock %}
+{% block body %}
+  <p>{% if first_name %}Hi {{ first_name }},{% else %}Hello,{% endif %}</p>
+  <p>It's been a while since your last visit — the shelves have moved on, and
+     there are new arrivals we think you'd genuinely like.</p>
+  <p><a href="{{ store_url }}/products/">Browse what's new</a></p>
+  {% if coupon_code %}
+  <p>As a welcome-back, this code takes a little off your next order:</p>
+  <p style="font-size:18px;letter-spacing:2px;"><strong>{{ coupon_code }}</strong></p>
+  {% endif %}
+  <p class="muted">Not interested any more? <a href="{{ unsubscribe_url }}">Unsubscribe</a> any time.</p>
+{% endblock %}

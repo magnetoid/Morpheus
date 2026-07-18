@@ -5,7 +5,7 @@ docs/plans/newsletter.md.
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, EmailTemplateDef, Plugin, StorefrontBlock
+from morpheus import DashboardPage, EmailTemplateDef, Plugin, SettingsPanel, StorefrontBlock, events
 
 
 class NewsletterPlugin(Plugin):
@@ -22,12 +22,37 @@ class NewsletterPlugin(Plugin):
     def ready(self) -> None:
         # Public capture + one-click confirm/unsubscribe endpoints.
         self.register_urls('plugins.installed.newsletter.urls', prefix='', namespace='newsletter')
-        # Merchant dashboard (subscribers + popups), under Marketing.
+        # Merchant dashboard (subscribers + popups + campaign sending), under Marketing.
         self.register_urls(
             'plugins.installed.newsletter.urls_dashboard',
             prefix='dashboard/newsletter/',
             namespace='newsletter_dashboard',
         )
+        # Win-back: the nightly RFM rescore fires this on segment flips; we act
+        # on the drop to at-risk (consent-gated + deduped inside send_winback).
+        self.register_hook(events.CUSTOMER_SEGMENT_CHANGED, self.on_segment_changed, priority=50)
+
+    def on_segment_changed(self, customer=None, new=None, **kwargs):
+        """Queue a win-back email when a customer slips to at-risk.
+
+        Fail-soft — a marketing side-effect must never break the rescore task.
+        All the guards (consent, dedupe window, config toggle) live in
+        ``tasks.send_winback``.
+        """
+        if customer is None or new != 'at_risk':
+            return
+        try:
+            if not self.get_config_value('winback_enabled', True):
+                return
+            from plugins.installed.newsletter.tasks import send_winback
+
+            send_winback(customer)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.newsletter').warning(
+                'winback for %s failed: %s', getattr(customer, 'pk', '?'), exc, exc_info=True
+            )
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -49,6 +74,15 @@ class NewsletterPlugin(Plugin):
                 order=61,
                 nav='hidden',
                 url='/dashboard/newsletter/popups/',
+            ),
+            DashboardPage(
+                label='Send campaigns',
+                slug='newsletter-campaigns',
+                view='plugins.installed.newsletter.dashboard.campaigns_view',
+                icon='send',
+                section='marketing',
+                order=62,
+                url='/dashboard/newsletter/campaigns/',
             ),
         ]
 
@@ -94,4 +128,47 @@ class NewsletterPlugin(Plugin):
                 group='Newsletter',
                 description='Sent once a subscriber confirms their email.',
             ),
+            EmailTemplateDef(
+                key='newsletter_winback',
+                label='Newsletter — win-back',
+                default_subject='We saved some books for you',
+                group='Newsletter',
+                description=(
+                    'Sent (at most once a month) when a subscribed customer '
+                    'slips into the at-risk RFM segment.'
+                ),
+            ),
         ]
+
+    def contribute_settings_panel(self):
+        return SettingsPanel(
+            label='Newsletter',
+            description='Win-back automation for lapsed, subscribed customers.',
+            schema=self.get_config_schema(),
+            category='marketing',
+        )
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'winback_enabled': {
+                    'type': 'boolean',
+                    'title': 'Send win-back emails',
+                    'description': (
+                        'Email confirmed subscribers when they slip into the '
+                        'at-risk segment (max one per address per 30 days).'
+                    ),
+                    'default': True,
+                },
+                'winback_coupon_code': {
+                    'type': 'string',
+                    'title': 'Win-back coupon code',
+                    'description': (
+                        'Optional existing coupon code to include in the '
+                        'win-back email. Leave blank for none.'
+                    ),
+                    'default': '',
+                },
+            },
+        }

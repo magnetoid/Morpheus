@@ -12,4 +12,7 @@ urlpatterns = [
     path('', dashboard.subscribers_view, name='subscribers'),
     path('popups/', dashboard.popups_view, name='popups'),
     path('popups/<uuid:popup_id>/', dashboard.popup_edit_view, name='popup_edit'),
+    path('campaigns/', dashboard.campaigns_view, name='campaigns'),
+    path('campaigns/<uuid:campaign_id>/send/', dashboard.campaign_send_view, name='campaign_send'),
+    path('campaigns/<uuid:campaign_id>/test/', dashboard.campaign_test_view, name='campaign_test'),
 ]

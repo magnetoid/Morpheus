@@ -28,9 +28,15 @@ logger = logging.getLogger('morpheus.emails')
     max_retries=3,
     acks_late=True,
 )
-def deliver_email(self, *, subject, text_body, html_body, from_email, to):
-    """Send one pre-rendered transactional email. Retries on transient SMTP failure."""
-    msg = EmailMultiAlternatives(subject, text_body, from_email, [to])
+def deliver_email(self, *, subject, text_body, html_body, from_email, to, headers=None):
+    """Send one pre-rendered email. Retries on transient SMTP failure.
+
+    ``headers`` (optional dict) is passed straight to
+    ``EmailMultiAlternatives`` — marketing sends use it for the RFC 8058
+    one-click-unsubscribe pair (``List-Unsubscribe`` +
+    ``List-Unsubscribe-Post``), which Gmail/Yahoo require of bulk senders.
+    """
+    msg = EmailMultiAlternatives(subject, text_body, from_email, [to], headers=headers or None)
     if html_body:
         msg.attach_alternative(html_body, 'text/html')
     try:

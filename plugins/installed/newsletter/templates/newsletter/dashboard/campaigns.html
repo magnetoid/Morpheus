@@ -1,0 +1,70 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Send campaigns · Marketing · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  <div class="flex items-end justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Send campaigns</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Target a campaign at your <strong>{{ audience }}</strong> confirmed subscriber{{ audience|pluralize }}.
+        Every send carries a one-click unsubscribe (RFC 8058). Test on yourself first.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a class="btn" href="/dashboard/apps/marketing/campaigns/"><i data-lucide="pen-line" class="h-4 w-4"></i> Edit campaigns</a>
+      <a class="btn" href="/dashboard/newsletter/"><i data-lucide="mail" class="h-4 w-4"></i> Subscribers</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-[color:var(--text-muted)]">
+          <th class="p-3">Campaign</th>
+          <th class="p-3">Status</th>
+          <th class="p-3">Recipients</th>
+          <th class="p-3">Sent at</th>
+          <th class="p-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        <tr class="border-t border-[color:var(--border)]">
+          <td class="p-3">
+            <div class="font-medium">{{ c.name }}</div>
+            <div class="text-[color:var(--text-muted)]">{{ c.subject }}</div>
+          </td>
+          <td class="p-3">{{ c.get_status_display }}</td>
+          <td class="p-3">{{ c.recipient_count }}</td>
+          <td class="p-3">{{ c.sent_at|date:"Y-m-d H:i"|default:"—" }}</td>
+          <td class="p-3">
+            <div class="flex items-center justify-end gap-2">
+              <form method="post" action="/dashboard/newsletter/campaigns/{{ c.id }}/test/">
+                {% csrf_token %}
+                <button class="btn" type="submit" title="Send a test copy to your own address">
+                  <i data-lucide="flask-conical" class="h-4 w-4"></i> Test to me
+                </button>
+              </form>
+              {% if c.status == 'draft' or c.status == 'scheduled' %}
+              <form method="post" action="/dashboard/newsletter/campaigns/{{ c.id }}/send/"
+                    onsubmit="return confirm('Send “{{ c.name|escapejs }}” to all {{ audience }} confirmed subscribers?');">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">
+                  <i data-lucide="send" class="h-4 w-4"></i> Send
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td class="p-6 text-[color:var(--text-muted)]" colspan="5">
+          No campaigns yet — create one under <a class="underline" href="/dashboard/apps/marketing/campaigns/">Marketing → Campaigns</a>.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

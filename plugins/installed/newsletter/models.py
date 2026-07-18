@@ -108,3 +108,43 @@ class SignupPopup(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} ({"on" if self.enabled else "off"})'
+
+
+class CampaignSend(models.Model):
+    """Per-recipient send log — the idempotency ledger for bulk mail.
+
+    One row per enqueue. For campaign sends (``kind='campaign'``, FK to
+    ``marketing.EmailCampaign`` — cross-plugin FK sanctioned by
+    ``requires=['marketing']``) it makes a re-run of ``send_campaign`` skip
+    already-mailed recipients. For lifecycle sends with no campaign row
+    (``kind='winback'``) it is the dedupe window.
+    """
+
+    KIND_CHOICES = [
+        ('campaign', 'Campaign'),
+        ('winback', 'Win-back'),
+        ('test', 'Test send'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    campaign = models.ForeignKey(
+        'marketing.EmailCampaign',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='sends',
+    )
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES, default='campaign')
+    email = models.EmailField(db_index=True)
+    ok = models.BooleanField(default=True)
+    detail = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['campaign', 'email']),
+            models.Index(fields=['kind', 'email', '-created_at']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.kind} → {self.email} ({"ok" if self.ok else "failed"})'

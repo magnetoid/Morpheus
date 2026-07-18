@@ -168,6 +168,7 @@ def send_templated_email(
     to: str | None,
     subject: str,
     ctx: dict | None = None,
+    headers: dict | None = None,
 ) -> None:
     """Send a transactional email by its registry ``key``.
 
@@ -177,12 +178,16 @@ def send_templated_email(
     merchant's dashboard override (cms.EmailTemplate, via the
     ``EMAIL_TEMPLATE_OVERRIDE`` filter) wins — exactly like the core
     transactional emails. ``subject`` is the fallback used when no override
-    supplies one. Failures are logged, never raised.
+    supplies one. ``headers`` (optional) rides through to the SMTP message —
+    marketing sends pass the RFC 8058 one-click-unsubscribe pair. Failures
+    are logged, never raised.
     """
-    _send(template_base=f'emails/{key}', subject=subject, to=to, ctx=ctx or {})
+    _send(template_base=f'emails/{key}', subject=subject, to=to, ctx=ctx or {}, headers=headers)
 
 
-def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> None:
+def _send(
+    *, template_base: str, subject: str, to: str | None, ctx: dict, headers: dict | None = None
+) -> None:
     if not to:
         return
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or ''
@@ -235,6 +240,7 @@ def _send(*, template_base: str, subject: str, to: str | None, ctx: dict) -> Non
                 html_body=html_body,
                 from_email=from_email,
                 to=to,
+                headers=headers,
             )
         except Exception as e:  # noqa: BLE001 — broker down must never break the caller
             logger.warning(

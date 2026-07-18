@@ -1,0 +1,17 @@
+{% if first_name %}Hi {{ first_name }},{% else %}Hello,{% endif %}
+
+It's been a while since your last visit — the shelves have moved on, and
+there are new arrivals we think you'd genuinely like.
+
+Come browse what's new:
+  {{ store_url }}/products/
+{% if coupon_code %}
+As a welcome-back, this code takes a little off your next order:
+
+  {{ coupon_code }}
+{% endif %}
+Happy reading,
+— The {{ site_name|default:'dot books' }} team
+
+—
+Unsubscribe: {{ unsubscribe_url }}

@@ -121,3 +121,59 @@ def popup_edit_view(request, popup_id: str):
             'active_nav': 'marketing',
         },
     )
+
+
+@staff_member_required
+def campaigns_view(request):
+    """Send surface for marketing's EmailCampaigns (Phase 3).
+
+    Marketing owns the campaign *content*; this page targets a campaign at
+    the confirmed subscriber list — the audience newsletter owns.
+    """
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.models import NewsletterSubscriber
+
+    return render(
+        request,
+        'newsletter/dashboard/campaigns.html',
+        {
+            'campaigns': EmailCampaign.objects.all()[:100],
+            'audience': NewsletterSubscriber.objects.filter(status='confirmed').count(),
+            'active_nav': 'marketing',
+        },
+    )
+
+
+@staff_member_required
+def campaign_send_view(request, campaign_id: str):
+    """POST — queue a full send of one campaign to all confirmed subscribers."""
+    if request.method != 'POST':
+        return redirect('/dashboard/newsletter/campaigns/')
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.tasks import send_campaign
+
+    campaign = get_object_or_404(EmailCampaign, id=campaign_id)
+    if campaign.status not in ('draft', 'scheduled'):
+        messages.error(request, f'"{campaign.name}" is {campaign.status} — not sendable.')
+    else:
+        send_campaign.delay(str(campaign.id))
+        messages.success(request, f'"{campaign.name}" queued — sending to confirmed subscribers.')
+    return redirect('/dashboard/newsletter/campaigns/')
+
+
+@staff_member_required
+def campaign_test_view(request, campaign_id: str):
+    """POST — send one test copy to the given (or the staff member's) address."""
+    if request.method != 'POST':
+        return redirect('/dashboard/newsletter/campaigns/')
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.tasks import send_campaign_test
+
+    campaign = get_object_or_404(EmailCampaign, id=campaign_id)
+    to = (request.POST.get('to') or request.user.email or '').strip()
+    if to:
+        send_campaign_test.delay(str(campaign.id), to)
+        messages.success(request, f'Test copy of "{campaign.name}" sent to {to}.')
+    else:
+        messages.error(request, 'No email address for the test send.')
+    return redirect('/dashboard/newsletter/campaigns/')

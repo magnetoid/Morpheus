@@ -62,9 +62,9 @@ class OptInLifecycleTests(TestCase):
 
 
 class PluginContributionTests(TestCase):
-    def test_contributes_two_email_templates(self):
+    def test_contributes_email_templates(self):
         keys = {t.key for t in NewsletterPlugin().contribute_email_templates()}
-        self.assertEqual(keys, {'newsletter_confirm', 'newsletter_welcome'})
+        self.assertEqual(keys, {'newsletter_confirm', 'newsletter_welcome', 'newsletter_winback'})
 
 
 @override_settings(DEFAULT_FROM_EMAIL='store@example.test')
