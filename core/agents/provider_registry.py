@@ -48,6 +48,7 @@ _DEFAULT_BASE_URLS = {
     'packy': 'https://www.packyapi.com/v1',
     'hermes': 'https://openrouter.ai/api/v1',
     'deepseek': 'https://api.deepseek.com',
+    'moonshot': 'https://api.moonshot.ai/v1',
 }
 
 _DEFAULT_MODELS = {
@@ -61,6 +62,7 @@ _DEFAULT_MODELS = {
     'packy': 'claude-3-5-sonnet-20241022',
     'hermes': 'nousresearch/hermes-3-llama-3.1-405b',
     'deepseek': 'deepseek-chat',
+    'moonshot': 'kimi-latest',
 }
 
 _ENV_KEYS = {
@@ -74,6 +76,7 @@ _ENV_KEYS = {
     'packy': 'PACKY_API_KEY',
     'deepseek': 'DEEPSEEK_API_KEY',
     'hermes': 'HERMES_API_KEY',
+    'moonshot': 'MOONSHOT_API_KEY',
 }
 
 _ENV_BASE = {
@@ -85,6 +88,7 @@ _ENV_BASE = {
     'packy': 'PACKY_BASE_URL',
     'deepseek': 'DEEPSEEK_BASE_URL',
     'hermes': 'HERMES_BASE_URL',
+    'moonshot': 'MOONSHOT_BASE_URL',
 }
 
 

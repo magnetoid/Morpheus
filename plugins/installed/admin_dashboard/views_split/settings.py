@@ -340,6 +340,16 @@ _AI_PROVIDERS = [
         'models': ('claude-3-5-sonnet-20241022', 'gpt-4o'),
     },
     {
+        'slug': 'moonshot',
+        'label': 'Moonshot (Kimi)',
+        'icon': 'moon',
+        'fields': ('api_key', 'base_url', 'model'),
+        'help_url': 'https://platform.moonshot.ai',
+        'placeholder_model': 'kimi-latest',
+        'blurb': 'Kimi — long-context, strong agentic reasoning. OpenAI-compatible.',
+        'models': ('kimi-latest', 'kimi-k2-0711-preview', 'moonshot-v1-128k'),
+    },
+    {
         'slug': 'ollama',
         'label': 'Ollama',
         'icon': 'cpu',

@@ -190,6 +190,7 @@ class AIAssistantPlugin(Plugin):
                 'ollama_api_key',
                 'deepseek_api_key',
                 'hermes_api_key',
+                'moonshot_api_key',
             )
         )
         return value
@@ -466,6 +467,25 @@ class AIAssistantPlugin(Plugin):
                     'default': 'nousresearch/hermes-3-llama-3.1-405b',
                     'description': 'e.g. nousresearch/hermes-3-llama-3.1-405b · nousresearch/hermes-4-405b',
                 },
+                # ── Moonshot AI (Kimi — long-context, agentic) ────────
+                'moonshot_api_key': {
+                    'type': 'string',
+                    'format': 'password',
+                    'title': 'Moonshot (Kimi) · API Key',
+                    'description': 'Moonshot AI key. https://platform.moonshot.ai',
+                },
+                'moonshot_base_url': {
+                    'type': 'string',
+                    'title': 'Moonshot (Kimi) · Base URL',
+                    'default': 'https://api.moonshot.ai/v1',
+                    'description': 'Use https://api.moonshot.cn/v1 for the China endpoint.',
+                },
+                'moonshot_model': {
+                    'type': 'string',
+                    'title': 'Moonshot (Kimi) · Default model',
+                    'default': 'kimi-latest',
+                    'description': 'e.g. kimi-latest · kimi-k2-0711-preview · moonshot-v1-128k',
+                },
                 # ── Ollama (cloud or self-hosted) ─────────────────────
                 'ollama_base_url': {
                     'type': 'string',
@@ -497,6 +517,7 @@ class AIAssistantPlugin(Plugin):
                         'deepseek',
                         'packy',
                         'hermes',
+                        'moonshot',
                         'ollama',
                     ],
                     'default': 'openai',

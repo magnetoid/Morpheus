@@ -653,6 +653,28 @@ class DeepSeekProvider(OpenAIProvider):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Moonshot AI (Kimi) — OpenAI-compatible at https://api.moonshot.ai/v1.
+# Kimi K2 is a strong agentic/long-context model; `kimi-latest` is the rolling
+# alias so a stale model id can't 404 a deploy. Point base_url at the .cn host
+# via the AI Providers panel for the China endpoint.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class MoonshotProvider(OpenAIProvider):
+    name = 'moonshot'
+
+    def __init__(self, model: str | None = None) -> None:
+        from core.agents.provider_registry import get_provider_config
+
+        cfg = get_provider_config('moonshot')
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://api.moonshot.ai/v1',
+        )
+        self.model = model or cfg.model or 'kimi-latest'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Mock — deterministic, used in tests + when no provider configured
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -715,6 +737,7 @@ _PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
     'hermes': HermesProvider,
     'apikey': ApikeyProvider,
     'deepseek': DeepSeekProvider,
+    'moonshot': MoonshotProvider,
 }
 
 

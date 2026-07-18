@@ -158,6 +158,28 @@ class ProviderResolutionTests(SimpleTestCase):
             provider = get_llm_provider('deepseek', use_fallback=False)
         self.assertEqual(provider.name, 'deepseek')
 
+    def test_moonshot_is_a_registered_provider(self):
+        # Moonshot (Kimi) is offered in the AI-providers panel + the ai_provider
+        # enum; the class must exist and be selected (not the mock) when chosen —
+        # the three-place-wiring landmine (config without a class → silent mock).
+        from unittest.mock import patch
+
+        from core.agents.llm import _PROVIDER_CLASSES, MoonshotProvider
+        from core.agents.provider_registry import ProviderConfig
+
+        self.assertIs(_PROVIDER_CLASSES.get('moonshot'), MoonshotProvider)
+
+        cfg = ProviderConfig(
+            provider='moonshot',
+            api_key='sk-test',
+            base_url='https://api.moonshot.ai/v1',
+            model='kimi-latest',
+            embedding_model='',
+        )
+        with patch('core.agents.provider_registry.get_provider_config', return_value=cfg):
+            provider = get_llm_provider('moonshot', use_fallback=False)
+        self.assertEqual(provider.name, 'moonshot')
+
 
 class DegradedSentinelTests(SimpleTestCase):
     def test_is_degraded_response_truth_table(self):

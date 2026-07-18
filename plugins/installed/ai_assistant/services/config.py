@@ -42,6 +42,8 @@ _DEFAULT_BASE_URLS = {
     # Hermes (NousResearch) — defaults to the OpenRouter gateway that hosts the
     # Hermes family; override to Nous's own inference API in the panel.
     'hermes': 'https://openrouter.ai/api/v1',
+    # Moonshot AI (Kimi) — OpenAI-compatible; .cn host via the panel for China.
+    'moonshot': 'https://api.moonshot.ai/v1',
 }
 
 _DEFAULT_MODELS = {
@@ -55,6 +57,7 @@ _DEFAULT_MODELS = {
     'deepseek': 'deepseek-chat',
     'packy': 'claude-3-5-sonnet-20241022',
     'hermes': 'nousresearch/hermes-3-llama-3.1-405b',
+    'moonshot': 'kimi-latest',
 }
 
 
@@ -117,6 +120,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'apikey': 'APIKEY_FUN_API_KEY',
             'deepseek': 'DEEPSEEK_API_KEY',
             'packy': 'PACKY_API_KEY',
+            'moonshot': 'MOONSHOT_API_KEY',
         }
         api_key = getattr(settings, env_keys.get(name, ''), '') or ''
 
@@ -129,6 +133,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
             'apikey': 'APIKEY_FUN_BASE_URL',
             'deepseek': 'DEEPSEEK_BASE_URL',
             'packy': 'PACKY_BASE_URL',
+            'moonshot': 'MOONSHOT_BASE_URL',
         }
         base_url = getattr(settings, env_base.get(name, ''), '') or _DEFAULT_BASE_URLS.get(name, '')
 
