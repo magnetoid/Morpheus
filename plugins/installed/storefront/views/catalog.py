@@ -64,7 +64,14 @@ def product_list(request):
         Product,
     )
 
-    qs = Product.objects.filter(status='active').select_related('category')
+    # prefetch_related('images') feeds the cache-friendly primary_image property
+    # so each product card resolves its cover from memory, not a per-row query
+    # (the PLP N+1 the audit flagged).
+    qs = (
+        Product.objects.filter(status='active')
+        .select_related('category')
+        .prefetch_related('images')
+    )
 
     # Search — Postgres full-text on Postgres backends, LIKE fallback elsewhere.
     q = (request.GET.get('q') or '').strip()
@@ -1337,9 +1344,9 @@ def author_detail(request, slug):
             raise Http404
         author_name = match
         bibliography = list(
-            Product.objects.filter(
-                id__in=product_ids_for('author', match), status='active'
-            ).order_by('-is_featured', '-created_at')
+            Product.objects.filter(id__in=product_ids_for('author', match), status='active')
+            .order_by('-is_featured', '-created_at')
+            .prefetch_related('images')
         )
     except Http404:
         raise
@@ -1431,9 +1438,9 @@ def staff_picks(request):
     products = []
     if collection is not None:
         products = list(
-            Product.objects.filter(status='active', collections=collection).order_by(
-                '-is_featured', '-created_at'
-            )[:30]
+            Product.objects.filter(status='active', collections=collection)
+            .order_by('-is_featured', '-created_at')
+            .prefetch_related('images')[:30]
         )
     description = (
         collection.description
@@ -1492,7 +1499,7 @@ def quick_search(request):
         return JsonResponse({'results': []})
 
     try:
-        qs = Product.objects.filter(status='active')
+        qs = Product.objects.filter(status='active').prefetch_related('images')
         qs = _apply_search(qs, q)
         rows = list(qs[:6])
     except Exception:  # noqa: BLE001

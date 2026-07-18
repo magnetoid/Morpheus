@@ -440,7 +440,15 @@ class Product(models.Model):
 
     @property
     def primary_image(self):
-        return self.images.filter(is_primary=True).first() or self.images.first()
+        # Iterate the (possibly prefetched) related set in Python rather than
+        # issuing .filter(is_primary=True) — a filtered queryset bypasses
+        # prefetch_related('images') and re-queries per row (the PLP/rail N+1
+        # the audit flagged). With prefetch this is 0 queries; without it, one
+        # (≤ the old filter-then-fallback pair). Behaviour is identical: images
+        # order by ['sort_order', '-is_primary'], so the first is_primary in
+        # that order — else the first image — matches the old query.
+        images = list(self.images.all())
+        return next((im for im in images if im.is_primary), None) or (images[0] if images else None)
 
     @property
     def average_rating(self):

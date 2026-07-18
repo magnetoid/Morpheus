@@ -12,6 +12,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.21.1 — 2026-07-18
+
+**Faster product listings** (performance). Every product card reads its cover
+image via `product.primary_image`; that property used a filtered query that
+bypassed the page's prefetch, so a 60-item listing fired dozens of extra
+per-card image queries (flagged in the July audit). The property now resolves
+covers from the prefetched set in memory, and the listing/collection/author/
+search-suggestion queries prefetch images — so the product grid renders in a
+constant number of image queries instead of one (or more) per card. No visible
+change; pure speed. Guarded by an `assertNumQueries` regression test.
+
+---
+
 ## v0.21.0 — 2026-07-18
 
 **EU digital-goods withdrawal waiver at checkout.** Selling downloadable books
