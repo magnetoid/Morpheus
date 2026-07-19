@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.27.1 — 2026-07-19
+
+**Loyalty redemption cap correctness (odd rates)**
+
+- The loyalty points redemption cap now floors instead of rounding up, so a point worth more than a small order can never be over-redeemed against it. At a non-default redemption rate this previously let a shopper spend a whole point on a sub-point order and lose the unused value (the recorded discount could exceed the order total). Money-safety adversarially verified across many rates/totals; the default rate is byte-for-byte unchanged (#23).
+
 ## v0.27.0 — 2026-07-19
 
 **Correctness & deliverability — the deferred deep-debug batch**

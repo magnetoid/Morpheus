@@ -81,7 +81,34 @@ audit; S3/H3 overlap and are folded in here).
 
 | # | Sev | Bug | Why deferred |
 |---|---|---|---|
-| 23 | Low | **Loyalty rounding asymmetry — customer can lose stored points value.** `max_redeemable` caps points with `amount_to_points` (ROUND_**CEILING**, `services_redeem.py:99`) while `points_to_amount` credits with ROUND_**DOWN** (`:84`). At a `redemption_rate` that doesn't divide 100 (3, 7, 30…), the capped points can buy MORE credit than the order needs: e.g. rate 3, $0.10 order, 1 pt → `credit=$0.33`, `total` clamps to 0, but the ledger debits the full point and `meta.amount='0.33'` — $0.23 of value lost, and the `total = subtotal − discount` invariant breaks under the clamp. **NOT a #7 regression** (pre-existing; the gift-card reorder is money-consistent). **Safe at the default `rate=100`** (any 2-dp total ×100 is integer → `credit == total` exactly); only reachable on a merchant-set non-divisor rate. Fix (its own tested PR): clamp the redeemed `credit`/`points` to `min(credit, base_total)` and debit only the points actually consumed. |
+| 23 | Low | **Loyalty rounding asymmetry — customer can lose stored points value.** `max_redeemable` caps points with `amount_to_points` (ROUND_**CEILING**, `services_redeem.py:99`) while `points_to_amount` credits with ROUND_**DOWN** (`:84`). At a `redemption_rate` that doesn't divide 100 (3, 7, 30…), the capped points can buy MORE credit than the order needs: e.g. rate 3, $0.10 order, 1 pt → `credit=$0.33`, `total` clamps to 0, but the ledger debits the full point and `meta.amount='0.33'` — $0.23 of value lost, and the `total = subtotal − discount` invariant breaks under the clamp. **NOT a #7 regression** (pre-existing; the gift-card reorder is money-consistent). **Safe at the default `rate=100`** (any 2-dp total ×100 is integer → `credit == total` exactly); only reachable on a merchant-set non-divisor rate. |
+
+> **Update (v0.27.1):** #23 **FIXED + tested.** Root cause was the cap direction:
+> `max_redeemable` now FLOORS the points cap — `int((cap_amount * rate).to_integral_value(ROUND_DOWN))`
+> instead of `amount_to_points` (ceil) — so the capped spend's *value* can never
+> exceed the order (`points_to_amount(cap) ≤ cap_amount ≤ order_total`), which by
+> construction keeps the downstream loyalty credit ≤ order total (no discount >
+> total, no clamp, meta/discount/ledger agree). Single-point root-cause fix; the
+> default rate 100 is byte-for-byte unchanged (floor == ceil for 2dp×100).
+> `amount_to_points` (ceil) kept as documented public API ("points needed to
+> cover an amount") — now only directly tested. Tests:
+> `loyalty_points/tests/test_redeem_rounding.py` (incl. a property test: capped
+> value ≤ order across rates 3/7/30/100).
+> **Adversarial verification (4 skeptics + completeness critic, all Opus):**
+> money-safety UNANIMOUSLY SOUND — brute force over rates {1,2,3,7,30,99,100,150,
+> 200,1000} × totals × fractions found ZERO overcharge / value-loss / ledger-
+> disagreement cases; #23 harm genuinely closed; default rate 100 byte-for-byte
+> unchanged; the critic separately cleared the #7 tender interaction, the reversal
+> path, and the display widget. One agreed LOW-severity finding: the floor cap is
+> **conservative** at non-divisor rates (can under-cap by a point at a cent-
+> truncation boundary, e.g. rate 3/$0.33 → 0, denying a redemption that would
+> exactly cover the order). This is the SAFE direction (points retained, never a
+> mischarge) and is now an EXPLICIT, tested decision
+> (`test_nondivisor_rate_boundary_is_conservatively_undercapped`). Accepted
+> trade-off — not gold-plating exotic rates the store doesn't use. **Future
+> refinement (low priority):** a fully-tight cap = "largest P with
+> points_to_amount(P) ≤ cap_amount"; note it also *permits point waste* at rates
+> > 100, so it's not strictly better — decide per merchant need.
 
 ## Verify
 `DATABASE_URL='sqlite:///:memory:' python manage.py test` the touched plugins +

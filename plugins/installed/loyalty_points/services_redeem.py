@@ -119,7 +119,26 @@ def max_redeemable(customer, order_total=None) -> int:
     )
     if cap_amount <= 0:
         return 0
-    cap_points = amount_to_points(cap_amount)
+    # FLOOR the cap, NOT amount_to_points (which rounds UP). A cap is "the most
+    # points whose *value* doesn't exceed the order" — so a point worth more than
+    # a small order can't be over-redeemed against it. amount_to_points answers a
+    # different question ("points NEEDED to fully cover an amount", rounds up) and
+    # using it here let the shopper spend a whole point against a sub-point order
+    # and lose the unused value (deep-debug #23). Safe at the default rate 100:
+    # any 2-dp total × 100 is integral, so floor == ceil. Because the cap now
+    # floors, points_to_amount(cap) ≤ cap_amount ≤ order_total, which also keeps
+    # the loyalty credit ≤ order total downstream (no discount > total).
+    #
+    # Deliberately conservative at rates that DON'T divide 100: because
+    # points_to_amount also floors to cents, this can under-cap by one point at a
+    # cent-truncation boundary (rate 3, $0.33 → 0, refusing the 1 point that would
+    # exactly cover the order). That's the safe direction — the shopper keeps the
+    # points, never a mischarge — and no realistic rate (a divisor of 100) hits
+    # it. A fully-tight cap for non-divisor rates (largest P with
+    # points_to_amount(P) ≤ cap_amount) is a noted low-priority refinement.
+    cap_points = int(
+        (cap_amount * Decimal(redemption_rate())).to_integral_value(rounding=ROUND_DOWN)
+    )
     return max(0, min(balance, cap_points))
 
 
