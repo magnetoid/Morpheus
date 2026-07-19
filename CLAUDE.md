@@ -247,8 +247,11 @@ until hot-fixed. **Because a merge *is* a deploy, every merge to `main`
 MUST bump `MORPHEUS_VERSION` and add a matching dated
 `docs/RELEASE_NOTES.md` entry** (ADR 0032) — Settings → Version & updates
 reads both, so an unversioned deploy silently ships changes users can't
-see in the changelog. Batch local commits into one deploy carrying one
-bump (PATCH = fix/polish, MINOR = feature, MAJOR = breaking). The
+see in the changelog. **This applies to *theme* code too** — an edit under
+`themes/` is a versioned change exactly like `core/`, `plugins/installed/`,
+or `morph/`; theme/CSS/template polish is not exempt from the bump (ADR 0033).
+Batch local commits into one deploy carrying one
+bump (PATCH = fix/polish/theme tweak, MINOR = feature, MAJOR = breaking). The
 `deploy-smoke` workflow polls `/readyz` after every main push and fails
 red if prod never converges on the pushed `MORPHEUS_VERSION` — stuck-queue
 recovery (zombie `in_progress` builds wedge Coolify's whole app queue) is in
@@ -389,7 +392,7 @@ relevant Markdown *in the same commit* — not "later." Which doc:
 | a house rule, landmine, or convention | this file (`CLAUDE.md`) |
 | the public API / MCP / GraphQL surface | `docs/MORPHEUS_API.md`, `docs/MCP_SERVER.md` |
 | a skill's behaviour | `docs/SKILLS.md` + the skill's `SKILL.md` |
-| **`MORPHEUS_VERSION`** — bump on **every** deploy (merge = deploy) | **`docs/RELEASE_NOTES.md`** — add a dated `## vX.Y.Z — YYYY-MM-DD` entry (newest first); it's the source of truth for **Settings → Version & updates** (`release_notes` plugin). Torsor ADR 0019 + **0032** (every production deploy bumps). |
+| **`MORPHEUS_VERSION`** — bump on **every** deploy (merge = deploy) | **`docs/RELEASE_NOTES.md`** — add a dated `## vX.Y.Z — YYYY-MM-DD` entry (newest first); it's the source of truth for **Settings → Version & updates** (`release_notes` plugin). Torsor ADR 0019 + **0032** + **0033** (every production deploy bumps — app code *and* theme code). |
 
 Prefer pointing at the source of truth over hard-coding volatile facts:
 a plugin *count* in prose rots (it drifted to 47/49/54 across three docs
