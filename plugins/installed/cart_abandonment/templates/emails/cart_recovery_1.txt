@@ -9,3 +9,5 @@ Head back to your cart to pick up where you left off:
   {{ cart_url }}
 
 — The team
+{% if unsubscribe_url %}
+Unsubscribe from cart reminders: {{ unsubscribe_url }}{% endif %}

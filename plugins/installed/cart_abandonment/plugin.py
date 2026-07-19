@@ -38,11 +38,18 @@ class CartAbandonmentPlugin(Plugin):
         'Fires events.CART_ABANDONED for stale carts and owns the '
         'consent-checked, multi-step cart-recovery email drip.'
     )
-    has_models = False
+    has_models = True
     requires = ['orders', 'consent']
 
     def ready(self) -> None:
         self.register_celery_tasks('plugins.installed.cart_abandonment.tasks')
+        # One-click unsubscribe endpoint for the recovery drip (RFC 8058). Owned
+        # by this plugin so the route vanishes when cart-recovery is disabled.
+        self.register_urls(
+            'plugins.installed.cart_abandonment.urls',
+            prefix='',
+            namespace='cart_abandonment',
+        )
         self.register_celery_beat(
             'cart_abandonment.scan_abandoned',
             {

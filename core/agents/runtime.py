@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -73,6 +74,18 @@ def _to_json_for_llm(value: Any) -> str:
         return str(value)[:8000]
 
 
+def _deadline_exceeded(context: dict[str, Any]) -> bool:
+    """True once the run has passed its cooperative wall-clock ``deadline``.
+
+    ``context['deadline']`` is a ``time.monotonic()`` timestamp stamped by a
+    caller that runs the loop under a join-timeout (it can't kill the worker
+    thread, only orphan it). The loop polls this before each provider call and
+    each tool dispatch so a timed-out run stops issuing NEW LLM/tool calls
+    rather than running every remaining step as a zombie (deep-debug #6)."""
+    deadline = context.get('deadline')
+    return deadline is not None and time.monotonic() > deadline
+
+
 class AgentRuntime:
     """Runs one agent against one user message.
 
@@ -95,7 +108,7 @@ class AgentRuntime:
 
     # ── Public entry point ─────────────────────────────────────────────────────
 
-    def run(
+    def run(  # noqa: PLR0911 — flat guard-clause returns (budget/deadline/degraded/final)
         self,
         *,
         user_message: str,
@@ -156,6 +169,15 @@ class AgentRuntime:
             except BudgetExceeded:
                 return self._fail(trace, run_id, context, 'budget_exceeded')
 
+            # Cooperative wall-clock guard. A caller that runs this loop on a
+            # worker thread with a join-timeout (agent_core._run_with_timeout)
+            # can't KILL the thread when the timeout fires — it stamps a
+            # monotonic `deadline` in context instead, and we stop making NEW
+            # provider/tool calls past it so a timed-out run doesn't keep
+            # executing (and writing) as a zombie (deep-debug #6).
+            if _deadline_exceeded(context):
+                return self._fail(trace, run_id, context, 'deadline_exceeded')
+
             try:
                 response = self.provider.respond(
                     messages=messages,
@@ -214,6 +236,11 @@ class AgentRuntime:
             )
 
             for tc in response.tool_calls:
+                # Re-check between tool calls — a batch of writes must not keep
+                # firing past the deadline just because respond() returned before
+                # it (deep-debug #6).
+                if _deadline_exceeded(context):
+                    return self._fail(trace, run_id, context, 'deadline_exceeded')
                 tool_call_count += 1
                 self._dispatch_tool(
                     tc=tc,

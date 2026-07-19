@@ -23,6 +23,13 @@ class GiftCardsPlugin(Plugin):
             prefix='dashboard/gift-cards/',
             namespace='gift_cards',
         )
+        # Apply the card as a TENDER at checkout — priority 50, AFTER tax(20),
+        # shipping(30) and every discount handler (coupon/promo 10, loyalty 45,
+        # member 40) have run, so it caps against the true order total
+        # (subtotal + tax + shipping − discount) rather than the bare subtotal.
+        # (This used to live in promotions@10 and under-applied by tax+shipping
+        # — the customer overpaid and balance was stranded; deep-debug #7.)
+        self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=50)
         # Contribute the customer's gift-card count + total into the account
         # summary. ACCOUNT_SUMMARY_FIELDS is a filter that only fires while this
         # plugin is enabled, so disabling gift_cards removes the tile — instead
@@ -73,6 +80,68 @@ class GiftCardsPlugin(Plugin):
                 exc,
                 exc_info=True,
             )
+
+    def on_cart_breakdown(self, value, cart=None, **kwargs):
+        """Apply the cart's gift card as a tender against the FINAL total.
+
+        Runs at priority 50, so ``subtotal``/``tax``/``shipping``/``discount``
+        are all final: ``remaining = subtotal + tax + shipping − discount`` is
+        the true amount owed. The card pays down ``min(balance, remaining)``,
+        which is folded into ``discount`` (keeping the existing order model —
+        ``order.total`` becomes the residual charged to the payment method) and
+        recorded in ``meta['gift_card']`` for the order-creation debit. Currency
+        mismatch is skipped silently so a stray card can't 500 the cart. Fail-
+        soft — any error leaves the breakdown untouched.
+        """
+        if cart is None or not isinstance(value, dict):
+            return value
+        subtotal = value.get('subtotal')
+        if subtotal is None:
+            return value
+        try:
+            if not getattr(cart, 'gift_card_id', None):
+                return value
+
+            from decimal import Decimal
+
+            from djmoney.money import Money
+
+            gc = cart.gift_card
+            currency = str(value.get('currency') or getattr(subtotal, 'currency', 'USD'))
+            if not (
+                gc
+                and gc.state == 'active'
+                and str(gc.balance.currency) == currency
+                and gc.balance.amount > 0
+            ):
+                return value
+
+            subtotal_a = Decimal(str(getattr(subtotal, 'amount', 0) or 0))
+            shipping_a = Decimal(str(getattr(value.get('shipping'), 'amount', 0) or 0))
+            tax_a = Decimal(str(getattr(value.get('tax'), 'amount', 0) or 0))
+            discount_a = Decimal(str(getattr(value.get('discount'), 'amount', 0) or 0))
+            remaining = subtotal_a + shipping_a + tax_a - discount_a
+            if remaining <= 0:
+                return value
+
+            applied = min(Decimal(str(gc.balance.amount)), remaining).quantize(Decimal('0.01'))
+            meta = value.get('meta') or {}
+            meta['gift_card'] = {'code': gc.code, 'amount': str(applied)}
+            value['meta'] = meta
+
+            new_discount = (discount_a + applied).quantize(Decimal('0.01'))
+            value['discount'] = Money(new_discount, currency)
+            new_total = subtotal_a + shipping_a + tax_a - new_discount
+            if new_total < 0:
+                new_total = Decimal('0')
+            value['total'] = Money(new_total.quantize(Decimal('0.01')), currency)
+        except Exception as exc:  # noqa: BLE001 — pricing must never crash the cart
+            import logging
+
+            logging.getLogger('morpheus.gift_cards').warning(
+                'gift-card breakdown application failed: %s', exc, exc_info=True
+            )
+        return value
 
     def get_config_schema(self) -> dict:
         return {

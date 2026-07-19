@@ -44,6 +44,12 @@ def _run_with_timeout(*, runtime, user_message, history, context, run_id, timeou
         )
 
     box: dict[str, Any] = {}
+    # Stamp a cooperative deadline the runtime loop polls. join() below can't
+    # KILL the worker thread when it times out — the thread is orphaned and,
+    # without this, keeps driving the LLM and executing (writing) tools for
+    # every remaining step. The deadline makes it stop at its next checkpoint
+    # instead of running on as a zombie (deep-debug #6).
+    context = {**(context or {}), 'deadline': time.monotonic() + timeout}
 
     def _wrap():
         try:

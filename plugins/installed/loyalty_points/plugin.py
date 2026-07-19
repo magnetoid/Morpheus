@@ -52,8 +52,11 @@ class LoyaltyPointsPlugin(Plugin):
 
     def ready(self) -> None:
         # Answer the canonical cart-total filter so a chosen point spend
-        # becomes an order discount, alongside coupons + gift cards.
-        self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=15)
+        # becomes an order discount, alongside coupons + gift cards. Priority
+        # 45 runs AFTER tax(20)/shipping(30)/member(40) so max_redeemable() caps
+        # against the true order total, and BEFORE the gift-card tender(50) so
+        # the card covers whatever the points don't (deep-debug #7).
+        self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=45)
         # GDPR slice: contribute this plugin's data to the export/erasure.
         from plugins.installed.loyalty_points import gdpr  # noqa: PLC0415
 

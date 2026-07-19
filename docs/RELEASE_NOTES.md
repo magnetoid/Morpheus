@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.27.0 — 2026-07-19
+
+**Correctness & deliverability — the deferred deep-debug batch**
+
+- Gift cards and loyalty points now apply as tenders AFTER tax and shipping, so a card or points balance covers the whole order — previously they capped against the item subtotal only, leaving the shopper to pay tax and delivery out of pocket and stranding balance on the card (#7).
+- Cart-recovery emails now carry a one-click unsubscribe (RFC 8058 List-Unsubscribe header + a visible footer) and honour opt-outs, keeping them out of spam (#11).
+- Large email campaigns send in resumable batches that continue automatically, so a big list can no longer stall a campaign mid-send (#20).
+- A timed-out AI assistant run now stops cleanly at its next checkpoint instead of continuing to drive the model and execute tools in the background (#6).
+
 ## v0.26.2 — 2026-07-19
 
 **Refund idempotency — distinct equal-value refunds no longer collide**

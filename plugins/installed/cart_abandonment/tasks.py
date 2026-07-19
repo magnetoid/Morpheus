@@ -223,11 +223,23 @@ def _drip_cart(cart, now, cfg, send_templated_email) -> int:
     (``_RECOVERY_SUBJECTS``), and does the send+stamp under a row lock so two
     overlapping drip runs can't double-send a step.
     """
+    from plugins.installed.cart_abandonment.services import (
+        is_suppressed,
+        recovery_unsubscribe_url,
+        unsubscribe_headers,
+    )
     from plugins.installed.orders.models import Cart
 
     email = _cart_email(cart)
     if not email:
         return 0
+
+    # Honour a one-click unsubscribe: this is consent-gated marketing, so a
+    # shopper who opted out is never emailed again (RFC 8058 / CAN-SPAM).
+    if is_suppressed(email):
+        return 0
+    unsubscribe_url = recovery_unsubscribe_url(email)
+    headers = unsubscribe_headers(email)
 
     age_minutes = (now - _drip_anchor(cart, now)).total_seconds() / 60
 
@@ -268,7 +280,8 @@ def _drip_cart(cart, now, cfg, send_templated_email) -> int:
                 key=f'cart_recovery_{i + 1}',
                 to=email,
                 subject=subject,
-                ctx={'cart': locked, 'cart_url': cart_url},
+                ctx={'cart': locked, 'cart_url': cart_url, 'unsubscribe_url': unsubscribe_url},
+                headers=headers,
             )
             already.append(i)
             sent_now += 1

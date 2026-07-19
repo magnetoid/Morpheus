@@ -28,6 +28,11 @@ logger = logging.getLogger('morpheus.newsletter')
 # must not be nagged monthly-forever by the nightly segment rescore.
 WINBACK_COOLDOWN_DAYS = 30
 
+# Recipients handled per task run. A campaign to a large list is chunked into
+# batches that each re-enqueue a continuation, so no single run approaches the
+# Celery hard limit and wedges the campaign at 'sending' (deep-debug #20).
+CAMPAIGN_BATCH_SIZE = 500
+
 
 def _unsubscribe_headers(token: str) -> dict:
     """The RFC 8058 one-click pair for one recipient's unsubscribe token."""
@@ -63,17 +68,15 @@ def _with_footer(base_text: str, base_html: str | None, token: str) -> tuple[str
 
 @shared_task(bind=True, time_limit=600, soft_time_limit=540)
 def send_campaign(self, campaign_id: str) -> dict:
-    """Send a campaign to every confirmed subscriber. Idempotent.
+    """Start sending a campaign to every confirmed subscriber. Idempotent.
 
-    Only a ``draft``/``scheduled`` campaign starts sending (re-invoking a
-    sending/sent one is a no-op). Per recipient: skip anyone already in the
-    ``CampaignSend`` ledger for this campaign, enqueue one ``deliver_email``
-    (which owns SMTP retries), log the ledger row. Fail-soft per row — one
-    bad address never stops the list.
+    Only a ``draft``/``scheduled`` campaign starts (re-invoking a sending/sent
+    one is a no-op). This task CLAIMS the campaign, then hands off to the chunked
+    batch loop (``_run_campaign_batch``) which re-enqueues itself until the whole
+    audience is sent — so a large list never approaches the Celery hard limit.
     """
-    from core.emails.tasks import deliver_email
     from plugins.installed.marketing.models import EmailCampaign
-    from plugins.installed.newsletter.models import CampaignSend, NewsletterSubscriber
+    from plugins.installed.newsletter.models import CampaignSend
 
     try:
         campaign = EmailCampaign.objects.get(pk=campaign_id)
@@ -97,20 +100,55 @@ def send_campaign(self, campaign_id: str) -> dict:
     if not claimed:
         return {'ok': False, 'error': 'already-claimed'}
 
-    # Only SUCCESSFUL campaign sends suppress a (re)send. Filtering `ok=True`
-    # lets a failed recipient be retried on a re-run instead of being stranded
-    # forever; filtering `kind='campaign'` stops a `test`/`winback` row for the
-    # same address from suppressing the real campaign.
+    # A fresh send retries recipients that FAILED on a previous pass: clear their
+    # ``ok=False`` rows so they're attempted again. (A mid-pass failure still
+    # writes an ``ok=False`` row that blocks a re-attempt WITHIN this pass, which
+    # is what guarantees each batch strictly moves forward and can't loop.)
+    CampaignSend.objects.filter(campaign=campaign, kind='campaign', ok=False).delete()
+
+    return _run_campaign_batch(campaign_id)
+
+
+@shared_task(bind=True, time_limit=600, soft_time_limit=540)
+def send_campaign_continue(self, campaign_id: str) -> dict:
+    """Resume a mid-send campaign's next batch (re-enqueued by the batch loop)."""
+    return _run_campaign_batch(campaign_id)
+
+
+def _run_campaign_batch(campaign_id: str) -> dict:
+    """Send up to ``CAMPAIGN_BATCH_SIZE`` not-yet-sent recipients of a 'sending'
+    campaign, then re-enqueue a continuation (more remain) or finalize to 'sent'
+    (audience exhausted). Idempotent via the ``CampaignSend`` ledger, so a
+    crashed or re-run batch never double-sends. Fail-soft per row.
+    """
+    from core.emails.tasks import deliver_email
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.models import CampaignSend, NewsletterSubscriber
+
+    campaign = EmailCampaign.objects.filter(pk=campaign_id, status='sending').first()
+    if campaign is None:
+        return {'ok': False, 'error': 'not-sending', 'sent': 0, 'failed': 0, 'skipped': 0}
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or ''
+    if not from_email:
+        return {'ok': False, 'error': 'no-from-email', 'sent': 0, 'failed': 0, 'skipped': 0}
+
+    # Any ``kind='campaign'`` row for this recipient means "don't touch again":
+    # ``ok=True`` = delivered, ``ok=False`` = attempted this pass. Filtering to
+    # ``kind='campaign'`` keeps a ``test``/``winback`` row from suppressing the
+    # real send. (Prior-pass failures were cleared at claim time, so they retry.)
     already = set(
-        CampaignSend.objects.filter(campaign=campaign, kind='campaign', ok=True).values_list(
+        CampaignSend.objects.filter(campaign=campaign, kind='campaign').values_list(
             'email', flat=True
         )
     )
     base_text, base_html = _base_bodies(campaign)  # constant — computed once, not per row
-    sent = failed = 0
+    sent = failed = processed = 0
     for sub in NewsletterSubscriber.objects.filter(status='confirmed').iterator():
         if sub.email in already:
             continue
+        if processed >= CAMPAIGN_BATCH_SIZE:
+            break
+        processed += 1
         try:
             text, html = _with_footer(base_text, base_html, sub.confirm_token)
             deliver_email.delay(
@@ -130,6 +168,40 @@ def send_campaign(self, campaign_id: str) -> dict:
             )
             logger.warning('newsletter: campaign %s → %s failed: %s', campaign.pk, sub.email, e)
 
+    if processed >= CAMPAIGN_BATCH_SIZE:
+        # The batch filled — more recipients likely remain.
+        if sent:
+            send_campaign_continue.delay(campaign_id)
+            logger.info(
+                'newsletter: campaign %s batch sent=%s failed=%s → continuing',
+                campaign.pk,
+                sent,
+                failed,
+            )
+            return {
+                'ok': True,
+                'sent': sent,
+                'failed': failed,
+                'skipped': len(already),
+                'partial': True,
+            }
+        # A full batch that delivered NOTHING means the broker/DB is unhealthy.
+        # Don't spin re-enqueuing against it — leave the campaign 'sending' for an
+        # operator (or a re-trigger) to resume once the cause is fixed.
+        logger.error(
+            'newsletter: campaign %s batch made no progress (%s failed) — pausing',
+            campaign.pk,
+            failed,
+        )
+        return {
+            'ok': False,
+            'error': 'stalled',
+            'sent': 0,
+            'failed': failed,
+            'skipped': len(already),
+        }
+
+    # Fewer than a full batch processed → the audience is exhausted. Finalize.
     EmailCampaign.objects.filter(pk=campaign.pk).update(
         status='sent',
         sent_at=timezone.now(),
@@ -138,7 +210,7 @@ def send_campaign(self, campaign_id: str) -> dict:
         ).count(),
     )
     logger.info(
-        'newsletter: campaign %s sent=%s failed=%s skipped=%s',
+        'newsletter: campaign %s finalized sent=%s failed=%s skipped=%s',
         campaign.pk,
         sent,
         failed,

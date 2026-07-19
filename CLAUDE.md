@@ -154,6 +154,27 @@ even though the provider is offered in Settings (this shipped for apikey.fun:
 config + enum existed, the class did not). Add the resolution test alongside
 (`core/agents/tests/test_llm.py::ProviderResolutionTests`).
 
+**Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
+must run after tax+shipping.** The filter runs handlers lowest-priority-first
+(`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a
+handler that reads `value['tax']`/`value['shipping']` at a priority **below** tax
+(20) / shipping (30) reads **zero**. The live order is: coupon/promo (10) → tax
+(20) → shipping (30) → member discount (40) → **loyalty points (45)** → **gift
+card (50)** → eco_impact (60). A **discount** (reduces what's owed, may precede
+tax) differs from a **tender** (pays down the *final* total): gift cards and
+points are tenders and MUST cap against `subtotal+tax+shipping−discount`, so they
+sit at 45/50 — the last handlers. Shipping/tax/member each *recompute*
+`value['total']` from the running fields, so whoever writes `total` **last** wins;
+a tender at priority 50 must recompute `total` itself (nothing after it does).
+(Deep-debug #7: the gift-card tender shipped inside `promotions.on_cart_breakdown`
+at priority 10 and capped against the bare subtotal — the customer overpaid the
+tax+shipping and the card balance was stranded. Fixed by moving it to its owner
+`gift_cards.on_cart_breakdown`@50 + loyalty 15→45.) NB tax computes from the
+cart's line items, not from `value['discount']`, so a tender folded into
+`discount` does **not** move the tax base — but don't assume that for a new
+discount type; check `tax/services.py:compute_tax_for_cart`. Guarded by
+`gift_cards/tests/test_breakdown_tender.py`.
+
 **Convention — `format: password` settings fields are write-only.** In the
 shared dashboard settings-panel renderer
 (`admin_dashboard/views_split/settings.py` + `urls.py`), a JSON-schema

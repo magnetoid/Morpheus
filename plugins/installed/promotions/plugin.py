@@ -137,39 +137,11 @@ class PromotionsPlugin(Plugin):
 
         discount_total += coupon_discount
 
-        # Gift card stacks AFTER coupon — first coupon discounts the
-        # subtotal, then the gift card pays down whatever remains
-        # (capped at the card's available balance and the order total).
-        # Currency mismatch is silently skipped so a 500 doesn't surface
-        # at checkout; merchants see the unapplied state on the cart.
-        gift_card_applied = Decimal('0')
-        try:
-            if getattr(cart, 'gift_card_id', None):
-                gc = cart.gift_card
-                if (
-                    gc
-                    and gc.state == 'active'
-                    and str(gc.balance.currency) == currency
-                    and gc.balance.amount > 0
-                ):
-                    total_amount = Decimal(str(subtotal.amount))
-                    shipping_amount = Decimal(str(getattr(value.get('shipping'), 'amount', 0) or 0))
-                    tax_amount = Decimal(str(getattr(value.get('tax'), 'amount', 0) or 0))
-                    remaining = total_amount + shipping_amount + tax_amount - discount_total
-                    if remaining > 0:
-                        gift_card_applied = min(
-                            Decimal(str(gc.balance.amount)),
-                            remaining,
-                        ).quantize(Decimal('0.01'))
-                        meta['gift_card'] = {
-                            'code': gc.code,
-                            'amount': str(gift_card_applied),
-                        }
-        except Exception as e:  # noqa: BLE001
-            logger.warning('promotions: gift card evaluation failed: %s', e, exc_info=True)
-
-        discount_total += gift_card_applied
-
+        # NB: gift-card tender is NOT applied here. It's a tender, not a
+        # discount, and must cap against the FINAL total — so it rides its own
+        # gift_cards.on_cart_breakdown handler at priority 50, after tax(20) and
+        # shipping(30). (It used to live here at priority 10 and under-applied
+        # by tax+shipping; deep-debug #7.)
         value['discount'] = Money(discount_total.quantize(Decimal('0.01')), currency)
         value['meta'] = meta
 

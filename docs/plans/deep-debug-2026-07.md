@@ -33,12 +33,39 @@ audit; S3/H3 overlap and are folded in here).
 > failure backoff) **FIXED + tested**.
 > **Update (v0.26.2):** #8 (refund idempotency) **FIXED + tested** — migration-free
 > `notes`-in-dedup-key refinement (the returns flow already stamps a unique RMA
-> per refund). Still open: #6, #7, #11, #20. **#7 (gift-card/loyalty breakdown
-> priority) remains HELD** — it is a genuine money-math refactor: the gift-card
-> tender is entangled with coupon-discount logic in `promotions.on_cart_breakdown`
-> and modeled as a *discount* (reducing the taxable base) rather than a *tender*;
-> moving it after tax/shipping has tax-base + order-debit + loyalty coupling and
-> needs a dedicated, money-tested session (not to be rushed on a hit usage limit).
+> per refund).
+> **Update (v0.27.0 — the deferred batch, all four closed):**
+> - **#7 (gift-card/loyalty tender ordering) FIXED + tested.** Investigation
+>   dissolved the "money-math refactor" fear: tax computes from the cart's line
+>   items, NOT from `value['discount']` (`tax/plugin.py` → `compute_tax_for_cart`),
+>   so the tender never touched the tax base — the only real defect was the CAP
+>   ordering. The gift-card tender MOVED out of `promotions.on_cart_breakdown`@10
+>   into its correct owner `gift_cards.on_cart_breakdown`@50 (after tax@20 /
+>   shipping@30 / member@40), and loyalty moved 15→45. Tender order is now
+>   deterministic: coupon(10)→tax(20)→shipping(30)→member(40)→points(45)→card(50),
+>   so both cap against `subtotal+tax+shipping−discount`. Migration-free (hook
+>   priority + code relocation only); the order-creation debit reads the same
+>   `meta['gift_card']`/`meta['loyalty_points']`. Tests:
+>   `gift_cards/tests/test_breakdown_tender.py` (direct-handler + full-chain
+>   integration with tax/shipping injected).
+> - **#11 (cart-recovery List-Unsubscribe) FIXED + tested.** New email-keyed
+>   `RecoverySuppression` model + signed one-click token
+>   (`cart_abandonment/services.py`) + `/cart-recovery/unsubscribe/<token>/`
+>   view (RFC 8058, csrf-exempt one-click POST). The drip now carries the
+>   `List-Unsubscribe` header pair + a visible footer and skips a suppressed
+>   address. Tests: `cart_abandonment/tests/test_unsubscribe.py`.
+> - **#20 (send_campaign chunking) FIXED + tested.** `send_campaign` claims, then
+>   `_run_campaign_batch` sends `CAMPAIGN_BATCH_SIZE=500` per run and re-enqueues
+>   `send_campaign_continue` until the audience is exhausted — a large list can't
+>   wedge at 'sending'. Forward progress guaranteed (mid-pass `ok=False` rows
+>   block re-attempts within a pass; cleared at claim so failures still retry on a
+>   manual re-send). Tests: `newsletter/tests/test_campaign_chunking.py`.
+> - **#6 (post-timeout zombie runtime) FIXED + tested.** `AgentRuntime.run` polls
+>   a monotonic `context['deadline']` before each `respond()` and each tool
+>   dispatch (`core/agents/runtime.py`); `agent_core._run_with_timeout` stamps it
+>   = `monotonic()+timeout`. A join-timed-out (orphaned) thread now stops issuing
+>   NEW LLM/tool calls at its next checkpoint instead of running every remaining
+>   step. Tests: `core/agents/tests/test_deadline.py`.
 
 | # | Sev | Bug | Why deferred |
 |---|---|---|---|
@@ -49,6 +76,12 @@ audit; S3/H3 overlap and are folded in here).
 | 13 | Med | `register_urls` routes never unmounted on `deactivate()` → a disabled plugin's endpoints keep serving (fails disable litmus) | Needs owner-tagged `_plugin_urls` + urlconf rebuild on deactivate; load-bearing URL layer, wants the disable-test guard. Boundary-debt category. |
 | 18 | Low | Auto-heal failures re-proposed every analyzer run, no backoff → unbounded SiRecommendation/SiActionLog growth | Add consecutive-failure cooldown suppression; moderate. |
 | 20 | Low | `send_campaign` no chunking/throttle → large list hits 600s hard limit, wedged at `sending` | Chunk + re-enqueue continuation; larger rework. |
+
+## Discovered during v0.27.0 (#7) adversarial verification
+
+| # | Sev | Bug | Why deferred |
+|---|---|---|---|
+| 23 | Low | **Loyalty rounding asymmetry — customer can lose stored points value.** `max_redeemable` caps points with `amount_to_points` (ROUND_**CEILING**, `services_redeem.py:99`) while `points_to_amount` credits with ROUND_**DOWN** (`:84`). At a `redemption_rate` that doesn't divide 100 (3, 7, 30…), the capped points can buy MORE credit than the order needs: e.g. rate 3, $0.10 order, 1 pt → `credit=$0.33`, `total` clamps to 0, but the ledger debits the full point and `meta.amount='0.33'` — $0.23 of value lost, and the `total = subtotal − discount` invariant breaks under the clamp. **NOT a #7 regression** (pre-existing; the gift-card reorder is money-consistent). **Safe at the default `rate=100`** (any 2-dp total ×100 is integer → `credit == total` exactly); only reachable on a merchant-set non-divisor rate. Fix (its own tested PR): clamp the redeemed `credit`/`points` to `min(credit, base_total)` and debit only the points actually consumed. |
 
 ## Verify
 `DATABASE_URL='sqlite:///:memory:' python manage.py test` the touched plugins +

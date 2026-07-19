@@ -17,3 +17,4 @@
 
   <p style="margin-top:14px;"><a class="btn" href="{{ cart_url }}">Return to cart</a></p>
 {% endblock %}
+{% block footer %}You're getting this because you left items in your cart.{% if unsubscribe_url %} <a href="{{ unsubscribe_url }}">Unsubscribe</a> from cart reminders.{% endif %}{% endblock %}
