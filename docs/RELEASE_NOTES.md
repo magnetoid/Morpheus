@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.25.0 — 2026-07-19
+
+**Default images, self-healing repair & one-command releases**
+
+- **Default images (Settings → General).** Set a fallback product cover *and* a default social/share image; the product fallback now shows everywhere it was missing — home, product pages, cart, and recently-viewed — not just product grids.
+- **The self-improvement engine is healthy again.** Its error + zero-result-search collectors now actually feed the backlog, a fixed auto-apply no longer re-runs forever, and rejecting or snoozing a suggestion finally sticks (with nightly duplicates deduped).
+- **Versioning is one command.** `manage.py release` bumps the version and writes this changelog atomically; a CI guard blocks a deploy that forgot to bump, and every version is now mirrored to a GitHub tag + Release.
+
 ## v0.24.0 — 2026-07-19
 
 **Agent security hardening — AI actions now need a real human sign-off.**

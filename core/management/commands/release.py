@@ -99,7 +99,8 @@ def render_entry(version: str, date: str, summary: str, bullets: list[str]) -> s
     if bullets:
         lines.append('')
         lines.extend(f'- {b}' for b in bullets)
-    lines.append('')
+    # Exactly one trailing newline — insert_entry adds the blank-line separator,
+    # so appending a blank here would double it between release cards.
     return '\n'.join(lines) + '\n'
 
 
