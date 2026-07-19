@@ -127,6 +127,15 @@ class AgentCorePlugin(Plugin):
                 'schedule': crontab(minute='*'),
             },
         )
+        # Stuck-run reaper — fails AgentRuns left 'running'/'queued' by a worker
+        # that died (deploy / OOM / hard time-limit) with no in-process cleanup.
+        schedule.setdefault(
+            'agent_core.sweep_stuck_runs',
+            {
+                'task': 'plugins.installed.agent_core.tasks.sweep_stuck_runs',
+                'schedule': crontab(minute='*/5'),
+            },
+        )
         # Daily merchant digest — 07:00 UTC, single MerchantInsight row.
         schedule.setdefault(
             'agent_core.generate_daily_digest',

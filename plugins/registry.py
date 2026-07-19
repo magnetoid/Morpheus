@@ -26,6 +26,10 @@ class PluginRegistry:
     - Aggregate plugin URL patterns.
     """
 
+    # Set once, by the first registry to wire the global hook active-check.
+    # Guards against a throwaway instance rebinding the shared bus (hunt #12).
+    _active_check_wired: bool = False
+
     def __init__(self) -> None:
         self._plugins: dict[str, MorpheusPlugin] = {}
         self._classes: dict[str, type[MorpheusPlugin]] = {}
@@ -45,13 +49,22 @@ class PluginRegistry:
         self._dashboard_pages: list = []  # [DashboardPage]
         self._settings_panels: dict = {}  # name -> SettingsPanel
         self._email_templates: list = []  # [EmailTemplateDef]
+        self._plugin_skills: dict[str, list[str]] = {}  # plugin -> [skill.name]
         self._ready = False
         # Let the hook bus skip handlers owned by a disabled plugin, so a
         # plugin's contributed cards/KPIs/feed items vanish on disable even
         # though deactivate() doesn't unwind ready()-wired hooks (ADR 0023).
+        #
+        # Only the FIRST (canonical, module-level) registry wires the global
+        # bus's active-check. A throwaway second instance — the 5 that
+        # `plugins/tests.py` builds — would otherwise rebind the shared bus to
+        # its own EMPTY `_active` set, silently gating every plugin handler off
+        # process-wide (a latent test-isolation footgun; hunt #12).
         from core.hooks import hook_registry
 
-        hook_registry.set_active_check(self.is_active)
+        if not PluginRegistry._active_check_wired:
+            hook_registry.set_active_check(self.is_active)
+            PluginRegistry._active_check_wired = True
 
     # ── Discovery ──────────────────────────────────────────────────────────────
 
@@ -305,6 +318,9 @@ class PluginRegistry:
                 agent_registry.register_tool(tool, plugin=plugin.name)
             for skill in plugin.contribute_skills() or []:
                 skill_registry.register(skill)
+                # Track ownership so disable can unregister it — SkillRegistry
+                # keeps no owner of its own (hunt #14).
+                self._plugin_skills.setdefault(plugin.name, []).append(skill.name)
             for agent in plugin.contribute_agents() or []:
                 agent_registry.register_agent(agent, plugin=plugin.name)
         except Exception as e:  # noqa: BLE001
@@ -322,8 +338,14 @@ class PluginRegistry:
         self._settings_panels.pop(plugin_name, None)
         try:
             from core.agents.registry import agent_registry
+            from core.agents.skills import skill_registry
 
             agent_registry.drop_plugin(plugin_name)
+            # Unregister the plugin's contributed skills too — otherwise a
+            # disabled plugin's skill (and the tools it re-injects) stay
+            # resolvable, leaking a capability the merchant turned off (hunt #14).
+            for skill_name in self._plugin_skills.pop(plugin_name, []):
+                skill_registry.unregister(skill_name)
         except Exception as e:  # noqa: BLE001
             logger.warning('plugins: %s agent drop failed: %s', plugin_name, e, exc_info=True)
 

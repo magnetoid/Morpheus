@@ -58,6 +58,12 @@ def confirm(token: str):
     sub = NewsletterSubscriber.objects.filter(confirm_token=token).first()
     if sub is None:
         return None
+    if sub.status == 'unsubscribed':
+        # Terminal. confirm_token never rotates, so an opted-out person's
+        # ORIGINAL confirmation link stays valid forever — clicking it must NOT
+        # silently re-add them to the mailable audience. Re-opting-in has to go
+        # through subscribe() (which resets to 'pending' + re-sends consent).
+        return None
     if sub.status != 'confirmed':
         sub.status = 'confirmed'
         sub.confirmed_at = timezone.now()

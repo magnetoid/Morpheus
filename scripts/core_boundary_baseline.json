@@ -23,10 +23,6 @@
     },
     {
       "file": "core/assistant/tools/ecommerce_writes.py",
-      "imports": "plugins.installed.agent_core.models"
-    },
-    {
-      "file": "core/assistant/tools/ecommerce_writes.py",
       "imports": "plugins.installed.catalog.models"
     },
     {

@@ -163,7 +163,21 @@ def search_files_tool(*, query: str, path: str = '.', limit: int = 30) -> ToolRe
         )
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         raise ToolError(f'search failed: {e}') from e
-    files = [os.path.relpath(line, _PROJECT_ROOT) for line in result.stdout.splitlines()[:limit]]
+    # Drop protected files from the results. grep reads .env / secrets / auth
+    # source to test the query, but returning the matching FILENAME turns search
+    # into a boolean oracle over exactly the content `fs.read_file` refuses —
+    # `SECRET_KEY=sk-ab` hits iff present, enabling byte-by-byte extraction
+    # (hunt #15). Filter through the same single-source boundary read_file uses.
+    from core.safety import is_path_protected  # noqa: PLC0415
+
+    files = []
+    for line in result.stdout.splitlines():
+        rel = os.path.relpath(line, _PROJECT_ROOT)
+        if is_path_protected(rel):
+            continue
+        files.append(rel)
+        if len(files) >= limit:
+            break
     return ToolResult(
         output={'query': query, 'matches': files, 'count': len(files)},
         display=f'{len(files)} file(s) match {query!r}',

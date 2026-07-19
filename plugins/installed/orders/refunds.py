@@ -323,14 +323,39 @@ class ReturnService:
     def _compute_refund(rr: ReturnRequest) -> Money:
         from plugins.installed.orders.models import OrderItem
 
-        items_by_id = {str(it.id): it for it in OrderItem.objects.filter(order=rr.order)}
-        currency = 'USD'
-        total = Decimal('0')
+        order = rr.order
+        items_by_id = {str(it.id): it for it in OrderItem.objects.filter(order=order)}
+        currency = str(order.total.currency)
+        gross = Decimal('0')
         for entry in rr.items or []:
             oi = items_by_id.get(str(entry.get('order_item_id', '')))
             if not oi:
                 continue
             qty = min(int(entry.get('quantity', 0) or 0), oi.quantity)
             currency = str(oi.unit_price.currency)
-            total += Decimal(oi.unit_price.amount) * qty
-        return Money(total.quantize(Decimal('0.01')), currency)
+            gross += Decimal(oi.unit_price.amount) * qty
+
+        # OrderItem stores only the pre-discount list price, but coupon /
+        # gift-card / loyalty discounts live on Order.discount_total. Summing
+        # line prices over-refunds every discounted order — store credit is
+        # over-issued and a full money refund is blocked by the over-refund
+        # ceiling in process(). Prorate the order-level discount onto the
+        # returned lines by their share of the subtotal.
+        subtotal = Decimal(order.subtotal.amount)
+        discount = Decimal(order.discount_total.amount)
+        if subtotal > 0 and discount > 0:
+            gross -= discount * (gross / subtotal)
+
+        # Safety ceiling: never exceed what's still refundable on the order
+        # (order.total − already-processed refunds), regardless of proration
+        # rounding. This also bounds the store-credit branch, which applies no
+        # ceiling of its own.
+        already = sum(
+            (r.amount.amount for r in order.refunds.filter(is_processed=True)),
+            Decimal('0'),
+        )
+        remaining = Decimal(order.total.amount) - already
+        refundable = min(gross, remaining)
+        if refundable < 0:
+            refundable = Decimal('0')
+        return Money(refundable.quantize(Decimal('0.01')), currency)

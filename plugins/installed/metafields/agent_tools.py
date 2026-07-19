@@ -91,6 +91,7 @@ def metafields_list_for_tool(*, model: str, object_id: str) -> ToolResult:
         'required': ['model', 'object_id', 'key', 'value'],
     },
     requires_approval=True,
+    supports_staging=True,
 )
 def metafields_set_tool(
     *,

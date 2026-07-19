@@ -13,6 +13,37 @@ def background_agents_tick(self) -> int:
     return tick()
 
 
+@shared_task(bind=True, time_limit=120, soft_time_limit=90)
+def sweep_stuck_runs(self, older_than_minutes: int = 15) -> dict:
+    """Fail AgentRuns wedged in a non-terminal state after their worker died.
+
+    Every transition off 'running'/'queued' happens in-process (the timeout
+    guard, the crash guard, the normal-completion save). None of those run if
+    the OS process is killed — a Coolify redeploy (`--force-recreate`), an OOM
+    kill, or the celery hard time-limit leaves the row `running`/`queued`,
+    `ended_at=NULL` forever, shown as perpetually-running in the dashboard and
+    skewing run counts. This reaper closes them. `awaiting_approval` is
+    EXCLUDED — that's a legitimate long-lived pause on a human decision, not a
+    stuck run.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from plugins.installed.agent_core.models import AgentRun
+
+    cutoff = timezone.now() - timedelta(minutes=max(1, int(older_than_minutes)))
+    swept = AgentRun.objects.filter(
+        state__in=('queued', 'running'),
+        started_at__lt=cutoff,
+    ).update(
+        state='failed',
+        error='orphaned: worker died before the run reached a terminal state',
+        ended_at=timezone.now(),
+    )
+    return {'ok': True, 'swept': swept}
+
+
 @shared_task(bind=True, time_limit=300, soft_time_limit=240)
 def generate_daily_digest(self) -> dict:
     """Nightly merchant digest — posted as a MerchantInsight 'report'.

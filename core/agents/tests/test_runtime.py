@@ -235,11 +235,19 @@ class AgentRuntimeTests(TestCase):
 
     def test_approval_gate_exempt_in_staged_mode(self):
         # Staged routines route writes through an OpsProposal (human review) —
-        # the proposal IS the sign-off, so the token gate must not double-gate it.
-        # A requires_approval tool runs in staged context even with no
-        # approval_check (the S1 fail-closed gate applies to DIRECT writes only).
+        # the proposal IS the sign-off, so the token gate must not double-gate a
+        # tool that actually stages. The exemption is scoped to
+        # `tool.supports_staging`; a non-staging tool stays gated even under
+        # staged context (see test_staged_gate.py). The S1 fail-closed gate
+        # applies to DIRECT writes and to every non-staging tool.
         called = []
-        tool = _tool(requires_approval=True, handler=lambda **kw: called.append(1) or {'ok': 1})
+        tool = Tool(
+            name='do_thing',
+            description='d',
+            handler=lambda **kw: called.append(1) or {'ok': 1},
+            requires_approval=True,
+            supports_staging=True,
+        )
         provider = MockLLMProvider(
             [
                 LLMResponse(tool_calls=[LLMToolCall(id='c1', name='do_thing', arguments={})]),

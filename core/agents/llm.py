@@ -22,6 +22,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable
@@ -36,10 +37,19 @@ logger = logging.getLogger('morpheus.agents.llm')
 
 # How long a single LLM provider call may take before we abort.
 # Must be LESS than `--timeout` in scripts/docker-entrypoint.sh
-# (currently 30s) so the gateway times out cleanly and the worker is
-# released — gunicorn killing the worker mid-flight is much worse than
-# the LLM call failing with a recoverable error.
+# (currently 60s, GUNICORN_TIMEOUT) so the gateway times out cleanly and the
+# worker is released — gunicorn killing the worker mid-flight is much worse
+# than the LLM call failing with a recoverable error.
 LLM_HTTP_TIMEOUT_SECS = 20
+
+# Total wall-clock budget for a full fallback cascade. `LLM_HTTP_TIMEOUT_SECS`
+# caps ONE provider call; without a cascade budget, a connect-but-hang across
+# N providers each burning their full 20s timeout could stack to 60-80s and
+# blow past the 60s gunicorn worker / Plesk mod_proxy budget, getting the
+# worker SIGKILLed mid-turn while the client 504s (audit H3 + hunt). Kept
+# under 60s with headroom: the router always tries the primary, then skips
+# any secondary it cannot finish within budget.
+LLM_FALLBACK_BUDGET_SECS = 50
 
 # Degraded-response sentinels. The breaker and the fallback router return
 # these as response TEXT (not exceptions) so a mid-run agent loop can keep
@@ -769,8 +779,23 @@ class FallbackProviderRouter(LLMProvider):
         # actionable one. (Previously the LAST secondary's error won, so a
         # fallback's missing-API-key noise masked the real cause.)
         primary_error = ''
+        deadline = time.monotonic() + LLM_FALLBACK_BUDGET_SECS
 
         for provider in providers_to_try:
+            # Never skip the primary. For secondaries, don't START a call we
+            # can't finish within the cascade budget — stacking a second full
+            # HTTP timeout is exactly the worker-timeout blowout we're avoiding.
+            if provider is not self.primary and (
+                time.monotonic() + LLM_HTTP_TIMEOUT_SECS > deadline
+            ):
+                logger.info(
+                    'FallbackRouter: budget (%ss) exhausted, not trying %s.',
+                    LLM_FALLBACK_BUDGET_SECS,
+                    provider.name,
+                )
+                if not primary_error:
+                    primary_error = f'{provider.name}: skipped (cascade budget exhausted)'
+                break
             try:
                 resp = provider.respond(
                     messages=messages,

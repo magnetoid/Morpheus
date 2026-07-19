@@ -185,7 +185,13 @@ def _compile_path_pattern(pat: str) -> re.Pattern[str]:
         body = re.escape(rest).replace(r'\*', r'[^/]*')
         regex = f'^{prefix}{body}(?:/.+)?$'
 
-    return re.compile(regex)
+    # Case-insensitive: `Path.resolve()` preserves the caller's case, so on a
+    # case-insensitive filesystem (macOS/Windows dev, some CI) a request for
+    # `.ENV`/`CORE/auth/...` resolves to and opens the real protected file while
+    # a case-sensitive pattern would let it through (hunt #22). Matching
+    # case-insensitively only ever *widens* protection (fail-closed) and is a
+    # no-op on case-sensitive Linux prod, where the mixed-case path won't exist.
+    return re.compile(regex, re.IGNORECASE)
 
 
 _COMPILED_PROTECTED = tuple(_compile_path_pattern(p) for p in PROTECTED_PATHS)

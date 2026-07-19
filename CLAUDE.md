@@ -129,6 +129,19 @@ sign-in path MUST itself run the gate (`staff_mfa.services.second_factor_respons
 interposes in its `SocialAccountAdapter.pre_social_login`. Don't add a login route
 without it.
 
+**Landmine — the staged-writes approval exemption is gated on `Tool.supports_staging`,
+not on `context['staged']` alone.** `AgentRuntime._dispatch_tool` skips the approval
+gate in staged mode **only** for tools that declare `supports_staging=True`
+(`core/agents/tools.py`). That flag is a contract: it means "when
+`context['staged']` is set I record an `OpsProposal` instead of executing"
+(the `_is_staged`/`_stage` path in `core/assistant/tools/ecommerce_writes.py` +
+`metafields.set`). **Set it *only* on a tool that actually stages** — putting it on
+a tool that executes directly lets that tool run under a staged routine with **zero
+approval** (the S1 hole; a blanket `context['staged']` exemption once reopened it for
+`catalog.delete_product`/`orders.mark_refunded`). Conversely, a `requires_approval`
+tool that *does* stage but forgets the flag just double-gates (fails safe, but breaks
+the staged-routine UX). Guarded by `core/agents/tests/test_staged_gate.py`.
+
 **Landmine — a new LLM provider must be wired in *three* places or it silently
 "isn't selected".** Adding a provider touches: (1) `core/agents/llm.py` — a
 `Provider` class **and** a `_PROVIDER_CLASSES` entry; (2)

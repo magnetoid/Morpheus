@@ -106,10 +106,17 @@ class ErrorLogCollector(Collector):
         return 60
 
     def _last_successful_run(self):
-        """Return the started_at of the most recent successful ingest
-        job, or None on first run."""
+        """Return the started_at of the most recent *completed* successful
+        ingest job, or None on first run.
+
+        `finished_at__isnull=False` is load-bearing: `execute()` opens THIS
+        run's job with status='ok' + finished_at=NULL *before* the generator
+        body runs, so without the finished_at guard this query returns the
+        current run's own row → since collapses to now−10min every run and the
+        collector silently drops every error older than ~10 minutes.
+        """
         prev = (
-            SiIngestJob.objects.filter(collector=self.name, status='ok')
+            SiIngestJob.objects.filter(collector=self.name, status='ok', finished_at__isnull=False)
             .order_by('-started_at')
             .first()
         )

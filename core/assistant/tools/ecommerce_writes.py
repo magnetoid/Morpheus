@@ -101,22 +101,33 @@ def _require_hard_gate(*, hard_gate_ack: str, target_name: str, echo: str) -> No
       * ``hard_gate_ack="YES"`` — the magic acknowledgement string.
       * ``echo`` — the user's typed-back identifier (must match
         ``target_name`` case-insensitively).
-    A row is written to ``AgentApprovalRequest`` for the audit trail.
+    An ``agents.decision`` audit row is recorded (core.audit) for the trail.
     """
     if (hard_gate_ack or '').strip().upper() != 'YES':
         raise ToolError(_NEEDS_HARD_GATE)
     if (echo or '').strip().lower() != (target_name or '').strip().lower():
         raise ToolError(f'echo mismatch — user typed {echo!r} but the target is {target_name!r}.')
+    # Record the hard-gate confirmation to the real audit sink. The previous
+    # code called AgentApprovalRequest.objects.create(agent_name=…, payload=…)
+    # with fields that don't exist on the model and a missing required `run` FK,
+    # so it raised on EVERY destructive op and was swallowed — the audit row for
+    # the platform's MOST destructive actions was never written (hunt #21).
     try:
-        from plugins.installed.agent_core.models import AgentApprovalRequest
+        from core.audit.services import record_ai_decision
 
-        AgentApprovalRequest.objects.create(
-            agent_name='assistant',
-            state='approved',
-            payload={'tool_target': target_name, 'echo': echo},
+        record_ai_decision(
+            agent='assistant',
+            tool='hard_gate.confirm',
+            target=target_name,
+            args={'echo': echo, 'ack': 'YES'},
+            output={'confirmed': True},
         )
-    except Exception:  # noqa: BLE001, S110
-        pass
+    except Exception as exc:  # noqa: BLE001 — audit must never block the gate, but don't hide it
+        import logging
+
+        logging.getLogger('morpheus.assistant.ecommerce_writes').warning(
+            'hard-gate audit record failed for %s: %s', target_name, exc, exc_info=True
+        )
 
 
 # ── Orders ──────────────────────────────────────────────────────────────
@@ -154,6 +165,7 @@ _ORDER_TRANSITIONS = {
         'required': ['order_number', 'status'],
     },
     requires_approval=True,
+    supports_staging=True,
 )
 def orders_update_status_tool(
     *, order_number: str, status: str, confirmed: bool = False, context: dict | None = None
@@ -226,6 +238,7 @@ def orders_update_status_tool(
         'required': ['order_number'],
     },
     requires_approval=True,
+    supports_staging=True,
 )
 def orders_cancel_tool(
     *, order_number: str, reason: str = '', confirmed: bool = False, context: dict | None = None
@@ -296,6 +309,7 @@ def orders_cancel_tool(
         'required': ['order_number', 'note'],
     },
     requires_approval=True,
+    supports_staging=True,
 )
 def orders_add_note_tool(
     *, order_number: str, note: str, confirmed: bool = False, context: dict | None = None
@@ -367,6 +381,7 @@ def orders_add_note_tool(
         'required': ['status'],
     },
     requires_approval=True,
+    supports_staging=True,
 )
 def products_update_status_tool(
     *,
@@ -442,6 +457,7 @@ def products_update_status_tool(
         'required': ['price'],
     },
     requires_approval=True,
+    supports_staging=True,
 )
 def products_update_price_tool(
     *,
@@ -558,6 +574,7 @@ def products_update_price_tool(
         'required': ['note'],
     },
     requires_approval=True,
+    supports_staging=True,
 )
 def customers_add_note_tool(
     *,

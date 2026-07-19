@@ -66,6 +66,59 @@ def redeem(*, code: str, amount: Money, reference: str = '', actor=None) -> Gift
     return card
 
 
+def reverse_redemption_for_order(order) -> list:
+    """Re-credit any gift-card balance spent on ``order`` — idempotent.
+
+    Fired from the gift_cards ``ORDER_CANCELLED`` subscriber so a shopper isn't
+    out the card balance for an order that never shipped. A no-op when nothing
+    was redeemed or the reversal already happened. Mirrors
+    ``loyalty_points.reverse_redemption_for_order``.
+
+    Scope: full reversal keyed on ``reference == order.order_number`` — correct
+    for a cancel (the whole order is voided). A *partial* RMA refund would need
+    to prorate the card credit; that path is deferred with the refund-discount
+    correctness work (docs/plans/deep-debug-2026-07.md #4), so this only
+    subscribes to ORDER_CANCELLED, exactly like loyalty.
+    """
+    from core.money import add, money
+    from plugins.installed.gift_cards.models import GiftCard, GiftCardLedger
+
+    reference = str(getattr(order, 'order_number', '') or getattr(order, 'pk', ''))
+    if not reference:
+        return []
+    reversed_cards = []
+    with transaction.atomic():
+        redeems = list(GiftCardLedger.objects.filter(kind='redeem', reference=reference))
+        for row in redeems:
+            # Lock the card, THEN check idempotency, so two concurrent reversals
+            # of the same order can't both write a refund row.
+            card = GiftCard.objects.select_for_update().get(pk=row.card_id)
+            if GiftCardLedger.objects.filter(
+                kind='refund', reference=reference, card=card
+            ).exists():
+                continue
+            # redeem wrote amount_change negative; credit back its magnitude.
+            credit = money(-row.amount_change.amount, str(row.amount_change.currency))
+            new_balance = add(card.balance, credit)
+            card.balance = new_balance
+            card.save(update_fields=['balance', 'updated_at'])
+            GiftCardLedger.objects.create(
+                card=card,
+                kind='refund',
+                amount_change=credit,
+                balance_after=new_balance,
+                reference=reference[:100],
+            )
+            reversed_cards.append(card)
+    if reversed_cards:
+        logger.info(
+            'gift_cards: reversed %s redemption(s) for order %s',
+            len(reversed_cards),
+            reference,
+        )
+    return reversed_cards
+
+
 def lookup(code: str) -> GiftCard | None:  # noqa: F821
     from plugins.installed.gift_cards.models import GiftCard
 

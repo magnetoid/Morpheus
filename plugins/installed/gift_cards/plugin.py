@@ -31,6 +31,10 @@ class GiftCardsPlugin(Plugin):
         # Sellable gift cards: when a paid order contains an item whose SKU is
         # in the configured set, issue one card per unit + email the code.
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=60)
+        # Re-credit a spent gift card when its order is cancelled — otherwise a
+        # cancel refunds only the cash charge and the card balance is lost
+        # forever (mirrors loyalty's redemption reversal).
+        self.register_hook(events.ORDER_CANCELLED, self.on_order_cancelled, priority=60)
 
     def on_order_paid(self, order=None, **kwargs):
         """Issue purchased gift cards on payment (idempotent; fail-soft —
@@ -46,6 +50,25 @@ class GiftCardsPlugin(Plugin):
 
             logging.getLogger('morpheus.gift_cards').warning(
                 'gift-card issuance for order %s failed: %s',
+                getattr(order, 'order_number', '?'),
+                exc,
+                exc_info=True,
+            )
+
+    def on_order_cancelled(self, order=None, **kwargs):
+        """Re-credit any gift card spent on a cancelled order (idempotent,
+        fail-soft — a reversal problem must never block the cancel)."""
+        if order is None:
+            return
+        try:
+            from plugins.installed.gift_cards.services import reverse_redemption_for_order
+
+            reverse_redemption_for_order(order)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.gift_cards').warning(
+                'gift-card reversal for order %s failed: %s',
                 getattr(order, 'order_number', '?'),
                 exc,
                 exc_info=True,

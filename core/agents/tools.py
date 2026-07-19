@@ -76,6 +76,12 @@ class Tool:
     schema: dict[str, Any] = field(default_factory=dict)
     scopes: list[str] = field(default_factory=list)
     requires_approval: bool = False
+    # True only for tools that implement staged mode (record an OpsProposal
+    # instead of executing when context['staged'] is set). The runtime uses
+    # this to scope the staged approval-gate exemption: a tool WITHOUT a
+    # staging path must NOT be exempted, or it would execute directly with
+    # zero approval under staged context (hunt #5 / audit S1 regression).
+    supports_staging: bool = False
     plugin: str = ''
 
     @property
@@ -141,6 +147,7 @@ def tool(
     schema: dict[str, Any] | None = None,
     scopes: list[str] | None = None,
     requires_approval: bool = False,
+    supports_staging: bool = False,
 ) -> Callable[[Callable[..., Any]], Tool]:
     """Decorator that turns a plain function into a `Tool`."""
 
@@ -152,6 +159,7 @@ def tool(
             schema=schema or {'type': 'object', 'properties': {}},
             scopes=list(scopes or []),
             requires_approval=requires_approval,
+            supports_staging=supports_staging,
         )
 
     return _wrap

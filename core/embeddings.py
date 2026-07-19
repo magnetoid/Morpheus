@@ -58,7 +58,11 @@ def embed(text: str) -> list[float]:
                     api_key = ai_plugin.get_config_value('openai_api_key') or api_key
             except Exception:  # noqa: BLE001, S110
                 pass
-            client = OpenAI(api_key=api_key)
+            # Bound the request-path cost: this runs inline on chat/RAG/recall
+            # turns, and the SDK default (600s timeout + 2 retries) can stall a
+            # turn far past the 30s worker budget when the endpoint hangs
+            # (audit H3). A missed embedding degrades to the hash fallback below.
+            client = OpenAI(api_key=api_key, timeout=10.0, max_retries=0)
             # Pin the output dimension so the OpenAI path honours the module's
             # fixed-dimension contract (text-embedding-3-* default to 1536).
             # Without this, hash-fallback rows (384) and OpenAI rows (1536)

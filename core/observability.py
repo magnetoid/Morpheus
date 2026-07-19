@@ -10,6 +10,7 @@ leak customer data downstream (Datadog/Honeycomb/etc).
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 import os
@@ -37,6 +38,34 @@ def scrub_pii(text: str) -> str:
     text = _PHONE_RE.sub(_hash_token, text)
     text = _IPV4_RE.sub(_hash_token, text)
     return text
+
+
+def scrub_span_attributes(span) -> int:
+    """Redact PII in a span's string attributes IN PLACE. Returns the count
+    of attributes rewritten (for tests/observability of the scrubber itself).
+
+    ``span.set_attribute()`` is a **no-op** here: by the time a processor's
+    ``on_end`` runs the span has already ended, and the SDK silently drops
+    attribute writes on a non-recording span (this was a real, silent bug —
+    PII exported unscrubbed). We instead mutate the ReadableSpan's backing
+    ``_attributes`` map directly. The ``BatchSpanProcessor`` is registered
+    *after* the scrubber, so it serializes these redacted values for export.
+    """
+    attrs = getattr(span, '_attributes', None)
+    if not attrs:
+        return 0
+    rewritten = 0
+    for key, value in list(attrs.items()):
+        if not isinstance(value, str):
+            continue
+        cleaned = scrub_pii(value)
+        if cleaned != value:
+            try:
+                attrs[key] = cleaned
+                rewritten += 1
+            except Exception:  # noqa: BLE001, S110 — bounded-attrs edge; best-effort
+                pass
+    return rewritten
 
 
 def init_observability() -> None:
@@ -67,15 +96,10 @@ def init_observability() -> None:
             return None
 
         def on_end(self, span) -> None:
-            try:
-                attrs = dict(span.attributes or {})
-                for key, value in list(attrs.items()):
-                    if isinstance(value, str):
-                        cleaned = scrub_pii(value)
-                        if cleaned != value:
-                            span.set_attribute(key, cleaned)
-            except Exception:  # noqa: BLE001, S110
-                pass
+            # `scrub_span_attributes` is already fully defensive; the suppress
+            # is belt-and-braces — a trace processor must never break the app.
+            with contextlib.suppress(Exception):
+                scrub_span_attributes(span)
 
         def shutdown(self) -> None:
             return None

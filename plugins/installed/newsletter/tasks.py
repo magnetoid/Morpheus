@@ -97,7 +97,15 @@ def send_campaign(self, campaign_id: str) -> dict:
     if not claimed:
         return {'ok': False, 'error': 'already-claimed'}
 
-    already = set(CampaignSend.objects.filter(campaign=campaign).values_list('email', flat=True))
+    # Only SUCCESSFUL campaign sends suppress a (re)send. Filtering `ok=True`
+    # lets a failed recipient be retried on a re-run instead of being stranded
+    # forever; filtering `kind='campaign'` stops a `test`/`winback` row for the
+    # same address from suppressing the real campaign.
+    already = set(
+        CampaignSend.objects.filter(campaign=campaign, kind='campaign', ok=True).values_list(
+            'email', flat=True
+        )
+    )
     base_text, base_html = _base_bodies(campaign)  # constant — computed once, not per row
     sent = failed = 0
     for sub in NewsletterSubscriber.objects.filter(status='confirmed').iterator():
@@ -125,7 +133,9 @@ def send_campaign(self, campaign_id: str) -> dict:
     EmailCampaign.objects.filter(pk=campaign.pk).update(
         status='sent',
         sent_at=timezone.now(),
-        recipient_count=CampaignSend.objects.filter(campaign=campaign, ok=True).count(),
+        recipient_count=CampaignSend.objects.filter(
+            campaign=campaign, kind='campaign', ok=True
+        ).count(),
     )
     logger.info(
         'newsletter: campaign %s sent=%s failed=%s skipped=%s',

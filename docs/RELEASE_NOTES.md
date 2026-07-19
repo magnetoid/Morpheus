@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.26.0 — 2026-07-19
+
+**Reliability & hardening — 14 source-verified bug fixes from an adversarial self-audit**
+
+- Security: staged-execution approval exemption now scoped to tools that actually stage (supports_staging) — a destructive tool can no longer bypass approval under a staged routine; fs.search_files no longer leaks protected paths (secret-content oracle); protected-path check is case-insensitive; fs read_file/search honor the safety boundary; hard-gated actions now write a real audit row.
+- Money: return refunds prorate order-level discounts and clamp to the order total (no more over-issued store credit / blocked refunds on discounted orders); gift-card balance is re-credited when an order is cancelled (idempotent), mirroring loyalty.
+- Self-improvement: error_log collector watermark no longer collapses to the last ~10 min (was dropping ~83% of errors); a stuck-AgentRun reaper closes runs orphaned by a deploy/OOM.
+- Email: campaign dedupe/counts filter kind='campaign', ok=True so failed recipients are retryable and a test-send can't suppress a real subscriber; newsletter confirm() no longer resurrects an unsubscribed (terminal) subscriber via a stale link.
+- Agents: LLM fallback cascade bounded by a 50s wall-clock budget (was stacking to 60-80s past the 60s worker/proxy limit); embeddings client timeout 10s + no retries on the request path; llm.py worker-timeout comment corrected to 60s.
+- Plugins: a second PluginRegistry no longer rebinds the global hook active-check (test-isolation footgun); contributed skills are unregistered on plugin disable (were leaking past a disable). Core→plugin boundary debt shrank 9→8.
+
 ## v0.25.0 — 2026-07-19
 
 **Default images, self-healing repair & one-command releases**

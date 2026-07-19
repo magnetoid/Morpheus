@@ -280,13 +280,19 @@ class AgentRuntime:
         #     pauses the run for out-of-band human approval.
         #
         # Staged-writes mode (`context['staged']`, set server-side by routines)
-        # is exempt: in staged mode a write tool records an OpsProposal for human
+        # is exempt ONLY for tools that actually implement staging
+        # (`tool.supports_staging`): such a tool records an OpsProposal for human
         # review instead of executing — that proposal IS the human sign-off, so
-        # the token gate would double-gate the same invariant and break the
-        # sanctioned staged-routine design. The gate still applies to every
-        # DIRECT (non-staged) execution, which is where the S1 hole actually was.
+        # the token gate would double-gate the same invariant. A tool WITHOUT a
+        # staging path (e.g. the Worker's `catalog.delete_product`,
+        # `orders.mark_refunded`) must STILL pass the gate under staged context,
+        # or the blanket exemption reopens the S1 hole for the staged path
+        # (hunt #5): staged=True → skip approval → the tool has no staged branch
+        # → it hard-executes with zero approval. The gate applies to every DIRECT
+        # (non-staged) execution and to every non-staging tool regardless of mode.
         _staged = isinstance(context, dict) and context.get('staged')
-        if (tool.requires_approval or self.agent.requires_approval) and not _staged:
+        _staged_exempt = _staged and getattr(tool, 'supports_staging', False)
+        if (tool.requires_approval or self.agent.requires_approval) and not _staged_exempt:
             if self._approval_check is not None:
                 try:
                     approved = bool(self._approval_check(tool, args))
