@@ -154,9 +154,17 @@ class RefundService:
         # Dedup regardless of `is_processed` — if a previous attempt
         # crashed mid-flight it'll be a row with `is_processed=False`,
         # and we want to RESUME it, not create a sibling.
+        #
+        # `notes` is part of the key so two genuinely-DISTINCT refunds of the
+        # same value don't collide and silently move no money (deep-debug #8):
+        # the returns flow stamps a unique `notes=f'RMA {rma_number}'` per RMA
+        # (rma_number is unique), so two equal-priced returns resolve to two
+        # refunds. A true retry passes identical (order, amount, reason, notes)
+        # and still resumes the same row. Callers wanting guaranteed idempotency
+        # for equal-value goodwill refunds should pass a distinguishing `notes`.
         refund = (
             Refund.objects.select_for_update()
-            .filter(order=order, amount=amount, reason=reason)
+            .filter(order=order, amount=amount, reason=reason, notes=notes)
             .first()
         )
         if refund is None:

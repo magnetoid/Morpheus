@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.26.2 — 2026-07-19
+
+**Refund idempotency — distinct equal-value refunds no longer collide**
+
+- RefundService.process now includes notes in its dedup key, so two genuinely-distinct equal-value refunds (e.g. two RMAs for equal-priced items, each stamped a unique 'RMA <n>') resolve to two refunds instead of the second silently reusing the first and moving no money. A true retry (identical args) still resumes the same row (deep-debug #8).
+
 ## v0.26.1 — 2026-07-19
 
 **Deferred deep-debug fixes — plugin disable-safety + auto-heal backoff**

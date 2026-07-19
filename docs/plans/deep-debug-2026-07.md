@@ -30,9 +30,15 @@ audit; S3/H3 overlap and are folded in here).
 ## Deferred (own focused PR — reason)
 
 > **Update (v0.26.1):** #13 (register_urls disable-safety) and #18 (auto-heal
-> failure backoff) are now **FIXED + tested**. Still open: #6, #7, #8, #11, #20.
-> The two money-math items (#7 breakdown priority, #8 refund idempotency) are
-> deliberately held for a dedicated money-tested session.
+> failure backoff) **FIXED + tested**.
+> **Update (v0.26.2):** #8 (refund idempotency) **FIXED + tested** — migration-free
+> `notes`-in-dedup-key refinement (the returns flow already stamps a unique RMA
+> per refund). Still open: #6, #7, #11, #20. **#7 (gift-card/loyalty breakdown
+> priority) remains HELD** — it is a genuine money-math refactor: the gift-card
+> tender is entangled with coupon-discount logic in `promotions.on_cart_breakdown`
+> and modeled as a *discount* (reducing the taxable base) rather than a *tender*;
+> moving it after tax/shipping has tax-base + order-debit + loyalty coupling and
+> needs a dedicated, money-tested session (not to be rushed on a hit usage limit).
 
 | # | Sev | Bug | Why deferred |
 |---|---|---|---|
