@@ -127,6 +127,19 @@ class EmitSignalTests(TestCase):
         result = emit_signal(source='error_log', fingerprint='different', severity=50)
         self.assertIsNotNone(result)
 
+    def test_classwide_suppression_silences_every_fingerprint(self) -> None:
+        """A blank match_fingerprint suppresses the whole source/class — the
+        model documents it, and emit_signal now honours it."""
+        SiSuppression.objects.create(
+            match_class='error_log',
+            match_fingerprint='',
+            reason='mute the whole class',
+        )
+        self.assertIsNone(emit_signal(source='error_log', fingerprint='anything', severity=50))
+        self.assertIsNone(emit_signal(source='error_log', fingerprint='else', severity=50))
+        # A different source is untouched.
+        self.assertIsNotNone(emit_signal(source='zero_search', fingerprint='anything', severity=50))
+
     def test_severity_clamped(self) -> None:
         row_lo = emit_signal(source='error_log', fingerprint='lo', severity=-5)
         row_hi = emit_signal(source='error_log', fingerprint='hi', severity=999)
@@ -140,6 +153,53 @@ class EmitSignalTests(TestCase):
     def test_missing_fingerprint_raises(self) -> None:
         with self.assertRaises(ValueError):
             emit_signal(source='error_log', fingerprint='')
+
+
+class AnalyzerDedupTests(TestCase):
+    """Regression (July 2026 audit): the analyzer created a fresh
+    SiRecommendation for the same (class, cluster) every nightly run, so a
+    suppressed-but-still-emitting signal resurrected as a new backlog row daily.
+    A stable rec-level fingerprint now guards creation."""
+
+    def _cluster(self, fingerprint='fp-abc'):
+        from core.self_improvement.recommend import Cluster  # noqa: PLC0415
+
+        return Cluster(
+            class_name='test_dedup_class',  # unknown class → enabled, proposes @0.5
+            fingerprint=fingerprint,
+            severity=70,
+            seen_count=5,
+            age_hours=1.0,
+            signal_ids=[1],
+            payload_samples=[{}],
+        )
+
+    def test_same_cluster_is_not_reproposed(self) -> None:
+        from unittest.mock import patch  # noqa: PLC0415
+
+        from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
+        from core.self_improvement.recommend import _process_cluster  # noqa: PLC0415
+
+        cluster = self._cluster()
+        # No LLM in tests → heuristic plan (confidence 0.5) + fail-open verify.
+        with patch('core.assistant.providers.get_default_provider', return_value=None):
+            first = _process_cluster(cluster)
+            self.assertIsNotNone(first)
+            self.assertEqual(first.fingerprint, fingerprint_for('test_dedup_class', 'fp-abc'))
+            # Second pass over the identical cluster is deduped.
+            self.assertIsNone(_process_cluster(cluster))
+        self.assertEqual(SiRecommendation.objects.filter(class_name='test_dedup_class').count(), 1)
+
+    def test_distinct_fingerprint_still_creates(self) -> None:
+        from unittest.mock import patch  # noqa: PLC0415
+
+        from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
+        from core.self_improvement.recommend import _process_cluster  # noqa: PLC0415
+
+        with patch('core.assistant.providers.get_default_provider', return_value=None):
+            self.assertIsNotNone(_process_cluster(self._cluster('fp-one')))
+            self.assertIsNotNone(_process_cluster(self._cluster('fp-two')))
+        self.assertEqual(SiRecommendation.objects.filter(class_name='test_dedup_class').count(), 2)
 
 
 class FingerprintForTests(TestCase):

@@ -41,7 +41,7 @@ def overview(request: HttpRequest) -> HttpResponse:
     counts = {
         'open': SiRecommendation.objects.filter(status='proposed').count(),
         'auto_applied_7d': SiRecommendation.objects.filter(
-            status='auto_applied', created_at__gte=since_7d
+            status='applied', created_at__gte=since_7d
         ).count(),
         'rejected_7d': SiRecommendation.objects.filter(
             status__in=('rejected', 'suppressed'), created_at__gte=since_7d
@@ -103,23 +103,44 @@ def approve(request: HttpRequest, recommendation_id: int) -> HttpResponse:
     return redirect('/dashboard/system/self-improvement/')
 
 
+def _suppress_recommendation(rec, *, reason: str, created_by, expires_at=None):
+    """Write si_suppression rows that actually match what the collectors emit.
+
+    The signal layer (services.emit_signal) filters suppressions by the
+    collector's own ``(source, fingerprint)``. A recommendation stores the
+    *evidence signal ids*, so we resolve those rows and suppress each distinct
+    ``(source, fingerprint)`` pair — NOT ``(rec.class_name, signal_pk)``, which
+    never matched (class ≠ source, PK ≠ hash). Returns the last created/updated
+    suppression, or None if the recommendation carried no evidence signals.
+    """
+    from core.self_improvement.models import SiSignal, SiSuppression  # noqa: PLC0415
+
+    sigs = SiSignal.objects.filter(pk__in=list(rec.evidence_signal_ids or [])).values_list(
+        'source', 'fingerprint'
+    )
+    suppression = None
+    for source, fingerprint in set(sigs):
+        suppression, _ = SiSuppression.objects.update_or_create(
+            match_class=source,
+            match_fingerprint=fingerprint,
+            defaults={'reason': reason, 'expires_at': expires_at, 'created_by': created_by},
+        )
+    return suppression
+
+
 @staff_member_required
 @require_POST
 def reject(request: HttpRequest, recommendation_id: int) -> HttpResponse:
-    """Reject + write an si_suppression row so the same fingerprint
-    doesn't come back."""
-    from core.self_improvement.models import SiRecommendation, SiSuppression  # noqa: PLC0415
+    """Reject + write si_suppression rows so the same signal doesn't come back."""
+    from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
 
     reason = (request.POST.get('reason') or '').strip()[:1000]
     rec = SiRecommendation.objects.filter(pk=recommendation_id, status='proposed').first()
     if rec is None:
         return redirect('/dashboard/system/self-improvement/')
 
-    suppression = SiSuppression.objects.create(
-        match_class=rec.class_name,
-        match_fingerprint=(rec.evidence_signal_ids and str(rec.evidence_signal_ids[0])) or '',
-        reason=reason or 'rejected from dashboard',
-        created_by=request.user,
+    suppression = _suppress_recommendation(
+        rec, reason=reason or 'rejected from dashboard', created_by=request.user
     )
     rec.status = 'rejected'
     rec.suppressed_by = suppression
@@ -132,20 +153,20 @@ def reject(request: HttpRequest, recommendation_id: int) -> HttpResponse:
 @require_POST
 def snooze(request: HttpRequest, recommendation_id: int) -> HttpResponse:
     """Suppress for 30 days, then revisit."""
-    from core.self_improvement.models import SiRecommendation, SiSuppression  # noqa: PLC0415
+    from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
 
     rec = SiRecommendation.objects.filter(pk=recommendation_id, status='proposed').first()
     if rec is None:
         return redirect('/dashboard/system/self-improvement/')
 
-    SiSuppression.objects.create(
-        match_class=rec.class_name,
-        match_fingerprint=(rec.evidence_signal_ids and str(rec.evidence_signal_ids[0])) or '',
+    suppression = _suppress_recommendation(
+        rec,
         reason='snoozed 30 days',
-        expires_at=timezone.now() + timedelta(days=30),
         created_by=request.user,
+        expires_at=timezone.now() + timedelta(days=30),
     )
     rec.status = 'suppressed'
+    rec.suppressed_by = suppression
     rec.actor = request.user.username or 'staff'
-    rec.save(update_fields=['status', 'actor', 'updated_at'])
+    rec.save(update_fields=['status', 'suppressed_by', 'actor', 'updated_at'])
     return redirect('/dashboard/system/self-improvement/')

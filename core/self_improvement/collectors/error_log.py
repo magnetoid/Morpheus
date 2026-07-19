@@ -1,19 +1,16 @@
-"""error_log collector — pulls from observability.ErrorEvent.
+"""error_log collector — pulls from core.errors.ErrorEvent.
 
-The observability plugin already records every server-side and client
-JS error into an `ErrorEvent` row. Rather than fire a hook on every
-record (which would couple the engine to the observability plugin's
-write path), we run hourly and read new rows since the last successful
-run.
+`core.errors` records every server-side 5xx and client JS error into an
+`ErrorEvent` row (ADR 0025 — this is where the write path lives; the old
+`observability.ErrorEvent` is retired and no longer written). Rather than
+fire a hook on every record, we run hourly and read new rows since the last
+successful run.
 
-Fingerprint: source + exception class + first frame summary — so 1000
+Fingerprint: source + the model's own stable error fingerprint — so 1000
 identical 500s become one signal with seen_count=1000.
 
-Cross-plugin import note: this collector is core code reading a plugin
-model. That's the only direction allowed; plugins remain forbidden
-from importing each other. Self-improvement is at the foundational
-tier, so reading observability is a layer-down read, not peer-to-peer
-coupling.
+Layer note: `core.errors` is core, so this is an intra-core read, not a
+cross-plugin one.
 """
 
 from __future__ import annotations
@@ -42,12 +39,12 @@ class ErrorLogCollector(Collector):
     def run(self) -> Iterable[Signal]:
         ErrorEvent = self._error_event_model()
         if ErrorEvent is None:
-            return  # observability not installed; collector is a no-op
+            return  # core.errors not installed; collector is a no-op
 
         since = self._last_successful_run() or (timezone.now() - timedelta(hours=24))
         qs = (
-            ErrorEvent.objects.filter(occurred_at__gt=since)
-            .order_by('occurred_at')
+            ErrorEvent.objects.filter(created_at__gt=since)
+            .order_by('created_at')
             .iterator(chunk_size=200)
         )
         for ev in qs:
@@ -56,11 +53,14 @@ class ErrorLogCollector(Collector):
     # ------------------------------------------------------------------
 
     def _signal_from(self, ev) -> Signal:
-        # Top frame of the trace gives a stable cluster key. Trace text
-        # varies wildly between requests; the first frame is the signal.
-        first_frame = self._first_meaningful_frame(getattr(ev, 'stack_trace', '') or '')
-        exc_class = self._exception_class(getattr(ev, 'message', '') or '')
-        fp = fingerprint_for(SOURCE, getattr(ev, 'source', '?'), exc_class, first_frame)
+        # core.errors already computes a stable per-error fingerprint (class +
+        # trace prefix / JS file:line); reuse it, namespaced by SOURCE, so a
+        # flood of identical 500s collapses to one signal. Fall back to
+        # exception_class + top frame if the row has no fingerprint.
+        exc_class = getattr(ev, 'exception_class', '') or '?'
+        first_frame = self._first_meaningful_frame(getattr(ev, 'traceback', '') or '')
+        err_fp = getattr(ev, 'fingerprint', '') or f'{exc_class}:{first_frame}'
+        fp = fingerprint_for(SOURCE, err_fp)
 
         return Signal(
             source=SOURCE,
@@ -68,12 +68,13 @@ class ErrorLogCollector(Collector):
             severity=self._severity_for(ev),
             payload={
                 'ev_id': str(getattr(ev, 'id', '')),
-                'sub_source': getattr(ev, 'source', '?'),
+                'kind': getattr(ev, 'kind', '?'),
+                'path': (getattr(ev, 'path', '') or '')[:300],
                 'message': (getattr(ev, 'message', '') or '')[:300],
                 'first_frame': first_frame,
                 'exception_class': exc_class,
             },
-            occurred_at=getattr(ev, 'occurred_at', None),
+            occurred_at=getattr(ev, 'created_at', None),
         )
 
     @staticmethod
@@ -94,22 +95,14 @@ class ErrorLogCollector(Collector):
         return '?'
 
     @staticmethod
-    def _exception_class(message: str) -> str:
-        """`KeyError: 'seo_meta'` -> `KeyError`. Falls back to '?'."""
-        if ':' in message:
-            head = message.split(':', 1)[0].strip()
-            if head and head.replace('.', '').isalnum():
-                return head[:64]
-        return '?'
-
-    @staticmethod
     def _severity_for(ev) -> int:
-        sub = (getattr(ev, 'source', '') or '').lower()
-        # Critical paths (payments, auth, celery beat) get bumped.
-        if any(k in sub for k in ('payment', 'auth', 'beat', 'webhook')):
+        # Client JS errors are advisory unless they spike.
+        if (getattr(ev, 'kind', '') or '').lower() == 'client':
+            return 30
+        # Critical request paths (payments, auth, webhooks) get bumped.
+        path = (getattr(ev, 'path', '') or '').lower()
+        if any(k in path for k in ('payment', 'checkout', 'auth', 'login', 'webhook')):
             return 85
-        if sub.startswith('client'):
-            return 30  # JS errors are advisory unless they spike
         return 60
 
     def _last_successful_run(self):
@@ -126,11 +119,11 @@ class ErrorLogCollector(Collector):
 
     @staticmethod
     def _error_event_model():
-        """Resolve observability.ErrorEvent lazily — model might not
-        be loaded yet at import time, and the plugin might be absent."""
+        """Resolve core.errors.ErrorEvent lazily — model might not be loaded
+        yet at import time."""
         from django.apps import apps  # noqa: PLC0415 — lazy resolution
 
         try:
-            return apps.get_model('observability', 'ErrorEvent')
+            return apps.get_model('morph_errors', 'ErrorEvent')
         except LookupError:
             return None

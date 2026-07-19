@@ -45,13 +45,21 @@ SIGNAL_SOURCES = (
 RECOMMENDATION_STATUS = (
     ('proposed', 'Proposed'),
     ('approved', 'Approved'),
-    ('auto_applied', 'Auto-applied'),
+    # auto_applied = analyzer pre-flagged for autonomous run (QUEUED, not done);
+    # the healer moves a successful autonomous run to the terminal 'applied' so
+    # the execute_queue selector never re-picks it (the old infinite re-run).
+    ('auto_applied', 'Auto-applied (queued)'),
+    ('applied', 'Applied'),
     ('in_pr', 'In PR'),
     ('merged', 'Merged'),
     ('rejected', 'Rejected'),
     ('suppressed', 'Suppressed'),
     ('failed', 'Failed'),
 )
+
+# Non-terminal statuses an open recommendation can occupy — used to dedup the
+# analyzer so the same (class, fingerprint) issue isn't re-proposed nightly.
+OPEN_RECOMMENDATION_STATUSES = ('proposed', 'approved', 'auto_applied', 'in_pr')
 
 ACTION_PHASES = (
     ('detect', 'Detect'),
@@ -136,6 +144,13 @@ class SiRecommendation(models.Model):
         db_index=True,
         db_column='class',
         help_text='one of the 16 issue classes (seo_gap, dep_bump, …)',
+    )
+    fingerprint = models.CharField(
+        max_length=128,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text='stable (class, cluster) hash — dedup guard against nightly re-propose',
     )
     title = models.CharField(max_length=200, help_text='imperative, ≤ 80 chars')
     rationale = models.TextField(blank=True, help_text='LLM-written, cites signal_ids')

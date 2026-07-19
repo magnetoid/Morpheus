@@ -133,9 +133,12 @@ def run_one(rec: Any) -> str:  # noqa: PLR0911 — one return per phase is the p
 
     _log(rec, 'verify', 'ok', run_id, details=ver.details, duration_ms=_ms(verify_started))
 
-    # Mark success.
+    # Mark success with a TERMINAL status so execute_queue never re-picks it.
+    # Autonomous run → 'applied'; human-approved run → 'merged'. Landing an
+    # auto row back in 'auto_applied' was the infinite-re-run bug (it's a
+    # selected status), so the success write must leave the selection set.
     SiRecommendation.objects.filter(pk=rec.pk).update(
-        status='auto_applied' if rec.status == 'auto_applied' else 'merged',
+        status='applied' if rec.status == 'auto_applied' else 'merged',
         updated_at=timezone.now(),
     )
     hook_registry.fire(EVENT_HEALING_APPLIED, recommendation_id=rec.pk)

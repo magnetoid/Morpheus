@@ -68,15 +68,17 @@ def emit_signal(
     severity = max(0, min(100, severity))
 
     # Suppression: a matching SiSuppression with no expiry (or unexpired)
-    # silently drops the signal. We check class-name matches against the
-    # recommendation classes that emit this source-of-truth fingerprint,
-    # which is one-step removed but consistent with the rejection UI.
+    # silently drops the signal. Rows are keyed on the collector's own
+    # (source, fingerprint) — the reject/snooze UI resolves the recommendation
+    # back to its evidence signals and stores exactly that pair — so a
+    # fingerprint-scoped rule matches this signal, and a blank-fingerprint rule
+    # suppresses the whole source/class.
+    from django.db.models import Q  # noqa: PLC0415
+
     cutoff = timezone.now()
     if (
-        SiSuppression.objects.filter(
-            match_class=source,
-            match_fingerprint=fingerprint,
-        )
+        SiSuppression.objects.filter(match_class=source)
+        .filter(Q(match_fingerprint=fingerprint) | Q(match_fingerprint=''))
         .filter(models_either_unexpired_or_after(cutoff))
         .exists()
     ):

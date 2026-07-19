@@ -322,6 +322,44 @@ class RunOneOrchestrationTests(TestCase):
         self.assertIn(('execute', 'ok'), phases)
         self.assertIn(('verify', 'ok'), phases)
 
+    def test_auto_applied_success_lands_in_terminal_applied(self):
+        """Regression (July 2026 audit): a successful autonomous run left the
+        row in 'auto_applied' — a status execute_queue SELECTS — so the same
+        recommendation re-ran every 5 minutes forever. Success must move it to
+        the terminal 'applied' and out of the selection set."""
+        from core.self_improvement.heal import execute_queue, run_one  # noqa: PLC0415
+        from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
+
+        @register_healer('test_stub_auto')
+        class _AutoOK(Healer):
+            def propose(self, recommendation) -> dict:
+                return {'kind': 'apply_data', 'count': 1}
+
+            def safe_to_apply(self, recommendation):
+                return True, ''
+
+            def apply(self, recommendation):
+                return HealResult(ok=True, details={'updated': 1})
+
+            def verify(self, recommendation):
+                return HealResult(ok=True, details={'remaining_empty': 0})
+
+        self.rec.class_name = 'test_stub_auto'
+        self.rec.status = 'auto_applied'
+        self.rec.save(update_fields=['class_name', 'status'])
+
+        self.assertEqual(run_one(self.rec), 'ok')
+        rec_after = SiRecommendation.objects.get(pk=self.rec.pk)
+        self.assertEqual(rec_after.status, 'applied')
+
+        # The whole point: execute_queue no longer re-picks it.
+        self.assertFalse(
+            SiRecommendation.objects.filter(
+                pk=self.rec.pk, status__in=('approved', 'auto_applied')
+            ).exists()
+        )
+        self.assertEqual(execute_queue(), {'ok': 0, 'blocked': 0, 'failed': 0})
+
     def test_run_one_rolls_back_when_verify_fails(self):
         rollback_called = {'flag': False}
 

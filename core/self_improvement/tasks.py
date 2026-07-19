@@ -85,7 +85,7 @@ def digest_weekly() -> dict:
 
     since = timezone.now() - timedelta(days=7)
     accepted = SiRecommendation.objects.filter(
-        created_at__gte=since, status__in=('approved', 'auto_applied', 'merged')
+        created_at__gte=since, status__in=('approved', 'auto_applied', 'applied', 'merged')
     ).count()
     rejected = SiRecommendation.objects.filter(
         created_at__gte=since, status__in=('rejected', 'suppressed')

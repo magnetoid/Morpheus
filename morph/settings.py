@@ -748,7 +748,7 @@ import logging as _logging  # noqa: E402
 _logging.captureWarnings(True)
 
 # Bridge ERROR-level app logs into the Morpheus Brain's signal pipeline
-# (observability.ErrorEvent → error_log collector → SiSignal → Brain). Skipped
+# (core.errors.ErrorEvent → error_log collector → SiSignal → Brain). Skipped
 # under tests (no DB writes from log lines in the suite). The handler is
 # fail-soft + loop-safe; see core/brain/log_handler.py. Attached to the app +
 # request/security/celery loggers, NOT db.backends (its own writes log there)

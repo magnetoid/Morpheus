@@ -113,10 +113,25 @@ def _score(c: Cluster) -> float:
 def _process_cluster(cluster: Cluster):
     """Plan → Verify → Gate → Write one SiRecommendation. Returns the
     row or None if the cluster was suppressed at any stage."""
-    from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
+    from core.self_improvement.models import (  # noqa: PLC0415
+        OPEN_RECOMMENDATION_STATUSES,
+        SiRecommendation,
+    )
+    from core.self_improvement.services import fingerprint_for  # noqa: PLC0415
 
     pol = policy_for(cluster.class_name)
     if not pol.enabled:
+        return None
+
+    # Dedup: skip the whole (LLM-costing) pipeline when an OPEN recommendation
+    # already covers this (class, cluster) — otherwise the same issue is
+    # re-proposed every nightly run, flooding the backlog. A stable rec-level
+    # fingerprint (not the signal PK, which rotates past the 24h dedup window)
+    # is the guard.
+    rec_fp = fingerprint_for(cluster.class_name, cluster.fingerprint)
+    if SiRecommendation.objects.filter(
+        fingerprint=rec_fp, status__in=OPEN_RECOMMENDATION_STATUSES
+    ).exists():
         return None
 
     plan = _plan(cluster, pol)
@@ -159,6 +174,7 @@ def _process_cluster(cluster: Cluster):
     with transaction.atomic():
         return SiRecommendation.objects.create(
             class_name=cluster.class_name,
+            fingerprint=rec_fp,
             title=str(plan.get('title') or '')[:200] or _default_title(cluster),
             rationale=str(plan.get('rationale') or '')[:2000],
             confidence=Decimal(str(round(confidence, 3))),

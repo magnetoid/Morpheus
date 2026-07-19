@@ -20,6 +20,8 @@ _metafield_search_ids). They're consumed by other modules in this package.
 #   internal lookup failure; no chained context needed.
 from __future__ import annotations
 
+import contextlib
+
 from api.client import internal_graphql
 from core.hooks import MorpheusEvents, hook_registry
 from morpheus.views import render
@@ -214,6 +216,19 @@ def product_list(request):
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.page(1)
     products = list(page_obj.object_list)
+
+    if q:
+        # Server-side SEARCH_PERFORMED truth (ad-blocker-proof) — the header
+        # quick-search posts here, so this is the authoritative count site. The
+        # total (not the page slice) is what the zero_search collector reads as
+        # `result_count`; 0 → the analyzer proposes a synonym mapping.
+        with contextlib.suppress(Exception):
+            hook_registry.fire(
+                MorpheusEvents.SEARCH_PERFORMED,
+                query=q,
+                result_count=paginator.count,
+                request=request,
+            )
 
     # Advanced Personalization: Reorder the page dynamically if 'for_you' intent sort is active
     if sort == 'for_you':
@@ -972,19 +987,11 @@ def search(request):
     q = request.GET.get('q', '').strip()
     use_semantic = request.GET.get('mode') == 'semantic'
 
-    if q:
-        # Server-side analytics: search.performed truth (ad-blocker-proof).
-        try:
-            from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
-
-            hook_registry.fire(
-                MorpheusEvents.SEARCH_PERFORMED,
-                query=q,
-                results_count=None,
-                request=request,
-            )
-        except Exception:  # noqa: BLE001, S110
-            pass
+    # SEARCH_PERFORMED is fired where the result count is authoritative, so it
+    # carries a real `result_count` (the zero_search collector needs the miss
+    # count). A keyword search bounces to /products/ which fires there; the
+    # semantic branch below fires once its results are resolved. Firing here —
+    # before either search runs — would double-count and lose the count.
 
     # A plain keyword search bounces to /products/?q=… so it lands on the rich
     # PLP. A query-less /search/ falls through to render the mood-search landing
@@ -1013,6 +1020,17 @@ def search(request):
     result = (
         (data or {}).get('semanticSearch', {}) if data else {'products': [], 'explanation': None}
     )
+
+    if q and use_semantic:
+        # Server-side analytics + zero_search truth (ad-blocker-proof), fired
+        # once the semantic result set — and thus the real hit count — is known.
+        with contextlib.suppress(Exception):
+            hook_registry.fire(
+                MorpheusEvents.SEARCH_PERFORMED,
+                query=q,
+                result_count=len(result.get('products') or []),
+                request=request,
+            )
 
     search_items = [
         {
