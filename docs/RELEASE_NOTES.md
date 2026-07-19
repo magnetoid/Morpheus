@@ -5,10 +5,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 > **House rule (enforced):** merging to `main` is a production deploy, so
 > **every deploy MUST bump `MORPHEUS_VERSION` and add a matching dated
-> `## vX.Y.Z — YYYY-MM-DD` entry** here describing the change. This file is the
-> single source of truth for the in-dashboard changelog. See
+> `## vX.Y.Z — YYYY-MM-DD` entry** here describing the change. Don't hand-edit —
+> run **`python manage.py release --minor "Headline" -m "bullet"`** (it writes
+> both atomically); `release --check` is a blocking CI gate. This file is the
+> single source of truth for the in-dashboard changelog, and the `release`
+> GitHub workflow mirrors each version to a git tag + GitHub Release. See
 > [`CLAUDE.md`](../CLAUDE.md) and torsor ADRs "Versioned release notes" + **0032**
-> (every production deploy bumps the version).
+> + **0033** (every production deploy bumps the version; app *and* theme code).
 
 ---
 

@@ -1,0 +1,78 @@
+name: release
+
+# When a version bump lands on main, mirror it to GitHub: create the matching
+# git tag + a GitHub Release whose body is that version's RELEASE_NOTES section.
+# The source of truth is still MORPHEUS_VERSION (morph/settings.py) — this just
+# reflects it onto GitHub so every deployed version is tagged + released there.
+# Idempotent: it no-ops when the tag already exists (e.g. a docs-only push).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - morph/settings.py
+      - docs/RELEASE_NOTES.md
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve MORPHEUS_VERSION
+        id: v
+        run: |
+          VERSION=$(grep -oE "default='v[0-9]+\.[0-9]+\.[0-9]+'" morph/settings.py \
+            | head -1 | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+")
+          if [ -z "$VERSION" ]; then echo "could not resolve version"; exit 1; fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved $VERSION"
+
+      - name: Skip if tag already exists
+        id: exists
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ steps.v.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=yes" >> "$GITHUB_OUTPUT"
+            echo "Tag ${{ steps.v.outputs.version }} already exists — nothing to do."
+          else
+            echo "exists=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract this version's release notes
+        if: steps.exists.outputs.exists == 'no'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          python - <<'PY' > release_body.md
+          import os, re
+          version = os.environ["VERSION"]
+          text = open("docs/RELEASE_NOTES.md", encoding="utf-8").read()
+          m = re.search(
+              rf'^##\s+{re.escape(version)}\b.*?$(.*?)(?=^##\s|\Z)',
+              text, re.MULTILINE | re.DOTALL,
+          )
+          print((m.group(1).strip() if m else f"Release {version}.") + "\n")
+          PY
+          echo "--- release body ---"; cat release_body.md
+
+      - name: Create tag + GitHub Release
+        if: steps.exists.outputs.exists == 'no'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          git tag -a "$VERSION" -m "Morpheus OS $VERSION"
+          git push origin "$VERSION"
+          gh release create "$VERSION" \
+            --title "Morpheus OS $VERSION" \
+            --notes-file release_body.md \
+            --target "${{ github.sha }}"

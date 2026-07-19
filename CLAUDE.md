@@ -251,7 +251,17 @@ see in the changelog. **This applies to *theme* code too** — an edit under
 `themes/` is a versioned change exactly like `core/`, `plugins/installed/`,
 or `morph/`; theme/CSS/template polish is not exempt from the bump (ADR 0033).
 Batch local commits into one deploy carrying one
-bump (PATCH = fix/polish/theme tweak, MINOR = feature, MAJOR = breaking). The
+bump (PATCH = fix/polish/theme tweak, MINOR = feature, MAJOR = breaking).
+**Don't hand-edit the two files — run `python manage.py release`:**
+`release --minor "Headline" -m "bullet" -m "bullet"` bumps
+`MORPHEUS_VERSION` *and* prepends the dated `docs/RELEASE_NOTES.md` entry
+atomically (add `--commit` to also commit; `--set vX.Y.Z` for an explicit
+version). `release --check` (a blocking CI step + usable pre-push) fails when
+app/theme code changed vs `main` without a bump, or when the version and the
+newest notes entry desync — so a forgotten bump is caught on the PR, not as a
+post-deploy 503. On push to main the **`release` workflow** mirrors the version
+to GitHub (annotated tag `vX.Y.Z` + a GitHub Release whose body is that notes
+section); it no-ops if the tag already exists. The
 `deploy-smoke` workflow polls `/readyz` after every main push and fails
 red if prod never converges on the pushed `MORPHEUS_VERSION` — stuck-queue
 recovery (zombie `in_progress` builds wedge Coolify's whole app queue) is in

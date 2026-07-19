@@ -111,6 +111,8 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # release --check diffs the PR against origin/main
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -119,6 +121,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install --require-hashes -r requirements.lock.txt
           pip install coverage pytest pytest-django
+      - name: Version bump present + in sync (ADR 0032/0033)
+        # Fails when app/theme code changed vs main without a MORPHEUS_VERSION
+        # bump, or when the version and the newest RELEASE_NOTES entry desync —
+        # catching a forgotten bump on the PR instead of as a post-deploy 503.
+        run: python manage.py release --check
       - name: Django system checks (BLOCKING — catches model errors that crash prod boot)
         # Plain `check` fails on Error-level issues (e.g. fields.E301/E300/E307 —
         # a FK to a swapped-out user model, a lazy ref to a non-existent model).
