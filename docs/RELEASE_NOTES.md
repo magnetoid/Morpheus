@@ -12,6 +12,23 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.24.0 — 2026-07-19
+
+**Agent security hardening — AI actions now need a real human sign-off.**
+
+- **The AI agent can no longer run a sensitive action on its own.** Tools that
+  change money, roles, or store config (issue a gift card, grant a staff role,
+  set a tax rate, change net terms, …) are now **fail-closed**: instead of
+  executing silently, the agent records a pending approval and pauses; a person
+  approves it from the dashboard and the run resumes. Approvals are single-use,
+  expire after 5 minutes, and are bound to the exact action requested — an
+  approval for one change can't be reused for another. Scheduled "staged"
+  routines are unaffected: they already propose changes for review.
+- **The assistant respects who's asking.** The assistant's access "mode" is now
+  decided on the server from the signed-in user, not the browser request — so
+  the developer/diagnostics mode is limited to engineers, and a malformed mode
+  can no longer fall back to full access.
+
 ## v0.23.0 — 2026-07-19
 
 **Eco impact, Kimi AI provider, more legal pages, and a dashboard polish pass.**
