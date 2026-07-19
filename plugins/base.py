@@ -168,6 +168,7 @@ class MorpheusPlugin:
             urlconf,
             prefix=prefix,
             namespace=namespace or self.name,
+            plugin=self.name,
         )
 
     def register_graphql_extension(self, module: str) -> None:

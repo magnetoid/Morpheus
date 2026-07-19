@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.26.1 — 2026-07-19
+
+**Deferred deep-debug fixes — plugin disable-safety + auto-heal backoff**
+
+- register_urls routes now unmount on plugin disable — get_urlpatterns skips inactive owners and deactivate() rebuilds the URLconf, so a disabled plugin's endpoints (e.g. digital_products downloads) stop resolving (deep-debug #13, disable litmus).
+- Self-improvement: a chronically-failing auto-heal stands down after 3 failures/fingerprint within 7 days instead of re-proposing a fresh recommendation every nightly run (unbounded backlog/audit-log leak; deep-debug #18).
+
 ## v0.26.0 — 2026-07-19
 
 **Reliability & hardening — 14 source-verified bug fixes from an adversarial self-audit**

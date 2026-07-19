@@ -209,6 +209,11 @@ class PluginRegistry:
             self._plugins[name].on_disable()
             self._active.discard(name)
             self._drop_contributions(name)
+            # Rebuild the live URLconf so this plugin's register_urls routes stop
+            # resolving (get_urlpatterns now skips inactive owners). Mirror of
+            # activate()'s _refresh_urlconf; without it a disabled plugin's
+            # endpoints keep serving (hunt #13).
+            self._refresh_urlconf()
             self._update_db_status(name, enabled=False)
             logger.info('Plugin deactivated: %s', name)
 
@@ -435,8 +440,12 @@ class PluginRegistry:
         if module not in self._graphql_extensions:
             self._graphql_extensions.append(module)
 
-    def add_plugin_urls(self, urlconf: str, prefix: str = '', namespace: str = '') -> None:
-        self._plugin_urls.append({'urlconf': urlconf, 'prefix': prefix, 'namespace': namespace})
+    def add_plugin_urls(
+        self, urlconf: str, prefix: str = '', namespace: str = '', plugin: str = ''
+    ) -> None:
+        self._plugin_urls.append(
+            {'urlconf': urlconf, 'prefix': prefix, 'namespace': namespace, 'plugin': plugin}
+        )
 
     def add_task_module(self, module: str) -> None:
         if module not in self._task_modules:
@@ -489,6 +498,16 @@ class PluginRegistry:
 
         patterns = []
         for entry in self._plugin_urls:
+            # Skip routes owned by a disabled plugin so its endpoints stop
+            # resolving on disable — register_urls mounts stay in _plugin_urls
+            # across a deactivate (like ready()-wired hooks), so without this an
+            # optional plugin's customer-facing URLs (e.g. digital_products'
+            # /account/downloads/) keep serving after it's toggled off, failing
+            # the disable litmus test (hunt #13). Untagged (plugin='') entries
+            # are always included (core/back-compat).
+            owner = entry.get('plugin')
+            if owner and not self.is_active(owner):
+                continue
             is_storefront = entry['prefix'] == ''
             if storefront is True and not is_storefront:
                 continue

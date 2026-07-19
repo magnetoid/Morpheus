@@ -29,6 +29,11 @@ audit; S3/H3 overlap and are folded in here).
 
 ## Deferred (own focused PR — reason)
 
+> **Update (v0.26.1):** #13 (register_urls disable-safety) and #18 (auto-heal
+> failure backoff) are now **FIXED + tested**. Still open: #6, #7, #8, #11, #20.
+> The two money-math items (#7 breakdown priority, #8 refund idempotency) are
+> deliberately held for a dedicated money-tested session.
+
 | # | Sev | Bug | Why deferred |
 |---|---|---|---|
 | 6 | Med | Post-timeout daemon thread keeps executing write-tools + AgentStep writes after the run is reported `failed` | Needs a cooperative deadline threaded through the runtime loop (check before each `respond()`/`invoke()`); invasive. The #16 sweeper reaps the stuck row but not the zombie writes. |

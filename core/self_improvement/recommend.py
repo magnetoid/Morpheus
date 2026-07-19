@@ -117,6 +117,15 @@ def _score(c: Cluster) -> float:
     return float(c.severity) * reach * age_decay
 
 
+# Backoff for a chronically-failing auto-heal. The OPEN-status dedup lets a
+# 'failed' rec re-propose (failed ∉ OPEN_RECOMMENDATION_STATUSES), so without
+# this a permanently-broken healer mints a fresh rec + action-log rows every
+# nightly run forever, an unbounded backlog/audit leak (hunt #18). After this
+# many failures for one fingerprint inside the window, the cluster stands down.
+FAILURE_BACKOFF_LIMIT = 3
+FAILURE_BACKOFF_DAYS = 7
+
+
 def _process_cluster(cluster: Cluster):
     """Plan → Verify → Gate → Write one SiRecommendation. Returns the
     row or None if the cluster was suppressed at any stage."""
@@ -139,6 +148,21 @@ def _process_cluster(cluster: Cluster):
     if SiRecommendation.objects.filter(
         fingerprint=rec_fp, status__in=OPEN_RECOMMENDATION_STATUSES
     ).exists():
+        return None
+
+    # Stand down a fingerprint that keeps failing to heal (hunt #18) — a 'failed'
+    # rec is not OPEN, so the dedup above would otherwise re-propose it nightly.
+    from datetime import timedelta  # noqa: PLC0415
+
+    from django.utils import timezone  # noqa: PLC0415
+
+    cooldown_start = timezone.now() - timedelta(days=FAILURE_BACKOFF_DAYS)
+    if (
+        SiRecommendation.objects.filter(
+            fingerprint=rec_fp, status='failed', created_at__gte=cooldown_start
+        ).count()
+        >= FAILURE_BACKOFF_LIMIT
+    ):
         return None
 
     plan = _plan(cluster, pol)
