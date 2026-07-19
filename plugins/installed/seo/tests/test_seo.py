@@ -63,6 +63,15 @@ class ResolveMetaTests(TestCase):
         self.assertTrue(pj['offers']['price'])
         self.assertEqual(pj['offers']['itemCondition'], 'https://schema.org/NewCondition')
 
+    def test_og_image_falls_back_to_store_default_social_image(self):
+        """With no per-page/SEO override, og:image uses the core-wide default
+        social image (Settings → General → Default images)."""
+        from core.models import StoreSettings
+
+        StoreSettings.objects.create(default_social_image='store/social.png')
+        out = resolve_meta(obj=None, fallback_title='t', fallback_description='d')
+        self.assertIn('/media/store/social.png', out.og_image)
+
     def test_to_html_emits_required_tags(self):
         out = resolve_meta(
             obj=None,

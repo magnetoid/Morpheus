@@ -697,6 +697,8 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         <div class="cover-wrap">
           {% if p.primaryImage and p.primaryImage.url %}
             <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+          {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ p.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
           {% else %}
             <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
           {% endif %}
@@ -739,6 +741,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
     price: '{% if product.price %}{{ product.price.amount|escapejs }}{% endif %}',
     currency: '{% if product.price %}{{ product.price.currency|escapejs }}{% else %}USD{% endif %}'
   };
+  var PH = '{{ PRODUCT_PLACEHOLDER_IMAGE|escapejs }}';  // merchant default cover
   var list = [];
   try { list = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { list = []; }
   if (!Array.isArray(list)) list = [];
@@ -753,8 +756,9 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         (p.currency === 'USD' ? '$' : (p.currency + ' '))
         + parseFloat(p.price).toFixed(2)
       ) : '';
-      var imgHtml = p.image
-        ? '<img src="' + p.image.replace(/"/g, '&quot;') + '" alt="" loading="lazy" decoding="async">'
+      var src = p.image || PH;
+      var imgHtml = src
+        ? '<img src="' + src.replace(/"/g, '&quot;') + '" alt="" loading="lazy" decoding="async">'
         : '<div class="placeholder">' + (p.name || '').slice(0, 24) + '</div>';
       // Text is rendered through textContent below, not interpolated raw,
       // to keep this XSS-clean even though the source is the visitor's

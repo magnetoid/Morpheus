@@ -48,6 +48,11 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
         required=False,
         help_text='Shown on the storefront when a product has no image of its own.',
     )
+    default_social_image = forms.ImageField(
+        required=False,
+        help_text='Default social/share (Open Graph) image for pages with no image of their '
+        'own. 1200×630 recommended. A per-page or SEO URL override still wins.',
+    )
     ai_page_help = forms.BooleanField(
         required=False,
         label='AI-assisted tips & help',
@@ -84,6 +89,7 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
                     'contact_email',
                     'support_phone',
                     'product_placeholder_image',
+                    'default_social_image',
                     'ai_page_help',
                     'ai_daily_briefing',
                     'gdpr_enabled',
@@ -98,7 +104,7 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
         for field, value in self.cleaned_data.items():
             # An unchanged file field comes back falsy — don't clobber the
             # stored image with an empty value when no new file was uploaded.
-            if field == 'product_placeholder_image' and not value:
+            if field in ('product_placeholder_image', 'default_social_image') and not value:
                 continue
             setattr(instance, field, value)
         instance.save()

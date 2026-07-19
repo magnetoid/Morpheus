@@ -21,6 +21,13 @@ class StoreSettings(models.Model):
         null=True,
         help_text='Fallback cover shown on the storefront when a product has no image of its own.',
     )
+    default_social_image = models.ImageField(
+        upload_to='store/',
+        blank=True,
+        null=True,
+        help_text='Default social/share (Open Graph) image used when a page has no image of '
+        'its own. 1200×630 recommended. A per-page or SEO URL override still wins.',
+    )
     primary_currency = models.CharField(max_length=3, default='USD')
     country = models.CharField(max_length=2, default='US')
     # Core (default) storefront language — the one served unprefixed (`/product`,

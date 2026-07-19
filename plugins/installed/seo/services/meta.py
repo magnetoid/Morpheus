@@ -19,6 +19,19 @@ from django.conf import settings
 from ._helpers import ResolvedMeta, site_settings, strip_html
 
 
+def _store_default_social_image() -> str:
+    """URL of the core-wide default social image (Settings → General → Default
+    images), or '' if unset. The last OG-image fallback before per-object cover.
+    """
+    try:
+        from core.models import StoreSettings
+
+        img = StoreSettings.get('default_social_image')
+        return img.url if img else ''
+    except Exception:
+        return ''
+
+
 def brand_name() -> str:
     """The merchant's brand for title suffixes — the SAME resolution the
     ``seo_title`` tag uses, so object pages (autofilled titles) and template
@@ -141,6 +154,7 @@ def resolve_meta(
             (meta.og_image if meta and meta.og_image else '')
             or fallback_image
             or (site.default_og_image or '')
+            or _store_default_social_image()
         ).strip()
     )
     canonical = (

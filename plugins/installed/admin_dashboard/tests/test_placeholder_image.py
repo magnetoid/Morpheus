@@ -56,3 +56,15 @@ class StoreGeneralFormTests(TestCase):
         saved = form.save()
         # No new file uploaded → the stored placeholder image is preserved.
         self.assertEqual(saved.product_placeholder_image.name, 'store/ph.png')
+
+    def test_save_does_not_clobber_social_image_when_no_upload(self):
+        from plugins.installed.admin_dashboard.forms.settings import StoreGeneralForm
+
+        existing = StoreSettings.objects.create(default_social_image='store/social.png')
+        form = StoreGeneralForm(
+            data={'store_name': 'Shop', 'primary_currency': 'USD', 'country': 'US'},
+            instance=existing,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        saved = form.save()
+        self.assertEqual(saved.default_social_image.name, 'store/social.png')
