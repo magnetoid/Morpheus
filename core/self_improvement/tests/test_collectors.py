@@ -8,10 +8,15 @@ table. It now reads `core.errors.ErrorEvent` with the matching field names.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
+from django.core.cache import cache
 from django.test import TestCase
 
 from core.errors.models import ErrorEvent
+from core.self_improvement.collectors import zero_search
 from core.self_improvement.collectors.error_log import ErrorLogCollector
+from core.self_improvement.models import SiSignal
 from core.self_improvement.services import fingerprint_for
 
 
@@ -55,3 +60,23 @@ class ErrorLogCollectorTests(TestCase):
 
     def test_no_events_yields_nothing(self) -> None:
         self.assertEqual(list(ErrorLogCollector().run()), [])
+
+
+class ZeroSearchRateCapTests(TestCase):
+    """The zero_search handler runs synchronously on the public /products/?q=
+    path; a flood of unique junk queries must not mint unbounded SiSignal rows
+    (pre-deploy review finding, 2026-07)."""
+
+    def setUp(self) -> None:
+        cache.clear()
+
+    def test_floods_are_capped_per_hour(self) -> None:
+        with patch.object(zero_search, '_HOURLY_CAP', 3):
+            for i in range(6):
+                zero_search.on_search_performed(query=f'nonexistent-{i}', result_count=0)
+        # Only the first 3 misses are written; the rest are dropped at the cache.
+        self.assertEqual(SiSignal.objects.filter(source='zero_search').count(), 3)
+
+    def test_hit_never_emits(self) -> None:
+        zero_search.on_search_performed(query='dune', result_count=5)
+        self.assertEqual(SiSignal.objects.filter(source='zero_search').count(), 0)

@@ -52,6 +52,13 @@ def run_analyzer(window_hours: int = 24) -> dict:
     """
     from core.self_improvement.models import SiSignal  # noqa: PLC0415
 
+    # Retention: drop signals well past the analysis window so the table can't
+    # grow unbounded from long-tail collector traffic (esp. zero_search, which
+    # fires on the public /products/?q= path). 30d >> the 24h analysis window,
+    # so this never touches a signal the analyzer or a fresh recommendation
+    # still needs.
+    SiSignal.objects.filter(occurred_at__lt=timezone.now() - timedelta(days=30)).delete()
+
     since = timezone.now() - timedelta(hours=window_hours)
     clusters = _cluster(SiSignal.objects.filter(occurred_at__gte=since))
     if not clusters:

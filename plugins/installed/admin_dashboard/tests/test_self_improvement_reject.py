@@ -10,6 +10,7 @@ their actual (source, fingerprint), which emit_signal honours.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 
 from django.test import TestCase
@@ -49,6 +50,35 @@ class RejectSuppressionAlignmentTests(TestCase):
 
         # The whole point: the same signal now gets dropped on re-emit.
         self.assertIsNone(emit_signal(source='error_log', fingerprint='deadbeef', severity=80))
+
+    def test_tolerates_duplicate_suppression_rows(self) -> None:
+        """Concurrent snoozes can leave two SiSuppression rows for one
+        (class, fingerprint) — the partial unique constraint only covers
+        expires_at IS NULL. _suppress_recommendation must update the newest
+        rather than raise MultipleObjectsReturned (pre-deploy review finding)."""
+        sig = SiSignal.objects.create(
+            source='error_log', fingerprint='dupfp', severity=70, occurred_at=timezone.now()
+        )
+        rec = self._recommendation_for_signal(sig)
+        # Simulate the concurrent-snooze race: two rows, same key, both snoozed.
+        for _ in range(2):
+            SiSuppression.objects.create(
+                match_class='error_log',
+                match_fingerprint='dupfp',
+                reason='snoozed 30 days',
+                expires_at=timezone.now() + timedelta(days=30),
+            )
+
+        # Must not raise, and must not create a third row.
+        suppression = _suppress_recommendation(rec, reason='rejected', created_by=None)
+        self.assertIsNotNone(suppression)
+        self.assertEqual(suppression.reason, 'rejected')
+        self.assertEqual(
+            SiSuppression.objects.filter(
+                match_class='error_log', match_fingerprint='dupfp'
+            ).count(),
+            2,
+        )
 
     def test_no_evidence_signals_creates_no_suppression(self) -> None:
         rec = SiRecommendation.objects.create(

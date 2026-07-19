@@ -120,11 +120,30 @@ def _suppress_recommendation(rec, *, reason: str, created_by, expires_at=None):
     )
     suppression = None
     for source, fingerprint in set(sigs):
-        suppression, _ = SiSuppression.objects.update_or_create(
-            match_class=source,
-            match_fingerprint=fingerprint,
-            defaults={'reason': reason, 'expires_at': expires_at, 'created_by': created_by},
+        # NOT update_or_create: the partial unique constraint only covers
+        # expires_at IS NULL, so concurrent snoozes (expires_at set) can leave
+        # two rows for the same (class, fingerprint), and update_or_create's
+        # internal get() would then raise MultipleObjectsReturned and 500 the
+        # action. Update the newest matching row (or create the first) — a
+        # stray duplicate is harmless (emit_signal only .exists()-checks).
+        suppression = (
+            SiSuppression.objects.filter(match_class=source, match_fingerprint=fingerprint)
+            .order_by('-created_at')
+            .first()
         )
+        if suppression is not None:
+            suppression.reason = reason
+            suppression.expires_at = expires_at
+            suppression.created_by = created_by
+            suppression.save(update_fields=['reason', 'expires_at', 'created_by', 'updated_at'])
+        else:
+            suppression = SiSuppression.objects.create(
+                match_class=source,
+                match_fingerprint=fingerprint,
+                reason=reason,
+                expires_at=expires_at,
+                created_by=created_by,
+            )
     return suppression
 
 
