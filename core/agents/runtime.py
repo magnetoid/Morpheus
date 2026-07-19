@@ -35,6 +35,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from core.agents.approval import approval_registry
 from core.agents.base import MorpheusAgent
 from core.agents.compaction import compact
 from core.agents.events import AgentEvents
@@ -265,29 +266,68 @@ class AgentRuntime:
             self._tool_back(trace, messages, tc, error=f'tool_call_vetoed: {e}')
             return
 
-        # Approval gate.
-        if (tool.requires_approval or self.agent.requires_approval) and self._approval_check:
-            try:
-                approved = bool(self._approval_check(tool, args))
-            except Exception as e:  # noqa: BLE001
-                self._tool_back(trace, messages, tc, error=f'approval_check_failed: {e}')
-                return
-            if not approved:
+        # Approval gate — FAIL-CLOSED. Triggers whenever the tool (or agent)
+        # requires approval, independent of whether an approval_check is wired.
+        # Previously this was `... and self._approval_check`, so the entire prod
+        # fleet (no approval_check passed anywhere) executed approval-required
+        # tools with zero approval (core audit S1). Now:
+        #   • an explicit approval_check (tests / bespoke callers) is honored,
+        #     and a False return is a REJECTION (STEP_REJECTED, as before);
+        #   • otherwise the kernel consults the approval registry, which DENIES
+        #     until a Django-land resolver is registered. A denial is "no
+        #     approval on record" → we do NOT execute; we fire
+        #     STEP_APPROVAL_REQUIRED so agent_core records a pending request and
+        #     pauses the run for out-of-band human approval.
+        #
+        # Staged-writes mode (`context['staged']`, set server-side by routines)
+        # is exempt: in staged mode a write tool records an OpsProposal for human
+        # review instead of executing — that proposal IS the human sign-off, so
+        # the token gate would double-gate the same invariant and break the
+        # sanctioned staged-routine design. The gate still applies to every
+        # DIRECT (non-staged) execution, which is where the S1 hole actually was.
+        _staged = isinstance(context, dict) and context.get('staged')
+        if (tool.requires_approval or self.agent.requires_approval) and not _staged:
+            if self._approval_check is not None:
+                try:
+                    approved = bool(self._approval_check(tool, args))
+                except Exception as e:  # noqa: BLE001
+                    self._tool_back(trace, messages, tc, error=f'approval_check_failed: {e}')
+                    return
+                if not approved:
+                    trace.push(
+                        TraceStep(
+                            kind='tool_call',
+                            name=tc.name,
+                            arguments=args,
+                            metadata={'rejected': True},
+                        )
+                    )
+                    self._tool_back(trace, messages, tc, error='not_approved_by_user')
+                    hook_registry.fire(
+                        AgentEvents.STEP_REJECTED,
+                        agent=self.agent.name,
+                        tool=tc.name,
+                        run_id=run_id,
+                        arguments=args,
+                    )
+                    return
+            elif not approval_registry.check(tool.name, args, context):
                 trace.push(
                     TraceStep(
                         kind='tool_call',
                         name=tc.name,
                         arguments=args,
-                        metadata={'rejected': True},
+                        metadata={'rejected': True, 'approval_required': True},
                     )
                 )
-                self._tool_back(trace, messages, tc, error='not_approved_by_user')
+                self._tool_back(trace, messages, tc, error='approval_required')
                 hook_registry.fire(
-                    AgentEvents.STEP_REJECTED,
+                    AgentEvents.STEP_APPROVAL_REQUIRED,
                     agent=self.agent.name,
                     tool=tc.name,
                     run_id=run_id,
                     arguments=args,
+                    context=context,
                 )
                 return
 

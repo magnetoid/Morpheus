@@ -108,8 +108,44 @@ DEFAULT_MODE = 'general'
 
 def get_mode(slug: str | None) -> AssistantMode:
     """Resolve a mode by slug. Falls back to ``general`` for unknown /
-    None inputs so the Assistant never crashes on a typo."""
+    None inputs so the Assistant never crashes on a typo.
+
+    NOTE: this performs NO entitlement check — a client can name any mode. Use
+    ``resolve_mode(slug, user)`` at request boundaries so the acting user can't
+    select a mode above their ceiling (core audit S5/H1).
+    """
     return _BY_SLUG.get((slug or '').strip().lower(), _BY_SLUG[DEFAULT_MODE])
+
+
+def allowed_modes_for(user) -> set[str]:
+    """Modes the acting user may use. ``dev`` exposes diagnostics (filesystem,
+    logs, plugin lifecycle) and is engineer-only (superuser); everything else is
+    available to staff. The Assistant view is already staff-gated, so a non-staff
+    caller reaching here gets no elevated modes."""
+    if user is None:
+        return set()
+    if getattr(user, 'is_superuser', False):
+        return {m.slug for m in MODES}
+    if getattr(user, 'is_staff', False):
+        return {m.slug for m in MODES if m.slug != 'dev'}
+    return set()
+
+
+def resolve_mode(slug: str | None, user) -> AssistantMode:
+    """Server-side mode resolution: honour the client's requested mode only when
+    the acting user is entitled to it; otherwise fall back to the user's default
+    (``general`` for staff). A client can never select a mode above its ceiling,
+    and an unknown/garbage slug can't escalate to a wildcard — the S5/H1 fix.
+    """
+    allowed = allowed_modes_for(user)
+    want = (slug or '').strip().lower()
+    if want in allowed and want in _BY_SLUG:
+        return _BY_SLUG[want]
+    if DEFAULT_MODE in allowed:
+        return _BY_SLUG[DEFAULT_MODE]
+    # No entitlements (defensive — non-staff shouldn't reach the assistant):
+    # the narrowest read-mostly mode, never the wildcard.
+    return _BY_SLUG['sales']
 
 
 def filter_tools_by_mode(tools: list, mode_slug: str | None) -> list:

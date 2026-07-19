@@ -214,6 +214,45 @@ class AgentRuntimeTests(TestCase):
         self.assertEqual(res.state, 'completed')
         self.assertEqual(called, [1])
 
+    def test_approval_fail_closed_without_check(self):
+        # S1 regression: with NO approval_check wired (the prod default) an
+        # approval-required tool must NOT execute. The kernel consults the
+        # fail-closed registry, which denies (no approval on record) → the tool
+        # is skipped and an approval_required step is recorded, rather than the
+        # old fail-open behaviour of running it unapproved.
+        called = []
+        tool = _tool(requires_approval=True, handler=lambda **kw: called.append(1))
+        provider = MockLLMProvider(
+            [
+                LLMResponse(tool_calls=[LLMToolCall(id='c1', name='do_thing', arguments={})]),
+                LLMResponse(text='after'),
+            ]
+        )
+        res = self._run(_agent(tools=[tool]), provider)  # no approval_check
+        self.assertEqual(called, [])  # fail-closed — handler never ran
+        approval_steps = [s for s in res.trace.steps if s.metadata.get('approval_required')]
+        self.assertTrue(approval_steps)
+
+    def test_approval_gate_exempt_in_staged_mode(self):
+        # Staged routines route writes through an OpsProposal (human review) —
+        # the proposal IS the sign-off, so the token gate must not double-gate it.
+        # A requires_approval tool runs in staged context even with no
+        # approval_check (the S1 fail-closed gate applies to DIRECT writes only).
+        called = []
+        tool = _tool(requires_approval=True, handler=lambda **kw: called.append(1) or {'ok': 1})
+        provider = MockLLMProvider(
+            [
+                LLMResponse(tool_calls=[LLMToolCall(id='c1', name='do_thing', arguments={})]),
+                LLMResponse(text='staged'),
+            ]
+        )
+        from core.agents.runtime import AgentRuntime
+
+        AgentRuntime(_agent(tools=[tool]), provider=provider).run(
+            user_message='go', context={'staged': True}
+        )
+        self.assertEqual(called, [1])  # staged mode: gate skipped, tool ran
+
     def test_provider_failure_aborts(self):
         res = self._run(_agent(), _BoomProvider())
         self.assertEqual(res.state, 'failed')

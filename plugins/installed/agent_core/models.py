@@ -273,6 +273,11 @@ class AgentApprovalRequest(models.Model):
     run = models.ForeignKey(AgentRun, on_delete=models.CASCADE, related_name='approvals')
     tool_name = models.CharField(max_length=200)
     arguments = models.JSONField(default=dict)
+    # Binds an approval to exactly one tool invocation (sha256 of name+args). A
+    # grant approved for a benign call can't be spent on a different one.
+    args_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
+    # Single-use: set when the kernel spends this approval to run the tool.
+    consumed_at = models.DateTimeField(null=True, blank=True)
     state = models.CharField(max_length=12, choices=STATE_CHOICES, default='pending', db_index=True)
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

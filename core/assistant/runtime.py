@@ -375,13 +375,21 @@ class Assistant:
         # by the mode's scope whitelist BEFORE passing it to the LLM,
         # so she can't pick a refund tool during a "sales" convo.
         # Unknown / missing mode → general (wildcard) — full access.
-        from core.assistant.modes import filter_tools_by_mode, get_mode
+        from core.assistant.modes import filter_tools_by_mode, get_mode, resolve_mode
 
         mode_slug = ''
+        user = None
         if context and isinstance(context, dict):
             mode_slug = str(context.get('mode') or '').strip().lower()
-        active_mode = get_mode(mode_slug)
-        tools = filter_tools_by_mode(self.tools, mode_slug)
+            user = context.get('user')
+        # A real client request always carries the acting user (the assistant
+        # views set request.user) → resolve the EFFECTIVE mode server-side: the
+        # client slug is a request, never a grant, so a non-engineer can't select
+        # `dev` (diagnostics) and an unknown slug can't escalate to the wildcard
+        # (core audit S5/H1). No acting user = a trusted internal/system call →
+        # honour the requested mode.
+        active_mode = resolve_mode(mode_slug, user) if user is not None else get_mode(mode_slug)
+        tools = filter_tools_by_mode(self.tools, active_mode.slug)
         # Both spellings: canonical dotted name + provider-safe api_name
         # (dots→__) — models echo back the api_name from the tool schema.
         tools_by_name = {t.name: t for t in tools}
