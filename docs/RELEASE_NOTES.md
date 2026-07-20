@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.27.5 — 2026-07-20
+
+**Internal: agent run-state models move into core — boundary ratchet reaches 0**
+
+- Refactor (no behavior change, zero-SQL migrations): AgentRun/AgentStep/AgentApprovalRequest moved from the agent_core plugin into core (ADR 0034) — the runtime that persists them is permanently core, and this closes the LAST core→plugin import. The database tables are unchanged (state-only SeparateDatabaseAndState migrations, verified no-op SQL); agent_core re-exports the classes so every existing surface keeps working. The core→plugin boundary ratchet is now 0 and enforced empty by CI. Phase 4 (final) of docs/plans/architecture-debt-refactor-2026-07.md.
+
 ## v0.27.4 — 2026-07-20
 
 **Internal: brand voice decoupled via the AGENT_SYSTEM_PROMPT filter**

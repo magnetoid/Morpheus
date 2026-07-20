@@ -309,3 +309,13 @@ class ExchangeRate(models.Model):
 
     def __str__(self) -> str:
         return f'{self.base_currency}→{self.quote_currency}: {self.rate}'
+
+
+# Agent run-state models (AgentRun/AgentStep/AgentApprovalRequest) live in
+# core/agents/models.py (ADR 0034 — the kernel runtime owns its state).
+# Imported here so Django registers them under the `core` app.
+from core.agents.models import (  # noqa: E402,F401
+    AgentApprovalRequest,
+    AgentRun,
+    AgentStep,
+)

@@ -76,7 +76,7 @@ def _execute_worker_run(  # noqa: PLR0915
         agent_registry,
         get_llm_provider,
     )
-    from plugins.installed.agent_core.models import AgentRun, AgentStep
+    from core.agents.models import AgentRun, AgentStep
 
     try:
         run = AgentRun.objects.get(id=run_id)
@@ -223,7 +223,7 @@ def _execute_worker_run(  # noqa: PLR0915
 )
 def spawn_workers_tool(*, jobs: list[dict[str, Any]]) -> ToolResult:
     try:
-        from plugins.installed.agent_core.models import AgentRun
+        from core.agents.models import AgentRun
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'agent_run model unavailable: {e}') from e
 
@@ -312,7 +312,7 @@ def poll_workers_tool(*, run_ids: list[str]) -> ToolResult:
         return ToolResult(output={'runs': []}, display='no run_ids supplied')
 
     try:
-        from plugins.installed.agent_core.models import AgentRun
+        from core.agents.models import AgentRun
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'agent_run model unavailable: {e}') from e
 
@@ -378,7 +378,7 @@ def wait_for_workers_tool(*, run_ids: list[str], timeout_s: float = 120.0) -> To
 
     timeout_s = max(1.0, min(float(timeout_s), 300.0))
     try:
-        from plugins.installed.agent_core.models import AgentRun
+        from core.agents.models import AgentRun
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'agent_run model unavailable: {e}') from e
 

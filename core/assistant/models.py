@@ -326,9 +326,10 @@ class OpsProposal(models.Model):
     source = models.CharField(
         max_length=80, db_index=True
     )  # 'routine:<name>' | 'skill:<name>' | 'chat'
-    # String reference: core must not import the agent_core plugin module at load.
+    # AgentRun lives in core since ADR 0034 (same table; string ref avoids an
+    # import cycle at load).
     agent_run = models.ForeignKey(
-        'agent_core.AgentRun',
+        'core.AgentRun',
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

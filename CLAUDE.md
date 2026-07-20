@@ -209,10 +209,14 @@ slice through the `BRAIN_SIGNALS` filter; ADR 0031); and
 `register_context_processor` — the request-time consumer is
 `plugins/context_processors.py:plugin_context`, which merges contributed
 processors and skips inactive owners; this is what finally makes that mechanism
-real). *Still leaking (shrinking — the core-boundary ratchet is at **1** and
-being driven to 0 per `docs/plans/architecture-debt-refactor-2026-07.md`):*
-only `core/assistant/tools/spawn.py` imports `agent_core.models` (Phase 4,
-run-state models move into core). **Repaid:** orders agent tools
+real). ***The core-boundary ratchet is at 0*** — `core/` imports NOTHING from
+`plugins.installed.*`; the baseline allowlist is empty and must stay empty
+(a new leak fails CI + the PostToolUse hook). Final phase (ADR 0034): the
+agent run-state models (`AgentRun`/`AgentStep`/`AgentApprovalRequest`) moved
+into `core/agents/models.py` — the runtime that persists them is permanently
+core (ADR 0029) — via `SeparateDatabaseAndState` on both sides (tables keep
+their `agent_core_*` names; zero SQL; agent_core re-exports the classes for
+back-compat). **Also repaid en route:** orders agent tools
 (`orders.update_status`/`cancel`/`add_note`/`refund` →
 `plugins/installed/orders/agent_tools.py`, hard-gate + staging intact;
 agent_core's duplicate `orders.cancel` retired; `db.recent_orders` dropped

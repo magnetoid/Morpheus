@@ -89,9 +89,12 @@ sign-in to single-factor email-OTP.
 ## The agent layer
 
 ```
-core/agents/                          ← runtime (LLM loop, providers)
+core/agents/                          ← runtime (LLM loop, providers) + run-state
+                                        models (AgentRun/AgentStep/ApprovalRequest,
+                                        ADR 0034 — the runtime owns its state)
 core/assistant/                       ← Linda (hard-coded merchant operator)
-plugins/installed/agent_core/         ← AgentRun, AgentStep, custom agents
+plugins/installed/agent_core/         ← runs dashboard/GraphQL, conversations,
+                                        background-agent scheduler, custom agents
 plugins/installed/agent_mcp/          ← MCP/UCP/Trusted-Agent gateway
 plugins/installed/ai_assistant/       ← Pulse insights, embeddings, search
 ```

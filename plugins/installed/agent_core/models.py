@@ -1,15 +1,19 @@
 """
-agent_core models — persistent state for the kernel agent layer.
+agent_core models — the plugin's product surface for the agent layer.
 
-Three concerns:
-* `AgentRun` records every invocation: which agent, who asked, what
-  was requested, what came back, how long, what it cost.
-* `AgentStep` is the audit-grade step log (system / user / tool_call /
-  tool_result / final / error) — one row per `TraceStep` from the kernel.
-* `AgentMessage` is the rolling conversation log for chat-style agents
-  (Concierge, Merchant Ops). Distinct from `AgentStep`: messages span
-  multiple runs, steps belong to one run.
+* `AgentMessage` is the rolling conversation log for chat-style agents.
+  Distinct from `AgentStep`: messages span multiple runs, steps belong
+  to one run.
 * `AgentMemoryRecord` is the DB-backed semantic / episodic memory tier.
+* `BackgroundAgent` is the autonomous-schedule registry.
+
+The kernel *run-state* models — `AgentRun`, `AgentStep`,
+`AgentApprovalRequest` — moved to ``core/agents/models.py`` (ADR 0034:
+the runtime that persists them is permanently core per ADR 0029, and this
+closed the last core→plugin import). Tables are unchanged
+(``agent_core_*`` via explicit ``db_table``); they are re-exported below
+so every existing ``plugins.installed.agent_core.models`` import keeps
+working (plugin→core is the allowed direction).
 """
 
 from __future__ import annotations
@@ -18,105 +22,14 @@ import uuid
 
 from django.conf import settings
 
+# Moved to core (ADR 0034) — re-exported for back-compat; plugin→core is the
+# allowed import direction.
+from core.agents.models import (  # noqa: F401
+    AgentApprovalRequest,
+    AgentRun,
+    AgentStep,
+)
 from morpheus import models
-
-
-class AgentRun(models.Model):
-    """One invocation of an agent."""
-
-    STATE_CHOICES = [
-        ('queued', 'Queued'),
-        ('running', 'Running'),
-        ('awaiting_approval', 'Awaiting approval'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
-        ('cancelled', 'Cancelled'),
-    ]
-    AUDIENCE_CHOICES = [
-        ('storefront', 'Storefront'),
-        ('merchant', 'Merchant'),
-        ('system', 'System'),
-        ('any', 'Any'),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    agent_name = models.CharField(max_length=100, db_index=True)
-    audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='merchant')
-
-    customer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='agent_runs',
-    )
-    session_key = models.CharField(max_length=64, blank=True, db_index=True)
-
-    user_message = models.TextField()
-    final_text = models.TextField(blank=True)
-    state = models.CharField(max_length=24, choices=STATE_CHOICES, default='queued', db_index=True)
-    error = models.TextField(blank=True)
-    metadata = models.JSONField(default=dict, blank=True)
-
-    provider = models.CharField(max_length=50, blank=True)
-    model = models.CharField(max_length=100, blank=True)
-    prompt_tokens = models.PositiveIntegerField(default=0)
-    completion_tokens = models.PositiveIntegerField(default=0)
-    tool_call_count = models.PositiveIntegerField(default=0)
-    duration_ms = models.PositiveIntegerField(default=0)
-
-    started_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    ended_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ['-started_at']
-        indexes = [
-            models.Index(fields=['agent_name', '-started_at']),
-            models.Index(fields=['customer', '-started_at']),
-        ]
-
-    def __str__(self) -> str:
-        return f'AgentRun({self.agent_name}, {self.state})'
-
-    @property
-    def total_tokens(self) -> int:
-        return self.prompt_tokens + self.completion_tokens
-
-    @property
-    def estimated_cost_usd(self) -> float:
-        """Approximate USD cost of this run (dashboard display, not billing)."""
-        from core.agents.pricing import estimate_cost
-
-        return estimate_cost(self.model, self.prompt_tokens, self.completion_tokens)
-
-
-class AgentStep(models.Model):
-    """One step in a run's trace — mirror of `core.agents.trace.TraceStep`."""
-
-    KIND_CHOICES = [
-        ('system', 'System'),
-        ('user', 'User'),
-        ('assistant', 'Assistant'),
-        ('tool_call', 'Tool call'),
-        ('tool_result', 'Tool result'),
-        ('final', 'Final answer'),
-        ('error', 'Error'),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    run = models.ForeignKey(AgentRun, on_delete=models.CASCADE, related_name='steps')
-    seq = models.PositiveIntegerField()
-    kind = models.CharField(max_length=20, choices=KIND_CHOICES, db_index=True)
-    name = models.CharField(max_length=200, blank=True, help_text='Tool name, when applicable')
-    content = models.TextField(blank=True)
-    arguments = models.JSONField(default=dict, blank=True)
-    output = models.JSONField(default=dict, blank=True)
-    metadata = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['run', 'seq']
-        indexes = [models.Index(fields=['run', 'seq'])]
 
 
 class AgentConversation(models.Model):
@@ -258,36 +171,3 @@ class BackgroundAgent(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} → {self.agent_name}'
-
-
-class AgentApprovalRequest(models.Model):
-    """Pending approval gate for a tool that requires human sign-off."""
-
-    STATE_CHOICES = [
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('expired', 'Expired'),
-    ]
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    run = models.ForeignKey(AgentRun, on_delete=models.CASCADE, related_name='approvals')
-    tool_name = models.CharField(max_length=200)
-    arguments = models.JSONField(default=dict)
-    # Binds an approval to exactly one tool invocation (sha256 of name+args). A
-    # grant approved for a benign call can't be spent on a different one.
-    args_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
-    # Single-use: set when the kernel spends this approval to run the tool.
-    consumed_at = models.DateTimeField(null=True, blank=True)
-    state = models.CharField(max_length=12, choices=STATE_CHOICES, default='pending', db_index=True)
-    decided_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-    note = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    decided_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ['-created_at']

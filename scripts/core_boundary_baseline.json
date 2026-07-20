@@ -1,9 +1,4 @@
 {
   "_comment": "Baseline allowlist for scripts/check_core_boundary.py. These are the KNOWN core->plugin imports being retired phase by phase. Only ever remove entries (as the import is removed); never add. Regenerate with `python scripts/check_core_boundary.py --save` ONLY for a deliberate, reviewed change.",
-  "allowed": [
-    {
-      "file": "core/assistant/tools/spawn.py",
-      "imports": "plugins.installed.agent_core.models"
-    }
-  ]
+  "allowed": []
 }
