@@ -17,7 +17,6 @@ from core.assistant.tools.capabilities import capabilities_tool, plugins_describ
 from core.assistant.tools.database import (
     count_rows_tool,
     list_models_tool,
-    recent_orders_tool,
 )
 from core.assistant.tools.delegate import (
     invoke_agent_tool,
@@ -29,9 +28,6 @@ from core.assistant.tools.ecommerce import (
 )
 from core.assistant.tools.ecommerce_writes import (
     customers_add_note_tool,
-    orders_add_note_tool,
-    orders_cancel_tool,
-    orders_update_status_tool,
     products_update_price_tool,
     products_update_status_tool,
 )
@@ -54,7 +50,6 @@ def get_default_tools() -> list:
     # Local import — keeps `memory.py` lazy so failed imports don't break
     # tool resolution at construct time.
     from core.assistant.tools.admin_ops import (
-        orders_refund_tool,
         plugins_toggle_tool,
         settings_set_tool,
         theme_activate_tool,
@@ -86,9 +81,8 @@ def get_default_tools() -> list:
         list_models_tool,
         count_rows_tool,
         db_describe_model_tool,
-        # Ecommerce — products / customers (orders.search/get migrated to the
-        # orders plugin; sourced by name from the registry below).
-        recent_orders_tool,
+        # (orders read/write tools migrated to the orders plugin; sourced by
+        # name from the registry via _migrated_names below.)
         # Configuration
         settings_list_tool,
         # Memory — cross-session preferences
@@ -109,10 +103,9 @@ def get_default_tools() -> list:
         # Phase 4 apply (ADR 0014) — owner-approved proposal → code on a branch.
         # DORMANT: inert unless MORPHEUS_SELF_UPDATE_ENABLED + owner approval.
         code_apply_proposal_tool,
-        # Write operations — gated by confirmed=True; LLM must ask user first
-        orders_update_status_tool,
-        orders_cancel_tool,
-        orders_add_note_tool,
+        # Write operations — gated by confirmed=True; LLM must ask user first.
+        # (orders write tools migrated to the orders plugin — registry-sourced
+        # via _migrated_names below.)
         products_update_status_tool,
         products_update_price_tool,
         customers_add_note_tool,
@@ -131,7 +124,6 @@ def get_default_tools() -> list:
         settings_set_tool,
         plugins_toggle_tool,
         theme_activate_tool,
-        orders_refund_tool,
         # Delegate — fan out N parallel Workers, then collect their results.
         # spawn_workers_tool is the primary path; invoke_agent_tool is a
         # back-compat shim that wraps spawn + wait_for.
@@ -152,6 +144,10 @@ def get_default_tools() -> list:
     _migrated_names = [
         'orders.search',
         'orders.get',
+        'orders.update_status',
+        'orders.cancel',
+        'orders.add_note',
+        'orders.refund',
         'products.search',
         'products.get',
         'customers.search',

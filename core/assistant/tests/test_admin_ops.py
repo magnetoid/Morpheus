@@ -155,23 +155,6 @@ class ThemeActivateTests(TestCase):
 # with the tool itself (boundary ratchet).
 
 
-class OrdersRefundTests(TestCase):
-    def test_hard_gate_required(self):
-        from core.assistant.tools.admin_ops import orders_refund_tool
-
-        # confirmed alone is not enough — refunds move money (need ack + echo).
-        with self.assertRaises(ToolError):
-            orders_refund_tool.invoke({'order_number': 'X1', 'confirmed': True})
-
-    def test_unknown_order_after_gate(self):
-        from core.assistant.tools.admin_ops import orders_refund_tool
-
-        with self.assertRaises(ToolError):
-            orders_refund_tool.invoke(
-                {
-                    'order_number': 'nope',
-                    'confirmed': True,
-                    'hard_gate_ack': 'YES',
-                    'echo': 'nope',
-                }
-            )
+# OrdersRefundTests moved to plugins/installed/orders/tests/test_agent_tools.py
+# with the tool itself (core→plugin boundary refactor, Phase 1). The hard-gate +
+# audit are preserved on the migrated orders.refund.

@@ -138,7 +138,7 @@ class StagedProductToolTests(TestCase):
 
 class StagedOrderToolTests(TestCase):
     def test_staged_status_change(self):
-        from core.assistant.tools.ecommerce_writes import orders_update_status_tool
+        from plugins.installed.orders.agent_tools import orders_update_status_tool
 
         o = _order()
         orders_update_status_tool.invoke(
@@ -161,7 +161,7 @@ class StagedOrderToolTests(TestCase):
         )
 
     def test_staged_cancel_uses_reason_as_summary(self):
-        from core.assistant.tools.ecommerce_writes import orders_cancel_tool
+        from plugins.installed.orders.agent_tools import orders_cancel_tool
 
         o = _order()
         orders_cancel_tool.invoke(
@@ -179,7 +179,7 @@ class StagedOrderToolTests(TestCase):
         # orders.Order has no `notes` field today — staging must refuse
         # cleanly instead of recording an un-appliable proposal (the
         # unstaged path fails at save() the same way).
-        from core.assistant.tools.ecommerce_writes import orders_add_note_tool
+        from plugins.installed.orders.agent_tools import orders_add_note_tool
 
         o = _order()
         with self.assertRaises(ToolError):
@@ -198,7 +198,7 @@ class UnstagedOrderToolTests(TestCase):
     """
 
     def test_confirmed_update_status_transitions_and_logs_event(self):
-        from core.assistant.tools.ecommerce_writes import orders_update_status_tool
+        from plugins.installed.orders.agent_tools import orders_update_status_tool
         from plugins.installed.orders.models import OrderEvent
 
         o = _order()
@@ -212,7 +212,7 @@ class UnstagedOrderToolTests(TestCase):
         self.assertTrue(OrderEvent.objects.filter(order=o, event_type='ORDER_CONFIRMED').exists())
 
     def test_illegal_transition_raises_toolerror(self):
-        from core.assistant.tools.ecommerce_writes import orders_update_status_tool
+        from plugins.installed.orders.agent_tools import orders_update_status_tool
 
         o = _order()  # pending — cannot jump straight to 'delivered'
         with self.assertRaises(ToolError):
@@ -222,7 +222,7 @@ class UnstagedOrderToolTests(TestCase):
         self.assertEqual(type(o).objects.get(pk=o.pk).status, 'pending')
 
     def test_unsupported_status_raises_toolerror(self):
-        from core.assistant.tools.ecommerce_writes import orders_update_status_tool
+        from plugins.installed.orders.agent_tools import orders_update_status_tool
 
         o = _order()  # 'refunded' has no lifecycle transition — refunds route elsewhere
         with self.assertRaises(ToolError):
@@ -231,7 +231,7 @@ class UnstagedOrderToolTests(TestCase):
             )
 
     def test_confirmed_cancel_applies_and_sets_cancelled_at(self):
-        from core.assistant.tools.ecommerce_writes import orders_cancel_tool
+        from plugins.installed.orders.agent_tools import orders_cancel_tool
 
         o = _order()
         orders_cancel_tool.invoke(
@@ -242,18 +242,9 @@ class UnstagedOrderToolTests(TestCase):
         self.assertIsNotNone(o.cancelled_at)
 
 
-class RecentOrdersToolTests(TestCase):
-    def test_recent_orders_reads_status_not_missing_state_field(self):
-        # Regression: the tool read the non-existent ``Order.state`` attribute
-        # and crashed on any order present.
-        from core.assistant.tools.database import recent_orders_tool
-
-        o = _order()
-        result = recent_orders_tool.invoke({'limit': 5})
-        rows = result.output['orders']
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]['order_number'], o.order_number)
-        self.assertEqual(rows[0]['state'], 'pending')
+# RecentOrdersToolTests removed with db.recent_orders — the tool was a strict
+# subset of orders.search (owned by the orders plugin), dropped in the
+# core→plugin boundary refactor (Phase 1).
 
 
 class StagedCustomerToolTests(TestCase):

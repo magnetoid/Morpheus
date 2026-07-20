@@ -1,9 +1,13 @@
-"""Order-side agent tools (search/get + refunds + RMA).
+"""Order-side agent tools (search/get + refunds + RMA + write ops).
 
-The read tools (orders.search / orders.get) were migrated here from
-core/assistant/tools/ecommerce.py so the Order model queries live in the plugin
-that owns them. Tool names are unchanged — Linda sources them by name from the
-agent registry, so her prompts/skills keep resolving.
+The read tools (orders.search / orders.get) and the write tools
+(orders.update_status / orders.cancel / orders.add_note / orders.refund) were
+migrated here from core/assistant/tools/{ecommerce,ecommerce_writes,admin_ops}.py
+so the Order model queries live in the plugin that owns them (core-boundary
+ratchet). Tool names/scopes/gates are unchanged — Linda sources them by name
+from the agent registry, so her prompts/skills keep resolving, and the shared
+confirm/staging/hard-gate helpers stay in core (imported below; plugin→core is
+the allowed direction).
 """
 
 from __future__ import annotations
@@ -14,7 +18,29 @@ from decimal import Decimal
 from djmoney.money import Money
 
 from core.agents import ToolError, ToolResult, tool
+
+# Shared write-gate helpers stay in core (imported by metafields/cms/workflows
+# too); plugin→core is the allowed import direction, so this is not a leak.
+from core.assistant.tools.ecommerce_writes import (
+    _is_staged,
+    _obj_ref,
+    _require_confirmed,
+    _require_hard_gate,
+    _stage,
+)
 from core.money import money_str as _money_str
+
+# Target status → the Order FSM transition method that reaches it. Statuses with
+# no entry (e.g. 'refunded', 'pending') aren't reachable via a status poke —
+# refunds route through the refund service.
+_ORDER_TRANSITIONS = {
+    'confirmed': 'confirm',
+    'processing': 'process',
+    'fulfilled': 'fulfill',
+    'shipped': 'ship',
+    'delivered': 'deliver',
+    'cancelled': 'cancel',
+}
 
 
 @tool(
@@ -150,7 +176,12 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
 
 @tool(
     name='orders.refund',
-    description='Refund (all or part of) an order through the payment provider.',
+    description=(
+        'Refund all or part of an order through the payment provider. MONEY '
+        'OPERATION — after the user approves, pass confirmed=True, '
+        'hard_gate_ack="YES", and echo=<the order number typed back>. Omit '
+        '`amount` for a full refund.'
+    ),
     scopes=['orders.write'],
     schema={
         'type': 'object',
@@ -168,7 +199,10 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
                 ],
                 'default': 'customer_request',
             },
-            'notes': {'type': 'string'},
+            'notes': {'type': 'string', 'default': ''},
+            'confirmed': {'type': 'boolean', 'default': False},
+            'hard_gate_ack': {'type': 'string', 'default': ''},
+            'echo': {'type': 'string', 'default': ''},
         },
         'required': ['order_number'],
     },
@@ -180,15 +214,21 @@ def refund_order_tool(
     amount: float | None = None,
     reason: str = 'customer_request',
     notes: str = '',
+    confirmed: bool = False,
+    hard_gate_ack: str = '',
+    echo: str = '',
 ) -> ToolResult:
+    # Money op: two-step confirm + hard gate (ack + echo the order number back).
+    # Migrated from core admin_ops.py with the gate intact — a refund must keep
+    # its audit trail (record_ai_decision fires inside _require_hard_gate).
+    _require_confirmed(confirmed)
+    _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=order_number, echo=echo)
     from plugins.installed.orders.models import Order
     from plugins.installed.orders.refunds import RefundService
 
-    try:
-        order = Order.objects.get(order_number=order_number)
-    except Order.DoesNotExist as e:
-        raise ToolError(f'Unknown order: {order_number}') from e
-
+    order = Order.objects.filter(order_number=order_number).first()
+    if order is None:
+        raise ToolError(f'unknown order: {order_number}')
     refund_amount = (
         order.total
         if amount is None
@@ -209,9 +249,210 @@ def refund_order_tool(
             'order_number': order.order_number,
             'amount': str(refund.amount.amount),
             'currency': str(refund.amount.currency),
-            'processed': refund.is_processed,
+            'processed': getattr(refund, 'is_processed', None),
         },
-        display=f'Refund {refund_amount} on order #{order.order_number}',
+        display=f'Refunded {refund_amount} on order #{order.order_number}.',
+    )
+
+
+@tool(
+    name='orders.update_status',
+    description=(
+        'Transition an order to a new status along its lifecycle. Pass '
+        '`order_number`, `status` (one of: confirmed, processing, fulfilled, '
+        'shipped, delivered, cancelled), and `confirmed=True` after the user '
+        'has approved. Refunds route through the refund flow, not here.'
+    ),
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'order_number': {'type': 'string'},
+            'status': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['order_number', 'status'],
+    },
+    requires_approval=True,
+    supports_staging=True,
+)
+def orders_update_status_tool(
+    *, order_number: str, status: str, confirmed: bool = False, context: dict | None = None
+) -> ToolResult:
+    staged = _is_staged(context)
+    if not staged:
+        _require_confirmed(confirmed)
+    from plugins.installed.orders.models import Order
+
+    try:
+        o = Order.objects.get(order_number=order_number)
+    except Order.DoesNotExist:
+        raise ToolError(f'order not found: {order_number}')  # noqa: B904
+    prev = o.status
+    if staged:
+        return _stage(
+            context=context,
+            tool_name='orders.update_status',
+            kind='order.update',
+            title=f'Order #{order_number}: {prev} → {status}',
+            summary=f'Set order #{order_number} status from {prev!r} to {status!r}.',
+            changes=[{'object': _obj_ref(o), 'field': 'status', 'old': prev, 'new': status}],
+            target=o,
+        )
+    # Order.status is a protected FSMField — direct assignment raises. Go through
+    # the transition method, which validates the move and logs the OrderEvent /
+    # runs side-effects a bare assign skips.
+    transition_name = _ORDER_TRANSITIONS.get(status)
+    if transition_name is None:
+        raise ToolError(
+            f'unsupported target status {status!r}; allowed: ' + ', '.join(_ORDER_TRANSITIONS)
+        )
+    try:
+        from django_fsm import TransitionNotAllowed
+    except Exception:  # noqa: BLE001 — degraded boot without django-fsm
+        TransitionNotAllowed = Exception  # type: ignore[assignment,misc]
+    try:
+        getattr(o, transition_name)()
+        o.save()
+    except TransitionNotAllowed as e:
+        raise ToolError(f'cannot move order #{order_number} from {prev} to {status}') from e
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'save failed: {e}') from e
+    return ToolResult(
+        output={'order_number': order_number, 'previous_status': prev, 'new_status': status},
+        display=f'#{order_number}: {prev} → {status}',
+    )
+
+
+@tool(
+    name='orders.cancel',
+    description=(
+        'Cancel an order. Sets status to `cancelled` and records the reason. '
+        'Requires `confirmed=True`.'
+    ),
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'order_number': {'type': 'string'},
+            'reason': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['order_number'],
+    },
+    requires_approval=True,
+    supports_staging=True,
+)
+def orders_cancel_tool(
+    *, order_number: str, reason: str = '', confirmed: bool = False, context: dict | None = None
+) -> ToolResult:
+    staged = _is_staged(context)
+    if not staged:
+        _require_confirmed(confirmed)
+    from plugins.installed.orders.models import Order
+
+    try:
+        o = Order.objects.get(order_number=order_number)
+    except Order.DoesNotExist:
+        raise ToolError(f'order not found: {order_number}')  # noqa: B904
+    if o.status in ('cancelled', 'refunded'):
+        raise ToolError(f'already {o.status}')
+    prev = o.status
+    if staged:
+        return _stage(
+            context=context,
+            tool_name='orders.cancel',
+            kind='order.cancel',
+            title=f'Cancel order #{order_number}',
+            summary=reason.strip() or f'Cancel order #{order_number} (status {prev!r}).',
+            changes=[{'object': _obj_ref(o), 'field': 'status', 'old': prev, 'new': 'cancelled'}],
+            target=o,
+        )
+    # FSM transition (source='*' → 'cancelled'): flips the protected status
+    # field, sets cancelled_at, and logs the OrderEvent.
+    try:
+        from django_fsm import TransitionNotAllowed
+    except Exception:  # noqa: BLE001 — degraded boot without django-fsm
+        TransitionNotAllowed = Exception  # type: ignore[assignment,misc]
+    try:
+        o.cancel(reason=f'Assistant: {reason}' if reason else 'Cancelled by Assistant')
+        o.save()
+    except TransitionNotAllowed as e:
+        raise ToolError(f'cannot cancel order #{order_number} (status {prev})') from e
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f'cancel failed: {e}') from e
+    return ToolResult(
+        output={
+            'order_number': order_number,
+            'previous_status': prev,
+            'new_status': 'cancelled',
+            'reason': reason,
+        },
+        display=f'#{order_number} cancelled',
+    )
+
+
+@tool(
+    name='orders.add_note',
+    description=(
+        'Append a note to an order (visible to staff, not the customer). Requires `confirmed=True`.'
+    ),
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'order_number': {'type': 'string'},
+            'note': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['order_number', 'note'],
+    },
+    requires_approval=True,
+    supports_staging=True,
+)
+def orders_add_note_tool(
+    *, order_number: str, note: str, confirmed: bool = False, context: dict | None = None
+) -> ToolResult:
+    staged = _is_staged(context)
+    if not staged:
+        _require_confirmed(confirmed)
+    from plugins.installed.orders.models import Order
+
+    if not note.strip():
+        raise ToolError('note cannot be empty')
+    try:
+        o = Order.objects.get(order_number=order_number)
+    except Order.DoesNotExist:
+        raise ToolError(f'order not found: {order_number}')  # noqa: B904
+    old_raw = getattr(o, 'notes', '') or ''
+    existing = old_raw.strip()
+    sep = '\n\n' if existing else ''
+    if staged:
+        if not hasattr(o, 'notes'):
+            # Without the field the change could never apply — refuse at staging
+            # time (the unstaged path fails at save() the same way).
+            raise ToolError('order model has no `notes` field — cannot stage a note')
+        return _stage(
+            context=context,
+            tool_name='orders.add_note',
+            kind='order.note',
+            title=f'Add note to order #{order_number}',
+            summary=f'Append a staff note to order #{order_number}.',
+            changes=[
+                {
+                    'object': _obj_ref(o),
+                    'field': 'notes',
+                    'old': old_raw,
+                    'new': f'{existing}{sep}{note.strip()}',
+                }
+            ],
+            target=o,
+        )
+    o.notes = f'{existing}{sep}{note.strip()}'
+    o.save(update_fields=['notes', 'updated_at'])
+    return ToolResult(
+        output={'order_number': order_number, 'appended': True},
+        display=f'note added to #{order_number}',
     )
 
 

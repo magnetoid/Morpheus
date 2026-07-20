@@ -185,13 +185,19 @@ class OrdersPlugin(Plugin):
             analytics_top_products_tool,
             approve_return_tool,
             list_returns_tool,
+            orders_add_note_tool,
+            orders_cancel_tool,
             orders_get_tool,
             orders_search_tool,
+            orders_update_status_tool,
             refund_order_tool,
         )
 
         return [
             refund_order_tool,
+            orders_update_status_tool,
+            orders_cancel_tool,
+            orders_add_note_tool,
             list_returns_tool,
             approve_return_tool,
             orders_search_tool,

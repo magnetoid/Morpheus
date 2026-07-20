@@ -152,34 +152,10 @@ def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> 
     )
 
 
-@tool(
-    name='orders.cancel',
-    description='Cancel an order from any status (uses the Order FSM cancel() transition).',
-    scopes=['orders.write'],
-    schema={
-        'type': 'object',
-        'properties': {
-            'order_number': {'type': 'string'},
-            'reason': {'type': 'string', 'default': ''},
-        },
-        'required': ['order_number'],
-    },
-    requires_approval=True,
-)
-def cancel_order_tool(*, order_number: str, reason: str = '') -> ToolResult:
-    from django_fsm import TransitionNotAllowed
-
-    from plugins.installed.orders.models import Order
-
-    order = Order.objects.filter(order_number=order_number).first()
-    if order is None:
-        raise ToolError(f'order {order_number!r} not found')
-    try:
-        order.cancel(reason=reason)
-        order.save()
-    except TransitionNotAllowed as e:
-        raise ToolError(f'cannot cancel from status={order.status}: {e}') from None
-    return ToolResult(output=_serialize_admin(order), display=f'#{order.order_number} cancelled')
+# orders.cancel migrated to plugins/installed/orders/agent_tools.py (the richer
+# confirmed+staging version there is now the single canonical owner; the Worker
+# resolves 'orders.cancel' by name from the registry). Boundary/dedup: #23-plan
+# Phase 1. agent_core keeps its distinct mark_fulfilled/shipped/refunded tools.
 
 
 @tool(

@@ -10,24 +10,8 @@
       "imports": "plugins.installed.ai_content.services"
     },
     {
-      "file": "core/assistant/tools/admin_ops.py",
-      "imports": "plugins.installed.orders.models"
-    },
-    {
-      "file": "core/assistant/tools/admin_ops.py",
-      "imports": "plugins.installed.orders.refunds"
-    },
-    {
-      "file": "core/assistant/tools/database.py",
-      "imports": "plugins.installed.orders.models"
-    },
-    {
       "file": "core/assistant/tools/ecommerce_writes.py",
       "imports": "plugins.installed.catalog.models"
-    },
-    {
-      "file": "core/assistant/tools/ecommerce_writes.py",
-      "imports": "plugins.installed.orders.models"
     },
     {
       "file": "core/assistant/tools/spawn.py",

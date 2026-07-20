@@ -52,7 +52,6 @@ from plugins.installed.agent_core.tools.inventory import (
     set_stock_tool,
 )
 from plugins.installed.agent_core.tools.orders import (
-    cancel_order_tool,
     list_recent_orders_tool,
     mark_order_fulfilled_tool,
     mark_order_refunded_tool,
@@ -124,7 +123,6 @@ def all_builtin_tools() -> list:
         summarise_order_tool,
         mark_order_fulfilled_tool,
         mark_order_shipped_tool,
-        cancel_order_tool,
         mark_order_refunded_tool,
         revenue_summary_tool,
         top_products_tool,

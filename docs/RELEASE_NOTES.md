@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.27.2 — 2026-07-20
+
+**Internal: orders agent-tools decoupled to the orders plugin**
+
+- Refactor (no behavior change): the orders write tools (orders.update_status/cancel/add_note/refund) and db.recent_orders moved out of core into the orders plugin, driving the core→plugin boundary ratchet from 8 to 4. Linda and the Worker resolve the same tool names from the registry; the refund hard-gate + audit and staged-mode gating are preserved, and agent_core's duplicate orders.cancel was retired (single canonical owner). Phase 1 of docs/plans/architecture-debt-refactor-2026-07.md.
+
 ## v0.27.1 — 2026-07-19
 
 **Loyalty redemption cap correctness (odd rates)**

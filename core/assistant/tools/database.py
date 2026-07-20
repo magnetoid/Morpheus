@@ -54,37 +54,3 @@ def count_rows_tool(*, model: str) -> ToolResult:
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'count failed: {e}') from e
     return ToolResult(output={'model': model, 'count': count})
-
-
-@tool(
-    name='db.recent_orders',
-    description='Show the most recent N orders with state and total.',
-    scopes=['system.read'],
-    schema={
-        'type': 'object',
-        'properties': {'limit': {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 10}},
-    },
-)
-def recent_orders_tool(*, limit: int = 10) -> ToolResult:
-    try:
-        from plugins.installed.orders.models import Order
-    except Exception as e:  # noqa: BLE001
-        raise ToolError(f'orders plugin unavailable: {e}') from e
-    rows = list(Order.objects.all().order_by('-placed_at')[: max(1, min(int(limit or 10), 50))])
-    return ToolResult(
-        output={
-            'orders': [
-                {
-                    'order_number': o.order_number,
-                    'state': o.status,
-                    'total': str(getattr(o.total, 'amount', '')),
-                    'currency': str(getattr(o.total, 'currency', '')),
-                    'created_at': o.placed_at.isoformat(),
-                    'customer_email': getattr(o.customer, 'email', '')
-                    if o.customer_id
-                    else o.email,
-                }
-                for o in rows
-            ],
-        }
-    )
