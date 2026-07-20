@@ -150,14 +150,13 @@ def build_system_prompt() -> str:
     (``runtime._format_recent_memories``), ranked by semantic similarity
     to the merchant's current message.
     """
-    prompt = LINDA_BASE_PROMPT
-    try:
-        from plugins.installed.ai_content.services import with_brand_voice
+    # AGENT_SYSTEM_PROMPT filter — ai_content prepends the brand voice while
+    # enabled; the bus isolates handler errors and skips inactive owners, so
+    # the prompt is always available (replaces the old direct import).
+    from core.hooks import MorpheusEvents, hook_registry
 
-        prompt = with_brand_voice(prompt)
-    except Exception as e:  # noqa: BLE001 — prompt must always be available
-        logger.debug('assistant: brand-voice injection skipped: %s', e)
-    return prompt
+    prompt = hook_registry.filter(MorpheusEvents.AGENT_SYSTEM_PROMPT, value=LINDA_BASE_PROMPT)
+    return prompt if isinstance(prompt, str) else LINDA_BASE_PROMPT
 
 
 # Backwards-compatible alias for any caller that still imports the constant.

@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.27.4 — 2026-07-20
+
+**Internal: brand voice decoupled via the AGENT_SYSTEM_PROMPT filter**
+
+- Refactor (no behavior change): core no longer imports ai_content for brand voice — prompt assembly fires the new AGENT_SYSTEM_PROMPT filter and ai_content's subscriber prepends the voice, so disabling the plugin cleanly yields the plain prompt. Core→plugin boundary ratchet 3 → 1 (only the agent_core run-state coupling remains). Phase 3 of docs/plans/architecture-debt-refactor-2026-07.md.
+
 ## v0.27.3 — 2026-07-20
 
 **Internal: catalog agent-tools decoupled to the catalog plugin**

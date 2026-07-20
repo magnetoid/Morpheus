@@ -633,6 +633,15 @@ class MorpheusEvents:
     #   owners), so its Brain panel vanishes. Keeps core importing no plugin
     #   model — the inverse of the old hard-coded imports (ADR 0017).
     BRAIN_SIGNALS = 'brain.signals'  # filter
+    # AGENT_SYSTEM_PROMPT — filter, value=str (the assembled base system prompt
+    #   for an agent/Linda), no kwargs. Fired as the LAST assembly step in
+    #   core/agents/base.py:get_system_prompt and core/assistant/prompts.py:
+    #   build_system_prompt. Subscribers may PREPEND a prefix (e.g. ai_content's
+    #   brand voice — returns with_brand_voice(value)) and must return the full
+    #   prompt string. Replaces the old core→ai_content import + try/except:
+    #   the bus already isolates handler errors and skips inactive owners, so a
+    #   disabled ai_content yields the plain prompt (ADR 0017 inversion).
+    AGENT_SYSTEM_PROMPT = 'agent.system_prompt'  # filter
 
     # KNOWLEDGE_SOURCES — filter, value=list (accumulates knowledge documents
     #   for Linda's RAG index). Each subscriber APPENDS dicts of the shape

@@ -122,18 +122,17 @@ class MorpheusAgent:
             except KeyError:
                 base = self.description or f'You are the {self.label} agent.'
 
-        # Brand voice lands first so it frames everything else; ai_content
-        # is optional, fall through silently when not installed.
-        brand: str = ''
-        try:
-            from plugins.installed.ai_content.services import get_brand_voice
+        chunks = [c for c in [*preludes, base] if c]
+        prompt = '\n\n'.join(chunks).strip()
+        # AGENT_SYSTEM_PROMPT filter — subscribers prepend their prefix (e.g.
+        # ai_content's brand voice, which lands first so it frames everything
+        # else). Replaces the old direct ai_content import: the bus isolates
+        # handler errors and skips inactive owners, so a disabled/absent
+        # ai_content just yields the plain prompt.
+        from core.hooks import MorpheusEvents, hook_registry
 
-            brand = get_brand_voice()
-        except Exception:  # noqa: BLE001
-            brand = ''
-
-        chunks = [c for c in [brand, *preludes, base] if c]
-        return '\n\n'.join(chunks).strip()
+        filtered = hook_registry.filter(MorpheusEvents.AGENT_SYSTEM_PROMPT, value=prompt)
+        return filtered if isinstance(filtered, str) else prompt
 
     def get_tools(self) -> list[Tool]:
         """Return the tools this agent can call.

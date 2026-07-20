@@ -20,6 +20,21 @@ class AIContentPlugin(Plugin):
     has_models = False
     requires = ['catalog', 'ai_assistant']
 
+    def ready(self) -> None:
+        from morpheus import events  # noqa: PLC0415
+
+        # Prepend the brand voice to every agent/Linda system prompt. Core
+        # fires AGENT_SYSTEM_PROMPT as the last assembly step; while this
+        # plugin is disabled the bus skips the handler and the plain prompt
+        # flows through (the ADR 0017 inversion of the old core→plugin import).
+        self.register_hook(events.AGENT_SYSTEM_PROMPT, self.on_agent_system_prompt, priority=50)
+
+    def on_agent_system_prompt(self, value, **kwargs):
+        """AGENT_SYSTEM_PROMPT filter — return the prompt with brand voice first."""
+        from plugins.installed.ai_content.services import with_brand_voice  # noqa: PLC0415
+
+        return with_brand_voice(value if isinstance(value, str) else '')
+
     def get_config_schema(self):
         """
         Settings rendered into `/dashboard/settings/ai/` (category=ai).

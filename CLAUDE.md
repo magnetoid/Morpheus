@@ -209,17 +209,18 @@ slice through the `BRAIN_SIGNALS` filter; ADR 0031); and
 `register_context_processor` — the request-time consumer is
 `plugins/context_processors.py:plugin_context`, which merges contributed
 processors and skips inactive owners; this is what finally makes that mechanism
-real). *Still leaking (shrinking — the core-boundary ratchet is at **4** and
+real). *Still leaking (shrinking — the core-boundary ratchet is at **1** and
 being driven to 0 per `docs/plans/architecture-debt-refactor-2026-07.md`):*
-`core/assistant/tools/ecommerce_writes.py` still queries `catalog.models`
-(products.update_status/price — Phase 2); `core/agents/base.py` +
-`core/assistant/prompts.py` import `ai_content.services` for brand voice
-(Phase 3, becoming an `AGENT_SYSTEM_PROMPT` filter); `core/assistant/tools/
-spawn.py` imports `agent_core.models` (Phase 4, run-state models move into
-core). **Orders agent tools are repaid** — `orders.update_status`/`cancel`/
-`add_note`/`refund` now live in `plugins/installed/orders/agent_tools.py`
-(hard-gate + staging intact; agent_core's duplicate `orders.cancel` retired;
-`db.recent_orders` dropped for `orders.search`). The full shell-leak /
+only `core/assistant/tools/spawn.py` imports `agent_core.models` (Phase 4,
+run-state models move into core). **Repaid:** orders agent tools
+(`orders.update_status`/`cancel`/`add_note`/`refund` →
+`plugins/installed/orders/agent_tools.py`, hard-gate + staging intact;
+agent_core's duplicate `orders.cancel` retired; `db.recent_orders` dropped
+for `orders.search`); catalog write tools (`products.update_status`/`price`
+→ `catalog/agent_tools.py`, `pricing_change` staging blocklist intact); and
+brand voice (core fires the `AGENT_SYSTEM_PROMPT` filter as the last
+prompt-assembly step; ai_content's subscriber prepends the voice — disable
+the plugin and the plain prompt flows through). The full shell-leak /
 duplication debt map (still open: product_videos, metafields, cloudflare,
 seo shell imports; storefront account sub-pages; catalog.py book-vertical
 sites) lives in `docs/plans/boundary-debt-2026-07.md` — repay from there,
