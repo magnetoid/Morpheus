@@ -10,10 +10,6 @@
       "imports": "plugins.installed.ai_content.services"
     },
     {
-      "file": "core/assistant/tools/ecommerce_writes.py",
-      "imports": "plugins.installed.catalog.models"
-    },
-    {
       "file": "core/assistant/tools/spawn.py",
       "imports": "plugins.installed.agent_core.models"
     }

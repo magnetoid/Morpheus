@@ -23,9 +23,9 @@ from djmoney.money import Money
 
 from core.agents import LLMResponse, LLMToolCall, MockLLMProvider, agent_registry
 from core.assistant.models import OpsProposal
-from core.assistant.tools.ecommerce_writes import products_update_status_tool
 from plugins.installed.agent_core import scheduler
 from plugins.installed.agent_core.models import AgentRun, BackgroundAgent
+from plugins.installed.catalog.agent_tools import products_update_status_tool
 
 SPEC_PROMPT = (
     'Scan the 20 most recently added active products for missing meta '

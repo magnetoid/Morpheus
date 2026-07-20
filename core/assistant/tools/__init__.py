@@ -28,8 +28,6 @@ from core.assistant.tools.ecommerce import (
 )
 from core.assistant.tools.ecommerce_writes import (
     customers_add_note_tool,
-    products_update_price_tool,
-    products_update_status_tool,
 )
 from core.assistant.tools.spawn import (
     poll_workers_tool,
@@ -104,10 +102,8 @@ def get_default_tools() -> list:
         # DORMANT: inert unless MORPHEUS_SELF_UPDATE_ENABLED + owner approval.
         code_apply_proposal_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first.
-        # (orders write tools migrated to the orders plugin — registry-sourced
-        # via _migrated_names below.)
-        products_update_status_tool,
-        products_update_price_tool,
+        # (orders + products write tools migrated to their owning plugins —
+        # registry-sourced via _migrated_names below.)
         customers_add_note_tool,
         # Self-awareness — enumerate the full toolset so Linda discovers her
         # own reach instead of replying "I can't"; introspect any installed
@@ -150,6 +146,8 @@ def get_default_tools() -> list:
         'orders.refund',
         'products.search',
         'products.get',
+        'products.update_status',
+        'products.update_price',
         'customers.search',
         'customers.get',
         'media.search',

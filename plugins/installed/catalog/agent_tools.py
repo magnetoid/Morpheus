@@ -1,14 +1,30 @@
-"""Catalog read tools for the agent layer.
+"""Catalog agent tools (reads + write ops).
 
 products.search / products.get were migrated here from
-core/assistant/tools/ecommerce.py so the Product queries live in the plugin that
-owns them. Tool names + scopes are unchanged — Linda sources them by name from
-the agent registry, so her prompts/skills keep resolving.
+core/assistant/tools/ecommerce.py, and products.update_status /
+products.update_price from ecommerce_writes.py (core→plugin boundary ratchet),
+so the Product queries live in the plugin that owns them. Tool names + scopes +
+gates are unchanged — Linda sources them by name from the agent registry, and
+the shared confirm/staging helpers stay in core (plugin→core is the allowed
+import direction). products.update_price keeps kind='pricing_change', which
+core.safety CLASS_BLOCKLIST refuses at staging time — autonomous/staged runs
+cannot propose price edits; the interactive confirmed flow still can.
 """
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+
 from core.agents import ToolError, ToolResult, tool
+
+# Shared write-gate helpers stay in core (imported by orders/metafields/cms
+# too); plugin→core is the allowed import direction, so this is not a leak.
+from core.assistant.tools.ecommerce_writes import (
+    _is_staged,
+    _obj_ref,
+    _require_confirmed,
+    _stage,
+)
 from core.money import money_str as _money_str
 
 
@@ -288,3 +304,192 @@ def list_translations_tool(*, slug: str) -> ToolResult:
     except Product.DoesNotExist as e:
         raise ToolError(f'Unknown product: {slug}') from e
     return ToolResult(output={'product': slug, 'translations': translations_for(product)})
+
+
+# ── Write ops (migrated from core/assistant/tools/ecommerce_writes.py) ──
+
+
+@tool(
+    name='products.update_status',
+    description=(
+        "Set a product's status: active, draft, or archived. "
+        'Pass either `id`, `sku`, or `slug` to identify the product.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'id': {'type': 'string'},
+            'sku': {'type': 'string'},
+            'slug': {'type': 'string'},
+            'status': {'type': 'string', 'enum': ['active', 'draft', 'archived']},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['status'],
+    },
+    requires_approval=True,
+    supports_staging=True,
+)
+def products_update_status_tool(
+    *,
+    status: str,
+    id: str = '',
+    sku: str = '',
+    slug: str = '',
+    confirmed: bool = False,
+    context: dict | None = None,
+) -> ToolResult:
+    staged = _is_staged(context)
+    if not staged:
+        _require_confirmed(confirmed)
+    if status not in ('active', 'draft', 'archived'):
+        raise ToolError(f'invalid status: {status}')
+    from plugins.installed.catalog.models import Product
+
+    p = None
+    if id:
+        p = Product.objects.filter(pk=id).first()
+    if p is None and sku:
+        p = Product.objects.filter(sku=sku).first()
+    if p is None and slug:
+        p = Product.objects.filter(slug=slug).first()
+    if p is None:
+        raise ToolError('product not found — pass id, sku, or slug')
+    prev = p.status
+    if staged:
+        return _stage(
+            context=context,
+            tool_name='products.update_status',
+            kind='product.update',
+            title=f'Product "{p.name}": {prev} → {status}',
+            summary=f'Set product {p.name!r} (SKU {p.sku}) status from {prev!r} to {status!r}.',
+            changes=[{'object': _obj_ref(p), 'field': 'status', 'old': prev, 'new': status}],
+            target=p,
+        )
+    p.status = status
+    p.save(update_fields=['status', 'updated_at'])
+    return ToolResult(
+        output={
+            'product_id': str(p.id),
+            'name': p.name,
+            'previous_status': prev,
+            'new_status': status,
+        },
+        display=f'{p.name}: {prev} → {status}',
+    )
+
+
+@tool(
+    name='products.update_price',
+    description=(
+        "Update a product's price (optionally on a specific variant). "
+        'Pass `id`/`sku`/`slug` to find the product, optional '
+        '`variant_id` for a variant-specific change, and the new '
+        '`price` as a numeric string ("19.99"). Currency stays the '
+        'same. Requires `confirmed=True`.'
+    ),
+    scopes=['catalog.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'id': {'type': 'string'},
+            'sku': {'type': 'string'},
+            'slug': {'type': 'string'},
+            'variant_id': {'type': 'string'},
+            'price': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['price'],
+    },
+    requires_approval=True,
+    supports_staging=True,
+)
+def products_update_price_tool(
+    *,
+    price: str,
+    id: str = '',
+    sku: str = '',
+    slug: str = '',
+    variant_id: str = '',
+    confirmed: bool = False,
+    context: dict | None = None,
+) -> ToolResult:
+    staged = _is_staged(context)
+    if not staged:
+        _require_confirmed(confirmed)
+    try:
+        amount = Decimal(str(price))
+    except (InvalidOperation, ValueError) as e:
+        raise ToolError(f'invalid price: {price}') from e
+    if amount < 0:
+        raise ToolError('price cannot be negative')
+
+    from plugins.installed.catalog.models import Product, ProductVariant
+
+    if variant_id:
+        v = ProductVariant.objects.filter(pk=variant_id).first()
+        if v is None:
+            raise ToolError(f'variant not found: {variant_id}')
+        prev = str(getattr(getattr(v, 'price', None), 'amount', ''))
+        if staged:
+            # 'pricing_change' is in core.safety.CLASS_BLOCKLIST — staging
+            # refuses it, deliberately: autonomous runs cannot propose price
+            # edits (spec §2). The interactive confirmed flow still can.
+            return _stage(
+                context=context,
+                tool_name='products.update_price',
+                kind='pricing_change',
+                title=f'Variant {v.sku}: {prev} → {amount}',
+                summary=f'Change variant {v.sku} price from {prev} to {amount}.',
+                changes=[
+                    {'object': _obj_ref(v), 'field': 'price', 'old': prev, 'new': str(amount)}
+                ],
+                target=v,
+            )
+        # djmoney accepts a Decimal directly when assigned; the field's
+        # currency is preserved from the existing value.
+        v.price = amount
+        v.save(update_fields=['price', 'updated_at'])
+        return ToolResult(
+            output={
+                'variant_id': str(v.id),
+                'sku': v.sku,
+                'previous_price': prev,
+                'new_price': str(amount),
+            },
+            display=f'variant {v.sku}: {prev} → {amount}',
+        )
+
+    p = None
+    if id:
+        p = Product.objects.filter(pk=id).first()
+    if p is None and sku:
+        p = Product.objects.filter(sku=sku).first()
+    if p is None and slug:
+        p = Product.objects.filter(slug=slug).first()
+    if p is None:
+        raise ToolError('product not found — pass id, sku, slug, or variant_id')
+    prev = str(getattr(getattr(p, 'price', None), 'amount', ''))
+    if staged:
+        # See the variant branch above — 'pricing_change' is blocklisted at
+        # staging time (core.safety), so this surfaces as a tool error.
+        return _stage(
+            context=context,
+            tool_name='products.update_price',
+            kind='pricing_change',
+            title=f'Product "{p.name}": {prev} → {amount}',
+            summary=f'Change product {p.name!r} price from {prev} to {amount}.',
+            changes=[{'object': _obj_ref(p), 'field': 'price', 'old': prev, 'new': str(amount)}],
+            target=p,
+        )
+    p.price = amount
+    p.save(update_fields=['price', 'updated_at'])
+    return ToolResult(
+        output={
+            'product_id': str(p.id),
+            'name': p.name,
+            'previous_price': prev,
+            'new_price': str(amount),
+        },
+        display=f'{p.name}: {prev} → {amount}',
+    )

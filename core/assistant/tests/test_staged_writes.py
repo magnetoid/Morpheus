@@ -51,7 +51,7 @@ def _order(**kw):
 
 class StagedProductToolTests(TestCase):
     def test_staged_status_change_creates_proposal_and_does_not_mutate(self):
-        from core.assistant.tools.ecommerce_writes import products_update_status_tool
+        from plugins.installed.catalog.agent_tools import products_update_status_tool
 
         p = _product()
         result = products_update_status_tool.invoke(
@@ -78,8 +78,8 @@ class StagedProductToolTests(TestCase):
         self.assertEqual(proposal.target, p)
 
     def test_staged_context_source_and_agent_run_flow_through(self):
-        from core.assistant.tools.ecommerce_writes import products_update_status_tool
         from plugins.installed.agent_core.models import AgentRun
+        from plugins.installed.catalog.agent_tools import products_update_status_tool
 
         p = _product(slug='staged-run', sku='STG-RUN')
         run = AgentRun.objects.create(agent_name='worker', user_message='hygiene sweep')
@@ -92,7 +92,7 @@ class StagedProductToolTests(TestCase):
         self.assertEqual(proposal.agent_run_id, run.id)
 
     def test_unstaged_behavior_unchanged(self):
-        from core.assistant.tools.ecommerce_writes import products_update_status_tool
+        from plugins.installed.catalog.agent_tools import products_update_status_tool
 
         p = _product(slug='unstaged', sku='STG-U')
         # confirmed=False still refuses, exactly as before.
@@ -108,7 +108,7 @@ class StagedProductToolTests(TestCase):
         self.assertEqual(OpsProposal.objects.count(), 0)
 
     def test_blocked_class_price_change_returns_error_no_proposal(self):
-        from core.assistant.tools.ecommerce_writes import products_update_price_tool
+        from plugins.installed.catalog.agent_tools import products_update_price_tool
 
         p = _product(slug='staged-price', sku='STG-PR')
         with self.assertRaises(ToolError) as ctx:
@@ -121,7 +121,7 @@ class StagedProductToolTests(TestCase):
         self.assertEqual(OpsProposal.objects.count(), 0)
 
     def test_staged_proposal_applies_end_to_end(self):
-        from core.assistant.tools.ecommerce_writes import products_update_status_tool
+        from plugins.installed.catalog.agent_tools import products_update_status_tool
 
         staff = get_user_model().objects.create_user(username='st', password='x', is_staff=True)
         p = _product(slug='staged-e2e', sku='STG-E2E')

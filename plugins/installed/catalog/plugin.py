@@ -156,6 +156,8 @@ class CatalogPlugin(Plugin):
             products_count_tool,
             products_get_tool,
             products_search_tool,
+            products_update_price_tool,
+            products_update_status_tool,
             translate_product_tool,
         )
 
@@ -163,6 +165,8 @@ class CatalogPlugin(Plugin):
             products_search_tool,
             products_count_tool,
             products_get_tool,
+            products_update_status_tool,
+            products_update_price_tool,
             translate_product_tool,
             list_translations_tool,
         ]

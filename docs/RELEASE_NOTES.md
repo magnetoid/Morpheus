@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.27.3 — 2026-07-20
+
+**Internal: catalog agent-tools decoupled to the catalog plugin**
+
+- Refactor (no behavior change): products.update_status and products.update_price moved out of core into the catalog plugin, driving the core→plugin boundary ratchet from 4 to 3. Tool names, approval gating, staged-mode, and the pricing_change staging blocklist (autonomous runs cannot propose price edits) are all preserved. Phase 2 of docs/plans/architecture-debt-refactor-2026-07.md.
+
 ## v0.27.2 — 2026-07-20
 
 **Internal: orders agent-tools decoupled to the orders plugin**
