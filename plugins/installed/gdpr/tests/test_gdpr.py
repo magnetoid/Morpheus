@@ -130,11 +130,19 @@ class DisableTests(TestCase):
 
 
 class LegalPageSeedTests(TestCase):
+    # The 6 legal slugs seed_legal_pages() owns. The gdpr 0002 data migration
+    # already seeds these into the test DB (on sqlite the seed succeeds and
+    # persists across TestCase rollbacks), so the test must start from a known
+    # clean slate rather than assume an empty DB.
+    _SLUGS = ('privacy', 'terms', 'imprint', 'cookies', 'accessibility', 'faq')
+
     def test_seed_is_idempotent(self):
         from plugins.installed.cms.models import Page
 
+        Page.objects.filter(slug__in=self._SLUGS).delete()
+
         first = seed_legal_pages()
-        self.assertEqual(first['created'], 3)
+        self.assertEqual(first['created'], len(self._SLUGS))
         for slug in ('privacy', 'terms', 'imprint'):
             self.assertTrue(Page.objects.filter(slug=slug, state='published').exists())
         # LLM providers must be disclosed on the privacy page (Art. 13 recipients).
@@ -143,7 +151,7 @@ class LegalPageSeedTests(TestCase):
 
         second = seed_legal_pages()
         self.assertEqual(second['created'], 0)
-        self.assertEqual(second['skipped'], 3)
+        self.assertEqual(second['skipped'], len(self._SLUGS))
 
     def test_management_command_runs(self):
         call_command('seed_legal_pages')

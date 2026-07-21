@@ -1,4 +1,4 @@
-{% load i18n %}<div id="morpheus-stylist"
+{% load i18n morph %}<div id="morpheus-stylist"
      class="morpheus-stylist"
      data-persona="{{ settings.persona_name|default:'Aria' }}"
      data-welcome="{{ settings.welcome_message|default:'' }}"
@@ -12,6 +12,7 @@
       <strong>{{ settings.persona_name|default:'Aria' }}</strong>
       <button type="button" class="morpheus-stylist__close" aria-label="{% trans 'Close' %}">×</button>
     </header>
+    {% ai_disclosure surface="ai_stylist" %}
     <ol class="morpheus-stylist__thread" aria-live="polite"></ol>
     <form class="morpheus-stylist__form">
       <input type="text" name="message" required placeholder="{% trans 'Ask me anything…' %}" autocomplete="off" />

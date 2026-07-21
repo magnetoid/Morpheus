@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.28.0 — 2026-07-21
+
+**EU AI Act Art. 50 AI-disclosure for conversational surfaces**
+
+- Add the `{% ai_disclosure %}` core tag + AI_SURFACE_DISCLOSURE filter — a mandatory 'you are talking to an AI' label with a core legal-floor default (never removed by disabling a plugin), wording customizable via gdpr.
+- Wire the disclosure into the ai_stylist chat widget header (compliance-by-construction; the dormant block is untouched).
+- COMPLIANCE.md: document the Art. 50 posture (chatbot disclosure mechanism live; per-object AI-content marking assessed and deferred — agent-mediated writes are already record_ai_decision-logged).
+- Fix a pre-existing gdpr seed test that assumed an empty DB + the old 3-page set (sqlite migration-seed divergence; now deletes slugs first and asserts the real count of 6).
+
 ## v0.27.5 — 2026-07-20
 
 **Internal: agent run-state models move into core — boundary ratchet reaches 0**

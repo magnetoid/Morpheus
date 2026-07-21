@@ -654,6 +654,19 @@ class MorpheusEvents:
     #   docs/plans/rag-knowledge-base.md.
     KNOWLEDGE_SOURCES = 'knowledge.sources'  # filter
 
+    # AI_SURFACE_DISCLOSURE — filter, value=str (the disclosure text shown on a
+    #   customer-facing conversational AI surface), kwargs: surface=str (which
+    #   surface asked, e.g. 'ai_stylist'). EU AI Act Art. 50(1): a system that
+    #   interacts with a natural person must disclose it is an AI. The DEFAULT
+    #   text is a legal FLOOR baked into the core `{% ai_disclosure %}` tag
+    #   (core/templatetags/morph.py) — it can't be a togglable plugin, so it
+    #   never disappears when a plugin is disabled. Subscribers (gdpr) may
+    #   REPLACE the wording with merchant-configured copy and return the string;
+    #   a disabled subscriber falls back to the core default (bus skips inactive
+    #   owners). The disclosure ships INSIDE each conversational surface's own
+    #   template, so disabling that surface plugin removes chat + label together.
+    AI_SURFACE_DISCLOSURE = 'ai.surface_disclosure'  # filter
+
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,
     #                     session_key=str. Fires from the storefront PDP.

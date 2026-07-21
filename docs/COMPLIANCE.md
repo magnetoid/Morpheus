@@ -2,7 +2,11 @@
 
 This document maps Morpheus's audit + observability primitives to
 the obligations that apply to operators of an agent-native commerce
-platform from **February 2026** (EU AI Act enforcement) onward.
+platform. Key dates: GPAI duties since **Aug 2025**; **Art. 50
+transparency (chatbot disclosure + AI-content marking) is effective
+Aug 2, 2026**; high-risk (Annex III) duties land **Aug 2026 → likely
+Dec 2027** (the Digital Omnibus delay, not yet formally adopted, so
+treat Aug 2026 as binding).
 
 ## What Morpheus does for you
 
@@ -14,6 +18,40 @@ platform from **February 2026** (EU AI Act enforcement) onward.
 | Customer data export (GDPR art. 15) | Query `AuditEvent` on `actor` + `target` like `customer/<id>` | One SQL/Django query returns the full decision history |
 | Trace export without PII (GDPR art. 5) | `core/observability.py:_PIIScrubberProcessor` | Email / phone / IPv4 in OTel span attributes replaced with stable SHA-256 hashes before any external exporter sees them |
 | Approval gates for high-risk actions | `plugins/installed/agent_core/models.py:AgentApprovalRequest` | Plugin disables, bulk deletes, and other hard-gated tools record a row per request |
+| AI-disclosure on chat surfaces (AI Act art. 50(1)) | `core/templatetags/morph.py:ai_disclosure` + `AI_SURFACE_DISCLOSURE` filter | `{% ai_disclosure %}` renders a mandatory "you're talking to an AI" label inside every conversational AI surface; the default is a core legal floor, gdpr customises the wording |
+
+## Art. 50 — transparency ("you're talking to an AI")
+
+**50(1) — chatbot disclosure.** Any surface that lets a shopper
+*converse with an AI* must say so. Morpheus ships the disclosure as a
+**core** tag, `{% ai_disclosure surface="…" %}`
+(`core/templatetags/morph.py`), rendered *inside* each conversational
+surface's own template. The wording is a legal-floor default in core —
+it can't be removed by disabling a plugin — and the `gdpr` plugin may
+replace it with merchant copy through the `AI_SURFACE_DISCLOSURE`
+filter (disable gdpr → the core default still shows). Disabling the
+*surface* plugin removes chat and label together, which is correct.
+
+*Current state (2026-07):* the only shipped conversational surface is
+`ai_stylist`, which is **dormant** (its `contribute_storefront_blocks`
+returns `[]` pending a finished, rate-limited backend). The disclosure
+is already wired into its widget header, so the surface is
+compliant-by-construction the moment it is mounted. The live `crm`
+"Chat with us" widget routes to **human staff**, not AI, so 50(1) does
+not apply to it today.
+
+**50(2)/(4) — AI-generated content marking.** Morpheus auto-writes
+product descriptions via an agent workflow
+(`ai_assistant.tasks.generate_product_description`). Every such write
+already produces an `agents.decision` provenance row
+(`record_ai_decision`, art. 12/13). We do **not** yet stamp a
+per-object, render-time "AI-generated" marker on the product: the write
+is agent-mediated (no single write-point) and commercial product copy
+is not "text published to inform the public on matters of public
+interest" under 50(4), so it is outside the hard bright line. A
+visible "AI-assisted" affordance is tracked as a good-practice
+follow-up (see `docs/plans/ai-commerce-strategy-2026-2031.md`,
+Horizon 2 — C2PA content provenance).
 
 ## Exporting one customer's audit trail
 

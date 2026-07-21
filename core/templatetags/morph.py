@@ -244,3 +244,46 @@ def markdown_to_html(value: str) -> str:
 def markdown_safe(value):
     """Template-filter wrapper around ``markdown_to_html``."""
     return mark_safe(markdown_to_html(value))
+
+
+# EU AI Act Art. 50(1) — the mandatory "you're talking to an AI" disclosure.
+# The default text is a legal FLOOR that lives in core (never a togglable
+# plugin), so it can't vanish when a plugin is disabled. gdpr may replace the
+# wording via the AI_SURFACE_DISCLOSURE filter; a disabled gdpr falls back here.
+_AI_DISCLOSURE_DEFAULT = (
+    "You're chatting with an AI assistant, not a person. It can make mistakes — "
+    'check important details before you rely on them.'
+)
+
+
+@register.simple_tag
+def ai_disclosure(surface: str = '') -> str:
+    """Render the Art. 50 AI-disclosure label for a conversational AI surface.
+
+    Drop ``{% ai_disclosure surface="ai_stylist" %}`` inside any customer-facing
+    AI chat template. Emits an accessible, machine-readable note; the wording is
+    the core legal-floor default unless a subscriber (gdpr) overrides it through
+    the ``AI_SURFACE_DISCLOSURE`` filter. Fail-soft: on any error the default
+    text still renders — the disclosure must never silently disappear.
+    """
+    from django.utils.html import format_html
+
+    text = _AI_DISCLOSURE_DEFAULT
+    try:
+        from core.hooks import MorpheusEvents, hook_registry
+
+        filtered = hook_registry.filter(
+            MorpheusEvents.AI_SURFACE_DISCLOSURE,
+            value=_AI_DISCLOSURE_DEFAULT,
+            surface=surface or '',
+        )
+        if isinstance(filtered, str) and filtered.strip():
+            text = filtered.strip()
+    except Exception:  # noqa: BLE001 — never let the disclosure fail to render.
+        logger.debug('ai_disclosure filter failed; using default', exc_info=True)
+
+    return format_html(
+        '<p class="ai-disclosure" role="note" data-ai-disclosure data-ai-surface="{}">{}</p>',
+        surface or '',
+        text,
+    )

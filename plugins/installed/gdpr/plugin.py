@@ -38,6 +38,19 @@ class GdprPlugin(Plugin):
     def ready(self) -> None:
         # Data-rights pages at the site root (/account/privacy/, …).
         self.register_urls('plugins.installed.gdpr.urls', prefix='', namespace='gdpr')
+        # EU AI Act Art. 50(1): let the merchant customise the AI-disclosure
+        # wording shown on conversational AI surfaces. Core owns the mandatory
+        # default; this only overrides the copy. Disable gdpr → core default.
+        from morpheus import events
+
+        self.register_hook(events.AI_SURFACE_DISCLOSURE, self.on_ai_surface_disclosure, priority=50)
+
+    def on_ai_surface_disclosure(self, value, **kwargs):
+        """Replace the AI-disclosure text with merchant-configured copy, if set."""
+        custom = self.get_config_value('ai_disclosure_text', '')
+        if isinstance(custom, str) and custom.strip():
+            return custom.strip()
+        return value
 
     def contribute_storefront_blocks(self) -> list:
         # Both surfaces are registry-gated contributions, so disabling the
@@ -81,6 +94,15 @@ class GdprPlugin(Plugin):
                     'type': 'string',
                     'title': 'Privacy contact email',
                     'description': 'Where data-rights enquiries are sent.',
+                    'default': '',
+                },
+                'ai_disclosure_text': {
+                    'type': 'string',
+                    'title': 'AI assistant disclosure text',
+                    'description': (
+                        'EU AI Act Art. 50 wording shown on customer-facing AI '
+                        'chat surfaces. Leave blank to use the built-in default.'
+                    ),
                     'default': '',
                 },
             },
