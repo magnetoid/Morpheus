@@ -258,6 +258,40 @@ class DeepSeoServicesTests(TestCase):
         self.assertIn('# ', out)
         self.assertIn('## Site map', out)
 
+    def test_render_agents_md_has_discovery_and_endpoints(self):
+        from plugins.installed.seo.services import render_agents_md
+
+        out = render_agents_md()
+        # seo seeds the header + discovery (its own surfaces).
+        self.assertIn('for AI agents', out)
+        self.assertIn('## Discovery', out)
+        self.assertIn('/llms.txt', out)
+        # agent_mcp contributes the transaction endpoints via the filter.
+        self.assertIn('## Agent commerce endpoints', out)
+        self.assertIn('/mcp/admin/v1/', out)
+        self.assertIn('ucp.json', out)
+
+    def test_agents_md_endpoints_section_vanishes_when_agent_mcp_disabled(self):
+        from plugins.installed.seo.services import render_agents_md
+        from plugins.registry import plugin_registry
+
+        self.addCleanup(plugin_registry.activate, 'agent_mcp')
+        # Disabled agent_mcp → the bus skips its handler → the endpoints section
+        # (and the endpoints it advertises) both disappear. Discovery remains.
+        plugin_registry.deactivate('agent_mcp')
+        out = render_agents_md()
+        self.assertNotIn('## Agent commerce endpoints', out)
+        self.assertNotIn('/mcp/admin/v1/', out)
+        self.assertIn('## Discovery', out)
+
+    def test_agents_md_view_404s_when_expose_disabled(self):
+        from plugins.installed.seo.models import SiteSeoSettings
+
+        SiteSeoSettings.objects.all().delete()
+        SiteSeoSettings.objects.create(llms_txt_enabled=False)
+        resp = self.client.get('/agents.md')
+        self.assertEqual(resp.status_code, 404)
+
     def test_organization_jsonld_returns_none_when_no_org_name(self):
         from plugins.installed.seo.services import organization_jsonld
 

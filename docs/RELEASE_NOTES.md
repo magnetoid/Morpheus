@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.29.0 — 2026-07-21
+
+**/agents.md agent-onboarding manifest + AGENT_READINESS_SECTIONS filter**
+
+- New /agents.md at the site root (owned by seo, same crawler-file family as llms.txt): tells AI agents what the store is, how to discover it (llms.txt/feed/sitemap), and how to transact.
+- New AGENT_READINESS_SECTIONS hook filter — plugins contribute their own agent-facing section; agent_mcp contributes the MCP/UCP/well-known endpoints + auth. Disable an owner → its section (and endpoints) vanish, so the manifest never advertises a dead endpoint.
+- Gated by the same expose-to-AI toggle as llms.txt; served as text/markdown. docs/AGENT_PROTOCOLS.md §6 documents the discovery surface.
+- Scope note: llms.txt, dense Product/Offer/FAQPage JSON-LD, and AI-referral analytics were found already shipped in seo/analytics — not duplicated (one-concept-one-owner).
+
 ## v0.28.0 — 2026-07-21
 
 **EU AI Act Art. 50 AI-disclosure for conversational surfaces**

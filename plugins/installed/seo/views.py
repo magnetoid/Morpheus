@@ -24,6 +24,7 @@ from plugins.installed.seo.services import (
     audit_product,
     cwv_summary,
     refresh_404_suggestions,
+    render_agents_md,
     render_ai_products_feed,
     render_llms_txt,
     render_product_markdown,
@@ -112,6 +113,16 @@ def llms_full_txt(request: HttpRequest) -> HttpResponse:
     if not s.llms_txt_enabled:
         return HttpResponse('Not enabled.', status=404, content_type='text/plain')
     resp = HttpResponse(render_llms_txt(full=True), content_type='text/plain; charset=utf-8')
+    return _cache_headers(resp, last_modified=getattr(s, 'updated_at', None))
+
+
+def agents_md(request: HttpRequest) -> HttpResponse:
+    """/agents.md — the agent-onboarding manifest (gated by the same
+    expose-to-AI toggle as llms.txt)."""
+    s = site_settings()
+    if not s.llms_txt_enabled:
+        return HttpResponse('Not enabled.', status=404, content_type='text/plain')
+    resp = HttpResponse(render_agents_md(), content_type='text/markdown; charset=utf-8')
     return _cache_headers(resp, last_modified=getattr(s, 'updated_at', None))
 
 

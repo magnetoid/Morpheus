@@ -42,6 +42,12 @@ class AgentMcpPlugin(Plugin):
         from morpheus import events
 
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=20)
+        # /agents.md endpoints section — agent_mcp owns the MCP/UCP surfaces, so
+        # it advertises them. Disable agent_mcp → the section (and the endpoints)
+        # both vanish; the bus skips this handler when the plugin is off.
+        self.register_hook(
+            events.AGENT_READINESS_SECTIONS, self.on_agent_readiness_sections, priority=10
+        )
 
     def on_order_placed(self, order=None, **kwargs):
         if order is None:
@@ -49,6 +55,30 @@ class AgentMcpPlugin(Plugin):
         from plugins.installed.agent_mcp.middleware import stamp_order_with_agent
 
         stamp_order_with_agent(order)
+
+    def on_agent_readiness_sections(self, value, **kwargs):
+        """Contribute the agent-transaction endpoints to /agents.md."""
+        from core.utils.site import site_base_url
+
+        base = site_base_url().rstrip('/')
+        body = (
+            'This store speaks MCP (JSON-RPC 2.0), the Universal Commerce '
+            'Protocol, and the Trusted Agent Protocol.\n\n'
+            '**MCP servers**\n'
+            f'- Storefront (catalog reads, no auth): `POST {base}/mcp/storefront/v1/`\n'
+            f'- Cart (no auth): `POST {base}/mcp/cart/v1/`\n'
+            f'- Checkout (no auth): `POST {base}/mcp/checkout/v1/`\n'
+            f'- Admin (full tool catalog, Bearer auth): `POST {base}/mcp/admin/v1/`\n'
+            f'- Manifest: `{base}/mcp/v1/manifest.json` · Health: `{base}/mcp/v1/health/`\n\n'
+            '**Discovery manifests**\n'
+            f'- Universal Commerce Protocol: `{base}/.well-known/ucp.json`\n'
+            f'- Trusted Agent Protocol: `{base}/.well-known/agent.json`\n\n'
+            '**Auth**: admin calls need a Bearer token (Dashboard → Developer → '
+            'API tokens), scoped per token. Storefront/cart/checkout are public.'
+        )
+        if isinstance(value, list):
+            value.append({'heading': 'Agent commerce endpoints', 'body': body, 'priority': 10})
+        return value
 
     def contribute_dashboard_pages(self) -> list:
         return [

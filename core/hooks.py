@@ -667,6 +667,20 @@ class MorpheusEvents:
     #   template, so disabling that surface plugin removes chat + label together.
     AI_SURFACE_DISCLOSURE = 'ai.surface_disclosure'  # filter
 
+    # AGENT_READINESS_SECTIONS — filter, value=list[dict], no kwargs. Builds the
+    #   body of /agents.md (the agent-onboarding manifest, served by seo's
+    #   crawler-files). Each subscriber APPENDS its own section dict —
+    #   {'heading': str, 'body': str (markdown), 'priority': int} — for the
+    #   agent-facing surface IT owns: agent_mcp appends the MCP/UCP/well-known
+    #   endpoints + auth (priority 10); shipping/returns/orders are natural
+    #   future contributors (their policy summaries). seo seeds the store header
+    #   + discovery links (its own llms.txt/sitemap/feed) before firing, and
+    #   renders sections sorted by priority. A disabled contributor's section
+    #   simply never appears (the bus skips inactive owners) — so /agents.md
+    #   only ever advertises surfaces that actually exist. Mirrors the
+    #   DASHBOARD_KPIS list-accumulator shape.
+    AGENT_READINESS_SECTIONS = 'agent.readiness_sections'  # filter
+
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,
     #                     session_key=str. Fires from the storefront PDP.

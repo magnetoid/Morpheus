@@ -83,6 +83,7 @@ from .sitemaps import (
 from .crawler_files import (
     AI_CRAWLERS,
     get_ai_crawler_policy,
+    render_agents_md,
     render_llms_txt,
     render_robots_txt,
 )
@@ -171,6 +172,7 @@ __all__ = [
     # crawler files
     'AI_CRAWLERS',
     'get_ai_crawler_policy',
+    'render_agents_md',
     'render_llms_txt',
     'render_robots_txt',
     # indexnow

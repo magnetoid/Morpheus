@@ -156,6 +156,28 @@ POST /webhooks/<topic>/      — outbound delivery target
 GET  /dashboard/webhooks/    — subscribe + replay UI
 ```
 
+## 6. Discovery files (how an agent finds all of the above)
+
+Point a fresh agent at the site root — everything is self-describing:
+
+```text
+GET /agents.md          — agent-onboarding manifest (Markdown): what the store
+                          is, how to discover it, and how to transact. The
+                          "Agent commerce endpoints" section is contributed by
+                          agent_mcp (MCP servers + UCP/TAP manifests + auth), so
+                          it only lists surfaces that are actually enabled.
+GET /llms.txt           — llmstxt.org catalog (compact); /llms-full.txt (verbose)
+GET /ai/products.json   — structured product feed
+GET /.well-known/ucp.json, /.well-known/agent.json, /.well-known/acp.json
+GET /sitemap.xml, /robots.txt
+```
+
+`/agents.md` is assembled by the `seo` plugin (which seeds the discovery links
+from its own surfaces) via the `AGENT_READINESS_SECTIONS` hook filter: any plugin
+that owns an agent-facing surface appends its own section, and a disabled owner's
+section (and endpoints) vanish together — so the manifest never advertises a dead
+endpoint. Gated by the same *expose-to-AI* toggle as `/llms.txt`.
+
 See [`docs/MCP_SERVER.md`](MCP_SERVER.md) for the full tool catalog,
 [`docs/COMPLIANCE.md`](COMPLIANCE.md) for the AI Act audit-trail
 export.

@@ -14,6 +14,7 @@ urlpatterns = [
     path('robots.txt', views.robots_txt, name='robots'),
     path('llms.txt', views.llms_txt, name='llms_txt'),
     path('llms-full.txt', views.llms_full_txt, name='llms_full_txt'),
+    path('agents.md', views.agents_md, name='agents_md'),
     path('ai/products.json', views.ai_products_feed, name='ai_feed'),
     path('md/products/<slug:slug>', views.product_markdown, name='product_md'),
     # web-vitals beacon: browser-initiated POST, no CSRF token available.
