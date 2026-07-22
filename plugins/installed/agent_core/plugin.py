@@ -220,6 +220,19 @@ class AgentCorePlugin(Plugin):
                 nav='hidden',
                 url='/dashboard/agents/observability/',
             ),
+            # EU AI Act evidence export — the trail of automated AI decisions
+            # (art. 12/13) + human approvals. Surfaced (nav='main') so the owner
+            # can find + export it; agent_core is PROTECTED so it can't vanish.
+            DashboardPage(
+                label='AI Act evidence',
+                slug='compliance',
+                view='plugins.installed.agent_core.compliance_views.ai_act_report_view',
+                icon='file-check',
+                section='ai',
+                order=45,
+                nav='main',
+                url='/dashboard/apps/agent_core/compliance/',
+            ),
             # Self-development: the owner window over Linda's draft→scan→
             # consensus→apply loop. Surfaced (nav='main') so the owner can
             # find proposals; the dangerous apply path stays behind the

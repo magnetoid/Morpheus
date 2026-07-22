@@ -53,6 +53,25 @@ visible "AI-assisted" affordance is tracked as a good-practice
 follow-up (see `docs/plans/ai-commerce-strategy-2026-2031.md`,
 Horizon 2 — C2PA content provenance).
 
+## The AI Act evidence export (one click)
+
+The raw `AuditEvent` queries below are the primitive; the merchant-facing
+export is built on them. **Dashboard → Linda → AI Act evidence**
+(`/dashboard/apps/agent_core/compliance/`, staff-only) shows the trail of
+automated AI decisions (art. 12/13) and human approvals for a date window and
+downloads it as CSV. The same report is scriptable:
+
+```bash
+python manage.py export_ai_act_report --days 90 --format csv > evidence.csv
+python manage.py export_ai_act_report --format json
+```
+
+Both the page and the command share one builder
+(`agent_core/compliance.py:build_ai_act_report`) — decisions, approvals, a
+per-tool/per-model summary, and the active guardrail config — so they never
+drift. It lives in `agent_core` (a PROTECTED plugin, so the compliance surface
+can't be disabled); the data it reads is all core/agent-owned.
+
 ## Exporting one customer's audit trail
 
 ```python

@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.31.0 — 2026-07-22
+
+**EU AI Act evidence export (agent-decision + approval trail)**
+
+- New Dashboard → Linda → AI Act evidence page (/dashboard/apps/agent_core/compliance/, staff-only) + a scriptable export_ai_act_report management command (--days, --format csv|json). Both render the trail of automated AI decisions (agents.decision audit rows, art. 12/13 provenance) + the human-approval history (AgentApprovalRequest) + a per-tool/per-model summary + the active guardrail config, with a date window.
+- One shared builder (agent_core/compliance.py:build_ai_act_report) backs the page + the command so they never drift. Read-only over the existing audit/agent tables — no new storage, no migration. Lives in agent_core (a PROTECTED plugin, so the compliance surface can't be disabled); the data is all core/agent-owned (audit-overlap: gdpr is customer-rights, not agent-audit).
+- Scope note: this is Phase 4's compliance-export half. The guardrail ENFORCEMENT knobs (spend cap, price-change %, refund cap, kill switch) touch the safety-critical core agent loop and ship as their own focused change; the export already surfaces a guardrails section that fills in when they land.
+
 ## v0.30.0 — 2026-07-22
 
 **Real MCP cart/checkout tools + honest UCP manifest capabilities**

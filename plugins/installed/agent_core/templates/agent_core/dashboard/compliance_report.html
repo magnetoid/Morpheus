@@ -1,0 +1,72 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}AI Act evidence · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  <div class="flex items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">EU AI Act — evidence export</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">The trail of automated AI decisions (art. 12/13) and human approvals for the last {{ days }} days. Hand this to a regulator, or export it as CSV.</p>
+    </div>
+    <a href="?days={{ days }}&export=csv" class="btn btn-primary">
+      <i data-lucide="download" class="h-4 w-4"></i> Export CSV
+    </a>
+  </div>
+
+  <div class="flex gap-2 text-sm">
+    <a href="?days=7" class="btn btn-ghost{% if days == 7 %} btn-active{% endif %}">7d</a>
+    <a href="?days=30" class="btn btn-ghost{% if days == 30 %} btn-active{% endif %}">30d</a>
+    <a href="?days=90" class="btn btn-ghost{% if days == 90 %} btn-active{% endif %}">90d</a>
+    <a href="?days=365" class="btn btn-ghost{% if days == 365 %} btn-active{% endif %}">1y</a>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded"><div class="text-2xl font-semibold">{{ report.summary.total_decisions }}</div><div class="text-xs text-[color:var(--text-muted)]">AI decisions</div></div>
+    <div class="card card-padded"><div class="text-2xl font-semibold">{{ report.summary.total_approvals }}</div><div class="text-xs text-[color:var(--text-muted)]">Approval requests</div></div>
+    <div class="card card-padded"><div class="text-2xl font-semibold">{{ report.summary.decisions_by_model|length }}</div><div class="text-xs text-[color:var(--text-muted)]">Models used</div></div>
+    <div class="card card-padded"><div class="text-2xl font-semibold">{{ report.summary.decisions_by_tool|length }}</div><div class="text-xs text-[color:var(--text-muted)]">Distinct tools</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)]"><h2 class="font-semibold">Automated decisions</h2></div>
+    <table class="morph-table">
+      <thead><tr><th>When</th><th>Agent</th><th>Tool</th><th>Target</th><th>Model</th><th>Actor</th></tr></thead>
+      <tbody>
+        {% for d in report.decisions|slice:":300" %}
+        <tr>
+          <td class="whitespace-nowrap">{{ d.timestamp }}</td>
+          <td>{{ d.agent }}</td>
+          <td><code>{{ d.tool }}</code></td>
+          <td>{{ d.target }}</td>
+          <td>{{ d.model }}{% if d.provider %} <span class="text-[color:var(--text-subtle)]">({{ d.provider }})</span>{% endif %}</td>
+          <td>{{ d.actor|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-sm text-[color:var(--text-muted)] card-padded">No AI decisions recorded in this window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if report.decisions|length > 300 %}<div class="card-padded text-xs text-[color:var(--text-muted)]">Showing the first 300 of {{ report.summary.total_decisions }} — export CSV for the full set.</div>{% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)]"><h2 class="font-semibold">Human approvals</h2></div>
+    <table class="morph-table">
+      <thead><tr><th>When</th><th>Tool</th><th>State</th><th>Decided by</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for a in report.approvals|slice:":200" %}
+        <tr>
+          <td class="whitespace-nowrap">{{ a.timestamp }}</td>
+          <td><code>{{ a.tool }}</code></td>
+          <td>{{ a.state }}</td>
+          <td>{{ a.decided_by|default:"—" }}</td>
+          <td>{{ a.note|default:"" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-sm text-[color:var(--text-muted)] card-padded">No approval requests in this window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
