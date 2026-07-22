@@ -62,6 +62,27 @@ class AgenticCheckoutPlugin(Plugin):
             namespace='agentic_checkout_well_known',
         )
 
+    def contribute_agent_tools(self) -> list:
+        # The MCP cart / checkout-quote tools (agent_mcp cart/checkout clusters).
+        # Registered only while this plugin is enabled, so disabling it empties
+        # those clusters and flips the UCP manifest's cart/checkout capability to
+        # false. Completion is NOT here — it stays on the /acp/ REST money path.
+        from plugins.installed.agentic_checkout.agent_tools import (  # noqa: PLC0415
+            cart_add_item_tool,
+            cart_create_tool,
+            cart_get_tool,
+            checkout_get_session_tool,
+            checkout_set_buyer_tool,
+        )
+
+        return [
+            cart_create_tool,
+            cart_add_item_tool,
+            cart_get_tool,
+            checkout_get_session_tool,
+            checkout_set_buyer_tool,
+        ]
+
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='Agentic Commerce Protocol',

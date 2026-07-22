@@ -24,9 +24,33 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_http_methods
 
 
+def _capability_live(names) -> bool:
+    """True when at least one of the given cluster tool names actually resolves.
+
+    A tool resolves only while its owning plugin is enabled (deactivate drops it
+    from the registry), so this is how the manifest advertises cart/checkout as
+    true ONLY when agentic_checkout is on — never a dead capability an agent
+    would call and get an empty tools/list for.
+    """
+    try:
+        from core.agents import agent_registry
+
+        return any(agent_registry.get_tool(n) is not None for n in names)
+    except Exception:  # noqa: BLE001 — a resolution hiccup must not 500 the manifest
+        return False
+
+
 @require_http_methods(['GET'])
 def ucp_manifest(request: HttpRequest) -> JsonResponse:
     base = request.build_absolute_uri('/').rstrip('/')
+    from plugins.installed.agent_mcp.servers import (
+        CART_TOOLS,
+        CHECKOUT_TOOLS,
+        STOREFRONT_TOOLS,
+    )
+
+    cart_live = _capability_live(CART_TOOLS - STOREFRONT_TOOLS)
+    checkout_live = _capability_live(CHECKOUT_TOOLS - CART_TOOLS)
     return JsonResponse(
         {
             'protocolVersion': '1.0',
@@ -35,8 +59,11 @@ def ucp_manifest(request: HttpRequest) -> JsonResponse:
             'capabilities': {
                 'productSearch': True,
                 'productDetails': True,
-                'cart': True,
-                'checkout': True,
+                # Computed from the live cluster tools (agentic_checkout on/off),
+                # not hardcoded — so we never advertise a capability we can't
+                # actually serve.
+                'cart': cart_live,
+                'checkout': checkout_live,
                 'orderStatus': True,
                 'returns': False,
                 'subscriptions': False,
@@ -49,7 +76,11 @@ def ucp_manifest(request: HttpRequest) -> JsonResponse:
             'compat': ['mcp', 'mcp-streamable', 'a2a'],
             'auth': {
                 'type': 'bearer',
-                'required_for': ['admin'],
+                # Anonymous discovery (tools/list) is open on every cluster, but
+                # EXECUTING a tool (tools/call) needs a Bearer token everywhere —
+                # including cart/checkout (they are money-adjacent). Only admin
+                # is gated at the transport level too.
+                'required_for': ['admin', 'cart', 'checkout'],
                 'registration_url': f'{base}/dashboard/settings/ai/',
             },
             'metadata_url': f'{base}/.well-known/agent.json',

@@ -32,8 +32,14 @@ STOREFRONT_TOOLS = {
     'memory.recall',
 }
 
-CART_TOOLS = STOREFRONT_TOOLS | set()  # same as storefront for v1
-CHECKOUT_TOOLS = CART_TOOLS | set()  # same as cart for v1
+# Cart / checkout add the buyer-agent build+quote tools on top of the
+# storefront reads. These tool bodies live in the agentic_checkout plugin
+# (which owns the cart-session model); when it is disabled they simply don't
+# resolve, so the clusters fall back to storefront-only and the UCP manifest's
+# cart/checkout capability reports false. COMPLETION is intentionally absent —
+# the charge stays on the /acp/ REST endpoint behind payments_enabled.
+CART_TOOLS = STOREFRONT_TOOLS | {'cart.create', 'cart.add_item', 'cart.get'}
+CHECKOUT_TOOLS = CART_TOOLS | {'checkout.get_session', 'checkout.set_buyer'}
 
 # Admin: no whitelist → all tools (Linda's full catalog).
 ADMIN_NAMES: set[str] | None = None

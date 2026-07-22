@@ -97,7 +97,21 @@ def _public_tools() -> list:
             names = cluster.get('names')
             if names is None:  # admin — all tools
                 return all_tools
-            return [t for t in all_tools if t.name in names]
+            # Resolve each whitelisted name from Linda's catalog first, then fall
+            # back to the plugin registry. Buyer-agent cart/checkout tools live
+            # in agentic_checkout (registered via contribute_agent_tools) and are
+            # deliberately NOT in Linda's operator catalog — this surfaces them to
+            # their cluster without polluting Linda's toolset. A disabled owner's
+            # tool simply doesn't resolve, so the cluster shrinks disable-safely.
+            by_name = {t.name: t for t in all_tools}
+            from core.agents import agent_registry
+
+            resolved = []
+            for n in names:
+                t = by_name.get(n) or agent_registry.get_tool(n)
+                if t is not None:
+                    resolved.append(t)
+            return resolved
     except Exception:  # noqa: BLE001, S110
         pass
     return [t for t in all_tools if t.name in _PUBLIC_TOOL_NAMES]

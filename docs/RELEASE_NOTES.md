@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.30.0 — 2026-07-22
+
+**Real MCP cart/checkout tools + honest UCP manifest capabilities**
+
+- Fill the previously-empty MCP cart/checkout clusters: cart.create/add_item/get + checkout.get_session/set_buyer, in a new agentic_checkout/agent_tools.py. They REUSE the ACP cart-session helpers verbatim (_get_cart IDOR+TTL resolver, _add_line_items eligibility + CartService.add_item stock reservation + pricing, _apply_buyer/_apply_fulfillment, _serialize) — zero duplicated money logic, no drift from the REST path.
+- Payment COMPLETION is deliberately NOT an MCP tool — the charge stays on the /acp/ REST endpoint behind all six money-path gates (payments_enabled default-off, quote-drift, select_for_update, Stripe-after-lock). Agents build+quote over MCP, complete on the merchant checkout.
+- agent_mcp: _public_tools() resolves cluster tool names from the agent registry (so buyer-cart tools surface to their clusters without polluting Linda's operator catalog); CART_TOOLS/CHECKOUT_TOOLS populated. Disable agentic_checkout → clusters shrink to storefront-only, disable-safe.
+- UCP manifest honesty: /.well-known/ucp.json cart/checkout capabilities are COMPUTED from whether the tools resolve (never advertises a dead capability), and auth.required_for lists cart/checkout (tools/call needs a Bearer token; discovery is open).
+- Native Web Bot Auth (RFC 9421) split to its own focused change — a security signature-verification feature warrants dedicated attention + test matrix. docs/AGENT_PROTOCOLS.md + MCP_SERVER.md updated.
+
 ## v0.29.1 — 2026-07-22
 
 **Settings saves are in-place AJAX (no redirect to a single-panel page)**

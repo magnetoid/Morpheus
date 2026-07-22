@@ -89,9 +89,39 @@ The manifest advertises:
 - Catalog API endpoint
 - Capabilities (cart, checkout, returns, …)
 
-UCP-aware agents discover Morpheus through Google's verifier, then
-fall back to the MCP cluster for actual transactions. No code
-changes required on your side.
+**The `cart` / `checkout` capabilities are computed, not hardcoded** — they
+report `true` only when the tools that back them actually resolve (i.e. the
+`agentic_checkout` plugin is enabled). Disable it and the manifest honestly
+reports `cart: false, checkout: false`, so a UCP agent never calls a dead
+capability. `auth.required_for` lists `cart`/`checkout` too: anonymous
+discovery (`tools/list`) is open on every cluster, but *executing* a
+cart/checkout tool (`tools/call`) needs a Bearer token — they are
+money-adjacent.
+
+UCP-aware agents discover Morpheus through Google's verifier, then use the MCP
+cart/checkout clusters to build a priced cart, and complete on the merchant's
+own checkout (the ACP `/acp/` money path — see §3). No code changes required
+on your side.
+
+### MCP cart/checkout tools
+
+When `agentic_checkout` is enabled, the `cart` and `checkout` MCP clusters
+expose (Bearer token required to call):
+
+```text
+cart.create            → start a session, returns its id
+cart.add_item          → add a product (SKU or product_id/variant_id);
+                         reserves stock, applies live pricing
+cart.get               → read the session + running totals
+checkout.get_session   → read line items, buyer/fulfillment, totals
+checkout.set_buyer     → apply email + shipping address → shipping + tax quote
+```
+
+These reuse the exact `agentic_checkout` cart-session flow the `/acp/` REST
+endpoints use (same stock reservation, pricing, quoted-total stamp). **Payment
+completion is NOT an MCP tool** — the charge stays on
+`POST /acp/checkout_sessions/{id}/complete`, behind `payments_enabled` and the
+full money-path gate set. Build + quote over MCP, complete on the merchant.
 
 ## 3. ACP (OpenAI/Stripe Agentic Commerce Protocol)
 

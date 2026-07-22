@@ -13,8 +13,10 @@ token issued from the dashboard.
 # MCP cluster (JSON-RPC 2.0 per /mcp/v1/ legacy + per-audience servers)
 POST /mcp/v1/                    Legacy curated reads (no auth required)
 POST /mcp/storefront/v1/         Public catalog reads
-POST /mcp/cart/v1/               Cart ops
-POST /mcp/checkout/v1/           Checkout ops
+POST /mcp/cart/v1/               Storefront reads + cart.create/add_item/get
+POST /mcp/checkout/v1/           + checkout.get_session/set_buyer (quote)
+#   ^ cart/checkout tools need agentic_checkout enabled; tools/call needs a
+#     Bearer token. Completion stays on the /acp/ REST money path.
 POST /mcp/admin/v1/              Linda's full catalog — writes too (Bearer auth)
 
 GET  /mcp/admin/v1/health/       Liveness probe
