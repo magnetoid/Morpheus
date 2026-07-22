@@ -982,7 +982,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
-def settings_category(request: HttpRequest, category: str) -> HttpResponse:
+def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # noqa: PLR0911 — dispatcher: ai/caching/plugin-fallback/core-form(ajax±)/render branches
     """Render every plugin SettingsPanel that belongs to one category.
 
     The 'ai' category is handled by a dedicated rich view (per-provider
@@ -1040,11 +1040,26 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:
         instance = StoreSettings.objects.first()
 
         if request.method == 'POST' and request.POST.get('_form') == 'core':
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
             form = FormCls(request.POST, request.FILES, instance=instance)
             if form.is_valid():
                 form.save()
+                if is_ajax:
+                    # data-ajax contract: JSON on success → the button shows
+                    # "Saved" in place; the page never navigates.
+                    from django.http import JsonResponse
+
+                    return JsonResponse({'ok': True})
                 messages.success(request, f'{core_title} saved.')
                 return redirect('admin_dashboard:settings_category', category=category)
+            if is_ajax:
+                # JSON on failure too — else the JS reads a non-JSON 200 as a
+                # false "Saved" (the dashboard AJAX JSON-contract landmine).
+                from django.http import JsonResponse
+
+                return JsonResponse(
+                    {'ok': False, 'errors': form.errors.get_json_data()}, status=400
+                )
         else:
             form = FormCls(instance=instance)
 

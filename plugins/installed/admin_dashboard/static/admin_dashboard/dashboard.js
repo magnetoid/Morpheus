@@ -561,6 +561,13 @@
     scope.querySelectorAll('form[data-morph-dirty]').forEach(function (f) {
       try { Morph.dirty.attach(f); } catch (_) { /* swallow */ }
     });
+    // Bind data-ajax forms in the freshly-swapped content too — otherwise an
+    // AJAX save form (e.g. a settings panel) only worked on a full page load,
+    // not after boosted in-app navigation. init() is idempotent (the
+    // _morphAjaxBound guard), so re-running it over the whole scope is safe.
+    if (Morph.ajaxForm && typeof Morph.ajaxForm.init === 'function') {
+      try { Morph.ajaxForm.init(scope); } catch (_) { /* swallow */ }
+    }
   };
 
   // ── AJAX form submission (no full-page reloads) ───────────────────────

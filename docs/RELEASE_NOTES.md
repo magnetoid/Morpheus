@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.29.1 — 2026-07-22
+
+**Settings saves are in-place AJAX (no redirect to a single-panel page)**
+
+- Both the core StoreSettings form and every plugin SettingsPanel form on the settings-category page are now data-ajax: clicking Save shows a spinner on the button and the page never navigates or reloads (fixes the redirect to a bare single-panel page).
+- settings_category core-form handler now returns JSON on AJAX (200 {ok:true} / 400 {ok:false,errors}) so the JS never shows a false 'Saved' on a validation failure (dashboard AJAX JSON-contract landmine).
+- Morph.reinit (run after every boosted sidebar swap) now rebinds data-ajax forms too — previously they only bound on a full page load, so AJAX saves silently fell back to a full POST after in-app navigation. Fixes it for ALL data-ajax forms, not just settings.
+
 ## v0.29.0 — 2026-07-21
 
 **/agents.md agent-onboarding manifest + AGENT_READINESS_SECTIONS filter**
