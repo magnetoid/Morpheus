@@ -40,6 +40,7 @@ from core.agents.approval import approval_registry
 from core.agents.base import MorpheusAgent
 from core.agents.compaction import compact
 from core.agents.events import AgentEvents
+from core.agents.guardrails import agents_paused, run_start_block_reason
 from core.agents.llm import (
     LLMMessage,
     LLMProvider,
@@ -108,7 +109,7 @@ class AgentRuntime:
 
     # ── Public entry point ─────────────────────────────────────────────────────
 
-    def run(  # noqa: PLR0911 — flat guard-clause returns (budget/deadline/degraded/final)
+    def run(  # noqa: PLR0911, PLR0912 — flat guard-clause returns (paused/budget/deadline/degraded/final)
         self,
         *,
         user_message: str,
@@ -153,7 +154,22 @@ class AgentRuntime:
 
         tool_call_count = 0
 
+        # Merchant guardrail — daily circuit breakers (run-count + estimated
+        # spend), checked ONCE at run start before any provider spend. The
+        # current run's own row is already `running` in the table, so exclude
+        # it from its own count. 0/unset caps are no-ops (default off).
+        _block = run_start_block_reason(exclude_id=getattr(context.get('agent_run'), 'id', None))
+        if _block:
+            return self._fail(trace, run_id, context, _block)
+
         for _step in range(max(1, self.agent.max_steps)):
+            # Merchant kill switch — re-read each step (cross-process fresh) so
+            # flipping it from the dashboard halts an in-flight run at the next
+            # step boundary. Placed ABOVE compact() so a paused run spends
+            # nothing — not even on the summarizer's own provider call.
+            if agents_paused():
+                return self._fail(trace, run_id, context, 'agents_paused')
+
             # Context compaction — keep `messages` under a soft token budget by
             # summarizing the oldest turns. No-op for short conversations.
             messages = compact(messages, summarizer=self._summarize_history)

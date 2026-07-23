@@ -106,6 +106,7 @@ def _guardrail_config() -> dict[str, Any]:
             return {}
         keys = (
             'agents_paused',
+            'max_agent_runs_daily',
             'spend_cap_daily',
             'max_price_change_pct',
             'max_refund_value',

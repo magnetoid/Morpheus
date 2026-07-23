@@ -142,6 +142,31 @@ approval** (the S1 hole; a blanket `context['staged']` exemption once reopened i
 tool that *does* stage but forgets the flag just double-gates (fails safe, but breaks
 the staged-routine UX). Guarded by `core/agents/tests/test_staged_gate.py`.
 
+**Landmine — merchant agent guardrails read config *cross-process fresh*,
+enforce at fixed seams, and the USD spend cap silently no-ops on unpriced
+models.** The kill switch, daily run/spend caps, and per-action price/refund caps
+are merchant knobs stored on `agent_core` config (the "Agent guardrails" settings
+panel) and read through **one** core module — `core/agents/guardrails.py` — so
+every enforcement site imports from *core*, never plugin→plugin. Three traps:
+(1) A plugin's `_config_cache` is **per-process**; a celery worker would never
+see a switch a merchant flips from the web dashboard, so `guardrails._read`
+**invalidates the cache before every read** (one indexed query — cheap next to a
+provider call). Don't "optimize" that away. (2) The USD `spend_cap_daily` sums
+*estimated* cost (`core/agents/pricing.py`), which is `$0.00` for any model not
+in `_PRICES` — and the prod model (`deepseek-v4-pro`) is unpriced, so a dollar
+cap **never trips on prod**; the model-independent `max_agent_runs_daily`
+run-count cap is the real backstop (add a model to `_PRICES` in the same change
+if you want its dollar cap live). (3) The key names (`agents_paused`,
+`max_agent_runs_daily`, `spend_cap_daily`, `max_price_change_pct`,
+`max_refund_value`) are coupled by **string match** across three places — the
+panel schema + `get_config_schema` in `agent_core/plugin.py`, the accessors in
+`core/agents/guardrails.py`, and `compliance.py:_guardrail_config` — with no
+shared constant; a rename silently breaks enforcement AND the AI-Act report (both
+fail soft to off/empty). The kill switch aborts via `_fail` (a hard run stop),
+not `_tool_back` (a per-step soft refusal); enforced off-by-default (caps `0` =
+unlimited). Guarded by `core/agents/tests/test_guardrails.py` +
+`catalog/tests/test_price_cap.py` + `orders/tests/test_refund_cap.py`.
+
 **Landmine — a new LLM provider must be wired in *three* places or it silently
 "isn't selected".** Adding a provider touches: (1) `core/agents/llm.py` — a
 `Provider` class **and** a `_PROVIDER_CLASSES` entry; (2)

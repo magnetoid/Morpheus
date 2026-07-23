@@ -368,6 +368,28 @@ class Assistant:
             message=StoredMessage(role='user', content=message[:50_000]),
         )
 
+        # Merchant kill switch — Linda is a chat surface, so a paused agent
+        # layer declines gracefully (never a stack trace). A deliberate pause is
+        # not an outage, so no _emit_failure_signal. Config is read cross-process
+        # fresh (see core.agents.guardrails); default is NOT paused.
+        from core.agents.guardrails import agents_paused
+
+        if agents_paused():
+            friendly = 'The assistant is paused right now. Please try again in a little while.'
+            self.store.append(
+                conversation_key=conversation_key,
+                message=StoredMessage(role='assistant', content=friendly),
+            )
+            yield {
+                'type': 'final',
+                'result': AssistantRunResult(
+                    text=friendly,
+                    state='completed',
+                    duration_ms=int((time.monotonic() - started) * 1000),
+                ),
+            }
+            return
+
         msgs = _to_llm_messages(history, message, context=context)
         # Tool-palette scoping (core/assistant/modes.py). The merchant
         # picks a mode per conversation from the chat header chip; it

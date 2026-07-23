@@ -18,6 +18,7 @@ from decimal import Decimal
 from djmoney.money import Money
 
 from core.agents import ToolError, ToolResult, tool
+from core.agents.guardrails import max_refund_value
 
 # Shared write-gate helpers stay in core (imported by metafields/cms/workflows
 # too); plugin→core is the allowed import direction, so this is not a leak.
@@ -237,6 +238,19 @@ def refund_order_tool(
             str(order.total.currency),
         )
     )
+    # Merchant guardrail — refuse a refund above the per-action cap (Settings →
+    # Agent guardrails). Guard the RESOLVED amount (order.total on a full refund,
+    # not the raw `amount` kwarg which is None then); compare the Decimal and
+    # surface the currency (the cap is a bare number in store currency).
+    # 0/unset = no cap. Runs after the hard gate (audit row already written) and
+    # before RefundService.process, so a breach charges nothing.
+    cap = max_refund_value()
+    if cap and refund_amount.amount > Decimal(str(cap)):
+        raise ToolError(
+            f'refund of {refund_amount} exceeds the {cap:g} {refund_amount.currency} '
+            f'per-refund cap; lower the amount or raise the cap in '
+            f'Settings → Agent guardrails'
+        )
     refund = RefundService.process(
         order=order,
         amount=refund_amount,

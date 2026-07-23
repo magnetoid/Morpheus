@@ -20,9 +20,61 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, events
+from morpheus import DashboardPage, Plugin, SettingsPanel, events
 
 logger = logging.getLogger('morpheus.agent_core')
+
+# Merchant-facing agent guardrails. Enforced in core (core/agents/guardrails.py
+# reads these keys): the kill switch + daily caps gate both agent runtimes, and
+# the price/refund caps gate the catalog/orders money tools. The compliance
+# report (compliance.py:_guardrail_config) reads the SAME keys — keep the two in
+# sync (there is no shared constant; they are coupled by string match).
+_GUARDRAIL_PROPS = {
+    'agents_paused': {
+        'type': 'boolean',
+        'default': False,
+        'title': 'Pause all agents (kill switch)',
+        'description': (
+            'When on, every agent run is refused and Linda declines gracefully. '
+            'Flip off to resume — it takes effect on the next run/turn.'
+        ),
+    },
+    'max_agent_runs_daily': {
+        'type': 'integer',
+        'minimum': 0,
+        'default': 0,
+        'title': 'Max agent runs per day',
+        'description': (
+            '0 = unlimited. A hard daily ceiling on autonomous agent runs — the '
+            'model-independent circuit breaker (fires even on unpriced models).'
+        ),
+    },
+    'spend_cap_daily': {
+        'type': 'number',
+        'minimum': 0,
+        'default': 0,
+        'title': 'Max estimated agent spend per day (USD)',
+        'description': (
+            '0 = off. Best-effort ceiling using estimated model pricing; it does '
+            'NOT bound models with no known price (self-hosted / unpriced) — use '
+            'the run cap above for a hard limit.'
+        ),
+    },
+    'max_price_change_pct': {
+        'type': 'number',
+        'minimum': 0,
+        'default': 0,
+        'title': 'Max price change per action (%)',
+        'description': '0 = no cap. An agent price edit larger than this (up or down) is refused.',
+    },
+    'max_refund_value': {
+        'type': 'number',
+        'minimum': 0,
+        'default': 0,
+        'title': 'Max refund per action (store currency)',
+        'description': '0 = no cap. An agent refund above this amount is refused.',
+    },
+}
 
 
 class AgentCorePlugin(Plugin):
@@ -262,17 +314,26 @@ class AgentCorePlugin(Plugin):
             ),
         ]
 
-    # No SettingsPanel — agent_core is a system component, not a
-    # user-configurable plugin. Linda's behaviour is tuned via her
-    # own dashboard at /dashboard/assistant/ + the AI providers panel
-    # (ai_assistant plugin, which carries the actual config knobs:
-    # which model, what brand voice, etc.). Surfacing a second
-    # "Agents" settings panel here just added noise.
-    # The get_config_schema() method below is kept because the kernel
-    # reads a few internal flags via plugin.get_config_value(); they
-    # just aren't merchant-editable through the dashboard.
+    def contribute_settings_panel(self) -> SettingsPanel:
+        # Agent guardrails — the merchant's hard limits on autonomous agent
+        # behaviour. agent_core is a PROTECTED plugin, so this compliance-adjacent
+        # surface can't be disabled. Enforced in core/agents/guardrails.py.
+        return SettingsPanel(
+            label='Agent guardrails',
+            category='ai',
+            description=(
+                'Hard limits on what Linda and the agents can do on their own — a '
+                'kill switch, daily run/spend caps, and per-action price and refund '
+                'ceilings.'
+            ),
+            schema={'type': 'object', 'properties': dict(_GUARDRAIL_PROPS)},
+        )
 
     def get_config_schema(self) -> dict:
+        # The guardrail keys live here too (not just in the panel) so
+        # get_config_value resolves their defaults before a store ever saves the
+        # panel. merchant_ops_enabled is an internal flag — kept out of the panel,
+        # present here for its default.
         return {
             'type': 'object',
             'properties': {
@@ -283,5 +344,6 @@ class AgentCorePlugin(Plugin):
                     'default': True,
                     'title': 'Enable Merchant Ops console',
                 },
+                **_GUARDRAIL_PROPS,
             },
         }

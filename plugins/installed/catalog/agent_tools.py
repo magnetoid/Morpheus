@@ -16,6 +16,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 
 from core.agents import ToolError, ToolResult, tool
+from core.agents.guardrails import max_price_change_pct
 
 # Shared write-gate helpers stay in core (imported by orders/metafields/cms
 # too); plugin→core is the allowed import direction, so this is not a leak.
@@ -26,6 +27,28 @@ from core.assistant.tools.ecommerce_writes import (
     _stage,
 )
 from core.money import money_str as _money_str
+
+
+def _enforce_price_delta(old_amount, new_amount: Decimal, max_pct: float) -> None:
+    """Refuse an agent price change whose magnitude exceeds the merchant's
+    per-action cap (Settings → Agent guardrails). 0/unset = no cap. A change from
+    an unset or zero base has an undefined percentage and is allowed — the cap
+    bounds *changes*, not first prices."""
+    if not max_pct or old_amount is None:
+        return
+    try:
+        old = Decimal(str(old_amount))
+    except (InvalidOperation, ValueError):
+        return
+    if old == 0:
+        return
+    pct = abs(new_amount - old) / old * 100
+    if pct > Decimal(str(max_pct)):
+        raise ToolError(
+            f'price change of {pct:.0f}% exceeds the {max_pct:g}% per-action '
+            f'limit ({old} → {new_amount}); adjust the price or raise the cap in '
+            f'Settings → Agent guardrails'
+        )
 
 
 @tool(
@@ -423,6 +446,7 @@ def products_update_price_tool(
         raise ToolError(f'invalid price: {price}') from e
     if amount < 0:
         raise ToolError('price cannot be negative')
+    max_pct = max_price_change_pct()
 
     from plugins.installed.catalog.models import Product, ProductVariant
 
@@ -431,6 +455,7 @@ def products_update_price_tool(
         if v is None:
             raise ToolError(f'variant not found: {variant_id}')
         prev = str(getattr(getattr(v, 'price', None), 'amount', ''))
+        _enforce_price_delta(getattr(getattr(v, 'price', None), 'amount', None), amount, max_pct)
         if staged:
             # 'pricing_change' is in core.safety.CLASS_BLOCKLIST — staging
             # refuses it, deliberately: autonomous runs cannot propose price
@@ -470,6 +495,7 @@ def products_update_price_tool(
     if p is None:
         raise ToolError('product not found — pass id, sku, slug, or variant_id')
     prev = str(getattr(getattr(p, 'price', None), 'amount', ''))
+    _enforce_price_delta(getattr(getattr(p, 'price', None), 'amount', None), amount, max_pct)
     if staged:
         # See the variant branch above — 'pricing_change' is blocklisted at
         # staging time (core.safety), so this surfaces as a tool error.

@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.32.0 — 2026-07-23
+
+**Merchant agent guardrails — kill switch, daily run/spend caps, per-action price & refund ceilings**
+
+- New Settings → Agent guardrails panel (agent_core): a global kill switch, a daily agent-run cap, a daily estimated-spend (USD) cap, a max price-change % per action, and a max refund value per action. All OFF by default (caps 0 = unlimited), so an unconfigured store is unchanged.
+- Enforced at the real seams — the kill switch aborts a delegated run (re-checked each step, so flipping it halts an in-flight run) and makes Linda decline gracefully; the daily caps refuse a new run before any model call; the price/refund caps refuse the catalog/orders money tools before any write or charge.
+- All reads funnel through one core accessor (core/agents/guardrails.py), read cross-process fresh so a celery worker sees a switch flipped from the dashboard — enforcement is plugin→core, never plugin→plugin. The AI-Act evidence report's guardrails section reflects the same live config.
+- Honesty note: the USD spend cap is best-effort — it estimates $0 for unpriced/self-hosted models (incl. the current prod model), so the model-independent daily run cap is the hard backstop.
+
 ## v0.31.0 — 2026-07-22
 
 **EU AI Act evidence export (agent-decision + approval trail)**

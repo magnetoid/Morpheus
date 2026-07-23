@@ -72,6 +72,32 @@ per-tool/per-model summary, and the active guardrail config — so they never
 drift. It lives in `agent_core` (a PROTECTED plugin, so the compliance surface
 can't be disabled); the data it reads is all core/agent-owned.
 
+## Agent guardrails (the enforced knobs)
+
+The report's `guardrails` section is not decorative — it reflects live limits a
+merchant sets under **Settings → Agent guardrails** (agent_core's settings
+panel) and Morpheus enforces:
+
+| Knob | Enforced where | On breach |
+|---|---|---|
+| **Pause all agents** (kill switch) | `core/agents/runtime.py` (delegated runs, re-checked each step) + `core/assistant/runtime.py` (Linda) | a delegated run fails `agents_paused`; Linda declines gracefully (never a stack trace) |
+| **Max agent runs / day** | `core/agents/runtime.py`, once at run start | the run fails `run_cap_exceeded` before any model call |
+| **Max estimated spend / day (USD)** | same | the run fails `spend_cap_exceeded` — *best-effort*, see the caveat below |
+| **Max price change / action (%)** | `catalog/agent_tools.py:products.update_price` | the tool raises; the price is unchanged |
+| **Max refund / action** | `orders/agent_tools.py:orders.refund` | the tool raises after the hard gate but before any charge |
+
+Every knob is **off by default** (kill switch off, every cap `0` = unlimited),
+so an unconfigured store behaves exactly as before. All reads funnel through
+`core/agents/guardrails.py`, which reads the agent_core config **cross-process
+fresh** (a celery worker must see a switch a merchant just flipped from the web
+dashboard).
+
+**Caveat — the USD spend cap is best-effort.** It sums *estimated* model cost
+(`core/agents/pricing.py`), which is `$0` for any model without a known price
+(self-hosted / unpriced — the production model today is one). For a hard,
+model-independent ceiling use **Max agent runs / day**; the USD cap only bites
+merchants on a priced provider.
+
 ## Exporting one customer's audit trail
 
 ```python
