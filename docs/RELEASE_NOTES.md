@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.33.0 — 2026-07-28
+
+**Three-SDK foundation — morpheus.{plugin,theme,core} (non-breaking)**
+
+- New morpheus.plugin / morpheus.core / morpheus.theme subpackages — the three project SDKs (torsor ADR 0035): plugin authoring, the core-kernel API (hooks/events, agents tool/ToolResult/registry, audit, money, site utils), and storefront-theme authoring. Additive facades that re-export the real implementations.
+- Non-breaking: every existing 'from morpheus import Plugin' / 'from core.hooks import …' keeps working and returns the same objects; the subpackages are the canonical doors going forward, adopted incrementally as we touch each plugin (per ADR 0035).
+- The big-bang migration of ~60 plugins + themes onto the new imports is scoped in docs/plans/sdk-restructure-2026-07.md (a prod-boot-critical fan-out, run as its own effort). Verified: Django boots, all three doors import, back-compat identity holds.
+
 ## v0.32.0 — 2026-07-23
 
 **Merchant agent guardrails — kill switch, daily run/spend caps, per-action price & refund ceilings**
