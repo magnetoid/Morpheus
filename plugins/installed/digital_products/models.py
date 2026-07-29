@@ -5,7 +5,7 @@ from __future__ import annotations
 import secrets
 import uuid
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 def _new_token() -> str:

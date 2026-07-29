@@ -12,7 +12,7 @@ is fail-soft — a disabled or absent plugin simply contributes nothing.
 
 from __future__ import annotations
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     staff_member_required,

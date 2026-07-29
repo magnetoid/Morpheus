@@ -6,7 +6,7 @@ import uuid
 
 from django.conf import settings
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class Wishlist(models.Model):

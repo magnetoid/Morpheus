@@ -19,7 +19,7 @@ class CatalogConfig(AppConfig):
         # dispatch upserts via Celery; only active when settings.TYPESENSE
         # is configured. Falls back silently otherwise.
         try:
-            from core.hooks import MorpheusEvents, hook_registry
+            from morpheus.core import MorpheusEvents, hook_registry
             from plugins.installed.catalog.search.handlers import (
                 on_product_created,
                 on_product_updated,

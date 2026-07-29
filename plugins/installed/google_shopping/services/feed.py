@@ -66,7 +66,7 @@ def build_feed(*, log: bool = True) -> tuple[str, dict]:
 
     title = escape(settings.feed_title or 'Product feed')
     desc = escape(settings.feed_description or '')
-    from core.utils.site import site_base_url  # noqa: PLC0415
+    from morpheus.core import site_base_url  # noqa: PLC0415
 
     link = escape(site_base_url())
     xml = (

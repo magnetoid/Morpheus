@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 logger = logging.getLogger('morpheus.pwa')
 

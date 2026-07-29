@@ -19,7 +19,7 @@ Why this exists as a separate plugin (not part of reviews/):
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class TrustSignalsPlugin(Plugin):

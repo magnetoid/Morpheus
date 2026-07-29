@@ -9,7 +9,7 @@ import logging
 
 from django.core.cache import cache
 
-from morpheus.views import render, staff_member_required
+from morpheus.plugin.views import render, staff_member_required
 from plugins.installed.channels.tasks import METRICS_CACHE_KEY
 
 logger = logging.getLogger('morpheus.channels')
@@ -25,7 +25,7 @@ def _rows(*, refresh: bool = False) -> list[dict]:
             return cached
     rows: list[dict] = []
     try:
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
         rows = hook_registry.filter(MorpheusEvents.CHANNELS_OVERVIEW, value=rows) or []
     except Exception as e:  # noqa: BLE001

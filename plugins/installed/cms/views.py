@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     Http404,
     csrf_protect,
     get_object_or_404,
@@ -40,7 +40,7 @@ def page_view(request, slug: str):
     # visual schema blocks — without this every single page rendered the
     # site-default <title>. seo_title/description/image are the fallbacks
     # used only when the SeoMeta row leaves a field blank.
-    from core.utils.site import absolutize
+    from morpheus.core import absolutize
 
     cover = absolutize(
         (meta.get('cover') or meta.get('image') or meta.get('og_image') or '').strip()

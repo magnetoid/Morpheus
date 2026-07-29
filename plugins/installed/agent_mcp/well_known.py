@@ -33,7 +33,7 @@ def _capability_live(names) -> bool:
     would call and get an empty tools/list for.
     """
     try:
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         return any(agent_registry.get_tool(n) is not None for n in names)
     except Exception:  # noqa: BLE001 — a resolution hiccup must not 500 the manifest

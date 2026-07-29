@@ -5,7 +5,7 @@
 # ruff: noqa: PLC0415, PLR0912, PLR0915, S110
 from __future__ import annotations
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     HttpResponseRedirect,
@@ -158,7 +158,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
 
     Returns ``{"ok": bool, "models": [{"id", "label"}], "error": str}``.
     """
-    from morpheus.views import JsonResponse
+    from morpheus.plugin.views import JsonResponse
 
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
@@ -206,7 +206,7 @@ def settings_ai_disconnect(request: HttpRequest) -> HttpResponse:
 
     Always returns JSON (data-ajax contract): ``{"ok": bool, "active": str}``.
     """
-    from morpheus.views import JsonResponse
+    from morpheus.plugin.views import JsonResponse
     from plugins.registry import plugin_registry
 
     if request.method != 'POST':
@@ -1027,7 +1027,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
             from plugins.installed.admin_dashboard.urls import plugin_settings_view
 
             return plugin_settings_view(request, plugin=category)
-        from morpheus.views import Http404
+        from morpheus.plugin.views import Http404
 
         raise Http404('Unknown settings category or plugin')
 

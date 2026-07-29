@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.test import TestCase
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.orders.models import Order
 
 

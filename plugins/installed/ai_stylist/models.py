@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 def _hash_session(session_key: str) -> str:

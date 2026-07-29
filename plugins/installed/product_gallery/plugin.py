@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, StorefrontBlock
+from morpheus.plugin import Plugin, StorefrontBlock
 
 logger = logging.getLogger('morpheus.product_gallery')
 

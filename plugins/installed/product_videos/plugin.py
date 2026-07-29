@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import Plugin, StorefrontBlock
+from morpheus.plugin import Plugin, StorefrontBlock
 
 
 class ProductVideosPlugin(Plugin):

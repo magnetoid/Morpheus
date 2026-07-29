@@ -1,6 +1,6 @@
 import logging
 
-from morpheus import Plugin, SettingsPanel
+from morpheus.plugin import Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.ai_content')
 
@@ -21,7 +21,7 @@ class AIContentPlugin(Plugin):
     requires = ['catalog', 'ai_assistant']
 
     def ready(self) -> None:
-        from morpheus import events  # noqa: PLC0415
+        from morpheus.core import events  # noqa: PLC0415
 
         # Prepend the brand voice to every agent/Linda system prompt. Core
         # fires AGENT_SYSTEM_PROMPT as the last assembly step; while this

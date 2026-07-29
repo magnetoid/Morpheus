@@ -28,7 +28,7 @@ class BrandVoiceFilterTests(TestCase):
         self.assertIn('Dot Books', prompt)
 
     def test_agent_prompt_carries_brand_voice_when_configured(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         _set_brand('Dot Books')
         worker = agent_registry.get_agent('worker')

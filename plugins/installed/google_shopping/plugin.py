@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 
 logger = logging.getLogger('morpheus.google_shopping')
 

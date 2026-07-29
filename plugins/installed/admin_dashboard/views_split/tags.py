@@ -11,7 +11,7 @@ page's header. Lives under the Products nav group.
 
 from __future__ import annotations
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     messages,

@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from djmoney.money import Money
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 from plugins.installed.catalog.models import Product
 from plugins.installed.orders.models import Order, OrderItem
 from plugins.installed.orders.refunds import RefundService, ReturnService
@@ -103,7 +103,7 @@ class RefundServiceTests(TestCase):
         # exactly once, and ONLY after the gateway confirmed the refund.
         from unittest.mock import patch
 
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
         from plugins.installed.payments.gateways.stripe_gateway import StripeGateway
 
         seen = []

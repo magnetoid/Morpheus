@@ -23,7 +23,7 @@ from django.db import transaction
 from django.utils import timezone
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.ai_assistant.services.receipts import sign_receipt
 
 logger = logging.getLogger('morpheus.agent.intent')

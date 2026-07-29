@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     messages,

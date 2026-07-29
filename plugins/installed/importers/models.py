@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class SourceMapping(models.Model):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.tax')
 
@@ -21,7 +21,7 @@ class TaxPlugin(Plugin):
     requires = ['catalog', 'orders']
 
     def ready(self) -> None:
-        from morpheus import events  # noqa: PLC0415
+        from morpheus.core import events  # noqa: PLC0415
 
         # CART_CALCULATE_TOTAL is deprecated — the canonical event is
         # CART_CALCULATE_BREAKDOWN, fired from OrderService since 2026-04.

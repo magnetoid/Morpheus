@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from morpheus import Plugin, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, StorefrontBlock
 
 
 class ReviewsPlugin(Plugin):

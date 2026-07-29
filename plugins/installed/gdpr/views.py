@@ -14,13 +14,13 @@ self-service surface + the ``DataRequest`` audit row.
 
 from __future__ import annotations
 
-from morpheus.views import render
+from morpheus.plugin.views import render
 from plugins.installed.gdpr.services import gdpr_required
 
 
 def _login_required(request, target):
     if not request.user.is_authenticated:
-        from morpheus.views import redirect
+        from morpheus.plugin.views import redirect
 
         return redirect(f'/auth/login/?next={target}')
     return None

@@ -7,7 +7,7 @@ The viewer template picks the correct one at render time.
 
 from __future__ import annotations
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class Asset3D(models.Model):

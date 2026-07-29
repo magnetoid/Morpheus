@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.agents import ToolResult, tool
+from morpheus.core import ToolResult, tool
 
 
 @tool(
@@ -33,7 +33,7 @@ def google_feed_coverage_tool(*, limit: int | None = None) -> ToolResult:
     schema={'type': 'object', 'properties': {}},
 )
 def google_feed_url_tool() -> ToolResult:
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     url = site_base_url().rstrip('/') + '/feeds/google-merchant.xml'
     return ToolResult(output={'url': url}, display=url)

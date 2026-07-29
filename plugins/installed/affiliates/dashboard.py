@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
-from morpheus import dashboard_trail
+from morpheus.plugin import dashboard_trail
 
 
 def _trail(*items):
@@ -50,7 +50,7 @@ def _send_affiliate_approved(aff):
     from django.conf import settings  # noqa: PLC0415
 
     from core.emails import send_templated_email  # noqa: PLC0415
-    from core.utils.site import site_base_url  # noqa: PLC0415
+    from morpheus.core import site_base_url  # noqa: PLC0415
 
     to = getattr(aff.payout_email, 'strip', lambda: '')() or getattr(aff.user, 'email', '')
     if not to:

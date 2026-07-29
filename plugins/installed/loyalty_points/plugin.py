@@ -35,7 +35,8 @@ their balance and what it is worth today — shipped in v1.
 # ready (this module is loaded at settings-import time).
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class LoyaltyPointsPlugin(Plugin):

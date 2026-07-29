@@ -16,7 +16,7 @@ from decimal import Decimal
 from django.db import transaction
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.orders.models import Cart, CartItem, Order, OrderItem
 

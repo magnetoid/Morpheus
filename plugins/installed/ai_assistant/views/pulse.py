@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     messages,

@@ -19,7 +19,8 @@ so the banner controls real loading — not just downstream tags.
 
 from __future__ import annotations
 
-from morpheus import Plugin, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, StorefrontBlock
 
 
 class ConsentPlugin(Plugin):

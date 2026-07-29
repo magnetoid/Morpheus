@@ -11,8 +11,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from morpheus.views import HttpRequest, HttpResponse, messages, staff_member_required
-from morpheus.views import get_object_or_404, redirect, render
+from morpheus.plugin.views import HttpRequest, HttpResponse, messages, staff_member_required
+from morpheus.plugin.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -314,7 +314,7 @@ def _collect_product_form_cards(product, request) -> list:
     """
     from django.template.loader import render_to_string
 
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     out: list = []
     cards = hook_registry.filter(MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=product)
@@ -344,7 +344,7 @@ def _collect_product_list_columns(products, request) -> list:
     """
     from django.template.loader import render_to_string
 
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     cols = hook_registry.filter(
         MorpheusEvents.PRODUCT_LIST_COLUMNS, value=[], products=products, request=request
@@ -381,7 +381,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             # cards, incl. book_product's Book details) — the modular path; the
             # hook bus isolates a broken handler and a disabled plugin's handler
             # simply isn't registered.
-            from core.hooks import MorpheusEvents, hook_registry
+            from morpheus.core import MorpheusEvents, hook_registry
 
             hook_registry.fire(
                 MorpheusEvents.PRODUCT_FORM_SAVED,

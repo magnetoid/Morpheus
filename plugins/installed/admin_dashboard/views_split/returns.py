@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     get_object_or_404,
@@ -38,7 +38,7 @@ def returns_list(request: HttpRequest) -> HttpResponse:
 
 @staff_member_required
 def return_detail(request: HttpRequest, rma_id) -> HttpResponse:
-    from morpheus.views import HttpResponseRedirect
+    from morpheus.plugin.views import HttpResponseRedirect
     from plugins.installed.orders.models import OrderItem
     from plugins.installed.orders.refunds import ReturnRequest, ReturnService
 

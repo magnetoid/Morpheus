@@ -8,7 +8,7 @@ import uuid
 from django.conf import settings
 from django.db import transaction
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class Warehouse(models.Model):

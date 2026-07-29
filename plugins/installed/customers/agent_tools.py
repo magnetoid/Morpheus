@@ -8,8 +8,8 @@ from the agent registry, so her prompts/skills keep resolving.
 
 from __future__ import annotations
 
-from core.agents import ToolError, ToolResult, tool
-from core.money import money_str as _money_str
+from morpheus.core import ToolError, ToolResult, tool
+from morpheus.core import money_str as _money_str
 
 
 @tool(

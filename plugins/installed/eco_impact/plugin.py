@@ -17,7 +17,8 @@ orders plugin fires and we answer — no storefront/theme edits.
 # Inline imports keep the manifest importable at settings-import time.
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 
 
 class EcoImpactPlugin(Plugin):

@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 
 logger = logging.getLogger('morpheus.ai.operator')
 

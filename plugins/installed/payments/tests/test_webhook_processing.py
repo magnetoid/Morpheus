@@ -16,7 +16,7 @@ import stripe
 from django.test import TestCase
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.orders.models import Order
 from plugins.installed.payments.models import PaymentTransaction, StripeWebhookEvent
 from plugins.installed.payments.services.stripe import PaymentService

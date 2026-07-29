@@ -87,6 +87,6 @@ def _on_order_paid(order=None, **_kwargs):
 
 
 def register_handlers() -> None:
-    from core.hooks import hook_registry, MorpheusEvents
+    from morpheus.core import hook_registry, MorpheusEvents
 
     hook_registry.register(MorpheusEvents.ORDER_PAID, _on_order_paid, priority=80)

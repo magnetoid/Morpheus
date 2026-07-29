@@ -272,8 +272,7 @@ class SingleSenderInvariantTests(TestCase):
 
     def test_registered_cart_abandoned_handlers_exclude_retired_senders(self):
         from core.emails.handlers import register_handlers
-        from core.hooks import hook_registry
-        from morpheus import events
+        from morpheus.core import events, hook_registry
 
         # Force core's idempotent email-handler registration so the registry
         # reflects the post-refactor wiring even in an isolated run.

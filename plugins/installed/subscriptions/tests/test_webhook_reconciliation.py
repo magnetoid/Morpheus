@@ -23,7 +23,7 @@ from django.test import TestCase
 from django.utils import timezone
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.payments.models import StripeWebhookEvent
 from plugins.installed.payments.services.stripe import PaymentService
 from plugins.installed.subscriptions.models import Plan, Subscription, SubscriptionInvoice

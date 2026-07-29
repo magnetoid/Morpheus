@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.agent_core')
 
@@ -119,7 +120,7 @@ class AgentCorePlugin(Plugin):
 
         from django.utils import timezone  # noqa: PLC0415
 
-        from core.agents import agent_registry  # noqa: PLC0415
+        from morpheus.core import agent_registry  # noqa: PLC0415
         from plugins.installed.agent_core.models import AgentRun  # noqa: PLC0415
 
         summary = value.setdefault(

@@ -136,7 +136,7 @@ class WinbackTests(TestCase):
         self.assertEqual(CampaignSend.objects.filter(kind='winback').count(), 1)
 
     def test_hook_fires_winback_on_at_risk_flip(self):
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         NewsletterSubscriber.objects.create(email='lapsed@example.com', status='confirmed')
         hook_registry.fire(

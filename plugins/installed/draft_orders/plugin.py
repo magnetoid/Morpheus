@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin
+from morpheus.plugin import Plugin
 
 logger = logging.getLogger('morpheus.draft_orders')
 

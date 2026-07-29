@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
-from morpheus import dashboard_trail
+from morpheus.plugin import dashboard_trail
 
 logger = logging.getLogger('morpheus.marketplace')
 

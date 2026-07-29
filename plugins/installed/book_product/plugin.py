@@ -3,7 +3,8 @@
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class BookProductPlugin(Plugin):
@@ -69,7 +70,7 @@ class BookProductPlugin(Plugin):
         save_book_fields(product, post, files)
 
     def contribute_dashboard_pages(self) -> list:
-        from morpheus import DashboardPage  # noqa: PLC0415
+        from morpheus.plugin import DashboardPage  # noqa: PLC0415
 
         return [
             DashboardPage(

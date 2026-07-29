@@ -144,7 +144,7 @@ def resolve_meta(
         description = expand_tokens(description, obj)
     except Exception:  # noqa: BLE001 — never break meta resolution over tokens
         pass
-    from core.utils.site import absolutize
+    from morpheus.core import absolutize
 
     site = site_settings()
     # Absolutize here — one chokepoint — so the OG/Twitter tags AND the

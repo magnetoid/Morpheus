@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import forms
+from morpheus.plugin import forms
 
 from ._helpers import DashboardFormMixin
 

@@ -9,7 +9,7 @@ from django.test import Client, RequestFactory, TestCase
 from django.utils import timezone
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product
 from plugins.installed.live_commerce import services
 from plugins.installed.live_commerce.models import LiveEvent, LiveEventProduct

@@ -9,8 +9,8 @@ from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from api.client import internal_graphql
-from core.hooks import MorpheusEvents, hook_registry
-from morpheus.views import redirect, render
+from morpheus.core import MorpheusEvents, hook_registry
+from morpheus.plugin.views import redirect, render
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.orders.models import CartItem
 

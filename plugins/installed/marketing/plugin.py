@@ -1,4 +1,4 @@
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 
 class MarketingPlugin(Plugin):

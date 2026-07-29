@@ -9,7 +9,7 @@ store plaintext payment data ourselves — that's the gateway's job
 
 from __future__ import annotations
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class OneClickToken(models.Model):

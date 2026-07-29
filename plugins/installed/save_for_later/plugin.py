@@ -22,7 +22,7 @@ use case that makes wishlists on-brand.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class SaveForLaterPlugin(Plugin):

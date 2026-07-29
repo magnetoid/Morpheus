@@ -21,7 +21,7 @@ import logging
 
 from django_fsm.signals import post_transition
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.orders.models import Order
 
 logger = logging.getLogger('morpheus.orders')

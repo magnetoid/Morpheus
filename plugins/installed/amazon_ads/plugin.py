@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.amazon_ads')
 

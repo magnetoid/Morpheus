@@ -112,7 +112,7 @@ def _review_links(order) -> str:
     reader lands one click from writing. Wrapped so a disabled reviews plugin
     (no mounted URL) degrades to an empty list rather than erroring.
     """
-    from core.utils.site import site_base_url  # noqa: PLC0415
+    from morpheus.core import site_base_url  # noqa: PLC0415
 
     base = site_base_url().rstrip('/')
     lines = []

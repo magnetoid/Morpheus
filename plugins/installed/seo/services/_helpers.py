@@ -19,7 +19,7 @@ import re as _re
 from dataclasses import dataclass
 
 
-from core.utils.site import site_base_url
+from morpheus.core import site_base_url
 from django.utils.html import escape, strip_tags
 
 logger = logging.getLogger('morpheus.seo')

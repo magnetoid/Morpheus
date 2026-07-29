@@ -25,7 +25,7 @@ class CmsPublishToolMigrationTests(TestCase):
         self.assertTrue(set(_MIGRATED) <= names, f'missing: {set(_MIGRATED) - names}')
 
     def test_each_name_registered_once_and_owned_by_cms(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         for name in _MIGRATED:
             self.assertIsNotNone(agent_registry.get_tool(name), f'{name} not registered')
@@ -39,7 +39,7 @@ class CmsPublishToolMigrationTests(TestCase):
             self.assertEqual(counts[name], 1, f'{name} appears {counts[name]}x')
 
     def test_publish_requires_confirmation(self):
-        from core.agents import ToolError
+        from morpheus.core import ToolError
 
         with self.assertRaises(ToolError):
             cms_publish_page_tool.invoke({'slug': 'x'})

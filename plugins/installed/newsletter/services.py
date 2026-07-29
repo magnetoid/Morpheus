@@ -13,13 +13,13 @@ logger = logging.getLogger('morpheus.newsletter')
 
 
 def _confirm_url(token: str) -> str:
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     return f'{site_base_url()}/newsletter/confirm/{token}/'
 
 
 def _unsubscribe_url(token: str) -> str:
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     return f'{site_base_url()}/newsletter/unsubscribe/{token}/'
 

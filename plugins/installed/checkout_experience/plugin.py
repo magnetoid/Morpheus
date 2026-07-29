@@ -20,7 +20,7 @@ falls back to its pre-existing (read-only) template behaviour.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class CheckoutExperiencePlugin(Plugin):

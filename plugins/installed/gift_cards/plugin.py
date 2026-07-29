@@ -4,7 +4,8 @@
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin
 
 
 class GiftCardsPlugin(Plugin):
@@ -163,7 +164,7 @@ class GiftCardsPlugin(Plugin):
         }
 
     def contribute_settings_panel(self):
-        from morpheus import SettingsPanel
+        from morpheus.plugin import SettingsPanel
 
         return SettingsPanel(
             label='Gift cards',
@@ -173,7 +174,7 @@ class GiftCardsPlugin(Plugin):
         )
 
     def contribute_email_templates(self) -> list:
-        from morpheus import EmailTemplateDef
+        from morpheus.plugin import EmailTemplateDef
 
         return [
             EmailTemplateDef(

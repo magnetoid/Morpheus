@@ -15,9 +15,9 @@ import json
 from django.contrib import messages
 from django.utils.http import http_date
 
-from morpheus.views import staff_member_required
-from morpheus.views import HttpRequest, HttpResponse, JsonResponse
-from morpheus.views import get_object_or_404, redirect, render
+from morpheus.plugin.views import staff_member_required
+from morpheus.plugin.views import HttpRequest, HttpResponse, JsonResponse
+from morpheus.plugin.views import get_object_or_404, redirect, render
 
 from plugins.installed.seo.services import (
     audit_all_products,

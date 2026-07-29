@@ -124,7 +124,7 @@ def gather_customer_data(customer) -> dict:
     # CUSTOMER_DATA_EXPORT filter (orders.json, reviews.json, consent.json,
     # wishlist.json, loyalty.json, affiliate.json, …). A disabled plugin's
     # file simply never appears — the bus gates on active state.
-    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+    from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
     out = hook_registry.filter(MorpheusEvents.CUSTOMER_DATA_EXPORT, out, customer=customer)
 
@@ -160,7 +160,7 @@ def anonymise_customer(customer) -> None:
     # fiscal hold but lose PII; wishlist and stored payment methods delete;
     # review titles anonymise) via the CUSTOMER_ANONYMISE event. The bus
     # isolates a broken handler and skips disabled owners.
-    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+    from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
     hook_registry.fire(
         MorpheusEvents.CUSTOMER_ANONYMISE, customer=customer, sentinel_email=sentinel_email

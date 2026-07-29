@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from djmoney.money import Money
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 from plugins.installed.catalog.models import Product
 from plugins.installed.orders.models import Cart, CartItem
 from plugins.installed.shipping.models import ShippingRate, ShippingZone

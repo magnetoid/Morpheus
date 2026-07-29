@@ -5,7 +5,7 @@ from __future__ import annotations
 from django.core.cache import cache
 from django.http import HttpResponse
 
-from morpheus.views import render, staff_member_required
+from morpheus.plugin.views import render, staff_member_required
 
 FEED_CACHE_KEY = 'pinterest_commerce:feed:v1'
 _FEED_TTL = 60 * 60
@@ -28,7 +28,7 @@ def pinterest_catalog_feed(request):
 
 @staff_member_required
 def dashboard(request):
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
     from plugins.installed.pinterest_commerce.models import PinterestSyncLog
     from plugins.installed.pinterest_commerce.services.api import has_token
     from plugins.installed.pinterest_commerce.services.coverage import coverage_report

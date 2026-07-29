@@ -69,7 +69,7 @@ def _config() -> dict:
 def _manage_url() -> str:
     """Absolute URL of the storefront membership page (payment-update / cancel /
     pause CTAs all live there)."""
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     return f'{site_base_url().rstrip("/")}/membership/'
 

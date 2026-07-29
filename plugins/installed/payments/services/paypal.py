@@ -119,7 +119,7 @@ def create_order(order) -> dict:
     Returns ``{'success': True, 'paypal_order_id': ..., 'approval_url': ...}``
     or ``{'success': False, 'error': ...}``.
     """
-    from core.utils.site import absolutize
+    from morpheus.core import absolutize
 
     amount = order.total
     body = {
@@ -276,7 +276,7 @@ def mark_order_paid(paypal_order_id: str) -> bool:
     """
     from django.db import transaction as db_tx
 
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.payments.models import PaymentTransaction
 
     with db_tx.atomic():

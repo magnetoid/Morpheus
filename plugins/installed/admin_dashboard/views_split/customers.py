@@ -12,7 +12,7 @@ from typing import Any
 
 from django.db.models import Sum
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     get_object_or_404,
@@ -234,7 +234,7 @@ def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
     # this page.
     detail_panels: list[dict[str, Any]] = []
     try:
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         panels = hook_registry.filter(
             MorpheusEvents.CUSTOMER_DETAIL_PANELS, [], customer=customer, request=request

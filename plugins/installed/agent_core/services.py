@@ -78,9 +78,9 @@ from core.agents import (  # noqa: E402 — deliberate late import
     MorpheusAgent,
     RunResult,
     TraceStep,
-    agent_registry,
     get_llm_provider,
 )
+from morpheus.core import agent_registry  # noqa: E402 — deliberate late import
 
 logger = logging.getLogger('morpheus.agents.services')
 
@@ -109,7 +109,7 @@ def _persist_step(*, run, seq: int, step: TraceStep) -> None:
     # row used to carry an empty `output`. The tool_result step has the real
     # outcome (args live on the AgentStep rows either way).
     if step.kind == 'tool_result':
-        from core.audit.services import record_ai_decision
+        from morpheus.core import record_ai_decision
 
         record_ai_decision(
             agent=getattr(run, 'agent_name', '') or '',

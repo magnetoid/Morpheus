@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, StorefrontBlock
+from morpheus.plugin import DashboardPage, Plugin, StorefrontBlock
 
 logger = logging.getLogger('morpheus.localization')
 

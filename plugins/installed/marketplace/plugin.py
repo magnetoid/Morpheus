@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 logger = logging.getLogger('morpheus.marketplace')
 
@@ -93,7 +94,7 @@ class MarketplacePlugin(Plugin):
         }
 
     def contribute_dashboard_pages(self) -> list:
-        from morpheus import DashboardPage  # noqa: PLC0415
+        from morpheus.plugin import DashboardPage  # noqa: PLC0415
 
         return [
             DashboardPage(

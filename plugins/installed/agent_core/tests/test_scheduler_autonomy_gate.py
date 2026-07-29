@@ -13,7 +13,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from core.agents.events import AgentEvents
-from core.hooks import hook_registry
+from morpheus.core import hook_registry
 from plugins.installed.agent_core import scheduler
 from plugins.installed.agent_core.models import BackgroundAgent
 

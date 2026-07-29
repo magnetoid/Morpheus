@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from core.agents import ToolError, ToolResult, tool
 from core.agents.guardrails import max_price_change_pct
 
 # Shared write-gate helpers stay in core (imported by orders/metafields/cms
@@ -26,7 +25,8 @@ from core.assistant.tools.ecommerce_writes import (
     _require_confirmed,
     _stage,
 )
-from core.money import money_str as _money_str
+from morpheus.core import ToolError, ToolResult, tool
+from morpheus.core import money_str as _money_str
 
 
 def _enforce_price_delta(old_amount, new_amount: Decimal, max_pct: float) -> None:

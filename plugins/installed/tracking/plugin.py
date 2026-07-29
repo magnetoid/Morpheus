@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.tracking')
 

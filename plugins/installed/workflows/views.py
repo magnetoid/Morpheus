@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from morpheus.views import staff_member_required
+from morpheus.plugin.views import staff_member_required
 from plugins.installed.workflows.engine import run_workflow
 from plugins.installed.workflows.models import (
     ACTION_KINDS,

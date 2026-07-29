@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 from django.test import RequestFactory, TestCase
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.registry import plugin_registry
 
 

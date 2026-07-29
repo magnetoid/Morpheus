@@ -92,7 +92,7 @@ def tick() -> int:
     (`fire`) is unaffected.
     """
     from core.agents.events import AgentEvents
-    from core.hooks import hook_registry
+    from morpheus.core import hook_registry
 
     if not hook_registry.filter(AgentEvents.AUTONOMY_ENABLED, value=False):
         logger.debug('background_agent: tick skipped — autonomy disabled')

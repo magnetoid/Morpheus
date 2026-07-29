@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from django.test import RequestFactory, TestCase
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.analytics.models import AnalyticsEvent
 
 
@@ -21,7 +21,9 @@ class ServerEmitterTests(TestCase):
     def _request(self):
         req = self.rf.get('/products/test-book/')
         req.user = type('Anon', (), {'is_authenticated': False})()
-        req.COOKIES['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
+        req.COOKIES['morpheus_consent'] = (
+            '{"analytics": true, "functional": true, "marketing": true}'
+        )
         req.COOKIES['morph_aid'] = 'ck-emitter-test-0000000000000000'
         return req
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.agents import ToolResult, tool
+from morpheus.core import ToolResult, tool
 
 
 @tool(

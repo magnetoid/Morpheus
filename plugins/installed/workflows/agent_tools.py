@@ -9,8 +9,8 @@ confirm gate stays core (`_require_confirmed`), same as the metafields move.
 
 from __future__ import annotations
 
-from core.agents import ToolError, ToolResult, tool
 from core.assistant.tools.ecommerce_writes import _require_confirmed
+from morpheus.core import ToolError, ToolResult, tool
 
 
 @tool(

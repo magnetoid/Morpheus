@@ -3,7 +3,7 @@ import uuid
 from django.db import DatabaseError
 from djmoney.models.fields import MoneyField
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class PaymentGateway(models.Model):

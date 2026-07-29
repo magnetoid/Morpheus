@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin
+from morpheus.plugin import Plugin
 from plugins.contributions import DashboardPage
 
 logger = logging.getLogger('morpheus.agent_mcp')
@@ -39,7 +39,7 @@ class AgentMcpPlugin(Plugin):
         # advertises order.metadata.agent_id "persisted on checkout"; this is
         # what makes that true (was previously unwired). Disable-safe: the hook
         # bus skips this handler when agent_mcp is off (ADR 0024).
-        from morpheus import events
+        from morpheus.core import events
 
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=20)
         # /agents.md endpoints section — agent_mcp owns the MCP/UCP surfaces, so
@@ -58,7 +58,7 @@ class AgentMcpPlugin(Plugin):
 
     def on_agent_readiness_sections(self, value, **kwargs):
         """Contribute the agent-transaction endpoints to /agents.md."""
-        from core.utils.site import site_base_url
+        from morpheus.core import site_base_url
 
         base = site_base_url().rstrip('/')
         body = (

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from core.agents import ToolResult, tool
+from morpheus.core import ToolResult, tool
 
 
 @tool(

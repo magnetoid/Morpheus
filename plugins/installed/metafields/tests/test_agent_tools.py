@@ -24,7 +24,7 @@ class MetafieldsAgentToolMigrationTests(TestCase):
         self.assertTrue(set(_MIGRATED) <= names, f'missing: {set(_MIGRATED) - names}')
 
     def test_each_name_registered_once_and_owned_by_metafields(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         for name in _MIGRATED:
             self.assertIsNotNone(agent_registry.get_tool(name), f'{name} not registered')
@@ -38,7 +38,7 @@ class MetafieldsAgentToolMigrationTests(TestCase):
             self.assertEqual(counts[name], 1, f'{name} appears {counts[name]}x')
 
     def test_set_requires_confirmation(self):
-        from core.agents import ToolError
+        from morpheus.core import ToolError
 
         with self.assertRaises(ToolError):
             metafields_set_tool.invoke(
@@ -46,7 +46,7 @@ class MetafieldsAgentToolMigrationTests(TestCase):
             )
 
     def test_delete_is_hard_gated(self):
-        from core.agents import ToolError
+        from morpheus.core import ToolError
 
         with self.assertRaises(ToolError):  # no confirmation
             metafields_delete_tool.invoke(

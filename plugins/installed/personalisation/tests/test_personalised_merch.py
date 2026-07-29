@@ -89,7 +89,7 @@ class RankForVisitorTests(TestCase):
 
 class FilterHookWiringTests(TestCase):
     def test_filter_reorders_when_personalisation_active(self):
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         anchor = _product('a2', 'A2')
         b = _product('b2', 'B2')

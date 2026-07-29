@@ -11,7 +11,8 @@ a plain digital edition. See docs/plans/audiobooks-2026-06.md.
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class AudiobooksPlugin(Plugin):

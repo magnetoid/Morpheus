@@ -11,7 +11,7 @@ This is distinct from `affiliates` (B2B/influencer) and from
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class ReferralsPlugin(Plugin):

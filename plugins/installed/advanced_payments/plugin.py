@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel
+from morpheus.plugin import Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.advanced_payments')
 

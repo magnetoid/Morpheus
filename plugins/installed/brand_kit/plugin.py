@@ -16,7 +16,7 @@ The merchant uploads brand assets here. The plugin:
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class BrandKitPlugin(Plugin):

@@ -273,7 +273,7 @@ def send_winback(customer) -> bool:
     coupon_code = str(plugin_registry.config_value('newsletter', 'winback_coupon_code', '') or '')
 
     from core.emails import send_templated_email
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
     from plugins.installed.newsletter.services import _unsubscribe_url
 
     send_templated_email(

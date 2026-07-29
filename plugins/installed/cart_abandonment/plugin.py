@@ -27,7 +27,7 @@ Configuration (set per-plugin in the dashboard or DB):
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus.plugin import Plugin, SettingsPanel
 
 
 class CartAbandonmentPlugin(Plugin):
@@ -70,7 +70,7 @@ class CartAbandonmentPlugin(Plugin):
         )
 
     def contribute_email_templates(self) -> list:
-        from morpheus import EmailTemplateDef
+        from morpheus.plugin import EmailTemplateDef
 
         return [
             EmailTemplateDef(

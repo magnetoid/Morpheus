@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, SettingsPanel
+from morpheus.plugin import DashboardPage, Plugin, SettingsPanel
 
 
 class PostPurchasePlugin(Plugin):

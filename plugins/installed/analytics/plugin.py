@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 
 
 class AnalyticsPlugin(Plugin):

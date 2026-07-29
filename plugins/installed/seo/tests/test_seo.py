@@ -350,7 +350,7 @@ class DeepSeoServicesTests(TestCase):
 
 class DeepSeoAgentToolsTests(TestCase):
     def test_tools_registered(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         names = {t.name for t in agent_registry.platform_tools()}
         for required in (

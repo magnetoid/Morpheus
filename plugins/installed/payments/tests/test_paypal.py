@@ -14,7 +14,7 @@ from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.orders.models import Order
 from plugins.installed.payments.gateway import gateway_registry
 from plugins.installed.payments.models import PaymentGatewayConfig, PaymentTransaction

@@ -10,7 +10,7 @@ when the allocation *opens* and the queue ordering.
 
 from __future__ import annotations
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class Drop(models.Model):

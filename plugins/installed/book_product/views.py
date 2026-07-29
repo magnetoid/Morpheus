@@ -11,7 +11,7 @@ from __future__ import annotations
 from django.shortcuts import render
 from django.utils.text import slugify
 
-from morpheus.views import Http404
+from morpheus.plugin.views import Http404
 
 
 def _active_products(books):
@@ -39,7 +39,7 @@ def _render(request, label, value, products, *, term=None, index_url=None):
     # consent/history/personalisation). Series keeps its reading order
     # (series_position), so it opts out.
     if label != 'Series':
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
         products = hook_registry.filter(
             MorpheusEvents.PRODUCT_LIST_REORDER, value=products, request=request, surface='facet'

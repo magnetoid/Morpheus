@@ -16,7 +16,7 @@ class LoyaltyPointsConfig(AppConfig):
 
         # v1.1.0 — referral qualification on first qualifying order.
         try:
-            from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+            from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
             from plugins.installed.loyalty_points.handlers import (  # noqa: PLC0415
                 on_order_placed_for_referrals,
             )

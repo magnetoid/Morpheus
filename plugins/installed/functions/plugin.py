@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, events
+from morpheus.core import events
+from morpheus.plugin import Plugin
 
 logger = logging.getLogger('morpheus.functions')
 

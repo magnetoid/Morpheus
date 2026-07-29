@@ -101,7 +101,7 @@ def _notify_staff(thread, msg) -> None:
         from django.contrib.auth import get_user_model
 
         from core.emails import send_templated_email
-        from core.utils.site import site_base_url
+        from morpheus.core import site_base_url
 
         emails = list(
             dict.fromkeys(

@@ -17,7 +17,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 
-from morpheus import dashboard_trail
+from morpheus.plugin import dashboard_trail
 
 logger = logging.getLogger('morpheus.cloudflare')
 

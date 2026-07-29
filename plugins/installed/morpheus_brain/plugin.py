@@ -11,7 +11,8 @@ page. Future plugins can surface extra cards here via a BRAIN_PANELS filter
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin
 
 
 class MorpheusBrainPlugin(Plugin):

@@ -28,7 +28,7 @@ class LoyaltySmoke(TestCase):
         self.assertEqual(services.get_balance(self.user), 25)
 
     def test_order_paid_hook_registered(self):
-        from core.hooks import hook_registry, MorpheusEvents
+        from morpheus.core import hook_registry, MorpheusEvents
 
         handlers = hook_registry._handlers.get(MorpheusEvents.ORDER_PAID, [])
         # Entries are (priority, handler, mode) tuples; handler is index 1.

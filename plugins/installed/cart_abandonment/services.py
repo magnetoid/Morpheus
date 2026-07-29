@@ -35,7 +35,7 @@ def email_from_token(token: str) -> str | None:
 
 def recovery_unsubscribe_url(email: str) -> str:
     """The absolute one-click unsubscribe URL for ``email``."""
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     return f'{site_base_url().rstrip("/")}/cart-recovery/unsubscribe/{unsubscribe_token(email)}/'
 

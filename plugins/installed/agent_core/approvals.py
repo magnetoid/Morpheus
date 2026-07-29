@@ -98,7 +98,7 @@ def register() -> None:
     """Wire the resolver into the kernel seam + subscribe the recorder."""
     from core.agents.approval import approval_registry
     from core.agents.events import AgentEvents
-    from core.hooks import hook_registry
+    from morpheus.core import hook_registry
 
     approval_registry.register(resolve)
     hook_registry.register(AgentEvents.STEP_APPROVAL_REQUIRED, record_pending, priority=50)

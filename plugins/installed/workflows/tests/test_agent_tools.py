@@ -21,7 +21,7 @@ class WorkflowsAgentToolMigrationTests(TestCase):
         self.assertTrue(set(_MIGRATED) <= names, f'missing: {set(_MIGRATED) - names}')
 
     def test_name_registered_once_and_owned_by_workflows(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         for name in _MIGRATED:
             self.assertIsNotNone(agent_registry.get_tool(name), f'{name} not registered')
@@ -35,7 +35,7 @@ class WorkflowsAgentToolMigrationTests(TestCase):
             self.assertEqual(counts[name], 1, f'{name} appears {counts[name]}x')
 
     def test_live_run_requires_confirmation(self):
-        from core.agents import ToolError
+        from morpheus.core import ToolError
 
         # dry_run=False without confirmed → the core confirm gate raises
         # before any Workflow lookup, so no fixture is needed.
@@ -43,7 +43,7 @@ class WorkflowsAgentToolMigrationTests(TestCase):
             workflows_run_tool.invoke({'name': 'anything', 'dry_run': False})
 
     def test_unknown_workflow_raises(self):
-        from core.agents import ToolError
+        from morpheus.core import ToolError
 
         with self.assertRaises(ToolError):
             workflows_run_tool.invoke({'name': 'no-such-workflow'})

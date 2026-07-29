@@ -13,7 +13,7 @@ Configuration is read from env (consumed by the underlying command):
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus.plugin import Plugin, SettingsPanel
 
 try:
     from celery.schedules import crontab

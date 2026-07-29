@@ -13,7 +13,7 @@ last 3 retained per customer to support multi-device.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class OneClickPlugin(Plugin):

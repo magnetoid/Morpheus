@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import strawberry
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 
 
 @strawberry.type

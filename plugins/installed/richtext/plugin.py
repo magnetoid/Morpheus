@@ -9,7 +9,7 @@ degrades to a plain <textarea> (see templatetags/richtext.py).
 
 from __future__ import annotations
 
-from morpheus import Plugin
+from morpheus.plugin import Plugin
 
 
 class RichTextPlugin(Plugin):

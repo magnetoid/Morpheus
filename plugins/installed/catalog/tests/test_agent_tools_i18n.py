@@ -22,7 +22,7 @@ class I18nProductToolMigrationTests(TestCase):
         self.assertTrue(set(_MIGRATED) <= names, f'missing: {set(_MIGRATED) - names}')
 
     def test_each_name_registered_once_and_owned_by_catalog(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         for name in _MIGRATED:
             self.assertIsNotNone(agent_registry.get_tool(name), f'{name} not registered')
@@ -30,7 +30,7 @@ class I18nProductToolMigrationTests(TestCase):
 
     def test_generic_i18n_tools_stay_core(self):
         # The any-object translation tools remain registered by core.i18n.
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         for name in ('i18n.languages', 'i18n.get_translations', 'i18n.set_translation'):
             tool = agent_registry.get_tool(name)

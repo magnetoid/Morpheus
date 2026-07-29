@@ -7,7 +7,7 @@ from decimal import Decimal
 from django.test import RequestFactory, TestCase
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product
 from plugins.installed.dynamics.models import DynamicBlock
 

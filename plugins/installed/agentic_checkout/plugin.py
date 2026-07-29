@@ -25,7 +25,7 @@ Disable test: deleting this plugin removes the manifest, feed, and the
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus.plugin import Plugin, SettingsPanel
 
 # ACP spec version we implement; echoed in the ``API-Version`` response header.
 ACP_API_VERSION = '2026-04-17'

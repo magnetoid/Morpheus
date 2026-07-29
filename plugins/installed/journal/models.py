@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from django.utils import timezone
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class Post(models.Model):

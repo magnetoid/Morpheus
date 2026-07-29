@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.promotions')
 
@@ -22,7 +22,7 @@ class PromotionsPlugin(Plugin):
     requires = ['orders']
 
     def ready(self) -> None:
-        from morpheus import events
+        from morpheus.core import events
 
         # CART_CALCULATE_TOTAL is deprecated — the canonical event is
         # CART_CALCULATE_BREAKDOWN, fired from OrderService since 2026-04.

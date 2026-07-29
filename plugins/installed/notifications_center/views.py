@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
-from morpheus.views import staff_member_required
+from morpheus.plugin.views import staff_member_required
 from plugins.installed.notifications_center.models import Notification
 
 logger = logging.getLogger('morpheus.notifications_center.views')

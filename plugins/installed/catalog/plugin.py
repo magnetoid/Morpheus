@@ -1,4 +1,5 @@
-from morpheus import Plugin, SettingsPanel, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel
 
 
 class CatalogPlugin(Plugin):

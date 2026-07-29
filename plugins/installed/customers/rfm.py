@@ -41,7 +41,7 @@ def recompute_all() -> dict:
     """Score every customer with ≥1 order, upsert CustomerSegment, log + fire on flip."""
     from django.contrib.auth import get_user_model
 
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.customers.models import CustomerSegment, SegmentMigration
 
     User = get_user_model()

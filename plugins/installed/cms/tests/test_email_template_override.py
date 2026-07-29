@@ -26,7 +26,7 @@ class EmailTemplateOverrideTests(TestCase):
         )
 
     def test_cms_is_subscribed(self):
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         quals = {
             getattr(hook_registry._unpack(entry)[1], '__qualname__', '')

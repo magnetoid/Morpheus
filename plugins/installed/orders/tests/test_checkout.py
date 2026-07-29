@@ -150,7 +150,7 @@ class CheckoutFlowTests(TestCase):
             cart=cart, email='b@example.com', shipping_address={}, billing_address={}
         )
         # Simulate payment success.
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
         self.stock.refresh_from_db()

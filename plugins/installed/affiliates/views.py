@@ -21,7 +21,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
-from morpheus.views import HttpRequest, HttpResponse, HttpResponseRedirect
+from morpheus.plugin.views import HttpRequest, HttpResponse, HttpResponseRedirect
 
 _AFFILIATE_COOKIE = 'morph_aff'
 _COOKIE_TTL = 60 * 60 * 24 * 30  # 30 days; programs may override via cookie_window_days

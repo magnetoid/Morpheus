@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db.models import Count, Prefetch, Q, Sum
 
-from morpheus.views import Http404, render
+from morpheus.plugin.views import Http404, render
 from plugins.installed.catalog.models import Product, Vendor
 from plugins.installed.storefront.services import page_intro
 

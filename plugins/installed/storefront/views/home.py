@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from api.client import internal_graphql
-from core.hooks import MorpheusEvents, hook_registry
-from morpheus.views import render
+from morpheus.core import MorpheusEvents, hook_registry
+from morpheus.plugin.views import render
 
 
 def _serialize_product(p) -> dict:
@@ -47,7 +47,7 @@ def _serialize_product(p) -> dict:
 def _surface_products(request, surface: str, *, value=None, limit: int = 8):
     """Fire the merchandising-takeover hook for one placeholder (fail-soft)."""
     try:
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
         return hook_registry.filter(
             MorpheusEvents.STOREFRONT_PRODUCTS,

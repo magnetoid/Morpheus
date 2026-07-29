@@ -17,7 +17,7 @@ needed for a read-only page.
 
 from __future__ import annotations
 
-from morpheus.views import render
+from morpheus.plugin.views import render
 
 # Hard ceiling regardless of config — keeps the scene performant even if a
 # merchant types a huge number into the settings form.

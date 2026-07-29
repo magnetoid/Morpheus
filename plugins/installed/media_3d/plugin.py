@@ -19,7 +19,7 @@ its own `Asset3D` model keyed to `catalog.Product`.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class Media3dPlugin(Plugin):

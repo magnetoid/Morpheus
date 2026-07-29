@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.views import HttpRequest, HttpResponse, render, staff_member_required
+from morpheus.plugin.views import HttpRequest, HttpResponse, render, staff_member_required
 
 logger = logging.getLogger('morpheus.advanced_ecommerce')
 

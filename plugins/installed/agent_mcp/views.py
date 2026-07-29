@@ -104,7 +104,7 @@ def _public_tools() -> list:
             # their cluster without polluting Linda's toolset. A disabled owner's
             # tool simply doesn't resolve, so the cluster shrinks disable-safely.
             by_name = {t.name: t for t in all_tools}
-            from core.agents import agent_registry
+            from morpheus.core import agent_registry
 
             resolved = []
             for n in names:
@@ -233,7 +233,7 @@ def _audit_denied(tool_name: str, reason: str) -> None:
 def _audit_call(tool_name: str, args: dict, output: Any = None, error: str = '', t0=None) -> None:
     """One agents.decision row per executed MCP tool call (EU AI Act art. 12)."""
     try:
-        from core.audit.services import record_ai_decision
+        from morpheus.core import record_ai_decision
 
         blob = json.dumps(args, default=str)
         capped_args = args if len(blob) <= 4000 else {'_truncated': blob[:4000]}

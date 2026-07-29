@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.http import HttpResponse
 from django.shortcuts import redirect
 
-from morpheus.views import render, staff_member_required
+from morpheus.plugin.views import render, staff_member_required
 
 _OAUTH_CALLBACK_PATH = '/dashboard/apps/google_shopping/oauth-callback/'
 
@@ -33,7 +33,7 @@ def google_merchant_feed(request):
 @staff_member_required
 def dashboard(request):
     """Feed status + coverage report + submit URL."""
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
     from plugins.installed.google_shopping.models import GoogleSyncLog
     from plugins.installed.google_shopping.services.coverage import coverage_report
     from plugins.installed.google_shopping.services.settings import feed_settings

@@ -65,7 +65,7 @@ class AccountSummaryModularityTests(TestCase):
     def test_optional_plugins_are_subscribed(self):
         # Wiring guard: both contributing plugins (and loyalty, already migrated)
         # are registered on the ACCOUNT_SUMMARY_FIELDS filter.
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         quals = {
             getattr(hook_registry._unpack(entry)[1], '__qualname__', '')

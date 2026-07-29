@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from morpheus.views import staff_member_required
+from morpheus.plugin.views import staff_member_required
 from plugins.installed.markets.models import Market
 
 logger = logging.getLogger('morpheus.markets.views')

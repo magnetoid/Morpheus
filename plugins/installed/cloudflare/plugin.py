@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.cloudflare')
 
@@ -113,7 +114,7 @@ class CloudflarePlugin(Plugin):
         }
 
     def contribute_settings_panel(self):
-        from morpheus import SettingsPanel
+        from morpheus.plugin import SettingsPanel
 
         return SettingsPanel(
             label='Turnstile',

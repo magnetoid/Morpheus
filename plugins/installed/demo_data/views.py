@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.views import messages, render, staff_member_required
+from morpheus.plugin.views import messages, render, staff_member_required
 
 
 @staff_member_required

@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.customers.services import anonymise_customer, gather_customer_data
 from plugins.registry import plugin_registry
 

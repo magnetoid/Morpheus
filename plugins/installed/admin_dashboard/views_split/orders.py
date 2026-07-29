@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     get_object_or_404,
@@ -234,7 +234,7 @@ def _mark_order_paid(order) -> bool:
     """
     if order.payment_status == 'paid':
         return False
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     order.payment_status = 'paid'
     order.save(update_fields=['payment_status', 'updated_at'])

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import secrets
 
-from morpheus.views import get_object_or_404, redirect, render, staff_member_required
+from morpheus.plugin.views import get_object_or_404, redirect, render, staff_member_required
 
 
 @staff_member_required

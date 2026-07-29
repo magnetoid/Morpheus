@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.agents import ToolError, ToolResult, tool
+from morpheus.core import ToolError, ToolResult, tool
 
 
 def _resolve_cart(context: dict) -> object | None:

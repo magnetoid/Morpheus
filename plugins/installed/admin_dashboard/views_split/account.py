@@ -11,7 +11,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView  # noqa: F401 — re-exported for convenience
 from django.shortcuts import render
 
-from morpheus.views import HttpRequest, HttpResponse, staff_member_required
+from morpheus.plugin.views import HttpRequest, HttpResponse, staff_member_required
 from plugins.installed.admin_dashboard.views_split._shared import ajax_form_errors, ajax_or_redirect
 
 

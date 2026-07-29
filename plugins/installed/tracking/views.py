@@ -36,7 +36,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from morpheus.views import staff_member_required
+from morpheus.plugin.views import staff_member_required
 from plugins.installed.tracking.models import (
     DEFAULT_CONSENT_DEFAULT,
     DEFAULT_ENHANCED_OVERRIDES,

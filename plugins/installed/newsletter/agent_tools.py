@@ -6,8 +6,8 @@ Sending campaigns stays with the marketing plugin (Phase 3 broadcast).
 
 from __future__ import annotations
 
-from core.agents import tool
 from core.agents.tools import ToolResult
+from morpheus.core import tool
 
 
 @tool(

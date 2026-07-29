@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from core.agents import ToolError, ToolResult, get_llm_provider, tool
+from core.agents import get_llm_provider
 from core.agents.llm import LLMMessage
+from morpheus.core import ToolError, ToolResult, tool
 
 logger = logging.getLogger('morpheus.agents.content')
 

@@ -20,7 +20,7 @@ class PostPurchaseConfig(AppConfig):
             logger.exception('post_purchase: subscriber registration failed')
 
     def _wire_hooks(self) -> None:
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
         from plugins.installed.post_purchase.handlers import (  # noqa: PLC0415
             on_order_fulfilled,
             on_order_placed,

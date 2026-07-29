@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
-from core.hooks import MorpheusEvents
+from morpheus.core import MorpheusEvents
 from plugins.installed.customers.models import CustomerSegment, SegmentMigration
 from plugins.installed.customers.rfm import classify, recompute_all
 

@@ -722,7 +722,7 @@ def _finalize_paid_order(order, cart, request: HttpRequest, token: str) -> None:
     the ``acp_order_id`` stamp so an agent retry of ``complete`` returns this
     order instead of charging again.
     """
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     order.payment_status = 'paid'
     order.source = 'agent:acp'

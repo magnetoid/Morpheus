@@ -23,7 +23,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
-from morpheus.views import staff_member_required
+from morpheus.plugin.views import staff_member_required
 from plugins.installed.metafields.models import Metafield
 
 logger = logging.getLogger('morpheus.metafields.views')

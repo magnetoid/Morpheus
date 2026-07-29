@@ -37,7 +37,7 @@ class ActivityFeedModularityTests(TestCase):
 
     def test_contributing_plugins_are_subscribed(self):
         # Wiring guard: every feed source registers on the ACTIVITY_FEED filter.
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         quals = {
             getattr(hook_registry._unpack(entry)[1], '__qualname__', '')
@@ -99,7 +99,7 @@ class ActivityFeedModularityTests(TestCase):
         # ACTIVITY_FEED is an open plugin contract: a contributed item with a
         # None timestamp must be dropped, never crash the sort (and the home
         # page) with a TypeError.
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
         from plugins.installed.admin_dashboard.views_split.home import _compute_activity_feed
 
         def _bad(value, limit=20, **kwargs):

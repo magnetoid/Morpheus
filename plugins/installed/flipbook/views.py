@@ -8,7 +8,7 @@ is missing, or the source isn't a PDF.
 
 from __future__ import annotations
 
-from morpheus.views import Http404, render
+from morpheus.plugin.views import Http404, render
 
 
 def _plugin_config() -> dict:

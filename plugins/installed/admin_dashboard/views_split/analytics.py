@@ -19,7 +19,7 @@ from django.db.models.functions import (
     TruncDate,
 )
 
-from morpheus.views import HttpRequest, HttpResponse, render, staff_member_required
+from morpheus.plugin.views import HttpRequest, HttpResponse, render, staff_member_required
 from plugins.installed.admin_dashboard.views_split._shared import (
     DATE_PRESETS,
     Metric,

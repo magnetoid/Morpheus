@@ -8,7 +8,7 @@ the browser; no thumbnail generation step at upload.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class FlipbookPlugin(Plugin):

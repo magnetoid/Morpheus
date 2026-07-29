@@ -23,8 +23,8 @@ from __future__ import annotations
 import contextlib
 
 from api.client import internal_graphql
-from core.hooks import MorpheusEvents, hook_registry
-from morpheus.views import render
+from morpheus.core import MorpheusEvents, hook_registry
+from morpheus.plugin.views import render
 from plugins.installed.storefront.services import page_intro
 
 from ._queries import PRODUCT_DETAIL_QUERY
@@ -37,7 +37,7 @@ def _surface_reorder(request, surface, products):
     block (or dynamics disabled) the list passes through unchanged.
     """
     try:
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         return (
             hook_registry.filter(
@@ -378,7 +378,7 @@ def _apply_search(qs, q: str):
     3. SKU exact / metafield substring — backstop.
     """
     from django.db.models import Case, IntegerField, Q, When  # noqa: PLC0415
-    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+    from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
     from plugins.installed.catalog.search import (  # noqa: PLC0415
         get_backend as _search_backend,
         search as _catalog_search,
@@ -445,7 +445,7 @@ def product_detail(request, slug):
     data = internal_graphql(PRODUCT_DETAIL_QUERY, variables={'slug': slug}, request=request)
     product = (data or {}).get('product')
     if not product:
-        from morpheus.views import Http404
+        from morpheus.plugin.views import Http404
 
         raise Http404
 
@@ -492,7 +492,7 @@ def product_detail(request, slug):
     # Server-side analytics: the funnel's product.viewed truth. Client
     # beacons are ad-blockable; this is not. Fail-soft — never break a PDP.
     try:
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
         if product_row is not None:
             hook_registry.fire(
@@ -943,7 +943,7 @@ def _related_products(current_slug: str, limit: int = 4, *, request=None) -> lis
     ai_assistant via SIMILAR_PRODUCTS, reordered per visitor. No subscriber
     (plugin disabled) → [] and the section self-hides."""
     try:
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
         from plugins.installed.catalog.models import Product
 
         product = Product.objects.filter(slug=current_slug).first()
@@ -1135,7 +1135,7 @@ def _attach_book_authors(products) -> None:
 
 def category_detail(request, slug):
     """Category landing — products + editorial framing."""
-    from morpheus.views import Http404
+    from morpheus.plugin.views import Http404
     from plugins.installed.catalog.models import Category, Product
 
     category = Category.objects.filter(slug=slug).first()
@@ -1256,7 +1256,7 @@ def collection_detail(request, slug):
     curated merchandising set (vs the hierarchical /category/<slug>/).
     Reuses category_detail.html (it only reads .name + .description,
     which Collection has)."""
-    from morpheus.views import Http404
+    from morpheus.plugin.views import Http404
     from plugins.installed.catalog.models import Collection, Product
 
     collection = Collection.objects.filter(slug=slug, is_active=True).first()
@@ -1349,7 +1349,7 @@ def collection_detail(request, slug):
 
 def author_detail(request, slug):
     """Author landing page — bibliography + optional bio."""
-    from morpheus.views import Http404
+    from morpheus.plugin.views import Http404
 
     author_name = ''
     bibliography = []
@@ -1373,7 +1373,7 @@ def author_detail(request, slug):
 
     # Per-visitor merchandising: surface the books this visitor is most likely
     # to buy first (no-op without consent/history/personalisation plugin).
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     bibliography = hook_registry.filter(
         MorpheusEvents.PRODUCT_LIST_REORDER, value=bibliography, request=request, surface='author'

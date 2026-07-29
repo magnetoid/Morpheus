@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.workflows')
 

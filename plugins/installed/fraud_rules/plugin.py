@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus.plugin import Plugin, SettingsPanel
 
 
 class FraudRulesPlugin(Plugin):

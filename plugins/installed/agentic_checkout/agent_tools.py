@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.agents import ToolError, ToolResult, tool
+from morpheus.core import ToolError, ToolResult, tool
 
 _SESSION_SCHEMA = {
     'session_id': {

@@ -19,7 +19,7 @@ import json
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 
-from morpheus.views import staff_member_required
+from morpheus.plugin.views import staff_member_required
 from plugins.installed.admin_dashboard.views_split._shared import call_llm, logger
 
 

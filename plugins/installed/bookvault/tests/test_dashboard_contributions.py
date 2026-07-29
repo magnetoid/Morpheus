@@ -15,7 +15,7 @@ from django.test import TestCase
 from django.urls import reverse
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.bookvault.models import BookvaultProductLink
 from plugins.installed.bookvault.tests.test_services import _seed_config
 from plugins.installed.catalog.models import Product

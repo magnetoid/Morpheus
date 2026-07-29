@@ -20,7 +20,7 @@ class SeoSitemapToolMigrationTests(TestCase):
         self.assertIn('seo.regenerate_sitemap', names)
 
     def test_registered_and_owned_by_seo(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         self.assertIsNotNone(agent_registry.get_tool('seo.regenerate_sitemap'))
         self.assertEqual(agent_registry._tool_owners.get('seo.regenerate_sitemap'), 'seo')

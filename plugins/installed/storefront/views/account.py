@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.views import render
+from morpheus.plugin.views import render
 
 logger = logging.getLogger('morpheus.storefront')
 
@@ -42,7 +42,7 @@ def _account_summary(user) -> dict:
     """
     s: dict = {}
     try:
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         s = hook_registry.filter(MorpheusEvents.ACCOUNT_SUMMARY_FIELDS, value=s, user=user)
     except Exception as e:  # noqa: BLE001
@@ -52,7 +52,7 @@ def _account_summary(user) -> dict:
 
 def account_home(request):
     if not request.user.is_authenticated:
-        from morpheus.views import redirect
+        from morpheus.plugin.views import redirect
 
         return redirect('/auth/login/?next=/account/')
     summary = _account_summary(request.user)
@@ -88,7 +88,7 @@ def account_profile(request):
 
 def account_orders(request):
     if not request.user.is_authenticated:
-        from morpheus.views import redirect
+        from morpheus.plugin.views import redirect
 
         return redirect('/auth/login/?next=/account/orders/')
     try:
@@ -102,10 +102,10 @@ def account_orders(request):
 
 def account_order_detail(request, order_number):
     if not request.user.is_authenticated:
-        from morpheus.views import redirect
+        from morpheus.plugin.views import redirect
 
         return redirect(f'/auth/login/?next=/account/orders/{order_number}/')
-    from morpheus.views import get_object_or_404
+    from morpheus.plugin.views import get_object_or_404
     from plugins.installed.orders.models import Order
 
     order = get_object_or_404(
@@ -185,7 +185,7 @@ def account_address_form(request, address_id=None):
 
     address = None
     if address_id:
-        from morpheus.views import get_object_or_404
+        from morpheus.plugin.views import get_object_or_404
 
         address = get_object_or_404(Address, id=address_id, customer=request.user)
     if request.method == 'POST':
@@ -339,7 +339,7 @@ def account_order_return(request, order_number):
 def account_credits(request):
     """Combined view: store-credit balance + ledger + active gift cards."""
     if not request.user.is_authenticated:
-        from morpheus.views import redirect
+        from morpheus.plugin.views import redirect
 
         return redirect('/auth/login/?next=/account/credits/')
     store_credit = None
@@ -452,7 +452,7 @@ def order_confirmation(request, order_number):
     leaking order existence we 404 (not 403) on any auth failure.
     """
     from django.http import Http404
-    from morpheus.views import get_object_or_404
+    from morpheus.plugin.views import get_object_or_404
 
     from plugins.installed.orders.models import Order
 

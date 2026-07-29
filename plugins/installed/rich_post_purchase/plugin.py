@@ -20,7 +20,7 @@ Channels supported by this plugin:
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel
+from morpheus.plugin import Plugin, SettingsPanel
 
 
 class RichPostPurchasePlugin(Plugin):

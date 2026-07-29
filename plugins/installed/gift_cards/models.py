@@ -8,7 +8,7 @@ import uuid
 from django.conf import settings
 from djmoney.models.fields import MoneyField
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 def _gen_code() -> str:

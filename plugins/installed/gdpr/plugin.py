@@ -19,7 +19,7 @@ turn the whole surface off.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class GdprPlugin(Plugin):
@@ -41,7 +41,7 @@ class GdprPlugin(Plugin):
         # EU AI Act Art. 50(1): let the merchant customise the AI-disclosure
         # wording shown on conversational AI surfaces. Core owns the mandatory
         # default; this only overrides the copy. Disable gdpr → core default.
-        from morpheus import events
+        from morpheus.core import events
 
         self.register_hook(events.AI_SURFACE_DISCLOSURE, self.on_ai_surface_disclosure, priority=50)
 

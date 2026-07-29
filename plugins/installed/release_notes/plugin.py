@@ -15,7 +15,7 @@ entry to that document. This plugin only *displays*; it owns no data.
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 
 class ReleaseNotesPlugin(Plugin):

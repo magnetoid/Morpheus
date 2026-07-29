@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 
 from api.client import internal_graphql
-from morpheus.views import redirect, render
+from morpheus.plugin.views import redirect, render
 
 from ._queries import CART_QUERY
 
@@ -237,7 +237,7 @@ def _available_shipping_rates(request, addr):
     value stays None and checkout falls back to free standard delivery, so
     the flow never blocks on the plugin.
     """
-    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+    from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
     from plugins.installed.orders.models import Cart  # noqa: PLC0415
 
     cart_id = request.session.get('cart_id')
@@ -261,7 +261,7 @@ def checkout(request):
         ctx['no_shipping_required'] = no_shipping
         try:
             if not request.session.get('checkout_started'):
-                from core.hooks import hook_registry, MorpheusEvents
+                from morpheus.core import hook_registry, MorpheusEvents
 
                 cart = ctx.get('cart')
                 if cart is not None:

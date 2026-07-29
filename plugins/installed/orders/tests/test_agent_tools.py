@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from django.test import TestCase
 
-from core.agents import ToolError, agent_registry
+from morpheus.core import ToolError, agent_registry
 
 _MIGRATED = ('orders.update_status', 'orders.cancel', 'orders.add_note', 'orders.refund')
 

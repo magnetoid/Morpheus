@@ -1,6 +1,7 @@
 import logging
 
-from morpheus import Plugin, events
+from morpheus.core import events
+from morpheus.plugin import Plugin
 
 logger = logging.getLogger('morpheus.customers')
 
@@ -32,7 +33,7 @@ class CustomersPlugin(Plugin):
         )
 
     def contribute_dashboard_pages(self) -> list:
-        from morpheus import DashboardPage  # noqa: PLC0415
+        from morpheus.plugin import DashboardPage  # noqa: PLC0415
 
         return [
             DashboardPage(

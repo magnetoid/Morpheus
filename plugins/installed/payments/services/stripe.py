@@ -415,7 +415,7 @@ class PaymentService:
         the webhook concurrently (it does, aggressively)."""
         from django.db import transaction as db_tx  # noqa: PLC0415
 
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
         with db_tx.atomic():
             tx = (
@@ -495,7 +495,7 @@ class PaymentService:
         unique-id guard upstream means a redelivery never reaches here twice.
         """
         try:
-            from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+            from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
             # NB: the payload kwarg is ``payload=`` (not ``event=``) — the bus's
             # fire(event, **kwargs) reserves ``event`` for the event *name*, so a

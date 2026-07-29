@@ -25,7 +25,7 @@ from django.utils import timezone
 from djmoney.models.fields import MoneyField
 from djmoney.money import Money
 
-from core.hooks import hook_registry
+from morpheus.core import hook_registry
 
 logger = logging.getLogger('morpheus.orders.refunds')
 

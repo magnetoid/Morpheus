@@ -51,7 +51,7 @@ def _fire_begin_checkout(request) -> None:
     try:
         if request.session.get('checkout_started'):
             return
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
         from plugins.installed.orders.models import Cart  # noqa: PLC0415
 
         cart_obj = None
@@ -315,6 +315,6 @@ def _payment_methods() -> list[dict]:
     isolates a broken handler and a disabled plugin simply never answers —
     either way the picker degrades to [] instead of breaking checkout.
     """
-    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+    from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
     return hook_registry.filter(MorpheusEvents.CHECKOUT_GATEWAYS, []) or []

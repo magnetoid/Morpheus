@@ -152,7 +152,7 @@ def run_stockout_forecast() -> dict:
     # Overstock detection → one batch event for workflows (markdown/promo triggers).
     overstock_count = 0
     try:
-        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
         from plugins.installed.inventory.demand_forecast import forecast_all  # noqa: PLC0415
 
         overstock = [r for r in forecast_all() if r.overstocked]

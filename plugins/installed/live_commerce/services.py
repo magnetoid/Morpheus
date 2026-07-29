@@ -33,7 +33,7 @@ def set_status(event, status: str) -> bool:
 
     Returns True if the status actually changed.
     """
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     if status not in {'scheduled', 'live', 'ended'} or event.status == status:
         return False

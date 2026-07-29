@@ -14,7 +14,7 @@ URL = '/dashboard/apps/agent_core/compliance/'
 
 
 def _seed_decision():
-    from core.audit.services import record_ai_decision
+    from morpheus.core import record_ai_decision
 
     record_ai_decision(
         agent='worker',

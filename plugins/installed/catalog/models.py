@@ -18,7 +18,7 @@ from core.utils.html import sanitize_richtext
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.text import slugify
 from djmoney.models.fields import MoneyField
-from morpheus import models
+from morpheus.plugin import models
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
 from taggit.models import GenericUUIDTaggedItemBase, TaggedItemBase

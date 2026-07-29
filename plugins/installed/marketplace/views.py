@@ -21,7 +21,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from djmoney.money import Money
 
-from morpheus.views import HttpRequest, HttpResponse
+from morpheus.plugin.views import HttpRequest, HttpResponse
 from plugins.installed.catalog.models import Product, Vendor
 from plugins.installed.marketplace import services
 from plugins.installed.marketplace.models import (

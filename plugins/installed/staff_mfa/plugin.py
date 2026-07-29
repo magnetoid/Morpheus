@@ -9,7 +9,8 @@ filter has no subscriber → sign-in reverts to single-factor email-OTP
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, SettingsPanel, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, Plugin, SettingsPanel
 
 
 class StaffMfaPlugin(Plugin):

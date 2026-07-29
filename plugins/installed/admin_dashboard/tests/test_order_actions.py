@@ -13,7 +13,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.admin_dashboard.views_split.orders import _mark_order_paid
 from plugins.installed.orders.models import Order
 

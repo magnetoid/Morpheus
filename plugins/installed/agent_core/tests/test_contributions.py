@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.test import TestCase
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 
 
 class AgentCoreContributionsTests(TestCase):

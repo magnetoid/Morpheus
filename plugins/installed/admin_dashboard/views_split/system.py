@@ -10,7 +10,7 @@ apply land in later phases (docs/plans/updating-system-2026-06.md).
 
 from __future__ import annotations
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     messages,

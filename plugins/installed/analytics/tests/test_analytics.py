@@ -10,7 +10,7 @@ from django.test import RequestFactory, TestCase
 from django.utils import timezone
 from djmoney.money import Money
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 from plugins.installed.analytics.models import (
     AnalyticsEvent,
     DailyMetric,
@@ -54,7 +54,9 @@ class SessionTests(TestCase):
     def test_creates_session_with_cookie(self):
         rf = RequestFactory()
         req = rf.get('/?utm_source=newsletter')
-        req.COOKIES['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
+        req.COOKIES['morpheus_consent'] = (
+            '{"analytics": true, "functional": true, "marketing": true}'
+        )
         sess = get_or_create_session(req)
         self.assertIsNotNone(sess)
         self.assertEqual(sess.utm_source, 'newsletter')
@@ -64,7 +66,9 @@ class SessionTests(TestCase):
         rf = RequestFactory()
         cust = User.objects.create_user(username='u', email='u@example.com', password='x')
         req = rf.get('/')
-        req.COOKIES['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
+        req.COOKIES['morpheus_consent'] = (
+            '{"analytics": true, "functional": true, "marketing": true}'
+        )
         req.user = cust
         sess = get_or_create_session(req)
         sess.refresh_from_db()
@@ -75,7 +79,9 @@ class RecordEventTests(TestCase):
     def test_record_event_writes_row_and_bumps_session(self):
         rf = RequestFactory()
         req = rf.get('/')
-        req.COOKIES['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
+        req.COOKIES['morpheus_consent'] = (
+            '{"analytics": true, "functional": true, "marketing": true}'
+        )
         sess = get_or_create_session(req)
         evt = record_event(
             name='product.viewed', kind='product_view', session=sess, product_slug='the-quiet-hour'
@@ -129,11 +135,16 @@ class FunnelTests(TestCase):
     def test_funnel_walks_steps(self):
         rf = RequestFactory()
         req1 = rf.get('/')
-        req1.COOKIES['morpheus_consent'] = '{"analytics": true, "functional": true, "marketing": true}'
+        req1.COOKIES['morpheus_consent'] = (
+            '{"analytics": true, "functional": true, "marketing": true}'
+        )
         s1 = get_or_create_session(req1)
         # Force unique cookie for second session
         req2 = rf.get('/')
-        req2.COOKIES = {'morph_aid': 'cookie2', 'morpheus_consent': '{"analytics": true, "functional": true, "marketing": true}'}
+        req2.COOKIES = {
+            'morph_aid': 'cookie2',
+            'morpheus_consent': '{"analytics": true, "functional": true, "marketing": true}',
+        }
         s2 = get_or_create_session(req2)
         # s1 hits all three; s2 only hits two
         record_event(name='pageview', kind='pageview', session=s1)

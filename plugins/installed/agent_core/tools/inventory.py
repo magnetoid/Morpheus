@@ -12,7 +12,7 @@ agents can discover and call via /mcp/admin/v1/.
 
 from __future__ import annotations
 
-from core.agents import ToolError, ToolResult, tool
+from morpheus.core import ToolError, ToolResult, tool
 
 
 def _resolve_pair(variant_sku: str, product_slug: str, warehouse_name: str):

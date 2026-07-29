@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import Plugin
+from morpheus.plugin import Plugin
 
 
 class EnvironmentsPlugin(Plugin):

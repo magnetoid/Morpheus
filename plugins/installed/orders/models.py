@@ -12,7 +12,7 @@ from django.utils import timezone
 from django_fsm import FSMField, transition
 from djmoney.models.fields import MoneyField
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 def _gen_public_token() -> str:

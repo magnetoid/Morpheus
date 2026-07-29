@@ -82,7 +82,7 @@ def collect_ad_spend() -> int:
     for today. Returns rows written."""
     from djmoney.money import Money
 
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.analytics.models import AdSpendSnapshot
 
     rows = hook_registry.filter(MorpheusEvents.ANALYTICS_AD_SPEND, value=[]) or []

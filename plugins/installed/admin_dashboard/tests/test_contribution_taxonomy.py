@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.utils.html import escape
 
-from morpheus import DashboardPage, SettingsPanel
+from morpheus.plugin import DashboardPage, SettingsPanel
 from plugins.installed.admin_dashboard.checks import check_contribution_taxonomy
 from plugins.registry import plugin_registry
 

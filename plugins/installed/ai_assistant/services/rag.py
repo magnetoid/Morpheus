@@ -94,7 +94,7 @@ def _contributed_items() -> list[dict]:
     plugins are skipped by the bus, so a disabled contributor's slice vanishes.
     """
     try:
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         raw = hook_registry.filter(MorpheusEvents.KNOWLEDGE_SOURCES, value=[])
     except Exception:  # noqa: BLE001

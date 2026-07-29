@@ -15,7 +15,7 @@ class FraudRulesConfig(AppConfig):
 
     def ready(self) -> None:
         try:
-            from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+            from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
             from plugins.installed.fraud_rules.handlers import on_order_placed  # noqa: PLC0415
 
             hook_registry.register(MorpheusEvents.ORDER_PLACED, on_order_placed, priority=85)

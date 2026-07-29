@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.notifications_center')
 
@@ -31,7 +31,7 @@ class NotificationsCenterPlugin(Plugin):
         # generic hook listeners here so the notifications plugin owns
         # all the fan-out shaping in one place.
         try:
-            from morpheus import events
+            from morpheus.core import events
 
             self.register_hook(events.PRODUCT_LOW_STOCK, self._on_low_stock, priority=80)
             self.register_hook(events.PRODUCT_OUT_OF_STOCK, self._on_out_of_stock, priority=80)

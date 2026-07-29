@@ -21,7 +21,7 @@ def refresh_metrics():
     try:
         from django.core.cache import cache
 
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         rows = hook_registry.filter(MorpheusEvents.CHANNELS_METRICS, value=[]) or []
         rows = [r for r in rows if isinstance(r, dict) and r.get('name')]

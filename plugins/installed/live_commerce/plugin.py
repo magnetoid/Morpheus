@@ -9,7 +9,7 @@ pipeline (no analytics beacon changes).
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin, StorefrontBlock
+from morpheus.plugin import DashboardPage, Plugin, StorefrontBlock
 
 
 class LiveCommercePlugin(Plugin):

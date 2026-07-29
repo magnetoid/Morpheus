@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     HttpResponseBadRequest,
@@ -57,7 +57,7 @@ def stripe_webhook(request: HttpRequest) -> HttpResponse:
 
 def _confirmation_redirect(order):
     """Redirect to the order-confirmation page, guest-safe via public_token."""
-    from morpheus.views import redirect  # noqa: PLC0415
+    from morpheus.plugin.views import redirect  # noqa: PLC0415
 
     url = f'/order/confirmation/{order.order_number}/'
     token = getattr(order, 'public_token', '') or ''
@@ -74,7 +74,7 @@ def paypal_return(request: HttpRequest) -> HttpResponse:
     refresh re-runs capture (PayPal answers ORDER_ALREADY_CAPTURED-ish
     errors) but ``mark_order_paid`` fires ORDER_PAID at most once.
     """
-    from morpheus.views import redirect  # noqa: PLC0415
+    from morpheus.plugin.views import redirect  # noqa: PLC0415
     from plugins.installed.payments.models import PaymentTransaction  # noqa: PLC0415
     from plugins.installed.payments.services import paypal  # noqa: PLC0415
 
@@ -143,7 +143,7 @@ def paypal_cancel(request: HttpRequest) -> HttpResponse:
     """The shopper backed out on PayPal — return to checkout, cart intact."""
     from django.contrib import messages  # noqa: PLC0415
 
-    from morpheus.views import redirect  # noqa: PLC0415
+    from morpheus.plugin.views import redirect  # noqa: PLC0415
 
     messages.info(request, 'PayPal payment was cancelled — you have not been charged.')
     return redirect('/checkout/')

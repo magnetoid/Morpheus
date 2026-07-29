@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from morpheus.views import render
+from morpheus.plugin.views import render
 
 
 def landing(request):

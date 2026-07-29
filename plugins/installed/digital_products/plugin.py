@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.core import events
 
 logger = logging.getLogger('morpheus.digital_products')
 
@@ -195,7 +196,7 @@ class DigitalProductsPlugin(Plugin):
         if not tokens:
             return
 
-        from morpheus import hooks
+        from morpheus.core import hooks
 
         try:
             hooks.fire('digital.tokens_issued', order=order, tokens=tokens)

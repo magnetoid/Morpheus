@@ -182,7 +182,7 @@ def _send_delivery(card, order) -> None:
     """Email the purchased card's code to the buyer (merchant-editable)."""
     from core.emails import send_templated_email
     from core.utils.orders import order_email
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     send_templated_email(
         'gift_card_delivery',

@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import logging
 
-from morpheus import DashboardPage, Plugin, events
+from morpheus.plugin import DashboardPage, Plugin
+from morpheus.core import events
 
 logger = logging.getLogger('morpheus.cms')
 

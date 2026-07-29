@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.34.0 — 2026-07-29
+
+**Adopt the three-SDK doors across all 108 plugins (morpheus.{plugin,core})**
+
+- Big-bang step of the SDK restructure (ADR 0035): migrated all 108 plugins — 383 files — off 'from morpheus import …' and 'from core.{hooks,agents,audit.services,money,utils.site} import …' onto the SDK doors morpheus.plugin (Plugin/contributions/views/models/forms) and morpheus.core (events/hooks/MorpheusEvents/tool+ToolResult+ToolError+agent_registry/record_ai_decision/Money/money_str/site_base_url/absolutize).
+- Expanded morpheus.core to re-export MorpheusEvents + absolutize so the two dominant core imports (hook_registry 90x, MorpheusEvents 86x) are clean identity-preserving swaps. Deep/rare core internals (core.assistant.*, core.brain, core.agents submodules, core.emails, …) intentionally stay direct — the SDK is the curated common door, not a wrapper for every internal.
+- Non-breaking: the re-exports are identity-preserving (morpheus.core.tool IS core.agents.tool). Verified: manage.py check clean (prod-boot over all 383 files); static audit clean (every symbol imported from a morpheus.{plugin,core} door is in its __all__); 951-test behavioral suite green (the single failure — moonshot provider missing a probe — is pre-existing, orthogonal drift already live on v0.33.0).
+
 ## v0.33.0 — 2026-07-28
 
 **Three-SDK foundation — morpheus.{plugin,theme,core} (non-breaking)**

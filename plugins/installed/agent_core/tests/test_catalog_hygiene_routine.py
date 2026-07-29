@@ -21,8 +21,9 @@ from django.core.management import call_command
 from django.test import TestCase
 from djmoney.money import Money
 
-from core.agents import LLMResponse, LLMToolCall, MockLLMProvider, agent_registry
+from core.agents import LLMResponse, LLMToolCall, MockLLMProvider
 from core.assistant.models import OpsProposal
+from morpheus.core import agent_registry
 from plugins.installed.agent_core import scheduler
 from plugins.installed.agent_core.models import AgentRun, BackgroundAgent
 from plugins.installed.catalog.agent_tools import products_update_status_tool

@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from core.hooks import hook_registry
+from morpheus.core import hook_registry
 from plugins.installed.staff_mfa import services
 from plugins.installed.staff_mfa.models import MfaRecoveryCode, StaffMfaDevice
 

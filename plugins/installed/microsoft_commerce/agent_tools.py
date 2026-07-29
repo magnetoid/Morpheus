@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.agents import ToolResult, tool
+from morpheus.core import ToolResult, tool
 
 
 @tool(
@@ -45,7 +45,7 @@ def microsoft_campaigns_tool() -> ToolResult:
     schema={'type': 'object', 'properties': {}},
 )
 def microsoft_feed_url_tool() -> ToolResult:
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     url = site_base_url().rstrip('/') + '/feeds/microsoft-catalog.xml'
     return ToolResult(output={'url': url}, display=url)

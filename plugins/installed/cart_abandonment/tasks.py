@@ -73,7 +73,7 @@ def scan_abandoned_carts(self) -> dict:
     cutoff = timezone.now() - timedelta(minutes=cfg['abandon_after_minutes'])
 
     try:
-        from morpheus import events, hooks
+        from morpheus.core import events, hooks
         from plugins.installed.orders.models import Cart
     except Exception as e:  # noqa: BLE001 — plugin missing
         logger.warning('cart_abandonment: imports unavailable: %s', e)
@@ -248,7 +248,7 @@ def _drip_cart(cart, now, cfg, send_templated_email) -> int:
     # get marked sent (send_templated_email is silent on a missing key).
     max_steps = min(len(cfg['step_delays_minutes']), len(_RECOVERY_SUBJECTS))
 
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
 
     cart_url = f'{site_base_url().rstrip("/")}/cart/'
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import contextlib
 
-from morpheus.views import (
+from morpheus.plugin.views import (
     HttpRequest,
     HttpResponse,
     redirect,
@@ -45,7 +45,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
     no plugin models. ACTIVITY_FEED feeds the activity column the same
     way.
     """
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     date_range = _resolve_date_range(request)
     period = date_range.preset or 'custom'
@@ -124,7 +124,7 @@ def _compute_activity_feed(limit: int = 20) -> list:
     orders, agent_core, reviews, loyalty_points and crm all subscribe.
     Sorted newest first, capped at `limit`.
     """
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     items: list[dict] = []
     with _safe_block('activity.feed'):
@@ -180,7 +180,7 @@ def _compute_setup_steps() -> list:
     """
     from django.conf import settings as dj_settings
 
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
 
     steps: list = []
     with _safe_block('setup.steps'):

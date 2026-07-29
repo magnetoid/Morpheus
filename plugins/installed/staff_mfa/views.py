@@ -21,7 +21,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from core.utils.rate_limit import RateLimitExceeded, check_and_consume
-from morpheus.views import staff_required
+from morpheus.plugin.views import staff_required
 from plugins.installed.staff_mfa import services
 
 logger = logging.getLogger('morpheus.staff_mfa')

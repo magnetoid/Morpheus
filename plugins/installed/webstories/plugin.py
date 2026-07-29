@@ -19,7 +19,7 @@ V1 is auto-only — every Product save triggers a fresh build via
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class WebstoriesPlugin(Plugin):

@@ -17,7 +17,7 @@ the empty state when the shopper hasn't opted in.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class RailsPlugin(Plugin):

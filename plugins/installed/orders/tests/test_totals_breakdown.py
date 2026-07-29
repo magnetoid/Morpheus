@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.customers.models import Customer
 from plugins.installed.marketing.models import Coupon, CouponUsage

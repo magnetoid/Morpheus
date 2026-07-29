@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 from plugins.installed.tax.models import TaxCategory, TaxRate, TaxRegion
 from plugins.installed.tax.services import compute_tax
 

@@ -119,7 +119,7 @@ class StockoutForecastToolTests(TestCase):
         self.assertIn('suggested_reorder_qty', result.output['at_risk'][0])
 
     def test_tool_registered_and_worker_visible(self):
-        from core.agents import agent_registry
+        from morpheus.core import agent_registry
 
         names = {t.name for t in agent_registry.platform_tools()}
         self.assertIn('inventory.stockout_forecast', names)

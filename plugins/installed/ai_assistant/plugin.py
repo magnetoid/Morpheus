@@ -15,7 +15,8 @@ view recording, search logging).
 # hooks intentionally swallow errors. Pre-existing idioms.
 # ruff: noqa: PLC0415, S110, I001
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel
 
 
 class AIAssistantPlugin(Plugin):

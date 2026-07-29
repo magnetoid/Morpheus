@@ -15,7 +15,7 @@ import uuid
 
 from djmoney.models.fields import MoneyField
 
-from morpheus import models
+from morpheus.plugin import models
 
 
 class ShippingZone(models.Model):

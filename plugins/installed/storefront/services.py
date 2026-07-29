@@ -21,7 +21,7 @@ def page_intro(request, page: str) -> dict:
     Returns ``{'body': str, 'meta_description': str}`` — both '' when nothing
     is configured, which is the caller's cue to keep its fallback copy.
     """
-    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+    from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
     empty = {'body': '', 'meta_description': ''}
     result = hook_registry.filter(

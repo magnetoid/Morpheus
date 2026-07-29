@@ -17,7 +17,7 @@ from __future__ import annotations
 from django.test import TestCase
 
 from core.brain import signals
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.registry import plugin_registry
 
 _OWNERS = {'seo', 'catalog', 'ai_assistant', 'morpheus_brain'}

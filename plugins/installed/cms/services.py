@@ -61,7 +61,7 @@ def journal_dict(page) -> dict:
         m = re.search(r"""<img[^>]+src=["']([^"']+)["']""", page.body)
         if m:
             image = m.group(1)
-    from core.utils.site import absolutize
+    from morpheus.core import absolutize
 
     image = absolutize(image)
     author = (meta.get('author') or '').strip()
@@ -185,7 +185,7 @@ def get_menu(key: str) -> dict | None:
 
 def submit_form(*, form, payload: dict, request=None):
     """Persist a FormSubmission, fire `cms.form_submitted` hook."""
-    from core.hooks import MorpheusEvents, hook_registry
+    from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.cms.models import FormSubmission
 
     ip = request.META.get('REMOTE_ADDR', '') if request else ''

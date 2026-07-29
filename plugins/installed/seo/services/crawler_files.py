@@ -307,7 +307,7 @@ def render_agents_md() -> str:
     # nothing (the bus skips inactive plugins).
     sections: list[dict] = []
     try:
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         result = hook_registry.filter(MorpheusEvents.AGENT_READINESS_SECTIONS, value=[])
         if isinstance(result, list):

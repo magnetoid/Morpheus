@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.views import redirect, render
+from morpheus.plugin.views import redirect, render
 
 logger = logging.getLogger('morpheus.loyalty')
 

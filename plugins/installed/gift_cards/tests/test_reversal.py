@@ -71,7 +71,7 @@ class ReverseRedemptionServiceTests(TestCase):
 
 class ReverseRedemptionHookTests(TestCase):
     def test_order_cancelled_hook_recredits_card(self):
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
         from plugins.installed.orders.models import Order
 
         order = Order.objects.create(

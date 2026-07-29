@@ -45,7 +45,7 @@ class DashboardHomeModularityTests(TestCase):
             reverse('admin_dashboard:pulse_refresh')
 
     def test_contributing_plugins_are_subscribed(self):
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         def quals(event):
             return {
@@ -74,7 +74,7 @@ class DashboardHomeModularityTests(TestCase):
     def test_kpis_and_recent_orders_contributed_end_to_end(self):
         from django.test import RequestFactory
 
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
         from plugins.installed.admin_dashboard.views_split._shared import _resolve_date_range
         from plugins.installed.orders.models import Order
 

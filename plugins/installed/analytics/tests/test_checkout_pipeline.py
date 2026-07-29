@@ -6,7 +6,7 @@ from __future__ import annotations
 from django.test import TestCase
 from django.utils import timezone
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.analytics.models import AnalyticsEvent, DailyMetric
 from plugins.installed.analytics.services import roll_daily
 from plugins.installed.analytics.tasks import _kind_for

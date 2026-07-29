@@ -8,7 +8,7 @@ DASHBOARD_KPIS tile), so it is disable- and delete-safe by construction.
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 
 class FeatureAdoptionPlugin(Plugin):

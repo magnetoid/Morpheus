@@ -8,7 +8,7 @@ from datetime import timedelta
 from django.test import TestCase
 from django.utils import timezone
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.analytics.models import AnalyticsEvent, DailyMetric
 
 

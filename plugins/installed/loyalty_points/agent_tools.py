@@ -6,8 +6,8 @@ only while the plugin is enabled.
 
 from __future__ import annotations
 
-from core.agents import tool
 from core.agents.tools import ToolResult
+from morpheus.core import tool
 
 
 def _find_customer(email: str):

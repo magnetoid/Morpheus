@@ -7,7 +7,7 @@ from __future__ import annotations
 from django.test import Client, TestCase
 from djmoney.money import Money
 
-from core.hooks import MorpheusEvents, hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product
 from plugins.installed.customers.models import Customer
 from plugins.installed.orders.models import Cart, CartItem

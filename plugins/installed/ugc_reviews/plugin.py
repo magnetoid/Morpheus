@@ -18,7 +18,7 @@ hook bus.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class UgcReviewsPlugin(Plugin):

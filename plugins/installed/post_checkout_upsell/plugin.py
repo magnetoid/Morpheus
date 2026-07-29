@@ -16,7 +16,7 @@ order" button that creates a follow-up order in the same session.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class PostCheckoutUpsellPlugin(Plugin):

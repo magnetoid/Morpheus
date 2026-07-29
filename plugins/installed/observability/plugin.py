@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from celery.schedules import crontab
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 
 class ObservabilityPlugin(Plugin):

@@ -3,7 +3,8 @@
 # modules must not load before the app registry is ready.
 import logging
 
-from morpheus import Plugin, SettingsPanel, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel
 
 logger = logging.getLogger('morpheus.plugins.payments')
 
@@ -155,7 +156,7 @@ class PaymentsPlugin(Plugin):
             # Canonical post-refund event — refund email, affiliate clawback and
             # refund conversion pixel all listen here. Fired ONLY after the money
             # actually moved, so no "refunded" email is sent for a failed refund.
-            from core.hooks import MorpheusEvents, hook_registry
+            from morpheus.core import MorpheusEvents, hook_registry
 
             hook_registry.fire(
                 MorpheusEvents.PAYMENT_REFUNDED,

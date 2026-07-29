@@ -18,7 +18,7 @@ real `product_stories` plugin; the dead video hero / story_rail were retired.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class ImmersivePdpPlugin(Plugin):

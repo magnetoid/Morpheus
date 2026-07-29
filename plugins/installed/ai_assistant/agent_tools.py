@@ -8,8 +8,8 @@ when the `enable_semantic_search` flag is on (Settings → AI) — see
 
 from __future__ import annotations
 
-from core.agents import tool
 from core.agents.tools import ToolResult
+from morpheus.core import tool
 
 
 @tool(

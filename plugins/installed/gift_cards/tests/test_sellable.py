@@ -69,7 +69,7 @@ class SellableGiftCardTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_order_paid_hook_wires_issuance(self):
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         order = _order_with(('GIFT-CARD', 1, '30'))
         hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)

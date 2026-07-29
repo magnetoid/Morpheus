@@ -5,7 +5,8 @@ docs/plans/newsletter.md.
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, EmailTemplateDef, Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import DashboardPage, EmailTemplateDef, Plugin, SettingsPanel, StorefrontBlock
 
 
 class NewsletterPlugin(Plugin):

@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 from django.utils.text import slugify
-from morpheus import forms
+from morpheus.plugin import forms
 
 from ._helpers import _ensure_html, _money
 

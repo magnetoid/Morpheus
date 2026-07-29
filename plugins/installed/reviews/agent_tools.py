@@ -6,8 +6,8 @@ list pending reviews, approve them, or delete spam. Contributed via
 
 from __future__ import annotations
 
-from core.agents import tool
 from core.agents.tools import ToolResult
+from morpheus.core import tool
 
 
 def _brief(r) -> dict:

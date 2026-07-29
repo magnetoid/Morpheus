@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.utils import timezone
 from djmoney.money import Money
 
-from core.agents import agent_registry
+from morpheus.core import agent_registry
 from plugins.installed.crm.models import (
     Deal,
     Interaction,
@@ -139,7 +139,7 @@ class PipelineAndDealTests(TestCase):
 
 class HookIntegrationTests(TestCase):
     def test_register_hook_creates_lead_and_logs_interaction(self):
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         customer = User.objects.create_user(
             username='reg',

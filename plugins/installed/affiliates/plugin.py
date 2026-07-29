@@ -5,7 +5,8 @@
 # manifest importable before the app registry is ready.
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock, events
+from morpheus.core import events
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class AffiliatesPlugin(Plugin):
@@ -134,7 +135,7 @@ class AffiliatesPlugin(Plugin):
         )
 
     def contribute_email_templates(self) -> list:
-        from morpheus import EmailTemplateDef
+        from morpheus.plugin import EmailTemplateDef
 
         return [
             EmailTemplateDef(
@@ -187,7 +188,7 @@ class AffiliatesPlugin(Plugin):
         # nav='main': the sidebar group is rendered by the contributed-
         # sections loop (section='growth', labelled 'Affiliates') — the old
         # hardcoded base.html block is gone, so disable removes everything.
-        from morpheus import DashboardPage
+        from morpheus.plugin import DashboardPage
 
         return [
             DashboardPage(

@@ -1,4 +1,4 @@
-from morpheus import Plugin
+from morpheus.plugin import Plugin
 
 
 class StorefrontPlugin(Plugin):

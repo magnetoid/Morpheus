@@ -171,7 +171,7 @@ class TrustedAgentAttributionTests(TestCase):
 
     def test_plugin_subscribes_order_placed(self):
         # The ORDER_PLACED handler is what makes attribution automatic.
-        from core.hooks import MorpheusEvents, hook_registry
+        from morpheus.core import MorpheusEvents, hook_registry
 
         handlers = [
             self._name(h) for h in hook_registry._handlers.get(MorpheusEvents.ORDER_PLACED, [])

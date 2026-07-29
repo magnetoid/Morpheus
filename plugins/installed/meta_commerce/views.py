@@ -5,7 +5,7 @@ from __future__ import annotations
 from django.core.cache import cache
 from django.http import HttpResponse
 
-from morpheus.views import render, staff_member_required
+from morpheus.plugin.views import render, staff_member_required
 
 FEED_CACHE_KEY = 'meta_commerce:feed:v1'
 _FEED_TTL = 60 * 60
@@ -29,7 +29,7 @@ def meta_catalog_feed(request):
 @staff_member_required
 def dashboard(request):
     """Catalog feed status + coverage + connection + push."""
-    from core.utils.site import site_base_url
+    from morpheus.core import site_base_url
     from plugins.installed.meta_commerce.models import MetaSyncLog
     from plugins.installed.meta_commerce.services.coverage import coverage_report
     from plugins.installed.meta_commerce.services.graph import catalog_connected, has_token

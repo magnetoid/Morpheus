@@ -19,7 +19,7 @@ import bleach
 from django.conf import settings
 from django.utils import timezone
 
-from morpheus import models
+from morpheus.plugin import models
 
 # Allowlist for staff-authored HTML in Page.body / PageSection.body. Both fields
 # are rendered with `|safe` in storefront templates, so we sanitise on save in

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus import DashboardPage, Plugin
+from morpheus.plugin import DashboardPage, Plugin
 
 
 class B2bPlugin(Plugin):

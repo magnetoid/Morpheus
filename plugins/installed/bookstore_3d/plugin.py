@@ -21,7 +21,7 @@ MORPHEUS_DEFAULT_PLUGINS) removes every trace.
 
 from __future__ import annotations
 
-from morpheus import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.plugin import Plugin, SettingsPanel, StorefrontBlock
 
 
 class Bookstore3DPlugin(Plugin):

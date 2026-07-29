@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from djmoney.money import Money
 
-from core.agents import ToolError, ToolResult, tool
+from morpheus.core import ToolError, ToolResult, tool
 
 
 @tool(

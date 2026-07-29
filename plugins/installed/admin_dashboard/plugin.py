@@ -1,4 +1,5 @@
-from morpheus import Plugin, events
+from morpheus.core import events
+from morpheus.plugin import Plugin
 
 
 class AdminDashboardPlugin(Plugin):
