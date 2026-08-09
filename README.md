@@ -274,6 +274,31 @@ Morpheus is built for AI-assisted development with hard guardrails. The house ru
 
 ---
 
+## 🗂️ Project memory: torsor-helper
+
+Morpheus is built with heavy AI assistance, so it carries a **durable, retrievable project brain** that survives across sessions and keeps architectural decisions from being re-litigated. That brain is **torsor-helper** (adopted in ADR 0001), and it lives under [`.torsor/`](.torsor/):
+
+| Area | What it holds |
+|---|---|
+| `charter.md` | the product charter — the non-negotiable laws (AI-first, everything-is-a-plugin, GraphQL-first, hard-coded Assistant) |
+| `architecture/system-patterns.md` · `tech-context.md` | the recurring patterns and the stack/runtime context |
+| `architecture/decisions/` | **35 ADRs** — every load-bearing decision (e.g. *ADR 0035: maintain three project SDKs*, *ADR 0032: every deploy bumps the version*). The `torsor ADR NNNN` references throughout `CLAUDE.md` point here |
+| `map/` | a compiled map of the repo's modules |
+| `memory/journal` | an indexed decision/observation journal |
+| `active/context.md` · `progress.md` | the current working context and in-flight progress |
+
+The knowledge base is **semantically indexed** (fastembed `bge-small` embeddings, hybrid RRF retrieval with recency + graph boosting, auto-indexed), and an AI assistant reaches it through the **torsor-helper MCP server** — with token budgets so context stays cheap. In day-to-day development that looks like:
+
+- **`bootstrap_session` / `get_primer` / `get_rules`** — an agent starts a session by pulling the charter, rules, and active context (a ~2k-token primer) so it works *with* the platform's laws, not against them.
+- **`recall` / `remember`** — retrieve prior decisions relevant to the task, and record new observations.
+- **`record_decision`** — capture a new architectural decision as an ADR (this is how the `torsor ADR NNNN` entries are created).
+- **`map_repo` / `impact` / `check_drift`** — map the codebase, assess the blast radius of a change before making it, and detect when code has drifted from the recorded architecture.
+- **`handoff`** — snapshot context so the next session (or a fresh agent) resumes without re-deriving everything.
+
+The result: architectural intent is written down once and retrieved on demand, so a new session (human or AI) inherits *why* the platform is shaped the way it is — the same discipline the house rules in [`CLAUDE.md`](CLAUDE.md) enforce, backed by searchable memory.
+
+---
+
 ## 🌐 Deployment
 
 **Merging to `main` is a production deploy.** Coolify watches the repo and builds+deploys on every push to `main`; there is no separate ship step. Consequently:

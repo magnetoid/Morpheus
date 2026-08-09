@@ -358,7 +358,13 @@ Postgres — catches casts sqlite silently accepts), the **core-boundary
 guard** (`scripts/check_core_boundary.py` — baseline-and-ratchet: blocks any
 *new* `core/ → plugins.installed.*` import and any *stale* allowlist entry, so
 the wrong-direction-coupling debt in `scripts/core_boundary_baseline.json` can
-only shrink; also a PostToolUse hook), and the **disable-test gate** (runs
+only shrink; also a PostToolUse hook), the **plugin-boundary guard**
+(`scripts/check_plugin_boundary.py` — the *requires-aware* sibling: a plugin may
+import another only if it declares it in `requires`; blocks any *new* undeclared
+`plugins.installed.<A> → plugins.installed.<B>` import against
+`scripts/plugin_boundary_baseline.json`, which starts at 122 pairs and can only
+shrink — repay a pair by declaring the dep or inverting it via `core.hooks`),
+and the **disable-test gate** (runs
 `admin_dashboard/tests/test_disable_guards.py` as its own fast step).
 
 ---

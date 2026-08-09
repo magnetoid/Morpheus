@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.35.1 — 2026-08-09
+
+**Fix /shop/ 500 — reconcile booking_marketplace prod schema**
+
+- booking_marketplace: 0002_reconcile_prod_schema idempotently adds the schema prod never got when the 0001..0007 chain was squashed into one 0001 (Django skips a same-named migration): the addon + pricingtier tables and 12 columns incl. bookableservice.listing_kind that /shop/ filters on. RunPython + introspection (no IF NOT EXISTS — sqlite-safe); state_operations=[]. Verified on real Postgres incl. a populated simulated-prod divergence + idempotent re-run
+- docs: README gains a 'Project memory: torsor-helper' section (how the .torsor knowledge base + MCP server are used in AI-assisted development)
+- docs: CLAUDE.md documents the new plugin-boundary ratchet; reconciliation plan at docs/plans/booking-marketplace-schema-reconcile-2026-08.md
+
 ## v0.35.0 — 2026-08-09
 
 **MCP hardening + plugin-boundary ratchet + new README**
