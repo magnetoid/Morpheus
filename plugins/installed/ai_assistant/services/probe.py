@@ -254,6 +254,15 @@ def probe_hermes(*, api_key: str, base_url: str = '') -> dict:
     )
 
 
+def probe_moonshot(*, api_key: str, base_url: str = '') -> dict:
+    return _probe_openai_compatible(
+        api_key=api_key,
+        base_url=base_url,
+        default_base='https://api.moonshot.ai/v1',
+        label='Moonshot (Kimi)',
+    )
+
+
 _PROBES = {
     'openai': probe_openai,
     'anthropic': probe_anthropic,
@@ -265,6 +274,7 @@ _PROBES = {
     'deepseek': probe_deepseek,
     'apikey': probe_apikey,
     'hermes': probe_hermes,
+    'moonshot': probe_moonshot,
 }
 
 

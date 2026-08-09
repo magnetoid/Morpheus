@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.34.1 — 2026-08-09
+
+**Moonshot provider probe + booking_marketplace migration fix**
+
+- ai_assistant: add moonshot (Kimi) probe so its Test/Fetch-models buttons work
+- booking_marketplace: split the edited 0001 into a proper 0002 delta (restores prod-applied 0001; adds the 6 new models + fields the /shop/ 500 needed)
+
 ## v0.34.0 — 2026-07-29
 
 **Adopt the three-SDK doors across all 108 plugins (morpheus.{plugin,core})**
