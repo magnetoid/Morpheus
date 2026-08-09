@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.34.2 — 2026-08-09
+
+**Hotfix: revert booking_marketplace 0002 (503) — restore v0.34.0 migration state**
+
+- booking_marketplace: the generated 0002 collided with prod's pre-existing tables (prod kept the historical 0001-0007 history; codebase had squashed them into 0001). 0002 CreateModel(Enquiry) hit an existing table and crash-looped the web container. Reverted to the v0.34.0 migration state (edited 0001, no 0002), which boots. The real /shop/ schema gap (missing addon/pricingtier tables) will be fixed with a prod-aware delta separately.
+
 ## v0.34.1 — 2026-08-09
 
 **Moonshot provider probe + booking_marketplace migration fix**
