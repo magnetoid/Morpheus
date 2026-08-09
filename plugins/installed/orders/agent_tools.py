@@ -31,6 +31,11 @@ from core.assistant.tools.ecommerce_writes import (
 from morpheus.core import ToolError, ToolResult, tool
 from morpheus.core import money_str as _money_str
 
+# Cap for nested collections in orders.get so a pathological (e.g. bulk B2B)
+# order can't dump hundreds of line rows into the model context; the untruncated
+# total is reported alongside so the agent knows there's more.
+_NESTED_CAP = 50
+
 # Target status → the Order FSM transition method that reaches it. Statuses with
 # no entry (e.g. 'refunded', 'pending') aren't reachable via a status poke —
 # refunds route through the refund service.
@@ -85,7 +90,12 @@ def orders_search_tool(
         qs = qs.filter(email__icontains=email)
     if order_number:
         qs = qs.filter(order_number__icontains=order_number)
-    qs = qs.order_by('-placed_at')[: max(1, min(int(limit or 20), 50))]
+    # Total matching the filters — counted BEFORE the limit, so the agent
+    # reports the real match count (e.g. 859), not the page size. The old
+    # `count: len(rows)` undercounted to the page limit, mirroring the same
+    # bug catalog/agent_tools.py already fixed for products.search.
+    total = qs.count()
+    page = qs.order_by('-placed_at')[: max(1, min(int(limit or 20), 50))]
     rows = [
         {
             'order_number': o.order_number,
@@ -96,9 +106,12 @@ def orders_search_tool(
             'email': o.email or getattr(o.customer, 'email', '') if o.customer_id else o.email,
             'placed_at': o.placed_at.isoformat() if o.placed_at else '',
         }
-        for o in qs
+        for o in page
     ]
-    return ToolResult(output={'orders': rows, 'count': len(rows)}, display=f'{len(rows)} order(s)')
+    return ToolResult(
+        output={'orders': rows, 'returned': len(rows), 'total': total},
+        display=f'{len(rows)} of {total} order(s)',
+    )
 
 
 @tool(
@@ -125,6 +138,7 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
         )
     except Order.DoesNotExist:
         raise ToolError(f'order not found: {order_number}')  # noqa: B904
+    _all_items = list(o.items.all())
     items = [
         {
             'name': i.product_name,
@@ -134,7 +148,7 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
             'total_price': _money_str(i.total_price),
             'fulfilled_quantity': getattr(i, 'fulfilled_quantity', 0),
         }
-        for i in o.items.all()
+        for i in _all_items[:_NESTED_CAP]
     ]
     refunds = [
         {
@@ -169,6 +183,7 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
             'placed_at': o.placed_at.isoformat() if o.placed_at else '',
             'notes': getattr(o, 'notes', '') or '',
             'items': items,
+            'items_total': len(_all_items),
             'refunds': refunds,
             'fulfillments': fulfillments,
         }

@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.35.0 — 2026-08-09
+
+**MCP hardening + plugin-boundary ratchet + new README**
+
+- agent_mcp: resources/read now runs the same scope + rate-limit + audit gate as tools/call (closes an authz + AI-Act-audit bypass); a write tool can't be mapped as a readable resource
+- agent_mcp: trusted-agent X-Verified-Agent-* headers are honored only from a verified Cloudflare origin (shared-secret, fail-closed); /.well-known/agent.json advertises the capability honestly
+- agents: register_tool surfaces cross-plugin tool-name collisions (warning + collisions()); agent_core's slug cart tool renamed cart.add_by_slug to stop colliding with the ACP cart.add_item
+- orders/catalog: orders.search reports the real match total (not page size); orders.get/products.get cap nested collections; carts reject mixing currencies
+- agentic_checkout: in-flight completion 409 now reports status=in_progress
+- ci: new plugin-boundary ratchet (scripts/check_plugin_boundary.py) blocks NEW undeclared plugin->plugin imports (122-pair baseline)
+- docs: brand-new comprehensive README + kernel-hardening evaluation (docs/plans/kernel-hardening-eval-2026-08.md)
+
 ## v0.34.2 — 2026-08-09
 
 **Hotfix: revert booking_marketplace 0002 (503) — restore v0.34.0 migration state**

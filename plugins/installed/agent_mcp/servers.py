@@ -4,10 +4,17 @@ The legacy `/mcp/v1/` endpoint stays as the "curated public reads"
 alias (backward-compatible). This module adds four focused servers
 that mirror Shopify's shape:
 
-  /mcp/storefront/v1/   — anonymous catalog reads (no auth)
-  /mcp/cart/v1/         — same, plus cart manipulation (no auth)
-  /mcp/checkout/v1/     — same, plus checkout (no auth)
-  /mcp/admin/v1/        — Linda's full tool catalog (Bearer auth)
+  /mcp/storefront/v1/   — catalog reads
+  /mcp/cart/v1/         — same, plus cart manipulation
+  /mcp/checkout/v1/     — same, plus checkout (build + quote; not the charge)
+  /mcp/admin/v1/        — Linda's admin tool catalog
+
+Auth contract: `initialize` and `tools/list` are anonymously reachable on
+every cluster (so a client can discover the surface), but EXECUTING any tool
+(`tools/call`) requires a valid Bearer token — the dispatcher rejects an
+unauthenticated `tools/call` (see ``_handle_tools_call`` in views.py). The
+cluster wrappers set ``require_auth=False`` only to allow that anonymous
+discovery, NOT to allow anonymous execution.
 
 Each view sets a thread-local "active cluster" before delegating to
 the existing ``rpc_endpoint`` dispatcher, then unsets it. The

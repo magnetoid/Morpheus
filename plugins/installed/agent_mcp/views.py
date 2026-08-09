@@ -415,6 +415,19 @@ def _handle_resources_list(params: dict, authed: bool) -> dict:
     }
 
 
+# resources/read is a READ ALIAS over the same tools tools/call exposes, so it
+# maps each morpheus:// URI to a backing tool + args and MUST run the SAME
+# governance (scope + rate limit + audit). Without it, a token scoped to only
+# orders.read could read morpheus://analytics/today (analytics.summary) with no
+# scope check and leave no audit row — an authz bypass and a hole in the AI-Act
+# evidence trail.
+_RESOURCE_TOOLS = {
+    'morpheus://catalog/featured': ('products.search', {'status': 'active', 'limit': 20}),
+    'morpheus://catalog/recent': ('products.search', {'limit': 20}),
+    'morpheus://analytics/today': ('analytics.summary', {'days_back': 1}),
+}
+
+
 def _handle_resources_read(params: dict, authed: bool) -> dict:
     if not authed:
         raise _RpcError(_E_AUTH, 'authentication required for resources/read')
@@ -422,27 +435,39 @@ def _handle_resources_read(params: dict, authed: bool) -> dict:
     if not uri.startswith('morpheus://'):
         raise _RpcError(_E_PARAMS, f'unknown uri: {uri}')
 
-    tools = {t.name: t for t in _public_tools()}
+    mapping = _RESOURCE_TOOLS.get(uri)
+    if mapping is None:
+        raise _RpcError(_E_PARAMS, f'unknown uri: {uri}')
+    tool_name, args = mapping
+
+    tool = next((t for t in _public_tools() if t.name == tool_name), None)
+    if tool is None:
+        raise _RpcError(_E_INTERNAL, f'{tool_name} unavailable')
+
+    # Resources are reads. resources/read does not run the requires_approval
+    # gate tools/call does, so an approval-gated write must never be mapped as a
+    # resource. Today _RESOURCE_TOOLS only points at read tools; this guards a
+    # future edit that adds a write-capable one.
+    if getattr(tool, 'requires_approval', False):
+        raise _RpcError(_E_INTERNAL, f'{tool_name} is not a readable resource')
+
+    # Same scope gate as tools/call (wildcard/legacy tokens still pass).
+    from plugins.installed.agent_mcp.scopes import has_any
+
+    granted = _active_token_scopes()
+    required = list(getattr(tool, 'scopes', None) or [])
+    if not has_any(granted, required):
+        raise _RpcError(_E_AUTH, f'token missing scope: needs one of {required}')
+
+    _enforce_rate_limit(tool_name)
+
+    _t0 = time.monotonic()
     try:
-        if uri == 'morpheus://catalog/featured':
-            t = tools.get('products.search')
-            if t is None:
-                raise _RpcError(_E_INTERNAL, 'products.search unavailable')
-            data = t.invoke(
-                {'status': 'active', 'limit': 20}, agent=None, context={'source': 'mcp'}
-            ).output
-        elif uri == 'morpheus://catalog/recent':
-            t = tools.get('products.search')
-            data = t.invoke({'limit': 20}, agent=None, context={'source': 'mcp'}).output
-        elif uri == 'morpheus://analytics/today':
-            t = tools.get('analytics.summary')
-            data = t.invoke({'days_back': 1}, agent=None, context={'source': 'mcp'}).output
-        else:
-            raise _RpcError(_E_PARAMS, f'unknown uri: {uri}')
-    except _RpcError:
-        raise
+        data = tool.invoke(args, agent=None, context={'source': 'mcp'}).output
     except Exception as e:  # noqa: BLE001
+        _audit_call(tool_name, args, error=f'{type(e).__name__}: {e}', t0=_t0)
         raise _RpcError(_E_TOOL_FAIL, f'{type(e).__name__}: {e}') from e
+    _audit_call(tool_name, args, output=data, t0=_t0)
 
     return {
         'contents': [

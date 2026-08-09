@@ -30,8 +30,14 @@ def _resolve_cart(context: dict) -> object | None:
 
 
 @tool(
-    name='cart.add_item',
-    description='Add a product (by slug) to the active cart.',
+    # Renamed from cart.add_item to avoid a registry name-collision with the
+    # ACP session tool of the same name (agentic_checkout/agent_tools.py). That
+    # collision resolved by plugin load order, and THIS slug/session variant —
+    # which needs a request in context — cannot run under the MCP cart cluster
+    # (context={'source':'mcp'} has no request), so a reorder would have handed
+    # the cart cluster an unrunnable tool. Distinct operation, distinct name.
+    name='cart.add_by_slug',
+    description='Add a product (by slug) to the active session cart (storefront concierge).',
     scopes=['cart.write'],
     schema={
         'type': 'object',

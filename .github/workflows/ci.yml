@@ -41,6 +41,11 @@ jobs:
         # Baseline-and-ratchet: blocks NEW wrong-direction imports and stale
         # allowlist entries. Shrinks phase by phase. See CLAUDE.md compass.
         run: python scripts/check_core_boundary.py
+      - name: plugin boundary (no new undeclared plugin -> plugin imports)
+        # Sibling ratchet: a plugin may import another only if it declares it in
+        # `requires`; NEW undeclared cross-plugin imports (and stale baseline
+        # entries) fail. Repay by declaring the dep or inverting via core.hooks.
+        run: python scripts/check_plugin_boundary.py
       - name: mypy (core kernel — baseline report, non-blocking)
         # mypy is configured (pyproject.toml) + installed above but was never run
         # in CI. Report-only over the core/ kernel for now; tighten to enforcing

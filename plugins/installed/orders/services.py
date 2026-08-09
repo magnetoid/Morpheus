@@ -103,6 +103,22 @@ class CartService:
         target = variant or product
         unit_price = _resolve_unit_price(target, currency, fallback=product)
 
+        # Single-currency cart invariant. calculate_cart_breakdown sums the
+        # subtotal against the FIRST line's currency label, so a cart mixing
+        # currencies (reachable when two adds resolve different currencies)
+        # would mis-total silently. Reject the mixing add rather than form that
+        # state — callers already treat a ValueError here as an add failure.
+        other_currency = (
+            cart.items.exclude(unit_price_currency=str(unit_price.currency))
+            .values_list('unit_price_currency', flat=True)
+            .first()
+        )
+        if other_currency:
+            raise ValueError(
+                f'Cart already holds items in {other_currency}; cannot add a '
+                f'{unit_price.currency} item — one currency per cart.'
+            )
+
         # Real-time stock reservation (sprint priority #2).
         # Hold the units in Redis with a TTL so another customer can't
         # race to grab the last unit between cart-add and checkout.

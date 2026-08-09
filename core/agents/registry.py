@@ -22,6 +22,12 @@ class AgentRegistry:
         self._tools: dict[str, Tool] = {}
         self._tool_owners: dict[str, str] = {}  # tool_name -> plugin_name
         self._agent_owners: dict[str, str] = {}  # agent_name -> plugin_name
+        # (tool_name, prior_owner, new_owner) for every CROSS-plugin name clash
+        # seen during registration. Two plugins claiming one name means the
+        # winner is decided by plugin load order — and the MCP-served version
+        # becomes non-deterministic — so we surface these (warning + this list,
+        # asserted by a CI test) instead of silently overwriting.
+        self._collisions: list[tuple[str, str, str]] = []
 
     # ── Registration (called by PluginRegistry) ────────────────────────────────
 
@@ -45,12 +51,27 @@ class AgentRegistry:
             logger.warning('agent_registry: refusing nameless tool from plugin=%s', plugin)
             return
         if tool.name in self._tools:
-            logger.debug(
-                'agent_registry: replacing tool %s (was from %s, now %s)',
-                tool.name,
-                self._tool_owners.get(tool.name, '?'),
-                plugin,
-            )
+            prior_owner = self._tool_owners.get(tool.name, '')
+            if prior_owner and plugin and prior_owner != plugin:
+                # A different plugin already owns this name — a true collision.
+                # Last-writer-wins by load order makes the served tool
+                # non-deterministic; one-concept-one-owner is violated.
+                logger.warning(
+                    'agent_registry: tool name COLLISION %r — %s overwriting %s '
+                    '(winner depends on plugin load order; rename one)',
+                    tool.name,
+                    plugin,
+                    prior_owner,
+                )
+                self._collisions.append((tool.name, prior_owner, plugin))
+            else:
+                # Same plugin re-registering (e.g. reactivation) — benign.
+                logger.debug(
+                    'agent_registry: replacing tool %s (was from %s, now %s)',
+                    tool.name,
+                    prior_owner or '?',
+                    plugin,
+                )
         if plugin and not tool.plugin:
             tool.plugin = plugin
         self._tools[tool.name] = tool
@@ -82,6 +103,13 @@ class AgentRegistry:
 
     def platform_tools(self) -> list[Tool]:
         return list(self._tools.values())
+
+    def collisions(self) -> list[tuple[str, str, str]]:
+        """Cross-plugin tool-name clashes seen during registration:
+        (tool_name, prior_owner, new_owner). Asserted against a known baseline
+        by core/agents/tests/test_registry_collisions.py so a NEW collision
+        fails CI. Shrinks as the duplicate tool families are consolidated."""
+        return list(self._collisions)
 
     def tools_for_scopes(self, scopes: list[str]) -> list[Tool]:
         scope_set = set(scopes)

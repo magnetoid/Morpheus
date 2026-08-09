@@ -833,6 +833,9 @@ def _locked_complete(request: HttpRequest, session_id: str, body: dict):
                 ser.message_error('invalid', 'Completion already in progress — retry shortly.')
             ],
         )
+        # Spec fidelity: an in-flight completion is 'in_progress', not the
+        # ready/not_ready _derive_status would otherwise emit (ACP status enum).
+        conflict['status'] = ser.STATUS_IN_PROGRESS
         return JsonResponse(conflict, status=409), None
 
     token, payment_error = _payment_data_error(body)

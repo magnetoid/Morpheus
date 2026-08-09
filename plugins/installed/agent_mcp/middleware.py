@@ -7,19 +7,49 @@ middleware reads those headers and attaches a ``request.trusted_agent``
 namespace so downstream views (and the checkout flow specifically)
 can persist the agent ID onto the resulting order.
 
-If no verification headers are present, ``request.trusted_agent`` is
-None — the request flows through unchanged. There is no enforcement
-here: gating an endpoint on a verified agent is the responsibility of
-the view, not the middleware.
+**Origin lock (security).** ``X-Verified-Agent-*`` are ordinary request
+headers — a client that reaches origin directly (past the
+CF→Plesk→Traefik→web chain) could set them and spoof the agent id stamped
+onto orders. So the headers are trusted **only** when the request also
+carries a shared secret that Cloudflare injects on proxied requests:
+``X-Verified-Agent-Origin-Secret`` must equal ``settings.TRUSTED_AGENT_PROXY_SECRET``.
+When that secret is unset (default), the headers are NOT trusted and
+``request.trusted_agent`` is None — fail-closed. To enable trusted-agent
+stamping: set ``TRUSTED_AGENT_PROXY_SECRET`` in the origin env AND configure
+Cloudflare (Transform Rule / Worker) to add the matching header on proxied
+traffic. A direct-to-origin client can't supply the secret, so its spoofed
+agent headers are ignored.
+
+Gating an endpoint on a verified agent is still the view's responsibility;
+this middleware only attaches (or withholds) the namespace.
 """
 
 from __future__ import annotations
 
+import hmac
 import logging
 import threading
 from dataclasses import dataclass
 
+from django.conf import settings
+
 logger = logging.getLogger('morpheus.agent_mcp.trusted_agent')
+
+# One-shot "headers ignored" warning guard — a list so we mutate (not rebind)
+# and avoid a `global` statement.
+_warned_untrusted: list = []
+
+
+def _origin_verified(request) -> bool:
+    """True only when the request carries the Cloudflare-injected shared secret,
+    proving the ``X-Verified-Agent-*`` headers came through our proxy and were
+    not spoofed by a direct-to-origin client. Fail-closed when unconfigured."""
+    secret = (getattr(settings, 'TRUSTED_AGENT_PROXY_SECRET', '') or '').strip()
+    if not secret:
+        return False
+    presented = request.META.get('HTTP_X_VERIFIED_AGENT_ORIGIN_SECRET', '')
+    return bool(presented) and hmac.compare_digest(presented, secret)
+
 
 # The verified agent for the in-flight request. Set by the middleware and read
 # by the ORDER_PLACED hook handler (which only receives `order`, not `request`).
@@ -44,7 +74,7 @@ class TrustedAgentMiddleware:
 
     def __call__(self, request):
         agent_id = request.META.get('HTTP_X_VERIFIED_AGENT_ID', '').strip()
-        if agent_id:
+        if agent_id and _origin_verified(request):
             request.trusted_agent = TrustedAgent(
                 agent_id=agent_id[:120],
                 provider=request.META.get(
@@ -57,6 +87,15 @@ class TrustedAgentMiddleware:
                 )[:300],
             )
         else:
+            if agent_id and not _warned_untrusted:
+                # Headers present but origin unverified — ignored (fail-closed).
+                # Logged once so a misconfigured proxy secret is diagnosable.
+                _warned_untrusted.append(1)
+                logger.warning(
+                    'trusted-agent: X-Verified-Agent-* headers present but origin '
+                    'not verified (TRUSTED_AGENT_PROXY_SECRET unset or header '
+                    'mismatch); ignoring the agent claim.'
+                )
             request.trusted_agent = None
         _current.agent = request.trusted_agent
         try:

@@ -56,6 +56,19 @@ class CheckoutFlowTests(TestCase):
         self.assertEqual(cart.items.count(), 1)
         self.assertEqual(cart.subtotal, Decimal('40'))
 
+    def test_mixing_currencies_in_one_cart_is_rejected(self):
+        # calculate_cart_breakdown sums the subtotal against the first line's
+        # currency, so a mixed-currency cart would mis-total silently — the add
+        # that would form that state is refused instead.
+        eur_product = Product.objects.create(
+            name='EUR Book', slug='eur-book', sku='EB1', price=Money(18, 'EUR'), status='active'
+        )
+        cart = CartService.get_or_create_cart(session_key='cur-1')
+        CartService.add_item(cart, str(self.product.id))  # USD
+        with self.assertRaises(ValueError):
+            CartService.add_item(cart, str(eur_product.id))  # EUR → refused
+        self.assertEqual(cart.items.count(), 1)
+
     def test_create_from_cart_emits_order_and_clears_cart(self):
         cart = CartService.get_or_create_cart(session_key='s-2')
         CartService.add_item(

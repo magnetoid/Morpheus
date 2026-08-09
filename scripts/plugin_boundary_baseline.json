@@ -1,0 +1,493 @@
+{
+  "_comment": "Baseline allowlist for scripts/check_plugin_boundary.py. These are the KNOWN undeclared plugin -> plugin imports being repaid over time. Repay a pair by declaring the target in the importer plugin.py `requires` (genuine dependency) OR inverting it through core.hooks / a contribution (it should not be a dependency); then remove the entry here. Only ever remove entries; never add. Regenerate with `python scripts/check_plugin_boundary.py --save` ONLY for a deliberate, reviewed change.",
+  "allowed": [
+    {
+      "importer": "admin_dashboard",
+      "target": "agent_core"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "ai_assistant"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "ai_content"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "analytics"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "catalog"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "cloudflare"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "cms"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "customers"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "draft_orders"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "marketing"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "metafields"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "orders"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "product_videos"
+    },
+    {
+      "importer": "admin_dashboard",
+      "target": "seo"
+    },
+    {
+      "importer": "advanced_ecommerce",
+      "target": "inventory"
+    },
+    {
+      "importer": "affiliates",
+      "target": "cloudflare"
+    },
+    {
+      "importer": "affiliates",
+      "target": "metafields"
+    },
+    {
+      "importer": "affiliates",
+      "target": "promotions"
+    },
+    {
+      "importer": "agent_core",
+      "target": "ai_assistant"
+    },
+    {
+      "importer": "agent_core",
+      "target": "inventory"
+    },
+    {
+      "importer": "agent_mcp",
+      "target": "customers"
+    },
+    {
+      "importer": "agentic_checkout",
+      "target": "metafields"
+    },
+    {
+      "importer": "agentic_checkout",
+      "target": "payments"
+    },
+    {
+      "importer": "ai_assistant",
+      "target": "admin_dashboard"
+    },
+    {
+      "importer": "ai_assistant",
+      "target": "agent_core"
+    },
+    {
+      "importer": "ai_assistant",
+      "target": "inventory"
+    },
+    {
+      "importer": "ai_assistant",
+      "target": "promotions"
+    },
+    {
+      "importer": "analytics",
+      "target": "consent"
+    },
+    {
+      "importer": "analytics",
+      "target": "notifications_center"
+    },
+    {
+      "importer": "analytics",
+      "target": "orders"
+    },
+    {
+      "importer": "audiobooks",
+      "target": "catalog"
+    },
+    {
+      "importer": "book_product",
+      "target": "agent_mcp"
+    },
+    {
+      "importer": "book_product",
+      "target": "ai_assistant"
+    },
+    {
+      "importer": "book_product",
+      "target": "metafields"
+    },
+    {
+      "importer": "catalog",
+      "target": "agent_mcp"
+    },
+    {
+      "importer": "catalog",
+      "target": "ai_assistant"
+    },
+    {
+      "importer": "catalog",
+      "target": "book_product"
+    },
+    {
+      "importer": "catalog",
+      "target": "inventory"
+    },
+    {
+      "importer": "catalog",
+      "target": "metafields"
+    },
+    {
+      "importer": "catalog",
+      "target": "orders"
+    },
+    {
+      "importer": "catalog",
+      "target": "seo"
+    },
+    {
+      "importer": "channels",
+      "target": "analytics"
+    },
+    {
+      "importer": "cms",
+      "target": "catalog"
+    },
+    {
+      "importer": "cms",
+      "target": "crm"
+    },
+    {
+      "importer": "cms",
+      "target": "seo"
+    },
+    {
+      "importer": "customers",
+      "target": "orders"
+    },
+    {
+      "importer": "customers",
+      "target": "payments"
+    },
+    {
+      "importer": "demo_data",
+      "target": "affiliates"
+    },
+    {
+      "importer": "demo_data",
+      "target": "book_product"
+    },
+    {
+      "importer": "demo_data",
+      "target": "catalog"
+    },
+    {
+      "importer": "demo_data",
+      "target": "metafields"
+    },
+    {
+      "importer": "demo_data",
+      "target": "orders"
+    },
+    {
+      "importer": "demo_data",
+      "target": "payments"
+    },
+    {
+      "importer": "digital_products",
+      "target": "metafields"
+    },
+    {
+      "importer": "draft_orders",
+      "target": "catalog"
+    },
+    {
+      "importer": "dynamics",
+      "target": "analytics"
+    },
+    {
+      "importer": "dynamics",
+      "target": "experiments"
+    },
+    {
+      "importer": "dynamics",
+      "target": "inventory"
+    },
+    {
+      "importer": "dynamics",
+      "target": "metafields"
+    },
+    {
+      "importer": "dynamics",
+      "target": "personalisation"
+    },
+    {
+      "importer": "flipbook",
+      "target": "catalog"
+    },
+    {
+      "importer": "fraud_rules",
+      "target": "orders"
+    },
+    {
+      "importer": "gift_cards",
+      "target": "orders"
+    },
+    {
+      "importer": "google_shopping",
+      "target": "book_product"
+    },
+    {
+      "importer": "importers",
+      "target": "catalog"
+    },
+    {
+      "importer": "importers",
+      "target": "customers"
+    },
+    {
+      "importer": "importers",
+      "target": "orders"
+    },
+    {
+      "importer": "inventory",
+      "target": "agent_mcp"
+    },
+    {
+      "importer": "inventory",
+      "target": "notifications_center"
+    },
+    {
+      "importer": "inventory",
+      "target": "orders"
+    },
+    {
+      "importer": "marketplace",
+      "target": "metafields"
+    },
+    {
+      "importer": "media",
+      "target": "catalog"
+    },
+    {
+      "importer": "media",
+      "target": "seo"
+    },
+    {
+      "importer": "meta_commerce",
+      "target": "orders"
+    },
+    {
+      "importer": "metafields",
+      "target": "admin_dashboard"
+    },
+    {
+      "importer": "notifications_center",
+      "target": "admin_dashboard"
+    },
+    {
+      "importer": "orders",
+      "target": "agent_mcp"
+    },
+    {
+      "importer": "orders",
+      "target": "eco_impact"
+    },
+    {
+      "importer": "orders",
+      "target": "gift_cards"
+    },
+    {
+      "importer": "orders",
+      "target": "inventory"
+    },
+    {
+      "importer": "orders",
+      "target": "loyalty_points"
+    },
+    {
+      "importer": "orders",
+      "target": "marketing"
+    },
+    {
+      "importer": "orders",
+      "target": "notifications_center"
+    },
+    {
+      "importer": "orders",
+      "target": "payments"
+    },
+    {
+      "importer": "orders",
+      "target": "promotions"
+    },
+    {
+      "importer": "personalisation",
+      "target": "ai_assistant"
+    },
+    {
+      "importer": "personalisation",
+      "target": "analytics"
+    },
+    {
+      "importer": "personalisation",
+      "target": "catalog"
+    },
+    {
+      "importer": "personalisation",
+      "target": "consent"
+    },
+    {
+      "importer": "personalisation",
+      "target": "orders"
+    },
+    {
+      "importer": "post_purchase",
+      "target": "orders"
+    },
+    {
+      "importer": "promotions",
+      "target": "marketing"
+    },
+    {
+      "importer": "reviews",
+      "target": "metafields"
+    },
+    {
+      "importer": "seo",
+      "target": "ai_assistant"
+    },
+    {
+      "importer": "seo",
+      "target": "book_product"
+    },
+    {
+      "importer": "seo",
+      "target": "catalog"
+    },
+    {
+      "importer": "seo",
+      "target": "cloudflare"
+    },
+    {
+      "importer": "seo",
+      "target": "cms"
+    },
+    {
+      "importer": "seo",
+      "target": "inventory"
+    },
+    {
+      "importer": "seo",
+      "target": "markets"
+    },
+    {
+      "importer": "seo",
+      "target": "media"
+    },
+    {
+      "importer": "seo",
+      "target": "metafields"
+    },
+    {
+      "importer": "seo",
+      "target": "webstories"
+    },
+    {
+      "importer": "shipping",
+      "target": "bookvault"
+    },
+    {
+      "importer": "staff_sso",
+      "target": "staff_mfa"
+    },
+    {
+      "importer": "storefront",
+      "target": "book_product"
+    },
+    {
+      "importer": "storefront",
+      "target": "cms"
+    },
+    {
+      "importer": "storefront",
+      "target": "consent"
+    },
+    {
+      "importer": "storefront",
+      "target": "crm"
+    },
+    {
+      "importer": "storefront",
+      "target": "gift_cards"
+    },
+    {
+      "importer": "storefront",
+      "target": "marketplace"
+    },
+    {
+      "importer": "storefront",
+      "target": "metafields"
+    },
+    {
+      "importer": "storefront",
+      "target": "payments"
+    },
+    {
+      "importer": "storefront",
+      "target": "product_videos"
+    },
+    {
+      "importer": "subscriptions",
+      "target": "consent"
+    },
+    {
+      "importer": "subscriptions",
+      "target": "payments"
+    },
+    {
+      "importer": "tracking",
+      "target": "consent"
+    },
+    {
+      "importer": "webstories",
+      "target": "book_product"
+    },
+    {
+      "importer": "webstories",
+      "target": "catalog"
+    },
+    {
+      "importer": "workflows",
+      "target": "agent_core"
+    },
+    {
+      "importer": "workflows",
+      "target": "metafields"
+    },
+    {
+      "importer": "workflows",
+      "target": "notifications_center"
+    }
+  ]
+}

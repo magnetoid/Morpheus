@@ -20,8 +20,18 @@ Two endpoints:
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_http_methods
+
+
+def _trusted_agent_enabled() -> bool:
+    """True only when the origin actually honors verified-agent headers — i.e.
+    the Cloudflare-injected shared secret is configured (TRUSTED_AGENT_PROXY_SECRET).
+    Keeps the /.well-known/agent.json `accepts` flags honest: advertising the
+    capability while the middleware fail-closed-ignores the headers would be a
+    false claim to Visa/Mastercard/Cloudflare agent registries."""
+    return bool((getattr(settings, 'TRUSTED_AGENT_PROXY_SECRET', '') or '').strip())
 
 
 def _capability_live(names) -> bool:
@@ -94,14 +104,17 @@ def trusted_agent_manifest(request: HttpRequest) -> JsonResponse:
     agent registries. Indicates we accept Cloudflare's verified-agent
     header and persist the agent ID on resulting orders."""
     base = request.build_absolute_uri('/').rstrip('/')
+    # Honest capability flags: we only genuinely *accept* verified-agent traffic
+    # when the origin honors the headers (the CF-injected shared secret is set).
+    accepts = _trusted_agent_enabled()
     return JsonResponse(
         {
             'name': 'morpheus',
             'version': '0.1.0',
             'accepts': {
-                'visa_trusted_agent': True,
-                'mastercard_verifiable_intent': True,
-                'cloudflare_web_bot_auth': True,
+                'visa_trusted_agent': accepts,
+                'mastercard_verifiable_intent': accepts,
+                'cloudflare_web_bot_auth': accepts,
             },
             'verification_headers': [
                 'X-Verified-Agent-Id',

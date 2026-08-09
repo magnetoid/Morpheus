@@ -28,6 +28,11 @@ from core.assistant.tools.ecommerce_writes import (
 from morpheus.core import ToolError, ToolResult, tool
 from morpheus.core import money_str as _money_str
 
+# Cap for nested collections in products.get so a product with hundreds of
+# variants/images can't dump every row into the model context; the untruncated
+# total is reported alongside so the agent knows there's more.
+_NESTED_CAP = 50
+
 
 def _enforce_price_delta(old_amount, new_amount: Decimal, max_pct: float) -> None:
     """Refuse an agent price change whose magnitude exceeds the merchant's
@@ -196,6 +201,7 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
     if p is None:
         raise ToolError('product not found — pass id, sku, or slug')
 
+    _all_variants = list(p.variants.all())
     variants = [
         {
             'id': str(v.id),
@@ -204,8 +210,9 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
             'price': _money_str(getattr(v, 'price', None)),
             'attributes': getattr(v, 'attributes', None) or {},
         }
-        for v in p.variants.all()
+        for v in _all_variants[:_NESTED_CAP]
     ]
+    _all_images = list(p.images.all())
     images = [
         {
             'id': str(img.id),
@@ -215,7 +222,7 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
             'alt': getattr(img, 'alt', ''),
             'is_primary': getattr(img, 'is_primary', False),
         }
-        for img in p.images.all()
+        for img in _all_images[:_NESTED_CAP]
     ]
 
     # Stock levels — optional inventory plugin.
@@ -254,7 +261,9 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
             'meta_title': getattr(p, 'meta_title', ''),
             'meta_description': getattr(p, 'meta_description', ''),
             'variants': variants,
+            'variants_total': len(_all_variants),
             'images': images,
+            'images_total': len(_all_images),
             'stock_levels': stock_levels,
         }
     )

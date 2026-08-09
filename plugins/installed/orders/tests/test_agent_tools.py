@@ -74,3 +74,26 @@ class OrdersRefundGateTests(TestCase):
             refund_order_tool.invoke(
                 {'order_number': 'nope', 'confirmed': True, 'hard_gate_ack': 'YES', 'echo': 'nope'}
             )
+
+
+class OrdersSearchTotalTests(TestCase):
+    """orders.search must report the real match total, not the page size — the
+    same undercount bug catalog fixed for products.search."""
+
+    def test_search_reports_real_total_not_page_size(self):
+        from djmoney.money import Money
+
+        from plugins.installed.orders.agent_tools import orders_search_tool
+        from plugins.installed.orders.models import Order
+
+        for i in range(3):
+            Order.objects.create(
+                email=f'c{i}@example.com',
+                subtotal=Money(10, 'USD'),
+                total=Money(10, 'USD'),
+            )
+        out = orders_search_tool.invoke({'limit': 2}).output
+        self.assertEqual(out['total'], 3)
+        self.assertEqual(out['returned'], 2)
+        self.assertEqual(len(out['orders']), 2)
+        self.assertNotIn('count', out)  # the misleading count=len(rows) key is gone
