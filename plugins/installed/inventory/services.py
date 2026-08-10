@@ -119,6 +119,17 @@ class InventoryService:
                         e,
                         exc_info=True,
                     )
+                    # FAIL CLOSED. This runs under ORDER_RESERVE_STOCK fired with
+                    # raise_errors=True (orders/services.py:602) precisely so a
+                    # reservation that cannot be confirmed aborts the order.
+                    # Swallowing it here let checkout proceed believing stock was
+                    # held — a silent oversell on any DB hiccup. Surfaced as
+                    # InsufficientStockError so the caller's existing
+                    # can't-fulfil path handles it, rather than a raw DB error.
+                    raise InsufficientStockError(
+                        f'Could not confirm reservation for variant {item.variant_id} '
+                        f'on {order.order_number}: {e}'
+                    ) from e
         return movements
 
     @classmethod

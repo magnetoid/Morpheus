@@ -119,6 +119,96 @@ def reverse_redemption_for_order(order) -> list:
     return reversed_cards
 
 
+def refund_redemption_for_order(order, refund) -> list:
+    """Re-credit the gift-card tender in proportion to a refund — idempotent.
+
+    A gift card spent at checkout is folded into ``Order.discount_total``, so
+    ``RefundService._compute_refund`` nets it back OUT of the cash refund: the
+    shopper is repaid only the cash they actually paid. Without this handler the
+    card portion was simply kept by the merchant — the shopper lost that value
+    on every refund and return (only a full ORDER_CANCELLED restored it).
+
+    Proration: cash refund and card credit are both shares of the same returned
+    goods, so ``refund.amount / order.total`` is the right fraction for each
+    (a half-value return repays half the cash and half the card).
+
+    Idempotency is per refund — the ledger row is keyed ``<order>:r:<refund pk>``
+    — and the cumulative credit per card is capped at what was redeemed, so
+    repeated events, retried webhooks, and several partial refunds can never
+    return more than the shopper spent.
+    """
+    from decimal import Decimal
+
+    from django.db.models import Q
+
+    from core.money import add, money
+    from plugins.installed.gift_cards.models import GiftCard, GiftCardLedger
+
+    reference = str(getattr(order, 'order_number', '') or getattr(order, 'pk', ''))
+    if not reference or refund is None:
+        return []
+    refund_ref = f'{reference}:r:{getattr(refund, "pk", "")}'[:100]
+
+    total = Decimal(getattr(order.total, 'amount', 0) or 0)
+    refunded = Decimal(getattr(getattr(refund, 'amount', None), 'amount', 0) or 0)
+    if total <= 0:
+        # Wholly tender-paid order: there is no cash denominator to prorate
+        # against. Surface it rather than guessing an amount either way.
+        logger.warning(
+            'gift_cards: order %s has zero cash total — refund %s needs a manual '
+            'card re-credit (cannot prorate)',
+            reference,
+            refund_ref,
+        )
+        return []
+    fraction = min(Decimal('1'), max(Decimal('0'), refunded / total))
+    if fraction <= 0:
+        return []
+
+    credited = []
+    with transaction.atomic():
+        for row in GiftCardLedger.objects.filter(kind='redeem', reference=reference):
+            card = GiftCard.objects.select_for_update().get(pk=row.card_id)
+            if GiftCardLedger.objects.filter(
+                kind='refund', reference=refund_ref, card=card
+            ).exists():
+                continue  # this refund already credited this card
+            currency = str(row.amount_change.currency)
+            redeemed = -Decimal(row.amount_change.amount)  # redeem rows are negative
+            already = sum(
+                (
+                    Decimal(r.amount_change.amount)
+                    for r in GiftCardLedger.objects.filter(kind='refund', card=card).filter(
+                        Q(reference=reference) | Q(reference__startswith=f'{reference}:r:')
+                    )
+                ),
+                Decimal('0'),
+            )
+            credit_amount = min((redeemed * fraction).quantize(Decimal('0.01')), redeemed - already)
+            if credit_amount <= 0:
+                continue
+            credit = money(credit_amount, currency)
+            new_balance = add(card.balance, credit)
+            card.balance = new_balance
+            card.save(update_fields=['balance', 'updated_at'])
+            GiftCardLedger.objects.create(
+                card=card,
+                kind='refund',
+                amount_change=credit,
+                balance_after=new_balance,
+                reference=refund_ref,
+            )
+            credited.append(card)
+    if credited:
+        logger.info(
+            'gift_cards: re-credited %s card(s) for refund %s (%.2f of order)',
+            len(credited),
+            refund_ref,
+            float(fraction),
+        )
+    return credited
+
+
 def lookup(code: str) -> GiftCard | None:  # noqa: F821
     from plugins.installed.gift_cards.models import GiftCard
 

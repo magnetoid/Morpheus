@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.36.0 — 2026-08-10
+
+**Agent-safety + money-correctness (P0)**
+
+- Linda now runs the same enforcement stack as the Worker: scope, token budget, deadline, and a fail-closed approval gate. Her dangerous tools previously trusted an LLM-supplied confirmed=True argument, so content she merely read could induce a write; consent is now kernel-verified against the human's own reply, single-use and bound to the exact tool+arguments.
+- Linda holds an explicit scope profile — a plugin-contributed tool demanding a scope she does not hold is refused instead of silently callable.
+- Refused write attempts are audited, so a blocked injection leaves a trace outside the chat transcript.
+- Gift-card and loyalty-point tender is re-credited on refunds and returns, prorated to the refund and idempotent per refund. Previously only a full order cancel restored it, so shoppers forfeited the tender on every partial refund.
+- Stock reservation fails closed: a DatabaseError during reserve now aborts the order instead of being swallowed, which had let checkout proceed believing stock was held (silent oversell).
+- The production model is priced, so the merchant's daily USD spend cap actually trips — it previously estimated $0.00 and could never fire.
+
 ## v0.35.1 — 2026-08-09
 
 **Fix /shop/ 500 — reconcile booking_marketplace prod schema**

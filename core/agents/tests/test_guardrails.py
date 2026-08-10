@@ -92,12 +92,19 @@ class DailySpendCapTests(TestCase):
         _run(state='completed', model='gpt-4o', prompt_tokens=1_000_000)
         self.assertEqual(guardrails.run_start_block_reason(), 'spend_cap_exceeded')
 
-    def test_spend_cap_is_a_noop_for_an_unpriced_model(self):
-        # The production model (deepseek-v4-pro) is not in the price table, so it
-        # estimates $0 — a USD cap can't bound it. This documents that the run
-        # cap, not the spend cap, is the hard limit there.
+    def test_spend_cap_blocks_the_production_model(self):
+        # deepseek-v4-pro used to be absent from the price table, so it estimated
+        # $0.00 and the merchant's USD cap could never trip on prod — the
+        # advertised guardrail was inert exactly where it mattered. Now priced.
         _set_guardrail(spend_cap_daily=1.0)
         _run(state='completed', model='deepseek-v4-pro', prompt_tokens=5_000_000)
+        self.assertEqual(guardrails.run_start_block_reason(), 'spend_cap_exceeded')
+
+    def test_spend_cap_is_still_a_noop_for_a_genuinely_unpriced_model(self):
+        # The structural caveat remains for any model absent from _PRICES: the
+        # run-count cap, not the USD cap, is the hard limit there.
+        _set_guardrail(spend_cap_daily=1.0)
+        _run(state='completed', model='some-unlisted-model', prompt_tokens=5_000_000)
         self.assertIsNone(guardrails.run_start_block_reason())
 
 

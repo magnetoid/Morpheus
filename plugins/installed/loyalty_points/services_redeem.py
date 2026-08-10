@@ -232,6 +232,67 @@ def redeem_points_for_order(customer, points: int, *, order):
     return redeem_points(customer, points, order=order, reason=f'Order {order_number}')
 
 
+def refund_redemption_for_order(order, refund):  # noqa: PLR0911 — flat guard chain
+    """Re-credit spent points in proportion to a refund — idempotent.
+
+    Points spent at checkout are folded into ``Order.discount_total``, so the
+    cash refund already excludes them; without this the shopper simply forfeited
+    the points on any refund or return (only a full ORDER_CANCELLED gave them
+    back). Mirrors ``gift_cards.refund_redemption_for_order``: the same
+    ``refund.amount / order.total`` fraction that sizes the cash refund sizes
+    the points credit.
+
+    Idempotent per refund (the ``adjust`` row carries a ``refund:<pk>`` marker)
+    and capped so cumulative credits across several partial refunds never exceed
+    what was spent.
+    """
+    from decimal import Decimal
+
+    from django.db.models import Sum
+
+    from plugins.installed.loyalty_points.models import PointsTransaction
+
+    customer = getattr(order, 'customer', None)
+    if customer is None or refund is None:
+        return None
+    order_number = str(getattr(order, 'order_number', '') or getattr(order, 'pk', ''))
+    marker = f'refund:{getattr(refund, "pk", "")}'
+    if PointsTransaction.objects.filter(
+        customer=customer, reason='adjust', order_number=order_number, note__startswith=marker
+    ).exists():
+        return None  # this refund already credited
+
+    spent = -int(
+        PointsTransaction.objects.filter(
+            customer=customer, reason='spend_order', order_number=order_number
+        ).aggregate(total=Sum('points'))['total']
+        or 0
+    )
+    if spent <= 0:
+        return None
+
+    total = Decimal(getattr(order.total, 'amount', 0) or 0)
+    refunded = Decimal(getattr(getattr(refund, 'amount', None), 'amount', 0) or 0)
+    if total <= 0:
+        return None  # wholly tender-paid: no cash denominator to prorate against
+    fraction = min(Decimal('1'), max(Decimal('0'), refunded / total))
+    if fraction <= 0:
+        return None
+
+    already = int(
+        PointsTransaction.objects.filter(
+            customer=customer, reason='adjust', order_number=order_number
+        ).aggregate(total=Sum('points'))['total']
+        or 0
+    )
+    points = min(int(spent * fraction), spent - max(0, already))
+    if points <= 0:
+        return None
+    return reverse_redemption(
+        customer, points, order=order, reason=f'{marker} — {order_number} refund'
+    )
+
+
 def reverse_redemption_for_order(order):
     """Re-credit whatever points were spent on ``order`` — idempotent.
 

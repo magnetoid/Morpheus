@@ -77,6 +77,9 @@ class LoyaltyPointsPlugin(Plugin):
         # Re-credit spent points when an order is cancelled — never leave a
         # shopper out the points for an order that never shipped. Idempotent.
         self.register_hook(events.ORDER_CANCELLED, self.on_order_cancelled, priority=50)
+        # Refunds/returns net points OUT of the cash refund, so without this the
+        # shopper forfeited them; ORDER_CANCELLED only covered a whole-order void.
+        self.register_hook(events.PAYMENT_REFUNDED, self.on_payment_refunded, priority=50)
 
     def on_account_summary(self, value, user=None, **kwargs):
         """Fold this customer's points balance into the account summary.
@@ -140,6 +143,27 @@ class LoyaltyPointsPlugin(Plugin):
 
             logging.getLogger('morpheus.loyalty').warning(
                 'loyalty cancel reversal failed for order %s: %s',
+                getattr(order, 'order_number', '?'),
+                exc,
+                exc_info=True,
+            )
+
+    def on_payment_refunded(self, refund=None, order=None, **kwargs):
+        """Prorated re-credit of spent points on a refund/return (idempotent,
+        fail-soft — never break refund processing)."""
+        if order is None or refund is None:
+            return
+        try:
+            from plugins.installed.loyalty_points.services_redeem import (
+                refund_redemption_for_order,
+            )
+
+            refund_redemption_for_order(order, refund)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.loyalty').warning(
+                'loyalty refund re-credit failed for order %s: %s',
                 getattr(order, 'order_number', '?'),
                 exc,
                 exc_info=True,

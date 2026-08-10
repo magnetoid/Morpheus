@@ -43,6 +43,10 @@ class GiftCardsPlugin(Plugin):
         # cancel refunds only the cash charge and the card balance is lost
         # forever (mirrors loyalty's redemption reversal).
         self.register_hook(events.ORDER_CANCELLED, self.on_order_cancelled, priority=60)
+        # Refunds and returns net the card tender OUT of the cash refund, so
+        # without this the shopper forfeited it. ORDER_CANCELLED alone only
+        # covered the whole-order void.
+        self.register_hook(events.PAYMENT_REFUNDED, self.on_payment_refunded, priority=60)
 
     def on_order_paid(self, order=None, **kwargs):
         """Issue purchased gift cards on payment (idempotent; fail-soft —
@@ -77,6 +81,25 @@ class GiftCardsPlugin(Plugin):
 
             logging.getLogger('morpheus.gift_cards').warning(
                 'gift-card reversal for order %s failed: %s',
+                getattr(order, 'order_number', '?'),
+                exc,
+                exc_info=True,
+            )
+
+    def on_payment_refunded(self, refund=None, order=None, **kwargs):
+        """Prorated re-credit of card tender on a refund/return (idempotent,
+        fail-soft — a reversal problem must never break refund processing)."""
+        if order is None or refund is None:
+            return
+        try:
+            from plugins.installed.gift_cards.services import refund_redemption_for_order
+
+            refund_redemption_for_order(order, refund)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.gift_cards').warning(
+                'gift-card refund re-credit for order %s failed: %s',
                 getattr(order, 'order_number', '?'),
                 exc,
                 exc_info=True,

@@ -141,6 +141,38 @@ approval** (the S1 hole; a blanket `context['staged']` exemption once reopened i
 `catalog.delete_product`/`orders.mark_refunded`). Conversely, a `requires_approval`
 tool that *does* stage but forgets the flag just double-gates (fails safe, but breaks
 the staged-routine UX). Guarded by `core/agents/tests/test_staged_gate.py`.
+**Linda enforces the same contract** — `core/assistant/runtime.py:_gate_reason`
+mirrors the Worker's chain (scope → budget → deadline → approval), so the
+`supports_staging` rule above applies identically to her.
+
+**Landmine — an LLM-supplied argument is NOT consent.** Linda's write tools take
+`confirmed=True` (+ `hard_gate_ack`/`echo` on the destructive tier), and their
+docstrings once claimed this meant the user had approved. It didn't: *the model*
+writes those arguments, so anything Linda merely **reads** — a product
+description, a log line, a customer note, a fetched page — could induce her to
+set them on the first call. Consent now lives in the kernel
+(`core/assistant/consent.py`): the first attempt is refused and a pending consent
+is recorded against `sha256(tool + canonical args)`; it is spent only when the
+**human's own next message** (a `role='user'` turn — the one thing injected
+content can never be) reads affirmative, and the grant is single-use and
+argument-bound. Negation always beats affirmation ("yes, but not that one"
+denies). **Never gate a new write tool on an argument alone** — add
+`requires_approval=True` and let the kernel gate it. Refused attempts are
+audited, so a blocked injection leaves a trace. Guarded by
+`core/assistant/tests/test_enforcement.py`.
+
+**Landmine — a tender is not a discount: refunds must re-credit it.** Gift cards
+and loyalty points are folded into `Order.discount_total`, and
+`RefundService._compute_refund` nets them back **out** of the cash refund (the
+shopper is repaid only the cash they paid). So a refund/return that doesn't
+*also* re-credit the tender silently keeps it — which is exactly what shipped
+until v0.36, because both plugins subscribed only `ORDER_CANCELLED` (whole-order
+void) and not `PAYMENT_REFUNDED`. Any new tender type must subscribe
+`PAYMENT_REFUNDED` with a **prorated** (`refund.amount / order.total` — cash and
+tender are shares of the same returned goods), **idempotent-per-refund** credit,
+capped so successive partials can never return more than was spent. A wholly
+tender-paid order has no cash denominator — log for manual handling rather than
+guessing. Guarded by `{gift_cards,loyalty_points}/tests/test_refund_recredit.py`.
 
 **Landmine — merchant agent guardrails read config *cross-process fresh*,
 enforce at fixed seams, and the USD spend cap silently no-ops on unpriced
@@ -153,10 +185,11 @@ see a switch a merchant flips from the web dashboard, so `guardrails._read`
 **invalidates the cache before every read** (one indexed query — cheap next to a
 provider call). Don't "optimize" that away. (2) The USD `spend_cap_daily` sums
 *estimated* cost (`core/agents/pricing.py`), which is `$0.00` for any model not
-in `_PRICES` — and the prod model (`deepseek-v4-pro`) is unpriced, so a dollar
-cap **never trips on prod**; the model-independent `max_agent_runs_daily`
-run-count cap is the real backstop (add a model to `_PRICES` in the same change
-if you want its dollar cap live). (3) The key names (`agents_paused`,
+in `_PRICES` — so an unpriced model's dollar cap **never trips**, leaving the
+model-independent `max_agent_runs_daily` run-count cap as the only backstop.
+The prod model (`deepseek-v4-pro`) was unpriced for exactly this reason until
+v0.36; **any model a deployment can actually reach must be added to `_PRICES`
+in the same change that makes it reachable** (`is_priced()` reports the gap). (3) The key names (`agents_paused`,
 `max_agent_runs_daily`, `spend_cap_daily`, `max_price_change_pct`,
 `max_refund_value`) are coupled by **string match** across three places — the
 panel schema + `get_config_schema` in `agent_core/plugin.py`, the accessors in

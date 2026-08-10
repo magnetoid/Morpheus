@@ -272,8 +272,33 @@ class Assistant:
     label = 'Linda AI Assistant'
     max_steps = 8
 
+    #: Scope profile — the union her built-in catalogue needs, and no more.
+    #: The Worker has always been scope-checked (`enforce_policy`); Linda was
+    #: not, so ANY registry tool a plugin contributed was callable by her
+    #: regardless of what it demanded. Holding an explicit set means a
+    #: contributed tool wanting `orders.write`/`rbac.*` is denied until it is
+    #: deliberately granted, while nothing in today's catalogue breaks.
+    scopes: list[str] = [
+        'system.read',
+        'system.write',
+        'selfdev',
+        'customers.write',
+        'diagnostics.read',
+    ]
+
+    #: Token cap for one turn; 0 = unlimited (the guardrails convention). The
+    #: merchant-facing daily caps live in `core.agents.guardrails`.
+    token_budget: int = 0
+
     def __init__(
-        self, *, provider=None, tools=None, store=None, max_steps: int | None = None
+        self,
+        *,
+        provider=None,
+        tools=None,
+        store=None,
+        max_steps: int | None = None,
+        scopes: list[str] | None = None,
+        token_budget: int | None = None,
     ) -> None:
         self.provider = provider or get_default_provider()
         # Lazy-resolve tools the first time they're needed so a broken
@@ -282,6 +307,10 @@ class Assistant:
         self.store = store or get_default_store()
         if max_steps is not None:
             self.max_steps = max_steps
+        if scopes is not None:
+            self.scopes = list(scopes)
+        if token_budget is not None:
+            self.token_budget = token_budget
 
     @property
     def tools(self) -> list:
@@ -583,6 +612,8 @@ class Assistant:
                     msgs=msgs,
                     conversation_key=conversation_key,
                     context=context,
+                    human_message=message,
+                    spent_tokens=prompt_tokens + completion_tokens,
                 )
                 yield {
                     'type': 'tool_call_finished',
@@ -684,10 +715,85 @@ class Assistant:
         except Exception:  # noqa: BLE001 — repair is best-effort, never fatal
             return None
 
-    def _dispatch_tool(self, *, tc, tools_by_name, msgs, conversation_key, context):
+    def _gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
+        self, *, tool, tool_name, args, context, conversation_key, human_message, spent_tokens
+    ) -> str | None:
+        """Return a refusal reason, or ``None`` to let the call through.
+
+        The same enforcement stack the Worker has always run: scope → budget →
+        deadline → approval.
+        """
+        # Scope: an under-scoped caller never reaches an over-scoped tool.
+        try:
+            from core.agents.policies import ScopeDenied, enforce_policy
+
+            enforce_policy(scopes=self.scopes, required=list(getattr(tool, 'scopes', None) or []))
+        except ScopeDenied as e:
+            return str(e)
+        except Exception:  # noqa: BLE001 — a broken policy import must not open the gate
+            logger.warning('assistant: scope check unavailable', exc_info=True)
+            return 'scope_check_unavailable'
+
+        # Token budget (0 = unlimited) and the cooperative wall-clock deadline —
+        # a timed-out turn stops issuing NEW tool calls instead of running on as
+        # a zombie (the reason AgentRuntime polls `context['deadline']`).
+        try:
+            from core.agents.policies import BudgetExceeded, enforce_budget
+            from core.agents.runtime import _deadline_exceeded
+
+            enforce_budget(spent=spent_tokens, cap=self.token_budget or None)
+            if _deadline_exceeded(context or {}):
+                return 'deadline_exceeded'
+        except BudgetExceeded:
+            return 'budget_exceeded'
+        except Exception:  # noqa: BLE001 — budget/deadline are advisory, not a gate
+            logger.debug('assistant: budget/deadline check skipped', exc_info=True)
+
+        # Approval — kernel-verified HUMAN consent. Staged mode is exempt only
+        # for tools that actually stage (`supports_staging`): such a tool records
+        # an OpsProposal for review instead of executing, and that proposal IS
+        # the sign-off. A tool with no staging path must still pass the gate, or
+        # the exemption reopens the S1 hole for the staged path.
+        _staged = isinstance(context, dict) and context.get('staged')
+        _staged_exempt = _staged and getattr(tool, 'supports_staging', False)
+        if getattr(tool, 'requires_approval', False) and not _staged_exempt:
+            from core.assistant import consent
+
+            if not consent.consume(
+                conversation_key=conversation_key,
+                tool_name=tool_name,
+                args=args,
+                human_message=human_message,
+            ):
+                consent.request(conversation_key=conversation_key, tool_name=tool_name, args=args)
+                return (
+                    'approval_required: tell the user exactly what this will do and ask them '
+                    'to confirm. Do NOT re-call until they have answered — their own reply is '
+                    'what authorises it, not a `confirmed` argument.'
+                )
+        return None
+
+    def _dispatch_tool(
+        self,
+        *,
+        tc,
+        tools_by_name,
+        msgs,
+        conversation_key,
+        context,
+        human_message: str = '',
+        spent_tokens: int = 0,
+    ):
         """Invoke a single tool call, persist the result, append to LLM context.
         Returns ``(output, error_message)`` so :meth:`stream` can echo the
         outcome out to the SSE client.
+
+        Guarded by the same enforcement stack as the Worker
+        (:class:`core.agents.runtime.AgentRuntime`) — scope, budget, deadline,
+        approval. Linda ran ungated until now: her only write-path handling was
+        the POST-HOC audit below, and her dangerous tools trusted an
+        LLM-supplied ``confirmed=True`` argument that injected content could
+        induce. See :mod:`core.assistant.consent`.
         """
         tool_name = getattr(tc, 'name', '')
         args = getattr(tc, 'arguments', {}) or {}
@@ -697,8 +803,11 @@ class Assistant:
         except Exception:  # noqa: BLE001
             LLMMessage = type(msgs[0])
 
-        if tool is None:
-            payload = {'error': f'unknown tool: {tool_name}'}
+        def _refuse(reason: str):
+            """Hand a refusal back to the model as a tool result (never an
+            exception): the LLM can explain it or pick another path, and the
+            transcript records why."""
+            payload = {'error': reason}
             msgs.append(
                 LLMMessage(
                     role='tool',
@@ -713,7 +822,34 @@ class Assistant:
                     role='tool', tool_name=tool_name, tool_args=args, tool_output=payload
                 ),
             )
-            return payload, payload['error']
+            return payload, reason
+
+        if tool is None:
+            return _refuse(f'unknown tool: {tool_name}')
+
+        gate = self._gate_reason(
+            tool=tool,
+            tool_name=tool_name,
+            args=args,
+            context=context,
+            conversation_key=conversation_key,
+            human_message=human_message,
+            spent_tokens=spent_tokens,
+        )
+        if gate:
+            # Audit the ATTEMPT. A refused write is more interesting to a
+            # merchant auditing "what did the AI try to change?" than a
+            # successful one — without this, a blocked injection leaves no
+            # trace outside the transcript.
+            self._audit_write_tool(
+                tool=tool,
+                args=args,
+                payload={'refused': gate},
+                error_msg=gate,
+                conversation_key=conversation_key,
+                context=context,
+            )
+            return _refuse(gate)
 
         error_msg = ''
         try:

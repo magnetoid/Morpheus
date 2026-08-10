@@ -26,6 +26,14 @@ _PRICES: dict[str, tuple[float, float]] = {
     'grok-2': (2.00, 10.00),
     'deepseek-chat': (0.27, 1.10),
     'deepseek-reasoner': (0.55, 2.19),
+    # The production model. APPROXIMATE — pinned to the deepseek-reasoner tier
+    # rather than a published figure; correct it when the real price is known.
+    # An approximation is deliberately better than the alternative here: an
+    # UNPRICED model estimates $0.00, which silently neuters the merchant's
+    # daily `spend_cap_daily` guardrail (it can never trip, leaving only the
+    # model-independent run-count cap). Any model this deployment can actually
+    # reach belongs in this table — `is_priced()` reports the gap.
+    'deepseek-v4-pro': (0.55, 2.19),
     'llama3.2': (0.0, 0.0),  # local / self-hosted — no per-token cost
 }
 
