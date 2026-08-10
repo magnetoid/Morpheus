@@ -31,6 +31,17 @@ class OrdersPlugin(Plugin):
         # on commit with retries. This plugin no longer subscribes ORDER_PLACED
         # for email (it used to send a duplicate, synchronously, inside the
         # order-placement transaction).
+        # Expire unpaid pending orders so their stock reservation is released.
+        # Without this an abandoned or failed checkout holds its units forever:
+        # a failed card only marks the transaction FAILED, and ORDER_CANCELLED
+        # (which inventory listens to) never fires on its own.
+        self.register_celery_beat(
+            'orders:expire_pending_orders',
+            {
+                'task': 'orders.expire_pending_orders',
+                'schedule': 60 * 10,
+            },
+        )
         # Contribute order + return activity to the dashboard home feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=10)
         # Contribute order count / open returns / store credit to the
@@ -62,6 +73,19 @@ class OrdersPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
+                'pending_order_expiry_minutes': {
+                    'type': 'integer',
+                    'default': 60,
+                    'minimum': 0,
+                    'title': 'Auto-cancel unpaid orders after (minutes)',
+                    'description': (
+                        'An order that is created but never paid keeps its '
+                        'stock reserved. After this many minutes it is '
+                        'cancelled automatically, which releases the '
+                        'reservation and refunds any gift-card or loyalty '
+                        'tender. Set 0 to disable and reconcile by hand.'
+                    ),
+                },
                 'skip_shipping_for_digital_carts': {
                     'type': 'boolean',
                     'default': True,

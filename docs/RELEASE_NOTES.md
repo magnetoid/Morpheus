@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.39.0 — 2026-08-10
+
+**Stranded stock reservations released (P3)**
+
+- An order that was created but never paid held its stock reservation forever. A failed card only marks the payment transaction FAILED and an abandoned redirect leaves the order pending, so ORDER_CANCELLED — which is what releases the reservation — never fired. Available stock shrank with every abandoned checkout until a merchant looked oversold on stock they still had. orders/tasks.py was an empty file.
+- A beat task now cancels unpaid pending orders past an expiry window, which fires ORDER_CANCELLED and lets the existing subscribers release the reservation and restore any gift-card or loyalty tender. The window is a merchant setting (Orders settings, default 60 minutes); 0 disables it.
+- A paid-in-the-meantime order is re-checked under a row lock before cancelling, because the gap between selecting and cancelling is exactly where a late payment webhook lands.
+- Web checkout now releases its Redis cart-hold once the database reservation takes over. Only the agent checkout path did this, so every completed web order double-held its stock until the hold's TTL lapsed.
+
 ## v0.38.0 — 2026-08-10
 
 **Dead hooks wired: pricing seam, workflow triggers, payment.captured (P2)**

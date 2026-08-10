@@ -161,6 +161,20 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — a reservation needs an expiry, not just a release path.** Stock is
+reserved by the fail-closed `ORDER_RESERVE_STOCK` gate and released on
+`ORDER_CANCELLED` — but nothing *cancelled* an unpaid order, so an abandoned or
+card-declined checkout held its units forever (a failed card only marks the
+transaction FAILED). `orders.expire_pending_orders` (beat, merchant-configurable
+window, `0` = off) closes the loop by cancelling stale unpaid orders, which lets
+the existing subscribers do the release. **Re-check payment state under a row
+lock before cancelling** — the gap between selecting and cancelling is exactly
+where a late webhook lands, and cancelling a paid order is far worse than
+leaving one stranded. Note the two-layer hold: a Redis cart-hold at add-to-cart
+*and* the DB reservation at checkout; `create_from_cart` must `release_cart()`
+once the DB reservation takes over or every completed order double-holds until
+TTL. Guarded by `orders/tests/test_expire_pending.py`.
+
 **Landmine — a hook with subscribers but no producer is invisible dead weight
 (and arms a bug).** Three shipped this way: `PRODUCT_CALCULATE_PRICE` (2
 subscribers, 0 callers — every merchant pricing rule silently inert),

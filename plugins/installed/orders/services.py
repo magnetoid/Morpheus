@@ -607,6 +607,19 @@ class OrderService:
             MorpheusEvents.ORDER_RESERVE_STOCK, value=0, order=order, raise_errors=True
         )
 
+        # The DB reservation above now owns these units, so drop the Redis
+        # cart-hold taken at add-to-cart — otherwise the same stock is held
+        # twice until the hold's TTL lapses, and `_available()` under-reports
+        # for every completed checkout. The ACP path already did this
+        # (agentic_checkout/views.py); the web path never did. Fail-soft: the
+        # hold expires on its own, and an order must never fail over cleanup.
+        try:
+            from plugins.installed.inventory.cart_reservations import release_cart
+
+            release_cart(str(cart.id))
+        except Exception:  # noqa: BLE001
+            logger.debug('orders: cart-hold release skipped', exc_info=True)
+
         hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)
         return order
 
