@@ -90,7 +90,27 @@ aborts checkout. All money/agent-safety suites green.
 
 ---
 
-## Phase P1 — Storefront slot-render repair (highest visibility) · MINOR
+## Phase P1 — Storefront slot-render repair (highest visibility) · MINOR — **SHIPPED v0.37.0**
+
+**Audit corrections found during execution** (the audit grepped only `themes/`,
+which was too narrow — recorded so the numbers in this doc stay honest):
+- `auth_login_extra` was **never dead** — it renders in
+  `core/auth/templates/account/otp_request.html:34`. Not a plugin-only surface.
+- `journal` is **not a bug**: `journal/blocks/post.html` is a complete
+  alternative post renderer (takes `post`+`blocks`) while dot_books renders
+  posts itself from `entry`. Emitting it would double-render, and render empty.
+  Allow-listed with a reason.
+- `home_above_grid` is contributed by **dynamics via a loop** over
+  `SLOT_CHOICES`, which a source grep misses entirely — the parity test
+  therefore reads the **runtime registry**, not `plugin.py` text. dot_books
+  deliberately dropped this slot (hero leads the page), so the real defect was
+  that Autopilot *defaulted* to it: every new store auto-provisioned an
+  invisible block. Fixed at the default, not the theme.
+- So **4** slots were genuinely dead, not 6 — but they covered **11 plugins**:
+  brand_kit + motion (`global_head`), checkout_experience + post_checkout_upsell
+  + discovery_quiz + rails + referrals + smart_shipping (`checkout_extra`),
+  media_3d + ugc_reviews (`pdp_below_gallery`), referrals + returns_portal
+  (`account_summary_extra`).
 
 **The single biggest honesty gap:** `dot_books` renders 13 slots, but 6 slots
 that ~12 plugins contribute to have **zero render sites in the tree**:

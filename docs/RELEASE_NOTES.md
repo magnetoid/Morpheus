@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.37.0 — 2026-08-10
+
+**Storefront slot-render repair (P1)**
+
+- Four contributed storefront slots had no render point anywhere, so eleven plugins' surfaces were invisible to customers: brand_kit's design tokens and motion's animation CSS never reached <head>; six plugins' checkout surfaces, media_3d's 3D/AR viewer, ugc_reviews' photo strip, and the referrals/returns_portal account panels all silently dropped.
+- global_head now renders last in <head> (so tokens override theme defaults), checkout_extra renders in both the multi-step and one-page checkout, pdp_below_gallery renders with the product gallery, and account_summary_extra renders below the account tiles.
+- Autopilot no longer provisions blocks into a slot the theme does not render: it defaulted to home_above_grid, which dot_books deliberately dropped, so every new store got an invisible merchandising block.
+- New slot-render parity test reads the runtime registry (a source grep misses dynamics, which registers slots in a loop) and fails the build if any contributed slot has nowhere to render. Intentional exceptions are allow-listed with a stated reason and checked for staleness.
+
 ## v0.36.0 — 2026-08-10
 
 **Agent-safety + money-correctness (P0)**

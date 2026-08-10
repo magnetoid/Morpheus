@@ -59,6 +59,12 @@
         <p class="title">Sign out</p>
       </a>
     </div>
+    {% comment %}
+      Full-width account surfaces below the tile grid — referrals' invite
+      panel, returns_portal's status strip. Distinct from `account_nav`,
+      which contributes a TILE inside the grid above.
+    {% endcomment %}
+    {% storefront_blocks "account_summary_extra" %}
   </div>
 </section>
 <style>

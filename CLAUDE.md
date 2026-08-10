@@ -161,6 +161,23 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
+The plugin is enabled, its tests pass, its block renders fine in isolation — and
+the merchant sees nothing, with no error anywhere. This had happened four times
+over by v0.37 (`global_head`, `checkout_extra`, `pdp_below_gallery`,
+`account_summary_extra` — eleven plugins invisible, including brand_kit's design
+tokens never reaching `<head>`). Adding a slot means adding **both** the
+contribution and a `{% storefront_blocks "<slot>" %}` emit. Enforced by
+`core/tests/test_slot_parity.py`, which reads the **runtime registry** — never
+grep `plugin.py` for slots, because dynamics registers one per `SLOT_CHOICES`
+entry inside a loop and a text search misses all of them. A slot the active theme
+deliberately declines (dot_books drops `home_above_grid`; `journal` is an
+alternative whole-post renderer) goes in `_INTENTIONALLY_UNRENDERED` **with a
+reason**, and a merchant-selectable/auto-provisioned slot must always render
+(Autopilot defaulted to a dropped slot, so every new store got an invisible
+block). Also: assert a **contribution-specific marker** when testing a render —
+`'<style' in head` passes on the theme's own CSS and proves nothing.
+
 **Landmine — a tender is not a discount: refunds must re-credit it.** Gift cards
 and loyalty points are folded into `Order.discount_total`, and
 `RefundService._compute_refund` nets them back **out** of the cash refund (the

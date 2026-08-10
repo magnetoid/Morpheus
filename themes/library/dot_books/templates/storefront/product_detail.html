@@ -51,6 +51,11 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
            no-JS baseline; the small inline script enhances. -->
       <div>
         {% include "product_gallery/_pdp_hero_slider.html" with product=product images=images videos=videos alt=product.name %}
+        {% comment %}
+        Media that belongs WITH the gallery rather than below the fold —
+        media_3d's 3D/AR viewer and ugc_reviews' customer-photo strip.
+        {% endcomment %}
+        {% storefront_blocks "pdp_below_gallery" %}
       </div>
 
       <!-- Details -->

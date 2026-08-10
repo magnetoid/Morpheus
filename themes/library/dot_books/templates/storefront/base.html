@@ -662,6 +662,14 @@
   window.__motion = { animate, stagger };
   window.dispatchEvent(new CustomEvent('motion:ready'));
 </script>
+
+{% comment %}
+Plugin-contributed <head> content — brand_kit's design tokens (palette +
+typography the rest of the surface runs on) and motion's animation CSS both
+arrive here. Must stay LAST in <head> so tokens override the theme's own
+defaults.
+{% endcomment %}
+{% storefront_blocks "global_head" %}
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>

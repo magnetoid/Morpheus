@@ -23,7 +23,11 @@ import logging
 logger = logging.getLogger('morpheus.dynamics')
 
 # The slots Autopilot auto-provisions — the two highest-intent surfaces.
-_DEFAULT_SLOTS = ['home_above_grid', 'pdp_below_form']
+# These MUST be slots the active theme actually renders, or zero-config
+# merchandising provisions a block that silently shows nothing. `home_above_grid`
+# was the default until v0.36 even though dot_books deliberately dropped that
+# slot (its hero leads the page), so every new store got an invisible block.
+_DEFAULT_SLOTS = ['home_below_grid', 'pdp_below_form']
 _FEATURE_TOP_N = 4
 
 

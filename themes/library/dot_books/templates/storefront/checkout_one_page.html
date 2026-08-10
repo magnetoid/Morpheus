@@ -220,6 +220,13 @@
   </div>
 </section>
 
+{% comment %}
+Plugin-contributed checkout surfaces (trust badges, shipping upgrades,
+referral prompts). Same slot as the multi-step checkout so a contribution
+renders in whichever flow the merchant has active.
+{% endcomment %}
+{% storefront_blocks "checkout_extra" %}
+
 <style>
   @media (max-width: 720px) {
     section .wrap { grid-template-columns: 1fr !important; }

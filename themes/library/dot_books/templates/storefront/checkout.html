@@ -154,6 +154,13 @@
   </div>
 </section>
 
+{% comment %}
+Plugin-contributed checkout surfaces — trust badges, shipping upgrades,
+referral prompts, quiz nudges. Contributed via StorefrontBlock(slot=
+'checkout_extra'), so a disabled plugin drops its block automatically.
+{% endcomment %}
+{% storefront_blocks "checkout_extra" %}
+
 <style>
   /* Form layout — visible labels above inputs (WCAG 2.2 AA pattern;
      placeholder-as-label is an anti-pattern that disappears on type). */
