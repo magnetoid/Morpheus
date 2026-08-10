@@ -75,6 +75,7 @@ class AttributeValueType:
 
 
 from core.graphql.types import MoneyType  # noqa: E402 — deliberate late import
+from core.pricing import apply_price_filter  # noqa: E402 — same late-import block
 
 
 @strawberry_django.type(models.Collection)
@@ -364,10 +365,12 @@ class ProductType:
                 if cheapest is None or ep.amount < cheapest.amount:
                     cheapest = ep
             if cheapest is not None:
-                return MoneyType(amount=str(cheapest.amount), currency=str(cheapest.currency))
+                adj = apply_price_filter(cheapest, product=self)
+                return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
         own = self.price
         if own:
-            return MoneyType(amount=str(own.amount), currency=str(own.currency))
+            adj = apply_price_filter(own, product=self)
+            return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
         return MoneyType(amount='0', currency='USD')
 
     @strawberry.field(

@@ -453,6 +453,10 @@ class PaymentService:
 
         # Fire AFTER the transaction commits so subscribers see the new
         # row state and don't have to worry about partial writes.
+        # PAYMENT_CAPTURED had subscribers (webhooks_ui's merchant fan-out,
+        # analytics) but no producer, so a merchant who configured a
+        # `payment.captured` webhook never received one.
+        hook_registry.fire(MorpheusEvents.PAYMENT_CAPTURED, payment=tx, order=order)
         hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
 
     @classmethod

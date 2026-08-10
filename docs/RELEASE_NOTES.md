@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.38.0 — 2026-08-10
+
+**Dead hooks wired: pricing seam, workflow triggers, payment.captured (P2)**
+
+- PRODUCT_CALCULATE_PRICE now actually fires. It had two subscribers (AI dynamic pricing, merchant pricing Functions) and zero callers, so every pricing rule a merchant configured was silently inert. Fired on both the displayed price and the charged price through one guarded core helper, so the two cannot drift — a shopper can never be quoted one price and billed another.
+- A broken, hostile, or careless pricing rule cannot break a product page or a cart-add: a non-Money return, a negative price, or a currency swap is logged and ignored, and the original price stands.
+- Two workflow triggers pointed at events that do not exist (customer.created, agent.run_failed), so any workflow built on them was bound to a listener nothing ever fired. Renamed to customer.registered / agent.run.failed with a data migration that repoints existing workflows, and inventory.overstock_detected is now selectable.
+- payment.captured is fired at capture by both Stripe and PayPal. It had subscribers — the merchant webhook fan-out and analytics — but no producer, so a merchant who configured a payment.captured webhook never received one.
+- Removed the orders subscriber for payment.captured: the gateways already confirm the order directly, so it would have re-run a pending-only transition and raised on every already-confirmed order the moment the event started firing.
+
 ## v0.37.0 — 2026-08-10
 
 **Storefront slot-render repair (P1)**

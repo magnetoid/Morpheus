@@ -161,6 +161,28 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — a hook with subscribers but no producer is invisible dead weight
+(and arms a bug).** Three shipped this way: `PRODUCT_CALCULATE_PRICE` (2
+subscribers, 0 callers — every merchant pricing rule silently inert),
+`PAYMENT_CAPTURED` (merchant webhook fan-out + analytics subscribed, nothing
+fired), and `orders.on_payment_captured`, which was *worse than dead*: the
+gateways already confirm directly, so the day anyone fired the event it would
+re-run a `source='pending'` transition and raise on every confirmed order. When
+adding an event, wire **both ends** in the same change, and when you find a
+never-fired event, decide deliberately — fire it or delete the subscriber, never
+leave it armed. `grep -rn EVENT_NAME | grep -c fire` is the cheap check.
+
+**Landmine — a price seam must fire on BOTH the displayed and charged price.**
+`PRODUCT_CALCULATE_PRICE` is applied in exactly two places — catalog's GraphQL
+`Product.price` (display) and orders' `_resolve_unit_price` (charge) — and both
+go through `core/pricing.py:apply_price_filter` so validation can't drift.
+Fire only one and the shopper is quoted $8 and billed $10. The helper lives in
+**core** because a shared helper in either plugin would be a plugin→plugin
+import. It is fail-soft in every direction (non-`Money`, negative, currency
+swap → keep the original): a merchant's pricing rule is untrusted input on the
+money path, and a currency swap would breach the single-currency cart invariant.
+Guarded by `core/tests/test_price_filter.py`.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

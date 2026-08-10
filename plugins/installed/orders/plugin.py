@@ -19,7 +19,13 @@ class OrdersPlugin(Plugin):
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.orders.graphql.queries')
         self.register_graphql_extension('plugins.installed.orders.graphql.mutations')
-        self.register_hook('payment.captured', self.on_payment_captured, priority=10)
+        # NB: no PAYMENT_CAPTURED subscriber here. The gateways confirm the
+        # order directly at capture (payments/services/stripe.py,
+        # paypal.py — both guarded on `status == 'pending'`), so a second
+        # subscriber calling confirm_order() would re-run a transition whose
+        # source is 'pending' and raise on every already-confirmed order. It sat
+        # here unfired (and therefore harmless) until v0.38; removed rather than
+        # left armed for whoever first fires the event.
         # NOTE: the order-confirmation email is owned solely by the core
         # transactional spine (core/emails/handlers.on_order_placed) — sent async
         # on commit with retries. This plugin no longer subscribes ORDER_PLACED
@@ -108,11 +114,6 @@ class OrdersPlugin(Plugin):
             schema=self.get_config_schema(),
             category='general',
         )
-
-    def on_payment_captured(self, payment, **kwargs):
-        from plugins.installed.orders.services import OrderService  # noqa: PLC0415
-
-        OrderService.confirm_order(payment.order)
 
     def on_customer_login(self, customer=None, request=None, **kwargs):
         """CUSTOMER_LOGIN: adopt/merge the anonymous-session cart onto the

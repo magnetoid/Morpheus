@@ -300,6 +300,8 @@ def mark_order_paid(paypal_order_id: str) -> bool:
         else:
             order.save(update_fields=['payment_status'])
 
-    # Fire AFTER commit so subscribers see the new row state.
+    # Fire AFTER commit so subscribers see the new row state. PAYMENT_CAPTURED
+    # had subscribers but no producer until v0.38 (see the Stripe path).
+    hook_registry.fire(MorpheusEvents.PAYMENT_CAPTURED, payment=tx, order=order)
     hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
     return True

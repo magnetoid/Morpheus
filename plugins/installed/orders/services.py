@@ -16,6 +16,7 @@ from decimal import Decimal
 from django.db import transaction
 from djmoney.money import Money
 
+from core.pricing import apply_price_filter
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.orders.models import Cart, CartItem, Order, OrderItem
@@ -101,7 +102,9 @@ class CartService:
         if variant is not None and not getattr(variant, 'is_active', True):
             raise ValueError('Variant is not available.')
         target = variant or product
-        unit_price = _resolve_unit_price(target, currency, fallback=product)
+        unit_price = _resolve_unit_price(
+            target, currency, fallback=product, customer=getattr(cart, 'customer', None)
+        )
 
         # Single-currency cart invariant. calculate_cart_breakdown sums the
         # subtotal against the FIRST line's currency label, so a cart mixing
@@ -220,15 +223,16 @@ def _is_inventoried(product, variant) -> bool:
     return getattr(variant, 'requires_shipping', True) is not False
 
 
-def _resolve_unit_price(target, currency: str | None, *, fallback) -> Money:
+def _resolve_unit_price(target, currency: str | None, *, fallback, customer=None) -> Money:
     """Return a ``Money`` honoring ``target.localized_prices[currency]``
-    when present, else the default MoneyField price."""
+    when present, else the default MoneyField price — then let the
+    ``PRODUCT_CALCULATE_PRICE`` filter adjust it."""
     default_price = (
         target.effective_price if hasattr(target, 'effective_price') else target.price
     ) or fallback.price
 
     if not currency:
-        return default_price
+        return apply_price_filter(default_price, product=fallback, customer=customer)
 
     overrides = getattr(target, 'localized_prices', None) or {}
     raw = overrides.get(currency) or overrides.get(currency.upper())
@@ -237,12 +241,13 @@ def _resolve_unit_price(target, currency: str | None, *, fallback) -> Money:
         overrides = getattr(fallback, 'localized_prices', None) or {}
         raw = overrides.get(currency) or overrides.get(currency.upper())
     if raw is None:
-        return default_price
+        return apply_price_filter(default_price, product=fallback, customer=customer)
     try:
-        return Money(Decimal(str(raw)), currency.upper())
+        localized = Money(Decimal(str(raw)), currency.upper())
     except Exception:  # noqa: BLE001 — bad data shouldn't break checkout
         logger.warning('orders: malformed localized_prices entry %r=%r', currency, raw)
-        return default_price
+        return apply_price_filter(default_price, product=fallback, customer=customer)
+    return apply_price_filter(localized, product=fallback, customer=customer)
 
 
 class OrderService:

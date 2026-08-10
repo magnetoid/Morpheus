@@ -20,9 +20,10 @@ TRIGGER_CHOICES = [
     ('return.refunded', 'Return refunded'),
     ('product.low_stock', 'Product low stock'),
     ('product.out_of_stock', 'Product out of stock'),
-    ('customer.created', 'Customer created'),
+    ('customer.registered', 'Customer registered'),
     ('cart.abandoned', 'Cart abandoned'),
-    ('agent.run_failed', 'Agent run failed'),
+    ('agent.run.failed', 'Agent run failed'),
+    ('inventory.overstock_detected', 'Inventory overstock detected'),
 ]
 
 # Action kinds the engine knows how to execute. v1 list — extend in
