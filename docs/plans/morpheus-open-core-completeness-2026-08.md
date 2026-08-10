@@ -200,12 +200,22 @@ smoked on the compose stack (CELERY_TASK_ALWAYS_EAGER only covers tests).
 Per the "maximal build-out" decision: **build, don't amputate.** One deploy per
 sub-batch.
 
-### P4a — Subscriptions actually charge
+### P4a — Subscriptions actually charge — **PART 1 SHIPPED v0.40.0**
 `subscriptions/views_storefront.py:54` creates active/trialing subs without
 payment; `billing/stripe_adapter.py:157` `start_subscription` is dead code;
 webhook reconciler (`webhooks.py:33`) can never fire; unpaid members get the
 member discount (@ priority 40).
 
+**Part 1 (shipped):** the entitlement gate. The audit surfaced this as "unpaid
+members get the discount"; in execution it proved to be a **live, exploitable
+revenue leak** — any logged-in customer could POST `/membership/subscribe/` and
+take a paid plan's member discount forever, having paid nothing. Fixed by
+gating perks on *evidence the money moved* (free plan / provider subscription /
+paid invoice) in one place, which also retroactively de-entitles rows already
+minted the wrong way with no data migration; and the signup view now refuses a
+paid plan rather than minting a membership that entitles nobody.
+
+**Part 2 (remaining):** the Stripe billing flow —
 - Wire `subscribe_view` → payment collection (SetupIntent) →
   `StripeSubscriptionAdapter.start_subscription` against
   `Plan.provider_price_id`; create local sub in `state='pending'` and let

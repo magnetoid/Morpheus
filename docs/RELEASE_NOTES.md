@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.40.0 — 2026-08-10
+
+**Membership entitlement requires proof of payment (P4a part 1)**
+
+- SECURITY/REVENUE: any logged-in customer could POST /membership/subscribe/ and become a member of a PAID plan without paying — the view created the subscription in an active state and never touched payment — then take that plan's member discount off every order, forever. Reported by the completeness audit; the endpoint was live.
+- Entitlement no longer trusts the subscription's state string. A member perk now requires evidence the plan was actually paid for: the plan is free, a payment-provider subscription exists, or a paid invoice is on file. This also de-entitles any row already created the old way, with no data migration, and means the next code path that writes 'active' cannot silently reopen the hole.
+- The signup view now refuses a paid plan outright instead of minting a membership that entitles nobody. Free plans still activate immediately. Online sign-up for paid plans returns with the Stripe billing flow.
+
 ## v0.39.0 — 2026-08-10
 
 **Stranded stock reservations released (P3)**

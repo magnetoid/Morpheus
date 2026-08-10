@@ -30,7 +30,17 @@ def membership_view(request):
 @login_required
 @require_http_methods(['POST'])
 def subscribe_view(request):
-    """Subscribe the logged-in customer to a plan (manual provider → active)."""
+    """Start a membership.
+
+    A FREE plan activates immediately — there is nothing to charge. A PAID plan
+    must not be activated here: this view had no payment leg at all, so it
+    handed out memberships for nothing (the cart discount now independently
+    requires evidence of payment, see membership.entitling_subscriptions). Until
+    the card-collection flow lands, a paid plan is refused honestly rather than
+    minting a row that says "member" and entitles nobody.
+    """
+    from decimal import Decimal
+
     from django.utils import timezone
 
     from plugins.installed.subscriptions.models import Plan, Subscription
@@ -47,11 +57,18 @@ def subscribe_view(request):
         messages.info(request, 'You already have an active membership.')
         return redirect('/membership/')
 
-    state = 'trialing' if plan.trial_days else 'active'
+    if Decimal(str(plan.price.amount)) > 0:
+        messages.error(
+            request,
+            f'{plan.name} is a paid plan and online sign-up is not available yet — '
+            'please contact us and we will set it up for you.',
+        )
+        return redirect('/membership/')
+
     Subscription.objects.create(
         customer=request.user,
         plan=plan,
-        state=state,
+        state='trialing' if plan.trial_days else 'active',
         current_period_start=timezone.now(),
     )
     messages.success(

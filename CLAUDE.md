@@ -161,6 +161,20 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — never infer entitlement from a status string.** A perk gate that
+reads `subscription.state in ('active','trialing')` trusts whatever wrote that
+string. The storefront subscribe view wrote `'active'` with **no payment leg at
+all**, so any logged-in customer could POST `/membership/subscribe/` and take
+the member discount off every order forever, having paid nothing (v0.40). The
+rule: gate on **evidence the money moved** — plan is free, a provider
+subscription exists, or a paid invoice is on file — expressed in ONE place
+(`subscriptions/membership.py:entitling_subscriptions`) that every perk surface
+reads. Evidence-based gating also retroactively de-entitles rows already minted
+the wrong way, with no data migration, and stops the next writer of `'active'`
+from silently reopening it. The same shape applies to any future entitlement
+(seats, tiers, feature flags). Guarded by
+`subscriptions/tests/test_entitlement.py`.
+
 **Landmine — a reservation needs an expiry, not just a release path.** Stock is
 reserved by the fail-closed `ORDER_RESERVE_STOCK` gate and released on
 `ORDER_CANCELLED` — but nothing *cancelled* an unpaid order, so an abandoned or

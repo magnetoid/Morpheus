@@ -26,6 +26,20 @@ def _plan(discount=20, **kw):
     return Plan.objects.create(**defaults)
 
 
+def _paid_sub(customer, plan, state='active'):
+    """A subscription with EVIDENCE OF PAYMENT.
+
+    `member_discount_percent` requires proof the plan was paid for, not just an
+    entitling state — a bare `state='active'` row is exactly what the old
+    unpaid signup path minted and must NOT entitle (see test_entitlement.py).
+    A provider subscription id is the cheapest realistic evidence: it means
+    Stripe holds a verified card.
+    """
+    return Subscription.objects.create(
+        customer=customer, plan=plan, state=state, provider_subscription_id='sub_test'
+    )
+
+
 def _breakdown(subtotal='100.00'):
     z = Money(Decimal('0'), 'USD')
     sub = Money(Decimal(subtotal), 'USD')
@@ -50,12 +64,12 @@ class MemberDiscountHelperTests(TestCase):
         self.assertEqual(member_discount_percent(self.cust), 0)
 
     def test_best_active_discount(self):
-        Subscription.objects.create(customer=self.cust, plan=_plan(15, slug='a'), state='active')
-        Subscription.objects.create(customer=self.cust, plan=_plan(25, slug='b'), state='active')
+        _paid_sub(self.cust, _plan(15, slug='a'))
+        _paid_sub(self.cust, _plan(25, slug='b'))
         self.assertEqual(member_discount_percent(self.cust), 25)
 
     def test_cancelled_subscription_ignored(self):
-        Subscription.objects.create(customer=self.cust, plan=_plan(30, slug='c'), state='cancelled')
+        _paid_sub(self.cust, _plan(30, slug='c'), state='cancelled')
         self.assertEqual(member_discount_percent(self.cust), 0)
 
 
@@ -66,7 +80,7 @@ class CartDiscountHookTests(TestCase):
         )
 
     def test_applies_member_discount(self):
-        Subscription.objects.create(customer=self.cust, plan=_plan(20), state='active')
+        _paid_sub(self.cust, _plan(20))
         out = apply_member_discount(_breakdown('100.00'), customer=self.cust)
         self.assertEqual(out['discount'], Money(Decimal('20.00'), 'USD'))
         self.assertEqual(out['total'], Money(Decimal('80.00'), 'USD'))
@@ -78,7 +92,7 @@ class CartDiscountHookTests(TestCase):
         self.assertNotIn('member_discount_percent', out['meta'])
 
     def test_stacks_on_existing_discount(self):
-        Subscription.objects.create(customer=self.cust, plan=_plan(10), state='active')
+        _paid_sub(self.cust, _plan(10))
         bd = _breakdown('100.00')
         bd['discount'] = Money(Decimal('5.00'), 'USD')  # e.g. a coupon
         bd['total'] = Money(Decimal('95.00'), 'USD')
@@ -100,13 +114,24 @@ class MembershipPageTests(TestCase):
         r = Client().post('/membership/subscribe/', {'plan_id': str(plan.id)})
         self.assertEqual(r.status_code, 302)  # redirect to login
 
-    def test_logged_in_subscribe_creates_membership(self):
-        plan = _plan()
+    def test_logged_in_subscribe_creates_free_membership(self):
+        # A FREE plan activates immediately — there is nothing to charge.
+        plan = _plan(price=Money(0, 'USD'))
         c = Client()
         cust = get_user_model().objects.create_user(username='j', email='j@x.test', password='pw')
         c.force_login(cust)
         c.post('/membership/subscribe/', {'plan_id': str(plan.id)})
         self.assertTrue(Subscription.objects.filter(customer=cust, state='active').exists())
+
+    def test_logged_in_subscribe_refuses_a_paid_plan(self):
+        # This path has no payment leg, so it must not hand out a paid
+        # membership. It used to create state='active' unconditionally.
+        plan = _plan()  # $5/mo
+        c = Client()
+        cust = get_user_model().objects.create_user(username='k', email='k@x.test', password='pw')
+        c.force_login(cust)
+        c.post('/membership/subscribe/', {'plan_id': str(plan.id)})
+        self.assertFalse(Subscription.objects.filter(customer=cust).exists())
 
 
 class PlanManagementTests(TestCase):
