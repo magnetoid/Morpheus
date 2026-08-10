@@ -2,7 +2,7 @@
 <section class="morpheus-quiz-results" aria-label="Your matches">
   <h2>{% trans 'Your matches' %}</h2>
   {% if result_template.intro %}<p>{{ result_template.intro }}</p>{% endif %}
-  <a class="morpheus-quiz-results__cta" href="/collections/{{ result_template.category_slug }}/">
+  <a class="morpheus-quiz-results__cta" href="/collection/{{ result_template.category_slug }}/">
     {{ result_template.cta_label|default:'See your matches' }}
   </a>
 </section>

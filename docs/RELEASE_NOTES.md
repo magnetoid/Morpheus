@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.41.0 — 2026-08-10
+
+**Backend settings now reach the storefront; dead customer links fixed (P-wiring)**
+
+- SECURITY-ADJACENT: maintenance mode did nothing. The Storefront settings panel has offered a maintenance switch with no consumer at all — a merchant could flip it and the shop stayed wide open. It now returns 503 with the merchant's message, while staff keep browsing and the dashboard, APIs, payment webhooks and health probes are never gated.
+- Brand-kit design tokens never reached the browser. The token block shipped reading values nothing supplied, so every palette and typeface a merchant configured rendered as a hardcoded default on every page. A contributed context processor now feeds the active token set — and it vanishes cleanly when the plugin is disabled.
+- Store identity is read from the row the merchant edits, not from environment variables: store name, logo and favicon now show on the storefront instead of being silently ignored. An unconfigured install is unchanged.
+- Shelf prices could disagree with the product page. Dynamic and rule-based pricing was applied on the product page and at checkout but not on listing cards or the home page, so an active pricing rule quoted one price on the shelf and another at the till. All three now go through the same seam.
+- Every customer who rated an order saw "link expired": the NPS thank-you route was shadowed by the token route, so the post-survey redirect resolved back into the survey view and failed signature verification.
+- Fixed dead customer-facing links: the lookbook "See the full look" link 404'd because the page it advertised was never routed (now built), two collection links used a plural path that does not exist, and the theme's newsletter section posted to a non-existent URL.
+- Newsletter signups become CRM leads again. The capture lived in a storefront view that a plugin route shadowed, so it never ran; it now travels on the event bus, where it works regardless of routing and stops cleanly when CRM is disabled.
+
 ## v0.40.0 — 2026-08-10
 
 **Membership entitlement requires proof of payment (P4a part 1)**

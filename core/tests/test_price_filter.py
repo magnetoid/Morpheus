@@ -99,3 +99,62 @@ class DisplayMatchesChargeTests(TestCase):
         with _Sub(lambda value, **kw: _usd(8)):
             shown = (wrapped or fn)(self.product)
         self.assertEqual(str(shown.amount), '8')
+
+
+class ListingMatchesPdpTests(TestCase):
+    """The shelf must quote the same price as the PDP and the cart.
+
+    v0.38 wired the seam into the PDP resolver and the charge path and claimed
+    they could not diverge — but the listing surfaces render
+    `Product.display_price` straight off the ORM row, which never runs the
+    filter. With a pricing rule active the shelf showed the list price while
+    the PDP and cart showed the adjusted one.
+    """
+
+    def setUp(self):
+        from plugins.installed.catalog.models import Product
+
+        self.product = Product.objects.create(
+            name='Shelf Book', slug='shelf-book', sku='SB-1', status='active', price=10
+        )
+
+    def _card_price(self):
+        from django.template import Context, Template
+
+        tpl = Template('{% load pricing %}{% storefront_price product as p %}{{ p.amount }}')
+        return Decimal(tpl.render(Context({'product': self.product})).strip())
+
+    def test_card_price_uses_the_seam(self):
+        with _Sub(lambda value, **kw: _usd(8)):
+            self.assertEqual(self._card_price(), Decimal('8'))
+
+    def test_the_real_product_card_template_uses_the_seam(self):
+        """Render the actual card, not a stand-in.
+
+        Testing the tag alone passes even if the template stops calling it —
+        which is exactly the no-op a mutation check caught here. This renders
+        `_product_card.html` itself so removing the tag fails the build.
+        """
+        from django.template.loader import render_to_string
+
+        with _Sub(lambda value, **kw: _usd(8)):
+            html = render_to_string('storefront/_product_card.html', {'product': self.product})
+        self.assertIn('8', html)
+        self.assertNotIn('$10', html)
+
+    def test_card_price_unfiltered_without_a_rule(self):
+        self.assertEqual(self._card_price(), Decimal('10'))
+
+    def test_home_serialisation_uses_the_seam(self):
+        from plugins.installed.storefront.views.home import _serialize_product
+
+        with _Sub(lambda value, **kw: _usd(8)):
+            self.assertEqual(_serialize_product(self.product)['price']['amount'], 8.0)
+
+    def test_graphql_dict_is_not_double_filtered(self):
+        # The PDP/home dict shape is already filtered upstream.
+        from django.template import Context, Template
+
+        tpl = Template('{% load pricing %}{% storefront_price product as p %}{{ p }}')
+        out = tpl.render(Context({'product': {'price': '£9'}})).strip()
+        self.assertEqual(out, '£9')

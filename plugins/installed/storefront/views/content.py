@@ -24,6 +24,24 @@ _FAVICON_SVG = (
 
 
 def favicon(request):
+    """Serve the merchant's favicon when they've uploaded one.
+
+    Settings → General has a favicon field that nothing read — every store
+    served the hardcoded dot_books mark regardless. Redirects to the uploaded
+    file (so it is served by the normal media pipeline) and falls back to the
+    built-in SVG.
+    """
+    from django.shortcuts import redirect
+
+    from core.models import StoreSettings
+
+    try:
+        img = StoreSettings.get('favicon')
+        if img:
+            return redirect(img.url)
+    except Exception:  # noqa: BLE001 — never 500 a favicon request
+        pass
+
     resp = HttpResponse(_FAVICON_SVG, content_type='image/svg+xml')
     resp['Cache-Control'] = 'public, max-age=604800, immutable'
     return resp
@@ -91,41 +109,10 @@ def about(request):
     )
 
 
-def newsletter_subscribe(request):
-    """Capture a footer newsletter signup as a CRM Lead.
-    JSON when called via fetch; HTML thanks page otherwise."""
-    from django.http import HttpResponseNotAllowed, JsonResponse
-
-    if request.method != 'POST':
-        return HttpResponseNotAllowed(['POST'])
-
-    email = (request.POST.get('email') or '').strip().lower()
-    is_xhr = request.headers.get(
-        'X-Requested-With', ''
-    ).lower() == 'fetch' or 'application/json' in request.headers.get('Accept', '')
-
-    if not email or '@' not in email:
-        if is_xhr:
-            return JsonResponse({'ok': False, 'error': 'Please enter a valid email.'}, status=400)
-        return render(
-            request,
-            'storefront/newsletter_thanks.html',
-            {
-                'email': '',
-                'error': 'Please enter a valid email.',
-            },
-        )
-
-    try:
-        from plugins.installed.crm.services import upsert_lead
-
-        upsert_lead(email=email, source='newsletter')
-    except Exception:  # noqa: BLE001 — CRM is optional
-        pass
-
-    if is_xhr:
-        return JsonResponse({'ok': True, 'email': email})
-    return render(request, 'storefront/newsletter_thanks.html', {'email': email, 'error': ''})
+# NOTE: `newsletter_subscribe` lived here and was dead code — the newsletter
+# plugin owns /newsletter/subscribe/ and registers earlier, so this view never
+# ran and its CRM lead capture never happened. The capture now rides the
+# NEWSLETTER_SUBSCRIBED event, which crm subscribes to (v0.41).
 
 
 def contact(request):

@@ -33,7 +33,10 @@ class AccountViewsSplitTests(TestCase):
             'account_orders',
             'vendors_directory',
             'quick_search',
-            'newsletter_subscribe',
+            # NB `newsletter_subscribe` was here until v0.41. It was removed
+            # from the package because the view was dead: the newsletter plugin
+            # owns /newsletter/subscribe/ and registers earlier, so storefront's
+            # copy never ran. urls.py no longer references it.
         ):
             self.assertTrue(
                 hasattr(views, name),

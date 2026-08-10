@@ -1,0 +1,38 @@
+{% extends "storefront/base.html" %}
+{% load morph seo %}
+{% block title %}{{ look.title }} — dot books{% endblock %}
+{% block seo %}{% seo_meta fallback_title=look.title fallback_description=look.description %}{% endblock %}
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 1100px;">
+    <p class="meta" style="margin-bottom: 1.25rem;">
+      <a href="/products/" style="color: var(--muted);">All books</a>
+    </p>
+
+    <header style="max-width: 42rem; margin-bottom: 2.5rem;">
+      <p class="eyebrow">A look</p>
+      <h1 class="display display-l" style="margin: 1rem 0 1rem;">
+        {{ look.title }}<span class="text-accent">.</span>
+      </h1>
+      {% if look.description %}
+      <p class="lede">{{ look.description }}</p>
+      {% endif %}
+    </header>
+
+    {% if look.cover_image %}
+    <img src="{{ look.cover_image }}" alt="" loading="eager"
+         style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 3rem;">
+    {% endif %}
+
+    {% if products %}
+    <div class="grid-books">
+      {% for p in products %}
+        {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="meta">This look is being put together. <a href="/products/" style="text-decoration:underline;">Browse the shelf</a>.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

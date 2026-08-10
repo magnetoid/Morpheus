@@ -31,6 +31,16 @@ class LookbookPlugin(Plugin):
     has_models = True
     requires = ['catalog', 'personalisation']
 
+    def ready(self) -> None:
+        # The look page at /looks/<slug>/ this plugin has always advertised —
+        # in its own description and in the PDP block's "See the full look"
+        # link — but never actually routed, so every such link 404'd.
+        self.register_urls(
+            'plugins.installed.lookbook.urls',
+            prefix='',
+            namespace='lookbook',
+        )
+
     def contribute_storefront_blocks(self) -> list:
         return [
             StorefrontBlock(

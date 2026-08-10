@@ -14,7 +14,12 @@ def _serialize_product(p) -> dict:
     instances for the hero/featured surfaces, which are otherwise fed by
     GraphQL dicts.
     """
-    price = getattr(p, 'price', None)
+    # Same PRODUCT_CALCULATE_PRICE seam the PDP and cart use — the home
+    # merchandising cards would otherwise quote the raw list price while the
+    # PDP quoted the rule-adjusted one.
+    from core.pricing import apply_price_filter
+
+    price = apply_price_filter(getattr(p, 'price', None), product=p)
     compare = getattr(p, 'compare_at_price', None)
     on_sale = bool(
         price and compare and getattr(compare, 'amount', None) and compare.amount > price.amount

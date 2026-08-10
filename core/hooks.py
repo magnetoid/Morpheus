@@ -693,9 +693,15 @@ class MorpheusEvents:
     CATEGORY_UPDATED = 'category.updated'
 
     # ── Customers (fire) ──────────────────────────────────────────────────
-    # CUSTOMER_REGISTERED — kwargs: customer=Customer.
-    # CUSTOMER_LOGIN      — kwargs: customer=Customer.
+    # CUSTOMER_REGISTERED  — kwargs: customer=Customer.
+    # CUSTOMER_LOGIN       — kwargs: customer=Customer.
+    # NEWSLETTER_SUBSCRIBED — kwargs: email=str, source=str, customer=Customer|None.
+    #                        Fired by newsletter.services.subscribe. The lead
+    #                        capture that used to live in a storefront view the
+    #                        newsletter plugin's own route shadowed (so it never
+    #                        ran) now arrives here, where crm subscribes to it.
     CUSTOMER_REGISTERED = 'customer.registered'
+    NEWSLETTER_SUBSCRIBED = 'newsletter.subscribed'
     CUSTOMER_LOGIN = 'customer.login'
     # CUSTOMER_SEGMENT_CHANGED — kwargs: customer=Customer, old=str, new=str.
     #                            Fired by customers.rfm on the nightly recompute

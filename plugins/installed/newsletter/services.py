@@ -46,6 +46,20 @@ def subscribe(email: str, *, source: str = 'popup', customer=None):
         sub.status = 'pending'
         sub.save(update_fields=['status', 'updated_at'])
     _send_confirm(sub)
+
+    # Announce the signup so other plugins can act on it — crm turns it into a
+    # Lead. This capture used to live in a storefront view that the newsletter
+    # plugin's own route shadowed, so it never actually ran; on the bus it works
+    # regardless of which route wins, and disappears if crm is disabled.
+    if created:
+        from morpheus.core import MorpheusEvents, hook_registry
+
+        hook_registry.fire(
+            MorpheusEvents.NEWSLETTER_SUBSCRIBED,
+            email=email,
+            source=source,
+            customer=customer,
+        )
     return sub, created
 
 

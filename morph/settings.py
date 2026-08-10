@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.40.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.41.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -299,6 +299,10 @@ MIDDLEWARE = [
     'core.ratelimit.RateLimitMiddleware',
     'plugins.installed.environments.middleware.EnvironmentMiddleware',
     'plugins.installed.seo.middleware.SeoRedirectMiddleware',
+    # Maintenance mode — must run AFTER AuthenticationMiddleware (it lets staff
+    # through) and before the view is reached. Short-circuits with 503 only for
+    # anonymous storefront traffic; dashboard/API/webhooks/probes are exempt.
+    'plugins.installed.storefront.middleware_maintenance.MaintenanceModeMiddleware',
     'plugins.installed.storefront.middleware.StorefrontCacheControlMiddleware',
     'plugins.installed.analytics.middleware.AnalyticsMiddleware',
     # request_id MUST come before error-capture: process_exception runs in

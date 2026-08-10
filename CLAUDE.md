@@ -161,6 +161,31 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — a settings field with no consumer is a lie, and the merchant can't
+tell.** Three shipped: `maintenance_mode` (flip it, the shop stays open —
+a control shaped like a safety mechanism that does nothing), brand_kit's design
+tokens (the block read `tokens.*` that no view/tag/processor ever supplied, so
+every palette rendered as the hardcoded default), and store identity
+(`core/context_processors.py` read `STORE_NAME` from **env** while the merchant
+edited a `StoreSettings` row). When adding a settings field, wire the consumer
+in the **same change**, or don't add the field. The cheap check:
+`grep -rn '<field_name>' --include='*.py' --include='*.html'` — if the only hit
+is its own declaration, it does nothing. Still-dead knobs are inventoried in
+`docs/plans/` (caching page, `products_per_page`, theme config). Guarded by
+`storefront/tests/test_identity_maintenance.py` +
+`brand_kit/tests/test_tokens_render.py`.
+
+**Landmine — two plugins can register the same URL, and the loser is silent.**
+`get_urlpatterns` mounts in `_topo_sort` order and **first registrant wins**, so
+`newsletter` beat storefront to `/newsletter/subscribe/` and `pwa` beat it to
+`/sw.js` — the losing views became dead code, taking their side effects with
+them (the CRM lead capture simply stopped happening, with nothing to indicate
+it). Also mind `<str:token>` swallowing a sibling literal: `nps/<str:token>/`
+registered before `nps/thanks/` made every NPS submit render "link expired"
+(410). **Order literals before converters, and when adding a root-level route,
+grep for the path first.** Recover a lost side effect on the bus (a hook the
+owner fires) rather than in a view that may be shadowed.
+
 **Landmine — never infer entitlement from a status string.** A perk gate that
 reads `subscription.state in ('active','trialing')` trusts whatever wrote that
 string. The storefront subscribe view wrote `'active'` with **no payment leg at

@@ -1,10 +1,10 @@
-{% load i18n %}<style id="morpheus-brand-tokens" data-token-set="{{ settings.active_token_set|default:'default' }}">
-  /* Design tokens are emitted by the active DesignTokenSet.
-   * This block is intentionally a stub — the active set is
-   * injected server-side from the brand_kit plugin's template
-   * tag in a follow-up render layer. */
+{% load i18n %}<style id="morpheus-brand-tokens" data-token-set="{{ brand_kit_settings.active_token_set|default:'default' }}">
+  /* Design tokens from the active DesignTokenSet, supplied by
+     brand_kit.context_processors.brand_kit_tokens. The |default: values are the
+     built-in palette — used when no token set is active, when a group is
+     unset, or when the plugin is disabled (the processor stops contributing,
+     so this block stops rendering entirely). */
   :root {
-    /* Defaults; overridden by the active set. */
     --morpheus-color-primary: {{ tokens.colors.primary|default:'#111' }};
     --morpheus-color-accent: {{ tokens.colors.accent|default:'#c8a96a' }};
     --morpheus-font-body: {{ tokens.fonts.body|default:'system-ui' }};

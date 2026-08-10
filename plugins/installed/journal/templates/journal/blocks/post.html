@@ -16,7 +16,7 @@
           </a>
         {% endif %}
         {% if block.type == 'collection' and block.data.slug %}
-          <a class="morpheus-journal__collection" href="/collections/{{ block.data.slug }}/">
+          <a class="morpheus-journal__collection" href="/collection/{{ block.data.slug }}/">
             <span>{{ block.data.title|default:block.data.slug }}</span>
           </a>
         {% endif %}

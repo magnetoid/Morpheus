@@ -681,7 +681,7 @@ defaults.
 <!-- Top bar -->
 <header class="topbar">
   <div class="wrap topbar-row">
-    <a href="/" class="wordmark">dot books<span class="dot">.</span></a>
+    <a href="/" class="wordmark">{% if STORE_LOGO_URL %}<img src="{{ STORE_LOGO_URL }}" alt="{{ STORE_NAME }}" style="height:1.6rem;width:auto;vertical-align:middle;">{% elif STORE_NAME %}{{ STORE_NAME }}<span class="dot">.</span>{% else %}dot books<span class="dot">.</span>{% endif %}</a>
     <nav class="nav" aria-label="Primary">
       {% comment %}Menu-driven (dashboard → CMS → Menus, key "header"). Falls back to the built-in nav when no header menu is configured.{% endcomment %}
       {% if header_menu and header_menu.items %}
@@ -940,7 +940,7 @@ defaults.
 <!-- Mobile drawer -->
 <div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
   <div style="display:flex;justify-content:space-between;align-items:center">
-    <a href="/" class="wordmark">dot books<span class="dot">.</span></a>
+    <a href="/" class="wordmark">{% if STORE_LOGO_URL %}<img src="{{ STORE_LOGO_URL }}" alt="{{ STORE_NAME }}" style="height:1.6rem;width:auto;vertical-align:middle;">{% elif STORE_NAME %}{{ STORE_NAME }}<span class="dot">.</span>{% else %}dot books<span class="dot">.</span>{% endif %}</a>
     <button id="drawer-close" class="icon-btn" aria-label="Close">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg>
     </button>
@@ -984,7 +984,7 @@ defaults.
 <footer>
   <div class="wrap grid">
     <div class="col">
-      <a href="/" class="wordmark" style="font-size:1.6rem">dot books<span class="dot">.</span></a>
+      <a href="/" class="wordmark" style="font-size:1.6rem">{% if STORE_LOGO_URL %}<img src="{{ STORE_LOGO_URL }}" alt="{{ STORE_NAME }}" style="height:1.6rem;width:auto;vertical-align:middle;">{% elif STORE_NAME %}{{ STORE_NAME }}<span class="dot">.</span>{% else %}dot books<span class="dot">.</span>{% endif %}</a>
       <p class="lede" style="margin-top:0.85rem; font-size: 1rem;">A quieter shelf for louder books. Independently curated, mostly independent presses, always handpicked.</p>
       <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/">
         {% csrf_token %}

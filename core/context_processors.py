@@ -3,9 +3,51 @@
 from django.conf import settings as django_settings
 
 
-def store_settings(request):
+def _store_identity() -> dict:
+    """Merchant-editable store identity, from the DB row they actually edit.
+
+    Settings → General writes a `StoreSettings` row, but the storefront read
+    these values from env vars — so editing the store name, description, logo or
+    social links changed nothing on the storefront. DB first, env as the
+    fallback so an unconfigured install behaves exactly as before.
+
+    (Currency / language / timezone stay env-driven for now: those need real
+    djmoney / i18n_patterns / TIME_ZONE work, not a context-processor line.
+    Tracked in the localization plan.)
+    """
+    try:
+        from core.models import StoreSettings
+
+        row = StoreSettings.objects.first()
+    except Exception:  # noqa: BLE001 — DB unavailable must not break rendering
+        row = None
+    if row is None:
+        return {}
+
+    def _url(field):
+        img = getattr(row, field, None)
+        try:
+            return img.url if img else ''
+        except Exception:  # noqa: BLE001 — a missing file must not 500 a page
+            return ''
+
     return {
-        'STORE_NAME': django_settings.STORE_NAME,
+        'STORE_NAME': (row.store_name or '').strip(),
+        'STORE_DESCRIPTION': (row.store_description or '').strip(),
+        'STORE_LOGO_URL': _url('logo'),
+        'STORE_FAVICON_URL': _url('favicon'),
+        'STORE_SOCIAL_LINKS': row.social_links if isinstance(row.social_links, dict) else {},
+    }
+
+
+def store_settings(request):
+    identity = _store_identity()
+    return {
+        'STORE_NAME': identity.get('STORE_NAME') or django_settings.STORE_NAME,
+        'STORE_DESCRIPTION': identity.get('STORE_DESCRIPTION', ''),
+        'STORE_LOGO_URL': identity.get('STORE_LOGO_URL', ''),
+        'STORE_FAVICON_URL': identity.get('STORE_FAVICON_URL', ''),
+        'STORE_SOCIAL_LINKS': identity.get('STORE_SOCIAL_LINKS', {}),
         'STORE_CURRENCY': django_settings.STORE_CURRENCY,
         'STORE_COUNTRY': django_settings.STORE_COUNTRY,
         'DEBUG': django_settings.DEBUG,

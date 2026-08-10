@@ -32,6 +32,13 @@ class BrandKitPlugin(Plugin):
     has_models = True
     requires = ['media']
 
+    def ready(self) -> None:
+        # The render layer the token block always assumed existed. Contributed
+        # (not listed in settings.TEMPLATES) so the tokens vanish on disable.
+        from plugins.installed.brand_kit.context_processors import brand_kit_tokens
+
+        self.register_context_processor(brand_kit_tokens)
+
     def contribute_storefront_blocks(self) -> list:
         return [
             StorefrontBlock(

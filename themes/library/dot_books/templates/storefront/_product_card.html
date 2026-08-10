@@ -1,4 +1,4 @@
-{% load morph %}{% load caching %}{% load i18n %}{% load seo %}{% load book_extras %}
+{% load morph %}{% load caching %}{% load i18n %}{% load seo %}{% load book_extras %}{% load pricing %}
 {% comment %}
 Shared product card. Cover + title link to the PDP; an inline Add-to-cart
 form (the global cart-drawer JS in _cart_drawer.html intercepts any
@@ -41,7 +41,10 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
        first_sentence also normalises entities/markup to plain text.{% endcomment %}
     {% if product.short_description %}<p class="book__excerpt">{{ product.short_description|first_sentence }}</p>
     {% elif product.shortDescription %}<p class="book__excerpt">{{ product.shortDescription|first_sentence }}</p>{% endif %}
-    <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if product.display_price %}{{ product.display_price|money }}{% elif product.price %}{{ product.price|money }}{% endif %}</p>
+    {% comment %}Price goes through the PRODUCT_CALCULATE_PRICE seam (storefront_price)
+       so the shelf can never quote a different number than the PDP and cart.{% endcomment %}
+    {% storefront_price product as card_price %}
+    <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if card_price %}{{ card_price|money }}{% endif %}</p>
     <div class="book__actions">
       <form method="post" action="/cart/add/{{ product.id }}/" class="book__add">
         {% csrf_token %}

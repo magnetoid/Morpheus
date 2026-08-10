@@ -40,6 +40,9 @@ class CrmPlugin(Plugin):
         self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=70)
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=70)
         self.register_hook(events.CART_ABANDONED, self.on_cart_abandoned, priority=70)
+        # Newsletter signups become Leads (the capture the shadowed storefront
+        # view was supposed to do and never did).
+        self.register_hook(events.NEWSLETTER_SUBSCRIBED, self.on_newsletter_subscribed, priority=70)
         # Contribute newsletter-signup activity to the dashboard home feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=60)
         self._register_beat_schedule()
@@ -60,6 +63,21 @@ class CrmPlugin(Plugin):
         )
 
     # ── Hooks ─────────────────────────────────────────────────────────────────
+
+    def on_newsletter_subscribed(self, email=None, source='newsletter', **kwargs):
+        """NEWSLETTER_SUBSCRIBED → CRM Lead (idempotent, fail-soft)."""
+        if not email:
+            return
+        try:
+            from plugins.installed.crm.services import upsert_lead
+
+            upsert_lead(email=email, source='newsletter', metadata={'signup_source': source})
+        except Exception as exc:  # noqa: BLE001 — lead capture must never break signup
+            import logging
+
+            logging.getLogger('morpheus.crm').warning(
+                'newsletter lead capture failed for %s: %s', email, exc, exc_info=True
+            )
 
     def on_activity_feed(self, value, limit=20, **kwargs):
         """Fold recent newsletter signups into the dashboard home feed

@@ -20,7 +20,7 @@ Layout:
                    account_return_status / account_credits /
                    order_confirmation
   content.py     — about / contact / journal_index / journal_detail /
-                   newsletter_subscribe / shipping / returns / coming_soon
+                   shipping / returns / coming_soon
   vendor.py      — vendors_directory / vendor_detail
 """
 
@@ -78,7 +78,6 @@ from .content import (
     contact,
     journal_detail,
     journal_index,
-    newsletter_subscribe,
     returns,
     shipping,
 )
@@ -138,7 +137,6 @@ __all__ = [
     'contact',
     'journal_index',
     'journal_detail',
-    'newsletter_subscribe',
     'shipping',
     'returns',
     'coming_soon',

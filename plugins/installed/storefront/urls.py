@@ -58,7 +58,6 @@ urlpatterns = [
     path('marketplace/', vendor_views.marketplace_landing, name='marketplace_landing'),
     path('vendors/', views.vendors_directory, name='vendors'),
     path('vendor/<slug:slug>/', views.vendor_detail, name='vendor_detail'),
-    path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     # Customer account
     path('account/', views.account_home, name='account_home'),
     path('account/profile/', views.account_profile, name='account_profile'),
