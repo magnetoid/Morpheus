@@ -8,7 +8,7 @@ from pathlib import Path
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
 from plugins.base import MorpheusPlugin, PluginConfigurationError
 
@@ -229,6 +229,48 @@ class StorefrontBlocksTagTests(SimpleTestCase):
 
         out = Template("{% load morph %}{% storefront_blocks 'no_such_slot' %}").render(Context({}))
         self.assertEqual(out.strip(), '')
+
+
+class GetConfigSavepointTests(TestCase):
+    """A failed config read must not poison the caller's transaction.
+
+    Asserted structurally — did the read happen inside a savepoint? — rather
+    than behaviourally, because sqlite keeps a transaction usable after a
+    failed statement. The damage only reproduces on Postgres, where it aborts
+    the whole transaction: gdpr.0002 read plugin config before
+    plugins_pluginconfig existed, the error was swallowed here, and Django's
+    own INSERT into django_migrations then died, wedging every fresh deploy.
+    """
+
+    def test_db_error_is_contained_in_a_savepoint(self):
+        from unittest import mock
+
+        from django.db import DatabaseError, transaction
+
+        from plugins.models import PluginConfig
+
+        class P(MorpheusPlugin):
+            name = 'savepoint_probe'
+            label = 'Savepoint Probe'
+            version = '1.0.0'
+
+        plugin = P()
+        real_atomic = transaction.atomic
+        entered = []
+
+        def spy(*args, **kwargs):
+            entered.append(1)
+            return real_atomic(*args, **kwargs)
+
+        with (
+            mock.patch.object(
+                PluginConfig.objects, 'get', side_effect=DatabaseError('no such table')
+            ),
+            mock.patch.object(transaction, 'atomic', spy),
+        ):
+            self.assertEqual(plugin.get_config(), {})
+
+        self.assertTrue(entered, 'get_config() must read inside a savepoint (transaction.atomic)')
 
 
 class ValidateCoreDependencyTests(SimpleTestCase):

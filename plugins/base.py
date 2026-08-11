@@ -241,13 +241,21 @@ class MorpheusPlugin:
 
     def get_config(self) -> dict:
         """Read current config from DB (cached)."""
-        from django.db import DatabaseError
+        from django.db import DatabaseError, transaction
 
         if self._config_cache is None:
             from plugins.models import PluginConfig
 
             try:
-                row = PluginConfig.objects.get(plugin_name=self.name)
+                # Savepoint, not a bare query. On Postgres a failed statement
+                # aborts the WHOLE surrounding transaction, so swallowing the
+                # error below would hand the caller a poisoned transaction in
+                # which every later statement dies with InFailedSqlTransaction.
+                # A data migration read config before plugins_pluginconfig
+                # existed and wedged `migrate` exactly this way; sqlite never
+                # reproduces it, because it doesn't abort on error.
+                with transaction.atomic():
+                    row = PluginConfig.objects.get(plugin_name=self.name)
                 self._config_cache = row.config or {}
             except (PluginConfig.DoesNotExist, DatabaseError):
                 self._config_cache = {}
