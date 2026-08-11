@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.41.1 — 2026-08-11
+
+**Five plugins' database tables were never created**
+
+- brand_kit, lookbook, media_3d, rails and smart_shipping each shipped a migrations/ folder with no __init__.py, so Django never recognised it as a package and reported "no migrations" — their tables were never created on any real deployment. Local tests passed throughout because Django creates tables directly for apps it thinks have no migrations, so the gap only ever existed in production.
+- Consequence: the design-token set a merchant configures had nowhere to be stored, and the new look page returned a server error instead of "not found". Adding the missing package markers makes all five sets of tables get created on the next deploy.
+- The five initial migrations were regenerated rather than patched: since Django had never seen them, no installation had ever applied them, so a clean regeneration avoids a risky primary-key alteration on tables that do not exist. Verified against real PostgreSQL — all ten tables create cleanly.
+
 ## v0.41.0 — 2026-08-10
 
 **Backend settings now reach the storefront; dead customer links fixed (P-wiring)**

@@ -161,6 +161,21 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — a `migrations/` dir without `__init__.py` is invisible to Django,
+and ONLY production notices.** Five plugins (brand_kit, lookbook, media_3d,
+rails, smart_shipping) shipped a `0001_initial.py` in a non-package directory:
+`showmigrations` reported *"(no migrations)"*, `django_migrations` had zero rows,
+and **their tables were never created on prod** — while every local test passed,
+because Django creates tables directly (syncdb-style) for apps it believes have
+no migrations. `makemigrations --check` was clean for the same reason. So the
+usual gate (green tests + clean check) proves nothing here. **When adding a
+plugin with models, verify `plugins/installed/<name>/migrations/__init__.py`
+exists** — `for d in plugins/installed/*/migrations; do [ -f "$d/__init__.py" ]
+|| echo "$d"; done` is the whole check. When repairing one, note that
+never-applied migrations can be **regenerated** rather than patched forward
+(check `django_migrations` first) — that avoids an `AlterField` on a PK, the
+class that 503'd prod twice.
+
 **Landmine — a settings field with no consumer is a lie, and the merchant can't
 tell.** Three shipped: `maintenance_mode` (flip it, the shop stays open —
 a control shaped like a safety mechanism that does nothing), brand_kit's design
