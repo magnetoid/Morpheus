@@ -25,7 +25,7 @@
 **Morpheus is a self-hosted, Shopify-grade commerce engine built for the agentic web.** Three convictions set it apart from every other open-source store:
 
 1. **AI is a built-in co-worker, not a monthly add-on.** A single AI operator — *Linda* — runs on your infrastructure, learns your catalog and customers, executes real back-office work through a governed tool surface, and even proposes improvements to her own codebase. Every AI action is scoped, approvable, staged, budget-capped, and audited.
-2. **Everything is a plugin — and disabling one leaves no trace.** The kernel is a small set of extension points. All 108 shipped features — catalog, checkout, loyalty, 3D storefronts, ad channels, B2B — live in `plugins/installed/<name>/` and contribute their surfaces through hooks and contribution APIs. Toggle a plugin off and *every* nav entry, settings page, storefront block, and route it added vanishes.
+2. **Everything is an app — and disabling one leaves no trace.** The kernel is a small set of extension points. All 108 shipped features — catalog, checkout, loyalty, 3D storefronts, ad channels, B2B — live in `plugins/installed/<name>/` and contribute their surfaces through hooks and contribution APIs. Toggle an app off and *every* nav entry, settings page, storefront block, and route it added vanishes.
 3. **You are maximally legible and transactable to AI — never intermediated.** Morpheus ships a real MCP server, an Agentic Commerce Protocol (ACP) checkout, a Universal Commerce Protocol (UCP) manifest, `llms.txt`/`agents.md`, and native trusted-agent verification. Shoppers discover you inside ChatGPT/Gemini/Perplexity and convert on **your** storefront — you stay Merchant-of-Record.
 
 > **The harness is the product.** Lots of platforms will bolt on an LLM. Morpheus's moat is the *safety and governance layer* around AI — approvals, staged writes, merchant guardrails, an immune-system self-improvement loop, and an EU AI Act evidence trail — that makes handing real authority to an agent safe.
@@ -155,9 +155,17 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ---
 
-## 🧩 Everything is a plugin
+## 🧩 Everything is an app
 
-All **108** shipped capabilities are toggleable plugins (source of truth: `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`). A sampling by domain:
+All **108** shipped capabilities are toggleable apps (source of truth: `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`). A sampling by domain:
+
+> **Apps and plugins are the same thing.** "App" is the word the product uses —
+> in the dashboard, in these docs, and at every seam you touch as an author
+> (`app.py`, `morpheus.app`, `app_registry`). Two things still read "plugin" on
+> purpose: the directory `plugins/installed/` and the base class
+> `MorpheusPlugin`, because moving them would rewrite ~2,000 import paths for no
+> user-visible gain. Upgrading an out-of-tree app to v0.42.0:
+> [`docs/MIGRATING.md`](docs/MIGRATING.md).
 
 - **Core commerce** — `catalog` · `orders` · `inventory` · `payments` · `shipping` · `tax` · `checkout_experience` · `draft_orders` · `customers` · `one_click` · `smart_shipping` · `advanced_payments`
 - **Merchandising & pricing** — `promotions` · `gift_cards` · `loyalty_points` · `subscriptions` · `drops` · `bundles`-style flows · `markets` · `metafields`
@@ -327,6 +335,8 @@ Deployment guides: [`docs/deploy-coolify.md`](docs/deploy-coolify.md) · [`docs/
 | Webhooks | [`docs/WEBHOOK_RECIPES.md`](docs/WEBHOOK_RECIPES.md) |
 | Operations & incident recovery | [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md) · [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) |
 | House rules for AI-assisted work | [`CLAUDE.md`](CLAUDE.md) · [`AGENTS.md`](AGENTS.md) · [`RULES.md`](RULES.md) |
+| Updating a deployment | [`docs/UPDATING.md`](docs/UPDATING.md) |
+| Upgrading across a breaking change | [`docs/MIGRATING.md`](docs/MIGRATING.md) |
 | Release notes | [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md) |
 
 ---

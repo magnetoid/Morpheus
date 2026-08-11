@@ -650,6 +650,8 @@ relevant Markdown *in the same commit* — not "later." Which doc:
 | a house rule, landmine, or convention | this file (`CLAUDE.md`) |
 | the public API / MCP / GraphQL surface | `docs/MORPHEUS_API.md`, `docs/MCP_SERVER.md` |
 | a skill's behaviour | `docs/SKILLS.md` + the skill's `SKILL.md` |
+| the updater, `core/updates.py`, or how a deployment upgrades | `docs/UPDATING.md` — and keep its "verified against the running deployment" claims true or delete them |
+| anything an out-of-tree app author must change to upgrade | `docs/MIGRATING.md` (a section per release) + the `Breaking changes shipped` table in `docs/API_STABILITY.md` |
 | **`MORPHEUS_VERSION`** — bump on **every** deploy (merge = deploy) | **`docs/RELEASE_NOTES.md`** — add a dated `## vX.Y.Z — YYYY-MM-DD` entry (newest first); it's the source of truth for **Settings → Version & updates** (`release_notes` plugin). Torsor ADR 0019 + **0032** + **0033** (every production deploy bumps — app code *and* theme code). |
 
 Prefer pointing at the source of truth over hard-coding volatile facts:

@@ -38,6 +38,24 @@ Anything that breaks a **STABLE** surface ships with:
 3. A grep-template integrators can run on their codebase to find references.
 4. The previous minor version stays on a security-only branch for at least 90 days after the major bump.
 
+## Breaking changes shipped
+
+| Version | Surface | What broke | Migration |
+|---|---|---|---|
+| **v0.42.0** | App (plugin) authoring — the manifest **filename** and the **import path**, not the manifest *fields* | `plugin.py` → `app.py`; `morpheus.plugin` → `morpheus.app`; `plugin_registry`/`PluginRegistry` → `app_registry`/`AppRegistry`; `MORPHEUS_DEFAULT_PLUGINS` / `MORPHEUS_EXTRA_PLUGINS` / `MORPHEUS_PLUGINS_DIR` → `…_APPS` / `MORPHEUS_APPS_DIR` | [`MIGRATING.md`](MIGRATING.md#v0420--apps-not-plugins) — grep template included |
+
+Notes on v0.42.0, because the row above is narrower than it looks:
+
+- The **manifest fields** (`name`, `version`, `requires`, `contribute_*`) are unchanged and remain STABLE. Only the file it lives in and the module you import from moved.
+- **No STABLE runtime surface changed**: GraphQL, REST, MCP, webhooks and `MorpheusEvents.*` are all untouched.
+- The `MORPHEUS_EXTRA_PLUGINS` **environment variable** still works. It lives in the deployment environment rather than the repo, so it gets a permanent fallback instead of a rename.
+- Under 0.x, a break like this ships as a MINOR bump. The "major version signals breaking changes" rule above starts applying at 1.0.0.
+
+**Not yet stable, and known to be so:** app and theme *update channels*. There is
+no per-component update source; the platform updater is whole-platform and
+git-based, and it is inert on container deployments. Do not build against it
+yet — see [`UPDATING.md`](UPDATING.md).
+
 ## What's NOT covered
 
 - Themes — they're freeform templates; we don't promise template tags or CSS class names won't change.

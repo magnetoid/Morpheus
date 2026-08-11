@@ -163,9 +163,35 @@ The exception is logged with a full traceback (see `plugins/registry.py:_activat
 | `conflicts` | `list[str]` | optional | Plugins this cannot coexist with. |
 | `enabled_by_default` | `bool` | optional (default `True`) | `False` ships the plugin **installed-but-OFF** — the merchant opts in from Dashboard → Apps. Only affects the first run (when no `PluginConfig` row exists); after that the DB flag wins. Use it for anything that's inert without operator setup — an external integration that needs credentials/an IdP (`staff_sso`), or a protocol surface a merchant opts into (`agentic_checkout`) — as well as merchant-specific features (`booking_marketplace`). |
 | `has_models` | `bool` | ✅ if you have models | If True, the plugin needs to be in `INSTALLED_APPS`. |
+| `protected` | `bool` | optional (default `False`) | `True` means **no surface offers a disable** — the merchant's toggle refuses it and so do Linda's disable tools, because turning it off would soft-brick the platform. See the note below: this flag can only *add* protection. |
+| `system` | `bool` | optional (default `False`) | `True` hides the app from the Apps catalogue entirely. For an app the merchant meets under a different name and never installed on purpose — `agent_core` is surfaced as Linda. Use sparingly: an app the merchant *can't see* is an app they can't reason about. |
 
 The base class **validates** all metadata at class-definition time — typos
 fail fast at import, not at runtime.
+
+### `protected` is one-way, on purpose
+
+There is exactly one gate — `core.safety.is_plugin_protected(name)` — and every
+surface that offers a disable reads it. It returns the union of two things:
+
+1. the static floor in `core/safety.py:PROTECTED_PLUGINS`, and
+2. any app whose manifest declares `protected = True`.
+
+A manifest can therefore **add** protection but never **remove** it. That
+asymmetry is deliberate: an `app.py` is a file the AI is allowed to edit, while
+`core/safety.py` sits in `FORBIDDEN_PATHS` and is not. If the flag were
+authoritative in both directions, the safety boundary would be editable by the
+thing it constrains.
+
+This gate exists because the two lists it replaced had already drifted apart.
+`PROTECTED_PLUGINS` was defined twice — once in `core/safety.py` gating the AI's
+disable tools, once as a frozenset inside `admin_dashboard` gating the
+merchant's toggle — and they disagreed on four apps. The dashboard refused to
+disable `catalog`, `orders`, `payments` and `morpheus_brain`; the AI path
+allowed all four. **The automated path was looser than the human one.** When you
+add a classification about apps, put it on the app or in core — never a second
+list inside a shell. Guarded by
+`admin_dashboard/tests/test_disable_guards.py::ProtectedAppGuardTests`.
 
 ---
 
