@@ -15,9 +15,9 @@ _MIGRATED = ('workflows.run',)
 
 class WorkflowsAgentToolMigrationTests(TestCase):
     def test_plugin_contributes_the_tool(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        names = {t.name for t in plugin_registry.get('workflows').contribute_agent_tools()}
+        names = {t.name for t in app_registry.get('workflows').contribute_agent_tools()}
         self.assertTrue(set(_MIGRATED) <= names, f'missing: {set(_MIGRATED) - names}')
 
     def test_name_registered_once_and_owned_by_workflows(self):

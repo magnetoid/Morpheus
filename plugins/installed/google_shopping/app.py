@@ -1,0 +1,310 @@
+"""Google Shopping plugin — Google Merchant Center product feed + Google Ads.
+
+Phase 1–2 (shipped): the Merchant Center RSS product feed at
+`/feeds/google-merchant.xml`, a feed/coverage dashboard, settings panel, and
+agent tools so Linda can audit Shopping eligibility.
+
+Boundary: the `tracking` plugin owns Google Ads CONVERSION pixels + GA4/GTM.
+This plugin owns the product FEED, feed config, and (later) Content API sync +
+Ads campaign management. It never emits conversion tags.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
+from morpheus.core import events
+
+logger = logging.getLogger('morpheus.google_shopping')
+
+
+class GoogleShoppingPlugin(Plugin):
+    name = 'google_shopping'
+    label = 'Google Shopping'
+    version = '0.1.0'
+    description = (
+        'Google Merchant Center product feed + Google Ads layer. Generates the '
+        'Shopping RSS feed at /feeds/google-merchant.xml (reusing catalog price, '
+        'images, inventory, ISBN/GTIN identifiers and book metadata), with a '
+        'coverage dashboard, per-product google.* attribute overrides, and agent '
+        'tools to audit Shopping eligibility. Conversion tracking stays in the '
+        'tracking plugin.'
+    )
+    has_models = True
+    requires = ['catalog']
+
+    def ready(self) -> None:
+        # Public feed endpoint, mounted at site root (/feeds/google-merchant.xml).
+        self.register_urls(
+            'plugins.installed.google_shopping.urls', prefix='', namespace='google_shopping'
+        )
+        self.register_celery_tasks('plugins.installed.google_shopping.tasks')
+        # Periodic Content API push (no-op until Google is connected).
+        self.register_celery_beat(
+            'google_shopping:content_push',
+            {'task': 'google_shopping.push_content_api', 'schedule': 60 * 60 * 6},
+        )
+        # Bust the cached feed whenever the catalog changes.
+        for evt in (events.PRODUCT_CREATED, events.PRODUCT_UPDATED):
+            self.register_hook(evt, self._bust_feed_cache, priority=80)
+        self.register_hook(events.CHANNELS_OVERVIEW, self._channels_row, priority=10)
+        self.register_hook(events.CHANNELS_METRICS, self._channels_metrics, priority=10)
+        self.register_hook(events.ANALYTICS_AD_SPEND, self._ad_spend, priority=10)
+
+    def _ad_spend(self, value, **_):
+        """Contribute Google Ads' 30-day spend to the attribution ROAS pipeline."""
+        try:
+            from plugins.installed.google_shopping.services.ads_api import (  # noqa: PLC0415
+                campaign_report,
+            )
+
+            rep = campaign_report(days=30)
+            t = (rep.get('totals') or {}) if rep.get('ok') else {}
+            spend = t.get('spend') or t.get('cost')
+            if spend:
+                value.append({'channel': 'google', 'spend': spend, 'days': 30})
+        except Exception as e:  # noqa: BLE001
+            logger.debug('google_shopping: ad_spend failed: %s', e)
+        return value
+
+    def _channels_row(self, value, **_):
+        row = {
+            'name': 'google_shopping',
+            'label': 'Google',
+            'icon': 'shopping-bag',
+            'connected': False,
+            'pixel': None,
+            'has_feed': True,
+            'eligible': None,
+            'total': None,
+            'coverage_pct': None,
+            'dashboard_url': '/dashboard/apps/google_shopping/overview/',
+        }
+        try:
+            from plugins.installed.google_shopping.services.coverage import (  # noqa: PLC0415
+                coverage_report,
+            )
+            from plugins.installed.google_shopping.services.google_auth import (  # noqa: PLC0415
+                is_connected,
+            )
+
+            row['connected'] = is_connected()
+            rep = coverage_report()
+            row['eligible'] = rep.get('eligible')
+            row['total'] = rep.get('total')
+            row['coverage_pct'] = rep.get('eligible_pct')
+        except Exception as e:  # noqa: BLE001
+            logger.debug('google_shopping: channels row failed: %s', e)
+        value.append(row)
+        return value
+
+    def _channels_metrics(self, value, **_):
+        try:
+            from plugins.installed.google_shopping.services.ads_api import (  # noqa: PLC0415
+                campaign_report,
+            )
+
+            rep = campaign_report(days=30)
+            if rep.get('ok'):
+                t = rep.get('totals') or {}
+                value.append(
+                    {
+                        'name': 'google_shopping',
+                        'spend': t.get('spend') or t.get('cost'),
+                        'clicks': t.get('clicks'),
+                        'conversions': t.get('conversions'),
+                        'revenue': t.get('value') or t.get('revenue') or t.get('sales'),
+                        'roas': t.get('roas'),
+                    }
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.debug('google_shopping: channels metrics failed: %s', e)
+        return value
+
+    def _bust_feed_cache(self, **_):
+        try:
+            from django.core.cache import cache  # noqa: PLC0415
+
+            from plugins.installed.google_shopping.views import FEED_CACHE_KEY  # noqa: PLC0415
+
+            cache.delete(FEED_CACHE_KEY)
+        except Exception as e:  # noqa: BLE001
+            logger.debug('google_shopping: cache bust failed: %s', e)
+
+    def contribute_storefront_blocks(self) -> list:
+        # Dynamic remarketing tag on every storefront page (renders nothing
+        # until a remarketing AW- id is configured + enabled). Conversion
+        # pixels stay in the tracking plugin.
+        return [
+            StorefrontBlock(
+                slot='global_below_body',
+                template='google_shopping/blocks/remarketing.html',
+                priority=70,
+            ),
+        ]
+
+    def contribute_dashboard_pages(self) -> list:
+        return [
+            DashboardPage(
+                label='Google Shopping',
+                slug='overview',
+                view='plugins.installed.google_shopping.views.dashboard',
+                icon='shopping-bag',
+                section='marketing',
+                order=60,
+                nav='main',
+            ),
+            DashboardPage(
+                label='Google Ads',
+                slug='ads',
+                view='plugins.installed.google_shopping.views.ads_dashboard',
+                icon='megaphone',
+                section='marketing',
+                order=61,
+                nav='main',
+            ),
+            # OAuth connect flow — routed but not shown in nav.
+            DashboardPage(
+                label='Connect Google',
+                slug='connect',
+                view='plugins.installed.google_shopping.views.oauth_start',
+                nav='hidden',
+            ),
+            DashboardPage(
+                label='Google OAuth callback',
+                slug='oauth-callback',
+                view='plugins.installed.google_shopping.views.oauth_callback',
+                nav='hidden',
+            ),
+        ]
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Google Shopping feed',
+            description=(
+                'Google Merchant Center product feed. Submit the feed URL '
+                '(/feeds/google-merchant.xml) in Merchant Center. Per-product '
+                'overrides live in the google.* metafield namespace.'
+            ),
+            schema=self.get_config_schema(),
+            category='channels',
+        )
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.google_shopping.agent_tools import (
+            google_ads_report_tool,
+            google_feed_coverage_tool,
+            google_feed_url_tool,
+            google_merchant_diagnostics_tool,
+            google_rebuild_feed_tool,
+        )
+
+        return [
+            google_feed_coverage_tool,
+            google_feed_url_tool,
+            google_rebuild_feed_tool,
+            google_merchant_diagnostics_tool,
+            google_ads_report_tool,
+        ]
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'enabled': {'type': 'boolean', 'title': 'Feed enabled', 'default': True},
+                'merchant_id': {
+                    'type': 'string',
+                    'title': 'Merchant Center ID',
+                    'description': 'Your Google Merchant Center account ID (for Content API later).',
+                    'default': '',
+                },
+                'country': {'type': 'string', 'title': 'Target country (ISO)', 'default': 'US'},
+                'language': {'type': 'string', 'title': 'Content language (ISO)', 'default': 'en'},
+                'currency': {
+                    'type': 'string',
+                    'title': 'Currency override (ISO)',
+                    'description': "Leave blank to use each product's own currency.",
+                    'default': '',
+                },
+                'default_brand': {
+                    'type': 'string',
+                    'title': 'Default brand',
+                    'description': 'Used when a product has no brand/publisher of its own.',
+                    'default': '',
+                },
+                'default_google_product_category': {
+                    'type': 'string',
+                    'title': 'Default Google product category',
+                    'description': 'e.g. "Media > Books". Per-product google.google_product_category overrides this.',
+                    'default': '',
+                },
+                'default_condition': {
+                    'type': 'string',
+                    'title': 'Default condition',
+                    'enum': ['new', 'refurbished', 'used'],
+                    'default': 'new',
+                },
+                'free_shipping_over': {
+                    'type': 'string',
+                    'title': 'Free shipping over (amount)',
+                    'default': '',
+                },
+                'include_out_of_stock': {
+                    'type': 'boolean',
+                    'title': 'Include out-of-stock products',
+                    'default': True,
+                },
+                'feed_title': {'type': 'string', 'title': 'Feed title', 'default': 'Dot Books'},
+                'feed_description': {
+                    'type': 'string',
+                    'title': 'Feed description',
+                    'default': 'Product feed for Google Merchant Center.',
+                },
+                'remarketing_enabled': {
+                    'type': 'boolean',
+                    'title': 'Enable Google Ads dynamic remarketing tag',
+                    'default': False,
+                },
+                'remarketing_id': {
+                    'type': 'string',
+                    'title': 'Google Ads remarketing/conversion ID',
+                    'description': 'Format: AW-123456789. Builds Shopping/PMax remarketing audiences. Obeys Consent Mode set by the tracking plugin.',
+                    'default': '',
+                },
+                # ── Google connection (Content API + Ads API). Stored only in
+                #    PluginConfig — never settings.py. OAuth2 refresh-token flow.
+                'oauth_client_id': {'type': 'string', 'title': 'OAuth client ID', 'default': ''},
+                'oauth_client_secret': {
+                    'type': 'string',
+                    'title': 'OAuth client secret',
+                    'format': 'password',
+                    'default': '',
+                },
+                'oauth_refresh_token': {
+                    'type': 'string',
+                    'title': 'OAuth refresh token',
+                    'format': 'password',
+                    'description': 'Authorises Content API (Merchant) + Ads API. Obtain once via the Google OAuth consent screen.',
+                    'default': '',
+                },
+                'ads_developer_token': {
+                    'type': 'string',
+                    'title': 'Google Ads developer token',
+                    'format': 'password',
+                    'default': '',
+                },
+                'ads_customer_id': {
+                    'type': 'string',
+                    'title': 'Google Ads customer ID',
+                    'description': 'The account whose campaigns you manage (digits, dashes ok).',
+                    'default': '',
+                },
+                'ads_login_customer_id': {
+                    'type': 'string',
+                    'title': 'Google Ads login customer ID (MCC)',
+                    'description': 'Optional — your manager (MCC) account ID, if access is via a manager account.',
+                    'default': '',
+                },
+            },
+        }

@@ -15,7 +15,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
-from morpheus.plugin import dashboard_trail
+from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.shipping')
 
@@ -88,9 +88,9 @@ def _save_config(request) -> None:
     """Persist carrier credentials + the tax-on-shipping flag to the shipping
     plugin's PluginConfig.config — the same dict services.quote_rate reads.
     Folds the old SettingsPanel into the page (ADR 0003)."""
-    from plugins.registry import plugin_registry  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
 
-    instance = plugin_registry.get('shipping')
+    instance = app_registry.get('shipping')
     if instance is None:
         messages.error(request, 'Shipping plugin unavailable.')
         return

@@ -12,7 +12,7 @@ from typing import Any
 
 from django.db.models import Sum
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     get_object_or_404,

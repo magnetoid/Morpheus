@@ -34,11 +34,11 @@ def _hardcoded_pages() -> list:
     no core-framework change. They render in the Pages list as locked
     ("managed in code") rows so the list stays the registry of every page."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
     except Exception:  # noqa: BLE001
         return []
     out = []
-    for plugin in plugin_registry.active_plugins():
+    for plugin in app_registry.active_plugins():
         fn = getattr(plugin, 'contribute_hardcoded_pages', None)
         if not callable(fn):
             continue

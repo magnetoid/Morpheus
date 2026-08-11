@@ -32,7 +32,7 @@ PluginConfig only.
 - Config: access_token, ad_account_id, catalog/feed id, tag_id, tag_enabled.
 
 ## House-rule checklist (each)
-Single AppConfig + manifest; register in MORPHEUS_DEFAULT_PLUGINS; migration
+Single AppConfig + manifest; register in MORPHEUS_DEFAULT_APPS; migration
 before merge; disable test; secrets in PluginConfig; mark_safe pixel tags
 validate the id + json-encode/escape all dynamic values; redact tokens from logs;
 contract-test request shaping with mocked HTTP; security + correctness review;

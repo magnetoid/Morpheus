@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.plugin.views import HttpRequest, HttpResponse, render, staff_member_required
+from morpheus.app.views import HttpRequest, HttpResponse, render, staff_member_required
 
 logger = logging.getLogger('morpheus.advanced_ecommerce')
 
@@ -13,9 +13,9 @@ logger = logging.getLogger('morpheus.advanced_ecommerce')
 def low_stock_view(request: HttpRequest) -> HttpResponse:
     """List variants whose available stock is below the configured threshold."""
     from plugins.installed.inventory.models import StockLevel
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    plugin = plugin_registry.get('advanced_ecommerce')
+    plugin = app_registry.get('advanced_ecommerce')
     threshold = int(plugin.get_config_value('low_stock_threshold', 5)) if plugin else 5
 
     rows = []

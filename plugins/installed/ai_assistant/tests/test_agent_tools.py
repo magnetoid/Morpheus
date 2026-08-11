@@ -13,7 +13,7 @@ from unittest.mock import patch
 from django.test import TestCase
 from djmoney.money import Money
 
-from plugins.installed.ai_assistant.plugin import AIAssistantPlugin
+from plugins.installed.ai_assistant.app import AIAssistantPlugin
 
 
 class _FakeLLM:

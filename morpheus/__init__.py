@@ -6,7 +6,7 @@ directly. Django is the runtime; `morpheus` is the framework.
 
 Quickstart::
 
-    # plugins/installed/hello/plugin.py
+    # plugins/installed/hello/app.py
     from morpheus import Plugin, DashboardPage, events
 
     class HelloPlugin(Plugin):

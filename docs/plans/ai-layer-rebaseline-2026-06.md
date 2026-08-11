@@ -14,7 +14,7 @@ verified against the code on 2026-06-17.
 | **Phase 0** Provider decoupling | `core/agents/provider_registry.py` (register/get_provider_config/get_active_provider_name); `llm.py` + `consensus.py` resolve via the registry; `ai_assistant.ready()` registers its resolver. Remaining core→plugin imports are lazy/guarded. |
 | **Phase 1** Kernel tests | `test_runtime.py` (12), `test_policies.py` (7), `test_llm.py` (8), `test_skills.py` (8), `test_provider_registry.py` (5), `agent_mcp/tests/test_servers.py`. Covers run loop, scope-deny, approval-reject, max_steps, budget, MCP Bearer scope. |
 | **Phase 2** Self-dev dashboard | `agent_core/views.py` selfdev_list/detail/action; `core/assistant/apply.py` preflight/apply_proposal/`revert_branch`; consensus.evaluate; all safety gates intact (`MORPHEUS_SELF_UPDATE_ENABLED`, superuser approve, 2/3 quorum, 5/24h, `core/safety.py`, branch-only plumbing). |
-| **P3** flags (2 of 5) | `enable_intent_engine` (intent.py:74) + `enable_semantic_search` (plugin.py:479) WIRED. |
+| **P3** flags (2 of 5) | `enable_intent_engine` (intent.py:74) + `enable_semantic_search` (app.py:479) WIRED. |
 | **P4.1** Budget | `enforce_budget` called at `runtime.py:141`; tested. |
 | **P4.2** Compaction (agent runtime) | `core/agents/compaction.py` + called at `runtime.py:135`; `test_compaction.py`. |
 | **P5.1** Per-conversation cost | `AssistantConversation.cost_summary()` + persisted tokens. |
@@ -63,7 +63,7 @@ flag-gated `catalog.classify_product` tool; schema text updated; 9 tests.
 already shipped an AI `classify_books` command (git `2a22856`) — reuse that
 classifier rather than build new. Implement the service, gate it in
 `ai_assistant.contribute_agent_tools()` (mirror `enable_semantic_search` at
-plugin.py:479), expose as a flag-gated tool. *Verify:* off → tool absent; on →
+app.py:479), expose as a flag-gated tool. *Verify:* off → tool absent; on →
 callable against real catalog. *Risk: low (default-off).*
 
 **B2. `enable_autonomous_operator`. — ✅ DONE (2026-06-17).** New `AUTONOMY_ENABLED`

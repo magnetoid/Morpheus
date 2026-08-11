@@ -33,14 +33,14 @@ Storefront/theme hardcoding owning other plugins' features:
 
 ## B. Duplicated / overlapping settings
 - **AI feature flags rendered twice** — `settings.py:671-680` custom cards vs
-  `ai_assistant/plugin.py:~122-138` schema panel (same PluginConfig keys).
+  `ai_assistant/app.py:~122-138` schema panel (same PluginConfig keys).
 - **Dead "Agents" panel** — `settings.py:659-669` renders `settings_panel('agent_core')`
   which is always `None` (agent_core ships no panel). Delete.
 - **Service-worker/offline twice** — `settings_caching` PWA block (`settings.py:290-297,460-463`,
-  storefront config) vs `pwa/plugin.py:61,73` (pwa config). Two stores, one toggle.
+  storefront config) vs `pwa/app.py:61,73` (pwa config). Two stores, one toggle.
 - **Caching page cross-owns config** — `settings_caching` writes ~25 storefront/seo/cloudflare
   keys from admin_dashboard (`settings.py:262-388`) → ADR 0003 violation; move to owning plugins.
-- **GA4 IDs mirrored** — `tracking/plugin.py:177-178` mirror fields vs `TrackingSettings`
+- **GA4 IDs mirrored** — `tracking/app.py:177-178` mirror fields vs `TrackingSettings`
   model at `/dashboard/tracking/` (source of truth). Drop the mirror.
 - payments vs advanced_payments: two cards on one page — intentional, not a true dup,
   but the near-identical labels read as duplicate.

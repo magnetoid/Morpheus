@@ -23,10 +23,10 @@ def _pick_product(order):
             pid for pid in order.items.values_list('product_id', flat=True) if pid is not None
         }
 
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     slug = str(
-        plugin_registry.config_value('post_checkout_upsell', 'post_order_upsell_slug', '') or ''
+        app_registry.config_value('post_checkout_upsell', 'post_order_upsell_slug', '') or ''
     ).strip()
     if slug:
         product = Product.objects.filter(slug=slug, status='active').first()
@@ -47,12 +47,12 @@ def post_order_upsell_pick(order):
         product = _pick_product(order)
         if product is None:
             return None
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         image = product.primary_image
         default_copy = 'P.S. One more thing that pairs well.'
         copy = str(
-            plugin_registry.config_value('post_checkout_upsell', 'post_order_copy', default_copy)
+            app_registry.config_value('post_checkout_upsell', 'post_order_copy', default_copy)
             or default_copy
         )
         return {

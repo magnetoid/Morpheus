@@ -5,7 +5,7 @@
 # ruff: noqa: PLC0415, PLR0912, PLR0915, S110
 from __future__ import annotations
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     HttpResponseRedirect,
@@ -18,11 +18,11 @@ from morpheus.plugin.views import (
 
 def _panels_by_category() -> dict:
     """Index every active plugin's SettingsPanel by its category slug."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     by_cat: dict[str, list] = {}
-    for plugin in plugin_registry.active_plugins():
-        panel = plugin_registry.settings_panel(plugin.name)
+    for plugin in app_registry.active_plugins():
+        panel = app_registry.settings_panel(plugin.name)
         if panel is None:
             continue
         cat = getattr(panel, 'category', '') or 'apps'
@@ -158,7 +158,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
 
     Returns ``{"ok": bool, "models": [{"id", "label"}], "error": str}``.
     """
-    from morpheus.plugin.views import JsonResponse
+    from morpheus.app.views import JsonResponse
 
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
@@ -170,9 +170,9 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     base_url = (request.POST.get('base_url') or '').strip()
     ai_plugin = None
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        ai_plugin = plugin_registry.get('ai_assistant')
+        ai_plugin = app_registry.get('ai_assistant')
         if ai_plugin is not None:
             cfg = ai_plugin.get_config()
             if not api_key:
@@ -206,8 +206,8 @@ def settings_ai_disconnect(request: HttpRequest) -> HttpResponse:
 
     Always returns JSON (data-ajax contract): ``{"ok": bool, "active": str}``.
     """
-    from morpheus.plugin.views import JsonResponse
-    from plugins.registry import plugin_registry
+    from morpheus.app.views import JsonResponse
+    from plugins.registry import app_registry
 
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
@@ -216,7 +216,7 @@ def settings_ai_disconnect(request: HttpRequest) -> HttpResponse:
     if provider not in valid:
         return JsonResponse({'ok': False, 'error': 'unknown provider'}, status=400)
 
-    ai_plugin = plugin_registry.get('ai_assistant')
+    ai_plugin = app_registry.get('ai_assistant')
     if ai_plugin is None:
         return JsonResponse({'ok': False, 'error': 'ai_assistant unavailable'}, status=503)
 
@@ -376,11 +376,11 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     from django.core.cache import cache
 
     from plugins.installed.admin_dashboard.settings_categories import get_category
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     if request.method == 'POST':
         action = request.POST.get('action') or ''
-        sf = plugin_registry.get('storefront')
+        sf = app_registry.get('storefront')
         if action == 'clear_default':
             try:
                 cache.clear()
@@ -563,7 +563,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
             redis_stats = {'error': f'{type(e).__name__}: {e}'}
 
     # ── Storefront cache knobs (stored in PluginConfig) ────────────────────
-    storefront_plugin = plugin_registry.get('storefront')
+    storefront_plugin = app_registry.get('storefront')
     sf_cfg = storefront_plugin.get_config() if storefront_plugin else {}
     storefront = {
         'asset_max_age_seconds': int(
@@ -790,10 +790,10 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
     as a regular schema-driven panel for runtime config.
     """
     from plugins.installed.admin_dashboard.settings_categories import get_category
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     cat = get_category('ai')
-    ai_plugin = plugin_registry.get('ai_assistant')
+    ai_plugin = app_registry.get('ai_assistant')
     cfg = ai_plugin.get_config() if ai_plugin else {}
     active = cfg.get('ai_provider') or 'openai'
 
@@ -938,7 +938,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         if entry['plugin'] == 'ai_assistant':
             continue
         try:
-            owner = plugin_registry.get(entry['plugin'])
+            owner = app_registry.get(entry['plugin'])
             panel = entry['panel']
             description = panel.description
             if entry['plugin'] == 'ai_content':
@@ -999,7 +999,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
     ``/dashboard/apps/<plugin>/settings/``.
     """
     from plugins.installed.admin_dashboard.settings_categories import get_category
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     # AI gets a custom render — per-provider cards with Fetch / Test
     # buttons rather than a single schema-driven form.
@@ -1013,9 +1013,9 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
         # Not a category — fall back to per-plugin settings page (the
         # canonical URL pattern post-2026-05-23: every plugin with a
         # SettingsPanel is reachable at /dashboard/settings/<plugin>/).
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        if plugin_registry.settings_panel(category) is not None:
+        if app_registry.settings_panel(category) is not None:
             # ai_assistant's provider config is rendered in full by the
             # dedicated rich AI page at /dashboard/settings/ai/. Its generic
             # schema page here was a confusing duplicate, so a GET bounces to
@@ -1027,7 +1027,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
             from plugins.installed.admin_dashboard.urls import plugin_settings_view
 
             return plugin_settings_view(request, plugin=category)
-        from morpheus.plugin.views import Http404
+        from morpheus.app.views import Http404
 
         raise Http404('Unknown settings category or plugin')
 
@@ -1073,7 +1073,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
     entries = by_cat.get(category, [])
     cards = []
     for entry in entries:
-        instance = plugin_registry.get(entry['plugin'])
+        instance = app_registry.get(entry['plugin'])
         if instance is None:
             continue
         cards.append(
@@ -1096,7 +1096,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
     developer_tools = []
     if category == 'developer':
         for page in sorted(
-            plugin_registry.dashboard_pages(section='developer'),
+            app_registry.dashboard_pages(section='developer'),
             key=lambda pg: (pg.order, pg.label),
         ):
             developer_tools.append(
@@ -1212,13 +1212,13 @@ def _email_template_defs():
     registry — core transactional emails + every active plugin's contributions."""
     import contextlib
 
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     defs = [(k, lbl, subj, 'Core') for k, lbl, subj in _EMAIL_TEMPLATE_KEYS]
     with contextlib.suppress(Exception):  # never break the settings page on a bad def
         defs += [
             (t.key, t.label, t.default_subject, t.group or 'Other')
-            for t in plugin_registry.email_templates()
+            for t in app_registry.email_templates()
         ]
     return defs
 

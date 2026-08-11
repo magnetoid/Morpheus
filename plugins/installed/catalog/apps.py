@@ -8,12 +8,12 @@ class CatalogConfig(AppConfig):
     verbose_name = 'Catalog'
 
     def ready(self):
-        from plugins.registry import plugin_registry
-        from plugins.installed.catalog.plugin import CatalogPlugin
+        from plugins.registry import app_registry
+        from plugins.installed.catalog.app import CatalogPlugin
         import plugins.installed.catalog.signals
 
-        if 'catalog' not in plugin_registry._classes:
-            plugin_registry._classes['catalog'] = CatalogPlugin
+        if 'catalog' not in app_registry._classes:
+            app_registry._classes['catalog'] = CatalogPlugin
 
         # Typesense index sync (sprint priority #3). The hook subscribers
         # dispatch upserts via Celery; only active when settings.TYPESENSE

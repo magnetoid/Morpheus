@@ -8,7 +8,7 @@ stylesheet of variables.
 
 from __future__ import annotations
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class Asset(models.Model):

@@ -3,7 +3,7 @@
 
 Cross-plugin coupling is allowed — Morpheus is a serious commerce engine and a
 vertical genuinely extends a base (book_product → catalog, agentic_checkout →
-orders). But the coupling must be *declared*: `plugins/installed/<X>/plugin.py`
+orders). But the coupling must be *declared*: `plugins/installed/<X>/app.py`
 lists `requires = ['<Y>', ...]` for every sibling plugin X imports. An import of
 a sibling that is NOT in `requires` is an **undeclared** coupling — the class of
 bug the Charter warns about (a hidden dependency that breaks on disable/reorder,
@@ -57,8 +57,8 @@ def _plugin_names() -> set[str]:
 
 
 def _requires_of(name: str) -> set[str]:
-    """Parse the `requires = [...]` class attribute from a plugin's plugin.py."""
-    f = PLUGINS_DIR / name / 'plugin.py'
+    """Parse the `requires = [...]` class attribute from a plugin's app.py."""
+    f = PLUGINS_DIR / name / 'app.py'
     if not f.exists():
         return set()
     try:
@@ -134,7 +134,7 @@ def _save_baseline(found: set[tuple[str, str]]) -> None:
         '_comment': (
             'Baseline allowlist for scripts/check_plugin_boundary.py. These are the '
             'KNOWN undeclared plugin -> plugin imports being repaid over time. Repay a '
-            'pair by declaring the target in the importer plugin.py `requires` (genuine '
+            'pair by declaring the target in the importer app.py `requires` (genuine '
             'dependency) OR inverting it through core.hooks / a contribution (it should '
             'not be a dependency); then remove the entry here. Only ever remove entries; '
             'never add. Regenerate with `python scripts/check_plugin_boundary.py --save` '
@@ -163,7 +163,7 @@ def main(argv: list[str]) -> int:
 
     if new:
         print('FAIL: new undeclared plugin -> plugin import(s).')
-        print('      Declare the target in the importer plugin.py `requires`, or invert')
+        print('      Declare the target in the importer app.py `requires`, or invert')
         print('      the coupling through core.hooks / a contribution API.')
         for i, t in sorted(new):
             print(f'  + {i}  ->  {t}')

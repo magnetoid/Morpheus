@@ -45,11 +45,11 @@ def _device_from_ua(ua: str) -> str:
 def _config() -> dict:
     """Resolved analytics PluginConfig (cached by the plugin)."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         p = None
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     p = fn('analytics')

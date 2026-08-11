@@ -5,14 +5,14 @@ reassigns the active provider."""
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 DISCONNECT_URL = '/dashboard/settings/ai/disconnect/'
 AI_URL = '/dashboard/settings/ai/'
 
 
 def _ai():
-    return plugin_registry.get('ai_assistant')
+    return app_registry.get('ai_assistant')
 
 
 class ConnectionManagerRenderTests(TestCase):

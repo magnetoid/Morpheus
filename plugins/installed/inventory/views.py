@@ -61,7 +61,7 @@ def back_in_stock_subscribe(request: HttpRequest, product_id) -> HttpResponse:
 
 def stockout_forecast_view(request: HttpRequest) -> HttpResponse:
     """Dashboard page: open predictive stockout alerts, worst cover first."""
-    from morpheus.plugin.views import render, staff_member_required  # noqa: PLC0415
+    from morpheus.app.views import render, staff_member_required  # noqa: PLC0415
 
     @staff_member_required
     def _inner(req: HttpRequest) -> HttpResponse:

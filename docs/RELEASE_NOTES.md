@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.42.0 — 2026-08-11
+
+**Apps, not plugins: one vocabulary, one surface, one protected-app gate**
+
+- BREAKING for out-of-tree app authors: the manifest file is now app.py (was plugin.py), the SDK door is morpheus.app (was morpheus.plugin), the registry singleton is app_registry (was plugin_registry), and the settings lists are MORPHEUS_DEFAULT_APPS / MORPHEUS_EXTRA_APPS. The MORPHEUS_EXTRA_PLUGINS env var is still read as a fallback, so existing deployments keep their extra apps.
+- The merchant-facing word is Apps everywhere — page titles, subtitles, the settings category, empty states. plugins/installed/ and the MorpheusPlugin base class deliberately keep their names; moving the directory would rewrite ~2,000 imports and both CI boundary baselines.
+- Fixed: a fresh Postgres install could not finish migrate. Reading plugin config swallowed a DatabaseError, which on Postgres leaves the whole transaction aborted, so Django's own write to django_migrations failed and the deploy stopped partway with 51 apps unmigrated. sqlite never reproduced it.
+- Fixed: the AI could disable apps the merchant dashboard refuses. PROTECTED_PLUGINS existed twice with different contents — Linda's disable tools allowed catalog, orders, payments and morpheus_brain while the dashboard blocked them. One gate now; an app manifest can add protection but never remove it.
+- Version & updates no longer repeats the whole app list as a second table; Installed and Browse are now two tabs on one Apps surface.
+
 ## v0.41.1 — 2026-08-11
 
 **Five plugins' database tables were never created**
@@ -119,7 +129,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 **Adopt the three-SDK doors across all 108 plugins (morpheus.{plugin,core})**
 
-- Big-bang step of the SDK restructure (ADR 0035): migrated all 108 plugins — 383 files — off 'from morpheus import …' and 'from core.{hooks,agents,audit.services,money,utils.site} import …' onto the SDK doors morpheus.plugin (Plugin/contributions/views/models/forms) and morpheus.core (events/hooks/MorpheusEvents/tool+ToolResult+ToolError+agent_registry/record_ai_decision/Money/money_str/site_base_url/absolutize).
+- Big-bang step of the SDK restructure (ADR 0035): migrated all 108 plugins — 383 files — off 'from morpheus import …' and 'from core.{hooks,agents,audit.services,money,utils.site} import …' onto the SDK doors morpheus.app (Plugin/contributions/views/models/forms) and morpheus.core (events/hooks/MorpheusEvents/tool+ToolResult+ToolError+agent_registry/record_ai_decision/Money/money_str/site_base_url/absolutize).
 - Expanded morpheus.core to re-export MorpheusEvents + absolutize so the two dominant core imports (hook_registry 90x, MorpheusEvents 86x) are clean identity-preserving swaps. Deep/rare core internals (core.assistant.*, core.brain, core.agents submodules, core.emails, …) intentionally stay direct — the SDK is the curated common door, not a wrapper for every internal.
 - Non-breaking: the re-exports are identity-preserving (morpheus.core.tool IS core.agents.tool). Verified: manage.py check clean (prod-boot over all 383 files); static audit clean (every symbol imported from a morpheus.{plugin,core} door is in its __all__); 951-test behavioral suite green (the single failure — moonshot provider missing a probe — is pre-existing, orthogonal drift already live on v0.33.0).
 
@@ -127,7 +137,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 **Three-SDK foundation — morpheus.{plugin,theme,core} (non-breaking)**
 
-- New morpheus.plugin / morpheus.core / morpheus.theme subpackages — the three project SDKs (torsor ADR 0035): plugin authoring, the core-kernel API (hooks/events, agents tool/ToolResult/registry, audit, money, site utils), and storefront-theme authoring. Additive facades that re-export the real implementations.
+- New morpheus.app / morpheus.core / morpheus.theme subpackages — the three project SDKs (torsor ADR 0035): plugin authoring, the core-kernel API (hooks/events, agents tool/ToolResult/registry, audit, money, site utils), and storefront-theme authoring. Additive facades that re-export the real implementations.
 - Non-breaking: every existing 'from morpheus import Plugin' / 'from core.hooks import …' keeps working and returns the same objects; the subpackages are the canonical doors going forward, adopted incrementally as we touch each plugin (per ADR 0035).
 - The big-bang migration of ~60 plugins + themes onto the new imports is scoped in docs/plans/sdk-restructure-2026-07.md (a prod-boot-critical fan-out, run as its own effort). Verified: Django boots, all three doors import, back-compat identity holds.
 
@@ -245,7 +255,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - Self-improvement: error_log collector watermark no longer collapses to the last ~10 min (was dropping ~83% of errors); a stuck-AgentRun reaper closes runs orphaned by a deploy/OOM.
 - Email: campaign dedupe/counts filter kind='campaign', ok=True so failed recipients are retryable and a test-send can't suppress a real subscriber; newsletter confirm() no longer resurrects an unsubscribed (terminal) subscriber via a stale link.
 - Agents: LLM fallback cascade bounded by a 50s wall-clock budget (was stacking to 60-80s past the 60s worker/proxy limit); embeddings client timeout 10s + no retries on the request path; llm.py worker-timeout comment corrected to 60s.
-- Plugins: a second PluginRegistry no longer rebinds the global hook active-check (test-isolation footgun); contributed skills are unregistered on plugin disable (were leaking past a disable). Core→plugin boundary debt shrank 9→8.
+- Plugins: a second AppRegistry no longer rebinds the global hook active-check (test-isolation footgun); contributed skills are unregistered on plugin disable (were leaking past a disable). Core→plugin boundary debt shrank 9→8.
 
 ## v0.25.0 — 2026-07-19
 
@@ -369,7 +379,7 @@ unifying:
 - **One fail-soft plugin-config accessor.** The "read a plugin's config value,
   never crash the caller" try/except was hand-rolled in six places (a seventh
   that forgot the guard is how a config read takes down checkout). Collapsed to
-  `plugin_registry.config_value(name, key, default)`.
+  `app_registry.config_value(name, key, default)`.
 - **One order-email helper.** Three call sites re-derived an order's contact
   email by hand — the exact drift that caused last release's `customer_email`
   bugs. Now a single `core.utils.orders.order_email(order)`.

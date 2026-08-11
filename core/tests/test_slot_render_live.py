@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from django.test import TestCase
 
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 #: Emitted by brand_kit/blocks/tokens.html — specific to the contribution, so
 #: the assertion fails if the slot stops rendering. A generic check ('<style' in
@@ -35,9 +35,9 @@ class GlobalHeadRenderTests(TestCase):
     def test_head_slot_is_disable_safe(self):
         """Disabling brand_kit must remove its head contribution (ADR 0023)."""
         self.assertIn(_BRAND_TOKENS_MARKER, self._head())
-        plugin_registry.deactivate('brand_kit')
+        app_registry.deactivate('brand_kit')
         try:
             self.assertNotIn(_BRAND_TOKENS_MARKER, self._head())
         finally:
-            plugin_registry.activate('brand_kit')
+            app_registry.activate('brand_kit')
         self.assertIn(_BRAND_TOKENS_MARKER, self._head())

@@ -41,9 +41,9 @@ def _resolve_view(view_or_path: Any):
 @staff_member_required
 def plugin_page_router(request: HttpRequest, plugin: str, slug: str) -> HttpResponse:
     """Dispatch /dashboard/apps/<plugin>/<slug>/ to a contributed view."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    for page in plugin_registry.dashboard_pages():
+    for page in app_registry.dashboard_pages():
         if page.plugin == plugin and page.slug == slug:
             view = _resolve_view(page.view)
             if view is None:
@@ -54,11 +54,11 @@ def plugin_page_router(request: HttpRequest, plugin: str, slug: str) -> HttpResp
 
 @staff_member_required
 def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
     from django.shortcuts import render
 
-    panel = plugin_registry.settings_panel(plugin)
-    instance = plugin_registry.get(plugin)
+    panel = app_registry.settings_panel(plugin)
+    instance = app_registry.get(plugin)
     if panel is None or instance is None:
         raise Http404('Plugin settings panel not found.')
 

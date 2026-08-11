@@ -26,7 +26,7 @@ from django.test import TestCase
 from core.models import StoreSettings
 from plugins.installed.gdpr.models import DataRequest
 from plugins.installed.gdpr.services import gdpr_required, seed_legal_pages
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 def _customer(email='dsr@example.com'):
@@ -114,19 +114,19 @@ class DisableTests(TestCase):
     """Every surface the plugin contributes must vanish when it is disabled."""
 
     def _gdpr_blocks(self, slot):
-        return [b for b in plugin_registry.storefront_blocks_for(slot) if b.plugin == 'gdpr']
+        return [b for b in app_registry.storefront_blocks_for(slot) if b.plugin == 'gdpr']
 
     def test_surfaces_present_while_active(self):
         self.assertTrue(self._gdpr_blocks('account_nav'), 'account tile missing while active')
         self.assertTrue(self._gdpr_blocks('footer_legal'), 'footer links missing while active')
-        self.assertIsNotNone(plugin_registry.settings_panel('gdpr'))
+        self.assertIsNotNone(app_registry.settings_panel('gdpr'))
 
     def test_surfaces_vanish_on_disable(self):
-        self.addCleanup(plugin_registry.activate, 'gdpr')
-        plugin_registry.deactivate('gdpr')
+        self.addCleanup(app_registry.activate, 'gdpr')
+        app_registry.deactivate('gdpr')
         self.assertEqual(self._gdpr_blocks('account_nav'), [])
         self.assertEqual(self._gdpr_blocks('footer_legal'), [])
-        self.assertIsNone(plugin_registry.settings_panel('gdpr'))
+        self.assertIsNone(app_registry.settings_panel('gdpr'))
 
 
 class LegalPageSeedTests(TestCase):

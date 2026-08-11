@@ -20,7 +20,7 @@ from django.test import Client, TestCase
 from djmoney.money import Money
 
 from plugins.installed.catalog.models import Product
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 class WalkthroughPublicTests(TestCase):
@@ -77,7 +77,7 @@ class WalkthroughDisabledTests(TestCase):
     'closed' notice and does NOT boot three.js."""
 
     def test_disabled_renders_closed_notice_without_three(self):
-        plugin = plugin_registry.get('bookstore_3d')
+        plugin = app_registry.get('bookstore_3d')
         self.assertIsNotNone(plugin)
         plugin.set_config('enabled', False)
         try:

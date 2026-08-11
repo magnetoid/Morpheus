@@ -21,9 +21,9 @@ class AISettingsDedupeTests(TestCase):
         # rollback and would leak 'sk-test-xyz' into later tests (e.g.
         # test_reflection saw it as a configured provider and made a live 401
         # call). Invalidate it so the next test re-reads the rolled-back DB.
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        p = plugin_registry.get('ai_assistant')
+        p = app_registry.get('ai_assistant')
         if p is not None:
             p.invalidate_config_cache()
 
@@ -33,7 +33,7 @@ class AISettingsDedupeTests(TestCase):
         self.assertEqual(r['Location'], '/dashboard/settings/ai/')
 
     def test_post_saves_and_bounces_back_to_rich_page(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         r = self.c.post(
             '/dashboard/settings/ai_assistant/',
@@ -42,9 +42,9 @@ class AISettingsDedupeTests(TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertEqual(r['Location'], '/dashboard/settings/ai/')
         # config actually persisted
-        plugin_registry.get('ai_assistant').invalidate_config_cache()
+        app_registry.get('ai_assistant').invalidate_config_cache()
         self.assertEqual(
-            plugin_registry.get('ai_assistant').get_config_value('openai_api_key'), 'sk-test-xyz'
+            app_registry.get('ai_assistant').get_config_value('openai_api_key'), 'sk-test-xyz'
         )
 
     def test_rich_ai_page_renders(self):

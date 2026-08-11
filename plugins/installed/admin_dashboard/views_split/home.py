@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import contextlib
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     redirect,
@@ -147,9 +147,9 @@ def _setup_guide_dismissed() -> bool:
     Stored on the admin_dashboard plugin config (store-wide, no migration).
     """
     with _safe_block('setup.dismissed'):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        adm = plugin_registry.get('admin_dashboard')
+        adm = app_registry.get('admin_dashboard')
         if adm is not None:
             return bool(adm.get_config_value(_SETUP_DISMISS_KEY, False))
     return False
@@ -161,9 +161,9 @@ def setup_dismiss(request: HttpRequest) -> HttpResponse:
     if request.method != 'POST':
         return redirect('/dashboard/')
     with _safe_block('setup.dismiss'):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        adm = plugin_registry.get('admin_dashboard')
+        adm = app_registry.get('admin_dashboard')
         if adm is not None:
             adm.set_config(_SETUP_DISMISS_KEY, True)
     return redirect('/dashboard/')

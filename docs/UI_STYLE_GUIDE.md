@@ -240,7 +240,7 @@ delegate.spawn_workers(jobs=[{
 }])
 ```
 
-See `plugins/installed/seo/plugin.py:contribute_skills` for a real example.
+See `plugins/installed/seo/app.py:contribute_skills` for a real example.
 
 ---
 

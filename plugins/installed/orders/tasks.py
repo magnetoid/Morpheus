@@ -33,9 +33,9 @@ DEFAULT_EXPIRY_MINUTES = 60
 def _expiry_minutes() -> int:
     """Merchant knob, read fresh (a plugin config cache is per-process)."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('orders')
+        plugin = app_registry.get('orders')
         raw = plugin.get_config_value('pending_order_expiry_minutes', DEFAULT_EXPIRY_MINUTES)
         return max(0, int(raw))
     except Exception:  # noqa: BLE001 — a config problem must not stop the sweep

@@ -7,7 +7,7 @@ import uuid
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class Customer(AbstractUser):

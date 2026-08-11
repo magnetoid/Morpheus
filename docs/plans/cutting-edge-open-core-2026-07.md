@@ -170,7 +170,7 @@ dashboard shell (4-lens audit, ~50 findings).
 19. `morph doctor` — package the internal guards (manifest, migrations,
     boundary imports, disable-safe render check, dead-slot check) as a public
     validator; gate a curated plugin registry on it.
-20. Real out-of-tree plugin path: test MORPHEUS_EXTRA_PLUGINS in CI,
+20. Real out-of-tree plugin path: test MORPHEUS_EXTRA_APPS in CI,
     `--package` scaffold mode, example external repo, morpheus.testing
     factories. North-star metric: **agent time-to-first-plugin** (fresh
     Claude Code session → doctor-clean disable-safe plugin, unattended).

@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from djmoney.models.fields import MoneyField
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class PriceList(models.Model):

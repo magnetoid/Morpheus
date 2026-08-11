@@ -10,7 +10,7 @@ one owner — these models extend the canonical row, they never redefine it.
 
 from __future__ import annotations
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class ReturnResolution(models.Model):

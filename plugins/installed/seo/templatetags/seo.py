@@ -73,11 +73,11 @@ def _canonical_from_request(request) -> tuple[str, bool]:
     strip_all = True  # default ON (matches the PluginConfig default)
     blocklist: set[str] = set()
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         seo_plugin = None
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     seo_plugin = fn('seo')
@@ -258,11 +258,11 @@ def seo_meta(  # noqa: PLR0912 — branch count tolerated; centralises every hea
             and getattr(object, '_meta', None) is not None
             and getattr(object._meta, 'model_name', '') == 'product'
         ):
-            from plugins.registry import plugin_registry
+            from plugins.registry import app_registry
 
             seo_plugin = None
             for attr in ('get', 'get_plugin'):
-                fn = getattr(plugin_registry, attr, None)
+                fn = getattr(app_registry, attr, None)
                 if callable(fn):
                     try:
                         seo_plugin = fn('seo')
@@ -304,11 +304,11 @@ def seo_preconnect():
     """
     host = ''
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         seo_plugin = None
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     seo_plugin = fn('seo')
@@ -735,11 +735,11 @@ def seo_responsive_image(
     # native lazy-load attribute. Defaults to ON.
     lazy_enabled = True
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         seo_plugin = None
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     seo_plugin = fn('seo')

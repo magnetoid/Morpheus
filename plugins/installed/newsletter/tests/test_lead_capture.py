@@ -13,7 +13,7 @@ from django.test import TestCase
 
 from plugins.installed.crm.models import Lead
 from plugins.installed.newsletter.services import subscribe
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 class NewsletterLeadCaptureTests(TestCase):
@@ -34,12 +34,12 @@ class NewsletterLeadCaptureTests(TestCase):
 
     def test_capture_stops_when_crm_is_disabled(self):
         # Bus-gated: a disabled plugin's subscriber does not run.
-        plugin_registry.deactivate('crm')
+        app_registry.deactivate('crm')
         try:
             subscribe('offcrm@example.com', source='footer')
             self.assertFalse(Lead.objects.filter(email='offcrm@example.com').exists())
         finally:
-            plugin_registry.activate('crm')
+            app_registry.activate('crm')
 
     def test_signup_still_succeeds_if_lead_capture_fails(self):
         from unittest.mock import patch

@@ -20,7 +20,7 @@ from django.template import Context, Template
 from django.test import RequestFactory, TestCase
 
 from plugins.installed.staff_sso import services
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 def _request():
@@ -53,15 +53,15 @@ def _configure(*, domains='acme.com', enabled=True):
             },
         },
     )
-    plugin = plugin_registry.get('staff_sso')
+    plugin = app_registry.get('staff_sso')
     if plugin is not None:
         plugin.invalidate_config_cache()
     services.sync_social_app(services.get_settings(plugin) if plugin else {})
 
     if enabled:
-        plugin_registry._active.add('staff_sso')
+        app_registry._active.add('staff_sso')
     else:
-        plugin_registry._active.discard('staff_sso')
+        app_registry._active.discard('staff_sso')
     return plugin
 
 
@@ -113,12 +113,12 @@ class UnconfiguredRendersNothing(TestCase):
     def test_no_socialapp_tag_is_empty(self):
         # Enabled but never configured: ensure no SocialApp lingers.
         services.sync_social_app({})
-        plugin_registry._active.add('staff_sso')
+        app_registry._active.add('staff_sso')
         self.assertEqual(_render_tag(_request()), '')
 
     def test_no_socialapp_block_is_empty(self):
         services.sync_social_app({})
-        plugin_registry._active.add('staff_sso')
+        app_registry._active.add('staff_sso')
         html = _render_block(_request()).strip()
         self.assertNotIn('Sign in with SSO', html)
         self.assertEqual(html, '')
@@ -130,12 +130,12 @@ class DisabledRendersNothing(TestCase):
     def test_disabled_plugin_tag_is_empty(self):
         # Configure a SocialApp, then mark the plugin inactive.
         _configure(domains='acme.com', enabled=True)
-        plugin_registry._active.discard('staff_sso')
+        app_registry._active.discard('staff_sso')
         self.assertEqual(_render_tag(_request()), '')
 
     def test_disabled_plugin_block_is_empty(self):
         _configure(domains='acme.com', enabled=True)
-        plugin_registry._active.discard('staff_sso')
+        app_registry._active.discard('staff_sso')
         html = _render_block(_request()).strip()
         self.assertEqual(html, '')
 
@@ -160,15 +160,15 @@ def _configure_saml(*, enabled=True, saml_enabled=True):
             },
         },
     )
-    plugin = plugin_registry.get('staff_sso')
+    plugin = app_registry.get('staff_sso')
     if plugin is not None:
         plugin.invalidate_config_cache()
     services.sync_saml_app(services.get_saml_settings(plugin) if plugin else {})
 
     if enabled:
-        plugin_registry._active.add('staff_sso')
+        app_registry._active.add('staff_sso')
     else:
-        plugin_registry._active.discard('staff_sso')
+        app_registry._active.discard('staff_sso')
     return plugin
 
 
@@ -212,6 +212,6 @@ class SamlButtonDisableSafe(TestCase):
 
     def test_plugin_disabled_no_saml_button(self):
         _configure_saml(enabled=True, saml_enabled=True)
-        plugin_registry._active.discard('staff_sso')
+        app_registry._active.discard('staff_sso')
         self.assertEqual(_render_saml_tag(_request()), '')
         self.assertEqual(_render_block(_request()).strip(), '')

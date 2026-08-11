@@ -3,7 +3,7 @@
 `deactivate()` intentionally does NOT unwind the hooks a plugin wired in
 `ready()` (so a re-enable doesn't double-register them). The safety net is the
 hook bus itself: `fire`/`filter` skip any handler owned by a plugin that
-plugin_registry reports as inactive. This is what makes a contributed surface
+app_registry reports as inactive. This is what makes a contributed surface
 (product-form card, KPI, activity-feed item) vanish the moment its plugin is
 toggled off — the regression behind "I disabled book_product but its Book
 details card kept showing".
@@ -14,7 +14,7 @@ from __future__ import annotations
 from django.test import TestCase
 
 from core.hooks import HookRegistry, MorpheusEvents, hook_registry
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 _EVENT = 'test.disable_gating.probe'
 
@@ -58,7 +58,7 @@ class HookOwnerGatingTests(TestCase):
 
 
 class RegistryWiredGatingTests(TestCase):
-    """End-to-end: the REAL hook_registry is wired to plugin_registry.is_active,
+    """End-to-end: the REAL hook_registry is wired to app_registry.is_active,
     so toggling a plugin off silences its handlers on the shared bus."""
 
     def setUp(self):
@@ -69,22 +69,22 @@ class RegistryWiredGatingTests(TestCase):
             MorpheusEvents.PRODUCT_FORM_CARDS, self._handler, plugin='audiobooks'
         )
         self.addCleanup(hook_registry.unregister, MorpheusEvents.PRODUCT_FORM_CARDS, self._handler)
-        self.addCleanup(plugin_registry.activate, 'audiobooks')
+        self.addCleanup(app_registry.activate, 'audiobooks')
 
     def test_probe_present_when_active_absent_when_disabled(self):
-        plugin_registry.activate('audiobooks')
+        app_registry.activate('audiobooks')
         self.assertIn(
             'audiobooks-card',
             hook_registry.filter(MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=None),
         )
         # Toggle off → the shared bus skips the audiobooks-owned handler.
-        plugin_registry.deactivate('audiobooks')
+        app_registry.deactivate('audiobooks')
         self.assertNotIn(
             'audiobooks-card',
             hook_registry.filter(MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=None),
         )
         # Re-enable → back again (no restart).
-        plugin_registry.activate('audiobooks')
+        app_registry.activate('audiobooks')
         self.assertIn(
             'audiobooks-card',
             hook_registry.filter(MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=None),

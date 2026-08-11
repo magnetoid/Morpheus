@@ -23,18 +23,18 @@
 ## Known code facts (verified — trust these, don't re-derive)
 
 - `services.py:funnel_for` returns `[{'step': <name>, 'sessions': <int>}, …]`; `services_cohorts.py:step_dropoffs` L265-266 wrongly reads `prev['name']`/`cur['name']`.
-- `plugin.py:ready()` hook fan-out list (L35-42) has NO `events.BEGIN_CHECKOUT` — checkout events never land at all.
+- `app.py:ready()` hook fan-out list (L35-42) has NO `events.BEGIN_CHECKOUT` — checkout events never land at all.
 - `tasks.py:_kind_for` (L37) maps BOTH `order.placed` and `payment.captured` → `'purchase'`; `roll_daily` aggregates revenue over `kind='purchase'` → double-count exposure.
 - `services.py:roll_daily` L296 counts `name='checkout.start'` (wrong name); `views.py:funnel_view` L260 default steps `['pageview', 'product.viewed', 'cart.add', 'order.placed']`.
 - `views.py:_ALLOWED_KINDS` (L22) includes client-forgeable `'purchase', 'checkout', 'signup', 'login'`.
 - `services.py:get_or_create_session` reads `request.COOKIES.get('cookie_consent') == 'true'` but creates an `AnalyticsSession` row even when not consented (only the cookie-set is gated) → a new row per request for non-consented visitors.
 - `record_event(request=…, session=None)` resolves the session itself; `session=None` is fully supported (events row with `session=NULL`).
-- `plugin.py:_on_event(event_name)` builds a `**kwargs` handler; it currently extracts `order`/`product`/`customer` kwargs only — no `request`, no `query`.
+- `app.py:_on_event(event_name)` builds a `**kwargs` handler; it currently extracts `order`/`product`/`customer` kwargs only — no `request`, no `query`.
 - Checkout already fires `MorpheusEvents.BEGIN_CHECKOUT` (kwargs `cart=`, `customer=`) in `storefront/views/checkout.py:~203` and `checkout_one_page.py:~55`, gated by `request.session['checkout_started']`.
 - The dot_books theme beacon sends ONLY web-vitals (`base.html:832`); no client code sends `product_view`/`search`/`cart` kinds → server emitters introduce no double counting.
 - `DailyMetric` fields: `day` (date), `metric` (str), `dimension` (str), `value_int` (BigInteger), `value_money` (MoneyField, nullable). Unique on `(day, metric, dimension)`.
-- KPI dict shape (see `catalog/plugin.py:on_dashboard_kpis`): `{'label', 'value', 'delta', 'trend', 'icon', 'series', 'hint'}` appended to `value` list; handler signature `(self, value, date_range=None, **kwargs)`.
-- Activity item shape (see `admin_dashboard/plugin.py:on_activity_feed`): `{'kind', 'icon', 'label', 'hint', 'url', 'when'}`; handler `(self, value, limit=20, **kwargs)`.
+- KPI dict shape (see `catalog/app.py:on_dashboard_kpis`): `{'label', 'value', 'delta', 'trend', 'icon', 'series', 'hint'}` appended to `value` list; handler signature `(self, value, date_range=None, **kwargs)`.
+- Activity item shape (see `admin_dashboard/app.py:on_activity_feed`): `{'kind', 'icon', 'label', 'hint', 'url', 'when'}`; handler `(self, value, limit=20, **kwargs)`.
 - Notifications: `plugins.installed.notifications_center.services.notify_all_staff(kind=…, title=…, body=…, action_url=…, icon=…)` — import in try/except ImportError (pattern: `inventory/tasks.py:14`).
 - Dashboard URLs: funnel = `/dashboard/analytics/v2/funnel/`, cohorts = `/dashboard/analytics/v2/cohorts/` (namespace `analytics_dash`).
 - Existing test file: `plugins/installed/analytics/tests/test_analytics.py` (`SessionTests`, `RecordEventTests`, `RollupTests`, `FunnelTests`, …) — TestCase style, no pytest.
@@ -147,7 +147,7 @@ git commit -m "fix(analytics): funnel drop-off 500 — step_dropoffs read prev['
 ### Task 2: Checkout events actually land — subscribe + canonical name + single money event
 
 **Files:**
-- Modify: `plugins/installed/analytics/plugin.py` (ready() fan-out list, ~L35-42)
+- Modify: `plugins/installed/analytics/app.py` (ready() fan-out list, ~L35-42)
 - Modify: `plugins/installed/analytics/tasks.py:_kind_for` (~L37)
 - Modify: `plugins/installed/analytics/services.py:roll_daily` (~L296)
 - Modify: `plugins/installed/analytics/views.py` (~L260 default steps)
@@ -211,7 +211,7 @@ Expected: `test_checkout_started_maps_to_checkout` fails (`_kind_for` returns `'
 
 - [ ] **Step 3: Implement**
 
-`plugins/installed/analytics/plugin.py` — add `events.BEGIN_CHECKOUT` to the fan-out list:
+`plugins/installed/analytics/app.py` — add `events.BEGIN_CHECKOUT` to the fan-out list:
 
 ```python
         for event in [
@@ -271,7 +271,7 @@ git commit -m "fix(analytics): checkout events land — subscribe BEGIN_CHECKOUT
 ### Task 3: Server-side funnel emitters (PDP + search) with session linkage
 
 **Files:**
-- Modify: `plugins/installed/analytics/plugin.py:_on_event` (~L71-104)
+- Modify: `plugins/installed/analytics/app.py:_on_event` (~L71-104)
 - Modify: `plugins/installed/storefront/views/catalog.py` (`product_detail` ~L331 region, `search` ~L857)
 - Modify: `plugins/installed/storefront/views/checkout.py` (~L203-213) and `checkout_one_page.py` (~L55-64) — add `request=request` to the existing fires
 - Test: `plugins/installed/analytics/tests/test_server_emitters.py` (create)
@@ -342,7 +342,7 @@ Expected: FAIL — `session_id` is None (handler ignores `request`), `search_que
 
 - [ ] **Step 3: Extend `_on_event`**
 
-Replace the handler body in `plugins/installed/analytics/plugin.py:_on_event`:
+Replace the handler body in `plugins/installed/analytics/app.py:_on_event`:
 
 ```python
         def _handler(**kwargs):
@@ -513,7 +513,7 @@ class BeaconRateLimitTests(TestCase):
 ```
 
 First verify the beacon URL: `grep -n "track" plugins/installed/analytics/urls_api.py`
-and the URL prefix in `plugin.py:register_urls` (`prefix='api/'`) — adjust `_URL`.
+and the URL prefix in `app.py:register_urls` (`prefix='api/'`) — adjust `_URL`.
 Also check whether the endpoint is csrf-exempt (it must be, for sendBeacon) — if the
 test 403s, use `self.client.post(..., HTTP_X_CSRFTOKEN=...)` or the csrf_exempt reality.
 
@@ -671,7 +671,7 @@ git commit -m "feat(analytics): consent-gated ingestion — no session rows or c
 
 **Files:**
 - Modify: `plugins/installed/analytics/services.py:roll_daily` (after the existing upserts, before the loops)
-- Modify: `plugins/installed/analytics/plugin.py:contribute_dashboard_pages`
+- Modify: `plugins/installed/analytics/app.py:contribute_dashboard_pages`
 - Test: `plugins/installed/analytics/tests/test_derived_rollups.py` (create)
 
 **Interfaces:**
@@ -786,7 +786,7 @@ In `services.py:roll_daily`, immediately after the `searches` upsert (~L297):
 
 - [ ] **Step 4: Add the Cohorts nav entry**
 
-In `plugin.py:contribute_dashboard_pages`, append after the Funnel entry:
+In `app.py:contribute_dashboard_pages`, append after the Funnel entry:
 
 ```python
             DashboardPage(
@@ -817,7 +817,7 @@ git commit -m "feat(analytics): derived daily KPIs (conversion/aov/abandonment) 
 
 **Files:**
 - Create: `plugins/installed/analytics/dashboard.py`
-- Modify: `plugins/installed/analytics/plugin.py:ready()`
+- Modify: `plugins/installed/analytics/app.py:ready()`
 - Test: `plugins/installed/analytics/tests/test_home_contributions.py` (create)
 
 **Interfaces:**
@@ -985,7 +985,7 @@ def on_activity_feed(value, limit=20, **kwargs):
     return value
 ```
 
-- [ ] **Step 4: Register in `plugin.py:ready()`** (after the celery-beat blocks):
+- [ ] **Step 4: Register in `app.py:ready()`** (after the celery-beat blocks):
 
 ```python
         # Dashboard-home presence: KPI tiles + anomaly activity — via the
@@ -1017,7 +1017,7 @@ git commit -m "feat(analytics): dashboard-home KPIs (sessions/conversion/AI refe
 **Files:**
 - Create: `plugins/installed/analytics/services_anomaly.py`
 - Modify: `plugins/installed/analytics/tasks.py` (new task)
-- Modify: `plugins/installed/analytics/plugin.py:ready()` (new beat entry)
+- Modify: `plugins/installed/analytics/app.py:ready()` (new beat entry)
 - Test: `plugins/installed/analytics/tests/test_anomaly.py` (create)
 
 **Interfaces:**
@@ -1234,7 +1234,7 @@ def detect_anomalies_task() -> int:
     return len(findings)
 ```
 
-`plugin.py:ready()` — after the trim beat entry:
+`app.py:ready()` — after the trim beat entry:
 
 ```python
         self.register_celery_beat(

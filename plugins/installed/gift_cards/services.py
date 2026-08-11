@@ -218,9 +218,9 @@ def lookup(code: str) -> GiftCard | None:  # noqa: F821
 def sellable_skus() -> set[str]:
     """The configured set of order-item SKUs that mean "this is a gift-card
     purchase" (Settings → Gift cards). Upper-cased; empty set disables."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    raw = str(plugin_registry.config_value('gift_cards', 'sellable_skus', 'GIFT-CARD') or '')
+    raw = str(app_registry.config_value('gift_cards', 'sellable_skus', 'GIFT-CARD') or '')
     return {s.strip().upper() for s in raw.split(',') if s.strip()}
 
 

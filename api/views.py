@@ -159,9 +159,9 @@ def healthz_deep(request: HttpRequest) -> JsonResponse:
         checks['cache'] = {'ok': False, 'error': str(e)[:200]}
 
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        active = list(plugin_registry._active)
+        active = list(app_registry._active)
         checks['plugins'] = {'ok': True, 'active_count': len(active)}
     except Exception as e:  # noqa: BLE001
         checks['plugins'] = {'ok': False, 'error': str(e)[:200]}

@@ -62,7 +62,7 @@ features below are designed to **amplify** them, not replace them.
 | **Plugin contract** (`StorefrontBlock(slot=…)`) | [`morpheus/contributions.py`](file:///Users/magnetoid/coding/morph/morpheus/contributions.py) | Lets us drop vibe surfaces into the storefront with zero theme edits. |
 | **Personalisation** (F-B-T block + co-purchase scores) | [`plugins/installed/personalisation/`](file:///Users/magnetoid/coding/morph/plugins/installed/personalisation/) | The signal pipeline exists — we feed it the *wrong* surfaces today. |
 | **Loyalty + Store Credit** | [`plugins/installed/loyalty_points/`](file:///Users/magnetoid/coding/morph/plugins/installed/loyalty_points/) | Redemption is in the cart breakdown filter. The application UI is the missing piece. |
-| **Post-purchase journey** (tracking → delivered → review → NPS) | [`plugins/installed/post_purchase/`](file:///Users/magnetoid/coding/morph/plugins/installed/post_purchase/plugin.py) | Four-step timed chain — the *timing* is the secret sauce, but the chain is text-only. |
+| **Post-purchase journey** (tracking → delivered → review → NPS) | [`plugins/installed/post_purchase/`](file:///Users/magnetoid/coding/morph/plugins/installed/post_purchase/app.py) | Four-step timed chain — the *timing* is the secret sauce, but the chain is text-only. |
 | **Reviews** | [`plugins/installed/reviews/`](file:///Users/magnetoid/coding/morph/plugins/installed/reviews/) | UGC base; missing only the surfacing layer. |
 | **3D book preview** | [`plugins/installed/bookstore_3d/`](file:///Users/magnetoid/coding/morph/plugins/installed/bookstore_3d/) | A 3D flipbook is in tree. The *infrastructure* is here — the consumer surface isn't. |
 | **Audiobooks** | [`plugins/installed/audiobooks/`](file:///Users/magnetoid/coding/morph/plugins/installed/audiobooks/) | Multi-format product lifecycle is proven. |
@@ -142,7 +142,7 @@ long-form immersive narrative (the Aesop / Glossier reading format).
 **Builds on.** `cms` (rebuilt), `media`, `seo` (per-page meta
 overrides), the AI-content plugin for first-draft generation.
 
-**Effort:** 4 (rebuild CMS in-place; keep `plugin.py` manifest).
+**Effort:** 4 (rebuild CMS in-place; keep `app.py` manifest).
 **Impact:** HIGH. **Compounds:** HIGH (F4, F6, F7, F8).
 
 #### ★ P1 · F4 · Brand Asset Library + Theme Tokens
@@ -431,7 +431,7 @@ prompt with a one-tap upload (F14).
   emails carry *brand content* (not order updates); **+25 %
   repeat-purchase rate** with SMS in the chain.
 - The 14-day-delayed review request and 30-day-delayed NPS
-  are correct (see `plugin.py`); the *content* at those points
+  are correct (see `app.py`); the *content* at those points
   is what makes the chain *vibe-coded* instead of transactional.
 
 **Builds on.** `post_purchase`, `pwa`, `sms` (new tiny plugin),

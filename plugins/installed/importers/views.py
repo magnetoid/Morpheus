@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import logging
 
-from morpheus.plugin.views import HttpResponse, render, staff_member_required
+from morpheus.app.views import HttpResponse, render, staff_member_required
 
 logger = logging.getLogger('morpheus.importers.views')
 

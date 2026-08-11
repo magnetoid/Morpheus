@@ -108,7 +108,7 @@ agent to do work in this repo.
 **Prereqs:** decide a plugin `name` (snake_case, must equal directory).
 **Steps (scaffolder — recommended):**
 1. `python manage.py morph_create_plugin <name> --label "Display Name" [--with-models] [--with-graphql] [--with-urls] [--with-tasks]`
-2. Add `'plugins.installed.<name>'` to `MORPHEUS_DEFAULT_PLUGINS` in [`morph/settings.py`](morph/settings.py).
+2. Add `'plugins.installed.<name>'` to `MORPHEUS_DEFAULT_APPS` in [`morph/settings.py`](morph/settings.py).
 3. If `--with-models`: `python manage.py makemigrations <name> && python manage.py migrate`.
 4. `python manage.py check` — your plugin should appear in the activation log.
 
@@ -117,8 +117,8 @@ agent to do work in this repo.
 2. Create `__init__.py` setting `default_app_config = 'plugins.installed.<name>.apps.<Name>Config'`.
 3. Create `apps.py` with `<Name>Config` (`name = 'plugins.installed.<name>'`, `label = '<name>'`).
 4. Create `migrations/__init__.py` (empty).
-5. Create `plugin.py` subclassing `MorpheusPlugin`. Metadata is validated at class-definition time — typos fail fast.
-6. Add the path to `MORPHEUS_DEFAULT_PLUGINS` and run migrations.
+5. Create `app.py` subclassing `MorpheusPlugin`. Metadata is validated at class-definition time — typos fail fast.
+6. Add the path to `MORPHEUS_DEFAULT_APPS` and run migrations.
 
 **Validate:** plugin appears in the activation log and in `Query.activePlugins`.
 **See also:** [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) (full developer guide), [`plugins/base.py`](plugins/base.py), [`plugins/registry.py`](plugins/registry.py), [Skill: wire a hook listener](#skill-wire-a-hook-listener).
@@ -129,7 +129,7 @@ agent to do work in this repo.
 **Steps:**
 1. In `plugin.ready()`: `self.register_hook(MorpheusEvents.ORDER_PLACED, self.on_order_placed, priority=80)`.
 2. Implement `on_order_placed(self, order, **kwargs)` — keep `**kwargs` because the hook signature can grow.
-3. Wrap the body in `try: ... except Exception as e: logger.warning(...) ` so a buggy plugin can't break the chain. See [`plugins/installed/marketplace/plugin.py`](plugins/installed/marketplace/plugin.py:23-29) for the canonical pattern.
+3. Wrap the body in `try: ... except Exception as e: logger.warning(...) ` so a buggy plugin can't break the chain. See [`plugins/installed/marketplace/app.py`](plugins/installed/marketplace/app.py:23-29) for the canonical pattern.
 **Validate:** trigger the event in a test (`hook_registry.fire('order.placed', order=order)`) and assert your handler ran.
 **See also:** [`core/hooks.py`](core/hooks.py), [Skill: fire a custom event](#skill-fire-a-custom-event).
 
@@ -155,7 +155,7 @@ agent to do work in this repo.
 **When:** plugin needs periodic tasks (rollups, sweeps, backfills).
 **Steps:**
 1. Create the task in `<plugin>/tasks.py` with `@shared_task(bind=True, time_limit=…, soft_time_limit=…)`.
-2. In `plugin.ready()` mutate `CELERY_BEAT_SCHEDULE`. See [`plugins/installed/observability/plugin.py`](plugins/installed/observability/plugin.py).
+2. In `plugin.ready()` mutate `CELERY_BEAT_SCHEDULE`. See [`plugins/installed/observability/app.py`](plugins/installed/observability/app.py).
 3. `setdefault(...)` so a merchant override wins.
 **Validate:** `celery -A morph beat -l debug` logs the schedule entry.
 

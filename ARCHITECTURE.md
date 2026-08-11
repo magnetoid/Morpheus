@@ -137,7 +137,7 @@ Themes skin the storefront plugin. Swappable at runtime with zero downtime.
 This is the key architectural nuance. Plugins that define **Django models** must be known at startup (before the DB is connected), because Django needs to build the migration graph. Purely behavioral plugins can be toggled from the DB at runtime.
 
 ### Tier 1 — INSTALLED_APPS level (startup config)
-Declared in `settings.py` via `MORPHEUS_DEFAULT_PLUGINS` and `MORPHEUS_EXTRA_PLUGINS` (from `.env`).
+Declared in `settings.py` via `MORPHEUS_DEFAULT_APPS` and `MORPHEUS_EXTRA_APPS` (from `.env`).
 These plugins' models, migrations, and admin are always available.
 Controls: **do the DB tables exist?**
 
@@ -153,9 +153,9 @@ Plugin has models?
 
 ### Default Plugin Sets
 
-**MORPHEUS_DEFAULT_PLUGINS** — always loaded, auto-enabled on first boot:
+**MORPHEUS_DEFAULT_APPS** — always loaded, auto-enabled on first boot:
 ```python
-MORPHEUS_DEFAULT_PLUGINS = [
+MORPHEUS_DEFAULT_APPS = [
     # ── Commerce core ────────────────────────────────────────────────
     'plugins.installed.catalog',       # Products, Variants, Categories, Collections, Vendors, Reviews
     'plugins.installed.orders',        # Cart, Order (FSM), Fulfillment, Refund, OrderEvent
@@ -183,13 +183,13 @@ The plugin registry topologically sorts these by `requires` and activates them
 in dependency order. Newly discovered plugins are auto-enabled on first boot
 (see [`plugins/registry.py`](plugins/registry.py)).
 
-**OPTIONAL — opt-in via `MORPHEUS_EXTRA_PLUGINS`:**
+**OPTIONAL — opt-in via `MORPHEUS_EXTRA_APPS`:**
 - `loyalty_points`, `wishlist`, `gift_cards`, `subscriptions`, `pos`, `b2b`
 
 **Community plugins** — installed by merchants into `plugins/installed/`:
 ```python
 # .env
-MORPHEUS_EXTRA_PLUGINS=plugins.installed.my_custom_plugin,plugins.installed.another_one
+MORPHEUS_EXTRA_APPS=plugins.installed.my_custom_plugin,plugins.installed.another_one
 ```
 
 ---
@@ -200,7 +200,7 @@ A full plugin with models looks like this:
 
 ```
 plugins/installed/catalog/
-├── plugin.py              ← MorpheusPlugin manifest (REQUIRED)
+├── app.py              ← MorpheusPlugin manifest (REQUIRED)
 ├── apps.py                ← Django AppConfig
 ├── models.py              ← Django models
 ├── migrations/            ← Django migrations
@@ -226,7 +226,7 @@ plugins/installed/catalog/
 A **behavioral-only plugin** (no models) is simpler:
 ```
 plugins/installed/analytics_gtm/
-├── plugin.py
+├── app.py
 ├── hooks.py               ← listens to order.placed, product.viewed etc.
 └── tasks.py
 ```
@@ -344,11 +344,11 @@ Morpheus is designed for horizontally scalable Kubernetes environments.
 
 ```python
 import strawberry
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 def build_schema():
-    query_bases = [CoreQuery] + plugin_registry.get_graphql_extensions('query')
-    mutation_bases = [CoreMutation] + plugin_registry.get_graphql_extensions('mutation')
+    query_bases = [CoreQuery] + app_registry.get_graphql_extensions('query')
+    mutation_bases = [CoreMutation] + app_registry.get_graphql_extensions('mutation')
 
     @strawberry.type
     class Query(*query_bases): pass
@@ -400,7 +400,7 @@ morph/
 │   └── installed/                   # ← EVERYTHING LIVES HERE
 │       │
 │       ├── catalog/                 # DEFAULT ✓ — Products, Categories, Variants
-│       │   ├── plugin.py
+│       │   ├── app.py
 │       │   ├── models.py
 │       │   ├── migrations/
 │       │   ├── graphql/
@@ -427,14 +427,14 @@ morph/
 │       │   └── ...
 │       │
 │       ├── storefront/              # DEFAULT ✓ — Theme-powered frontend
-│       │   ├── plugin.py
+│       │   ├── app.py
 │       │   ├── views.py             # Queries own GraphQL API — never ORM directly
 │       │   ├── urls.py
 │       │   ├── templates/           # Overridden by active theme
 │       │   └── static/
 │       │
 │       ├── ai_assistant/            # DEFAULT ✓ — LLM, semantic search, agents
-│       │   ├── plugin.py
+│       │   ├── app.py
 │       │   ├── models.py            # AIInteraction log, AIPromptTemplate
 │       │   ├── services/
 │       │   │   ├── llm.py           # Swappable LLM gateway
@@ -543,7 +543,7 @@ Agents are rate-limited separately from humans and have explicit capability scop
 - [x] `payments` models (→ `plugins/installed/payments/models.py`)
 - [x] `inventory` models (→ `plugins/installed/inventory/models.py`)
 - [x] `marketing` models (→ `plugins/installed/marketing/models.py`)
-- [ ] All models need plugin.py manifests + apps.py + migrations
+- [ ] All models need app.py manifests + apps.py + migrations
 - [ ] `ai_assistant` — AIInteraction, AIPromptTemplate models
 
 ### Default Plugins — GraphQL
@@ -554,7 +554,7 @@ Agents are rate-limited separately from humans and have explicit capability scop
 - [ ] `ai_assistant` — mutations (agentCheckout, generateDescription)
 
 ### Default Plugins — Storefront
-- [ ] `storefront/plugin.py`
+- [ ] `storefront/app.py`
 - [ ] `storefront/views.py` (GraphQL-consuming)
 - [ ] `themes/library/aurora/` — first theme
 

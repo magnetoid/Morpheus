@@ -89,9 +89,9 @@ def updates_apply_tool(
 )
 def settings_set_tool(*, plugin: str, key: str, value: str, confirmed: bool = False) -> ToolResult:
     _require_confirmed(confirmed)
-    from plugins.registry import plugin_registry  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
 
-    instance = plugin_registry.get(plugin)
+    instance = app_registry.get(plugin)
     if instance is None:
         raise ToolError(f'no such plugin: {plugin!r}')
     coerced: object = value

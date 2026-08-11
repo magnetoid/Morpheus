@@ -102,7 +102,7 @@ by the resolution function — it never creates a new header key.
   visible when a plugin is disabled.
 
 - [ ] **Migration: 21 sections → 9 + Apps remapped.** Each current
-  `section=` value across all plugin `plugin.py` files is updated to a
+  `section=` value across all plugin `app.py` files is updated to a
   canonical key per the mapping table below.
 
   | Today | Target |
@@ -126,7 +126,7 @@ by the resolution function — it never creates a new header key.
 - The registry is **immutable at runtime** (`frozen=True`). Plugins cannot
   append to it; that is the governance mechanism.
 - Implementing this spec does NOT require rewriting plugin page content,
-  view logic, or URL patterns — only `section=` values in `plugin.py`
+  view logic, or URL patterns — only `section=` values in `app.py`
   files and the three dicts in `context_processors.py`.
 - Conforms to ADR 0010 (tiny core owns extension points), ADR 0011 (one
   agent, specialisation via tools), ADR 0012 (plugins extend named shared

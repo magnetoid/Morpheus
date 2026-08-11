@@ -1,7 +1,7 @@
 """
 Agent registry — discovers agents and tools contributed by plugins.
 
-Populated by `plugins.registry.PluginRegistry._collect_contributions` after
+Populated by `plugins.registry.AppRegistry._collect_contributions` after
 each plugin's `ready()`. The registry is process-wide and read-only at
 runtime (it's only mutated during plugin activation/deactivation).
 """
@@ -29,7 +29,7 @@ class AgentRegistry:
         # asserted by a CI test) instead of silently overwriting.
         self._collisions: list[tuple[str, str, str]] = []
 
-    # ── Registration (called by PluginRegistry) ────────────────────────────────
+    # ── Registration (called by AppRegistry) ────────────────────────────────
 
     def register_agent(self, agent: MorpheusAgent, *, plugin: str = '') -> None:
         if not agent.name:

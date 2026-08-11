@@ -20,7 +20,7 @@ Source of truth for shapes: `github.com/agentic-commerce-protocol/agentic-commer
    completion reuses **`OrderService.create_from_cart()`**; pricing reuses the
    **`CART_CALCULATE_BREAKDOWN`** hook; availability reuses **`inventory.StockLevel`**.
    The only genuinely new code is the SPT→PaymentIntent redemption.
-3. **OFF by default.** Registered in `MORPHEUS_DEFAULT_PLUGINS` but disabled until
+3. **OFF by default.** Registered in `MORPHEUS_DEFAULT_APPS` but disabled until
    a merchant enrolls in Stripe ACP. **The money path (`complete`) must not be a
    live, untested charge path** — it can't be verified end-to-end without a Stripe
    ACP enrollment + a real agent, so it ships behind the disable + a settings flag

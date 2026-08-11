@@ -21,7 +21,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from core.utils.rate_limit import RateLimitExceeded, check_and_consume
-from morpheus.plugin.views import staff_required
+from morpheus.app.views import staff_required
 from plugins.installed.staff_mfa import services
 
 logger = logging.getLogger('morpheus.staff_mfa')
@@ -107,11 +107,11 @@ def challenge(request):
 def enroll(request):
     """Self-service enrollment / management for the signed-in staff user."""
     from plugins.installed.staff_mfa.models import StaffMfaDevice
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     user = request.user
     device = StaffMfaDevice.objects.filter(user=user).first()
-    plugin = plugin_registry.get('staff_mfa')
+    plugin = app_registry.get('staff_mfa')
     issuer = plugin.get_config_value('issuer', 'Morpheus') if plugin else 'Morpheus'
 
     recovery_codes: list[str] = []

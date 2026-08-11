@@ -12,18 +12,19 @@
         · registry v{{ registry_version }} ({{ registry_updated_at }})
       </p>
     </div>
-    <div class="flex gap-2">
-      <a href="{% url 'admin_dashboard:apps' %}" class="btn">
-        <i data-lucide="package" class="h-4 w-4"></i> Installed
-      </a>
-    </div>
   </div>
+
+  {# Installed + Browse are two views of one surface, not two pages. #}
+  <nav class="tab-list overflow-x-auto" aria-label="Apps views">
+    <a href="{% url 'admin_dashboard:apps' %}" class="tab">Installed</a>
+    <a href="{% url 'admin_dashboard:apps_store' %}" class="tab is-active">Browse</a>
+  </nav>
 
   <div class="card card-padded" style="background: var(--brand-soft); border: 1px solid var(--border);">
     <p style="margin: 0; font-size: .875rem; line-height: 1.5;">
       <strong>App store is in MVP.</strong> Today this surface is a curated browse
       view of community apps with copy-pasteable install commands. One-click
-      install + plugin packaging spec are tracked in
+      install + app packaging spec are tracked in
       <code>CHARTER.md §4 Layer 5</code>. Want to publish? Open a PR adding to
       <code>plugins/installed/admin_dashboard/data/apps_registry.json</code>.
     </p>
@@ -80,7 +81,7 @@
               <code style="display:block; padding: .5rem .65rem; background:var(--surface-2); border-radius:6px; font-size:.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all;">{{ a.install }}</code>
               <p class="meta" style="font-size:.7rem; margin: .5rem 0 0;">
                 Then add <code>plugins.installed.{{ a.slug|cut:"-"|cut:"_" }}</code> to
-                <code>MORPHEUS_DEFAULT_PLUGINS</code> in <code>morph/settings.py</code>
+                <code>MORPHEUS_DEFAULT_APPS</code> in <code>morph/settings.py</code>
                 and redeploy.
               </p>
             </div>

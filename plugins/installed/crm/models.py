@@ -27,7 +27,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from djmoney.models.fields import MoneyField
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class Lead(models.Model):

@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
-from morpheus.plugin import dashboard_trail
+from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.marketplace')
 
@@ -28,9 +28,9 @@ def _trail(*items):
 def _default_commission_percent() -> Decimal:
     """Read the platform's default commission percent from plugin config."""
     try:
-        from plugins.registry import plugin_registry  # noqa: PLC0415
+        from plugins.registry import app_registry  # noqa: PLC0415
 
-        plugin = plugin_registry.get('marketplace')
+        plugin = app_registry.get('marketplace')
         if plugin is not None:
             cfg = plugin.get_config() or {}
             raw = cfg.get('default_commission_percent', 15)

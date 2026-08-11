@@ -169,7 +169,7 @@ always exactly one sensible default. This phase adds **no UI** and is invisible.
 - **New `stores` plugin** (`plugins/installed/stores/`): owns the **Storefronts**
   dashboard page — CRUD over `StoreChannel` (name, domain, currency, country,
   theme, default flag), owner-gated, via `contribute_dashboard_pages()`. Register
-  in `MORPHEUS_DEFAULT_PLUGINS`. No model of its own (the model is core); it's the
+  in `MORPHEUS_DEFAULT_APPS`. No model of its own (the model is core); it's the
   admin surface. Disable it → the management page disappears, channels keep
   resolving (the spine is core).
 - **Verify:** two channels on two hosts resolve to two themes + two product

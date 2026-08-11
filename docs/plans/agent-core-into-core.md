@@ -77,7 +77,7 @@ Create:
 | `core/assistant/tools/spawn.py` | `delegate.spawn_workers`, `poll_workers`, `wait_for_workers` |
 
 The Worker is plain `core.agents` code — no plugin dependency. It is
-registered via `agent_core/plugin.py:contribute_agents()` for now (so
+registered via `agent_core/app.py:contribute_agents()` for now (so
 the plugin still bootstraps it) and will move to a core registration
 once the plugin disappears in Phase 4-5.
 
@@ -168,7 +168,7 @@ This is the irreversible part. Models move from
 
 **Post-migration:**
 
-- [ ] Remove `plugins.installed.agent_core` from `MORPHEUS_DEFAULT_PLUGINS`.
+- [ ] Remove `plugins.installed.agent_core` from `MORPHEUS_DEFAULT_APPS`.
 - [ ] Delete `plugins/installed/agent_core/` directory.
 - [ ] Delete the empty `agent_core_*` migration entries from `django_migrations` if Option B was used.
 

@@ -31,9 +31,9 @@ from datetime import datetime
 def _read(key: str, default):
     """Read one agent_core config value, cross-process fresh. Fail-soft."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('agent_core')
+        plugin = app_registry.get('agent_core')
         if plugin is None:
             return default
         plugin.invalidate_config_cache()

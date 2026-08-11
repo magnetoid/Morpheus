@@ -139,7 +139,7 @@ class LegacyMcpShimAuthTests(TestCase):
 
 class DeadTogglesRemovedTests(TestCase):
     def test_unwired_toggles_gone_from_ai_settings_schema(self):
-        from plugins.installed.ai_assistant.plugin import AIAssistantPlugin
+        from plugins.installed.ai_assistant.app import AIAssistantPlugin
 
         props = AIAssistantPlugin().get_config_schema().get('properties', {})
         self.assertNotIn('agent_purchase_requires_approval', props)

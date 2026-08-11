@@ -16,7 +16,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 
-from morpheus.plugin import dashboard_trail
+from morpheus.app import dashboard_trail
 
 from .models import (
     SLOT_CHOICES,

@@ -11,8 +11,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from morpheus.plugin.views import HttpRequest, HttpResponse, messages, staff_member_required
-from morpheus.plugin.views import get_object_or_404, redirect, render
+from morpheus.app.views import HttpRequest, HttpResponse, messages, staff_member_required
+from morpheus.app.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
 

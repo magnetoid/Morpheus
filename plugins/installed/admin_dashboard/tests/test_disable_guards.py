@@ -18,7 +18,7 @@ from django.conf import settings
 from django.template import Context, Template
 from django.test import TestCase
 
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 _BASE_HTML = (
     Path(settings.BASE_DIR)
@@ -35,17 +35,17 @@ class PluginEnabledTagTests(TestCase):
         return tpl.render(Context({})).strip()
 
     def test_active_plugin_is_true(self):
-        # `reviews` ships active in MORPHEUS_DEFAULT_PLUGINS.
+        # `reviews` ships active in MORPHEUS_DEFAULT_APPS.
         self.assertEqual(self._render('reviews'), 'YES')
 
     def test_disabled_plugin_is_false(self):
-        was_active = 'reviews' in plugin_registry._active
-        plugin_registry._active.discard('reviews')
+        was_active = 'reviews' in app_registry._active
+        app_registry._active.discard('reviews')
         try:
             self.assertEqual(self._render('reviews'), 'NO')
         finally:
             if was_active:
-                plugin_registry._active.add('reviews')
+                app_registry._active.add('reviews')
 
     def test_unknown_plugin_is_false(self):
         self.assertEqual(self._render('no_such_plugin_xyz'), 'NO')
@@ -95,9 +95,9 @@ class DashboardNavGuardTests(TestCase):
         ):
             self.assertNotIn(fragment, src, f'{fragment} is hardcoded again')
 
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        pages = {(pg.plugin, pg.label): pg for pg in plugin_registry.dashboard_pages()}
+        pages = {(pg.plugin, pg.label): pg for pg in app_registry.dashboard_pages()}
         self.assertTrue(
             any(plugin == 'affiliates' for plugin, _ in pages),
             'affiliates contributes no dashboard pages',
@@ -114,33 +114,33 @@ class HotEnableTests(TestCase):
 
     def setUp(self):
         # Always leave the registry as we found it, even if an assertion fails.
-        self.addCleanup(plugin_registry.activate, self.PLUGIN)
+        self.addCleanup(app_registry.activate, self.PLUGIN)
 
     def test_reenable_restores_contributions_without_restart(self):
         # Baseline: active with a settings panel registered.
-        plugin_registry.activate(self.PLUGIN)
-        self.assertIn(self.PLUGIN, plugin_registry._active)
-        self.assertIsNotNone(plugin_registry.settings_panel(self.PLUGIN))
+        app_registry.activate(self.PLUGIN)
+        self.assertIn(self.PLUGIN, app_registry._active)
+        self.assertIsNotNone(app_registry.settings_panel(self.PLUGIN))
 
         # Disable drops the contributions (panel disappears).
-        plugin_registry.deactivate(self.PLUGIN)
-        self.assertNotIn(self.PLUGIN, plugin_registry._active)
-        self.assertIsNone(plugin_registry.settings_panel(self.PLUGIN))
+        app_registry.deactivate(self.PLUGIN)
+        self.assertNotIn(self.PLUGIN, app_registry._active)
+        self.assertIsNone(app_registry.settings_panel(self.PLUGIN))
 
         # Re-enable brings them straight back — no restart.
-        self.assertTrue(plugin_registry.activate(self.PLUGIN))
-        self.assertIn(self.PLUGIN, plugin_registry._active)
-        self.assertIsNotNone(plugin_registry.settings_panel(self.PLUGIN))
+        self.assertTrue(app_registry.activate(self.PLUGIN))
+        self.assertIn(self.PLUGIN, app_registry._active)
+        self.assertIsNotNone(app_registry.settings_panel(self.PLUGIN))
 
     def test_activate_is_idempotent_no_duplicate_panels(self):
-        plugin_registry.activate(self.PLUGIN)
-        before = len(plugin_registry._storefront_blocks)
+        app_registry.activate(self.PLUGIN)
+        before = len(app_registry._storefront_blocks)
         # Activating an already-active plugin must not re-collect contributions.
-        self.assertTrue(plugin_registry.activate(self.PLUGIN))
-        self.assertEqual(len(plugin_registry._storefront_blocks), before)
+        self.assertTrue(app_registry.activate(self.PLUGIN))
+        self.assertEqual(len(app_registry._storefront_blocks), before)
 
     def test_activate_unknown_plugin_returns_false(self):
-        self.assertFalse(plugin_registry.activate('does_not_exist'))
+        self.assertFalse(app_registry.activate('does_not_exist'))
 
 
 class ProductShellContributionGuards(TestCase):
@@ -173,3 +173,57 @@ class ProductShellContributionGuards(TestCase):
             text = (base / rel).read_text(encoding='utf-8').lower()
             for token in self.FORBIDDEN:
                 self.assertNotIn(token, text, f'{rel} couples to bookvault via {token!r}')
+
+
+class ProtectedAppGuardTests(TestCase):
+    """One source of truth for "this app may not be disabled".
+
+    There used to be two hardcoded lists with the same name and different
+    contents — `core.safety.PROTECTED_PLUGINS` (gating Linda's disable tools)
+    and a frozenset inside admin_dashboard (gating the merchant's toggle).
+    They had already drifted: the dashboard refused catalog/orders/payments/
+    morpheus_brain while the AI path allowed all four, so the automated path
+    was *looser* than the human one.
+    """
+
+    def test_no_surface_can_disable_a_soft_bricking_app(self):
+        from core.safety import is_plugin_protected
+        from plugins.installed.admin_dashboard.views_split.apps import is_protected
+
+        for name in (
+            'admin_dashboard',
+            'agent_core',
+            'rbac',
+            'customers',
+            'catalog',
+            'orders',
+            'payments',
+            'morpheus_brain',
+        ):
+            self.assertTrue(is_plugin_protected(name), f'{name}: AI disable tools would allow it')
+            self.assertTrue(is_protected(name), f'{name}: merchant dashboard would allow it')
+
+    def test_an_app_can_protect_itself_via_its_manifest(self):
+        """The floor is a minimum, not the whole list — a manifest can add."""
+        from core.safety import is_plugin_protected
+        from plugins.base import MorpheusPlugin
+        from plugins.registry import app_registry
+
+        class Probe(MorpheusPlugin):
+            name = 'protected_flag_probe'
+            label = 'Protected Flag Probe'
+            version = '1.0.0'
+            protected = True
+
+        self.assertFalse(is_plugin_protected('protected_flag_probe'))  # not registered yet
+        app_registry._classes['protected_flag_probe'] = Probe
+        try:
+            self.assertTrue(is_plugin_protected('protected_flag_probe'))
+        finally:
+            del app_registry._classes['protected_flag_probe']
+
+    def test_system_apps_are_hidden_from_the_catalogue(self):
+        from plugins.installed.admin_dashboard.views_split.apps import is_system
+
+        self.assertTrue(is_system('agent_core'), 'agent_core is surfaced as Linda, not as an app')
+        self.assertFalse(is_system('storefront'))

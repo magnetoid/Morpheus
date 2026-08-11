@@ -39,7 +39,7 @@ The blocker list is short and surgically defined — each is a hard gate that an
 
 | Dimension | Value |
 |---|---|
-| Plugins in `MORPHEUS_DEFAULT_PLUGINS` | 104 |
+| Plugins in `MORPHEUS_DEFAULT_APPS` | 104 |
 | Plugins with persistent models | ~60 |
 | Core kernel subsystems | 35 |
 | Hook events | ~67 |

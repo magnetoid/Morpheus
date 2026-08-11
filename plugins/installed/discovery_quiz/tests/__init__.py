@@ -4,6 +4,6 @@ from __future__ import annotations
 
 
 def test_plugin_metadata():
-    from plugins.installed.discovery_quiz.plugin import DiscoveryQuizPlugin
+    from plugins.installed.discovery_quiz.app import DiscoveryQuizPlugin
 
     assert DiscoveryQuizPlugin.name == 'discovery_quiz'

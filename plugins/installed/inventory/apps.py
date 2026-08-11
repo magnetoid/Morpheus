@@ -7,11 +7,11 @@ class InventoryConfig(AppConfig):
     verbose_name = 'Inventory'
 
     def ready(self):
-        from plugins.installed.inventory.plugin import InventoryPlugin
-        from plugins.registry import plugin_registry
+        from plugins.installed.inventory.app import InventoryPlugin
+        from plugins.registry import app_registry
 
-        if 'inventory' not in plugin_registry._classes:
-            plugin_registry._classes['inventory'] = InventoryPlugin
+        if 'inventory' not in app_registry._classes:
+            app_registry._classes['inventory'] = InventoryPlugin
 
 
 default_app_config = 'plugins.installed.inventory.apps.InventoryConfig'

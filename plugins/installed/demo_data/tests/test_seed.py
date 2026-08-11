@@ -19,7 +19,7 @@ _IS_SQLITE = connection.vendor == 'sqlite'
 _DEMO_INSTALLED = apps.is_installed('plugins.installed.demo_data')
 
 
-@skipUnless(_DEMO_INSTALLED, 'demo_data is opt-in (not in MORPHEUS_DEFAULT_PLUGINS)')
+@skipUnless(_DEMO_INSTALLED, 'demo_data is opt-in (not in MORPHEUS_DEFAULT_APPS)')
 class SeedDemoTests(TestCase):
     def test_seed_creates_genres_and_books(self):
         from plugins.installed.book_product.models import Genre

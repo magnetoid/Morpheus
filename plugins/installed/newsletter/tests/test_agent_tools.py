@@ -10,8 +10,8 @@ from plugins.installed.newsletter.agent_tools import (
     newsletter_stats_tool,
     newsletter_toggle_popup_tool,
 )
+from plugins.installed.newsletter.app import NewsletterPlugin
 from plugins.installed.newsletter.models import NewsletterSubscriber, SignupPopup
-from plugins.installed.newsletter.plugin import NewsletterPlugin
 
 
 class NewsletterAgentToolTests(TestCase):

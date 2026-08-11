@@ -107,7 +107,7 @@ lives in the plugin. With no subscriber the behaviour is byte-identical to today
 1. **Core hook** — add `AUTH_SECOND_FACTOR` filter + fire it in `otp_verify`.
    *Verify*: existing `core/auth` tests pass; with no subscriber, login is unchanged.
 2. **Plugin scaffold** — `plugin-skeleton` (apps/plugin/models/migration/tests) +
-   register in `MORPHEUS_DEFAULT_PLUGINS` (OFF by default initially? — see CHOICE
+   register in `MORPHEUS_DEFAULT_APPS` (OFF by default initially? — see CHOICE
    below). *Verify*: `makemigrations --check` clean; disable test green.
 3. **Enroll + challenge + recovery + rate-limit**. *Verify*: enroll → logout →
    login requires TOTP; wrong code is rate-limited; a recovery code works once.
@@ -137,7 +137,7 @@ lives in the plugin. With no subscriber the behaviour is byte-identical to today
   sqlite-masks-Postgres landmine).
 
 ## Rollout: registered + opt-in (chosen)
-**Resolved →** `staff_mfa` is registered in `MORPHEUS_DEFAULT_PLUGINS` and ships
+**Resolved →** `staff_mfa` is registered in `MORPHEUS_DEFAULT_APPS` and ships
 **opt-in** (`require_for_staff=False`): present and enrollable without forcing a
 flow change on existing staff. Enforcement is flipped deliberately in Phase B.
 

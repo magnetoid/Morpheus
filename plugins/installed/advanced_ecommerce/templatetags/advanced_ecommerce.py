@@ -28,9 +28,9 @@ def recently_viewed_product(slug: str):
 def free_shipping_target():
     """Returns (target_amount, currency) tuple from plugin config."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('advanced_ecommerce')
+        plugin = app_registry.get('advanced_ecommerce')
         if plugin is None:
             return 40, 'USD'
         return (
@@ -44,9 +44,9 @@ def free_shipping_target():
 @register.simple_tag
 def low_stock_threshold() -> int:
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('advanced_ecommerce')
+        plugin = app_registry.get('advanced_ecommerce')
         return int(plugin.get_config_value('low_stock_threshold', 5)) if plugin else 5
     except Exception:  # noqa: BLE001
         return 5
@@ -65,9 +65,9 @@ def featured_collection_rails(exclude_slug: str = '', per_rail: int = 8, max_rai
     """
     try:
         from plugins.installed.catalog.models import Collection, Product
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('advanced_ecommerce')
+        plugin = app_registry.get('advanced_ecommerce')
         if plugin is not None:
             if not plugin.get_config_value('enable_collection_rails', True):
                 return []

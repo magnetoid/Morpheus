@@ -27,9 +27,9 @@ def service_worker_js(request) -> HttpResponse:
     PWA toggle on the Caching settings page — otherwise the registration
     script at the top of base.html doesn't run, so this URL never gets
     hit anyway. Worth refusing here too for direct hits."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    p = plugin_registry.get('storefront')
+    p = app_registry.get('storefront')
     cfg = (p.get_config() if p else {}) or {}
     if not cfg.get('service_worker_enabled'):
         return HttpResponse('', status=404, content_type='application/javascript')

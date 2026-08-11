@@ -9,7 +9,7 @@
 The subscriptions surface is a demo, not a revenue engine: `subscriptions/`
 has the full billing data model — `Plan.provider='stripe'` + `provider_price_id`
 (models.py:27-46), `Subscription.provider_subscription_id` (:88),
-`SubscriptionInvoice.provider_invoice_id` (:119) — and its plugin.py:13 declares
+`SubscriptionInvoice.provider_invoice_id` (:119) — and its app.py:13 declares
 a "Stripe Billing adapter slot ready", but **no adapter module exists, nothing
 advances billing periods, no invoice is ever created, and no payment is ever
 taken**. `subscribe_view` (views_storefront.py:32) creates a `Subscription` with
@@ -84,7 +84,7 @@ types it doesn't own; keeps payments from importing subscriptions):
 
 ### 4. Dunning + pre-renewal emails (`subscriptions/tasks.py`, new)
 
-Mirror the cart_abandonment drip shape (plugin.py:45-60 beat registration,
+Mirror the cart_abandonment drip shape (app.py:45-60 beat registration,
 consent-gated, per-step stamping):
 
 - **Dunning:** on `past_due`, a drip (day 0 / 3 / 7) via
@@ -99,7 +99,7 @@ consent-gated, per-step stamping):
 
 ### 5. Config
 
-`subscriptions/plugin.py` schema gains: `prerenewal_days` (int, default 3),
+`subscriptions/app.py` schema gains: `prerenewal_days` (int, default 3),
 `dunning_step_days` (list, default [0,3,7]). Stripe keys stay in the
 payments plugin (single owner).
 

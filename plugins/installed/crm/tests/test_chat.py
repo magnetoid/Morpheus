@@ -5,8 +5,8 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
+from plugins.installed.crm.app import CrmPlugin
 from plugins.installed.crm.models import ChatMessage, ChatThread, Lead
-from plugins.installed.crm.plugin import CrmPlugin
 
 
 class PublicChatTests(TestCase):

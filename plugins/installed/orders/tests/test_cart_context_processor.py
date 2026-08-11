@@ -18,7 +18,7 @@ from django.test import RequestFactory, TestCase
 
 from plugins.context_processors import plugin_context
 from plugins.installed.orders.context_processors import cart_context
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 class CartContextProcessorTests(TestCase):
@@ -29,7 +29,7 @@ class CartContextProcessorTests(TestCase):
         return req
 
     def test_orders_contributes_cart_context_owned(self):
-        pairs = plugin_registry.context_processors()
+        pairs = app_registry.context_processors()
         self.assertIn(('orders'), [owner for _f, owner in pairs])
         self.assertIn(cart_context, [f for f, owner in pairs if owner == 'orders'])
 
@@ -51,8 +51,8 @@ class CartContextProcessorTests(TestCase):
         self.assertEqual(ctx['cart_item_count'], 0)
 
     def test_cart_item_count_absent_when_orders_disabled(self):
-        self.addCleanup(plugin_registry.activate, 'orders')
+        self.addCleanup(app_registry.activate, 'orders')
         self.assertIn('cart_item_count', plugin_context(self._request()))
-        plugin_registry.deactivate('orders')
+        app_registry.deactivate('orders')
         # The aggregator skips the orders-owned processor → key gone entirely.
         self.assertNotIn('cart_item_count', plugin_context(self._request()))

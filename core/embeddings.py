@@ -47,11 +47,11 @@ def embed(text: str) -> list[float]:
 
             api_key = settings.OPENAI_API_KEY
             try:
-                from plugins.registry import plugin_registry
+                from plugins.registry import app_registry
 
                 ai_plugin = (
-                    plugin_registry.get_plugin('ai_assistant')
-                    if hasattr(plugin_registry, 'get_plugin')
+                    app_registry.get_plugin('ai_assistant')
+                    if hasattr(app_registry, 'get_plugin')
                     else None
                 )
                 if ai_plugin is not None:

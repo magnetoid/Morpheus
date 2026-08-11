@@ -11,7 +11,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import JsonResponse, QueryDict
 from django.utils import timezone
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     redirect,

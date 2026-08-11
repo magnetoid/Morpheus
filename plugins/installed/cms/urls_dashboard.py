@@ -4,7 +4,7 @@ Parameterised page CRUD the DashboardPage router can't express (it maps one
 slug → one view). The Pages LIST stays at /dashboard/apps/cms/pages/ via
 ``contribute_dashboard_pages``; these are the new/edit/duplicate/delete actions
 it links to. Every target view is ``@staff_member_required``. Registered in
-``cms/plugin.py:ready()`` — disable the plugin and these routes disappear.
+``cms/app.py:ready()`` — disable the plugin and these routes disappear.
 """
 
 from __future__ import annotations

@@ -27,10 +27,10 @@ _GIF = (
 
 
 def _plugin():
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     for attr in ('get', 'get_plugin'):
-        fn = getattr(plugin_registry, attr, None)
+        fn = getattr(app_registry, attr, None)
         if callable(fn):
             try:
                 p = fn('microsoft_commerce')
@@ -38,7 +38,7 @@ def _plugin():
                 p = None
             if p is not None:
                 return p
-    from plugins.installed.microsoft_commerce.plugin import MicrosoftCommercePlugin
+    from plugins.installed.microsoft_commerce.app import MicrosoftCommercePlugin
 
     return MicrosoftCommercePlugin()
 

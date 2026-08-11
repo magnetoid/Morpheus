@@ -1,7 +1,7 @@
 def get_urlpatterns():
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    return plugin_registry.get_urlpatterns()
+    return app_registry.get_urlpatterns()
 
 
 urlpatterns = get_urlpatterns()

@@ -119,8 +119,8 @@ developer token + customer id. All in PluginConfig, never settings.py.
 Total: 39 tests; 5 agent tools; security-reviewed (+ state-CSRF); all live.
 
 ## House-rule checklist (every phase)
-- Single AppConfig + `plugin.py` manifest; register in
-  `MORPHEUS_DEFAULT_PLUGINS`; migration before merge.
+- Single AppConfig + `app.py` manifest; register in
+  `MORPHEUS_DEFAULT_APPS`; migration before merge.
 - Disable test: feed route, dashboard nav, remarketing tag all vanish when off.
 - No secrets in `settings.py`; PluginConfig only.
 - `ruff`, `manage.py check`, `makemigrations --check`, sqlite tests + CI Postgres.

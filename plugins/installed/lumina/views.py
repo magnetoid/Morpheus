@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from morpheus.plugin.views import render
+from morpheus.app.views import render
 
 
 def landing(request):
@@ -16,9 +16,9 @@ def landing(request):
     """
     app_url = 'https://lumina.dotbooks.store'
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('lumina')
+        plugin = app_registry.get('lumina')
         if plugin is not None:
             app_url = plugin.get_config_value('app_url', '') or app_url
     except Exception:  # noqa: BLE001 — config is optional; keep the default

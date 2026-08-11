@@ -13,7 +13,7 @@ from django.test import TestCase
 _DEMO_INSTALLED = apps.is_installed('plugins.installed.demo_data')
 
 
-@skipUnless(_DEMO_INSTALLED, 'demo_data is opt-in (not in MORPHEUS_DEFAULT_PLUGINS)')
+@skipUnless(_DEMO_INSTALLED, 'demo_data is opt-in (not in MORPHEUS_DEFAULT_APPS)')
 class GrantDemoAccessTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(

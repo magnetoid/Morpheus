@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import SimpleTestCase, TestCase
 
-from plugins.installed.affiliates.plugin import AffiliatesPlugin
+from plugins.installed.affiliates.app import AffiliatesPlugin
 
 
 class AffiliateEmailContributionTests(SimpleTestCase):

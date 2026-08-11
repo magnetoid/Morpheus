@@ -39,7 +39,7 @@ register = template.Library()
 def plugin_enabled(slug: str) -> bool:
     """True when the plugin `slug` is currently active.
 
-    Thin wrapper over ``plugin_registry.is_active`` so templates can gate
+    Thin wrapper over ``app_registry.is_active`` so templates can gate
     a surface on a plugin without the brittle ``{% if 'x' in active_plugins
     %}`` string check. Use as a boolean::
 
@@ -51,10 +51,10 @@ def plugin_enabled(slug: str) -> bool:
     if not slug:
         return False
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
     except ImportError:
         return False
-    return plugin_registry.is_active(slug)
+    return app_registry.is_active(slug)
 
 
 @register.simple_tag(takes_context=True)
@@ -63,11 +63,11 @@ def storefront_blocks(context, slot: str) -> str:
     if not slot:
         return ''
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
     except ImportError:
         return ''
 
-    blocks = plugin_registry.storefront_blocks_for(slot)
+    blocks = app_registry.storefront_blocks_for(slot)
     if not blocks:
         return ''
 

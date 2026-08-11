@@ -21,7 +21,7 @@ Default admin login: create one with `manage.py createsuperuser`.
 
 - `core/` — engine. Auth, hooks bus, request lifecycle, observability,
   i18n kernel. Touch sparingly; new features almost never live here.
-- `plugins/installed/<name>/` — every feature. `apps.py` + `plugin.py` +
+- `plugins/installed/<name>/` — every feature. `apps.py` + `app.py` +
   `models.py` + `migrations/`. The way the platform is meant to grow.
 - `themes/library/<name>/` — storefront templates + section components.
   `dot_books` is the reference theme.
@@ -37,7 +37,7 @@ why it has to be in `core`. CLAUDE.md spells out the modular contract.
 - New tables ship with a migration in the same commit.
 - Touched files have a passing `python -m py_compile` check.
 - Storefront UI changes include a screenshot or a `curl` smoke check.
-- New plugins added to `MORPHEUS_DEFAULT_PLUGINS` in `morph/settings.py`.
+- New plugins added to `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 - No drive-by refactors of unrelated code.
 - One feature per PR. Split if it grew.
 

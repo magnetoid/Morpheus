@@ -12,7 +12,7 @@ is fail-soft — a disabled or absent plugin simply contributes nothing.
 
 from __future__ import annotations
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     staff_member_required,
@@ -58,9 +58,9 @@ def _nav_hits(q: str, ql: str) -> list[dict]:
 
     try:
         from plugins.context_processors import _SECTION_LABELS  # noqa: PLC0415
-        from plugins.registry import plugin_registry  # noqa: PLC0415
+        from plugins.registry import app_registry  # noqa: PLC0415
 
-        for page in plugin_registry.dashboard_pages():
+        for page in app_registry.dashboard_pages():
             if getattr(page, 'nav', 'main') == 'hidden':
                 continue
             url = getattr(page, 'url', '') or (

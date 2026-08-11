@@ -55,7 +55,7 @@
         "marketplace"
       ],
       "repo": "https://github.com/magnetoid/morpheus-stripe-connect",
-      "install": "pip install morpheus-stripe-connect && echo \"morpheus_stripe_connect\" >> .env-MORPHEUS_EXTRA_PLUGINS",
+      "install": "pip install morpheus-stripe-connect && echo \"morpheus_stripe_connect\" >> .env-MORPHEUS_EXTRA_APPS",
       "icon": "credit-card",
       "tags": [
         "payments",

@@ -1,6 +1,6 @@
 ---
 name: plugin-skeleton
-description: Scaffold a new Morpheus plugin (apps.py, plugin.py, models.py, migrations/__init__.py, tests/__init__.py + boundary-test stub) following the plugin contract in CLAUDE.md and PLUGIN_DEVELOPMENT.md.
+description: Scaffold a new Morpheus plugin (apps.py, app.py, models.py, migrations/__init__.py, tests/__init__.py + boundary-test stub) following the plugin contract in CLAUDE.md and PLUGIN_DEVELOPMENT.md.
 ---
 
 # plugin-skeleton
@@ -16,7 +16,7 @@ Given a plugin name `<name>` (snake_case), create
 plugins/installed/<name>/
 ├── __init__.py          # empty
 ├── apps.py              # AppConfig with name = 'plugins.installed.<name>'
-├── plugin.py            # Plugin manifest (name, label, version, requires, ready)
+├── app.py            # Plugin manifest (name, label, version, requires, ready)
 ├── models.py            # empty stub with `from django.db import models`
 ├── migrations/
 │   └── __init__.py      # empty
@@ -31,7 +31,7 @@ plugins/installed/<name>/
    and ask which name to use instead.
 2. Create the 7 files above. **No models, no views, no URLs** — leave
    those for the actual feature work.
-3. Register the plugin in `morph/settings.py:MORPHEUS_DEFAULT_PLUGINS`
+3. Register the plugin in `morph/settings.py:MORPHEUS_DEFAULT_APPS`
    by inserting `'plugins.installed.<name>'` in alphabetical order.
 4. Do NOT generate an initial migration — that comes from
    `python manage.py makemigrations <name>` once a model exists.
@@ -51,7 +51,7 @@ class <Name>Config(AppConfig):
     label = '<name>'
 ```
 
-**`plugin.py`**:
+**`app.py`**:
 
 ```python
 from morpheus import Plugin
@@ -94,6 +94,6 @@ class <Name>BoundaryTests(TestCase):
 ## Reuse
 
 - Match style of existing plugins (e.g.
-  [`plugins/installed/inventory/plugin.py`](../../../plugins/installed/inventory/plugin.py)).
+  [`plugins/installed/inventory/app.py`](../../../plugins/installed/inventory/app.py)).
 - Follow [`vendor/vibe-skills/language-rules/python.md`](../../../vendor/vibe-skills/language-rules/python.md).
 - See [`docs/SKILLS.md`](../../../docs/SKILLS.md) for the full skill catalog.

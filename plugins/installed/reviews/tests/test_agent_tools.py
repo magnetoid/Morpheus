@@ -14,7 +14,7 @@ from plugins.installed.reviews.agent_tools import (
     reviews_delete_tool,
     reviews_list_pending_tool,
 )
-from plugins.installed.reviews.plugin import ReviewsPlugin
+from plugins.installed.reviews.app import ReviewsPlugin
 
 
 class ReviewModerationToolTests(TestCase):

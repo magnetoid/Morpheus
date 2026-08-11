@@ -226,7 +226,7 @@ Core defects that surface as broken or degraded user-facing functionality:
 | Medium | Stored `fr-CA` translations unreachable from templates (and vice-versa) | Write stores BCP-47, read truncates to `fr` |
 | Medium | Redirect healer can mint browser-cached 301s to 404s | `_candidate_pairs` never verifies the target resolves |
 | Low | Prompt teaches nonexistent tool names (`products.count`) → model fumbles first calls | Stale prompt line in [prompts.py:27-28](file:///Users/magnetoid/coding/morph/core/assistant/prompts.py#L27-L28) |
-| Low | `plugins.enable` creates phantom `PluginConfig` rows for typo'd names | No validation against `MORPHEUS_DEFAULT_PLUGINS` |
+| Low | `plugins.enable` creates phantom `PluginConfig` rows for typo'd names | No validation against `MORPHEUS_DEFAULT_APPS` |
 
 ---
 

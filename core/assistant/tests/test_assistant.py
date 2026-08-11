@@ -124,9 +124,9 @@ class ToolMigrationTests(TestCase):
     ]
 
     def test_read_tools_contributed_by_their_plugins(self):
-        from plugins.installed.catalog.plugin import CatalogPlugin
-        from plugins.installed.customers.plugin import CustomersPlugin
-        from plugins.installed.orders.plugin import OrdersPlugin
+        from plugins.installed.catalog.app import CatalogPlugin
+        from plugins.installed.customers.app import CustomersPlugin
+        from plugins.installed.orders.app import OrdersPlugin
 
         self.assertGreaterEqual(
             {t.name for t in OrdersPlugin().contribute_agent_tools()},

@@ -16,7 +16,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 
-from morpheus.plugin import dashboard_trail
+from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.b2b')
 

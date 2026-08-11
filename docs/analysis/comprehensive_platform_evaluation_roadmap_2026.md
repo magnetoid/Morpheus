@@ -16,7 +16,7 @@ This report presents a comprehensive end-to-end evaluation of the Morpheus OS pl
 
 | Claim in this doc | Reality (verified) |
 |---|---|
-| "84+ plugins" (§2.1) | **~101** active — see `MORPHEUS_DEFAULT_PLUGINS` (don't hard-code a count). |
+| "84+ plugins" (§2.1) | **~101** active — see `MORPHEUS_DEFAULT_APPS` (don't hard-code a count). |
 | Ops stack includes **Prometheus** (§2.1) | **Absent** — zero refs in deps/settings. OpenTelemetry + Sentry are real. |
 | "missing MFA" (§2.2, P0 #2, Rec 3) | **Shipped** `v0.2.7` — `staff_mfa` plugin (TOTP, recovery codes, audited `mfa.*`, first-admin grace, break-glass reset). |
 | ACP/UCP "missing" (§2.2, P0 #1) | **UCP/A2A manifests ship** (`agent_mcp/well_known.py`); **ACP Phase 1 is built** (`agentic_checkout` plugin — discovery + feed + checkout sessions, OFF by default); Phase 2 (Stripe Shared Payment Token money path) is the only remaining piece. |

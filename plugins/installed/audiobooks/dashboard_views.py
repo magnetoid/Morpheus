@@ -6,7 +6,7 @@ from __future__ import annotations
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-from morpheus.plugin.views import staff_member_required
+from morpheus.app.views import staff_member_required
 
 
 @require_POST

@@ -119,19 +119,19 @@ class PermissionTests(TestCase):
         self.assertIn(resp.status_code, (302, 403))
 
     def test_dashboard_page_is_contributed(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        pages = [p for p in plugin_registry.dashboard_pages() if p.plugin == 'live_commerce']
+        pages = [p for p in app_registry.dashboard_pages() if p.plugin == 'live_commerce']
         self.assertTrue(pages)
 
 
 class DisableLitmusTests(TestCase):
     def test_storefront_block_is_contributed(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         blocks = [
             b
-            for b in plugin_registry.storefront_blocks_for('home_below_grid')
+            for b in app_registry.storefront_blocks_for('home_below_grid')
             if b.plugin == 'live_commerce'
         ]
         self.assertTrue(blocks)

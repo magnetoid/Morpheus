@@ -135,7 +135,7 @@ def version_updates(request):
 def about(request):
     """About Morpheus — platform narrative + a live catalogue of every installed
     app, read straight from the plugin registry so the list never drifts."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     # Intended-enabled state from the DB (what a merchant last chose). A plugin
     # with no PluginConfig row ships enabled, so default True.
@@ -156,7 +156,7 @@ def about(request):
             'requires': list(getattr(cls, 'requires', []) or []),
             'active': db_enabled.get(name, True),
         }
-        for name, cls in plugin_registry._classes.items()
+        for name, cls in app_registry._classes.items()
     ]
     apps.sort(key=lambda a: a['label'].lower())
 

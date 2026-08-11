@@ -18,7 +18,7 @@ from django.test import TestCase
 
 from core.brain import signals
 from morpheus.core import MorpheusEvents, hook_registry
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 _OWNERS = {'seo', 'catalog', 'ai_assistant', 'morpheus_brain'}
 
@@ -75,30 +75,30 @@ class BrainSignalsFilterTests(TestCase):
         self.assertTrue(data['reports']['available'])
 
     def test_seo_slice_vanishes_when_seo_disabled(self):
-        self.addCleanup(plugin_registry.activate, 'seo')
+        self.addCleanup(app_registry.activate, 'seo')
         self.assertIn('cwv', self._fresh()['storefront'])
-        plugin_registry.deactivate('seo')
+        app_registry.deactivate('seo')
         data = self._fresh()
         self.assertNotIn('cwv', data['storefront'])
         self.assertNotIn('seo_flags', data['storefront'])
         self.assertNotIn('low_seo', data['content'])
 
     def test_catalog_slice_vanishes_when_catalog_disabled(self):
-        self.addCleanup(plugin_registry.activate, 'catalog')
+        self.addCleanup(app_registry.activate, 'catalog')
         self.assertIn('catalog', self._fresh()['content'])
-        plugin_registry.deactivate('catalog')
+        app_registry.deactivate('catalog')
         self.assertNotIn('catalog', self._fresh()['content'])
 
     def test_reports_unavailable_when_morpheus_brain_disabled(self):
-        self.addCleanup(plugin_registry.activate, 'morpheus_brain')
+        self.addCleanup(app_registry.activate, 'morpheus_brain')
         self.assertTrue(self._fresh()['reports']['available'])
-        plugin_registry.deactivate('morpheus_brain')
+        app_registry.deactivate('morpheus_brain')
         self.assertFalse(self._fresh()['reports']['available'])
 
     def test_ai_insight_slice_vanishes_when_ai_assistant_disabled(self):
         self._seed_insight()
-        self.addCleanup(plugin_registry.activate, 'ai_assistant')
+        self.addCleanup(app_registry.activate, 'ai_assistant')
         self.assertIn('Ship it', [i['title'] for i in self._fresh()['improvements']['insights']])
-        plugin_registry.deactivate('ai_assistant')
+        app_registry.deactivate('ai_assistant')
         # Falls back to the core seed (empty list), not the seeded insight.
         self.assertEqual(self._fresh()['improvements']['insights'], [])

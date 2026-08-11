@@ -14,9 +14,9 @@ from django.test import TestCase
 
 class SeoSitemapToolMigrationTests(TestCase):
     def test_plugin_contributes_the_tool(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        names = {t.name for t in plugin_registry.get('seo').contribute_agent_tools()}
+        names = {t.name for t in app_registry.get('seo').contribute_agent_tools()}
         self.assertIn('seo.regenerate_sitemap', names)
 
     def test_registered_and_owned_by_seo(self):

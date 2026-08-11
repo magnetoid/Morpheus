@@ -43,7 +43,7 @@ That's the whole contract. The theme owns the slot name. The plugin matches it.
 
 ## How a plugin contributes a block
 
-In any `plugin.py`:
+In any `app.py`:
 
 ```python
 from morpheus import Plugin, StorefrontBlock
@@ -134,13 +134,13 @@ If two blocks have the same priority, render order is unspecified — write your
 
 The plugins listed below ALREADY contribute storefront blocks. New plugin authors should look at these for patterns:
 
-- [`advanced_ecommerce`](../plugins/installed/advanced_ecommerce/plugin.py) — recently-viewed, free-shipping progress
-- [`product_videos`](../plugins/installed/product_videos/plugin.py) — `pdp_above_long_description`
-- [`product_gallery`](../plugins/installed/product_gallery/plugin.py) — `pdp_above_long_description` (the slider)
-- [`reviews`](../plugins/installed/reviews/plugin.py) — `pdp_after_reviews` (the form), `pdp_below_title` (stars)
-- [`wishlist`](../plugins/installed/wishlist/plugin.py) — `pdp_below_price` (heart icon)
-- [`analytics`](../plugins/installed/analytics/plugin.py) — `every_page_below_footer` (page-view pixel)
-- [`agent_core`](../plugins/installed/agent_core/plugin.py) — Linda concierge surface
+- [`advanced_ecommerce`](../plugins/installed/advanced_ecommerce/app.py) — recently-viewed, free-shipping progress
+- [`product_videos`](../plugins/installed/product_videos/app.py) — `pdp_above_long_description`
+- [`product_gallery`](../plugins/installed/product_gallery/app.py) — `pdp_above_long_description` (the slider)
+- [`reviews`](../plugins/installed/reviews/app.py) — `pdp_after_reviews` (the form), `pdp_below_title` (stars)
+- [`wishlist`](../plugins/installed/wishlist/app.py) — `pdp_below_price` (heart icon)
+- [`analytics`](../plugins/installed/analytics/app.py) — `every_page_below_footer` (page-view pixel)
+- [`agent_core`](../plugins/installed/agent_core/app.py) — Linda concierge surface
 
 Candidates that should be using slots but currently inject via template edits or direct CSS — *open follow-up*: `cart_abandonment` (recovery banner), `tracking` (GA4 pixel), `seo` (LD-JSON header injections move from `head_extra` would clean up base.html).
 

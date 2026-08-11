@@ -44,9 +44,9 @@ class DevelopersHubTests(TestCase):
             )
 
     def test_disabled_plugin_card_vanishes(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        self.addCleanup(plugin_registry.activate, 'workflows')
-        plugin_registry.deactivate('workflows')
+        self.addCleanup(app_registry.activate, 'workflows')
+        app_registry.deactivate('workflows')
         resp = self.client.get('/dashboard/settings/developer/')
         self.assertNotIn('/dashboard/apps/workflows/', resp.content.decode())

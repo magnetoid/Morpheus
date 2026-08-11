@@ -114,9 +114,9 @@ def _group_by_section(pages, *, active_apps_slug: str = ''):
 
 
 def plugin_context(request):
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    pages = plugin_registry.dashboard_pages()
+    pages = app_registry.dashboard_pages()
 
     # Split by sidebar destination.
     # The 'apps' section is the catch-all bucket for plugins that
@@ -173,7 +173,7 @@ def plugin_context(request):
         )
 
         panels_by_cat: dict[str, int] = {}
-        for entry in plugin_registry.all_settings_panels():
+        for entry in app_registry.all_settings_panels():
             panel = (
                 entry.get('panel')
                 if isinstance(entry, dict)
@@ -229,8 +229,8 @@ def plugin_context(request):
             active_apps_slug = f'{rest[0]}/{rest[1]}'
 
     out = {
-        'active_plugins': plugin_registry._active,
-        'plugin_registry': plugin_registry,
+        'active_plugins': app_registry._active,
+        'app_registry': app_registry,
         'nav_badges': nav_badges,
         'dashboard_pages': pages,  # back-compat flat list
         'sidebar_sections': _group_by_section(main_pages, active_apps_slug=active_apps_slug),
@@ -238,7 +238,7 @@ def plugin_context(request):
         'products_nav_children': products_nav_children,
         'settings_sections': _group_by_section(settings_pages, active_apps_slug=active_apps_slug),
         # Schema-driven settings panels (form-based).
-        'plugin_settings_panels': plugin_registry.all_settings_panels(),
+        'plugin_settings_panels': app_registry.all_settings_panels(),
         # Settings categories shown in the settings-mode sidebar.
         'settings_category_nav': settings_category_nav,
         # Per-page active slugs the sidebar template uses to mark the right
@@ -254,8 +254,8 @@ def plugin_context(request):
     # Each runs only while its owning plugin is active (context processors are
     # not bus-gated like hooks), and a broken one is isolated so it can't 500
     # the page. This is the consumer that makes register_context_processor real.
-    for func, owner in plugin_registry.context_processors():
-        if owner and not plugin_registry.is_active(owner):
+    for func, owner in app_registry.context_processors():
+        if owner and not app_registry.is_active(owner):
             continue
         try:
             extra = func(request)

@@ -455,7 +455,7 @@ GraphQL resolvers receive `AIContext` via Strawberry's `Info` object. Product qu
 
 ```
 plugins/installed/ai_assistant/
-├── plugin.py              # registers all AI GraphQL extensions + hooks
+├── app.py              # registers all AI GraphQL extensions + hooks
 ├── models.py              # AIInteraction, AgentMemory, PromptTemplate,
 │                          # AIExperiment, MerchantInsight, DemandForecast
 ├── graphql/

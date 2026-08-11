@@ -47,17 +47,17 @@
 - Cover/PDF storage: `Product.digital_file` (FileField), `ProductImage` (covers).
 - Storefront PDP: `themes/library/dot_books/templates/storefront/product_detail.html`
   (slots `pdp_below_price`, `pdp_below_form`); flipbook already uses `pdp_below_form`.
-- Plugin registration: `MORPHEUS_DEFAULT_PLUGINS` in `morph/settings.py`.
+- Plugin registration: `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 - three.js: not yet vendored; load `https://esm.sh/three` + `pdfjs-dist` in a
   `<script type=module>` (dashboard + storefront both vanilla-JS).
 
 ## Phases (each shippable + verifiable)
-1. **Scaffold + model.** plugin-skeleton → `book_product`: apps.py, plugin.py,
+1. **Scaffold + model.** plugin-skeleton → `book_product`: apps.py, app.py,
    `BookProduct` model (author, subtitle, contributors json, publisher,
    imprint, publication_date, edition, language, print_type[choices],
    paper_type[choices], binding, page_count, dimensions_mm, weight_g,
    cover_pdf FileField, synopsis, series, series_position), migration,
-   register in MORPHEUS_DEFAULT_PLUGINS. Verify: system check + migrate clean.
+   register in MORPHEUS_DEFAULT_APPS. Verify: system check + migrate clean.
 2. **Product Types settings.** Add the category + a settings panel (defaults).
    Verify: `/dashboard/settings/product_types/` renders.
 3. **Data migration.** Copy `book.*` metafields → BookProduct rows (idempotent,

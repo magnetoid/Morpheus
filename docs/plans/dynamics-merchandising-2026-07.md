@@ -64,7 +64,7 @@ rendering their own carousels as today. `SURFACE_CHOICES` registry:
 **Slots:** add `home_after_rails`, `checkout_extra`, `order_receipt_extra` to
 `SLOT_CHOICES` + `_SLOTS` so merchant blocks can target them.
 
-**Subscriber (dynamics/plugin.py ready):** `register_hook(STOREFRONT_PRODUCTS,
+**Subscriber (dynamics/app.py ready):** `register_hook(STOREFRONT_PRODUCTS,
 placeholders.provide, priority=40)` → looks up the enabled block for
 `surface` (first by sort_order), runs `recommend()` with the default list as
 fallback candidates, returns default unchanged when no block exists. Pins

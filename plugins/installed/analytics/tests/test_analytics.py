@@ -29,11 +29,11 @@ User = get_user_model()
 
 
 def _set_analytics_config(**kwargs):
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     p = None
     for attr in ('get', 'get_plugin'):
-        fn = getattr(plugin_registry, attr, None)
+        fn = getattr(app_registry, attr, None)
         if callable(fn):
             try:
                 p = fn('analytics')
@@ -42,7 +42,7 @@ def _set_analytics_config(**kwargs):
             if p is not None:
                 break
     if p is None:
-        from plugins.installed.analytics.plugin import AnalyticsPlugin
+        from plugins.installed.analytics.app import AnalyticsPlugin
 
         p = AnalyticsPlugin()
     for k, v in kwargs.items():

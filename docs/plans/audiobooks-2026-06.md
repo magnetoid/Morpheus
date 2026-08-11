@@ -74,7 +74,7 @@ everyone else. (Compose, don't duplicate.)
 
 ## Phases
 1. **Scaffold** — plugin (apps/plugin/models/migrations/tests) + register in
-   `MORPHEUS_DEFAULT_PLUGINS`. `Audiobook` model + migration.
+   `MORPHEUS_DEFAULT_APPS`. `Audiobook` model + migration.
 2. **Admin** — "Audiobook edition" subsection in the book product form (create the
    digital variant + upload audio + fields). ElevenLabs **SettingsPanel**.
 3. **Storefront** — PDP modal player block (sample/full), self-gating on `is_ready`.

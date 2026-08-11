@@ -52,7 +52,7 @@ review rather than blind-adding tags.
 
 ## Deferred — half-built default plugins (decide: finish, gate, or drop)
 
-Several plugins ship in `MORPHEUS_DEFAULT_PLUGINS` but read few/none of their
+Several plugins ship in `MORPHEUS_DEFAULT_APPS` but read few/none of their
 own config keys and contribute only to invisible slots — they read as stubs:
 
 - `referrals` — reads **none** of its 7 config keys (reward amounts,
@@ -75,7 +75,7 @@ UI stops offering a toggle that does nothing.
 - **Orphan Celery task** `ai_assistant.tasks.reembed_all_products` — no trigger
   path (no beat entry, no caller, no command). Add a management command /
   dashboard button, or drop.
-- **`PAYMENT_CAPTURED` subscriber** (`orders/plugin.py`) has no fire site;
+- **`PAYMENT_CAPTURED` subscriber** (`orders/app.py`) has no fire site;
   harmless (the paid path reaches `confirm_order` via ORDER_PAID) but the
   registration is misleading. Delete or fire it.
 - Promote the module-local `'collection.updated'` string

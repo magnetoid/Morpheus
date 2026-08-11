@@ -15,7 +15,7 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 SECRET = 'super-secret-oidc-value-9f3a'
 
@@ -28,14 +28,14 @@ class SecretMaskingTests(TestCase):
         self.client.force_login(user)
         # Activate staff_sso so its SettingsPanel (with the format:password
         # field) is collected and rendered by the shared renderer.
-        plugin_registry.activate(self.PLUGIN)
-        self.plugin = plugin_registry.get(self.PLUGIN)
+        app_registry.activate(self.PLUGIN)
+        self.plugin = app_registry.get(self.PLUGIN)
         # Persist a saved secret to prove it is masked on render / preserved on
         # a blank submit.
         self.plugin.set_config('oidc_client_secret', SECRET)
 
     def tearDown(self):
-        plugin_registry.deactivate(self.PLUGIN)
+        app_registry.deactivate(self.PLUGIN)
 
     def test_saved_secret_is_not_rendered_in_page_source(self):
         resp = self.client.get('/dashboard/settings/developer/')

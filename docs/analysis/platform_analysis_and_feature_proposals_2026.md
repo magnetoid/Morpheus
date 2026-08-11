@@ -10,7 +10,7 @@
 
 | Dimension | Count |
 |---|---|
-| Total plugins in `MORPHEUS_DEFAULT_PLUGINS` | **104** (source of truth — never hard-code) |
+| Total plugins in `MORPHEUS_DEFAULT_APPS` | **104** (source of truth — never hard-code) |
 | Core subsystems (kernel) | **17** (`core/` dirs) |
 | Plugins with persistent models | **~60** |
 | Dashboard pages contributed | **~35 plugins** |

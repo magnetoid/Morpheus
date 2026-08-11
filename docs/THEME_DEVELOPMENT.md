@@ -247,7 +247,7 @@ It is the direct analogue of WordPress's `do_action('slot')` /
 renders empty when nobody does.
 
 The tag is implemented in [`core/templatetags/morph.py`](../core/templatetags/morph.py)
-(`storefront_blocks`) and reads from `plugin_registry.storefront_blocks_for(slot)`.
+(`storefront_blocks`) and reads from `app_registry.storefront_blocks_for(slot)`.
 A block that raises is logged and skipped — **one bad block never breaks the
 page.**
 

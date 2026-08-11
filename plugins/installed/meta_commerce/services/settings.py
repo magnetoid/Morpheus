@@ -36,10 +36,10 @@ _SECRET_KEYS = ('access_token', 'catalog_id', 'ad_account_id', 'pixel_id', 'busi
 
 def _plugin():
     try:
-        from plugins.registry import plugin_registry  # noqa: PLC0415
+        from plugins.registry import app_registry  # noqa: PLC0415
 
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     p = fn('meta_commerce')

@@ -7,11 +7,11 @@ class PaymentsConfig(AppConfig):
     verbose_name = 'Payments'
 
     def ready(self):
-        from plugins.installed.payments.plugin import PaymentsPlugin
-        from plugins.registry import plugin_registry
+        from plugins.installed.payments.app import PaymentsPlugin
+        from plugins.registry import app_registry
 
-        if 'payments' not in plugin_registry._classes:
-            plugin_registry._classes['payments'] = PaymentsPlugin
+        if 'payments' not in app_registry._classes:
+            app_registry._classes['payments'] = PaymentsPlugin
 
 
 default_app_config = 'plugins.installed.payments.apps.PaymentsConfig'

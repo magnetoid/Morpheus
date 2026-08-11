@@ -124,7 +124,7 @@ class BreakdownHookTests(TestCase):
         from plugins.installed.loyalty_points import services
 
         services.award_points(self.user, 500, reason='earn_order', order_number='C-1')
-        from plugins.installed.loyalty_points.plugin import LoyaltyPointsPlugin
+        from plugins.installed.loyalty_points.app import LoyaltyPointsPlugin
 
         self.plugin = LoyaltyPointsPlugin()
 

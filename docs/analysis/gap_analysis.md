@@ -46,9 +46,9 @@ This report audits Morpheus across: commerce, CMS, architecture, security, UX, s
 - **Totals pipeline mismatch breaks tax/shipping/promotions** during checkout:
   - Checkout computes totals with `shipping_address=` / `billing_address=` kwargs: [orders/services.py](file:///Users/magnetoid/coding/morph/plugins/installed/orders/services.py#L98-L121)
   - Tax/shipping/promotions plugins expect `address=` and (shipping) `shipping_rate_id=`:
-    - [tax/plugin.py](file:///Users/magnetoid/coding/morph/plugins/installed/tax/plugin.py)
-    - [shipping/plugin.py](file:///Users/magnetoid/coding/morph/plugins/installed/shipping/plugin.py)
-    - [promotions/plugin.py](file:///Users/magnetoid/coding/morph/plugins/installed/promotions/plugin.py)
+    - [tax/app.py](file:///Users/magnetoid/coding/morph/plugins/installed/tax/app.py)
+    - [shipping/app.py](file:///Users/magnetoid/coding/morph/plugins/installed/shipping/app.py)
+    - [promotions/app.py](file:///Users/magnetoid/coding/morph/plugins/installed/promotions/app.py)
 - Checkout page indicates JS-driven GraphQL wiring but no JS integration is present: [checkout.html](file:///Users/magnetoid/coding/morph/themes/library/dot_books/templates/storefront/checkout.html)
 
 **Missing for enterprise**
@@ -210,7 +210,7 @@ Needed: official Next.js storefront (PWA baseline), React Native starter, push n
 ## 7) Analytics & Reporting
 
 **Implemented**
-- Event capture + dashboards: [analytics/plugin.py](file:///Users/magnetoid/coding/morph/plugins/installed/analytics/plugin.py)
+- Event capture + dashboards: [analytics/app.py](file:///Users/magnetoid/coding/morph/plugins/installed/analytics/app.py)
 
 **Gaps**
 - Analytics GraphQL is stubbed; scheduled reports and exports are missing.

@@ -24,7 +24,7 @@ import contextlib
 
 from api.client import internal_graphql
 from morpheus.core import MorpheusEvents, hook_registry
-from morpheus.plugin.views import render
+from morpheus.app.views import render
 from plugins.installed.storefront.services import page_intro
 
 from ._queries import PRODUCT_DETAIL_QUERY
@@ -445,7 +445,7 @@ def product_detail(request, slug):
     data = internal_graphql(PRODUCT_DETAIL_QUERY, variables={'slug': slug}, request=request)
     product = (data or {}).get('product')
     if not product:
-        from morpheus.plugin.views import Http404
+        from morpheus.app.views import Http404
 
         raise Http404
 
@@ -1135,7 +1135,7 @@ def _attach_book_authors(products) -> None:
 
 def category_detail(request, slug):
     """Category landing — products + editorial framing."""
-    from morpheus.plugin.views import Http404
+    from morpheus.app.views import Http404
     from plugins.installed.catalog.models import Category, Product
 
     category = Category.objects.filter(slug=slug).first()
@@ -1256,7 +1256,7 @@ def collection_detail(request, slug):
     curated merchandising set (vs the hierarchical /category/<slug>/).
     Reuses category_detail.html (it only reads .name + .description,
     which Collection has)."""
-    from morpheus.plugin.views import Http404
+    from morpheus.app.views import Http404
     from plugins.installed.catalog.models import Collection, Product
 
     collection = Collection.objects.filter(slug=slug, is_active=True).first()
@@ -1349,7 +1349,7 @@ def collection_detail(request, slug):
 
 def author_detail(request, slug):
     """Author landing page — bibliography + optional bio."""
-    from morpheus.plugin.views import Http404
+    from morpheus.app.views import Http404
 
     author_name = ''
     bibliography = []

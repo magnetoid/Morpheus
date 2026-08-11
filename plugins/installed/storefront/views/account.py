@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.plugin.views import render
+from morpheus.app.views import render
 
 logger = logging.getLogger('morpheus.storefront')
 
@@ -52,7 +52,7 @@ def _account_summary(user) -> dict:
 
 def account_home(request):
     if not request.user.is_authenticated:
-        from morpheus.plugin.views import redirect
+        from morpheus.app.views import redirect
 
         return redirect('/auth/login/?next=/account/')
     summary = _account_summary(request.user)
@@ -88,7 +88,7 @@ def account_profile(request):
 
 def account_orders(request):
     if not request.user.is_authenticated:
-        from morpheus.plugin.views import redirect
+        from morpheus.app.views import redirect
 
         return redirect('/auth/login/?next=/account/orders/')
     try:
@@ -102,10 +102,10 @@ def account_orders(request):
 
 def account_order_detail(request, order_number):
     if not request.user.is_authenticated:
-        from morpheus.plugin.views import redirect
+        from morpheus.app.views import redirect
 
         return redirect(f'/auth/login/?next=/account/orders/{order_number}/')
-    from morpheus.plugin.views import get_object_or_404
+    from morpheus.app.views import get_object_or_404
     from plugins.installed.orders.models import Order
 
     order = get_object_or_404(
@@ -185,7 +185,7 @@ def account_address_form(request, address_id=None):
 
     address = None
     if address_id:
-        from morpheus.plugin.views import get_object_or_404
+        from morpheus.app.views import get_object_or_404
 
         address = get_object_or_404(Address, id=address_id, customer=request.user)
     if request.method == 'POST':
@@ -339,7 +339,7 @@ def account_order_return(request, order_number):
 def account_credits(request):
     """Combined view: store-credit balance + ledger + active gift cards."""
     if not request.user.is_authenticated:
-        from morpheus.plugin.views import redirect
+        from morpheus.app.views import redirect
 
         return redirect('/auth/login/?next=/account/credits/')
     store_credit = None
@@ -359,9 +359,9 @@ def account_credits(request):
         # Gift cards are an optional plugin: only query them while it's enabled,
         # so disabling gift_cards removes the section here (ADR 0013). Store
         # credit (orders) stays — it's foundational, so this page itself remains.
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        if plugin_registry.is_active('gift_cards'):
+        if app_registry.is_active('gift_cards'):
             from plugins.installed.gift_cards.models import GiftCard
 
             cards = list(
@@ -452,7 +452,7 @@ def order_confirmation(request, order_number):
     leaking order existence we 404 (not 403) on any auth failure.
     """
     from django.http import Http404
-    from morpheus.plugin.views import get_object_or_404
+    from morpheus.app.views import get_object_or_404
 
     from plugins.installed.orders.models import Order
 

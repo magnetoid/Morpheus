@@ -68,11 +68,11 @@ def _plugin():
     different builds in flight have only one. Try both before giving up.
     """
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
     except Exception:  # noqa: BLE001
         return None
     for attr in ('get', 'get_plugin'):
-        fn = getattr(plugin_registry, attr, None)
+        fn = getattr(app_registry, attr, None)
         if callable(fn):
             try:
                 p = fn('ai_assistant')

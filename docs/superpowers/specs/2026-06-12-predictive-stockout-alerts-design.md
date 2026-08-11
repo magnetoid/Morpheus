@@ -111,7 +111,7 @@ def sync_stockout_alerts(*, window_days=DEFAULT_WINDOW_DAYS,
 Transition semantics: alert opens on `not-at-risk → at-risk`; resolves on `at-risk →
 recovered` (restock raises `available`, or velocity drops). One alert per episode.
 
-### 4.3 Daily beat task — `inventory.run_stockout_forecast` (`tasks.py` + `plugin.py`)
+### 4.3 Daily beat task — `inventory.run_stockout_forecast` (`tasks.py` + `app.py`)
 Verified beat mechanism: `@app.task(name=...)` in `tasks.py`, registered in `plugin.ready()`
 via `self.register_celery_beat('inventory:run_stockout_forecast', {'task': 'inventory.run_stockout_forecast', 'schedule': crontab(hour=6, minute=0)})` (daily 06:00 UTC; `setdefault` lets operators override).
 
@@ -152,7 +152,7 @@ listing open `StockoutAlert`s sorted by `days_of_cover`: product, SKU, available
 daily velocity, suggested reorder qty. Mounted at `/dashboard/apps/inventory/stockout-forecast/`.
 Disabling inventory removes the page (disable-test clean).
 
-### 4.5 Agent tool — `inventory.stockout_forecast` (`agent_tools.py` + `plugin.py`)
+### 4.5 Agent tool — `inventory.stockout_forecast` (`agent_tools.py` + `app.py`)
 Verified `@tool` pattern; complements the static `low_stock_report`.
 
 ```

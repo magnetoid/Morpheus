@@ -8,11 +8,11 @@ class FeatureAdoptionConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
 
     def ready(self) -> None:
-        from plugins.installed.feature_adoption.plugin import FeatureAdoptionPlugin
-        from plugins.registry import plugin_registry
+        from plugins.installed.feature_adoption.app import FeatureAdoptionPlugin
+        from plugins.registry import app_registry
 
-        if 'feature_adoption' not in plugin_registry._classes:
-            plugin_registry._classes['feature_adoption'] = FeatureAdoptionPlugin
+        if 'feature_adoption' not in app_registry._classes:
+            app_registry._classes['feature_adoption'] = FeatureAdoptionPlugin
 
 
 default_app_config = 'plugins.installed.feature_adoption.apps.FeatureAdoptionConfig'

@@ -133,7 +133,7 @@ def my_dashboard_page(request):
 A minimum plugin is one file:
 
 ```python
-# plugins/installed/loyalty/plugin.py
+# plugins/installed/loyalty/app.py
 from morpheus import Plugin, DashboardPage, events
 
 
@@ -171,7 +171,7 @@ Then enable it:
 
 ### Lifecycle
 
-1. **Discovery** — at boot the registry imports every `plugin.py` under
+1. **Discovery** — at boot the registry imports every `app.py` under
    `plugins/installed/` and finds the `Plugin` subclass.
 2. **Validation** — required metadata (`name`, `label`, `version`) is
    checked at class-definition time. Bad metadata crashes import; siblings
@@ -238,7 +238,7 @@ The `agentic_checkout` plugin exposes the **Agentic Commerce Protocol**
 (OpenAI/Stripe, spec version `2026-04-17`) so AI agents can discover the
 catalog and build a priced checkout session against the existing `Cart`.
 It is **OFF by default** (`enabled_by_default = False`) and registered in
-`MORPHEUS_DEFAULT_PLUGINS`; a merchant enables it from the dashboard once
+`MORPHEUS_DEFAULT_APPS`; a merchant enables it from the dashboard once
 enrolled in Stripe ACP. This is distinct from — and complements — the MCP
 server and the UCP/A2A `/.well-known/` discovery served by `agent_mcp`.
 

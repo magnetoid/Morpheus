@@ -7,7 +7,7 @@ from django.http import HttpRequest, HttpResponse
 
 def adoption_dashboard(request: HttpRequest) -> HttpResponse:
     """Adoption matrix + install-health, staff-gated."""
-    from morpheus.plugin.views import render, staff_required  # noqa: PLC0415
+    from morpheus.app.views import render, staff_required  # noqa: PLC0415
 
     @staff_required
     def _inner(req: HttpRequest) -> HttpResponse:

@@ -29,10 +29,10 @@ def core_version() -> str:
 def plugin_versions() -> list[dict]:
     """``[{name, label, version, enabled}]`` for every registered plugin."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        active = getattr(plugin_registry, '_active', set()) or set()
-        classes = getattr(plugin_registry, '_classes', {}) or {}
+        active = getattr(app_registry, '_active', set()) or set()
+        classes = getattr(app_registry, '_classes', {}) or {}
         return [
             {
                 'name': name,

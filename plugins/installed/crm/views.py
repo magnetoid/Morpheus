@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.plugin.views import render, staff_member_required
+from morpheus.app.views import render, staff_member_required
 
 
 @staff_member_required
@@ -80,7 +80,7 @@ def tasks_list(request):
 @staff_member_required
 def inbox_list(request):
     """Latest messages across every connected mail account."""
-    from morpheus.plugin.views import redirect
+    from morpheus.app.views import redirect
     from plugins.installed.crm.models import MailAccount, MailMessage
 
     if request.method == 'POST' and request.POST.get('action') == 'sync':
@@ -132,7 +132,7 @@ def inbox_list(request):
 @staff_member_required
 def inbox_message(request, message_id):
     """Single-message view + reply form."""
-    from morpheus.plugin.views import HttpResponseRedirect, get_object_or_404
+    from morpheus.app.views import HttpResponseRedirect, get_object_or_404
     from plugins.installed.crm.inbox import send_message
     from plugins.installed.crm.models import MailMessage
 
@@ -188,7 +188,7 @@ def inbox_message(request, message_id):
 @staff_member_required
 def inbox_compose(request):
     """Compose a new outbound email."""
-    from morpheus.plugin.views import HttpResponseRedirect
+    from morpheus.app.views import HttpResponseRedirect
     from plugins.installed.crm.inbox import send_message
     from plugins.installed.crm.models import MailAccount
 
@@ -229,7 +229,7 @@ def inbox_compose(request):
 @staff_member_required
 def inbox_accounts(request):
     """List + create/edit MailAccount records."""
-    from morpheus.plugin.views import HttpResponseRedirect
+    from morpheus.app.views import HttpResponseRedirect
     from plugins.installed.crm.models import MailAccount
 
     error = ''

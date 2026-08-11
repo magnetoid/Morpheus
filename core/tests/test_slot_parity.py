@@ -13,7 +13,7 @@ ugc_reviews' photo strip) and ``account_summary_extra`` (referrals,
 returns_portal). CLAUDE.md's rule is that an advisory convention which keeps
 getting violated should be promoted to enforcement — this is that enforcement.
 
-Slots are read from the **runtime registry**, not by grepping ``plugin.py``:
+Slots are read from the **runtime registry**, not by grepping ``app.py``:
 dynamics registers one block per entry in ``SLOT_CHOICES`` inside a loop, which
 a source grep silently misses.
 """
@@ -26,7 +26,7 @@ from pathlib import Path
 from django.conf import settings
 from django.test import SimpleTestCase
 
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 #: Slots a plugin contributes but the active theme intentionally does not render.
 #: Each entry needs a reason — an allow-list without one is just a muted alarm.
@@ -68,7 +68,7 @@ def _rendered_slots() -> set[str]:
 
 def _contributed_slots() -> set[str]:
     return {
-        b.slot for b in getattr(plugin_registry, '_storefront_blocks', []) if getattr(b, 'slot', '')
+        b.slot for b in getattr(app_registry, '_storefront_blocks', []) if getattr(b, 'slot', '')
     }
 
 

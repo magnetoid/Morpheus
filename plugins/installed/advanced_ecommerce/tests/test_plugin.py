@@ -7,7 +7,7 @@ from __future__ import annotations
 from django.test import RequestFactory, TestCase
 from djmoney.money import Money
 
-from plugins.installed.advanced_ecommerce.plugin import AdvancedEcommercePlugin
+from plugins.installed.advanced_ecommerce.app import AdvancedEcommercePlugin
 from plugins.installed.advanced_ecommerce.templatetags.advanced_ecommerce import (
     featured_collection_rails,
 )
@@ -127,9 +127,9 @@ class CollectionRailsTests(TestCase):
             name='Spring', slug='spring', is_active=True, is_featured=True
         )
         c.products.add(self._product('a'))
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('advanced_ecommerce')
+        plugin = app_registry.get('advanced_ecommerce')
         plugin.set_config('enable_collection_rails', False)
         try:
             self.assertEqual(featured_collection_rails(), [])

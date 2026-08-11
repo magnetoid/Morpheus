@@ -30,9 +30,9 @@ def _cfg(key: str, default: str) -> str:
     """Read one gdpr-plugin config value (data controller name/email), with a
     placeholder fallback so the seeded pages are always coherent."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('gdpr')
+        plugin = app_registry.get('gdpr')
         if plugin is not None:
             val = plugin.get_config_value(key, default)
             if val:

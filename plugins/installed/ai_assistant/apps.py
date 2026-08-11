@@ -7,11 +7,11 @@ class AIAssistantConfig(AppConfig):
     verbose_name = 'AI Assistant'
 
     def ready(self):
-        from plugins.installed.ai_assistant.plugin import AIAssistantPlugin
-        from plugins.registry import plugin_registry
+        from plugins.installed.ai_assistant.app import AIAssistantPlugin
+        from plugins.registry import app_registry
 
-        if 'ai_assistant' not in plugin_registry._classes:
-            plugin_registry._classes['ai_assistant'] = AIAssistantPlugin
+        if 'ai_assistant' not in app_registry._classes:
+            app_registry._classes['ai_assistant'] = AIAssistantPlugin
 
 
 default_app_config = 'plugins.installed.ai_assistant.apps.AIAssistantConfig'

@@ -57,7 +57,7 @@ says "estimated".
   `record_pledge(order, trees, amount)` idempotent; `store_totals()`.
 - `models.py` — `TreePledge(order FK OneToOne, trees, amount, created_at)`;
   migration.
-- `plugin.py` — manifest (`requires=['book_product']`), settings schema
+- `app.py` — manifest (`requires=['book_product']`), settings schema
   (`show_on_pdp`, `tree_price`, `kg_co2_per_tree`, factor tunables, copy),
   `ready()` wiring:
   - PDP `StorefrontBlock(slot=<pdp slot>)` → eco badge (gated on `show_on_pdp`).

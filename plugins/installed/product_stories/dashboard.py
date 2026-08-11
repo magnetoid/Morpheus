@@ -9,7 +9,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
-from morpheus.plugin import dashboard_trail
+from morpheus.app import dashboard_trail
 
 _FIELDS = ('eyebrow', 'heading', 'body', 'image_url', 'layout')
 

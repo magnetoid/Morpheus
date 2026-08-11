@@ -72,8 +72,8 @@ class ProductFormHandlerTests(TestCase):
         return product
 
     def test_saved_handler_creates_audiobook_variant(self):
+        from plugins.installed.audiobooks.app import AudiobooksPlugin
         from plugins.installed.audiobooks.models import Audiobook
-        from plugins.installed.audiobooks.plugin import AudiobooksPlugin
 
         product = self._book()
         AudiobooksPlugin().on_product_form_saved(
@@ -110,8 +110,8 @@ class ProductFormHandlerTests(TestCase):
     def test_non_book_product_is_ignored(self):
         # No BookProduct → product.book raises (AttributeError subclass) → the
         # guard returns cleanly and no audiobook variant is created.
+        from plugins.installed.audiobooks.app import AudiobooksPlugin
         from plugins.installed.audiobooks.models import Audiobook
-        from plugins.installed.audiobooks.plugin import AudiobooksPlugin
         from plugins.installed.catalog.models import Product
 
         mug = Product.objects.create(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from django.contrib.auth.models import AnonymousUser
 from django.test import SimpleTestCase
 
-from plugins.installed.affiliates.plugin import AffiliatesPlugin
+from plugins.installed.affiliates.app import AffiliatesPlugin
 from plugins.installed.affiliates.templatetags.affiliates_account import affiliate_for
 
 

@@ -6,7 +6,7 @@
 
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Updates</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">Installed versions of core, plugins and themes, plus the central updater: check for updates and apply them (git fast-forward, backup + auto-rollback). CLI parity: <code>manage.py morph_versions</code> / <code>morph_check_updates</code> / <code>morph_apply_update</code>.</p>
+    <p class="text-sm text-[color:var(--text-muted)]">Installed versions of core, apps and themes, plus the central updater: check for updates and apply them (git fast-forward, backup + auto-rollback). CLI parity: <code>manage.py morph_versions</code> / <code>morph_check_updates</code> / <code>morph_apply_update</code>.</p>
   </div>
 
   <div class="card card-padded">
@@ -47,22 +47,16 @@
     </div>
   </div>
 
-  <div class="card overflow-hidden">
-    <div class="card-padded border-b border-[color:var(--border)]">
-      <h2 class="font-semibold text-sm">Plugins <span class="text-[color:var(--text-muted)] font-normal">({{ plugin_enabled_count }}/{{ plugins|length }} enabled)</span></h2>
+  {% comment %}This page used to repeat the whole app list as a
+  name/version/status table — every column of which the Apps page already
+  shows, alongside the toggle and settings link it can't. One list, one
+  place; this is just the count and the way there.{% endcomment %}
+  <div class="card card-padded flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <h2 class="font-semibold text-sm">Apps</h2>
+      <p class="text-sm text-[color:var(--text-muted)]">{{ plugin_enabled_count }} of {{ plugins|length }} enabled — versions, settings and on/off all live on the Apps page.</p>
     </div>
-    <table class="morph-table morph-table-zebra">
-      <thead><tr><th>Plugin</th><th>Version</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for p in plugins %}
-        <tr class="{% if not p.enabled %}opacity-60{% endif %}">
-          <td class="font-medium">{{ p.label }} <span class="text-[color:var(--text-muted)] font-mono text-xs">{{ p.name }}</span></td>
-          <td class="font-mono text-xs">v{{ p.version }}</td>
-          <td>{% if p.enabled %}<span class="pill pill-success">Enabled</span>{% else %}<span class="pill">Disabled</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <a href="{% url 'admin_dashboard:apps' %}" class="btn"><i data-lucide="grid-3x3" class="h-4 w-4"></i> Manage apps</a>
   </div>
 
   <div class="card overflow-hidden">

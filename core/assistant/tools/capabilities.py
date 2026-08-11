@@ -68,12 +68,12 @@ def capabilities_tool() -> ToolResult:
 def plugins_describe_tool(*, name: str) -> ToolResult:
     from django.apps import apps
 
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     slug = (name or '').strip()
-    plugin = plugin_registry.get(slug)
+    plugin = app_registry.get(slug)
     if plugin is None:
-        active = sorted(p.name for p in plugin_registry.active_plugins())
+        active = sorted(p.name for p in app_registry.active_plugins())
         return ToolResult(
             output={'error': f'plugin {slug!r} is not active', 'active_plugins': active},
             display=f'No active plugin named {slug!r}.',

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.plugin.views import redirect, render
+from morpheus.app.views import redirect, render
 
 logger = logging.getLogger('morpheus.digital_products')
 

@@ -15,9 +15,9 @@ import json
 from django.contrib import messages
 from django.utils.http import http_date
 
-from morpheus.plugin.views import staff_member_required
-from morpheus.plugin.views import HttpRequest, HttpResponse, JsonResponse
-from morpheus.plugin.views import get_object_or_404, redirect, render
+from morpheus.app.views import staff_member_required
+from morpheus.app.views import HttpRequest, HttpResponse, JsonResponse
+from morpheus.app.views import get_object_or_404, redirect, render
 
 from plugins.installed.seo.services import (
     audit_all_products,
@@ -240,11 +240,11 @@ def news_sitemap_xml(request: HttpRequest) -> HttpResponse:
 def _seo_flag(key: str, default: bool) -> bool:
     """Read a boolean SEO plugin config value defensively."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         plugin = None
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     plugin = fn('seo')
@@ -559,9 +559,9 @@ def seo_settings_page(request):
         s.noindex_query_params = [p.strip() for p in params.split(',') if p.strip()]
         # AI crawler matrix — POST keys are crawler_<UA_lower>=on / missing.
         from plugins.installed.seo.services import AI_CRAWLERS
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        seo_plugin = plugin_registry.get('seo')
+        seo_plugin = app_registry.get('seo')
         if seo_plugin is not None:
             policy = {
                 ua.lower(): (request.POST.get(f'crawler_{ua.lower()}') == 'on')
@@ -801,9 +801,9 @@ def sitemap_page(request):
         ping_indexnow,
         sitemap_counts,
     )
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    seo_plugin = plugin_registry.get('seo')
+    seo_plugin = app_registry.get('seo')
 
     def _plugin_get(key, default):
         try:

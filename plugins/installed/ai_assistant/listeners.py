@@ -7,7 +7,7 @@ called from `AIAssistantPlugin.ready()` and contained a typo
 constant is `CUSTOMER_REGISTERED`). Both have been removed.
 
 The same use-case is now covered by the focused hook handlers
-already wired in ``plugin.py``:
+already wired in ``app.py``:
 
   - ``on_order_placed`` → ``update_recommendations_after_order``
   - ``on_customer_registered`` → ``initialize_customer_memory``

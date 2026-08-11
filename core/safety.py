@@ -63,11 +63,32 @@ PROTECTED_PATHS: tuple[str, ...] = (
 
 # Plugins that cannot be disabled without soft-bricking the system.
 # Per MEMORY.md plugin_toggle_softbrick.
+#
+# This is the FLOOR, not the whole list: an app may also declare
+# `protected = True` in its own manifest (see MorpheusPlugin.protected), and
+# `is_plugin_protected()` returns the union. Protection is deliberately
+# one-way — a manifest can add itself, never remove itself — because an
+# app.py is AI-editable while this file is in FORBIDDEN_PATHS.
+#
+# catalog/orders/payments/morpheus_brain were dashboard-protected but missing
+# here, so the merchant UI refused to disable them while Linda's disable tools
+# (which gate on this tuple) allowed it — the AI path was looser than the
+# human one, and the tool's own comment claimed 'orders' was covered when it
+# was not.
 PROTECTED_PLUGINS: tuple[str, ...] = (
-    'admin_dashboard',
+    'admin_dashboard',  # its own toggle UI lives here — disabling it soft-bricks
+    # Linda lives in core.assistant, but agent_core carries her tool catalogue
+    # and the sub-agents she delegates to. Disable it and chat still answers —
+    # with "I can't access that" to every catalog/order/inventory question.
     'agent_core',
-    'rbac',
+    'rbac',  # the authorization layer
     'customers',
+    'catalog',  # core commerce primitives: the storefront has nothing to sell,
+    'orders',  # no way to take an order,
+    'payments',  # and no way to get paid.
+    # Morpheus Brain is a core capability (engine in core/brain/) — the
+    # self-analysis console, always on like the self-improvement loop it reads.
+    'morpheus_brain',
 )
 
 # ---------------------------------------------------------------------------
@@ -298,5 +319,19 @@ def is_class_allowed(class_name: str) -> bool:
 
 
 def is_plugin_protected(plugin_name: str) -> bool:
-    """Return True if `plugin_name` cannot be disabled (soft-brick risk)."""
-    return plugin_name in PROTECTED_PLUGINS
+    """Return True if `plugin_name` cannot be disabled (soft-brick risk).
+
+    The static floor above, unioned with any app that declares
+    `protected = True` in its own manifest. Every surface that offers a
+    disable — the merchant dashboard and Linda's disable tools — gates on
+    this one function, so the two can no longer drift apart.
+    """
+    if plugin_name in PROTECTED_PLUGINS:
+        return True
+    try:
+        from plugins.registry import app_registry
+
+        cls = app_registry._classes.get(plugin_name)
+        return bool(cls is not None and getattr(cls, 'protected', False))
+    except Exception:  # noqa: BLE001 — a registry hiccup must never un-protect
+        return False

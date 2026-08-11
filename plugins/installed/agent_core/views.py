@@ -15,8 +15,7 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any
 
-from morpheus.core import agent_registry
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpResponseBadRequest,
     JsonResponse,
     StreamingHttpResponse,
@@ -26,6 +25,7 @@ from morpheus.plugin.views import (
     require_http_methods,
     staff_member_required,
 )
+from morpheus.core import agent_registry
 from plugins.installed.agent_core.services import (
     history_for_conversation,
     run_agent,
@@ -74,7 +74,7 @@ def _agent_rate_key(request):
 @require_http_methods(['POST'])
 def invoke_agent_view(request, agent_name: str):
     from core.utils.rate_limit import RateLimitExceeded, check_and_consume
-    from morpheus.plugin.views import HttpResponse
+    from morpheus.app.views import HttpResponse
 
     try:
         check_and_consume(key=_agent_rate_key(request), max_per_window=20, window_seconds=60)
@@ -397,7 +397,7 @@ def observability_view(request):
 def background_agents_view(request):
     from django.utils import timezone
 
-    from morpheus.plugin.views import redirect
+    from morpheus.app.views import redirect
     from plugins.installed.agent_core.models import BackgroundAgent
 
     if request.method == 'POST':
@@ -440,7 +440,7 @@ def background_agents_view(request):
 def background_agent_action_view(request, bg_id: str, action: str):
     from django.utils import timezone
 
-    from morpheus.plugin.views import redirect
+    from morpheus.app.views import redirect
     from plugins.installed.agent_core.models import BackgroundAgent
     from plugins.installed.agent_core.scheduler import fire
 
@@ -582,7 +582,7 @@ def selfdev_action_view(request, proposal_id: str, action: str):
     from django.http import HttpResponseForbidden
 
     from core.assistant.models import CodeProposal
-    from morpheus.plugin.views import redirect
+    from morpheus.app.views import redirect
 
     p = get_object_or_404(CodeProposal, id=proposal_id)
     here = f'/dashboard/agents/selfdev/{p.id}/'
@@ -640,7 +640,7 @@ def memory_action_view(request):
     from django.http import HttpResponseForbidden
 
     from core.assistant.models import LindaMemory
-    from morpheus.plugin.views import redirect
+    from morpheus.app.views import redirect
 
     here = '/dashboard/agents/memory/'
     if request.method != 'POST':

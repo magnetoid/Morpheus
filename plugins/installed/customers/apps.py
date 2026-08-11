@@ -7,8 +7,8 @@ class CustomersConfig(AppConfig):
     verbose_name = 'Customers'
 
     def ready(self):
-        from plugins.installed.customers.plugin import CustomersPlugin
-        from plugins.registry import plugin_registry
+        from plugins.installed.customers.app import CustomersPlugin
+        from plugins.registry import app_registry
 
-        if 'customers' not in plugin_registry._classes:
-            plugin_registry._classes['customers'] = CustomersPlugin
+        if 'customers' not in app_registry._classes:
+            app_registry._classes['customers'] = CustomersPlugin

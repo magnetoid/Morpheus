@@ -266,7 +266,7 @@ class SingleSenderInvariantTests(TestCase):
         self.assertFalse(hasattr(marketing_tasks, 'trigger_cart_recovery_sequence'))
 
     def test_marketing_plugin_no_longer_handles_cart_abandoned(self):
-        from plugins.installed.marketing.plugin import MarketingPlugin
+        from plugins.installed.marketing.app import MarketingPlugin
 
         self.assertFalse(hasattr(MarketingPlugin, 'on_cart_abandoned'))
 

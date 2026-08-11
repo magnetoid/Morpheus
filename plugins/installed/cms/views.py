@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     Http404,
     csrf_protect,
     get_object_or_404,

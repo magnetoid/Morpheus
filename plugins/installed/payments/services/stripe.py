@@ -5,7 +5,7 @@ from django.conf import settings
 
 from plugins.installed.payments.models import PaymentTransaction
 from plugins.installed.payments.services.money import amount_to_minor
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 logger = logging.getLogger('morpheus.payments.stripe')
 
@@ -139,7 +139,7 @@ class PaymentService:
 
     @classmethod
     def get_stripe_api_key(cls):
-        plugin = plugin_registry.get('payments')
+        plugin = app_registry.get('payments')
         if plugin:
             return plugin.get_config_value('stripe_secret_key', settings.STRIPE_SECRET_KEY)
         return settings.STRIPE_SECRET_KEY
@@ -331,7 +331,7 @@ class PaymentService:
         payload/signature" responses, while the gateway wraps them into
         ``None``.
         """
-        plugin = plugin_registry.get('payments')
+        plugin = app_registry.get('payments')
         webhook_secret = (
             plugin.get_config_value('stripe_webhook_secret', settings.STRIPE_WEBHOOK_SECRET)
             if plugin

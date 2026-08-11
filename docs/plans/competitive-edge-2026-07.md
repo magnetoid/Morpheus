@@ -49,9 +49,9 @@ via a filter hook rather than replacing it, so the PLP keeps working (plain
 
 ### Task 1.1: Hybrid ranker + instant suggest
 
-**Files:** create `plugins/installed/search/` — `apps.py`, `plugin.py`,
+**Files:** create `plugins/installed/search/` — `apps.py`, `app.py`,
 `ranking.py`, `views.py`, `urls_storefront.py`, `tests/`. Register in
-`MORPHEUS_DEFAULT_PLUGINS`. New hook in `core/hooks.py`:
+`MORPHEUS_DEFAULT_APPS`. New hook in `core/hooks.py`:
 `SEARCH_PRODUCT_IDS = 'search.product_ids'` (filter, value=`list[product_id]`,
 kwargs: `query`, `limit`) — fired by the storefront PLP when `q=` is present;
 no subscriber → PLP falls back to its current `icontains` path (disable-safe
@@ -72,7 +72,7 @@ for free).
          (absent/disabled → skip; never a hard `requires`).
 - [ ] Storefront PLP integration: in the PLP view's `q=` branch, replace the
       direct filter with the `SEARCH_PRODUCT_IDS` filter fire (subscriber
-      registered in `plugin.py::ready()` via `register_hook`).
+      registered in `app.py::ready()` via `register_hook`).
 - [ ] `GET /search/suggest/?q=` (register_urls, JSON): top-8 products
       (id/name/slug/price/thumb) + top-3 categories, cached 60 s per query,
       rate-limited per IP. Storefront header search box gets
@@ -188,7 +188,7 @@ contracts, not their models — all reads via hooks or their public services).
 ### Task 3.1: Visitor features + bandit reranker
 
 **Files:** create `plugins/installed/smart_merchandising/` — `apps.py`,
-`plugin.py`, `features.py`, `reranker.py`, `models.py` (`RankerArmStat`:
+`app.py`, `features.py`, `reranker.py`, `models.py` (`RankerArmStat`:
 arm/slot, impressions, conversions — aggregates only) + migration, `tests/`.
 
 - [ ] Failing tests (pure math, exact values): feature vector assembly from a
@@ -249,7 +249,7 @@ drafting replies. `requires = ['orders', 'customers']`.
 
 ### Task 4.1: Tickets — storefront intake + dashboard inbox
 
-**Files:** create `plugins/installed/support_inbox/` — `apps.py`, `plugin.py`,
+**Files:** create `plugins/installed/support_inbox/` — `apps.py`, `app.py`,
 `models.py` + migration, `views_storefront.py`, `views.py`, `urls*.py`,
 `templates/support_inbox/`, `tests/`.
 

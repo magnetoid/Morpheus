@@ -11,8 +11,8 @@ from plugins.installed.subscriptions.agent_tools import (
     subscriptions_pause_tool,
     subscriptions_resume_tool,
 )
+from plugins.installed.subscriptions.app import SubscriptionsPlugin
 from plugins.installed.subscriptions.models import Plan, Subscription
-from plugins.installed.subscriptions.plugin import SubscriptionsPlugin
 
 
 class SubscriptionAgentToolTests(TestCase):

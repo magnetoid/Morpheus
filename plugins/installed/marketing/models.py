@@ -8,7 +8,7 @@ import uuid
 from django.utils import timezone
 from djmoney.models.fields import MoneyField
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class Coupon(models.Model):

@@ -53,7 +53,7 @@ SignupPopup
 ## Surfaces & phases (each independently shippable)
 
 - **Phase 1 — foundation (this PR):** plugin scaffold (manifest, apps, register
-  in `MORPHEUS_DEFAULT_PLUGINS`), the two models + migration, a double-opt-in
+  in `MORPHEUS_DEFAULT_APPS`), the two models + migration, a double-opt-in
   service (`subscribe(email, source) → pending + confirm email`;
   `confirm(token) → confirmed`; `unsubscribe(token)`), the `newsletter_confirm`
   + `newsletter_welcome` email templates via `contribute_email_templates()`,

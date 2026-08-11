@@ -20,9 +20,9 @@ logger = logging.getLogger('morpheus.backups')
 def _config() -> dict:
     """Read plugin config; default to including media."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('backups')
+        plugin = app_registry.get('backups')
         if plugin is not None:
             return {'include_media': bool(plugin.get_config_value('include_media', True))}
     except Exception:  # noqa: BLE001, S110

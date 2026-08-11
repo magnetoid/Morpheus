@@ -18,10 +18,10 @@ _VALID_NAV = ('main', 'settings', 'hidden')
 @checks.register('morpheus')
 def check_contribution_taxonomy(app_configs=None, **kwargs):
     from plugins.installed.admin_dashboard.settings_categories import get_category
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     errors = []
-    for entry in plugin_registry.all_settings_panels():
+    for entry in app_registry.all_settings_panels():
         panel = entry['panel']
         category = getattr(panel, 'category', '') or 'apps'
         if get_category(category) is None:
@@ -35,7 +35,7 @@ def check_contribution_taxonomy(app_configs=None, **kwargs):
                     id='morpheus.E001',
                 )
             )
-    for page in plugin_registry.dashboard_pages():
+    for page in app_registry.dashboard_pages():
         if page.nav not in _VALID_NAV:
             errors.append(
                 checks.Error(

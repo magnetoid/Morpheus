@@ -14,9 +14,9 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.utils.html import escape
 
-from morpheus.plugin import DashboardPage, SettingsPanel
+from morpheus.app import DashboardPage, SettingsPanel
 from plugins.installed.admin_dashboard.checks import check_contribution_taxonomy
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 class TaxonomyCheckTests(TestCase):
@@ -28,11 +28,11 @@ class TaxonomyCheckTests(TestCase):
         panel = SettingsPanel(
             label='Bad panel', schema={}, plugin='_taxonomy_test', category='not-a-category'
         )
-        plugin_registry._settings_panels['_taxonomy_test'] = panel
+        app_registry._settings_panels['_taxonomy_test'] = panel
         try:
             errors = check_contribution_taxonomy()
         finally:
-            plugin_registry._settings_panels.pop('_taxonomy_test', None)
+            app_registry._settings_panels.pop('_taxonomy_test', None)
         self.assertTrue(any(e.id == 'morpheus.E001' for e in errors))
 
     def test_unknown_nav_is_an_error(self):
@@ -43,11 +43,11 @@ class TaxonomyCheckTests(TestCase):
             plugin='_taxonomy_test',
             nav='marketplace',
         )
-        plugin_registry._dashboard_pages.append(page)
+        app_registry._dashboard_pages.append(page)
         try:
             errors = check_contribution_taxonomy()
         finally:
-            plugin_registry._dashboard_pages.remove(page)
+            app_registry._dashboard_pages.remove(page)
         self.assertTrue(any(e.id == 'morpheus.E002' for e in errors))
 
 
@@ -66,7 +66,7 @@ class RemappedPanelsRenderTests(TestCase):
         'Brand voice & AI content' renders as 'Brand voice &amp; AI content')."""
         labels = []
         for name in plugin_names:
-            panel = plugin_registry.settings_panel(name)
+            panel = app_registry.settings_panel(name)
             self.assertIsNotNone(panel, f'{name} should contribute a SettingsPanel')
             labels.append(escape(panel.label))
         return labels
@@ -102,7 +102,7 @@ class RemappedPanelsRenderTests(TestCase):
             self.assertIn(label, html)
 
     def test_gift_cards_canonical_url_resolves(self):
-        pages = [p for p in plugin_registry.dashboard_pages() if p.plugin == 'gift_cards']
+        pages = [p for p in app_registry.dashboard_pages() if p.plugin == 'gift_cards']
         self.assertEqual(pages[0].url, '/dashboard/gift-cards/')
         resp = self.client.get('/dashboard/gift-cards/')
         self.assertEqual(resp.status_code, 200)

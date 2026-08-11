@@ -85,7 +85,7 @@ with an item-scoped `MessageError`. Read via the metafields plugin
 `get_config_schema` gains `payments_enabled` (boolean, default `false`,
 title "Accept agent payments (ACP complete)") — the money path returns the
 Phase-1 `unsupported` message until the merchant flips it. Master `enabled`
-switch unchanged. `plugin.py` version bump 0.x → next minor.
+switch unchanged. `app.py` version bump 0.x → next minor.
 
 ## Contract & safety notes
 

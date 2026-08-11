@@ -13,7 +13,7 @@ import json
 from django.test import TestCase
 
 from plugins.installed.brand_kit.models import DesignTokenSet
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 _MARKER = 'id="morpheus-brand-tokens"'
 
@@ -79,11 +79,11 @@ class BrandTokenRenderTests(TestCase):
         )
         self.assertIn('#abcdef', self._head())
 
-        plugin_registry.deactivate('brand_kit')
+        app_registry.deactivate('brand_kit')
         try:
             head = self._head()
             self.assertNotIn(_MARKER, head)
             self.assertNotIn('#abcdef', head)
         finally:
-            plugin_registry.activate('brand_kit')
+            app_registry.activate('brand_kit')
         self.assertIn('#abcdef', self._head())

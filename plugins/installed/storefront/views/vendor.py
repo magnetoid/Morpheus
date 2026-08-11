@@ -6,14 +6,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db.models import Count, Prefetch, Q, Sum
 
-from morpheus.plugin.views import Http404, render
+from morpheus.app.views import Http404, render
 from plugins.installed.catalog.models import Product, Vendor
 from plugins.installed.storefront.services import page_intro
 
 # Optional sibling plugins — marketplace ships VendorOrder for the
 # "books sold" stat, metafields drives editorial FAQ overrides. Both
 # imports are wrapped so the storefront still boots if either plugin is
-# disabled in MORPHEUS_DEFAULT_PLUGINS.
+# disabled in MORPHEUS_DEFAULT_APPS.
 try:
     from plugins.installed.marketplace.models import VendorOrder as _VendorOrder
 except Exception:  # noqa: BLE001

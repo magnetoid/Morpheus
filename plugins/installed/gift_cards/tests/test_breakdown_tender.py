@@ -23,7 +23,7 @@ from djmoney.money import Money
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.customers.models import Customer
 from plugins.installed.gift_cards import services as gc_services
-from plugins.installed.gift_cards.plugin import GiftCardsPlugin
+from plugins.installed.gift_cards.app import GiftCardsPlugin
 from plugins.installed.orders.services import CartService, OrderService
 
 

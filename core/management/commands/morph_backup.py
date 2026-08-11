@@ -7,7 +7,7 @@ Configuration via env:
 For Postgres uses `pg_dump`; for SQLite copies the file. Media is tarred
 from MEDIA_ROOT. Output: a single `.tar.gz` per run timestamped UTC.
 
-Schedule via Celery beat: see plugins/installed/agent_core/plugin.py
+Schedule via Celery beat: see plugins/installed/agent_core/app.py
 for the registration pattern. We don't auto-register here so merchants
 opt in by adding the entry — backups are storage-heavy and we don't
 want them silently consuming disk on day one.

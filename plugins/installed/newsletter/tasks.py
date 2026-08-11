@@ -268,9 +268,9 @@ def send_winback(customer) -> bool:
     ).exists():
         return False
 
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    coupon_code = str(plugin_registry.config_value('newsletter', 'winback_coupon_code', '') or '')
+    coupon_code = str(app_registry.config_value('newsletter', 'winback_coupon_code', '') or '')
 
     from core.emails import send_templated_email
     from morpheus.core import site_base_url

@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 
 from api.client import internal_graphql
-from morpheus.plugin.views import redirect, render
+from morpheus.app.views import redirect, render
 
 from ._queries import CART_QUERY
 
@@ -41,11 +41,11 @@ def _item_ships(item) -> bool:
 def _cart_requires_shipping(request) -> bool:
     """Returns True if any cart item needs a shipping address. Digital /
     virtual carts skip the shipping-address step + rate picker."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     # Merchant override: if skip-shipping-for-digital is switched off, the
     # shipping step is always shown.
-    if plugin_registry.config_value('orders', 'skip_shipping_for_digital_carts', True) is False:
+    if app_registry.config_value('orders', 'skip_shipping_for_digital_carts', True) is False:
         return True
     try:
         cart = _load_cart_items(request)
@@ -74,12 +74,10 @@ def _withdrawal_waiver() -> dict:
     """Merchant-configured digital withdrawal-waiver: ``{enabled, text}``.
     Off by default (the merchant enables it once the wording is finalised);
     falls back to the schema defaults so checkout never breaks on config."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    enabled = bool(
-        plugin_registry.config_value('orders', 'digital_withdrawal_waiver_enabled', False)
-    )
-    text = str(plugin_registry.config_value('orders', 'digital_withdrawal_waiver_text', '') or '')
+    enabled = bool(app_registry.config_value('orders', 'digital_withdrawal_waiver_enabled', False))
+    text = str(app_registry.config_value('orders', 'digital_withdrawal_waiver_text', '') or '')
     if not text:
         text = (
             'I expressly request immediate access to the digital content in my '

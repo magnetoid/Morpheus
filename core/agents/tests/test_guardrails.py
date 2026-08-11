@@ -22,9 +22,9 @@ from core.agents.tests.test_runtime import _agent, _tool
 
 def _set_guardrail(**kw):
     """Persist guardrail config the way the settings panel does."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    plugin = plugin_registry.get('agent_core')
+    plugin = app_registry.get('agent_core')
     for k, v in kw.items():
         plugin.set_config(k, v)
     return plugin

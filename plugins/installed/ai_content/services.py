@@ -9,7 +9,7 @@ canonical path.
 
 import logging
 
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 logger = logging.getLogger('morpheus.ai_content')
 
@@ -25,7 +25,7 @@ def get_brand_voice() -> str:
     Returns an empty string when nothing is configured; safe to call
     unconditionally and concatenate.
     """
-    plugin = plugin_registry.get('ai_content')
+    plugin = app_registry.get('ai_content')
     if plugin is None:
         return ''
     cfg = plugin.get_config() if hasattr(plugin, 'get_config') else {}

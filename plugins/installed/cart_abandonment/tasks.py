@@ -37,9 +37,9 @@ def _config() -> dict:
     """Read plugin config with sensible defaults if the DB row is absent."""
     cfg = dict(_DEFAULTS)
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('cart_abandonment')
+        plugin = app_registry.get('cart_abandonment')
         if plugin is not None:
             raw = plugin.get_config()
             cfg['abandon_after_minutes'] = int(raw.get('abandon_after_minutes', 60))

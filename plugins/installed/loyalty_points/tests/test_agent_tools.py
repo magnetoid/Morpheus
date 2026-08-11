@@ -9,7 +9,7 @@ from plugins.installed.loyalty_points.agent_tools import (
     loyalty_adjust_points_tool,
     loyalty_balance_tool,
 )
-from plugins.installed.loyalty_points.plugin import LoyaltyPointsPlugin
+from plugins.installed.loyalty_points.app import LoyaltyPointsPlugin
 
 
 class LoyaltyAgentToolTests(TestCase):

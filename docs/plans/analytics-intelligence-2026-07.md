@@ -33,10 +33,10 @@ DailyMetric dimensions" idea would create forbidden cross-plugin imports. We don
    of merchants use X" is fleet telemetry we don't have. Build the per-install
    usage/health surface only.
 4. **Scale numbers**: 104 plugins (not 85), 17 core subsystem dirs (not 35). Never
-   hard-code counts — reference `MORPHEUS_DEFAULT_PLUGINS`.
+   hard-code counts — reference `MORPHEUS_DEFAULT_APPS`.
 5. **Ad spend ingestion reuses existing channel report functions** — the channel
-   plugins already fetch spend/ROAS (see `meta_commerce/plugin.py:97`,
-   `google_shopping/plugin.py:96` contributing `spend` to `CHANNELS_OVERVIEW`).
+   plugins already fetch spend/ROAS (see `meta_commerce/app.py:97`,
+   `google_shopping/app.py:96` contributing `spend` to `CHANNELS_OVERVIEW`).
 
 ## Global constraints (from CLAUDE.md — apply to every task)
 
@@ -62,7 +62,7 @@ DailyMetric dimensions" idea would create forbidden cross-plugin imports. We don
   + dated `docs/RELEASE_NOTES.md` entry in the same batch (ADR 0032).
 - **New views ship the three permission-boundary tests** (anon blocked,
   non-staff blocked, staff allowed).
-- **Docs ship with code:** new plugins get a `plugin.py` description; conventions/
+- **Docs ship with code:** new plugins get a `app.py` description; conventions/
   landmines discovered along the way go into `CLAUDE.md` in the same commit.
 
 ## Phase ordering & deploy gates
@@ -87,7 +87,7 @@ memory/deploy_workflow).
 
 **Files:** Modify `docs/analysis/platform_analysis_and_feature_proposals_2026.md`
 
-- [ ] §1.1: plugin count → "104 — see `MORPHEUS_DEFAULT_PLUGINS`"; core subsystems → 17; hooks → "~52".
+- [ ] §1.1: plugin count → "104 — see `MORPHEUS_DEFAULT_APPS`"; core subsystems → 17; hooks → "~52".
 - [ ] §1.6: delete the "No Web Vitals / RUM tracking" row (exists: `seo/services/cwv.py`).
 - [ ] Proposal #7: retitle "Extend the shipped inventory forecaster"; strike the
       already-shipped items (listed under "Corrections applied" above).
@@ -127,7 +127,7 @@ memory/deploy_workflow).
 - Create `plugins/installed/post_purchase/analytics.py`
 - Create `plugins/installed/post_purchase/templates/post_purchase/dashboard/nps.html`
 - Create `plugins/installed/post_purchase/views_dashboard.py`
-- Modify `plugins/installed/post_purchase/plugin.py` (add `DashboardPage`)
+- Modify `plugins/installed/post_purchase/app.py` (add `DashboardPage`)
 - Test  `plugins/installed/post_purchase/tests/test_nps_analytics.py`
 
 **Interfaces (produces):**
@@ -167,7 +167,7 @@ window (from the plugin's own send-log model; if absent, omit the KPI — do NOT
 - Create `plugins/installed/subscriptions/analytics.py`
 - Create `plugins/installed/subscriptions/templates/subscriptions/dashboard/analytics.html`
 - Modify `plugins/installed/subscriptions/views.py` (or create `views_analytics.py`)
-- Modify `plugins/installed/subscriptions/plugin.py` (add `DashboardPage`)
+- Modify `plugins/installed/subscriptions/app.py` (add `DashboardPage`)
 - Test  `plugins/installed/subscriptions/tests/test_analytics.py`
 
 **Interfaces (produces):**
@@ -218,7 +218,7 @@ the trend uses paid invoices (recognized MRR). Trial conversion infers from
 - Create `plugins/installed/customers/rfm.py`
 - Create `plugins/installed/customers/migrations/000X_customersegment.py`
 - Modify `plugins/installed/customers/models.py` (add `CustomerSegment`)
-- Modify `plugins/installed/customers/plugin.py` (beat task + `DashboardPage`)
+- Modify `plugins/installed/customers/app.py` (beat task + `DashboardPage`)
 - Create `plugins/installed/customers/tasks.py` (if absent)
 - Create `plugins/installed/customers/templates/customers/dashboard/segments.html`
 - Modify `core/hooks.py` (add `CUSTOMER_SEGMENT_CHANGED = 'customer.segment_changed'  # fire`)
@@ -271,7 +271,7 @@ base per run (`percent_rank`-style ordering in Python; the base is small enough)
 - Create `plugins/installed/analytics/templates/analytics/attribution.html` + view + URL (`attribution/` in `urls_dashboard.py`)
 - Modify 2 channel plugins first (`meta_commerce`, `google_shopping`) to subscribe to the
   filter reusing their existing spend-report functions (the same ones feeding
-  `CHANNELS_OVERVIEW` — `plugin.py:96-97` in each); remaining channels follow the pattern later.
+  `CHANNELS_OVERVIEW` — `app.py:96-97` in each); remaining channels follow the pattern later.
 - Test `plugins/installed/analytics/tests/test_attribution.py`
 
 **Attribution core (pure function, exhaustively tested):**
@@ -306,9 +306,9 @@ analytics owns `DailyMetric`, so this is legal here.
 
 ### Task 2.3: Feature adoption & install health (new plugin `feature_adoption`, per-install)
 
-**Files:** Create `plugins/installed/feature_adoption/` — `apps.py`, `plugin.py`,
+**Files:** Create `plugins/installed/feature_adoption/` — `apps.py`, `app.py`,
 `models.py` + migration, `tracking.py`, `tasks.py`, `views.py`,
-`templates/feature_adoption/dashboard.html`, `tests/`. Register in `MORPHEUS_DEFAULT_PLUGINS`.
+`templates/feature_adoption/dashboard.html`, `tests/`. Register in `MORPHEUS_DEFAULT_APPS`.
 (Use the `plugin-skeleton` skill for scaffolding.)
 
 **Model (aggregates only — no per-event rows, no PII):**
@@ -351,7 +351,7 @@ class FeatureUsageDay(models.Model):
 
 ### Task 3.1: Extend the shipped inventory forecaster (owner: `inventory`)
 
-**Files:** Modify `demand_forecast.py`, `views.py`, `agent_tools.py`, `plugin.py`,
+**Files:** Modify `demand_forecast.py`, `views.py`, `agent_tools.py`, `app.py`,
 `templates/inventory/dashboard/stockout_forecast.html`; `core/hooks.py`
 (add `INVENTORY_OVERSTOCK_DETECTED = 'inventory.overstock_detected'  # fire`);
 tests in `tests/test_forecasting_extensions.py`.
@@ -378,11 +378,11 @@ Scope discipline: **MVP = scheduled event + embedded stream + pinned buyable pro
 live stats.** Own WebRTC, chat overlays, and auto-VOD re-encoding are explicitly out
 of scope this round (the report's own stretch items).
 
-**Files:** Create `plugins/installed/live_commerce/` — `apps.py`, `plugin.py`,
+**Files:** Create `plugins/installed/live_commerce/` — `apps.py`, `app.py`,
 `models.py` + migration, `views.py` (storefront + dashboard), `urls.py`,
 `templates/live_commerce/` (`event.html` storefront, `dashboard/index.html`,
 `dashboard/form.html`, `blocks/upcoming_teaser.html`), `tests/`.
-Register in `MORPHEUS_DEFAULT_PLUGINS`. `requires = ['catalog', 'orders']`.
+Register in `MORPHEUS_DEFAULT_APPS`. `requires = ['catalog', 'orders']`.
 
 **Models:**
 ```python

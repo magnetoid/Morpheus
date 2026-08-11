@@ -9,8 +9,8 @@ from django.test import SimpleTestCase, TestCase
 from djmoney.money import Money
 
 from plugins.installed.eco_impact import footprint, services
+from plugins.installed.eco_impact.app import EcoImpactPlugin
 from plugins.installed.eco_impact.models import TreePledge
-from plugins.installed.eco_impact.plugin import EcoImpactPlugin
 from plugins.installed.orders.models import Order
 
 User = get_user_model()

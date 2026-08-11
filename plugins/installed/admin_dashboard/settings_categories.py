@@ -52,7 +52,7 @@ SETTINGS_CATEGORIES: list[SettingsCategory] = [
     SettingsCategory(
         'developer', 'Developer', 'API keys, webhooks, agent tokens, observability.', 'code'
     ),
-    SettingsCategory('apps', 'Other plugins', 'Settings exposed by individual plugins.', 'puzzle'),
+    SettingsCategory('apps', 'Other apps', 'Settings exposed by individual apps.', 'puzzle'),
 ]
 
 

@@ -273,12 +273,12 @@ class DeepSeoServicesTests(TestCase):
 
     def test_agents_md_endpoints_section_vanishes_when_agent_mcp_disabled(self):
         from plugins.installed.seo.services import render_agents_md
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        self.addCleanup(plugin_registry.activate, 'agent_mcp')
+        self.addCleanup(app_registry.activate, 'agent_mcp')
         # Disabled agent_mcp → the bus skips its handler → the endpoints section
         # (and the endpoints it advertises) both disappear. Discovery remains.
-        plugin_registry.deactivate('agent_mcp')
+        app_registry.deactivate('agent_mcp')
         out = render_agents_md()
         self.assertNotIn('## Agent commerce endpoints', out)
         self.assertNotIn('/mcp/admin/v1/', out)

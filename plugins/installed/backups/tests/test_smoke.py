@@ -7,6 +7,6 @@ from django.test import TestCase
 
 class BackupsSmokeTests(TestCase):
     def test_plugin_class_imports(self):
-        from plugins.installed.backups.plugin import BackupsPlugin
+        from plugins.installed.backups.app import BackupsPlugin
 
         self.assertEqual(BackupsPlugin.name, 'backups')

@@ -148,9 +148,9 @@ class StockoutForecastPageTests(TestCase):
         self.assertIn(resp.status_code, (301, 302, 403))
 
     def test_dashboard_page_contributed(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        slugs = {p.slug for p in plugin_registry.dashboard_pages() if p.plugin == 'inventory'}
+        slugs = {p.slug for p in app_registry.dashboard_pages() if p.plugin == 'inventory'}
         self.assertIn('stockout-forecast', slugs)
 
 

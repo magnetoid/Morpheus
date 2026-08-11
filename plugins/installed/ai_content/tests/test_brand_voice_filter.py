@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from django.test import TestCase
 
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 def _set_brand(name: str) -> None:
-    plugin = plugin_registry.get('ai_content')
+    plugin = app_registry.get('ai_content')
     plugin.set_config('brand_name', name)
 
 
@@ -41,7 +41,7 @@ class BrandVoiceFilterTests(TestCase):
         # All four fields blank → get_brand_voice() is '' → prompt verbatim.
         # (NB `brand_tone` has a non-empty schema DEFAULT, so a fresh store
         # DOES carry a voice fragment — same as the old direct-import path.)
-        plugin = plugin_registry.get('ai_content')
+        plugin = app_registry.get('ai_content')
         for key in ('brand_name', 'brand_audience', 'brand_tone', 'brand_voice_guidelines'):
             plugin.set_config(key, '')
         self.assertEqual(build_system_prompt(), LINDA_BASE_PROMPT)
@@ -51,10 +51,10 @@ class BrandVoiceFilterTests(TestCase):
 
         _set_brand('Dot Books')
         self.assertIn('BRAND VOICE', build_system_prompt())  # sanity: active first
-        plugin_registry.deactivate('ai_content')
+        app_registry.deactivate('ai_content')
         try:
             # Bus skips the inactive owner's handler → plain prompt, no error.
             self.assertEqual(build_system_prompt(), LINDA_BASE_PROMPT)
         finally:
-            plugin_registry.activate('ai_content')
+            app_registry.activate('ai_content')
         self.assertIn('BRAND VOICE', build_system_prompt())  # restored on re-enable

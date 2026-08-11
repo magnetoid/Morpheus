@@ -73,9 +73,7 @@ class DeliverySubscriptionTests(TestCase):
     def test_no_parallel_subscription_plugin_remains(self):
         from django.conf import settings as dj_settings
 
-        self.assertNotIn(
-            'plugins.installed.subscriptions_plus', dj_settings.MORPHEUS_DEFAULT_PLUGINS
-        )
+        self.assertNotIn('plugins.installed.subscriptions_plus', dj_settings.MORPHEUS_DEFAULT_APPS)
         with self.assertRaises(ImportError):
             import plugins.installed.subscriptions_plus  # noqa: F401
 

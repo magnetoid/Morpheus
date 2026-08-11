@@ -17,7 +17,7 @@ from plugins.installed.advanced_payments.sync import sync_gateway_config
 from plugins.installed.payments.gateway import PaymentGateway, gateway_registry
 from plugins.installed.payments.models import PaymentGatewayConfig, is_enabled
 from plugins.installed.payments.services.routing import picker_gateways
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 class GatewayContractTests(TestCase):
@@ -59,7 +59,7 @@ class PanelDrivesGatewayConfigTests(TestCase):
     """
 
     def _plugin(self):
-        return plugin_registry.get('advanced_payments')
+        return app_registry.get('advanced_payments')
 
     def test_defaults_project_cod_on_test_off(self):
         sync_gateway_config()

@@ -99,9 +99,9 @@ def _guardrail_config() -> dict[str, Any]:
     """The active agent guardrail knobs (populated as guardrails ship). Fail-soft
     to an empty dict so the report renders even if agent_core config is absent."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('agent_core')
+        plugin = app_registry.get('agent_core')
         if plugin is None:
             return {}
         keys = (

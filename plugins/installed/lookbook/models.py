@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class Look(models.Model):

@@ -53,7 +53,7 @@ class AuditLogViewTests(TestCase):
         self.assertNotContains(r, 'order.placed')
 
     def test_plugin_contributes_audit_page(self):
-        from plugins.installed.observability.plugin import ObservabilityPlugin
+        from plugins.installed.observability.app import ObservabilityPlugin
 
         slugs = {p.slug for p in ObservabilityPlugin().contribute_dashboard_pages()}
         self.assertIn('audit', slugs)

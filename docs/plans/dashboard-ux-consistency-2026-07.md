@@ -45,16 +45,16 @@ any of it, so every new plugin drifts. The plan is therefore: fix the broken
    security→developer, customers→marketing, storefront→general) **and** add
    a system check that rejects unknown categories (enforcement, see P4).
 3. **bookvault API token echoed as plaintext** in the settings panel
-   (`bookvault/plugin.py:175` lacked `format: password`). ✅ Fixed
+   (`bookvault/app.py:175` lacked `format: password`). ✅ Fixed
    2026-07-16 in this batch.
 4. **gift_cards nav points at a doubled URL** `/dashboard/apps/gift_cards/gift_cards/`
-   while routes live at `/dashboard/gift-cards/` (`gift_cards/plugin.py:60-66`).
+   while routes live at `/dashboard/gift-cards/` (`gift_cards/app.py:60-66`).
 5. **booking_marketplace uses invalid `nav='marketplace'`**
-   (`booking_marketplace/plugin.py:46`) — renders by accident. Fix: `nav='main'`
+   (`booking_marketplace/app.py:46`) — renders by accident. Fix: `nav='main'`
    + a validity check.
 6. **webhooks_ui Delete has no confirmation at all** (`webhooks_ui/edit.html:29`),
    and styles danger inline instead of `btn-danger`.
-7. **tracking panel "mirror" fields do nothing** (`tracking/plugin.py:191-192`
+7. **tracking panel "mirror" fields do nothing** (`tracking/app.py:191-192`
    duplicate TrackingSettings; editing them is a no-op). Fix: remove, link to
    `/dashboard/tracking/`.
 8. **ai_stylist's panel never appears on the AI settings page** —

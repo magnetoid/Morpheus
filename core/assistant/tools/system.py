@@ -30,10 +30,10 @@ def server_info_tool() -> ToolResult:
     except Exception:  # noqa: BLE001
         info['django'] = 'unknown'
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        info['plugins_total'] = len(plugin_registry.all_plugins())
-        info['plugins_active'] = len(plugin_registry.active_plugins())
+        info['plugins_total'] = len(app_registry.all_plugins())
+        info['plugins_active'] = len(app_registry.active_plugins())
     except Exception:  # noqa: BLE001
         info['plugins_total'] = info['plugins_active'] = -1
     return ToolResult(output=info)

@@ -731,7 +731,7 @@ any auto-apply ships.
 
 ## Integration anchors (existing Morpheus code to mirror)
 
-- Worker + Skill contract: `plugins/installed/agent_core/plugin.py`,
+- Worker + Skill contract: `plugins/installed/agent_core/app.py`,
   `contribute_agent_tools()` / `contribute_skills()`.
 - Hooks: `core/hooks.py` (canonical events lines 295–407), subscribe
   via direct registration in `core/self_improvement/apps.py:ready()`.

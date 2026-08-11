@@ -13,7 +13,7 @@ from plugins.base import MorpheusPlugin
 logger = logging.getLogger('morpheus.plugins')
 
 
-class PluginRegistry:
+class AppRegistry:
     """
     Central registry for all Morph plugins.
 
@@ -62,16 +62,16 @@ class PluginRegistry:
         # process-wide (a latent test-isolation footgun; hunt #12).
         from core.hooks import hook_registry
 
-        if not PluginRegistry._active_check_wired:
+        if not AppRegistry._active_check_wired:
             hook_registry.set_active_check(self.is_active)
-            PluginRegistry._active_check_wired = True
+            AppRegistry._active_check_wired = True
 
     # ── Discovery ──────────────────────────────────────────────────────────────
 
     def discover(self, plugin_module_paths: list[str]) -> None:
         for module_path in plugin_module_paths:
             try:
-                mod = importlib.import_module(f'{module_path}.plugin')
+                mod = importlib.import_module(f'{module_path}.app')
             except ImportError as e:
                 logger.error('Failed to import plugin %s: %s', module_path, e, exc_info=True)
                 continue
@@ -90,7 +90,7 @@ class PluginRegistry:
                 and obj.name
             ):
                 return obj
-        logger.warning('No MorpheusPlugin subclass found in %s.plugin', module_path)
+        logger.warning('No MorpheusPlugin subclass found in %s.app', module_path)
         return None
 
     # ── Validation ────────────────────────────────────────────────────────────
@@ -554,7 +554,7 @@ class PluginRegistry:
         return [p for p in self._plugins.values() if p.name in self._active]
 
     def __repr__(self) -> str:
-        return f'<PluginRegistry: {len(self._plugins)} plugins, {len(self._active)} active>'
+        return f'<AppRegistry: {len(self._plugins)} plugins, {len(self._active)} active>'
 
 
-plugin_registry = PluginRegistry()
+app_registry = AppRegistry()

@@ -17,7 +17,7 @@ from unittest import mock
 from django.test import Client, TestCase
 from djmoney.money import Money
 
-from plugins.installed.agentic_checkout.plugin import ACP_API_VERSION
+from plugins.installed.agentic_checkout.app import ACP_API_VERSION
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.inventory.models import StockLevel, Warehouse
 from plugins.installed.orders.models import Cart
@@ -28,7 +28,7 @@ _TOKEN_NO_SCOPE = 'acp-tok-noscope'
 
 def _enable_plugin_and_tokens() -> None:
     from plugins.models import PluginConfig
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     # A scoped token + an under-scoped token, both valid Bearer tokens.
     PluginConfig.objects.update_or_create(
@@ -47,7 +47,7 @@ def _enable_plugin_and_tokens() -> None:
         defaults={'is_enabled': True},
     )
     # Mount the /acp/ URLs (the plugin is OFF by default so ready() hasn't run).
-    plugin_registry.activate('agentic_checkout')
+    app_registry.activate('agentic_checkout')
 
 
 class AcpCheckoutTests(TestCase):

@@ -5,8 +5,14 @@
 <div class="space-y-4">
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Apps</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">Plugins installed on this Morpheus instance. Toggle to enable storefront blocks, dashboard pages, and admin settings declared by each plugin.</p>
+    <p class="text-sm text-[color:var(--text-muted)]">Apps installed on this Morpheus instance. Toggle one on to add the storefront blocks, dashboard pages and settings it declares.</p>
   </div>
+
+  {# Installed + Browse are two views of one surface, not two pages. #}
+  <nav class="tab-list overflow-x-auto" aria-label="Apps views">
+    <a href="{% url 'admin_dashboard:apps' %}" class="tab is-active">Installed</a>
+    <a href="{% url 'admin_dashboard:apps_store' %}" class="tab">Browse</a>
+  </nav>
 
   <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
     {% for p in plugins %}
@@ -51,7 +57,7 @@
       </div>
     </div>
     {% empty %}
-    <p class="text-sm text-[color:var(--text-muted)]">No plugins discovered.</p>
+    <p class="text-sm text-[color:var(--text-muted)]">No apps discovered.</p>
     {% endfor %}
   </div>
 </div>

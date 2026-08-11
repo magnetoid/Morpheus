@@ -94,7 +94,7 @@ class MorphCreatePluginTests(SimpleTestCase):
         out = self._scaffold('hello_scaffold')
         self.assertTrue((out / '__init__.py').exists())
         self.assertTrue((out / 'apps.py').exists())
-        self.assertTrue((out / 'plugin.py').exists())
+        self.assertTrue((out / 'app.py').exists())
         self.assertTrue((out / 'tests/test_smoke.py').exists())
         self.assertFalse((out / 'models.py').exists())
         self.assertFalse((out / 'urls.py').exists())
@@ -130,8 +130,8 @@ class MorphCreatePluginTests(SimpleTestCase):
             with_models=True,
             with_graphql=True,
         )
-        plugin_py = (out / 'plugin.py').read_text()
-        compile(plugin_py, str(out / 'plugin.py'), 'exec')
+        plugin_py = (out / 'app.py').read_text()
+        compile(plugin_py, str(out / 'app.py'), 'exec')
         graphql_py = (out / 'graphql/queries.py').read_text()
         compile(graphql_py, str(out / 'graphql/queries.py'), 'exec')
 
@@ -141,7 +141,7 @@ class PluginContributionTests(SimpleTestCase):
 
     def test_plugin_can_contribute_storefront_block(self):
         from plugins.contributions import StorefrontBlock
-        from plugins.registry import PluginRegistry
+        from plugins.registry import AppRegistry
 
         class P(MorpheusPlugin):
             name = 'sf_block_test'
@@ -151,7 +151,7 @@ class PluginContributionTests(SimpleTestCase):
             def contribute_storefront_blocks(self):
                 return [StorefrontBlock(slot='home_below_grid', template='x.html', priority=10)]
 
-        reg = PluginRegistry()
+        reg = AppRegistry()
         instance = P()
         reg._collect_contributions(instance)
         blocks = reg.storefront_blocks_for('home_below_grid')
@@ -161,7 +161,7 @@ class PluginContributionTests(SimpleTestCase):
 
     def test_plugin_can_contribute_dashboard_page(self):
         from plugins.contributions import DashboardPage
-        from plugins.registry import PluginRegistry
+        from plugins.registry import AppRegistry
 
         class P(MorpheusPlugin):
             name = 'dash_page_test'
@@ -171,7 +171,7 @@ class PluginContributionTests(SimpleTestCase):
             def contribute_dashboard_pages(self):
                 return [DashboardPage(label='Bulk Edit', slug='bulk', view='x.y.z', icon='edit')]
 
-        reg = PluginRegistry()
+        reg = AppRegistry()
         reg._collect_contributions(P())
         pages = reg.dashboard_pages()
         self.assertEqual(len(pages), 1)
@@ -180,7 +180,7 @@ class PluginContributionTests(SimpleTestCase):
 
     def test_plugin_can_contribute_settings_panel(self):
         from plugins.contributions import SettingsPanel
-        from plugins.registry import PluginRegistry
+        from plugins.registry import AppRegistry
 
         class P(MorpheusPlugin):
             name = 'settings_panel_test'
@@ -196,7 +196,7 @@ class PluginContributionTests(SimpleTestCase):
             def contribute_settings_panel(self):
                 return SettingsPanel(label='Settings', schema=self.get_config_schema())
 
-        reg = PluginRegistry()
+        reg = AppRegistry()
         reg._collect_contributions(P())
         panel = reg.settings_panel('settings_panel_test')
         self.assertIsNotNone(panel)
@@ -204,7 +204,7 @@ class PluginContributionTests(SimpleTestCase):
 
     def test_drop_contributions_removes_them(self):
         from plugins.contributions import StorefrontBlock
-        from plugins.registry import PluginRegistry
+        from plugins.registry import AppRegistry
 
         class P(MorpheusPlugin):
             name = 'drop_test'
@@ -214,7 +214,7 @@ class PluginContributionTests(SimpleTestCase):
             def contribute_storefront_blocks(self):
                 return [StorefrontBlock(slot='s', template='t.html')]
 
-        reg = PluginRegistry()
+        reg = AppRegistry()
         reg._collect_contributions(P())
         self.assertEqual(len(reg.storefront_blocks_for('s')), 1)
         reg._drop_contributions('drop_test')
@@ -280,9 +280,9 @@ class ValidateCoreDependencyTests(SimpleTestCase):
     """
 
     def _registry(self, **classes):
-        from plugins.registry import PluginRegistry
+        from plugins.registry import AppRegistry
 
-        r = PluginRegistry()
+        r = AppRegistry()
         r._classes = dict(classes)
         return r
 

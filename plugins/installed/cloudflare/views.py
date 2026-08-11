@@ -1,7 +1,7 @@
 """Cloudflare admin dashboard views.
 
 URL roots all live under /dashboard/cloudflare/ via register_urls in
-plugin.py. Sidebar surfaces via DashboardPage entries with url= set so
+app.py. Sidebar surfaces via DashboardPage entries with url= set so
 they go through the canonical /dashboard/cloudflare/* path.
 """
 # Lazy (in-function) imports are the established pattern; the zone view is
@@ -17,7 +17,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 
-from morpheus.plugin import dashboard_trail
+from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.cloudflare')
 

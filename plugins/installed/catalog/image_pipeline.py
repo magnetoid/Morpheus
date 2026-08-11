@@ -7,7 +7,7 @@ store's image defaults).
 
 Defaults come from the catalog plugin's settings panel
 (Settings → General → Image defaults, see
-``plugins.installed.catalog.plugin.CatalogPlugin.get_config_schema``).
+``plugins.installed.catalog.app.CatalogPlugin.get_config_schema``).
 Falls back to sane hardcoded values when the panel hasn't been
 configured yet.
 
@@ -56,13 +56,13 @@ def _settings() -> dict:
     """
     out = dict(_DEFAULTS)
     try:
-        from plugins.registry import plugin_registry  # noqa: PLC0415
+        from plugins.registry import app_registry  # noqa: PLC0415
 
         # Both `.get` and `.get_plugin` show up in different builds —
         # try both. (Same pattern as ai_assistant/services/config.py.)
         plugin = None
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     plugin = fn('catalog')

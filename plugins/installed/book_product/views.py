@@ -11,7 +11,7 @@ from __future__ import annotations
 from django.shortcuts import render
 from django.utils.text import slugify
 
-from morpheus.plugin.views import Http404
+from morpheus.app.views import Http404
 
 
 def _active_products(books):

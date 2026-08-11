@@ -59,7 +59,7 @@ Each owning plugin calls `register_hardcoded_page(...)` in its `AppConfig.ready(
 
 **Files touched (Phase 1) — all inside `plugins/installed/cms/`:**
 - `dashboard.py` — add `page_new`, `page_edit`, `page_duplicate`, `page_delete` views
-- `urls.py` — add dashboard routes (prefix `dashboard/cms/pages/`)... wait: the CMS plugin registers its own URL prefix via `self.register_urls('plugins.installed.cms.urls', prefix='', namespace='cms')` in [`plugin.py:25`](../plugins/installed/cms/plugin.py). Dashboard routes are contributed separately via `contribute_dashboard_pages` + `DashboardPage` objects that the admin_dashboard resolves. Add dashboard routes under a `dashboard/` sub-prefix in `urls.py`.
+- `urls.py` — add dashboard routes (prefix `dashboard/cms/pages/`)... wait: the CMS plugin registers its own URL prefix via `self.register_urls('plugins.installed.cms.urls', prefix='', namespace='cms')` in [`app.py:25`](../plugins/installed/cms/app.py). Dashboard routes are contributed separately via `contribute_dashboard_pages` + `DashboardPage` objects that the admin_dashboard resolves. Add dashboard routes under a `dashboard/` sub-prefix in `urls.py`.
 - `templates/cms/dashboard/pages.html` — replace read-only table with action columns + confirm-delete modal
 - `templates/cms/dashboard/page_form.html` — new template with TipTap wiring
 
@@ -146,7 +146,7 @@ None — design is locked.
 - **Phase 1 — DONE, deployed, user-confirmed working.** Editor (TipTap body +
   New/Edit/Duplicate/Delete) live at `/dashboard/cms/pages/` (list) and
   `/dashboard/cms/pages/new/`. Routes in `cms/urls_dashboard.py` (registered in
-  `cms/plugin.py:ready()` under `dashboard/cms/`); views in `cms/dashboard.py`;
+  `cms/app.py:ready()` under `dashboard/cms/`); views in `cms/dashboard.py`;
   9 tests in `cms/tests/test_page_dashboard.py`. Shared `.rte-*` editor CSS moved
   to `admin_dashboard/base.html`; TipTap pinned 3.23.4 via esm.sh (StarterKit v3
   bundles Link — pass `link:false`).

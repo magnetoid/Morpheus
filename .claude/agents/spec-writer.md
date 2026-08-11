@@ -23,7 +23,7 @@ produce one spec file and stop. **You do not write production code.**
    That defines the section structure.
 2. **Inventory the relevant existing code** the spec must respect:
    - The Plugin model the feature lives under (if any) — read its
-     `apps.py`, `plugin.py`, `models.py`.
+     `apps.py`, `app.py`, `models.py`.
    - Any existing related views, services, hooks.
    - Existing tests that constrain the contract.
 3. **Resolve open questions before writing.** If a section of the

@@ -168,9 +168,9 @@ def _seo_plugin_cfg() -> dict:
     key, AI crawler matrix, etc.). Returns ``{}`` when the plugin is
     not loaded yet (early boot / tests)."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        p = plugin_registry.get('seo')
+        p = app_registry.get('seo')
         if p is None:
             return {}
         return p.get_config() or {}
@@ -229,10 +229,10 @@ def _plugin(name: str):
     new ``get_plugin``). Returns ``None`` when the registry isn't ready
     or the plugin is absent — callers treat that as "use defaults"."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     p = fn(name)
@@ -259,9 +259,9 @@ def _return_window_days() -> int:
     never a fabricated value. Disable-safe: a disabled returns_portal contributes
     no return policy to the markup."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        is_active = getattr(plugin_registry, 'is_active', None)
+        is_active = getattr(app_registry, 'is_active', None)
         if callable(is_active) and not is_active('returns_portal'):
             return 0
     except Exception:  # noqa: BLE001

@@ -34,7 +34,7 @@ from morpheus.views import HttpResponse, render, staff_member_required
 
 | Symbol | Role |
 |---|---|
-| `Plugin` | Base class for every plugin's `plugin.py`. Subclass it, set `name`/`label`/`version`/`requires`, optionally implement `ready()`, `contribute_dashboard_pages()`, `contribute_storefront_blocks()`, `contribute_settings_panel()`. |
+| `Plugin` | Base class for every plugin's `app.py`. Subclass it, set `name`/`label`/`version`/`requires`, optionally implement `ready()`, `contribute_dashboard_pages()`, `contribute_storefront_blocks()`, `contribute_settings_panel()`. |
 | `DashboardPage` | Contribution dataclass — `(label, slug, view, icon, section, order)`. Returned from `contribute_dashboard_pages()`. Mounted automatically at `/dashboard/apps/<plugin>/<slug>/`. |
 | `StorefrontBlock` | Contribution dataclass — declares a block slot the active theme can render via `{% storefront_blocks "slot_name" %}`. |
 | `SettingsPanel` | Contribution dataclass — adds a configuration form to `/dashboard/settings/<category>/`. |
@@ -56,7 +56,7 @@ from morpheus.views import HttpResponse, render, staff_member_required
 ## A minimal plugin (the full canonical example)
 
 ```python
-# plugins/installed/hello/plugin.py
+# plugins/installed/hello/app.py
 from morpheus import Plugin, DashboardPage, events
 
 class HelloPlugin(Plugin):

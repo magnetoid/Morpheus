@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def test_plugin_metadata():
-    from plugins.installed.smart_shipping.plugin import SmartShippingPlugin
+    from plugins.installed.smart_shipping.app import SmartShippingPlugin
 
     assert SmartShippingPlugin.name == 'smart_shipping'
     assert 'shipping' in SmartShippingPlugin.requires

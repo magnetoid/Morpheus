@@ -16,7 +16,7 @@
 > - **"AI Content Generation = Missing"** — ❌ **Wrong.** Merchant-facing AI content
 >   generation ships: per-product content-fill (`admin_dashboard/views_split/products.py:945`
 >   `content_fill_one`), inline Generate/Rewrite buttons (`_ai_text_assist.html`), auto product
->   description on create (`ai_assistant/plugin.py:284`), bulk rewrite/translate/expand
+>   description on create (`ai_assistant/app.py:284`), bulk rewrite/translate/expand
 >   (`ai_content/services_bulk_catalog.py`). Fair residual gap: no *unified, branded* content/
 >   marketing suite (no social-post hub); `ai_content` itself only contributes a brand-voice panel.
 > - **"Merchant-facing AI copilot missing / no conversation surface"** (#1) — ❌ **Wrong.** A Linda
@@ -31,7 +31,7 @@
 > - **"No SDK / no API console / no API versioning"** (#8) — ❌ Overstated. A hand-written Python
 >   SDK ships (`services/sdk_python`), GraphiQL is served at `/graphql/`, and `api/urls.py` mounts a
 >   `v1/` namespace. Only a **generated** SDK + **OpenAPI schema** are genuinely absent.
-> - **"104 plugins"** — ❌ It is **107** (`MORPHEUS_DEFAULT_PLUGINS`).
+> - **"104 plugins"** — ❌ It is **107** (`MORPHEUS_DEFAULT_APPS`).
 > - **#2 dynamics symbols** — `DynamicsAutopilot`→ module `autopilot.py` (propose-only), `Merchandiser
 >   Proposal`→ **`MerchandisingProposal`**; **"36 segments" is actually 24** (12 anonymous).
 > - Minor: no `BrandVoice` model exists (brand voice = `ai_content` config); `staff_sso` runs one
@@ -308,7 +308,7 @@ Each capability is scored on three dimensions (1-10):
 
 **Description:** A marketplace where third-party developers can publish, distribute, and monetize plugins for Morpheus. Includes: developer SDK, app review process, one-click install from admin dashboard, billing/subscription management for paid apps, and developer dashboard with analytics.
 
-**Current state:** Morpheus has 104 plugins with a clean plugin contract (`apps.py` + `plugin.py` + `models.py` + `migrations/`). The plugin loader supports `requires` dependencies. But there is no marketplace — no app store, no developer portal, no install-from-marketplace flow, no billing for paid plugins. Plugins are installed by adding to `MORPHEUS_DEFAULT_PLUGINS` in settings.
+**Current state:** Morpheus has 104 plugins with a clean plugin contract (`apps.py` + `app.py` + `models.py` + `migrations/`). The plugin loader supports `requires` dependencies. But there is no marketplace — no app store, no developer portal, no install-from-marketplace flow, no billing for paid plugins. Plugins are installed by adding to `MORPHEUS_DEFAULT_APPS` in settings.
 
 **User feedback validation:**
 - No feedback artifact directly requests a marketplace — this is a strategic gap, not a user-requested one

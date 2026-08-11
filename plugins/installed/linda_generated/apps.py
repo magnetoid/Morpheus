@@ -10,11 +10,11 @@ class LindaGeneratedConfig(AppConfig):
     verbose_name = 'Linda Generated'
 
     def ready(self):
-        from plugins.registry import plugin_registry
-        from plugins.installed.linda_generated.plugin import LindaGeneratedPlugin
+        from plugins.registry import app_registry
+        from plugins.installed.linda_generated.app import LindaGeneratedPlugin
 
-        if 'linda_generated' not in plugin_registry._classes:
-            plugin_registry._classes['linda_generated'] = LindaGeneratedPlugin
+        if 'linda_generated' not in app_registry._classes:
+            app_registry._classes['linda_generated'] = LindaGeneratedPlugin
         # Import any applied tool modules so their @tool decorators run. Empty
         # until Linda's GATED apply (ADR 0014 / Phase 4) lands a file here.
         from plugins.installed.linda_generated.tools import load_generated_tools

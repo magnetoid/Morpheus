@@ -61,8 +61,8 @@ class UnifiedShippingDashboardTests(TestCase):
         # Carrier config now lives on the unified page; the duplicate 'Shipping'
         # SettingsPanel was removed (ADR 0003), so the plugin must not override
         # the base no-op contribute_settings_panel.
-        from morpheus.plugin import Plugin
-        from plugins.installed.shipping.plugin import ShippingPlugin
+        from morpheus.app import Plugin
+        from plugins.installed.shipping.app import ShippingPlugin
 
         self.assertIs(ShippingPlugin.contribute_settings_panel, Plugin.contribute_settings_panel)
 

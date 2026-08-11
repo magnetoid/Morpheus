@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
-from morpheus.plugin import dashboard_trail
+from morpheus.app import dashboard_trail
 
 
 def _trail(*items):

@@ -57,7 +57,7 @@ Worker does all four (`core/agents/runtime.py:39,51,181,294,363`).
   this adds the missing approval + scope + budget + deadline layer.
 
 ### P0.2 Tenders forfeited on refund/return
-`gift_cards/plugin.py:45` and `loyalty_points/plugin.py:79` subscribe **only**
+`gift_cards/app.py:45` and `loyalty_points/app.py:79` subscribe **only**
 `ORDER_CANCELLED`; `orders/refunds.py:346-355` nets tenders out of the cash
 refund — so on a refund/return the customer's gift-card/points tender is
 silently kept.
@@ -102,7 +102,7 @@ which was too narrow — recorded so the numbers in this doc stay honest):
   Allow-listed with a reason.
 - `home_above_grid` is contributed by **dynamics via a loop** over
   `SLOT_CHOICES`, which a source grep misses entirely — the parity test
-  therefore reads the **runtime registry**, not `plugin.py` text. dot_books
+  therefore reads the **runtime registry**, not `app.py` text. dot_books
   deliberately dropped this slot (hero leads the page), so the real defect was
   that Autopilot *defaulted* to it: every new store auto-provisioned an
   invisible block. Fixed at the default, not the theme.
@@ -118,7 +118,7 @@ that ~12 plugins contribute to have **zero render sites in the tree**:
 `home_above_grid`, `journal`.
 
 Consequences today: `brand_kit` design tokens and `motion` CSS inject nothing
-(`brand_kit/plugin.py:38`, `motion/plugin.py:41` vs `dot_books/templates/
+(`brand_kit/app.py:38`, `motion/app.py:41` vs `dot_books/templates/
 storefront/base.html` rendering only `global_below_body` at :1112); six
 checkout plugins (`checkout_experience`, `post_checkout_upsell`,
 `discovery_quiz`, `rails`, `referrals`, `smart_shipping`) + `dynamics` merchant
@@ -136,7 +136,7 @@ even offers two of the dead slots as merchant-selectable (autopilot default
   value, must have a matching render point in the active theme or be
   explicitly allow-listed. This permanently prevents the B1 class.
 - Fix `dynamics` `SLOT_CHOICES`/`_SLOTS`/`autopilot._DEFAULT_SLOTS` + the
-  false comment (`eco_impact/plugin.py:108` documents the removal — clean up).
+  false comment (`eco_impact/app.py:108` documents the removal — clean up).
 - Verify every changed template compiles via `get_template()` (memory:
   verify-templates-compile).
 
@@ -152,7 +152,7 @@ renders in checkout; disable each contributing plugin → its surface vanishes
 Dead seams that advertise extensibility that doesn't exist.
 
 - **`PRODUCT_CALCULATE_PRICE` is never fired** — 2 subscribers
-  (`ai_assistant/plugin.py:105`, `functions/plugin.py:57`), zero
+  (`ai_assistant/app.py:105`, `functions/app.py:57`), zero
   `filter()` callers. Fire it in catalog price-render + cart line pricing
   (mirroring `CART_CALCULATE_BREAKDOWN`'s pattern and money-order discipline);
   add a resolution test. This is the seam dynamic-pricing/personalisation
@@ -162,7 +162,7 @@ Dead seams that advertise extensibility that doesn't exist.
   `customer.registered` (`core/hooks.py:698`) and `agent.run.failed`
   (`core/agents/events.py:15`). Fix choices + data migration; centralize on the
   event constants so drift can't recur.
-- **`PAYMENT_CAPTURED` subscribed but never fired** (`orders/plugin.py:22,112-115`;
+- **`PAYMENT_CAPTURED` subscribed but never fired** (`orders/app.py:22,112-115`;
   payments fire `ORDER_PAID` directly): fire it from the capture path so
   `confirm_order` runs, or delete the vestigial subscriber — decide once,
   with a test either way.
@@ -258,7 +258,7 @@ component-level restock on refund works. All migrations on real Postgres.
 Maximal build-out, part 2 — table-stakes gaps that are *features*, not wiring.
 
 ### P5a — Manual capture + fulfillment-triggered capture
-`payments/plugin.py:188-193` offers a capture-mode config that is schema-only;
+`payments/app.py:188-193` offers a capture-mode config that is schema-only;
 `gateway.py:45` capture is a no-op. Implement `capture_method='manual'`
 end-to-end: authorize at checkout, `gateway.capture()` on fulfillment (hook
 subscriber on the fulfillment event), auto-void on cancel. This is the
@@ -295,7 +295,7 @@ Repay `docs/plans/boundary-debt-2026-07.md` — one PR per item, each extending
   plugins as registered storefront URLs (pattern:
   `digital_products.account_downloads`; sites at
   `storefront/views/account.py:95,184,236,349,365`).
-- `demo_data` decision: register in `MORPHEUS_DEFAULT_PLUGINS` or move to dev
+- `demo_data` decision: register in `MORPHEUS_DEFAULT_APPS` or move to dev
   fixtures (currently dead code).
 - Plugin-boundary baseline (122 pairs) shrinks with every item — never grows.
 
@@ -355,8 +355,8 @@ the license boundary is clean.
 ### Mechanism (enforced, per owner decision — not honor-system)
 - `edition` field on the `MorpheusPlugin` manifest (`plugins/base.py:82-101`),
   default `'community'`.
-- `MORPHEUS_EDITION` setting; a filter at the `ALL_MORPHEUS_PLUGINS` seam
-  (`morph/settings.py:199-201`, the existing `MORPHEUS_EXTRA_PLUGINS` splice
+- `MORPHEUS_EDITION` setting; a filter at the `ALL_MORPHEUS_APPS` seam
+  (`morph/settings.py:199-201`, the existing `MORPHEUS_EXTRA_APPS` splice
   point) excludes `enterprise` plugins from `INSTALLED_APPS` + `discover()`
   unless a valid license admits them. One seam, ~30 lines, no per-plugin code.
 - **Signed license key:** offline-verifiable Ed25519-signed token (licensee,
@@ -364,7 +364,7 @@ the license boundary is clean.
   ships in core. Grace behavior on expiry = warn + degrade to community on
   next boot, never a mid-flight kill. This is the only genuinely new subsystem.
 - Enterprise plugin **code** moves to a private repo over time and installs via
-  the sanctioned `MORPHEUS_EXTRA_PLUGINS` seam; in-tree gating is the interim.
+  the sanctioned `MORPHEUS_EXTRA_APPS` seam; in-tree gating is the interim.
 
 ### Legal/packaging prerequisites (ADR 0026 prep items)
 1. **CLA/DCO adopted BEFORE any external contribution** — the one true

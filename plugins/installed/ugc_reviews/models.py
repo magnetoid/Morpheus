@@ -6,7 +6,7 @@ tracks who has been invited + who has accepted.
 
 from __future__ import annotations
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class ReviewMedia(models.Model):

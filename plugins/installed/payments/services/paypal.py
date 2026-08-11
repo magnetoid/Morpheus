@@ -39,9 +39,9 @@ _TOKEN_CACHE_KEY = 'paypal:access_token'
 def get_config() -> dict:
     """PayPal credentials/mode from the payments plugin config (fail-soft)."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('payments')
+        plugin = app_registry.get('payments')
         if plugin is None:
             return {}
         return {

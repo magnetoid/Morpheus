@@ -12,7 +12,7 @@ from django.test import TestCase
 
 from plugins.installed.catalog.models import Product
 from plugins.installed.lookbook.models import Look, LookItem
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 class LookDetailTests(TestCase):
@@ -58,16 +58,16 @@ class LookDetailTests(TestCase):
         """
         owned = [
             e
-            for e in plugin_registry._plugin_urls
+            for e in app_registry._plugin_urls
             if e.get('plugin') == 'lookbook' and e.get('namespace') == 'lookbook'
         ]
         self.assertTrue(owned, 'lookbook should have registered a URL entry')
 
-        plugin_registry.deactivate('lookbook')
+        app_registry.deactivate('lookbook')
         try:
-            self.assertFalse(plugin_registry.is_active('lookbook'))
-            n_off = len(plugin_registry.get_urlpatterns())
+            self.assertFalse(app_registry.is_active('lookbook'))
+            n_off = len(app_registry.get_urlpatterns())
         finally:
-            plugin_registry.activate('lookbook')
-        n_on = len(plugin_registry.get_urlpatterns())
+            app_registry.activate('lookbook')
+        n_on = len(app_registry.get_urlpatterns())
         self.assertGreater(n_on, n_off)

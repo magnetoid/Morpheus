@@ -72,9 +72,9 @@ def richtext_field(
     expose_as: str = '',
     aria_label: str = 'Rich text editor',
 ):
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    active = bool(plugin_registry.is_active('richtext'))
+    active = bool(app_registry.is_active('richtext'))
     return {
         'active': active,
         'name': name,

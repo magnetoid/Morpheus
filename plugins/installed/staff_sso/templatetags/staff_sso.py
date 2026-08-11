@@ -51,9 +51,9 @@ def _is_configured() -> bool:
 def _plugin_active() -> bool:
     """Enabled-gate shared by both protocol tags."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        return bool(plugin_registry.is_active('staff_sso'))
+        return bool(app_registry.is_active('staff_sso'))
     except ImportError:
         return False
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "Baseline allowlist for scripts/check_plugin_boundary.py. These are the KNOWN undeclared plugin -> plugin imports being repaid over time. Repay a pair by declaring the target in the importer plugin.py `requires` (genuine dependency) OR inverting it through core.hooks / a contribution (it should not be a dependency); then remove the entry here. Only ever remove entries; never add. Regenerate with `python scripts/check_plugin_boundary.py --save` ONLY for a deliberate, reviewed change.",
+  "_comment": "Baseline allowlist for scripts/check_plugin_boundary.py. These are the KNOWN undeclared plugin -> plugin imports being repaid over time. Repay a pair by declaring the target in the importer app.py `requires` (genuine dependency) OR inverting it through core.hooks / a contribution (it should not be a dependency); then remove the entry here. Only ever remove entries; never add. Regenerate with `python scripts/check_plugin_boundary.py --save` ONLY for a deliberate, reviewed change.",
   "allowed": [
     {
       "importer": "admin_dashboard",

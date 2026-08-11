@@ -110,9 +110,9 @@ class ThemeRegistry:
             return ['No active theme.']
         if theme.requires_plugins:
             try:
-                from plugins.registry import plugin_registry
+                from plugins.registry import app_registry
 
-                missing = [p for p in theme.requires_plugins if not plugin_registry.is_active(p)]
+                missing = [p for p in theme.requires_plugins if not app_registry.is_active(p)]
                 if missing:
                     errors.append(
                         f'Theme "{theme.name}" requires plugins {missing} which are not active.'

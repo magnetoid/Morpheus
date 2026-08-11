@@ -112,8 +112,8 @@ report. Then build it out: many options, and **embeddable shop widgets**
 - Plugin `plugins/installed/payments/` already has: `gateway.py` PaymentGateway
   ABC + GatewayRegistry (`gateway_registry`, .all()/.get()/.default()), and TWO
   registered gateways — `ManualGateway` (slug 'manual', gateways/manual_gateway.py)
-  and `StripeGateway` (gateways/stripe_gateway.py). Registered in plugin.py ready().
-- Settings→Payments today only renders a Stripe panel (plugin.py contribute_settings_panel).
+  and `StripeGateway` (gateways/stripe_gateway.py). Registered in app.py ready().
+- Settings→Payments today only renders a Stripe panel (app.py contribute_settings_panel).
 - Checkout is HARDCODED to Stripe (services/stripe.py); does NOT use the registry.
 - PLAN: build a settings_payments() view + template iterating gateway_registry.all(),
   each with enable toggle + per-gateway config (store in a PaymentGatewayConfig model or
@@ -205,7 +205,7 @@ DONE — checkout gateway selection (was deferred; now wired):
 
 Shipped (2026-06-01) in `plugins/installed/loyalty_points/`:
 - Config: `redemption_rate` (points per 1.00, default 100) + `max_redeem_fraction`
-  via the plugin settings panel (`plugin.py` → `contribute_settings_panel`,
+  via the plugin settings panel (`app.py` → `contribute_settings_panel`,
   category `marketing`).
 - `services_redeem.py`: `points_to_amount` / `amount_to_points` (round down on
   credit, up on cost — never over-credit), `max_redeemable(customer, order_total)`,

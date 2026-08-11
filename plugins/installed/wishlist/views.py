@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpResponseBadRequest,
     JsonResponse,
     csrf_protect,

@@ -89,9 +89,9 @@ def _apply_brand_voice(brand: dict) -> None:
     """
     if not brand:
         return
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    plugin = plugin_registry.get('ai_content')
+    plugin = app_registry.get('ai_content')
     if plugin is None:
         return
     for src_key, dst_key in (

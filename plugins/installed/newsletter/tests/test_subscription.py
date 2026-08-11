@@ -5,8 +5,8 @@ from __future__ import annotations
 from django.core import mail
 from django.test import Client, TestCase, override_settings
 
+from plugins.installed.newsletter.app import NewsletterPlugin
 from plugins.installed.newsletter.models import NewsletterSubscriber
-from plugins.installed.newsletter.plugin import NewsletterPlugin
 from plugins.installed.newsletter.services import confirm, subscribe, unsubscribe
 
 

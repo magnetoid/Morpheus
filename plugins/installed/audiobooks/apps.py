@@ -11,11 +11,11 @@ class AudiobooksConfig(AppConfig):
     verbose_name = 'Audiobooks'
 
     def ready(self):
-        from plugins.registry import plugin_registry
-        from plugins.installed.audiobooks.plugin import AudiobooksPlugin
+        from plugins.registry import app_registry
+        from plugins.installed.audiobooks.app import AudiobooksPlugin
 
-        if 'audiobooks' not in plugin_registry._classes:
-            plugin_registry._classes['audiobooks'] = AudiobooksPlugin
+        if 'audiobooks' not in app_registry._classes:
+            app_registry._classes['audiobooks'] = AudiobooksPlugin
 
 
 default_app_config = 'plugins.installed.audiobooks.apps.AudiobooksConfig'

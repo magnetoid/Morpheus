@@ -26,11 +26,11 @@ logger = logging.getLogger('morpheus.staff_sso')
 
 def _get_plugin():
     """Resolve the live staff_sso plugin instance, or None when not active."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    if not plugin_registry.is_active('staff_sso'):
+    if not app_registry.is_active('staff_sso'):
         return None
-    return plugin_registry.get('staff_sso')
+    return app_registry.get('staff_sso')
 
 
 def _provider_id(sociallogin) -> str:
@@ -229,11 +229,11 @@ class StaffSsoAdapter(DefaultSocialAccountAdapter):
     @staticmethod
     def _mfa_gate(request, user):
         """Delegate to staff_mfa's single decision point, if it's active."""
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        if not plugin_registry.is_active('staff_mfa'):
+        if not app_registry.is_active('staff_mfa'):
             return None
-        mfa = plugin_registry.get('staff_mfa')
+        mfa = app_registry.get('staff_mfa')
         if mfa is None:
             return None
         from plugins.installed.staff_mfa.services import second_factor_response

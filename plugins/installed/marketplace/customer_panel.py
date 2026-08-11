@@ -18,7 +18,7 @@ vendor's products + order history survive a toggle).
 
 # ruff: noqa: PLC0415
 # Inline imports keep this module importable before the app registry is
-# ready (plugin.py imports the handler reference at ready()-time) and keep
+# ready (app.py imports the handler reference at ready()-time) and keep
 # optional cross-plugin imports lazy.
 from __future__ import annotations
 

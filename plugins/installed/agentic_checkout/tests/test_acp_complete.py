@@ -19,7 +19,7 @@ from django.test import Client, TestCase
 from django.utils import timezone
 from djmoney.money import Money
 
-from plugins.installed.agentic_checkout.plugin import ACP_API_VERSION
+from plugins.installed.agentic_checkout.app import ACP_API_VERSION
 from plugins.installed.agentic_checkout.tests.test_acp import (
     _TOKEN,
     _enable_plugin_and_tokens,

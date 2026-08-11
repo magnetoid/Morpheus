@@ -75,9 +75,9 @@ def _auto_apply_enabled() -> bool:
     """The merchant's 'skip the review queue for low-risk actions' toggle
     (Settings → Autopilot). Off by default — proposals wait for a human."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        return bool(plugin_registry.get('dynamics').get_config().get('auto_apply'))
+        return bool(app_registry.get('dynamics').get_config().get('auto_apply'))
     except Exception:  # noqa: BLE001
         return False
 

@@ -122,9 +122,9 @@ class SetupChecklistSkipTests(TestCase):
             username='setupstaff', email='setup@x.test', password='pw', is_staff=True
         )
         self.client.force_login(u)
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        self._adm = plugin_registry.get('admin_dashboard')
+        self._adm = app_registry.get('admin_dashboard')
         self._adm.set_config('setup_guide_dismissed', False)
         self._adm.invalidate_config_cache()
 

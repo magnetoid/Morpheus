@@ -27,9 +27,9 @@ register = template.Library()
 
 def _storefront_config() -> dict[str, Any]:
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        p = plugin_registry.get('storefront')
+        p = app_registry.get('storefront')
         if p is None:
             return {}
         return p.get_config() or {}

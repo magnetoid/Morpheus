@@ -21,7 +21,7 @@ This report provides comprehensive research on cutting-edge ecommerce features f
 
 ## 1. Current Morpheus OS Feature Landscape
 
-Based on exploration of the codebase and `MORPHEUS_DEFAULT_PLUGINS` registry:
+Based on exploration of the codebase and `MORPHEUS_DEFAULT_APPS` registry:
 
 ### 1.1 Existing Plugins by Category
 
@@ -502,7 +502,7 @@ Features scored on:
 plugins/installed/[feature_name]/
 ├── __init__.py
 ├── apps.py                 # AppConfig with ready() for hook registration
-├── plugin.py               # Plugin manifest with contributions
+├── app.py               # Plugin manifest with contributions
 ├── models.py               # Database models (if needed)
 ├── migrations/
 │   └── 0001_initial.py     # Required if models exist
@@ -571,7 +571,7 @@ plugins/installed/[feature_name]/
 
 ### Appendix A: Plugin Registry Mapping
 
-Current `MORPHEUS_DEFAULT_PLUGINS` with upgrade paths:
+Current `MORPHEUS_DEFAULT_APPS` with upgrade paths:
 - `personalisation` → Hyper-Personalization Engine enhancement
 - `fraud_rules` → AI Fraud Detection enhancement
 - `analytics` → Real-Time Dashboards 2.0 enhancement

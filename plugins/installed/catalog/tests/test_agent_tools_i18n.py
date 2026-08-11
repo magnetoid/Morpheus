@@ -16,9 +16,9 @@ _MIGRATED = ('i18n.translate_product', 'i18n.list_translations')
 
 class I18nProductToolMigrationTests(TestCase):
     def test_catalog_contributes_the_tools(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        names = {t.name for t in plugin_registry.get('catalog').contribute_agent_tools()}
+        names = {t.name for t in app_registry.get('catalog').contribute_agent_tools()}
         self.assertTrue(set(_MIGRATED) <= names, f'missing: {set(_MIGRATED) - names}')
 
     def test_each_name_registered_once_and_owned_by_catalog(self):

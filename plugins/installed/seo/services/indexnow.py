@@ -33,9 +33,9 @@ def get_or_create_indexnow_key() -> str:
         row.save(update_fields=['config', 'updated_at'])
         # Best-effort: keep the in-process plugin cache aligned.
         try:
-            from plugins.registry import plugin_registry
+            from plugins.registry import app_registry
 
-            p = plugin_registry.get('seo')
+            p = app_registry.get('seo')
             if p is not None:
                 p.invalidate_config_cache()
         except Exception:  # noqa: BLE001, S110

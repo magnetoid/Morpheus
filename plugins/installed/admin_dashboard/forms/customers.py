@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from morpheus.plugin import forms
+from morpheus.app import forms
 
 
 class CustomerForm(forms.Form):

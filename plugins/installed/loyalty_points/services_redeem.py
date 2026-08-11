@@ -16,7 +16,7 @@ The discount math is intentionally separate from the checkout wiring.
 resulting discount to an order total flows through the existing
 ``CART_CALCULATE_BREAKDOWN`` hook (see ``LoyaltyPointsPlugin``) — the
 same path gift cards and coupons use. See the module docstring in
-``plugin.py`` and ``docs/plans/morph-backlog-2026-06.md`` for the
+``app.py`` and ``docs/plans/morph-backlog-2026-06.md`` for the
 remaining cart-mutation endpoint that lets a shopper choose how many
 points to spend at checkout.
 """
@@ -41,13 +41,11 @@ def redemption_rate() -> int:
     a positive int — a misconfigured 0/negative rate falls back to the
     default so we never divide by zero.
     """
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     try:
         rate = int(
-            plugin_registry.config_value(
-                'loyalty_points', 'redemption_rate', DEFAULT_REDEMPTION_RATE
-            )
+            app_registry.config_value('loyalty_points', 'redemption_rate', DEFAULT_REDEMPTION_RATE)
         )
     except (TypeError, ValueError):
         rate = DEFAULT_REDEMPTION_RATE
@@ -60,12 +58,10 @@ def max_redeem_fraction() -> Decimal:
     1.0 (default) means points can pay the whole order; 0.5 caps at half.
     Clamped to (0, 1].
     """
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     try:
-        frac = Decimal(
-            str(plugin_registry.config_value('loyalty_points', 'max_redeem_fraction', '1'))
-        )
+        frac = Decimal(str(app_registry.config_value('loyalty_points', 'max_redeem_fraction', '1')))
     except (TypeError, ValueError, ArithmeticError):
         frac = Decimal('1')
     if frac <= 0 or frac > 1:

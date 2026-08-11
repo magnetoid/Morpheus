@@ -9,7 +9,7 @@ from __future__ import annotations
 from django.http import HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
-from morpheus.plugin.views import render
+from morpheus.app.views import render
 
 # Served at the conventional /favicon.ico path — browsers request it unprompted
 # on every visit, and without it each page load logs a 404. Colors are the
@@ -205,7 +205,7 @@ def journal_index(request):
 
 
 def journal_detail(request, slug):
-    from morpheus.plugin.views import Http404
+    from morpheus.app.views import Http404
 
     entry = None
     seo_object = None
@@ -259,7 +259,7 @@ def journal_amp(request, slug):
     Decorated with `@xframe_options_sameorigin` so AMP caches / players
     can embed the document in an iframe.
     """
-    from morpheus.plugin.views import Http404  # noqa: PLC0415
+    from morpheus.app.views import Http404  # noqa: PLC0415
 
     entry = None
     try:

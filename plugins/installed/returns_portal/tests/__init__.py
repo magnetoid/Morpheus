@@ -14,14 +14,14 @@ from djmoney.money import Money
 
 
 def test_plugin_metadata():
-    from plugins.installed.returns_portal.plugin import ReturnsPortalPlugin
+    from plugins.installed.returns_portal.app import ReturnsPortalPlugin
 
     assert ReturnsPortalPlugin.name == 'returns_portal'
     assert 'orders' in ReturnsPortalPlugin.requires
 
 
 def test_default_resolution_is_exchange():
-    from plugins.installed.returns_portal.plugin import ReturnsPortalPlugin
+    from plugins.installed.returns_portal.app import ReturnsPortalPlugin
 
     schema = ReturnsPortalPlugin().get_config_schema()
     assert schema['properties']['default_resolution']['default'] == 'exchange'

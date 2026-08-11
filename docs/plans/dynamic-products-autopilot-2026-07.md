@@ -41,7 +41,7 @@ READY:
   (MoneyField, label), `session`/`customer` FKs, `created_at`, `scroll_depth`,
   `duration_ms`. `AnalyticsSession` (`:28`): `cookie_id`, `device`, `geo_location`,
   `utm_*`, `referrer`, `event_count`, `is_consented`. Written via `record_event()`
-  (`analytics/services.py:200`) fanned from hooks (`analytics/plugin.py:34`).
+  (`analytics/services.py:200`) fanned from hooks (`analytics/app.py:34`).
   `session_duration` field exists but is **never written** → derive dwell from
   `last_seen_at − first_seen_at`.
 - **orders** `Order.status` FSM (valid: `pending,confirmed,processing,
@@ -58,7 +58,7 @@ READY:
   `primary_image`. `ProductReview` (rating, is_verified_purchase).
 - **personalisation** `rank_for_visitor(request, products, *, surface='')`
   (`services.py:267`) — per-visitor reorder, consent-gated, **already subscribed to
-  `PRODUCT_LIST_REORDER`** (`plugin.py:26`, pri 50) across 6 storefront surfaces.
+  `PRODUCT_LIST_REORDER`** (`app.py:26`, pri 50) across 6 storefront surfaces.
   `recompute_copurchases(*, window_days=90, top_k=12)`, `related_to(product, *, k)`,
   `CoPurchaseScore(anchor,related,score)`. `_has_consent(request)` (cookie `morph_consent`).
 - **experiments** `Experiment/Assignment/Exposure`, `variant_for(request, key)`,
@@ -113,11 +113,11 @@ LightGBM/sklearn/numpy only in the deferred Phase 4.
 - `plugins/installed/dynamic_products/tasks.py` (**new**) — `@shared_task(name=
   'dynamic_products.recompute_probabilities')` → `calculate_grid_probabilities()`;
   a throttled variant for event-driven refresh.
-- `plugins/installed/dynamic_products/plugin.py` — `register_celery_tasks(...tasks)`;
+- `plugins/installed/dynamic_products/app.py` — `register_celery_tasks(...tasks)`;
   `register_celery_beat('dynamic_products:recompute', {'task':..., 'schedule': crontab
   nightly})`; subscribe `ORDER_PLACED` (+ maybe `PRODUCT_VIEWED`) → enqueue a
   **throttled** recompute (Redis/cache guard so an order burst can't thrash).
-- `plugins/installed/personalisation/plugin.py` — add the **missing** beat entry for
+- `plugins/installed/personalisation/app.py` — add the **missing** beat entry for
   `personalisation.recompute_copurchases` (nightly) so `CoPurchaseScore` refreshes.
 - `plugins/installed/dynamic_products/tests/test_dynamic_grid.py` — replace the
   mock-attr tests with **real** ones: seed paid orders + analytics view events, run
@@ -157,7 +157,7 @@ now orders by a data-driven score; nightly + event refresh wired.
   diversity cap + cold-start pessimistic prior + new-product impression budget.
 - `dynamic_products/services.py` — `probability_grid` (and a new `autopilot` strategy)
   route through the reranker; `_for_you` optionally blended.
-- `dynamic_products/plugin.py` — subscribe `PRODUCT_LIST_REORDER` (pri > personalisation
+- `dynamic_products/app.py` — subscribe `PRODUCT_LIST_REORDER` (pri > personalisation
   so it composes) to rerank; log a `RecImpression`; subscribe `ORDER_PLACED`/`PRODUCT_VIEWED`/
   cart → reward updates (value-weighted: purchase≫cart≫view) into `BanditArm`.
 - `dynamic_products/tasks.py` — nightly `rebuild_bandit_posteriors` from analytics
@@ -220,7 +220,7 @@ now orders by a data-driven score; nightly + event refresh wired.
   (delete-dir → gone; disable → surfaces vanish). Consent-gated, PII-free features.
 - **ADR 0029:** the autopilot uses the ONE Linda Worker + a Skill/scopes — no new
   agent class.
-- **Docs:** update `dynamic_products/plugin.py` docstring + this plan per phase; a
+- **Docs:** update `dynamic_products/app.py` docstring + this plan per phase; a
   Torsor ADR for the autopilot/self-optimization loop at the end.
 - **Verify each phase:** scoped tests (sqlite mem) + `manage.py check` +
   `makemigrations --check` + ruff + boundary/pre-commit. Smoke live on "ship".

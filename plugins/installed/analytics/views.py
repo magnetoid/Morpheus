@@ -8,7 +8,7 @@ import logging
 
 from django.http import HttpResponse
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpResponseBadRequest,
     JsonResponse,
     csrf_exempt,

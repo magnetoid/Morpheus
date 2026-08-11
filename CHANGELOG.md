@@ -63,7 +63,7 @@ All notable changes to Morpheus. Loose [Keep a Changelog](https://keepachangelog
 #### Changed
 
 - Active-by-default plugin set grows by `staff_mfa` (see
-  `MORPHEUS_DEFAULT_PLUGINS`); `staff_sso` and `agentic_checkout` ship OFF.
+  `MORPHEUS_DEFAULT_APPS`); `staff_sso` and `agentic_checkout` ship OFF.
 - **Supply-chain** (`v0.2.7`) — weekly Dependabot + a `pip-audit` CVE job
   added to CI.
 

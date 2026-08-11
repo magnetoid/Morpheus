@@ -23,7 +23,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from plugins.registry import PluginRegistry
+    from plugins.registry import AppRegistry
 
 logger = logging.getLogger('morpheus.plugins')
 
@@ -60,7 +60,7 @@ class MorpheusPlugin:
 
     Lifecycle
     ---------
-    1. `discover()` imports `<plugin>/plugin.py` and locates the subclass.
+    1. `discover()` imports `<plugin>/app.py` and locates the subclass.
     2. `validate()` checks the dependency graph (requires/conflicts) and
        topologically sorts plugins.
     3. `activate_all()` instantiates each plugin and calls `ready()` in
@@ -97,11 +97,24 @@ class MorpheusPlugin:
     # PluginConfig row exists yet); after that the DB flag wins.
     enabled_by_default: bool = True
 
+    # Disabling this app would soft-brick the platform, so no surface offers
+    # the toggle: the dashboard hides it and the AI's disable tools refuse it.
+    # This flag can only ADD protection — `core.safety.PROTECTED_PLUGINS` is a
+    # floor that an app manifest cannot opt out of, because an app file is
+    # AI-editable and core/safety.py deliberately is not.
+    protected: bool = False
+
+    # Present as a Django app, but never listed in the Apps catalogue: it is
+    # part of a higher-level concept the merchant interacts with directly
+    # (agent_core is surfaced as Linda). Stops "what is this, can I turn it
+    # off?" confusion over an app the merchant never installed on purpose.
+    system: bool = False
+
     # ── Capabilities ──────────────────────────────────────────────────────────
     has_models: bool = False  # True if plugin defines Django models
 
     # ── Internal ──────────────────────────────────────────────────────────────
-    _registry: PluginRegistry | None = None
+    _registry: AppRegistry | None = None
     _config_cache: dict | None = None
 
     # ── Class-time validation ──────────────────────────────────────────────────

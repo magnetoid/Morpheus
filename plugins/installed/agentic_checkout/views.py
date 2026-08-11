@@ -31,9 +31,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from plugins.installed.agentic_checkout import serializers as ser
+from plugins.installed.agentic_checkout.app import ACP_API_VERSION
 from plugins.installed.agentic_checkout.auth import _bearer_token, require_acp_scope
 from plugins.installed.agentic_checkout.eligibility import agentic_excluded
-from plugins.installed.agentic_checkout.plugin import ACP_API_VERSION
 
 logger = logging.getLogger('morpheus.agentic_checkout')
 

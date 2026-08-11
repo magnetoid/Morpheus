@@ -35,9 +35,9 @@ def sync_gateway_config(*args, **kwargs) -> None:
     """Upsert the ``cod``/``test`` PaymentGatewayConfig rows from the panel."""
     try:
         from plugins.installed.payments.models import PaymentGatewayConfig
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get(PLUGIN_NAME)
+        plugin = app_registry.get(PLUGIN_NAME)
         if plugin is None:
             return
         plugin.invalidate_config_cache()

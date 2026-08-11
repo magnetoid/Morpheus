@@ -17,7 +17,7 @@ from djmoney.money import Money
 
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.customers.services import anonymise_customer, gather_customer_data
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 def _customer(email='c@example.com'):
@@ -42,8 +42,8 @@ class ExportHookTests(TestCase):
 
     def test_disabled_plugin_slice_drops_out(self):
         c = _customer()
-        self.addCleanup(plugin_registry.activate, 'wishlist')
-        plugin_registry.deactivate('wishlist')
+        self.addCleanup(app_registry.activate, 'wishlist')
+        app_registry.deactivate('wishlist')
         out = gather_customer_data(c)
         self.assertNotIn('wishlist.json', out)
         self.assertIn('orders.json', out)  # other owners unaffected
@@ -108,8 +108,8 @@ class LoginCartMergeTests(TestCase):
         request.session = _Session()
         cart = Cart.objects.create(session_key='sess-def')
 
-        self.addCleanup(plugin_registry.activate, 'orders')
-        plugin_registry.deactivate('orders')
+        self.addCleanup(app_registry.activate, 'orders')
+        app_registry.deactivate('orders')
         hook_registry.fire(MorpheusEvents.CUSTOMER_LOGIN, customer=c, request=request)
 
         cart.refresh_from_db()

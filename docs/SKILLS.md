@@ -8,7 +8,7 @@ trigger phrase matches.
 
 | Skill | Trigger | What it does |
 |---|---|---|
-| [`plugin-skeleton`](../.claude/skills/plugin-skeleton/SKILL.md) | "scaffold a new plugin called X" | Generates the 7-file plugin skeleton (apps.py, plugin.py, models.py, migrations stub, tests + boundary stubs). Registers in `MORPHEUS_DEFAULT_PLUGINS`. |
+| [`plugin-skeleton`](../.claude/skills/plugin-skeleton/SKILL.md) | "scaffold a new plugin called X" | Generates the 7-file plugin skeleton (apps.py, app.py, models.py, migrations stub, tests + boundary stubs). Registers in `MORPHEUS_DEFAULT_APPS`. |
 | [`permission-boundary-tests`](../.claude/skills/permission-boundary-tests/SKILL.md) | "boundary tests for view X" | Writes the three mandatory permission tests (anon / authed-no-scope / authed-with-scope) for any view that's not anonymous-only. Required by PLUGIN_DEVELOPMENT.md §13. |
 | [`tetra-deploy`](../.claude/skills/tetra-deploy/SKILL.md) | "deploy to tetra", "ship to prod" | rsync → build → docker compose up → migrate → smoke. Targets the live dotbooks.store deployment. |
 

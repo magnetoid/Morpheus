@@ -17,7 +17,7 @@ needed for a read-only page.
 
 from __future__ import annotations
 
-from morpheus.plugin.views import render
+from morpheus.app.views import render
 
 # Hard ceiling regardless of config — keeps the scene performant even if a
 # merchant types a huge number into the settings form.
@@ -44,9 +44,9 @@ def _config() -> dict:
     """
     cfg = dict(_DEFAULTS)
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('bookstore_3d')
+        plugin = app_registry.get('bookstore_3d')
         if plugin is not None:
             for key, default in _DEFAULTS.items():
                 cfg[key] = plugin.get_config_value(key, default)

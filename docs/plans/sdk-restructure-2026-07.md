@@ -31,13 +31,13 @@ Existing `morpheus/` modules (`__init__`, `views.py`, `models.py`, `events.py`,
 `hooks.py`, `forms.py`) are reorganized under the three subpackages; top-level names
 stay as thin re-exports for back-compat during the sweep.
 
-### `morpheus.plugin` — authoring a plugin
+### `morpheus.app` — authoring a plugin
 - `Plugin`, `PluginConfigurationError` ← `plugins.base`
 - `DashboardPage`, `SettingsPanel`, `StorefrontBlock`, `EmailTemplateDef`, `dashboard_trail`
   ← `plugins.contributions`
-- `morpheus.plugin.views` (the 103× Django glue — moved from `morpheus/views.py`)
-- `morpheus.plugin.models` (ORM + `MoneyField`/`Money` — from `morpheus/models.py`)
-- `morpheus.plugin.forms` (from `morpheus/forms.py`)
+- `morpheus.app.views` (the 103× Django glue — moved from `morpheus/views.py`)
+- `morpheus.app.models` (ORM + `MoneyField`/`Money` — from `morpheus/models.py`)
+- `morpheus.app.forms` (from `morpheus/forms.py`)
 
 ### `morpheus.core` — consuming the kernel from a plugin
 - `events` (the `MorpheusEvents` constant mirror — from `morpheus/events.py`)
@@ -59,7 +59,7 @@ stay as thin re-exports for back-compat during the sweep.
 ## Back-compat contract (must hold at every step)
 
 `morpheus/__init__.py` keeps re-exporting `Plugin`, `DashboardPage`, `SettingsPanel`,
-`StorefrontBlock`, `EmailTemplateDef`, `dashboard_trail` from `morpheus.plugin`; and the
+`StorefrontBlock`, `EmailTemplateDef`, `dashboard_trail` from `morpheus.app`; and the
 `morpheus.views` / `morpheus.models` / `morpheus.events` / `morpheus.hooks` / `morpheus.forms`
 module paths keep resolving (thin shims re-exporting from the new homes). So **existing
 `from morpheus import …` code never breaks** even mid-sweep. Old paths are removed only in
@@ -67,14 +67,14 @@ the final step, after every plugin is migrated and green.
 
 ## Execution order (each step ends green: `manage.py check` + `DATABASE_URL=sqlite tests`)
 
-1. **Foundation (this deploy, NON-breaking):** create `morpheus/plugin/`, `morpheus/theme/`,
+1. **Foundation (this deploy, NON-breaking):** create `morpheus/app/`, `morpheus/theme/`,
    `morpheus/core/` facades re-exporting the real implementations; keep every old
    `morpheus.*` path working via shims. Add a per-SDK README + quickstart. Verify `check` +
    a smoke import + a sample plugin still boots. → shippable on its own.
 2. **Core-app SDK adoption:** migrate `from core.hooks/agents/audit/money/utils import …`
    across plugins → `from morpheus.core import …`. Batch by plugin; `check` after each batch.
 3. **Plugin SDK adoption:** migrate `from morpheus import …` / `from morpheus.views/models/forms
-   import …` → `from morpheus.plugin import …`. Batch by plugin.
+   import …` → `from morpheus.app import …`. Batch by plugin.
 4. **Theme SDK adoption:** migrate themes + `StorefrontBlock` producers onto `morpheus.theme`;
    document the slot/tag contract.
 5. **Seal:** remove the back-compat shims (or keep as deprecated re-exports), add a boundary

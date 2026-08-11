@@ -147,8 +147,8 @@ class PermissionTests(TestCase):
     def test_dashboard_page_is_contributed_not_hardcoded(self):
         # Disable/delete litmus: the page is registered under this plugin, so
         # the registry drops it on deactivate — it is never hard-coded elsewhere.
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        pages = [p for p in plugin_registry.dashboard_pages() if p.plugin == 'feature_adoption']
+        pages = [p for p in app_registry.dashboard_pages() if p.plugin == 'feature_adoption']
         self.assertTrue(pages)
         self.assertTrue(all(p.view for p in pages))

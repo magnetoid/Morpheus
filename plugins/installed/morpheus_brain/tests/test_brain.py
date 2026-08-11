@@ -63,6 +63,7 @@ class BrainPageTests(TestCase):
         self.assertIn(resp.status_code, (301, 302, 403))
 
     def test_protected_from_disable(self):
-        from plugins.installed.admin_dashboard.views_split.apps import PROTECTED_PLUGINS
+        # One source of truth now — the same gate Linda's disable tools use.
+        from core.safety import is_plugin_protected
 
-        self.assertIn('morpheus_brain', PROTECTED_PLUGINS)
+        self.assertTrue(is_plugin_protected('morpheus_brain'))

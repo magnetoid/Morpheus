@@ -19,7 +19,7 @@ audit; S3/H3 overlap and are folded in here).
 | 4 | High | money | `_compute_refund` sums pre-discount list price, ignores `Order.discount_total` → store credit over-issued; money refund blocked by ceiling | Clamp refundable to `order.total − already_refunded`; apply ceiling to the store-credit branch too |
 | 9+19 | Med/Low | email | `send_campaign` dedupe/`recipient_count` include `ok=False` and `kind='test'` rows → failed recipients unretryable; test send suppresses a real subscriber; count inflated | Filter `kind='campaign', ok=True` on both queries |
 | 10 | Med | email | newsletter `confirm()` guards only `!= 'confirmed'` → a stale confirm link resurrects an `unsubscribed` (terminal) subscriber | Refuse to re-confirm `unsubscribed`; only `pending` → `confirmed` |
-| 12 | Med | hooks | `PluginRegistry.__init__` unconditionally rebinds the global `hook_registry` active-check → a 2nd instance gates every plugin handler off (test-isolation footgun) | Only the canonical singleton wires `set_active_check` |
+| 12 | Med | hooks | `AppRegistry.__init__` unconditionally rebinds the global `hook_registry` active-check → a 2nd instance gates every plugin handler off (test-isolation footgun) | Only the canonical singleton wires `set_active_check` |
 | 14 | Med | hooks | `contribute_skills()` registered on enable, never dropped on disable → skills (and their tools) leak past a plugin disable | `_drop_contributions` unregisters the plugin's skills |
 | 15+22 | Med/Low | agent-authz | `fs.search_files` ignores `is_path_protected` (secret-content oracle over `.env`); `fs.read_file` protected check is case-sensitive on a case-insensitive FS | Filter protected paths from search results + grep excludes; case-fold the read_file check |
 | 16 | Low | agents | orphaned `AgentRun` rows stuck `state='running'` after a deploy/OOM kill — no reaper | New `sweep_stuck_runs` beat task (every 5min, >15min old, excludes `awaiting_approval`) |
@@ -37,7 +37,7 @@ audit; S3/H3 overlap and are folded in here).
 > **Update (v0.27.0 — the deferred batch, all four closed):**
 > - **#7 (gift-card/loyalty tender ordering) FIXED + tested.** Investigation
 >   dissolved the "money-math refactor" fear: tax computes from the cart's line
->   items, NOT from `value['discount']` (`tax/plugin.py` → `compute_tax_for_cart`),
+>   items, NOT from `value['discount']` (`tax/app.py` → `compute_tax_for_cart`),
 >   so the tender never touched the tax base — the only real defect was the CAP
 >   ordering. The gift-card tender MOVED out of `promotions.on_cart_breakdown`@10
 >   into its correct owner `gift_cards.on_cart_breakdown`@50 (after tax@20 /

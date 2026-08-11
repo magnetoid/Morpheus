@@ -22,7 +22,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
-from morpheus.plugin.views import staff_member_required
+from morpheus.app.views import staff_member_required
 
 logger = logging.getLogger('morpheus.admin.theme_builder')
 

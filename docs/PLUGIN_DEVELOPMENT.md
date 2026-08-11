@@ -60,7 +60,7 @@ This generates:
 plugins/installed/discount_engine/
 ├── __init__.py
 ├── apps.py
-├── plugin.py            ← MorpheusPlugin subclass
+├── app.py            ← MorpheusPlugin subclass
 ├── models.py            ← starter model
 ├── tasks.py             ← starter Celery task
 ├── graphql/
@@ -74,7 +74,7 @@ plugins/installed/discount_engine/
 Then:
 
 ```bash
-# 1. Add 'plugins.installed.discount_engine' to MORPHEUS_DEFAULT_PLUGINS in morph/settings.py
+# 1. Add 'plugins.installed.discount_engine' to MORPHEUS_DEFAULT_APPS in morph/settings.py
 # 2. Generate the migration:
 python manage.py makemigrations discount_engine
 python manage.py migrate
@@ -94,7 +94,7 @@ That's it — the plugin is live.
 plugins/installed/<name>/
 ├── __init__.py             # default_app_config -> apps.<NameConfig>
 ├── apps.py                 # Django AppConfig (label = <name>)
-├── plugin.py               # ★ MorpheusPlugin subclass: the manifest
+├── app.py               # ★ MorpheusPlugin subclass: the manifest
 ├── models.py               # optional: Django models
 ├── migrations/
 │   ├── __init__.py
@@ -113,7 +113,7 @@ plugins/installed/<name>/
     └── commands/
 ```
 
-The **only required file** is `plugin.py`. Everything else is opt-in.
+The **only required file** is `app.py`. Everything else is opt-in.
 
 ---
 
@@ -122,17 +122,17 @@ The **only required file** is `plugin.py`. Everything else is opt-in.
 ```
                 ┌──────────────────────────────────────────────┐
                 │            settings.py boot                  │
-                │ MORPHEUS_DEFAULT_PLUGINS + EXTRA_PLUGINS     │
+                │ MORPHEUS_DEFAULT_APPS + EXTRA_APPS        │
                 └─────────────────────┬────────────────────────┘
                                       ▼
                 ┌──────────────────────────────────────────────┐
-                │ plugin_registry.discover(paths)              │
+                │ app_registry.discover(paths)              │
                 │   imports each <plugin>.plugin module        │
                 │   discovers MorpheusPlugin subclass          │
                 └─────────────────────┬────────────────────────┘
                                       ▼
                 ┌──────────────────────────────────────────────┐
-                │ plugin_registry.activate_all()  (AppReady)   │
+                │ app_registry.activate_all()  (AppReady)   │
                 │   1. validate dependency graph               │
                 │   2. topological sort by `requires`          │
                 │   3. for each plugin in order: call ready()  │
@@ -457,7 +457,7 @@ disabling one would soft-brick the install — e.g. turning off
 *because* disable genuinely removes surfaces; for these four that's
 catastrophic, so they're pinned on. Everything else is freely toggleable.
 
-> To check enabled state in code, use `plugin_registry.is_active("<name>")`
+> To check enabled state in code, use `app_registry.is_active("<name>")`
 > (Python) or the `active_plugins` context list in templates
 > (`{% if 'reviews' in active_plugins %}`). There is **no** `is_enabled()`
 > method on the registry and **no** `{% plugin_enabled %}` tag yet (the tag is
@@ -471,7 +471,7 @@ Every app must pass both. They're the acceptance criteria for "is this
 properly modular":
 
 1. **Delete-dir test.** `rm -rf plugins/installed/<name>/` and remove it from
-   `MORPHEUS_DEFAULT_PLUGINS` → the app is gone with **no dangling reference**.
+   `MORPHEUS_DEFAULT_APPS` → the app is gone with **no dangling reference**.
    No other plugin, no theme, no core template names it. (Cross-plugin
    coupling goes through `core.hooks`, never a direct import — see
    [LAW 4](../RULES.md#law-4--plugins-communicate-via-hooks--outbox).)
@@ -542,7 +542,7 @@ class DiscountEngineQueryExtension:
         return []
 ```
 
-In `plugin.py`:
+In `app.py`:
 
 ```python
 def ready(self) -> None:
@@ -596,7 +596,7 @@ urlpatterns = [
 ```
 
 ```python
-# plugin.py
+# app.py
 def ready(self) -> None:
     self.register_urls(
         "plugins.installed.discount_engine.urls",
@@ -653,11 +653,11 @@ fire it. In that case call the single decision point directly and interpose its
 response:
 
 ```python
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
-if plugin_registry.is_active('staff_mfa'):
+if app_registry.is_active('staff_mfa'):
     from plugins.installed.staff_mfa.services import second_factor_response
-    mfa = plugin_registry.get('staff_mfa')
+    mfa = app_registry.get('staff_mfa')
     resp = second_factor_response(mfa, request, user, next_url)
     if resp is not None:
         return resp   # redirect to the TOTP challenge before login completes
@@ -687,7 +687,7 @@ worker forever.
 To schedule it periodically:
 
 ```python
-# plugin.py
+# app.py
 from celery.schedules import crontab
 
 def ready(self) -> None:
@@ -796,13 +796,13 @@ with self.assertNumQueries(2):
 
 Two paths.
 
-### Path A — drop-in via `MORPHEUS_EXTRA_PLUGINS`
+### Path A — drop-in via `MORPHEUS_EXTRA_APPS`
 
 The merchant clones your plugin into `plugins/installed/<name>/` and adds
 the path to:
 
 ```
-MORPHEUS_EXTRA_PLUGINS=plugins.installed.<name>
+MORPHEUS_EXTRA_APPS=plugins.installed.<name>
 ```
 
 That's it — the plugin auto-enables on first boot.
@@ -817,7 +817,7 @@ my_morph_plugin/
 └── my_morph_plugin/
     ├── __init__.py
     ├── apps.py
-    ├── plugin.py
+    ├── app.py
     └── ...
 ```
 
@@ -827,7 +827,7 @@ Merchants then:
 pip install my-morph-plugin
 ```
 
-…and add `my_morph_plugin` to `MORPHEUS_EXTRA_PLUGINS`. The discovery
+…and add `my_morph_plugin` to `MORPHEUS_EXTRA_APPS`. The discovery
 loop imports `<path>.plugin` regardless of where the package lives on disk.
 
 **Naming convention:** prefix package names with `morph-` so they're

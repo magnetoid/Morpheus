@@ -1,6 +1,6 @@
 """CMS GraphQL — read + write access to Pages and Blocks.
 
-Registered via ``register_graphql_extension`` in ``cms/plugin.py``; the schema
+Registered via ``register_graphql_extension`` in ``cms/app.py``; the schema
 builder (``api/schema.py``) merges any ``*QueryExtension`` / ``*MutationExtension``
 classes it finds into the root schema.
 

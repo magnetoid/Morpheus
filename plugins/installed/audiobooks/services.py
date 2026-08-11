@@ -19,9 +19,9 @@ _MAX_CHARS = 2500  # per-request chunk — ElevenLabs takes long text; stay cons
 
 
 def _config() -> dict:
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    plugin = plugin_registry.get('audiobooks')
+    plugin = app_registry.get('audiobooks')
     if plugin is None:
         return {}
     return {

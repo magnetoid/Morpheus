@@ -86,10 +86,10 @@ def _segment_plugin_map() -> dict[str, str]:
     the default ``/dashboard/apps/<plugin>/…`` are handled directly in
     :func:`resolve_plugin`.
     """
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     out: dict[str, str] = {}
-    for page in plugin_registry.dashboard_pages():
+    for page in app_registry.dashboard_pages():
         seg = _second_segment(getattr(page, 'url', '') or '')
         if seg and page.plugin:
             out.setdefault(seg, page.plugin)
@@ -98,14 +98,14 @@ def _segment_plugin_map() -> dict[str, str]:
 
 def resolve_plugin(path: str) -> str | None:
     """Owning plugin for a ``/dashboard/…`` path, or ``None`` if unknown."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     parts = [p for p in path.split('/') if p]
     if len(parts) < 2 or parts[0] != 'dashboard':
         return None
     if parts[1] == 'apps' and len(parts) >= 3:
         cand = parts[2]
-        return cand if plugin_registry.is_active(cand) else None
+        return cand if app_registry.is_active(cand) else None
     return _segment_plugin_map().get(parts[1])
 
 
@@ -135,9 +135,9 @@ def track_agent_tool(value, tool: str = '', **kwargs):
     try:
         prefix = (tool or '').split('.')[0]
         if prefix:
-            from plugins.registry import plugin_registry
+            from plugins.registry import app_registry
 
-            if plugin_registry.is_active(prefix):
+            if app_registry.is_active(prefix):
                 _incr(prefix, 'agent_tool')
     except Exception:  # noqa: BLE001 — never break a tool call
         logger.debug('feature_adoption: agent-tool tracking failed', exc_info=True)
@@ -221,11 +221,11 @@ def install_health() -> dict:
     from django.db.models import Sum
 
     from plugins.installed.feature_adoption.models import FeatureUsageDay
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     today = timezone.now().date()
     since30 = today - timedelta(days=30)
-    enabled = len(plugin_registry.active_plugins())
+    enabled = len(app_registry.active_plugins())
     rows30 = FeatureUsageDay.objects.filter(day__gte=since30)
     used = rows30.values('plugin').distinct().count()
     agent_calls = rows30.filter(surface='agent_tool').aggregate(n=Sum('count'))['n'] or 0
@@ -256,7 +256,7 @@ def adoption_matrix(days: int = 90) -> dict:
     i.e. deprecation candidates.
     """
     from plugins.installed.feature_adoption.models import FeatureUsageDay
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     today = timezone.now().date()
     start = today - timedelta(days=days - 1)
@@ -287,7 +287,7 @@ def adoption_matrix(days: int = 90) -> dict:
         )
 
     used = set(per_plugin)
-    never_used = sorted(p.name for p in plugin_registry.active_plugins() if p.name not in used)
+    never_used = sorted(p.name for p in app_registry.active_plugins() if p.name not in used)
     return {'rows': rows, 'never_used': never_used}
 
 

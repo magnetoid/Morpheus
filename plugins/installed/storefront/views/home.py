@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from api.client import internal_graphql
+from morpheus.app.views import render
 from morpheus.core import MorpheusEvents, hook_registry
-from morpheus.plugin.views import render
 
 
 def _serialize_product(p) -> dict:

@@ -19,7 +19,7 @@
 - **Modify** `plugins/installed/inventory/agent_tools.py` — add `stockout_forecast_tool`.
 - **Modify** `plugins/installed/inventory/views.py` — add `stockout_forecast_view`.
 - **Create** `plugins/installed/inventory/templates/inventory/dashboard/stockout_forecast.html`.
-- **Modify** `plugins/installed/inventory/plugin.py` — register beat, agent tool, dashboard page.
+- **Modify** `plugins/installed/inventory/app.py` — register beat, agent tool, dashboard page.
 - **Create** `plugins/installed/inventory/tests/test_stockout_alerts.py`.
 
 **Test command (canonical):**
@@ -282,7 +282,7 @@ git commit -m "feat(inventory): sync_stockout_alerts reconciler (open/refresh/re
 
 **Files:**
 - Modify: `plugins/installed/inventory/tasks.py` (append task)
-- Modify: `plugins/installed/inventory/plugin.py` (register beat in `ready()`)
+- Modify: `plugins/installed/inventory/app.py` (register beat in `ready()`)
 - Test: `plugins/installed/inventory/tests/test_stockout_alerts.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -354,7 +354,7 @@ def run_stockout_forecast() -> dict:
 
 - [ ] **Step 4: Register the daily beat schedule**
 
-In `plugins/installed/inventory/plugin.py`, add the import at the top of the file (next to `from morpheus import Plugin, events`):
+In `plugins/installed/inventory/app.py`, add the import at the top of the file (next to `from morpheus import Plugin, events`):
 ```python
 from celery.schedules import crontab
 ```
@@ -378,7 +378,7 @@ Expected: PASS (1 test).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add plugins/installed/inventory/tasks.py plugins/installed/inventory/plugin.py plugins/installed/inventory/tests/test_stockout_alerts.py
+git add plugins/installed/inventory/tasks.py plugins/installed/inventory/app.py plugins/installed/inventory/tests/test_stockout_alerts.py
 git commit -m "feat(inventory): daily run_stockout_forecast beat task + staff alerts"
 ```
 
@@ -388,7 +388,7 @@ git commit -m "feat(inventory): daily run_stockout_forecast beat task + staff al
 
 **Files:**
 - Modify: `plugins/installed/inventory/agent_tools.py` (append tool)
-- Modify: `plugins/installed/inventory/plugin.py` (`contribute_agent_tools`)
+- Modify: `plugins/installed/inventory/app.py` (`contribute_agent_tools`)
 - Test: `plugins/installed/inventory/tests/test_stockout_alerts.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -460,7 +460,7 @@ def stockout_forecast_tool(*, threshold_days: int = 14, limit: int = 25) -> Tool
 
 - [ ] **Step 4: Register the tool**
 
-In `plugins/installed/inventory/plugin.py` `contribute_agent_tools()`, add `stockout_forecast_tool` to both the import block and the returned list:
+In `plugins/installed/inventory/app.py` `contribute_agent_tools()`, add `stockout_forecast_tool` to both the import block and the returned list:
 ```python
     def contribute_agent_tools(self) -> list:
         from plugins.installed.inventory.agent_tools import (  # noqa: PLC0415
@@ -488,7 +488,7 @@ Expected: PASS (2 tests). `worker.get_tools()` includes it because the Worker sc
 - [ ] **Step 6: Commit**
 
 ```bash
-git add plugins/installed/inventory/agent_tools.py plugins/installed/inventory/plugin.py plugins/installed/inventory/tests/test_stockout_alerts.py
+git add plugins/installed/inventory/agent_tools.py plugins/installed/inventory/app.py plugins/installed/inventory/tests/test_stockout_alerts.py
 git commit -m "feat(inventory): inventory.stockout_forecast agent tool"
 ```
 
@@ -499,7 +499,7 @@ git commit -m "feat(inventory): inventory.stockout_forecast agent tool"
 **Files:**
 - Modify: `plugins/installed/inventory/views.py` (append view)
 - Create: `plugins/installed/inventory/templates/inventory/dashboard/stockout_forecast.html`
-- Modify: `plugins/installed/inventory/plugin.py` (`contribute_dashboard_pages`)
+- Modify: `plugins/installed/inventory/app.py` (`contribute_dashboard_pages`)
 - Test: `plugins/installed/inventory/tests/test_stockout_alerts.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -525,8 +525,8 @@ class StockoutForecastPageTests(TestCase):
         self.assertIn(resp.status_code, (301, 302, 403))
 
     def test_dashboard_page_contributed_and_disable_clean(self):
-        from plugins.registry import plugin_registry
-        slugs = {p.slug for p in plugin_registry.dashboard_pages() if p.plugin == 'inventory'}
+        from plugins.registry import app_registry
+        slugs = {p.slug for p in app_registry.dashboard_pages() if p.plugin == 'inventory'}
         self.assertIn('stockout-forecast', slugs)
 ```
 
@@ -596,7 +596,7 @@ Create `plugins/installed/inventory/templates/inventory/dashboard/stockout_forec
 
 - [ ] **Step 5: Contribute the dashboard page**
 
-In `plugins/installed/inventory/plugin.py`, add a method (next to `contribute_agent_tools`):
+In `plugins/installed/inventory/app.py`, add a method (next to `contribute_agent_tools`):
 ```python
     def contribute_dashboard_pages(self) -> list:
         from morpheus import DashboardPage  # noqa: PLC0415
@@ -621,7 +621,7 @@ Expected: PASS (3 tests). If the page 404s, confirm the registry mounts `contrib
 - [ ] **Step 7: Commit**
 
 ```bash
-git add plugins/installed/inventory/views.py plugins/installed/inventory/templates/inventory/dashboard/stockout_forecast.html plugins/installed/inventory/plugin.py plugins/installed/inventory/tests/test_stockout_alerts.py
+git add plugins/installed/inventory/views.py plugins/installed/inventory/templates/inventory/dashboard/stockout_forecast.html plugins/installed/inventory/app.py plugins/installed/inventory/tests/test_stockout_alerts.py
 git commit -m "feat(inventory): Stockout Forecast dashboard page"
 ```
 

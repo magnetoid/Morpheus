@@ -88,12 +88,12 @@ class ExpirePendingOrdersTests(TestCase):
         self.assertEqual(Order.objects.get(pk=order.pk).status, 'pending')
 
     def test_zero_minutes_disables_the_sweep(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         order = self._place()
         self._age(order, 10_000)
 
-        plugin = plugin_registry.get('orders')
+        plugin = app_registry.get('orders')
         original = plugin.get_config_value('pending_order_expiry_minutes', 60)
         plugin.set_config('pending_order_expiry_minutes', 0)
         try:

@@ -128,13 +128,13 @@ Every plugin in `plugins/installed/<name>/` has:
 ```
 <name>/
 ├── apps.py            # AppConfig (+ ready() for signal/hook wiring)
-├── plugin.py          # Plugin manifest (name, label, version, requires)
+├── app.py          # Plugin manifest (name, label, version, requires)
 ├── models.py          # Optional. Database models.
 ├── migrations/        # Required if models.py exists.
 └── tests/             # Mandatory permission boundary tests
 ```
 
-Registered in `morph/settings.py:MORPHEUS_DEFAULT_PLUGINS`. The
+Registered in `morph/settings.py:MORPHEUS_DEFAULT_APPS`. The
 [`plugin-skeleton`](../.claude/skills/plugin-skeleton/SKILL.md) skill
 scaffolds the whole thing.
 
@@ -149,7 +149,7 @@ that plugin is excluded; siblings keep loading.
   soft-bricks the dashboard): `admin_dashboard`, `agent_core`, `rbac`,
   `customers` — enforced by `PROTECTED_PLUGINS` in
   [`core/safety.py`](../core/safety.py).
-- Dependencies are declared per plugin in `plugin.py` (`requires`); the
+- Dependencies are declared per plugin in `app.py` (`requires`); the
   loader resolves order. No plugin declares `blocks` today.
 
 ## Request lifecycle

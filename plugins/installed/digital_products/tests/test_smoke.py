@@ -7,6 +7,6 @@ from django.test import TestCase
 
 class DigitalProductsSmokeTests(TestCase):
     def test_plugin_class_imports(self):
-        from plugins.installed.digital_products.plugin import DigitalProductsPlugin
+        from plugins.installed.digital_products.app import DigitalProductsPlugin
 
         self.assertEqual(DigitalProductsPlugin.name, 'digital_products')

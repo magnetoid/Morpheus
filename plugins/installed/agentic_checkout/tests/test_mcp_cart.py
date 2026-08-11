@@ -35,7 +35,7 @@ _TOKEN = 'mcp-cart-tok'
 
 def _enable() -> None:
     from plugins.models import PluginConfig
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     PluginConfig.objects.update_or_create(
         plugin_name='agent_mcp',
@@ -48,7 +48,7 @@ def _enable() -> None:
     PluginConfig.objects.update_or_create(
         plugin_name='agentic_checkout', defaults={'is_enabled': True}
     )
-    plugin_registry.activate('agentic_checkout')
+    app_registry.activate('agentic_checkout')
 
 
 class McpCartClusterTests(TestCase):
@@ -68,9 +68,9 @@ class McpCartClusterTests(TestCase):
         self.c = Client()
 
     def _restore(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin_registry.activate('agentic_checkout')
+        app_registry.activate('agentic_checkout')
 
     def _call(self, url, name, arguments=None):
         r = self.c.post(
@@ -140,9 +140,9 @@ class McpCartClusterTests(TestCase):
         self.assertIn('cart.add_item', names)
 
     def test_disabled_plugin_empties_cluster(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin_registry.deactivate('agentic_checkout')
+        app_registry.deactivate('agentic_checkout')
         r = self.c.post(CART, data=_rpc('tools/list'), content_type='application/json')
         names = {t['name'] for t in r.json()['result']['tools']}
         self.assertNotIn('cart.create', names)
@@ -154,9 +154,9 @@ class McpCartClusterTests(TestCase):
         self.assertTrue(on['cart'])
         self.assertTrue(on['checkout'])
 
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin_registry.deactivate('agentic_checkout')
+        app_registry.deactivate('agentic_checkout')
         off = self.c.get('/.well-known/ucp.json').json()['capabilities']
         self.assertFalse(off['cart'])
         self.assertFalse(off['checkout'])

@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from decimal import Decimal, InvalidOperation
 
-from morpheus.plugin import forms
+from morpheus.app import forms
 
 
 def _money(amount: str | Decimal | None, currency: str = 'USD'):

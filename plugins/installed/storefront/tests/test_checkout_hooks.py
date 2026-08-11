@@ -15,7 +15,7 @@ from unittest.mock import patch
 from django.test import RequestFactory, TestCase
 
 from morpheus.core import MorpheusEvents, hook_registry
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 def _request_with_cart(cart_id=None):
@@ -68,8 +68,8 @@ class ShippingRatesHookTests(TestCase):
         from plugins.installed.storefront.views.checkout import _available_shipping_rates
 
         cart = Cart.objects.create()
-        self.addCleanup(plugin_registry.activate, 'shipping')
-        plugin_registry.deactivate('shipping')
+        self.addCleanup(app_registry.activate, 'shipping')
+        app_registry.deactivate('shipping')
         rates = _available_shipping_rates(_request_with_cart(cart.id), {})
         self.assertEqual(
             rates,
@@ -90,8 +90,8 @@ class GatewayPickerHookTests(TestCase):
     def test_picker_empty_when_payments_disabled(self):
         from plugins.installed.storefront.views.checkout_one_page import _payment_methods
 
-        self.addCleanup(plugin_registry.activate, 'payments')
-        plugin_registry.deactivate('payments')
+        self.addCleanup(app_registry.activate, 'payments')
+        app_registry.deactivate('payments')
         self.assertEqual(_payment_methods(), [])
 
 
@@ -109,8 +109,8 @@ class SearchRankingHookTests(TestCase):
         self.assertEqual(ids, [3, 1])
 
     def test_empty_when_ai_assistant_disabled(self):
-        self.addCleanup(plugin_registry.activate, 'ai_assistant')
-        plugin_registry.deactivate('ai_assistant')
+        self.addCleanup(app_registry.activate, 'ai_assistant')
+        app_registry.deactivate('ai_assistant')
         ids = hook_registry.filter(MorpheusEvents.SEARCH_RANKED_IDS, [], query='pan', limit=80)
         self.assertEqual(ids, [])
 
@@ -137,6 +137,6 @@ class SimilarProductsHookTests(TestCase):
         from plugins.installed.storefront.views.catalog import _related_products
 
         Product.objects.create(name='Pan', slug='pan', sku='pan', price=Money(9, 'USD'))
-        self.addCleanup(plugin_registry.activate, 'ai_assistant')
-        plugin_registry.deactivate('ai_assistant')
+        self.addCleanup(app_registry.activate, 'ai_assistant')
+        app_registry.deactivate('ai_assistant')
         self.assertEqual(_related_products('pan'), [])

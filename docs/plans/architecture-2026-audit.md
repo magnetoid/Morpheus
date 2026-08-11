@@ -24,7 +24,7 @@ Django + agentic-protocol standards. Concrete recommendations, ranked by ROI.
 | **Hybrid search (BM25 + pgvector + RRF fusion)** | `plugins/installed/storefront/views.py:286 _apply_search` + `plugins/installed/ai_assistant/services/search.py:hybrid_search` | Reciprocal Rank Fusion across keyword + dense embeddings. Embeddings refreshed via Celery (`plugins/installed/ai_assistant/tasks.py:34`). |
 | **Per-entity CF Cache-Tags** | `api/graphql_view.py` | GraphQL responses carry `Cache-Tag: product:<slug>`; surgical purge on product/category updates fires through the Cloudflare plugin's hook subscriptions. |
 | **Storefront edge caching** | `core/storefront_cache.py` | Per-route TTL pattern matching on anonymous storefront pages. Already wired through `morph/settings.py` MIDDLEWARE. |
-| **Plugin architecture** | `plugins/installed/<name>/` × 53 | Clean contract per `CLAUDE.md`: `apps.py` + `plugin.py` + models + migrations + StorefrontBlock contributions + hook subscriptions. Cross-plugin coupling forced through `core.hooks`. |
+| **Plugin architecture** | `plugins/installed/<name>/` × 53 | Clean contract per `CLAUDE.md`: `apps.py` + `app.py` + models + migrations + StorefrontBlock contributions + hook subscriptions. Cross-plugin coupling forced through `core.hooks`. |
 | **Strawberry GraphQL + Django ASGI compat** | `api/schema.py` + `api/graphql_view.py` | Async-ready stack; views can be promoted to `async def` incrementally. |
 | **Observability**| `core/observability.py` + Sentry + request_id middleware | OpenTelemetry-ready, structured logs, query-count middleware. |
 

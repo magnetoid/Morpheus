@@ -7,8 +7,8 @@ class OrdersConfig(AppConfig):
     verbose_name = 'Orders'
 
     def ready(self):
-        from plugins.installed.orders.plugin import OrdersPlugin
-        from plugins.registry import plugin_registry
+        from plugins.installed.orders.app import OrdersPlugin
+        from plugins.registry import app_registry
 
-        if 'orders' not in plugin_registry._classes:
-            plugin_registry._classes['orders'] = OrdersPlugin
+        if 'orders' not in app_registry._classes:
+            app_registry._classes['orders'] = OrdersPlugin

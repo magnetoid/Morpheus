@@ -19,7 +19,7 @@ from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.bookvault.models import BookvaultProductLink
 from plugins.installed.bookvault.tests.test_services import _seed_config
 from plugins.installed.catalog.models import Product
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 def _product(slug: str) -> Product:
@@ -56,13 +56,13 @@ class ListColumnContributionTests(TestCase):
 
     def test_disabled_plugin_contributes_nothing(self):
         _seed_config()  # configured — the disabled-while-configured leak case
-        was_active = 'bookvault' in plugin_registry._active
-        plugin_registry._active.discard('bookvault')
+        was_active = 'bookvault' in app_registry._active
+        app_registry._active.discard('bookvault')
         try:
             self.assertEqual(self._columns([_product('gated')]), [])
         finally:
             if was_active:
-                plugin_registry._active.add('bookvault')
+                app_registry._active.add('bookvault')
 
 
 class FormCardContributionTests(TestCase):
@@ -112,8 +112,8 @@ class ProductsPageEndToEndTests(TestCase):
     def test_everything_vanishes_when_disabled(self):
         _seed_config()
         _product('page2')
-        was_active = 'bookvault' in plugin_registry._active
-        plugin_registry._active.discard('bookvault')
+        was_active = 'bookvault' in app_registry._active
+        app_registry._active.discard('bookvault')
         try:
             resp = self.client.get(reverse('admin_dashboard:products'))
             self.assertEqual(resp.status_code, 200)
@@ -121,4 +121,4 @@ class ProductsPageEndToEndTests(TestCase):
             self.assertNotContains(resp, '<th>BV</th>', html=True)
         finally:
             if was_active:
-                plugin_registry._active.add('bookvault')
+                app_registry._active.add('bookvault')

@@ -246,9 +246,9 @@ class MorpheusGraphQLView(GraphQLView):
         caching) when unconfigured so the default behaviour is safe.
         """
         try:
-            from plugins.registry import plugin_registry
+            from plugins.registry import app_registry
 
-            p = plugin_registry.get('storefront')
+            p = app_registry.get('storefront')
             if p is None:
                 return 0
             return max(0, int(p.get_config().get('graphql_edge_cache_ttl') or 0))

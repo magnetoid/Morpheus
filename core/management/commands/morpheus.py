@@ -93,15 +93,15 @@ class Command(BaseCommand):
         self.stdout.write(f'Morpheus {ver}')
 
     def _list(self, _rest: list[str]) -> None:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        names = sorted(plugin_registry._classes.keys())
+        names = sorted(app_registry._classes.keys())
         if not names:
             self.stdout.write('No plugins discovered.')
             return
         for name in names:
-            cls = plugin_registry._classes[name]
-            active = plugin_registry.is_active(name)
+            cls = app_registry._classes[name]
+            active = app_registry.is_active(name)
             tag = self.style.SUCCESS('●') if active else self.style.WARNING('○')
             self.stdout.write(
                 f'  {tag} {name:<24} {getattr(cls, "version", ""):<8} {getattr(cls, "label", "")}'
@@ -144,17 +144,17 @@ class Command(BaseCommand):
             sys.exit(1)
 
         # 2. Plugin metadata sanity.
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        all_count = len(plugin_registry._classes)
-        active_count = sum(1 for n in plugin_registry._classes if plugin_registry.is_active(n))
+        all_count = len(app_registry._classes)
+        active_count = sum(1 for n in app_registry._classes if app_registry.is_active(n))
         self.stdout.write(self.style.SUCCESS(f'✓ Plugins: {active_count}/{all_count} active'))
 
-        # 3. Leaked-import scan: every plugin.py should import from
+        # 3. Leaked-import scan: every app.py should import from
         #    `morpheus`, not directly from the registry/contrib internals.
         leaks: list[str] = []
         installed = Path(__file__).resolve().parents[3] / 'plugins' / 'installed'
-        for manifest in sorted(installed.glob('*/plugin.py')):
+        for manifest in sorted(installed.glob('*/app.py')):
             text = manifest.read_text()
             if (
                 'from plugins.base import' in text
@@ -164,7 +164,7 @@ class Command(BaseCommand):
                 leaks.append(str(manifest.relative_to(installed.parent.parent)))
         if leaks:
             self.stdout.write(
-                self.style.WARNING(f'⚠ {len(leaks)} plugin.py files still import from internals:')
+                self.style.WARNING(f'⚠ {len(leaks)} app.py files still import from internals:')
             )
             for path in leaks:
                 self.stdout.write(f'    {path}')
@@ -179,9 +179,9 @@ class Command(BaseCommand):
             raise CommandError('usage: morpheus enable|disable <plugin>')
         name = rest[0]
         from plugins.models import PluginConfig
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        if name not in plugin_registry._classes:
+        if name not in app_registry._classes:
             raise CommandError(f'No such plugin: {name!r}')
         row, _ = PluginConfig.objects.get_or_create(plugin_name=name)
         row.is_enabled = enabled

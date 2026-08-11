@@ -13,17 +13,17 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 )
 def list_plugins_tool() -> ToolResult:
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
     except Exception as e:  # noqa: BLE001
         return ToolResult(output={'plugins': [], 'note': f'registry unavailable: {e}'})
     rows = []
-    for p in plugin_registry.all_plugins():
+    for p in app_registry.all_plugins():
         rows.append(
             {
                 'name': p.name,
                 'label': p.label,
                 'version': p.version,
-                'active': plugin_registry.is_active(p.name),
+                'active': app_registry.is_active(p.name),
                 'requires': list(p.requires),
             }
         )
@@ -93,7 +93,7 @@ def disable_plugin_tool(*, name: str, hard_gate_ack: str = '', echo: str = '') -
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=name, echo=echo)
     try:
         from plugins.models import PluginConfig
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'plugins.models unavailable: {e}') from e
     PluginConfig.objects.update_or_create(
@@ -101,7 +101,7 @@ def disable_plugin_tool(*, name: str, hard_gate_ack: str = '', echo: str = '') -
         defaults={'is_enabled': False},
     )
     try:  # noqa: SIM105
-        plugin_registry.deactivate(name)
+        app_registry.deactivate(name)
     except Exception:  # noqa: BLE001, S110
         pass
     return ToolResult(output={'plugin': name, 'enabled': False}, display=f'disabled {name}')

@@ -216,9 +216,9 @@ def _ads_config():
     PluginConfig (kept in JSON to avoid a TrackingSettings model migration).
     """
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        p = plugin_registry.get('tracking')
+        p = app_registry.get('tracking')
         if p is None:
             return '', ''
         cfg = p.get_config() or {}

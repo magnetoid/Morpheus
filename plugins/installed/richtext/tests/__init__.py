@@ -6,10 +6,10 @@ from django.test import SimpleTestCase, TestCase
 
 class RichTextPluginContractTests(SimpleTestCase):
     def test_plugin_registered_and_active(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        self.assertTrue(plugin_registry.is_active('richtext'))
-        plugin = plugin_registry.get('richtext')
+        self.assertTrue(app_registry.is_active('richtext'))
+        plugin = app_registry.get('richtext')
         self.assertIsNotNone(plugin)
         self.assertEqual(plugin.name, 'richtext')
 
@@ -57,14 +57,14 @@ class RichTextFieldTagTests(TestCase):
         self.assertNotIn('data-rte="h2"', without)
 
     def test_degrades_to_textarea_when_plugin_inactive(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        original = plugin_registry.is_active
-        plugin_registry.is_active = lambda n: False if n == 'richtext' else original(n)
+        original = app_registry.is_active
+        app_registry.is_active = lambda n: False if n == 'richtext' else original(n)
         try:
             html = _render(name='description', value='<p>x</p>', id='product-description')
         finally:
-            plugin_registry.is_active = original
+            app_registry.is_active = original
         self.assertNotIn('data-richtext', html)
         self.assertIn('name="description"', html)
         self.assertIn('id="product-description"', html)

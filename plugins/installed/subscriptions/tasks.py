@@ -52,9 +52,9 @@ def _config() -> dict:
     """Read plugin config with sensible defaults if the DB row is absent."""
     cfg = dict(_DEFAULTS)
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('subscriptions')
+        plugin = app_registry.get('subscriptions')
         if plugin is not None:
             raw = plugin.get_config()
             cfg['prerenewal_days'] = int(raw.get('prerenewal_days', 3))

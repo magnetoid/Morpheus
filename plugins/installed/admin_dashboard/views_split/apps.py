@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     messages,
@@ -17,14 +17,14 @@ from plugins.installed.admin_dashboard.views_split._shared import (
 
 @staff_member_required
 def apps_view(request: HttpRequest) -> HttpResponse:
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     if request.method == 'POST':
         return _toggle_plugin(request)
 
     # Read the intended-enabled state from the DB (PluginConfig) — that's
     # the source of truth a merchant just edited. The in-memory
-    # `plugin_registry.is_active()` only reflects boot-time state, so it
+    # `app_registry.is_active()` only reflects boot-time state, so it
     # lags behind by one container restart for newly-enabled plugins.
     # For disables, _toggle_plugin calls .deactivate() which tears down
     # contributions in-place, so the runtime DOES match. The "needs
@@ -38,13 +38,13 @@ def apps_view(request: HttpRequest) -> HttpResponse:
         pass
 
     plugins = []
-    for name, cls in sorted(plugin_registry._classes.items()):
-        if name in SYSTEM_PLUGINS:
+    for name, cls in sorted(app_registry._classes.items()):
+        if is_system(name):
             # Hide system plugins from the apps catalog — they belong
             # to a higher-level concept the merchant edits elsewhere
             # (Linda for agent_core, etc.).
             continue
-        runtime_active = plugin_registry.is_active(name)
+        runtime_active = app_registry.is_active(name)
         db_intends_on = db_enabled.get(name, True)
         # "Active" is what the merchant sees in the button label.
         # We prefer the DB intent (matches what they just clicked).
@@ -60,8 +60,8 @@ def apps_view(request: HttpRequest) -> HttpResponse:
                 # merchant isn't confused why their just-enabled plugin
                 # doesn't surface its dashboard pages yet.
                 'needs_restart': db_intends_on and not runtime_active,
-                'pages': [p for p in plugin_registry.dashboard_pages() if p.plugin == name],
-                'has_settings': plugin_registry.settings_panel(name) is not None,
+                'pages': [p for p in app_registry.dashboard_pages() if p.plugin == name],
+                'has_settings': app_registry.settings_panel(name) is not None,
             }
         )
     return render(
@@ -93,7 +93,7 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
     import json
     import os
 
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     registry_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -107,7 +107,7 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
     except (OSError, json.JSONDecodeError) as exc:
         logger.warning('apps_store: registry read failed: %s', exc)
 
-    installed_plugin_names = set(plugin_registry._classes.keys())
+    installed_plugin_names = set(app_registry._classes.keys())
     # Installed themes are detected by directory presence under
     # themes/library/<slug>/ — themes don't go through the plugin registry.
     installed_theme_dirs: set[str] = set()
@@ -164,48 +164,39 @@ def apps_store_view(request: HttpRequest) -> HttpResponse:
     )
 
 
-PROTECTED_PLUGINS = frozenset(
-    {
-        'admin_dashboard',  # disabling this hides its own toggle UI — soft brick
-        'catalog',
-        'customers',
-        'orders',
-        'payments',  # core commerce primitives
-        # Linda lives in core.assistant (not a plugin), but agent_core
-        # provides her tool catalogue + the five sub-agents she delegates
-        # to. Disabling it would silently strip every catalog / order /
-        # inventory tool Linda can call — chat keeps working, every
-        # answer becomes "I can't access that".
-        'agent_core',
-        # Morpheus Brain is a core capability (engine in core/brain/): the
-        # AI-driven self-analysis console. The surface plugin is protected so
-        # the Brain is always on, like the self-improvement loop it reads from.
-        'morpheus_brain',
-    }
-)
+# Both classifications used to live here as hardcoded frozensets — a shell
+# holding a list of facts about *other* apps. They now come from one place
+# each: `core.safety.is_plugin_protected` (shared with Linda's disable tools,
+# which previously used a different, shorter list) and the app's own
+# `system` manifest flag. Kept as thin wrappers so this module keeps a single
+# vocabulary and callers don't each re-derive it.
 
 
-# Plugins that are technically present (Django apps, models, migrations)
-# but should NEVER appear in the /dashboard/apps/ catalogue. They're
-# part of a higher-level concept the merchant interacts with directly.
-# Hiding them stops the "what is this app, can I disable it?" confusion.
-SYSTEM_PLUGINS = frozenset(
-    {
-        'agent_core',  # surfaced via Linda's UI (core/assistant/)
-    }
-)
+def is_protected(name: str) -> bool:
+    """True if this app may not be disabled (soft-brick risk)."""
+    from core.safety import is_plugin_protected
+
+    return is_plugin_protected(name)
+
+
+def is_system(name: str) -> bool:
+    """True if this app is never listed in the Apps catalogue."""
+    from plugins.registry import app_registry
+
+    cls = app_registry._classes.get(name)
+    return bool(cls is not None and getattr(cls, 'system', False))
 
 
 def _toggle_plugin(request: HttpRequest):
     """POST handler on the apps page: flip a plugin's enabled state.
 
     On DISABLE — writes PluginConfig.is_enabled=False AND immediately
-    calls plugin_registry.deactivate() so URLs / hooks / dashboard
+    calls app_registry.deactivate() so URLs / hooks / dashboard
     pages drop out of the running process. The merchant sees the
     change instantly without a container restart.
 
     On ENABLE — writes PluginConfig.is_enabled=True AND immediately calls
-    plugin_registry.activate() so ready() runs, URLs re-mount, and the
+    app_registry.activate() so ready() runs, URLs re-mount, and the
     settings panel / storefront blocks / nav entries appear without a
     restart. Only if runtime activation fails (e.g. a plugin needing
     boot-level config like middleware) does the apps view keep the
@@ -217,7 +208,7 @@ def _toggle_plugin(request: HttpRequest):
     """
     name = request.POST.get('plugin', '').strip()
     desired = request.POST.get('enabled') == '1'
-    if not desired and name in PROTECTED_PLUGINS:
+    if not desired and is_protected(name):
         messages.error(
             request,
             f'{name!r} cannot be disabled — it is required for the dashboard to function.',
@@ -235,15 +226,15 @@ def _toggle_plugin(request: HttpRequest):
 
     # Apply the runtime side of the change.
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         if not desired:
             # registry.deactivate runs on_disable + drops contributions +
             # removes the plugin from _active. Idempotent — safe to call
             # on a plugin that's already inactive.
-            plugin_registry.deactivate(name)
+            app_registry.deactivate(name)
             messages.success(request, f'{name!r} disabled.')
-        elif plugin_registry.activate(name):
+        elif app_registry.activate(name):
             # registry.activate runs ready() (first time), re-mounts URLs and
             # re-collects contributions so the plugin lights up immediately.
             messages.success(request, f'{name!r} enabled.')

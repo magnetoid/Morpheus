@@ -8,7 +8,7 @@ filled-in answer set.
 
 from __future__ import annotations
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class Quiz(models.Model):

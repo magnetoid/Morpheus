@@ -10,7 +10,7 @@ manage.py morph_create_plugin <name>
     [--target plugins/installed]
 
 Generates a working Morpheus plugin scaffold and prints instructions to wire
-it into settings.MORPHEUS_DEFAULT_PLUGINS (if not already there).
+it into settings.MORPHEUS_DEFAULT_APPS (if not already there).
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Plugin scaffolded.'))
         self.stdout.write('')
         self.stdout.write('Next steps:')
-        self.stdout.write(f'  1. Add {path_str!r} to MORPHEUS_DEFAULT_PLUGINS in morph/settings.py')
+        self.stdout.write(f'  1. Add {path_str!r} to MORPHEUS_DEFAULT_APPS in morph/settings.py')
         if opts['with_models']:
             self.stdout.write('  2. python manage.py makemigrations ' + name)
             self.stdout.write('  3. python manage.py migrate')
@@ -132,7 +132,7 @@ class Command(BaseCommand):
             with_urls=with_urls,
             with_tasks=with_tasks,
         )
-        out['plugin.py'] = plugin_body
+        out['app.py'] = plugin_body
 
         out['tests/__init__.py'] = ''
         out['tests/test_smoke.py'] = self._smoke_test(name=name, cls_prefix=cls_prefix)

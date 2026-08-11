@@ -75,10 +75,10 @@ The contract says: *core → plugin imports (wrong direction)*. Reality:
 |---|---|---|
 | **No `apps.py`** | `storefront`, `ai_content` | Add `class StorefrontConfig(AppConfig)` mirroring `shipping/apps.py` |
 | **Deprecated `default_app_config`** | `linda_generated/apps.py:24` | Remove (Django 5.x compatibility landmine) |
-| **Pokes private registry API** | `linda_generated/apps.py:16-17` | Use `plugin_registry.register_class()` |
+| **Pokes private registry API** | `linda_generated/apps.py:16-17` | Use `app_registry.register_class()` |
 | **Returns model in wrong file** | `orders/models.py:367-369` re-exports `ReturnRequest` from `refunds.py` | Move `ReturnRequest` to `models.py`; lazy-import service into `refunds.py` |
 | **Forward reference with `# noqa: F821`** | `orders/refunds.py:131` | Resolved by above move |
-| **CMS reaches into theme** | `cms/plugin.py:67-74` | Theme registers its own sections via `ready()` hook |
+| **CMS reaches into theme** | `cms/app.py:67-74` | Theme registers its own sections via `ready()` hook |
 
 ### 2.2 GDPR-Critical Plugin With Zero Tests (HIGH)
 
@@ -144,7 +144,7 @@ The `getattr` defaults to `True` when missing. If `customers.Customer` is a cust
 | `orders/dashboard.py:135` | `Order.objects.exists()` per setup step | 60s cache wrapper |
 | `tax/services.py:118`, `affiliates/services.py:422`, etc. | Unannotated loops over `order.items.all()` | `qs.select_related('product', 'variant').prefetch_related(...)` |
 | `media/views.py:402, 667` | `MediaAsset.objects.all()` no prefetch | `select_related('folder', 'uploader').prefetch_related('tags')` |
-| `ai_assistant/plugin.py:106-110` | Python sort after DB order_by | Add `priority_rank` field; `order_by` at DB level |
+| `ai_assistant/app.py:106-110` | Python sort after DB order_by | Add `priority_rank` field; `order_by` at DB level |
 
 ### 2.8 Unauthenticated Download with No Rate Limit (HIGH)
 
@@ -305,7 +305,7 @@ No `cron:` trigger in any of the 4 workflows. No weekly full-suite run, no `pip-
 |---|---:|---|---|
 | `Assistant.stream` | 195 | `core/assistant/runtime.py:255-449` | Split into 5 named methods |
 | `_extract_entity_tags` | 92 | `api/graphql_view.py:148-239` | Extract `TAG_MAP` constant + `visit()` |
-| `on_dashboard_panels` | 38 | `ai_assistant/plugin.py:101-138` | Extract `insights_top4()`, `pulse_top5()`, `ai_summary_dict()` |
+| `on_dashboard_panels` | 38 | `ai_assistant/app.py:101-138` | Extract `insights_top4()`, `pulse_top5()`, `ai_summary_dict()` |
 
 ### 6.2 Magic Numbers
 
@@ -328,9 +328,9 @@ No `cron:` trigger in any of the 4 workflows. No weekly full-suite run, no `pip-
 
 ### 6.4 Stale Prose Plugin Counts
 
-README says "60+ active" in 5 places; actual `MORPHEUS_DEFAULT_PLUGINS` has 84 entries. CLAUDE.md "Living document" rule explicitly warns about this.
+README says "60+ active" in 5 places; actual `MORPHEUS_DEFAULT_APPS` has 84 entries. CLAUDE.md "Living document" rule explicitly warns about this.
 
-**Fix:** Replace with "see `MORPHEUS_DEFAULT_PLUGINS`" everywhere; add `scripts/check_plugin_counts.py` CI check.
+**Fix:** Replace with "see `MORPHEUS_DEFAULT_APPS`" everywhere; add `scripts/check_plugin_counts.py` CI check.
 
 ### 6.5 Missing Test Infrastructure
 
@@ -445,19 +445,19 @@ README says "60+ active" in 5 places; actual `MORPHEUS_DEFAULT_PLUGINS` has 84 e
 
 ### Plugins
 - `plugins/base.py`, `plugins/registry.py`, `plugins/contributions.py`
-- All 78 `plugins/installed/*/plugin.py` manifests
+- All 78 `plugins/installed/*/app.py` manifests
 - All 78 `plugins/installed/*/apps.py` (where present)
-- `plugins/installed/catalog/{plugin.py,models.py,signals.py,image_pipeline.py}`
-- `plugins/installed/orders/{plugin.py,models.py,refunds.py,services.py,dashboard.py,signals.py,store_credit.py}`
-- `plugins/installed/payments/{plugin.py,models.py,views.py,urls.py,gateway.py}`
-- `plugins/installed/inventory/{plugin.py,models.py,services.py,views.py,cart_reservations.py}`
+- `plugins/installed/catalog/{app.py,models.py,signals.py,image_pipeline.py}`
+- `plugins/installed/orders/{app.py,models.py,refunds.py,services.py,dashboard.py,signals.py,store_credit.py}`
+- `plugins/installed/payments/{app.py,models.py,views.py,urls.py,gateway.py}`
+- `plugins/installed/inventory/{app.py,models.py,services.py,views.py,cart_reservations.py}`
 - `plugins/installed/customers/services.py`
-- `plugins/installed/ai_assistant/{plugin.py,__init__.py}`
-- `plugins/installed/linda_generated/{plugin.py,apps.py}`
+- `plugins/installed/ai_assistant/{app.py,__init__.py}`
+- `plugins/installed/linda_generated/{app.py,apps.py}`
 - `plugins/installed/digital_products/views.py`
 - `plugins/installed/personalisation/services.py`
 - `plugins/installed/loyalty_points/services.py`
-- `plugins/installed/b2b/plugin.py`
+- `plugins/installed/b2b/app.py`
 
 ### CI/CD + DevOps
 - `.github/workflows/{ci,cd,lighthouse,accessibility}.yml`

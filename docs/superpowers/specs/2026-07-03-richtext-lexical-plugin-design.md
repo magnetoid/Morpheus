@@ -57,7 +57,7 @@ templates, editing **three** fields, via ~130 lines of duplicated `wireTiptap()`
 
 ### The plugin
 `plugins/installed/richtext/` — standard Morpheus plugin (AppConfig +
-`plugin.py` manifest, registered in `MORPHEUS_DEFAULT_PLUGINS`). It owns the
+`app.py` manifest, registered in `MORPHEUS_DEFAULT_APPS`). It owns the
 editor source, the build, the committed bundle+CSS, the widget tag, and tests.
 
 ### The bundle (self-hosted, eval-free)
@@ -137,7 +137,7 @@ generate/parse); undo/redo → `UNDO_COMMAND`/`REDO_COMMAND`; clear → clear fo
 Button active-state via `registerUpdateListener` reading the selection.
 
 ### Disable-safety
-The tag calls `plugin_registry.is_active('richtext')`: active → full editor
+The tag calls `app_registry.is_active('richtext')`: active → full editor
 markup (the bundle enhances it); inactive → a plain `<textarea name="…">`. The
 bundle only loads/scans when the plugin is active, so a disabled plugin degrades
 to a working textarea — the swappable property. (Plugins stay in
@@ -158,7 +158,7 @@ follow-up. Update the `dashboard-csp-unsafe-eval` memory note accordingly.
 
 ## Files
 
-**New (plugin):** `__init__.py`, `apps.py`, `plugin.py`,
+**New (plugin):** `__init__.py`, `apps.py`, `app.py`,
 `templatetags/{__init__.py,richtext.py}`, `templates/richtext/_field.html`,
 `frontend/{editor.js,package.json,README.md}`,
 `static/richtext/{lexical-editor.bundle.js,editor.css}`,
@@ -168,7 +168,7 @@ follow-up. Update the `dashboard-csp-unsafe-eval` memory note accordingly.
 `cms/templates/cms/dashboard/page_form.html` (body → tag, `allow_images=True`),
 `admin_dashboard/.../base.html` (drop `.rte` CSS; guarded bundle load; scan in
 afterSwap), `core/security_headers.py`, `morph/settings.py`
-(`MORPHEUS_DEFAULT_PLUGINS`), the CSP memory note, and docs (`CLAUDE.md` landmine
+(`MORPHEUS_DEFAULT_APPS`), the CSP memory note, and docs (`CLAUDE.md` landmine
 if wording changes).
 
 ## Testing

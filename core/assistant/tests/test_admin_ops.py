@@ -23,12 +23,12 @@ class SettingsSetTests(TestCase):
 
     def test_writes_and_coerces(self):
         from core.assistant.tools.admin_ops import settings_set_tool
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         settings_set_tool.invoke(
             {'plugin': 'storefront', 'key': 'lazy_load_images', 'value': 'true', 'confirmed': True}
         )
-        self.assertIs(plugin_registry.get('storefront').get_config().get('lazy_load_images'), True)
+        self.assertIs(app_registry.get('storefront').get_config().get('lazy_load_images'), True)
 
     def test_unknown_plugin_errors(self):
         from core.assistant.tools.admin_ops import settings_set_tool

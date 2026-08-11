@@ -15,7 +15,7 @@ core; SSO ships as a plugin" policy.
 
 Settings.py edits this build required (Django's app registry is frozen after
 settings import, so the provider app cannot be added from `ready()`):
-`plugins.installed.staff_sso` added to `MORPHEUS_DEFAULT_PLUGINS`, and
+`plugins.installed.staff_sso` added to `MORPHEUS_DEFAULT_APPS`, and
 `allauth.socialaccount.providers.openid_connect` added to `THIRD_PARTY_APPS`
 (inert without a configured `SocialApp`). The OIDC provider hard-imports
 `pyjwt[crypto]` (allauth's `[socialaccount]` extra) at app load, so that dep was

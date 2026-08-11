@@ -20,23 +20,23 @@ _SIGNALS_TTL = 90  # seconds — the raw signals change slowly; the page GET is 
 
 def plugins_health() -> dict:
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         rows = []
-        for p in sorted(plugin_registry.all_plugins(), key=lambda x: x.name):
+        for p in sorted(app_registry.all_plugins(), key=lambda x: x.name):
             rows.append(
                 {
                     'name': p.name,
                     'label': getattr(p, 'label', p.name),
                     'version': getattr(p, 'version', ''),
-                    'active': plugin_registry.is_active(p.name),
+                    'active': app_registry.is_active(p.name),
                     'has_models': getattr(p, 'has_models', False),
                     'requires': list(getattr(p, 'requires', []) or []),
                 }
             )
         errors: list = []
         with suppress(Exception):
-            errors = plugin_registry.validate() or []
+            errors = app_registry.validate() or []
         return {
             'available': True,
             'rows': rows,

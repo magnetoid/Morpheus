@@ -57,7 +57,7 @@ IDs, all in PluginConfig (never settings.py): `access_token`, `catalog_id`
   Advantage+ catalog campaign). Dashboard + `meta.ads_report` agent tool.
 
 ## House-rule checklist (every phase)
-Single AppConfig + manifest; register in MORPHEUS_DEFAULT_PLUGINS; migration
+Single AppConfig + manifest; register in MORPHEUS_DEFAULT_APPS; migration
 before merge; disable test; secrets only in PluginConfig; ruff + check +
 makemigrations + sqlite tests + CI Postgres; mark_safe only with validated/
 json-encoded values (Pixel id numeric-validated); docs ship with code.

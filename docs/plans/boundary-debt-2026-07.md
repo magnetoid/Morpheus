@@ -128,7 +128,7 @@ snapshotting current feed output *before* the merge, then diff after.
 ## 6. Decisions needed (not code yet)
 
 - **demo_data**: fully built (manifest, dashboard page, URLs, tests) but
-  absent from `MORPHEUS_DEFAULT_PLUGINS`, so every line of it is dead.
+  absent from `MORPHEUS_DEFAULT_APPS`, so every line of it is dead.
   Register it (it ships a "Demo data" app to prod) or move it out of
   `plugins/installed/` to a dev-fixtures location. Owner call.
 - **core/assistant/tools/*** → `contribute_agent_tools()` migration

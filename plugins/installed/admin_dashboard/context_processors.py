@@ -101,9 +101,9 @@ def _resolve_nav_page(path: str, pages):
 
 def _nav_trail(path: str) -> list | None:
     """Nav-location breadcrumb for a registered dashboard page, or None."""
-    from plugins.registry import plugin_registry  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
 
-    pages = plugin_registry.dashboard_pages()
+    pages = app_registry.dashboard_pages()
     page, leftover = _resolve_nav_page(path, pages)
     if page is None:
         return None

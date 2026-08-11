@@ -8,14 +8,14 @@ is missing, or the source isn't a PDF.
 
 from __future__ import annotations
 
-from morpheus.plugin.views import Http404, render
+from morpheus.app.views import Http404, render
 
 
 def _plugin_config() -> dict:
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        p = plugin_registry.get('flipbook')
+        p = app_registry.get('flipbook')
         if p is None:
             return {}
         return p.get_config() or {}

@@ -167,6 +167,6 @@ class ReviewTests(TestCase):
 
 class DisabledByDefaultTests(TestCase):
     def test_plugin_ships_disabled(self):
-        from plugins.installed.booking_marketplace.plugin import BookingMarketplacePlugin
+        from plugins.installed.booking_marketplace.app import BookingMarketplacePlugin
 
         self.assertIs(BookingMarketplacePlugin.enabled_by_default, False)

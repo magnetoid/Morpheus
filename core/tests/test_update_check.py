@@ -38,7 +38,7 @@ class UpdateActivityFeedTests(TestCase):
         cache.delete('morpheus:update_status')
 
     def _feed(self):
-        from plugins.installed.admin_dashboard.plugin import AdminDashboardPlugin
+        from plugins.installed.admin_dashboard.app import AdminDashboardPlugin
 
         return AdminDashboardPlugin().on_activity_feed([])
 

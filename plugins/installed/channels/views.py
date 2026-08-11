@@ -9,7 +9,7 @@ import logging
 
 from django.core.cache import cache
 
-from morpheus.plugin.views import render, staff_member_required
+from morpheus.app.views import render, staff_member_required
 from plugins.installed.channels.tasks import METRICS_CACHE_KEY
 
 logger = logging.getLogger('morpheus.channels')

@@ -31,12 +31,12 @@ if not DEBUG and ALLOWED_HOSTS == ['localhost', '127.0.0.1']:
     raise ImproperlyConfigured('ALLOWED_HOSTS must be set explicitly when DEBUG=False')
 
 # ── Plugin & Theme directories ─────────────────────────────────────────────────
-MORPHEUS_PLUGINS_DIR = BASE_DIR / 'plugins' / 'installed'
+MORPHEUS_APPS_DIR = BASE_DIR / 'plugins' / 'installed'
 MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.41.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.42.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -49,7 +49,7 @@ MORPHEUS_SELF_UPDATE_ENABLED = config('MORPHEUS_SELF_UPDATE_ENABLED', default=Fa
 GOOGLE_PLACES_API_KEY = config('GOOGLE_PLACES_API_KEY', default='')
 
 # ── Default plugins (always in INSTALLED_APPS — they have models) ──────────────
-MORPHEUS_DEFAULT_PLUGINS = [
+MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.catalog',
     'plugins.installed.orders',
     'plugins.installed.customers',
@@ -196,9 +196,16 @@ MORPHEUS_DEFAULT_PLUGINS = [
 ]
 
 # ── Extra plugins installed by merchant via .env ───────────────────────────────
-MORPHEUS_EXTRA_PLUGINS = config('MORPHEUS_EXTRA_PLUGINS', default='', cast=Csv())
+# Env-var back-compat: this knob was MORPHEUS_EXTRA_PLUGINS before the
+# apps/plugins vocabulary was unified, and it is set in the deployment
+# environment (Coolify), not in this repo — renaming the read alone would
+# silently drop a live deployment's extra apps with no error anywhere.
+# New name wins; the old one still works.
+MORPHEUS_EXTRA_APPS = config('MORPHEUS_EXTRA_APPS', default='', cast=Csv()) or config(
+    'MORPHEUS_EXTRA_PLUGINS', default='', cast=Csv()
+)
 
-ALL_MORPHEUS_PLUGINS = MORPHEUS_DEFAULT_PLUGINS + list(MORPHEUS_EXTRA_PLUGINS)
+ALL_MORPHEUS_APPS = MORPHEUS_DEFAULT_APPS + list(MORPHEUS_EXTRA_APPS)
 
 # ── Installed Apps ─────────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -255,13 +262,13 @@ INSTALLED_APPS = (
     DJANGO_APPS
     + THIRD_PARTY_APPS
     + MORPHEUS_ENGINE_APPS
-    + ALL_MORPHEUS_PLUGINS  # ← All plugins as Django apps
+    + ALL_MORPHEUS_APPS  # ← All plugins as Django apps
 )
 
 # Discover plugins so they are available in the registry
-from plugins.registry import plugin_registry  # noqa: E402 — must follow INSTALLED_APPS build
+from plugins.registry import app_registry  # noqa: E402 — must follow INSTALLED_APPS build
 
-plugin_registry.discover(ALL_MORPHEUS_PLUGINS)
+app_registry.discover(ALL_MORPHEUS_APPS)
 
 # ── Middleware ─────────────────────────────────────────────────────────────────
 MIDDLEWARE = [

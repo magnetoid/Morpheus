@@ -17,7 +17,7 @@ as its own focused release.
   ([services_redeem.py:168](../../plugins/installed/loyalty_points/services_redeem.py#L168))
   — the cancel/refund undo.
 - `max_redeemable(customer, order_total)` — the cap.
-- `on_cart_breakdown` ([plugin.py:152](../../plugins/installed/loyalty_points/plugin.py#L152))
+- `on_cart_breakdown` ([app.py:152](../../plugins/installed/loyalty_points/app.py#L152))
   **already** reads `cart.metadata['loyalty_points_redeem']` (int), converts to a
   discount, and stashes `meta['loyalty_points'] = {'points', 'amount'}`.
   Tested: `tests/test_redeem.py:148`.

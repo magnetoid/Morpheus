@@ -16,7 +16,7 @@ entirely under `plugins/installed/<name>/` and appears elsewhere only by
   UIs (payments/ai/caching) are hard-coded as `if category==...` dispatch in
   `admin_dashboard/views_split/settings.py:763-768` — not pluggable.
 - **Enabled check:** `active_plugins` context list (`{% if 'x' in active_plugins %}`);
-  `plugin_registry.is_enabled(name)` in py. **GAP: no `{% plugin_enabled 'x' %}` tag.**
+  `app_registry.is_enabled(name)` in py. **GAP: no `{% plugin_enabled 'x' %}` tag.**
 
 ## Violations (from audit 2026-06-01)
 1. **loyalty `/account/points/`** — view in `storefront/views/account.py`, route in

@@ -32,9 +32,9 @@ class CoreQuery:
 
     @strawberry.field(description='List active plugins')
     def active_plugins(self) -> list[str]:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        return [p.name for p in plugin_registry.active_plugins()]
+        return [p.name for p in app_registry.active_plugins()]
 
 
 @strawberry.type
@@ -111,12 +111,12 @@ class _MaskUnhandledErrors(SchemaExtension):
 
 def build_schema() -> strawberry.Schema:
     """Assemble the schema from core types + all plugin extension modules."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     query_bases = [CoreQuery]
     mutation_bases = [CoreMutation]
 
-    for module_path in plugin_registry._graphql_extensions:
+    for module_path in app_registry._graphql_extensions:
         try:
             mod = importlib.import_module(module_path)
         except ImportError as e:

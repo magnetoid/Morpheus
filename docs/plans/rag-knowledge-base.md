@@ -34,7 +34,7 @@ what she currently can't see.
    chunks → top-k), `ingest(source, items)` (chunk + embed + hash-guarded upsert),
    `rebuild()` (platform docs/*.md by heading + `KNOWLEDGE_SOURCES` contributions).
 6. `ai_assistant/management/commands/rebuild_knowledge.py` — CLI to (re)build.
-7. `ai_assistant/plugin.py:ready()` — `register_retriever(retrieve)`; contribute its
+7. `ai_assistant/app.py:ready()` — `register_retriever(retrieve)`; contribute its
    own docs source via `KNOWLEDGE_SOURCES`.
 8. Optional Linda tool `knowledge.search` so she can query explicitly.
 

@@ -18,7 +18,7 @@ Same logic that makes `core.audit`, `core.hooks`, `core.i18n` core.
 ```
 plugins/installed/media/
 ├── apps.py                  — AppConfig name='plugins.installed.media'
-├── plugin.py                — Plugin manifest (label, ready(), DashboardPage)
+├── app.py                — Plugin manifest (label, ready(), DashboardPage)
 ├── models.py                — MediaAsset (1 model)
 ├── views.py                 — library / upload / delete / edit_meta / picker / api_upload
 ├── urls.py                  — 6 path() routes, mounted at /dashboard/media/
@@ -40,7 +40,7 @@ core/media/
     └── 0002_state_only.py   — SeparateDatabaseAndState noop (see Phase 3)
 ```
 
-The plugin manifest (`plugin.py`) does NOT move. Instead, `morpheus`
+The plugin manifest (`app.py`) does NOT move. Instead, `morpheus`
 core gets a small `register_media()` hook that mounts the URLs + the
 sidebar entry. This is the same pattern other core modules use.
 
@@ -52,7 +52,7 @@ sidebar entry. This is the same pattern other core modules use.
 |---|---|---|
 | `core/assistant/tools/ecommerce.py:697` | `from plugins.installed.media.models import MediaAsset` | Update to `from core.media.models import MediaAsset` |
 | `core/management/commands/morph_backup.py:89` | Filesystem path only — not the model | No change needed |
-| `morph/settings.py:81` | `'plugins.installed.media'` in MORPHEUS_DEFAULT_PLUGINS | Remove |
+| `morph/settings.py:81` | `'plugins.installed.media'` in MORPHEUS_DEFAULT_APPS | Remove |
 | `morph/settings.py:335` | `MEDIA_ROOT = BASE_DIR / 'media'` | No change — that's the Django filesystem root, unrelated to the plugin |
 
 INSTALLED_APPS picks up `core.media` via the existing `core.*` glob (or
@@ -89,7 +89,7 @@ explicit add — check current settings).
    in the `core.*` block).
 
 3. **Don't yet** remove `plugins.installed.media` from
-   `MORPHEUS_DEFAULT_PLUGINS` — both exist briefly so we can compare
+   `MORPHEUS_DEFAULT_APPS` — both exist briefly so we can compare
    `Vendor` model resolution etc. before flipping.
 
 4. Update the one real import (`core/assistant/tools/ecommerce.py:697`)
@@ -122,7 +122,7 @@ will refuse to start because `MediaAsset` is declared in two app
 labels (`media` and `media`). Need to:
 
 1. **Disable the plugin first.** Set `name = ''` or remove from
-   MORPHEUS_DEFAULT_PLUGINS so its `apps.py` doesn't run, freeing
+   MORPHEUS_DEFAULT_APPS so its `apps.py` doesn't run, freeing
    the `media` app_label namespace for `core.media`.
 
 2. **Generate a state-only migration** in `core.media/migrations/0002`:
@@ -164,7 +164,7 @@ labels (`media` and `media`). Need to:
 After Phase 3 succeeds on live:
 
 1. `git rm -r plugins/installed/media/`
-2. Remove from `MORPHEUS_DEFAULT_PLUGINS` in settings.py
+2. Remove from `MORPHEUS_DEFAULT_APPS` in settings.py
 3. Smoke: redeploy, confirm `/dashboard/media/` still works
 4. Smoke: hit `/dashboard/media/api/upload/` with a test image
 
@@ -181,7 +181,7 @@ After Phase 3 succeeds on live:
 
 If Phase 3 goes wrong:
 
-1. Re-add `plugins.installed.media` to `MORPHEUS_DEFAULT_PLUGINS`.
+1. Re-add `plugins.installed.media` to `MORPHEUS_DEFAULT_APPS`.
 2. Remove `core.media` from `INSTALLED_APPS`.
 3. Revert the import in `core/assistant/tools/ecommerce.py`.
 4. `docker compose restart web`.

@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from core.models import StoreSettings
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 class StoreIdentityTests(TestCase):
@@ -35,7 +35,7 @@ class StoreIdentityTests(TestCase):
 
 class MaintenanceModeTests(TestCase):
     def setUp(self):
-        self.plugin = plugin_registry.get('storefront')
+        self.plugin = app_registry.get('storefront')
         self.addCleanup(self._restore)
         self._orig = self.plugin.get_config_value('maintenance_mode', False)
 

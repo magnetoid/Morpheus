@@ -88,9 +88,9 @@ class MaintenanceModeMiddleware:
         storefront request to avoid it is the worse trade.
         """
         try:
-            from plugins.registry import plugin_registry
+            from plugins.registry import app_registry
 
-            plugin = plugin_registry.get('storefront')
+            plugin = app_registry.get('storefront')
             return plugin.get_config_value(key, default) if plugin else default
         except Exception:  # noqa: BLE001 — a config problem must not close the shop
             return default

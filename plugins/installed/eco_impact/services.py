@@ -11,7 +11,7 @@ import logging
 from decimal import Decimal
 
 from plugins.installed.eco_impact import footprint
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 logger = logging.getLogger('morpheus.eco_impact')
 
@@ -27,7 +27,7 @@ _FACTOR_KEYS = (
 
 def _cfg(key, default):
     try:
-        return plugin_registry.config_value(_PLUGIN, key, default)
+        return app_registry.config_value(_PLUGIN, key, default)
     except Exception:  # noqa: BLE001 — settings must never break a render
         return default
 

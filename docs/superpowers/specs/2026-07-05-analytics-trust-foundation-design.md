@@ -64,7 +64,7 @@ analytics — `core.hooks` only, per contract):
   contract (`product=`, `customer=`), fail-soft (`try/except` + log).
 - `MorpheusEvents.SEARCH_PERFORMED` from the storefront search view
   (kwargs: `query=`, `results_count=`).
-- Analytics already subscribes to both (`plugin.py:ready`); its `_on_event`
+- Analytics already subscribes to both (`app.py:ready`); its `_on_event`
   handler records them with a session, so funnels stop depending on the
   ad-blockable beacon. The beacon keeps firing the same events client-side;
   the existing `idempotency_key` pathway dedupes where both land — verify and,
@@ -101,7 +101,7 @@ first-party operational data and continue to record (with `customer` when
 known, no analytics cookie).
 
 ### 6. Dashboard-home presence
-In `plugin.py:ready()`, register filters:
+In `app.py:ready()`, register filters:
 - `MorpheusEvents.DASHBOARD_KPIS` (`'dashboard.kpis'`) — append KPI dicts
   (sessions today, conversion rate, AI-referred revenue) computed from
   `DailyMetric` (cheap indexed reads, no event scans).
@@ -111,7 +111,7 @@ In `plugin.py:ready()`, register filters:
 Disable-safe for free via the hook bus's active-state gating.
 
 ### 7. Cohorts in nav + derived KPI rollups
-- `plugin.py:contribute_dashboard_pages`: add
+- `app.py:contribute_dashboard_pages`: add
   `DashboardPage(label='Cohorts', slug='cohorts', view='…views.cohort_view', icon='users', section='analytics', order=40)`.
 - `services.py:roll_daily`: upsert derived metrics `conversion_rate`
   (purchases/sessions), `aov` (revenue/orders), `cart_abandonment`

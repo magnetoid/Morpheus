@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def test_plugin_metadata():
-    from plugins.installed.ugc_reviews.plugin import UgcReviewsPlugin
+    from plugins.installed.ugc_reviews.app import UgcReviewsPlugin
 
     assert UgcReviewsPlugin.name == 'ugc_reviews'
     assert 'reviews' in UgcReviewsPlugin.requires

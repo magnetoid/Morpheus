@@ -11,7 +11,7 @@ collections get full create/edit here since there's no Django admin for them.
 
 from __future__ import annotations
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     messages,

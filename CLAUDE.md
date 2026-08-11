@@ -25,7 +25,7 @@ swap-able, disable-safe, and agent-legible, not a cap on how capable it may be.
 (ADR 0017, superseding the old "tiny core" framing of ADR 0010.) Anything that
 isn't *required* for catalog → cart → checkout → fulfillment lives in
 `plugins/installed/<name>/` with its own
-`apps.py`, `plugin.py` manifest, `models.py`, `migrations/`, and
+`apps.py`, `app.py` manifest, `models.py`, `migrations/`, and
 templates. Reach for `core/` only when the feature is genuinely
 foundational: auth, hooks, i18n kernel, request_id, observability,
 **the self-improvement loop** (autonomic engine + code-quality scanner +
@@ -46,8 +46,8 @@ Examples (this is what's already shipped — mirror the pattern):
 **Plugin contract:**
 
 - Single AppConfig in `apps.py` (plus `ready()` for signal/hook wiring).
-- Plugin manifest in `plugin.py` (name/label/version/requires/blocks/tools).
-- Register in `morph/settings.py:MORPHEUS_DEFAULT_PLUGINS`.
+- Plugin manifest in `app.py` (name/label/version/requires/blocks/tools).
+- Register in `morph/settings.py:MORPHEUS_DEFAULT_APPS`.
 - Add a migration before merge — system check fails on every prod boot
   if you ship a model without one.
 - Storefront integration through `StorefrontBlock(slot=...)` contributions,
@@ -55,12 +55,42 @@ Examples (this is what's already shipped — mirror the pattern):
 - Cross-plugin coupling through the `core.hooks` event bus — never import
   one plugin from another's models.
 - **Before creating a plugin, audit for overlap**: grep
-  `MORPHEUS_DEFAULT_PLUGINS` and the existing plugin descriptions, and
+  `MORPHEUS_DEFAULT_APPS` and the existing plugin descriptions, and
   justify the boundary in the PR. One concept = one model owner —
   extending a flow means a FK/OneToOne to the owner's model (declared in
   `requires`) plus hooks, **never a parallel table**. (PR #62 shipped a
   second, incompatible `ReturnRequest` invisible to the dashboard, RMA
   numbers, and the refund service; consolidated since.)
+
+**Convention — one word for the merchant ("app"), one shape in the tree.**
+The merchant-facing vocabulary is **Apps**, everywhere: nav, page titles,
+settings category, empty states. The code matches it at every seam a plugin
+author touches — manifest `app.py`, `app_registry`, `MORPHEUS_DEFAULT_APPS` /
+`MORPHEUS_EXTRA_APPS` / `MORPHEUS_APPS_DIR`, and the SDK door `morpheus.app`.
+**Two things deliberately still say "plugin"** and are not drift: the
+directory `plugins/installed/<name>/` and the base class `MorpheusPlugin`
+(exported as `Plugin`) — moving the directory would rewrite ~2,000 import
+paths and both CI boundary baselines, so it is a separate, opt-in change.
+`MORPHEUS_EXTRA_APPS` reads the old `MORPHEUS_EXTRA_PLUGINS` env var as a
+fallback, because that name lives in the deployment environment, not the repo
+— renaming the read alone would silently drop a live deployment's extra apps.
+
+**Landmine — two lists with the same name WILL drift, and the looser one
+wins where it's read.** `PROTECTED_PLUGINS` ("apps that soft-brick if
+disabled") existed twice: in `core/safety.py` (gating Linda's `plugins.disable`
+/ `plugins.toggle` tools) and as a frozenset inside `admin_dashboard` (gating
+the merchant's toggle). They diverged — the dashboard refused
+catalog/orders/payments/morpheus_brain while the AI path allowed all four, so
+the *automated* path was looser than the human one, and the tool's own comment
+claimed `orders` was covered when it wasn't. There is now one gate,
+`core.safety.is_plugin_protected()`, read by both surfaces; an app may also
+declare `protected = True` in its own manifest, and that is **one-way** — a
+manifest can add protection, never remove it, because an `app.py` is
+AI-editable and `core/safety.py` is in `FORBIDDEN_PATHS`. Same rule for
+`system = True` (hide from the Apps catalogue). When you add a
+classification about apps, put it on the app or in core — never a second list
+in a shell. Guarded by
+`admin_dashboard/tests/test_disable_guards.py::ProtectedAppGuardTests`.
 
 **A plugin owns all of its own code.** Every file a feature needs — views,
 URLs, templates, dashboard pages, settings panels, GraphQL, beat tasks —
@@ -259,7 +289,7 @@ over by v0.37 (`global_head`, `checkout_extra`, `pdp_below_gallery`,
 tokens never reaching `<head>`). Adding a slot means adding **both** the
 contribution and a `{% storefront_blocks "<slot>" %}` emit. Enforced by
 `core/tests/test_slot_parity.py`, which reads the **runtime registry** — never
-grep `plugin.py` for slots, because dynamics registers one per `SLOT_CHOICES`
+grep `app.py` for slots, because dynamics registers one per `SLOT_CHOICES`
 entry inside a loop and a text search misses all of them. A slot the active theme
 deliberately declines (dot_books drops `home_above_grid`; `journal` is an
 alternative whole-post renderer) goes in `_INTENTIONALLY_UNRENDERED` **with a
@@ -299,7 +329,7 @@ v0.36; **any model a deployment can actually reach must be added to `_PRICES`
 in the same change that makes it reachable** (`is_priced()` reports the gap). (3) The key names (`agents_paused`,
 `max_agent_runs_daily`, `spend_cap_daily`, `max_price_change_pct`,
 `max_refund_value`) are coupled by **string match** across three places — the
-panel schema + `get_config_schema` in `agent_core/plugin.py`, the accessors in
+panel schema + `get_config_schema` in `agent_core/app.py`, the accessors in
 `core/agents/guardrails.py`, and `compliance.py:_guardrail_config` — with no
 shared constant; a rename silently breaks enforcement AND the AI-Act report (both
 fail soft to off/empty). The kill switch aborts via `_fail` (a hard run stop),
@@ -311,7 +341,7 @@ unlimited). Guarded by `core/agents/tests/test_guardrails.py` +
 "isn't selected".** Adding a provider touches: (1) `core/agents/llm.py` — a
 `Provider` class **and** a `_PROVIDER_CLASSES` entry; (2)
 `core/agents/provider_registry.py` — `_DEFAULT_BASE_URLS` / `_DEFAULT_MODELS` /
-`_ENV_KEYS` / `_ENV_BASE`; (3) `ai_assistant/plugin.py` — schema fields + the
+`_ENV_KEYS` / `_ENV_BASE`; (3) `ai_assistant/app.py` — schema fields + the
 `ai_provider` enum, **and** the `_AI_PROVIDERS` catalog in
 `admin_dashboard/views_split/settings.py`. Miss #1 and `get_llm_provider`
 returns the unconfigured mock — the dashboard shows *"No AI provider selected"*
@@ -616,7 +646,7 @@ relevant Markdown *in the same commit* — not "later." Which doc:
 | You changed… | Update… |
 |---|---|
 | `core/` structure, a subsystem's job, the request lifecycle | `docs/ARCHITECTURE.md` |
-| a plugin's purpose / deps / the plugin contract | `docs/PLUGIN_DEVELOPMENT.md` (+ that plugin's `plugin.py`) |
+| a plugin's purpose / deps / the plugin contract | `docs/PLUGIN_DEVELOPMENT.md` (+ that plugin's `app.py`) |
 | a house rule, landmine, or convention | this file (`CLAUDE.md`) |
 | the public API / MCP / GraphQL surface | `docs/MORPHEUS_API.md`, `docs/MCP_SERVER.md` |
 | a skill's behaviour | `docs/SKILLS.md` + the skill's `SKILL.md` |
@@ -624,7 +654,7 @@ relevant Markdown *in the same commit* — not "later." Which doc:
 
 Prefer pointing at the source of truth over hard-coding volatile facts:
 a plugin *count* in prose rots (it drifted to 47/49/54 across three docs
-while the real number was 61) — write "see `MORPHEUS_DEFAULT_PLUGINS`."
+while the real number was 61) — write "see `MORPHEUS_DEFAULT_APPS`."
 
 Every time AI-assisted work ships a wrong assumption, the fix-up commit
 should also patch this file. If a rule is here twice, consolidate. If a

@@ -26,13 +26,13 @@
 **Files:**
 - Create: `plugins/installed/richtext/__init__.py` (empty)
 - Create: `plugins/installed/richtext/apps.py`
-- Create: `plugins/installed/richtext/plugin.py`
+- Create: `plugins/installed/richtext/app.py`
 - Create: `plugins/installed/richtext/.gitignore`
 - Create: `plugins/installed/richtext/tests/__init__.py`
-- Modify: `morph/settings.py` (add `'richtext'` to `MORPHEUS_DEFAULT_PLUGINS`, starts line 52)
+- Modify: `morph/settings.py` (add `'richtext'` to `MORPHEUS_DEFAULT_APPS`, starts line 52)
 
 **Interfaces:**
-- Produces: a `RichTextPlugin(Plugin)` with `name='richtext'`, `has_models=False`, registered in `MORPHEUS_DEFAULT_PLUGINS`; `plugin_registry.is_active('richtext')` returns `True` on a default boot.
+- Produces: a `RichTextPlugin(Plugin)` with `name='richtext'`, `has_models=False`, registered in `MORPHEUS_DEFAULT_APPS`; `app_registry.is_active('richtext')` returns `True` on a default boot.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -45,10 +45,10 @@ from django.test import SimpleTestCase
 
 class RichTextPluginContractTests(SimpleTestCase):
     def test_plugin_registered_and_active(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        self.assertTrue(plugin_registry.is_active('richtext'))
-        plugin = plugin_registry.get('richtext')
+        self.assertTrue(app_registry.is_active('richtext'))
+        plugin = app_registry.get('richtext')
         self.assertIsNotNone(plugin)
         self.assertEqual(plugin.name, 'richtext')
 ```
@@ -74,7 +74,7 @@ class RichTextConfig(AppConfig):
     verbose_name = 'Rich Text Editor (Lexical)'
 ```
 
-`plugins/installed/richtext/plugin.py`:
+`plugins/installed/richtext/app.py`:
 ```python
 """richtext — self-hosted vanilla Lexical editor, contributed as a plugin.
 
@@ -110,7 +110,7 @@ frontend/package-lock.json
 
 - [ ] **Step 4: Register in settings**
 
-In `morph/settings.py`, inside the `MORPHEUS_DEFAULT_PLUGINS` list (starts line 52), add `'richtext',` in alphabetical position (after `'reviews'` if present, else anywhere in the list).
+In `morph/settings.py`, inside the `MORPHEUS_DEFAULT_APPS` list (starts line 52), add `'richtext',` in alphabetical position (after `'reviews'` if present, else anywhere in the list).
 
 - [ ] **Step 5: Run test to verify it passes**
 
@@ -135,7 +135,7 @@ git commit -m "feat(richtext): plugin scaffold — Lexical editor as an app"
 - Modify: `plugins/installed/richtext/tests/__init__.py` (add render tests)
 
 **Interfaces:**
-- Consumes: `plugin_registry.is_active('richtext')` from Task 1.
+- Consumes: `app_registry.is_active('richtext')` from Task 1.
 - Produces: `{% richtext_field name value id allow_headings allow_images expose_as aria_label %}` inclusion tag. Active → a `<div class="rte" data-richtext data-allow-headings data-allow-images data-upload-url data-expose-as>` wrapper containing a toolbar, a `data-rte-mount` div, a hidden `.rte-source` textarea, and the real hidden `<textarea name="{name}" id="{id}">{value}`. Inactive → a bare `<textarea name="{name}" id="{id}" class="input" rows="10">{value}`. `value` is rendered inside a `<textarea>` (Django auto-escapes; the browser decodes it as the field value).
 
 - [ ] **Step 1: Write the failing tests**
@@ -183,14 +183,14 @@ class RichTextFieldTagTests(TestCase):
         self.assertNotIn('data-rte="h2"', without)
 
     def test_degrades_to_textarea_when_plugin_inactive(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        original = plugin_registry.is_active
-        plugin_registry.is_active = lambda n: False if n == 'richtext' else original(n)
+        original = app_registry.is_active
+        app_registry.is_active = lambda n: False if n == 'richtext' else original(n)
         try:
             html = _render(name='description', value='<p>x</p>', id='product-description')
         finally:
-            plugin_registry.is_active = original
+            app_registry.is_active = original
         self.assertNotIn('data-richtext', html)
         self.assertIn('name="description"', html)
         self.assertIn('id="product-description"', html)
@@ -282,9 +282,9 @@ def richtext_field(
     expose_as: str = '',
     aria_label: str = 'Rich text editor',
 ):
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    active = bool(plugin_registry.is_active('richtext'))
+    active = bool(app_registry.is_active('richtext'))
     return {
         'active': active,
         'name': name,

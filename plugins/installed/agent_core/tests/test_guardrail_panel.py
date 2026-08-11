@@ -19,9 +19,9 @@ _KEYS = {
 
 
 def _plugin():
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
-    return plugin_registry.get('agent_core')
+    return app_registry.get('agent_core')
 
 
 class GuardrailPanelTests(TestCase):

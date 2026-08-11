@@ -49,7 +49,7 @@ connecting one reveals its form and moves it into the connected list. Also add
   `_ENV_KEYS` (`DEEPSEEK_API_KEY`), and the base-url env key.
 - `core/agents/llm.py`: `DeepSeekProvider(OpenAIProvider)` (OpenAI-compatible) +
   register `'deepseek'` in `_PROVIDER_CLASSES`.
-- `ai_assistant/plugin.py`: `deepseek_api_key` (password) / `deepseek_base_url`
+- `ai_assistant/app.py`: `deepseek_api_key` (password) / `deepseek_base_url`
   / `deepseek_model` schema fields; add `'deepseek'` to the `ai_provider` enum;
   update the panel description.
 - Add DeepSeek to the provider **catalog** (below).

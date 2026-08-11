@@ -5,10 +5,10 @@ from __future__ import annotations
 
 def _plugin():
     try:
-        from plugins.registry import plugin_registry  # noqa: PLC0415
+        from plugins.registry import app_registry  # noqa: PLC0415
 
         for attr in ('get', 'get_plugin'):
-            fn = getattr(plugin_registry, attr, None)
+            fn = getattr(app_registry, attr, None)
             if callable(fn):
                 try:
                     p = fn('reddit_ads')

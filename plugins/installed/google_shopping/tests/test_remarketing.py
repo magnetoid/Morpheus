@@ -19,10 +19,10 @@ def _ctx(path='/'):
 
 def _gs_plugin():
     """The registry's live plugin instance — the one feed_settings() reads."""
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     for attr in ('get', 'get_plugin'):
-        fn = getattr(plugin_registry, attr, None)
+        fn = getattr(app_registry, attr, None)
         if callable(fn):
             try:
                 p = fn('google_shopping')
@@ -30,7 +30,7 @@ def _gs_plugin():
                 p = None
             if p is not None:
                 return p
-    from plugins.installed.google_shopping.plugin import GoogleShoppingPlugin
+    from plugins.installed.google_shopping.app import GoogleShoppingPlugin
 
     return GoogleShoppingPlugin()
 

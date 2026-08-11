@@ -67,10 +67,10 @@ def _enforce_intent_engine_enabled() -> None:
     propose new intents (existing intents still transition). Fail-soft: any
     config-lookup error leaves the engine enabled so the flow never breaks on
     an infra hiccup."""
-    from plugins.registry import plugin_registry  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
 
     try:
-        plugin = plugin_registry.get('ai_assistant')
+        plugin = app_registry.get('ai_assistant')
         enabled = plugin.get_config_value('enable_intent_engine', True) if plugin else True
     except Exception:  # noqa: BLE001
         enabled = True

@@ -21,7 +21,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from djmoney.money import Money
 
-from morpheus.plugin.views import HttpRequest, HttpResponse
+from morpheus.app.views import HttpRequest, HttpResponse
 from plugins.installed.catalog.models import Product, Vendor
 from plugins.installed.marketplace import services
 from plugins.installed.marketplace.models import (
@@ -30,7 +30,7 @@ from plugins.installed.marketplace.models import (
     VendorPayout,
     VendorPayoutAccount,
 )
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 
 @login_required(login_url='/auth/login/')
@@ -361,7 +361,7 @@ def vendor_payouts(request: HttpRequest) -> HttpResponse:
         vendor=vendor,
         defaults={'method': 'unset'},
     )
-    plugin = plugin_registry.get('marketplace')
+    plugin = app_registry.get('marketplace')
     threshold_raw = plugin.get_config_value('min_payout_threshold', 50) if plugin else 50
     try:
         threshold = Decimal(str(threshold_raw))

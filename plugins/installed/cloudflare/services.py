@@ -461,7 +461,7 @@ def purge_for_product_update(product) -> list:
 
 
 def purge_for_category_update(category) -> list:
-    """Tag-based companion to the URL-based hook in plugin.py.
+    """Tag-based companion to the URL-based hook in app.py.
 
     Tag namespace: `category:<slug>` + `category:<id>`. The plugin
     hook layer fires URL purges for /c/<slug>; this complements with
@@ -494,9 +494,9 @@ def purge_for_category_update(category) -> list:
 def _turnstile_config() -> dict:
     """Cloudflare plugin config (Turnstile keys + toggle) from PluginConfig."""
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        p = plugin_registry.get('cloudflare')
+        p = app_registry.get('cloudflare')
         return (p.get_config() if p else {}) or {}
     except Exception:  # noqa: BLE001
         return {}

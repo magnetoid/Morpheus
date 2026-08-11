@@ -5,7 +5,7 @@ from __future__ import annotations
 from django.core.cache import cache
 from django.http import HttpResponse
 
-from morpheus.plugin.views import render, staff_member_required
+from morpheus.app.views import render, staff_member_required
 
 FEED_CACHE_KEY = 'snapchat_commerce:feed:v1'
 _FEED_TTL = 60 * 60

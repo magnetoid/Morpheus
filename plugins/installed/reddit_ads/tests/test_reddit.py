@@ -19,10 +19,10 @@ User = get_user_model()
 
 
 def _plugin():
-    from plugins.registry import plugin_registry
+    from plugins.registry import app_registry
 
     for attr in ('get', 'get_plugin'):
-        fn = getattr(plugin_registry, attr, None)
+        fn = getattr(app_registry, attr, None)
         if callable(fn):
             try:
                 p = fn('reddit_ads')
@@ -30,7 +30,7 @@ def _plugin():
                 p = None
             if p is not None:
                 return p
-    from plugins.installed.reddit_ads.plugin import RedditAdsPlugin
+    from plugins.installed.reddit_ads.app import RedditAdsPlugin
 
     return RedditAdsPlugin()
 

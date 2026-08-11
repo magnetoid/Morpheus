@@ -198,9 +198,9 @@ def evaluate_all_product_prices():
     disabled in plugin config so scheduling is safe by default.
     """
     try:
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        plugin = plugin_registry.get('ai_assistant')
+        plugin = app_registry.get('ai_assistant')
         if plugin is None or not plugin.get_config_value('enable_dynamic_pricing', False):
             return
     except Exception:  # noqa: BLE001

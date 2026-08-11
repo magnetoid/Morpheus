@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from morpheus.plugin.views import (
+from morpheus.app.views import (
     get_object_or_404,
     messages,
     redirect,

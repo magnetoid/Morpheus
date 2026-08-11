@@ -147,7 +147,7 @@ Deep dive: [`docs/MCP_SERVER.md`](docs/MCP_SERVER.md) · [`docs/AGENT_PROTOCOLS.
 
 | Door | For | Exposes |
 |---|---|---|
-| `morpheus.plugin` | plugin authors | `Plugin`, `StorefrontBlock`, `DashboardPage`, `SettingsPanel`, `.views/.models/.forms` |
+| `morpheus.app` | plugin authors | `Plugin`, `StorefrontBlock`, `DashboardPage`, `SettingsPanel`, `.views/.models/.forms` |
 | `morpheus.core` | cross-cutting | `events`, `hooks`, `tool`, `ToolResult`, `record_ai_decision`, `Money`, … |
 | `morpheus.theme` | theme authors | storefront slot contract |
 
@@ -157,7 +157,7 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ## 🧩 Everything is a plugin
 
-All **108** shipped capabilities are toggleable plugins (source of truth: `MORPHEUS_DEFAULT_PLUGINS` in `morph/settings.py`). A sampling by domain:
+All **108** shipped capabilities are toggleable plugins (source of truth: `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`). A sampling by domain:
 
 - **Core commerce** — `catalog` · `orders` · `inventory` · `payments` · `shipping` · `tax` · `checkout_experience` · `draft_orders` · `customers` · `one_click` · `smart_shipping` · `advanced_payments`
 - **Merchandising & pricing** — `promotions` · `gift_cards` · `loyalty_points` · `subscriptions` · `drops` · `bundles`-style flows · `markets` · `metafields`
@@ -250,9 +250,9 @@ morph/
 │   ├── assistant/             # Linda's conversational runtime
 │   ├── hooks.py               # the fire/filter event bus (plugin coupling goes here)
 │   └── safety.py              # single source of truth for what AI may touch
-├── morph/                     # Django project: settings, root urls, MORPHEUS_DEFAULT_PLUGINS
+├── morph/                     # Django project: settings, root urls, MORPHEUS_DEFAULT_APPS
 ├── morpheus/                  # the three SDK doors: {plugin, core, theme}
-├── plugins/installed/<name>/  # all 108 features — apps.py, plugin.py, models, migrations, templates
+├── plugins/installed/<name>/  # all 108 features — apps.py, app.py, models, migrations, templates
 ├── themes/                    # storefront themes (contribution-driven; e.g. dot_books)
 ├── api/                       # GraphQL view + hardening
 ├── scripts/                   # CI ratchets (core-boundary, plugin-boundary, api-stability, release)

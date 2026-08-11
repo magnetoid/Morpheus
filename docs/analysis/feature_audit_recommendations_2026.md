@@ -224,7 +224,7 @@ R20. Open-redirect helper reuse
 | Code generation + apply | `core/assistant/codegen.py`, `apply.py` |
 | AI plugins (Assistant, Content, Stylist, Store Bootstrap) | `plugins/installed/ai_*` |
 | Plugin base class with metadata validation | `plugins/base.py:MorpheusPlugin` |
-| Plugin registry with topological activation | `plugins/registry.py:PluginRegistry` |
+| Plugin registry with topological activation | `plugins/registry.py:AppRegistry` |
 | Contribution system | `plugins/contributions.py` (StorefrontBlock, DashboardPage, SettingsPanel) |
 | Plugin scaffolder | `morph_create_plugin` (--with-models, --with-urls, --with-graphql, --with-tasks) |
 | `morpheus check` system | `morph check` (plugin metadata + leaked-import scan) |
@@ -375,8 +375,8 @@ R20. Open-redirect helper reuse
 | Edge cache control middleware | `plugins/installed/storefront/middleware.py` |
 | CMS (Page, Section, Block, Menu, Form, EmailTemplate) | `plugins/installed/cms/models.py` |
 | CMS XSS sanitization (bleach) | `cms/models.py:_sanitize_html` |
-| CMS dashboard pages (Pages, Blocks, Menus, Forms) | `plugins/installed/cms/plugin.py` |
-| CMS agent tools (CRUD) | `plugins/installed/cms/plugin.py` |
+| CMS dashboard pages (Pages, Blocks, Menus, Forms) | `plugins/installed/cms/app.py` |
+| CMS agent tools (CRUD) | `plugins/installed/cms/app.py` |
 | Media unified asset manager | `plugins/installed/media/` |
 | Lookbook plugin (PDP injection) | `plugins/installed/lookbook/` |
 | Motion plugin (CSS+JS, respects `prefers-reduced-motion`) | `plugins/installed/motion/` |
@@ -635,10 +635,10 @@ R20. Open-redirect helper reuse
 - `plugins/installed/pwa/{plugin,models,views,templates/pwa/blocks/register,templates/pwa/offline}.html`
 - `plugins/installed/cms/{plugin,models}.py`
 - `plugins/installed/lookbook/{plugin,models,templates/lookbook/blocks/{featured_looks,in_this_look}}.html`
-- `plugins/installed/motion/plugin.py`
+- `plugins/installed/motion/app.py`
 - `plugins/installed/webstories/{plugin,models,views,urls}.py`
 - `plugins/installed/flipbook/{plugin,views,urls,templates/flipbook/reader}.html`
-- `plugins/installed/media/plugin.py`
+- `plugins/installed/media/app.py`
 - `plugins/installed/{reviews,ugc_reviews,trust_signals,wishlist,save_for_later,cart_abandonment,one_click,drops,checkout_experience,rich_post_purchase,affiliates,referrals,seo,discovery_quiz,ai_stylist,personalisation,immersive_pdp,product_gallery,product_videos,gift_cards,journal,book_product,brand_kit,rails}/`
 - `themes/library/dot_books/templates/storefront/product_detail.html`
 - `core/i18n/`
@@ -657,6 +657,6 @@ R20. Open-redirect helper reuse
 2. Adds the missing layer (e.g. MFA on top of RBAC; metrics on top of traces)
 3. Replaces a current limitation (e.g. `asattr('channels')` smell → explicit protocol; report-only CSP → enforcing)
 
-**No redundant suggestions** — every feature was checked against `MORPHEUS_DEFAULT_PLUGINS` (84 plugins) and the core/ infrastructure before being added to the list.
+**No redundant suggestions** — every feature was checked against `MORPHEUS_DEFAULT_APPS` (84 plugins) and the core/ infrastructure before being added to the list.
 
 This document is **observation-only; no code was changed.**

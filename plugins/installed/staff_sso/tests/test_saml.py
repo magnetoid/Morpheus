@@ -24,7 +24,7 @@ from django.utils import timezone
 
 from plugins.installed.staff_sso import services
 from plugins.installed.staff_sso.adapters import StaffSsoAdapter, _user_in_db
-from plugins.registry import plugin_registry
+from plugins.registry import app_registry
 
 User = get_user_model()
 
@@ -84,7 +84,7 @@ def _configure(*, domains='acme.com', groups='', enabled=True, mfa=True, saml_en
             },
         },
     )
-    plugin = plugin_registry.get('staff_sso')
+    plugin = app_registry.get('staff_sso')
     if plugin is not None:
         plugin.invalidate_config_cache()
 
@@ -93,13 +93,13 @@ def _configure(*, domains='acme.com', groups='', enabled=True, mfa=True, saml_en
     services.sync_saml_app(services.get_saml_settings(plugin) if plugin else {})
 
     if enabled:
-        plugin_registry._active.add('staff_sso')
+        app_registry._active.add('staff_sso')
     else:
-        plugin_registry._active.discard('staff_sso')
+        app_registry._active.discard('staff_sso')
     if mfa:
-        plugin_registry._active.add('staff_mfa')
+        app_registry._active.add('staff_mfa')
     else:
-        plugin_registry._active.discard('staff_mfa')
+        app_registry._active.discard('staff_mfa')
     return plugin
 
 

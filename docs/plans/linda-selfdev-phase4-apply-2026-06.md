@@ -26,7 +26,7 @@ Per ADR 0014 (blast radius = under `plugins/installed/`, never core) + ADR 0013
 - **`plugins/installed/linda_generated/`** — human-authored host (scaffolded this
   phase). `ready()` auto-imports `tools/*.py`, so a tool file dropped there
   registers its `@tool` on next boot. Empty initially (harmless). Registered in
-  `MORPHEUS_DEFAULT_PLUGINS`. Disable it → all of Linda's generated tools vanish.
+  `MORPHEUS_DEFAULT_APPS`. Disable it → all of Linda's generated tools vanish.
 - `code.draft_tool` target_path changes → `plugins/installed/linda_generated/tools/<slug>.py`.
 
 ## `core/assistant/apply.py` (the engine — gated, dormant)

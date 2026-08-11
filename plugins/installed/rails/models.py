@@ -9,7 +9,7 @@ list takes precedence.
 
 from __future__ import annotations
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class CuratedRail(models.Model):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from django.contrib.auth.models import AnonymousUser
 from django.test import SimpleTestCase
 
-from plugins.installed.marketplace.plugin import MarketplacePlugin
+from plugins.installed.marketplace.app import MarketplacePlugin
 from plugins.installed.marketplace.templatetags.marketplace_account import vendor_for
 
 

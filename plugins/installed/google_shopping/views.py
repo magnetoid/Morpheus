@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.http import HttpResponse
 from django.shortcuts import redirect
 
-from morpheus.plugin.views import render, staff_member_required
+from morpheus.app.views import render, staff_member_required
 
 _OAUTH_CALLBACK_PATH = '/dashboard/apps/google_shopping/oauth-callback/'
 

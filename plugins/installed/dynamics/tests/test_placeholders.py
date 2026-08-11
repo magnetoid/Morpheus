@@ -107,17 +107,17 @@ class ReorderTests(TestCase):
 
 class DisableGatingTests(TestCase):
     def test_inactive_dynamics_reverts_to_default(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
         DynamicBlock.objects.create(
             name='Featured', surface='home_featured', strategy='new_arrivals'
         )
         _product('one')
-        was_active = plugin_registry.is_active('dynamics')
+        was_active = app_registry.is_active('dynamics')
         try:
-            plugin_registry._active.discard('dynamics')
+            app_registry._active.discard('dynamics')
             # Bus gates on active-state (ADR 0023): handler skipped → default stands.
             self.assertIsNone(_fire(None, 'home_featured'))
         finally:
             if was_active:
-                plugin_registry._active.add('dynamics')
+                app_registry._active.add('dynamics')

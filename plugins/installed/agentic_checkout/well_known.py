@@ -12,8 +12,8 @@ from __future__ import annotations
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_http_methods
 
+from plugins.installed.agentic_checkout.app import ACP_API_VERSION
 from plugins.installed.agentic_checkout.auth import ACP_SCOPE
-from plugins.installed.agentic_checkout.plugin import ACP_API_VERSION
 
 
 @require_http_methods(['GET'])

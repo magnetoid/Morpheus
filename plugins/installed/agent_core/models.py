@@ -29,7 +29,7 @@ from core.agents.models import (  # noqa: F401
     AgentRun,
     AgentStep,
 )
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class AgentConversation(models.Model):

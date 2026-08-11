@@ -84,9 +84,9 @@ class SecondFactorSubscriber(TestCase):
     """The AUTH_SECOND_FACTOR decision — the heart of the disable/enforce logic."""
 
     def setUp(self):
-        from plugins.registry import plugin_registry
+        from plugins.registry import app_registry
 
-        self.plugin = plugin_registry.get('staff_mfa')
+        self.plugin = app_registry.get('staff_mfa')
         self.rf = RequestFactory()
 
     def _req(self):

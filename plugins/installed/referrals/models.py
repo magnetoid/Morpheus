@@ -9,7 +9,7 @@ ledger entry is queued for both sides.
 
 from __future__ import annotations
 
-from morpheus.plugin import models
+from morpheus.app import models
 
 
 class ReferralCode(models.Model):
