@@ -63,6 +63,43 @@ Out of scope:
   no longer enforce (e.g. X-XSS-Protection on modern browsers).
 - Social engineering, phishing of maintainers, physical attacks.
 
+## Role-based access control (enforcement is opt-in)
+
+Morpheus ships roles and capabilities (`rbac` app: 26 capabilities, six built-in
+role templates, optionally scoped per sales channel). **Enforcement defaults to
+log-only**, so installing an update never changes who can do what.
+
+The three modes live in **Settings → Other apps → Roles & permissions**:
+
+| Mode | Behaviour |
+|---|---|
+| `off` | No capability check runs. |
+| `log` *(default)* | Every check runs and records what it **would** have denied, then allows it. |
+| `enforce` | Failed checks are denied — 403, or a JSON error for dashboard fetch endpoints. |
+
+**Recommended rollout.** Leave it on `log`, assign roles to your staff, then
+read the audit log for `authz.would_deny` events. Each one is an action someone
+performs today that enforcement would block. When that list contains only things
+you *want* blocked, switch to `enforce`.
+
+Two properties worth knowing before you flip it:
+
+- **Superusers always pass**, so you cannot lock yourself out of your own store.
+- **Staff users with no role hold no capabilities.** In `enforce` mode a staff
+  account without a role binding loses access to every gated action. Assign
+  roles *before* switching.
+
+If the `rbac` app is absent or fails to answer, the check falls back to the
+historical `is_staff` behaviour rather than denying — an authorization layer
+that failed closed on its own absence would lock every merchant out on a single
+hiccup. Denial is always an explicit choice.
+
+Coverage today is **partial and expanding**: the money and destructive paths
+(order refunds and state changes, product/variant/media writes and deletes,
+customer and collection deletes) are gated. Read-only list views and the
+remaining settings surfaces are not yet. Ungated actions behave exactly as they
+did before, i.e. staff-only.
+
 ## What we already do
 
 - `SecurityHeadersMiddleware` emits HSTS, X-Content-Type-Options,

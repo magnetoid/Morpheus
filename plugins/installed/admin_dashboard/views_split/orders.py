@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -189,6 +190,7 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('orders.write')
 def order_new(request: HttpRequest) -> HttpResponse:
     """Create a draft order from the dashboard.
 
@@ -244,6 +246,7 @@ def _mark_order_paid(order) -> bool:
 
 
 @staff_member_required
+@require_capability('orders.write')
 def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
     """POST-only side-effects on an existing order (cancel, mark paid, …)."""
     if request.method != 'POST':
@@ -302,6 +305,7 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('orders.write')
 def order_fulfill(request: HttpRequest, order_number: str) -> HttpResponse:
     """Create a Fulfillment record for an order; optionally also flip the
     order's status to 'shipped' via the FSM."""
@@ -338,6 +342,7 @@ def order_fulfill(request: HttpRequest, order_number: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('orders.refund')
 def order_refund(request: HttpRequest, order_number: str) -> HttpResponse:
     from plugins.installed.orders.models import Order
 
@@ -365,6 +370,7 @@ def order_refund(request: HttpRequest, order_number: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('orders.write')
 def orders_bulk(request: HttpRequest) -> HttpResponse:
     """Bulk action endpoint for the orders list page.
 

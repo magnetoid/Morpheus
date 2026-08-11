@@ -11,6 +11,8 @@ collections get full create/edit here since there's no Django admin for them.
 
 from __future__ import annotations
 
+from core.authz import require_capability
+
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -109,6 +111,7 @@ def collection_edit(request: HttpRequest, collection_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def collection_delete(request: HttpRequest, collection_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Collection
 

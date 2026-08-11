@@ -643,6 +643,22 @@ class MorpheusEvents:
     #   disabled ai_content yields the plain prompt (ADR 0017 inversion).
     AGENT_SYSTEM_PROMPT = 'agent.system_prompt'  # filter
 
+    # AUTHZ_CAPABILITY_CHECK — filter, value=None|bool ("has anyone answered?"),
+    #   kwargs: user, capability (e.g. 'orders.refund'), channel. Fired by
+    #   core/authz.py:has_capability, which is the ONE question every sensitive
+    #   surface asks. The rbac app subscribes and answers True/False from the
+    #   user's role bindings; `value` stays None when no authority is installed,
+    #   and core then falls back to `is_staff` — the pre-RBAC behaviour.
+    #   Deliberately fail-OPEN on absence: an authorization layer that failed
+    #   closed when its own answerer is missing would lock every merchant out of
+    #   their dashboard on a single hiccup. Denial is opt-in via the rbac
+    #   `enforcement_mode` setting (off | log | enforce; default log = record
+    #   what WOULD be denied, deny nothing), never an accident. This is the same
+    #   core-fires/plugin-answers inversion as PRODUCT_CALCULATE_PRICE and
+    #   AGENT_SYSTEM_PROMPT — a direct dashboard→rbac import would be exactly
+    #   the plugin→plugin coupling the boundary ratchet blocks.
+    AUTHZ_CAPABILITY_CHECK = 'authz.capability_check'  # filter
+
     # KNOWLEDGE_SOURCES — filter, value=list (accumulates knowledge documents
     #   for Linda's RAG index). Each subscriber APPENDS dicts of the shape
     #   {source: str, ref: str, title: str, text: str} for the unstructured

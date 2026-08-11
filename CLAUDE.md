@@ -62,6 +62,25 @@ Examples (this is what's already shipped — mirror the pattern):
   second, incompatible `ReturnRequest` invisible to the dashboard, RMA
   numbers, and the refund service; consolidated since.)
 
+**Landmine — a capability no role can hold denies EVERYONE, and only once
+enforcement is on.** Authorization goes through one seam, `core/authz.py`
+(`has_capability` / `check` / `@require_capability`), which fires
+`AUTHZ_CAPABILITY_CHECK`; the `rbac` app answers from role bindings. A direct
+`admin_dashboard → rbac` import would be the plugin→plugin coupling the ratchet
+blocks, so core fires and the app answers — same inversion as
+`PRODUCT_CALCULATE_PRICE`. **The seam fails OPEN on absence** (nothing answers →
+fall back to `is_staff`): an authorization layer that failed closed when its own
+answerer is missing would lock every merchant out of their dashboard. Denial is
+opt-in via rbac's `enforcement_mode` (`off` | `log` | `enforce`, default
+**log** = record what *would* be denied, deny nothing). **The trap:** a view
+gated on a capability that is not in `rbac._DEFAULT_TEMPLATES` looks fine, tests
+green, until someone switches to `enforce` — then it denies everyone but
+superusers, forever, because no role grants it. (`marketing.write` was written
+this way and caught before it shipped; there is no `marketing.*` capability.)
+Guarded by `core/tests/test_authz.py::CapabilityVocabularyTests`, which scans
+every `@require_capability` on disk against the vocabulary. When gating a new
+view, use an existing capability or add it to the templates in the same change.
+
 **Convention — one word for the merchant ("app"), one shape in the tree.**
 The merchant-facing vocabulary is **Apps**, everywhere: nav, page titles,
 settings category, empty states. The code matches it at every seam a plugin

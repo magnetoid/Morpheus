@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.43.0 — 2026-08-11
+
+**RBAC enforcement, phase 1 — capabilities are finally checked**
+
+- Roles and capabilities have shipped since v0.x but nothing ever called has_capability(): all 83 dashboard views were gated on is_staff alone, so a support agent or content editor held the same power as the owner. Roles were labels with no effect.
+- Adds the authorization seam core/authz.py. Core asks (AUTHZ_CAPABILITY_CHECK), the rbac app answers from role bindings — a direct dashboard->rbac import would be the plugin-to-plugin coupling the boundary ratchet blocks. Same inversion as the pricing seam.
+- Enforcement is OPT-IN and defaults to log-only: every check runs and records what it WOULD have denied, then allows it. Settings -> Other apps -> Roles & permissions switches between off / log / enforce. Installing this changes nobody's access.
+- The seam fails OPEN on absence: if rbac is missing or cannot answer, the check falls back to the historical is_staff behaviour. An authorization layer that failed closed when its own answerer is missing would lock every merchant out of their dashboard.
+- Gated in this phase: order refunds and state changes, product/variant/image/video writes and deletes, customer/address/collection deletes (21 views). Read-only views and remaining settings surfaces still behave exactly as before.
+- Superusers always pass, so you cannot lock yourself out. Staff with no role hold nothing — assign roles before switching to enforce.
+
 ## v0.42.0 — 2026-08-11
 
 **Apps, not plugins: one vocabulary, one surface, one protected-app gate**

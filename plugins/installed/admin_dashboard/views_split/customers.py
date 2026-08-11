@@ -12,6 +12,7 @@ from typing import Any
 
 from django.db.models import Sum
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -260,6 +261,7 @@ def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('crm.write')
 def customer_delete(request: HttpRequest, customer_id: str) -> HttpResponse:
     from django.contrib.auth import get_user_model
 
@@ -344,6 +346,7 @@ def address_edit(request: HttpRequest, customer_id: str, address_id: str) -> Htt
 
 
 @staff_member_required
+@require_capability('crm.write')
 def address_delete(request: HttpRequest, customer_id: str, address_id: str) -> HttpResponse:
     from plugins.installed.customers.models import Address
 

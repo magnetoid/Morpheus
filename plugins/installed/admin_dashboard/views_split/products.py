@@ -8,6 +8,8 @@
 # integrations + PLR0912 on the hot-path catalog editing flows.
 from __future__ import annotations
 
+from core.authz import require_capability
+
 from decimal import Decimal
 from typing import Any
 
@@ -211,6 +213,7 @@ def _seo_field_defaults(product) -> dict:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def product_new(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         form = ProductForm(request.POST, files=request.FILES)
@@ -368,6 +371,7 @@ def _collect_product_list_columns(products, request) -> list:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
 
@@ -449,6 +453,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def product_delete(request: HttpRequest, product_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import Product
 
@@ -462,6 +467,7 @@ def product_delete(request: HttpRequest, product_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def product_archive(request: HttpRequest, product_id: str) -> HttpResponse:
     """Soft-archive (or restore) a product — flips status between
     'active' and 'archived'. Confirmed via modal on the product list.
@@ -492,6 +498,7 @@ def _get_product(product_id: str):
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def variant_new(request: HttpRequest, product_id: str) -> HttpResponse:
     product = _get_product(product_id)
     if request.method == 'POST':
@@ -521,6 +528,7 @@ def variant_new(request: HttpRequest, product_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductVariant
 
@@ -549,6 +557,7 @@ def variant_edit(request: HttpRequest, product_id: str, variant_id: str) -> Http
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def variant_delete(request: HttpRequest, product_id: str, variant_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductVariant
 
@@ -564,6 +573,7 @@ def variant_delete(request: HttpRequest, product_id: str, variant_id: str) -> Ht
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:  # noqa: PLR0911
     """POST-only: accept a multipart upload, attach to product.
 
@@ -651,6 +661,7 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:  # noqa
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def image_delete(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
     from plugins.installed.catalog.models import ProductImage
 
@@ -663,6 +674,7 @@ def image_delete(request: HttpRequest, product_id: str, image_id: str) -> HttpRe
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def image_reorder(request: HttpRequest, product_id: str) -> HttpResponse:
     """Persist new sort_order for a product's images.
 
@@ -708,6 +720,7 @@ def image_reorder(request: HttpRequest, product_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def video_add(request: HttpRequest, product_id: str) -> HttpResponse:
     """Attach a video (YouTube/Vimeo URL, direct mp4, or raw iframe)
     to a product. Phase 2 of docs/plans/product-slider.md — moves
@@ -751,6 +764,7 @@ def video_add(request: HttpRequest, product_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def video_delete(request: HttpRequest, product_id: str, video_id: str) -> HttpResponse:
     if request.method != 'POST':
         return redirect('admin_dashboard:product_edit', product_id=product_id)
@@ -767,6 +781,7 @@ def video_delete(request: HttpRequest, product_id: str, video_id: str) -> HttpRe
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def image_edit(request: HttpRequest, product_id: str, image_id: str) -> HttpResponse:
     """Inline metadata edit for a ProductImage — alt_text + description.
 

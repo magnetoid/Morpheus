@@ -6,7 +6,10 @@ class AppsSurfaceSmoke(TestCase):
     def setUp(self):
         U = get_user_model()
         self.staff = U.objects.create_user(
-            username='smoke_staff', email='smoke@example.com', password='x', is_staff=True,
+            username='smoke_staff',
+            email='smoke@example.com',
+            password='x',
+            is_staff=True,
             is_superuser=True,
         )
         self.client.force_login(self.staff)
