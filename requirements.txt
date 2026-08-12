@@ -28,6 +28,10 @@ django-storages>=1.14.6
 boto3>=1.43.36
 psycopg2-binary>=2.9.12
 django-allauth[socialaccount]>=65.18.0
+# cryptography — Ed25519 for release-manifest signing (core/signing.py) and
+# the licence checks the commercial edition needs. Already present as a
+# pyjwt[crypto] transitive, but core imports it directly, so it is pinned here.
+cryptography>=45.0.0
 # pyjwt[crypto] is allauth's [socialaccount] extra — required by the
 # openid_connect provider (staff_sso); it is hard-imported at app load, so its
 # absence crashes boot once the provider app is in INSTALLED_APPS.

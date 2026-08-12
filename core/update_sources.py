@@ -176,6 +176,73 @@ class GitHubReleaseSource(UpdateSource):
         )
 
 
+class SignedManifestSource(UpdateSource):
+    """Resolve the latest release from a signed manifest at a fixed URL.
+
+    This is the channel an open-core distribution actually needs: a stable,
+    brandable URL the publisher controls, carrying artifacts, checksums and —
+    critically — an Ed25519 signature verified against a key compiled into this
+    deployment.
+
+    **Fails closed.** An unsigned manifest, a bad signature, a wrong key, or no
+    configured public key all yield `None`. The transport is not trusted: HTTPS
+    proves you reached *a* server, not that the publisher wrote the bytes.
+    """
+
+    name = 'manifest'
+
+    def __init__(self, url: str, public_key_b64: str) -> None:
+        self.url = (url or '').strip()
+        self.public_key = (public_key_b64 or '').strip()
+
+    def latest(self) -> ReleaseInfo | None:  # noqa: PLR0911 — flat guard clauses
+        if not self.url:
+            return None
+        if not self.url.lower().startswith('https://'):
+            logger.error('updates: refusing a non-HTTPS manifest URL')
+            return None
+        if not self.public_key:
+            logger.error(
+                'updates: a manifest URL is set but no public key — refusing to '
+                'trust an unverifiable manifest. Set MORPHEUS_UPDATE_PUBLIC_KEY.'
+            )
+            return None
+        try:
+            req = urllib.request.Request(  # noqa: S310 — https enforced above
+                self.url, headers={'User-Agent': _USER_AGENT, 'Accept': 'application/json'}
+            )
+            with urllib.request.urlopen(  # noqa: S310
+                req, timeout=_TIMEOUT, context=_ssl_context()
+            ) as resp:
+                doc = json.loads(resp.read().decode('utf-8'))
+        except Exception:  # noqa: BLE001 — unreachable/malformed: unknown, not "no"
+            logger.warning('updates: manifest unreachable at %s', self.url, exc_info=True)
+            return None
+
+        from core.signing import verify_manifest
+
+        if not verify_manifest(doc, self.public_key):
+            logger.error(
+                'updates: manifest at %s failed signature verification — ignoring it '
+                'entirely. This is either a misconfigured key or a tampered channel.',
+                self.url,
+            )
+            return None
+
+        core = doc.get('core') or {}
+        version = str(core.get('version') or '').strip()
+        if not version:
+            return None
+        return ReleaseInfo(
+            version=version,
+            notes=str(core.get('notes') or ''),
+            url=str(core.get('notes') or ''),
+            artifact=str(core.get('artifact') or ''),
+            sha256=str(core.get('sha256') or ''),
+            signature=str(doc.get('signature') or ''),
+        )
+
+
 def configured_source() -> UpdateSource | None:
     """Build the source this deployment is configured to use, or None.
 
@@ -183,10 +250,21 @@ def configured_source() -> UpdateSource | None:
     config: the updater must resolve before any app is guaranteed active, and
     `core/updates.py` is permanently core for the same reason.
 
-        MORPHEUS_UPDATE_REPO   e.g. 'magnetoid/morpheus'
-        MORPHEUS_UPDATE_TOKEN  optional; required for a private repository
+        MORPHEUS_UPDATE_MANIFEST_URL  a signed manifest (preferred)
+        MORPHEUS_UPDATE_PUBLIC_KEY    base64 Ed25519 key that must sign it
+        MORPHEUS_UPDATE_REPO          e.g. 'magnetoid/morpheus' (fallback)
+        MORPHEUS_UPDATE_TOKEN         optional; required for a private repository
+
+    The signed manifest wins when configured: it is the only source that proves
+    the publisher produced the bytes. The GitHub source is a convenience for a
+    deployment tracking its own repository, and carries no such proof.
     """
     from django.conf import settings
+
+    manifest_url = str(getattr(settings, 'MORPHEUS_UPDATE_MANIFEST_URL', '') or '').strip()
+    if manifest_url:
+        public_key = str(getattr(settings, 'MORPHEUS_UPDATE_PUBLIC_KEY', '') or '').strip()
+        return SignedManifestSource(manifest_url, public_key)
 
     repo = str(getattr(settings, 'MORPHEUS_UPDATE_REPO', '') or '').strip()
     if not repo:

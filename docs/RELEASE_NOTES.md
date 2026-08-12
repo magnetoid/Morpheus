@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.43.3 — 2026-08-12
+
+**Signed release manifests (Ed25519)**
+
+- core/signing.py adds Ed25519 signing and verification over a canonical JSON form, SignedManifestSource fetches and verifies a manifest before trusting a word of it, and manage.py morph_sign_manifest generates keys and signs releases on the publisher side. A signed manifest takes precedence over the GitHub source, because it proves the publisher produced the bytes — HTTPS only proves you reached a server.
+- Verification fails CLOSED, deliberately the opposite of the authorization seam. An unsigned manifest, a bad signature, a wrong key, a missing public key or a non-HTTPS URL all cause the source to be ignored entirely. Running unverified code is worse than not updating; locking a merchant out of their dashboard is worse than a missed permission check. The two postures are opposite on purpose.
+- cryptography is now a direct requirement rather than a pyjwt[crypto] transitive, since core imports it. The same keypair will serve the commercial edition's licence checks.
+- Not built, and labelled as such in docs/UPDATING.md: hosting the manifest, verifying an artifact during apply, and per-app/theme channels. The apps and themes keys are emitted empty and clients read core only, so filling them later is backwards-compatible.
+
 ## v0.43.2 — 2026-08-12
 
 **Update checks work without git; TLS verified against certifi**

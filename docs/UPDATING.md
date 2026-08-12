@@ -1,7 +1,7 @@
 # Updating Morpheus
 
 > Status of this document: **verified against the running deployment on
-> 2026-08-11 (v0.42.0)**, updated 2026-08-12 for v0.43.2. Claims here were checked, not assumed. Where a
+> 2026-08-11 (v0.42.0)**, updated 2026-08-12 for v0.43.3. Claims here were checked, not assumed. Where a
 > capability exists but does not currently function, this says so plainly.
 
 Morpheus updates three kinds of thing, and they do **not** share a mechanism:
@@ -80,9 +80,9 @@ Two behaviours worth knowing:
   Verification is never disabled: an unverified update channel is worse than
   none.
 
-Still missing before this is a real channel: **signatures** (nothing verifies
-the artifact), and **per-app/theme sources** (the only unit of update is still
-the whole platform).
+Signing landed in v0.43.3 (see the manifest section below). Still missing:
+**artifact verification during apply**, and **per-app/theme sources** — the only
+unit of update is still the whole platform.
 
 ---
 
@@ -120,21 +120,53 @@ open-core product:
 
 - An operator who runs a **published image** has no upstream branch to fast-forward.
 - An operator who installed from a **tarball or package index** has no git at all.
-- Nobody gets **integrity guarantees** — a fast-forward trusts whatever the remote says. There is no signature, no checksum, no provenance.
-- Apps and themes have **no independent channel**. A merchant cannot update one app; the only unit of update is the whole platform.
+- Nobody gets **integrity guarantees on the git path** — a fast-forward trusts whatever the remote says. (The signed-manifest source added in v0.43.3 does verify; the git path does not and cannot.)
+- Apps and themes have **no independent channel**. A merchant cannot update one app; the only unit of update is the whole platform. **Still true.**
 
 Phase 3 of the plan ("a pluggable `UpdateSource` per component") was designed
-for exactly this and is **not built**. The status log records the interim
-decision — *"Channel decided = git refs/tags"* — which is the decision this
-section supersedes for distributed installs.
+for exactly this. The *interface* now exists (v0.43.2) with two implementations,
+but it resolves the **platform** only — nothing yet resolves an individual app
+or theme. The status log records the interim decision — *"Channel decided = git
+refs/tags"* — which this section supersedes for distributed installs.
 
 ---
 
 ## Design: a release channel on `morpheus.direct`
 
-This is the shape the open-core product needs. It is **not implemented**; it is
-recorded here so the next person builds the right thing rather than extending
-the git path further.
+This is the shape the open-core product needs. **Partly implemented as of
+v0.43.3** — the signing and verification half exists; hosting and per-component
+channels do not. What is built and what is not is marked inline below.
+
+**Built:** `core/signing.py` (Ed25519 sign/verify with a canonical JSON form),
+`SignedManifestSource` in `core/update_sources.py`, and
+`manage.py morph_sign_manifest` for the publisher side.
+
+```bash
+# once, on the release machine — the private key never leaves it
+python manage.py morph_sign_manifest --generate-key
+
+# each release
+MORPHEUS_SIGNING_KEY=… python manage.py morph_sign_manifest \
+    --artifact https://morpheus.direct/dist/morpheus-0.43.3.tar.gz \
+    --sha256 … --out stable.json
+```
+
+Deployments then set `MORPHEUS_UPDATE_MANIFEST_URL` and
+`MORPHEUS_UPDATE_PUBLIC_KEY`. A signed manifest takes precedence over the
+GitHub source, because it proves the *publisher* produced the bytes; HTTPS only
+proves you reached a server.
+
+**Verification fails closed** — the deliberate opposite of `core/authz.py`. An
+unsigned manifest, a bad signature, a wrong key, a missing public key, or a
+non-HTTPS URL all cause the source to be ignored entirely. Running unverified
+code is worse than not updating. (Authorization fails *open* because locking a
+merchant out of their own dashboard is worse than a missed permission check —
+the two postures are opposite on purpose.)
+
+**Not built:** hosting the manifest anywhere, downloading and verifying an
+artifact during apply, and per-app/theme entries (the `apps` and `themes` keys
+are emitted empty and clients read `core` only, so filling them later is
+backwards-compatible).
 
 ### 1. A signed release manifest
 
