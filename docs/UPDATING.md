@@ -1,7 +1,7 @@
 # Updating Morpheus
 
 > Status of this document: **verified against the running deployment on
-> 2026-08-11 (v0.42.0)**. Claims here were checked, not assumed. Where a
+> 2026-08-11 (v0.42.0)**, updated 2026-08-12 for v0.43.2. Claims here were checked, not assumed. Where a
 > capability exists but does not currently function, this says so plainly.
 
 Morpheus updates three kinds of thing, and they do **not** share a mechanism:
@@ -51,6 +51,41 @@ this loudly. Treat any update that migrates as backup-first.
 
 ---
 
+## Update checks without git (v0.43.2)
+
+`core/update_sources.py` adds a pluggable `UpdateSource`, with a
+`GitHubReleaseSource` implementation. When a deployment has no `.git`,
+`platform_update_status()` now falls back to the configured source instead of
+giving up, so a container install can finally *ask* whether an update exists:
+
+```bash
+MORPHEUS_UPDATE_REPO=magnetoid/morpheus   # owner/repo
+MORPHEUS_UPDATE_TOKEN=…                   # only while the repo is private
+```
+
+This is **check only** — applying is still git-based and still gated by
+`MORPHEUS_SELF_UPDATE_ENABLED`.
+
+Two behaviours worth knowing:
+
+- **A private repository answers 404 to an anonymous client**, which is
+  indistinguishable from "no releases yet". That is reported as `unknown` with a
+  reason, never as "up to date". Telling a merchant they are current when we
+  cannot see the releases is the worst failure mode an updater has.
+- **TLS is verified against certifi's bundle** when available. `urllib` uses the
+  interpreter's default trust store, which is empty on a python.org macOS build
+  unless `Install Certificates.command` was run — every request then dies with
+  `CERTIFICATE_VERIFY_FAILED` and the source merely looks "unreachable". This
+  was caught by contract-testing against the live API; every mocked test passed.
+  Verification is never disabled: an unverified update channel is worse than
+  none.
+
+Still missing before this is a real channel: **signatures** (nothing verifies
+the artifact), and **per-app/theme sources** (the only unit of update is still
+the whole platform).
+
+---
+
 ## What does not work, and why
 
 ### The updater is inert on this production deployment
@@ -70,6 +105,11 @@ image from a source copy without git metadata, and updates happen by
 **rebuild + redeploy** (a push to `main`), not by the in-place updater. That is
 a legitimate and arguably safer model. It just means: **do not rely on the
 in-app updater on a container deployment. Redeploy.**
+
+Since v0.43.2 the *check* half no longer depends on git — set
+`MORPHEUS_UPDATE_REPO` and the section above takes over, so the dashboard can at
+least tell you a newer version exists. **Applying** still requires git and is
+still the wrong tool here; the answer on a container remains "redeploy".
 
 ### The channel model does not fit open-core distribution
 

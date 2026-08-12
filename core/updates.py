@@ -74,6 +74,18 @@ def platform_update_status(*, fetch: bool = False) -> dict:
     """
     root = _repo_root()
     if not (root / '.git').exists():
+        # No git metadata — a built image, which is how this platform actually
+        # deploys. Historically that ended the story and the updater reported
+        # `unavailable` forever, so a container install could not even ASK
+        # whether an update existed. Fall back to the configured release source
+        # (see core/update_sources.py) before giving up.
+        from core.update_sources import check_for_update, configured_source
+
+        if configured_source() is not None:
+            from core.versioning import component_versions
+
+            current = str((component_versions() or {}).get('core') or 'unknown')
+            return check_for_update(current)
         return {
             'source': 'git',
             'available': 'unavailable',

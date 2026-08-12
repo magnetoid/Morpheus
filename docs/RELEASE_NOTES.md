@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.43.2 — 2026-08-12
+
+**Update checks work without git; TLS verified against certifi**
+
+- A deployment built as a container image has no .git, so the updater could not even ask whether an update existed — it reported 'unavailable' and stopped. core/update_sources.py adds a pluggable UpdateSource with a GitHub Releases implementation, and platform_update_status() falls back to it. Configure with MORPHEUS_UPDATE_REPO (owner/repo) and, while the repository is private, MORPHEUS_UPDATE_TOKEN. Check only — applying is unchanged and still gated by MORPHEUS_SELF_UPDATE_ENABLED.
+- A private repository answers 404 to an anonymous client, which is indistinguishable from 'no releases yet'. That is reported as unknown with a reason, never as 'up to date' — telling a merchant they are current when we cannot see the releases is the worst thing an updater can do.
+- TLS is verified against certifi's bundle when present. urllib uses the interpreter's default trust store, which is empty on a python.org macOS build, so every request failed with CERTIFICATE_VERIFY_FAILED and the source merely looked unreachable. Found by contract-testing against the live GitHub API; every mocked test had passed. Verification is never disabled.
+
 ## v0.43.1 — 2026-08-12
 
 **Every test passes; a production cache bug fixed**

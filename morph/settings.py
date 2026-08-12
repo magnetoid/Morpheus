@@ -36,12 +36,21 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.43.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.43.2')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
 # is on. See core/updates.py + docs/plans/updating-system-2026-06.md.
 MORPHEUS_SELF_UPDATE_ENABLED = config('MORPHEUS_SELF_UPDATE_ENABLED', default=False, cast=bool)
+
+# Release channel for update *checks* (read-only; applying is still gated by
+# MORPHEUS_SELF_UPDATE_ENABLED above). Without this, a deployment built as a
+# container image has no `.git` and therefore no way to ask whether an update
+# exists at all. `owner/repo` on GitHub; the token is only needed while the
+# repository is private — a private repo answers 404 to an anonymous client,
+# which core/update_sources.py reports as "unknown", never as "up to date".
+MORPHEUS_UPDATE_REPO = config('MORPHEUS_UPDATE_REPO', default='')
+MORPHEUS_UPDATE_TOKEN = config('MORPHEUS_UPDATE_TOKEN', default='')
 
 # Optional Google Places API key — when set, checkout/address forms
 # surface address autocomplete. Empty string disables the feature
