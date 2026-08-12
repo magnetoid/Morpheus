@@ -59,21 +59,32 @@ class SmartCacheInvalidator:
         )
         logger.info('SmartCacheInvalidator bound to Morpheus Event Bus.')
 
+    # The GraphQL response cache keys every entry `graphql:query:<hash>` — see
+    # api/cache.py. The hash is of the query text + variables, so the key says
+    # nothing about which entities the response touched: there is no way to
+    # invalidate "just the product queries". These patterns must therefore match
+    # what api/cache.py actually writes, and clearing is necessarily broad.
+    #
+    # They previously deleted `gql:*product*` / `rest:*product*` — prefixes
+    # nothing has ever written. Every delete matched zero keys, so a product
+    # edit left the API serving the old price and title until the TTL lapsed,
+    # on production only (local dev has no delete_pattern and falls through to
+    # cache.clear(), which is why it never showed up in development).
+    _QUERY_CACHE_PATTERNS = ('graphql:query:*', 'rest:*')
+
+    @staticmethod
+    def _clear_query_caches(reason: str) -> None:
+        if hasattr(cache, 'delete_pattern'):
+            for pattern in SmartCacheInvalidator._QUERY_CACHE_PATTERNS:
+                cache.delete_pattern(pattern)
+        else:
+            cache.clear()  # LocMem in dev/tests has no delete_pattern
+        logger.info('Invalidated query caches (%s)', reason)
+
     @staticmethod
     def _clear_product_cache(product, **kwargs):
-        # In a real Redis cluster, we'd use 'delete_pattern'
-        # e.g., cache.delete_pattern("gql:product*")
-        logger.info(f'Invalidating Product Cache (triggered by {product.name})')
-        if hasattr(cache, 'delete_pattern'):
-            cache.delete_pattern('gql:*product*')
-            cache.delete_pattern('rest:*product*')
-        else:
-            cache.clear()  # Fallback for local dev
+        SmartCacheInvalidator._clear_query_caches(f'product {getattr(product, "name", "?")}')
 
     @staticmethod
     def _clear_category_cache(category, **kwargs):
-        logger.info(f'Invalidating Category Cache (triggered by {category.name})')
-        if hasattr(cache, 'delete_pattern'):
-            cache.delete_pattern('gql:*category*')
-        else:
-            cache.clear()
+        SmartCacheInvalidator._clear_query_caches(f'category {getattr(category, "name", "?")}')

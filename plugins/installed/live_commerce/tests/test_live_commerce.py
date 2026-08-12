@@ -86,8 +86,12 @@ class StorefrontTests(TestCase):
         resp = Client().get(f'/live/{e.slug}/')
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
-        # Ordered by sort_order → p2 ('Two') appears before p1 ('One').
-        self.assertLess(body.index('Two'), body.index('One'))
+        # Ordered by sort_order → p2 appears before p1.
+        # Match on the SLUGS, not the display names: the theme's own copy
+        # contains the word "One" ("One bold move; everything…") thousands of
+        # characters earlier in the page, so index('One') found marketing prose
+        # and this asserted the products were mis-ordered when they never were.
+        self.assertLess(body.index('book-2'), body.index('book-1'))
         # Product links carry the live UTM campaign.
         self.assertIn('utm_source=live', body)
         self.assertIn('utm_campaign=spring-show', body)

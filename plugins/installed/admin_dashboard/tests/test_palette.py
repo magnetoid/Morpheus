@@ -48,7 +48,9 @@ class PaletteSearchTests(TestCase):
     def test_nav_covers_registered_plugin_pages(self):
         # A DashboardPage (e.g. marketplace 'Vendors') is searchable — the nav
         # comes from the registry, not a hardcoded list.
-        labels = [h['label'].lower() for h in _hits(self.client, 'vendor') if h['section'] == 'Go to']
+        labels = [
+            h['label'].lower() for h in _hits(self.client, 'vendor') if h['section'] == 'Go to'
+        ]
         self.assertTrue(any('vendor' in x for x in labels))
 
     def test_product_matches_by_name_and_sku(self):

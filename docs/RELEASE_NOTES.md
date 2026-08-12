@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.43.1 — 2026-08-12
+
+**Every test passes; a production cache bug fixed**
+
+- The GraphQL response cache was never actually invalidated. api/cache.py keys entries graphql:query:<hash>, the invalidator deleted gql:*product*, and nothing has ever written that prefix — so a product edit invalidated zero keys and the API kept serving the old price and title until the TTL lapsed. Production only: dev and tests use LocMem, which has no delete_pattern and falls through to clearing everything, so development always looked correct.
+- Fixed the six long-standing test failures. Four came from one test registering a real agent tool under a fake owner and then dropping that owner, which deleted the real catalog tool from the process-global registry for every later test. One posted a page slug that gdpr.0002 already seeds during migrate, so it asserted on collision handling while claiming to test creation. One asserted product ordering with body.index('One'), which matched the theme's own marketing copy 26,000 characters before the product grid — the ordering had always been correct.
+- The full suite now runs clean: 2,621 tests, zero failures.
+
 ## v0.43.0 — 2026-08-11
 
 **RBAC enforcement, phase 1 — capabilities are finally checked**

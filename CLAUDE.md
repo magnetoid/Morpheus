@@ -62,6 +62,39 @@ Examples (this is what's already shipped — mirror the pattern):
   second, incompatible `ReturnRequest` invisible to the dashboard, RMA
   numbers, and the refund service; consolidated since.)
 
+**Landmine — a cache invalidator that deletes a prefix nothing writes is a
+no-op that ONLY misbehaves in production.** `api/cache.py` keys GraphQL
+responses `graphql:query:<hash>`; `core/utils/cache.py` deleted
+`gql:*product*`, which nothing has ever written, so every product edit
+invalidated **zero** keys and the API served stale prices until the TTL lapsed.
+Dev never showed it: `delete_pattern` exists on django-redis, while dev/tests
+use LocMem, which lacks it and falls through to `cache.clear()` — so
+development always looked correct. The two files never import each other, so
+nothing tied them together. Note the key is a hash of query+variables and says
+nothing about which entities the response touched, so per-entity invalidation
+is impossible by construction — clearing is necessarily broad. Guarded by
+`core/tests/test_cache_invalidation.py`, which asserts the patterns actually
+match a key built the way `api/cache.py` builds it.
+
+**Landmine — registering a real tool under a fake owner hands over ownership,
+and dropping the fake owner deletes the real tool.** `agent_registry` is
+process-global. A test did `register_tool(products_update_status_tool,
+plugin='__hygiene_test')` then `drop_plugin('__hygiene_test')` in `finally` —
+which removed the REAL catalog tool for every test that ran later in the same
+process, producing four "order-dependent" failures with no obvious cause. Save
+and restore the prior registration (`get_tool` + `_tool_owners`) instead of
+dropping. More generally: when a test mutates a process-global registry, restore
+the previous *value*, never assume removal is the inverse of registration.
+
+**Landmine — `body.index('Word')` on a rendered page finds the THEME'S copy.**
+A live_commerce test asserted product order via `body.index('Two') <
+body.index('One')` and failed for a year — because dot_books' own marketing
+prose contains *"One bold move; everything…"* 26,000 characters before the
+product grid. The products were ordered correctly the whole time. Assert on a
+unique marker (a slug, an id, a contribution-specific string), never a bare
+display word — the same rule `test_slot_parity` already states for
+`'<style' in head`.
+
 **Landmine — a capability no role can hold denies EVERYONE, and only once
 enforcement is on.** Authorization goes through one seam, `core/authz.py`
 (`has_capability` / `check` / `@require_capability`), which fires

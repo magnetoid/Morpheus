@@ -130,6 +130,15 @@ class RoutineStagedRunTests(TestCase):
                 LLMResponse(text='Staged one fix.'),
             ]
         )
+        # `agent_registry` is process-global and this tool is normally owned by
+        # the catalog app. Registering it under a fake owner transfers that
+        # ownership, so dropping the fake owner afterwards deleted the REAL
+        # tool for every test that ran later in the same process — which is
+        # exactly how four catalog tests came to fail only in a full-suite run.
+        # Restore the prior registration instead of dropping.
+        name = products_update_status_tool.name
+        prior_tool = agent_registry.get_tool(name)
+        prior_owner = agent_registry._tool_owners.get(name)
         agent_registry.register_tool(products_update_status_tool, plugin='__hygiene_test')
         try:
             with patch(
@@ -137,7 +146,10 @@ class RoutineStagedRunTests(TestCase):
             ):
                 out = scheduler.fire(bg)
         finally:
-            agent_registry.drop_plugin('__hygiene_test')
+            if prior_tool is not None:
+                agent_registry.register_tool(prior_tool, plugin=prior_owner)
+            else:
+                agent_registry.drop_plugin('__hygiene_test')
 
         self.assertTrue(out['ok'])
         self.assertEqual(out['state'], 'completed')

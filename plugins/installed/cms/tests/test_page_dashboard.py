@@ -49,12 +49,17 @@ class PageDashboardTests(TestCase):
 
     # ── CRUD ──────────────────────────────────────────────────────────────
     def test_create_page(self):
+        # NOT 'terms': gdpr.0002 seeds the legal pages (privacy/terms/imprint/
+        # cookies/accessibility/faq) during migrate, so the test database already
+        # holds that slug. Posting it made the view reject a slug clash and
+        # re-render 200, and this asserted on collision handling while claiming
+        # to test creation.
         self._staff()
         r = self.client.post(
             NEW_URL,
             {
-                'title': 'Terms',
-                'slug': 'terms',
+                'title': 'Shipping Policy',
+                'slug': 'shipping-policy',
                 'excerpt': 'Legal',
                 'body': '<h2>Terms</h2><ul><li>One</li></ul>',
                 'state': 'published',
@@ -63,7 +68,7 @@ class PageDashboardTests(TestCase):
             },
         )
         self.assertRedirects(r, LIST_URL, fetch_redirect_response=False)
-        page = Page.objects.get(slug='terms')
+        page = Page.objects.get(slug='shipping-policy')
         self.assertIn('<h2>Terms</h2>', page.body)  # body persisted through bleach
 
     def test_edit_page(self):
