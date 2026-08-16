@@ -41,6 +41,20 @@ class AdminDashboardPlugin(Plugin):
                     'when': timezone.now(),
                 }
             )
+        components = status.get('components') or []
+        if components:
+            names = ', '.join(c.get('name', '') for c in components[:3])
+            more = f' +{len(components) - 3}' if len(components) > 3 else ''
+            value.append(
+                {
+                    'kind': 'update',
+                    'icon': 'package',
+                    'label': f'{len(components)} app/theme update(s) available',
+                    'hint': f'{names}{more}',
+                    'url': '/dashboard/updates/',
+                    'when': timezone.now(),
+                }
+            )
         return value
 
     def get_config_schema(self):

@@ -18,11 +18,14 @@ class UpdateCheckTests(TestCase):
         cache.delete('morpheus:update_status')
 
     def test_refresh_caches_status(self):
-        with patch('core.updates.platform_update_status', return_value=BEHIND) as m:
+        with patch('core.updates.platform_update_status', return_value=dict(BEHIND)) as m:
             out = refresh_update_status()
         m.assert_called_once_with(fetch=True)
-        self.assertEqual(out, BEHIND)
-        self.assertEqual(cached_update_status(), BEHIND)
+        self.assertEqual({k: out[k] for k in BEHIND}, BEHIND)
+        # A git status knows nothing about apps/themes; refresh fills the key
+        # (empty here — no release source configured) so readers need no guard.
+        self.assertEqual(out['components'], [])
+        self.assertEqual(cached_update_status(), out)
 
     def test_cached_status_is_none_before_first_check(self):
         self.assertIsNone(cached_update_status())

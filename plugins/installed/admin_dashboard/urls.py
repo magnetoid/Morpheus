@@ -245,6 +245,11 @@ urlpatterns = [
     path('updates/', views.updates_page, name='updates'),
     path('updates/check/', views.updates_check, name='updates_check'),
     path('updates/apply/', views.updates_apply, name='updates_apply'),
+    path(
+        'updates/apply-component/',
+        views.updates_apply_component,
+        name='updates_apply_component',
+    ),
     path('customers/', views.customers_list, name='customers'),
     path('customers/bulk/', views.customers_bulk, name='customers_bulk'),
     path('customers/new/', views.customer_new, name='customer_new'),

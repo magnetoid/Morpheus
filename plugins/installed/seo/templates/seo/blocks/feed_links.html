@@ -1,0 +1,9 @@
+{% comment %}
+Journal RSS/Atom autodiscovery — contributed by seo (global_head), not written
+into the theme, so it disappears with the plugin. It used to be two hard
+`{% url 'seo:…' %}` lines in dot_books' base.html: once seo was disabled and the
+process restarted, its URLs were gone and every storefront page 500'd on the
+reverse. A block is only rendered while its owner is active.
+{% endcomment %}
+<link rel="alternate" type="application/rss+xml" title="Journal feed" href="{% url 'seo:journal_rss' %}">
+<link rel="alternate" type="application/atom+xml" title="Journal Atom feed" href="{% url 'seo:journal_atom' %}">

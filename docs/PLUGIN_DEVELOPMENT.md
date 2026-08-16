@@ -859,6 +859,27 @@ loop imports `<path>.plugin` regardless of where the package lives on disk.
 **Naming convention:** prefix package names with `morph-` so they're
 discoverable on PyPI.
 
+### Shipping updates to installed copies (the per-app channel)
+
+An app installed on its own (Path A) can be updated **without** the merchant
+redeploying the platform: the publisher lists it in the signed release manifest
+and the merchant's Updates page offers it. See
+[`UPDATING.md` → "Updating one app or theme"](UPDATING.md#updating-one-app-or-theme-v0440).
+What you, the author, must produce per release:
+
+- a `.tar.gz` with **one** top-level directory (`my_app/` or `my_app-1.4.0/`)
+  containing the app tree — `app.py` at its root, and if it has models,
+  `migrations/__init__.py` (the client refuses an archive without it, because
+  Django would never see the migrations);
+- its `sha256`, and a `min_core` if the release needs a platform version;
+- an entry in the publisher's `components.json`, signed into the manifest with
+  `manage.py morph_sign_manifest --components`.
+
+The client verifies the manifest signature, then the checksum, then inspects
+the archive before it touches the installed tree; the previous version is
+restored on any failure. Apps that ship with core (`MORPHEUS_DEFAULT_APPS`)
+are **not** updated this way — they are part of the platform release.
+
 ---
 
 ## 15. Cookbook

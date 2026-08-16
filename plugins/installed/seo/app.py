@@ -213,6 +213,15 @@ class SeoPlugin(Plugin):
                 priority=40,  # after trust_strip (30); above the fold but below price
                 context_keys=['product'],
             ),
+            # Journal RSS/Atom autodiscovery in <head>. Contributed rather than
+            # written into the theme so it vanishes with the plugin — the theme
+            # once reversed `seo:journal_rss` directly, and with seo disabled
+            # that NoReverseMatch took down every storefront page.
+            StorefrontBlock(
+                slot='global_head',
+                template='seo/blocks/feed_links.html',
+                priority=20,
+            ),
         ]
 
     def contribute_agent_tools(self) -> list:

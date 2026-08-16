@@ -67,6 +67,29 @@ class ReleaseInfo:
     prerelease: bool = False
 
 
+COMPONENT_KINDS = ('app', 'theme')
+
+
+@dataclass(frozen=True)
+class ComponentRelease:
+    """One published version of an *app* or *theme* — the per-component channel.
+
+    Apps and themes that ship inside the platform tree are versioned and updated
+    with core. This describes the others: an app or theme installed on its own
+    (a commercial app, a third-party theme) that needs a channel of its own,
+    because a merchant must be able to update one of them without redeploying
+    the whole platform.
+    """
+
+    kind: str  # 'app' | 'theme'
+    name: str
+    version: str
+    artifact: str = ''
+    sha256: str = ''
+    min_core: str = ''  # oldest core this version runs on; '' = any
+    notes: str = ''
+
+
 def parse_version(value: str) -> tuple[int, ...]:
     """`'v1.2.3'` → `(1, 2, 3)`. Unparseable → `()`, which sorts lowest.
 
@@ -102,6 +125,16 @@ class UpdateSource:
 
     def latest(self) -> ReleaseInfo | None:  # pragma: no cover - interface
         raise NotImplementedError
+
+    def components(self) -> list[ComponentRelease]:
+        """Per-app / per-theme releases this source publishes. Default: none.
+
+        Only a source that can *prove* who published an entry may offer one —
+        an app update is arbitrary code that will be imported at boot, so the
+        GitHub source (transport-authenticated only) deliberately returns
+        nothing here.
+        """
+        return []
 
 
 class GitHubReleaseSource(UpdateSource):
@@ -194,8 +227,19 @@ class SignedManifestSource(UpdateSource):
     def __init__(self, url: str, public_key_b64: str) -> None:
         self.url = (url or '').strip()
         self.public_key = (public_key_b64 or '').strip()
+        self._doc: dict | None = None
+        self._fetched = False
 
-    def latest(self) -> ReleaseInfo | None:  # noqa: PLR0911 — flat guard clauses
+    def _verified_document(self) -> dict | None:  # noqa: PLR0911 — flat guard clauses
+        """Fetch the manifest once and return it only if its signature verifies.
+
+        Memoised per instance so `latest()` and `components()` — which a single
+        check calls back to back — read one verified document rather than
+        fetching twice and risking a mid-check swap between them.
+        """
+        if self._fetched:
+            return self._doc
+        self._fetched = True
         if not self.url:
             return None
         if not self.url.lower().startswith('https://'):
@@ -228,7 +272,13 @@ class SignedManifestSource(UpdateSource):
                 self.url,
             )
             return None
+        self._doc = doc
+        return doc
 
+    def latest(self) -> ReleaseInfo | None:
+        doc = self._verified_document()
+        if doc is None:
+            return None
         core = doc.get('core') or {}
         version = str(core.get('version') or '').strip()
         if not version:
@@ -241,6 +291,40 @@ class SignedManifestSource(UpdateSource):
             sha256=str(core.get('sha256') or ''),
             signature=str(doc.get('signature') or ''),
         )
+
+    def components(self) -> list[ComponentRelease]:
+        """Every app/theme entry of a *verified* manifest — nothing otherwise.
+
+        The signature covers the whole document, so each entry's `sha256` is
+        bound to the publisher's key: an artifact that hashes to it is one the
+        publisher vouched for, not merely one a server handed us.
+        """
+        doc = self._verified_document()
+        if doc is None:
+            return []
+        out: list[ComponentRelease] = []
+        for kind, key in (('app', 'apps'), ('theme', 'themes')):
+            entries = doc.get(key) or {}
+            if not isinstance(entries, dict):
+                continue
+            for name, entry in entries.items():
+                if not isinstance(entry, dict):
+                    continue
+                version = str(entry.get('version') or '').strip()
+                if not name or not version:
+                    continue
+                out.append(
+                    ComponentRelease(
+                        kind=kind,
+                        name=str(name),
+                        version=version,
+                        artifact=str(entry.get('artifact') or ''),
+                        sha256=str(entry.get('sha256') or '').lower(),
+                        min_core=str(entry.get('min_core') or ''),
+                        notes=str(entry.get('notes') or ''),
+                    )
+                )
+        return out
 
 
 def configured_source() -> UpdateSource | None:
@@ -273,12 +357,70 @@ def configured_source() -> UpdateSource | None:
     return GitHubReleaseSource(repo, token)
 
 
+def installed_components() -> dict[tuple[str, str], str]:
+    """`{(kind, name): version}` for every registered app and discovered theme."""
+    from core.versioning import plugin_versions, theme_versions
+
+    out: dict[tuple[str, str], str] = {}
+    for p in plugin_versions():
+        out[('app', p['name'])] = str(p.get('version') or '')
+    for t in theme_versions():
+        out[('theme', t['name'])] = str(t.get('version') or '')
+    return out
+
+
+def component_updates(
+    source: UpdateSource | None = None,
+    installed: dict[tuple[str, str], str] | None = None,
+    core_version: str | None = None,
+) -> list[dict]:
+    """Apps/themes the source publishes a newer version of than what's installed.
+
+    Only components that are *installed here* are reported — a manifest may
+    list a hundred apps; a merchant cares about the three they run. Each entry
+    is `{kind, name, current, latest, artifact, sha256, min_core, notes,
+    core_ok}`, where `core_ok` is False when the release needs a newer core
+    than this deployment runs: still shown (so the merchant learns core is the
+    blocker), but `apply` refuses it.
+    """
+    source = source if source is not None else configured_source()
+    if source is None:
+        return []
+    installed = installed if installed is not None else installed_components()
+    if core_version is None:
+        from core.versioning import core_version as _core
+
+        core_version = _core()
+
+    out: list[dict] = []
+    for rel in source.components():
+        current = installed.get((rel.kind, rel.name))
+        if current is None or not is_newer(rel.version, current):
+            continue
+        out.append(
+            {
+                'kind': rel.kind,
+                'name': rel.name,
+                'current': current,
+                'latest': rel.version,
+                'artifact': rel.artifact,
+                'sha256': rel.sha256,
+                'min_core': rel.min_core,
+                'notes': rel.notes,
+                'core_ok': not rel.min_core or not is_newer(rel.min_core, core_version),
+            }
+        )
+    return out
+
+
 def check_for_update(current_version: str) -> dict:
     """Ask the configured source whether something newer exists.
 
     Returns the same `available ∈ {yes, no, unknown, unavailable}` vocabulary
     `core/updates.py:platform_update_status` uses, so a caller can treat the
-    git path and this path identically.
+    git path and this path identically. `components` lists per-app/theme
+    updates (see `component_updates`); it is empty for a source that cannot
+    vouch for component artifacts.
     """
     source = configured_source()
     if source is None:
@@ -287,6 +429,7 @@ def check_for_update(current_version: str) -> dict:
             'available': 'unavailable',
             'reason': 'No update source configured (set MORPHEUS_UPDATE_REPO).',
             'current': current_version,
+            'components': [],
         }
 
     release = source.latest()
@@ -296,6 +439,7 @@ def check_for_update(current_version: str) -> dict:
             'available': 'unknown',
             'reason': 'Update source unreachable, or its releases are not visible to us.',
             'current': current_version,
+            'components': [],
         }
 
     newer = is_newer(release.version, current_version)
@@ -307,4 +451,5 @@ def check_for_update(current_version: str) -> dict:
         'notes_url': release.url,
         'artifact': release.artifact,
         'prerelease': release.prerelease,
+        'components': component_updates(source, core_version=current_version),
     }

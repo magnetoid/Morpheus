@@ -201,6 +201,38 @@ example — is repaid: its list column + fulfilment card + bulk action arrive
 via `PRODUCT_LIST_COLUMNS` / `PRODUCT_FORM_CARDS`, guarded by
 `test_disable_guards.py::ProductShellContributionGuards`.)
 
+**Landmine — a runtime toggle that refreshes the WRONG URL module is a no-op
+that only misbehaves after the next restart.** `registry._refresh_urlconf`
+rebuilt `plugins.urls`, but since the ADR 0022 split the root urlconf includes
+`plugins.chrome_urls` + `plugins.storefront_urls` — so a runtime *disable*
+never reached the live resolver (the plugin's endpoints kept serving), and
+`activate()` refreshed only on first wiring and *before* `_active.add`, so a
+runtime *enable* never mounted URLs either. Everything looked fine until the
+process restarted with the plugin disabled — then `get_urlpatterns` skipped its
+routes at import and any template still reversing one of them (dot_books'
+`{% url 'seo:journal_rss' %}` in `<head>`) **500'd every storefront page**,
+weeks after the toggle. Two rules: (1) rebuild the modules the root urlconf
+*actually* includes, in place, on every enable **and** disable, after the
+active-set changes; (2) a shell/theme must never `{% url %}` an optional
+plugin's namespace — contribute the markup from the owner (seo's feed links are
+a `global_head` block now) or wrap it in `{% plugin_enabled %}`. Guarded by
+`core/tests/test_registry_url_disable.py::LiveResolverDisableTests` (asserts on
+the LIVE resolver, not `get_urlpatterns()` output — the earlier test proved
+nothing about the resolver) and `storefront/tests/test_disable_safety.py`.
+
+**Landmine — an update channel that verifies the manifest but not the bytes
+is theatre.** The per-app/theme channel (`core/component_updates.py`) trusts
+an entry only through the chain *signed manifest → entry `sha256` → streamed
+artifact hash → member-by-member archive inspection → `tarfile` `data` filter →
+marker file (`app.py`/`theme.py`) → `migrations/__init__.py` present*. Every
+link fails **closed**: no checksum → refused before download; mismatch → file
+deleted; a symlink, `..`, second top-level dir → archive untouched. It also
+refuses to overwrite anything that ships with core (`MORPHEUS_DEFAULT_APPS` or a
+git-tracked path — those are versioned by `MORPHEUS_VERSION` and would fork the
+tree) and anything under `core/safety.py`'s protected paths. When extending it,
+keep the order and keep it fail-closed; a mutation test that removes any single
+guard must fail a test (`core/tests/test_component_updates.py`).
+
 **Landmine — a new sign-in path silently bypasses MFA.** Staff second factor
 (staff_mfa) hangs off the `AUTH_SECOND_FACTOR` filter, fired in
 `core/auth/views.py:otp_verify` *after* email-OTP and *before* `login()`. Any

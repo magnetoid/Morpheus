@@ -35,6 +35,12 @@ class ThemeRegistry:
         for theme_dir in themes_dir.iterdir():
             if not theme_dir.is_dir() or not (theme_dir / 'theme.py').exists():
                 continue
+            if theme_dir.name.startswith('.'):
+                # Never a theme: the per-theme updater stages the new tree and
+                # parks the previous one in dot-prefixed siblings during a swap
+                # (core/component_updates.py). Discovering one of those would
+                # register a duplicate name and shadow the real theme.
+                continue
             module_path = f'themes.library.{theme_dir.name}.theme'
             try:
                 mod = importlib.import_module(module_path)

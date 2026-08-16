@@ -51,7 +51,12 @@ def theme_versions() -> list[dict]:
     try:
         from themes.registry import theme_registry
 
-        active = theme_registry.active()
+        # `active` is a property, not a method. Calling it raised TypeError,
+        # the fail-soft `except` swallowed it, and this returned [] on every
+        # deployment — the Updates page said "No themes discovered" and the
+        # `morph_versions --json` contract listed none, since v0.x. Caught when
+        # the per-theme update channel could not find an installed theme.
+        active = theme_registry.active
         active_name = getattr(active, 'name', None) if active else None
         return [
             {

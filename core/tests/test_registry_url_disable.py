@@ -47,3 +47,32 @@ class RegisterUrlsDisableSafetyTests(TestCase):
         self._add_entry('', 'zztest_untagged', 'zztest-untagged/')  # no owner
         after = len(app_registry.get_urlpatterns())
         self.assertEqual(after, before + 1)
+
+
+class LiveResolverDisableTests(TestCase):
+    """`get_urlpatterns()` skipping an inactive owner is necessary, not
+    sufficient: the *live* resolver must forget the routes too. The root
+    urlconf includes `plugins.chrome_urls` + `plugins.storefront_urls` (the
+    ADR 0022 split), so a refresh that rebuilds only `plugins.urls` leaves every
+    disabled plugin's endpoints serving until the next restart — and then a
+    theme that still reverses one of them 500s on boot, with nothing tying the
+    outage to a toggle flipped weeks earlier."""
+
+    def test_deactivate_removes_routes_from_the_live_resolver_and_activate_restores(self):
+        from django.urls import NoReverseMatch, reverse
+
+        from plugins.registry import app_registry
+
+        self.assertTrue(app_registry.is_active('seo'))
+        self.assertEqual(reverse('seo:journal_rss'), '/journal/feed.xml')
+
+        app_registry.deactivate('seo')
+        try:
+            with self.assertRaises(NoReverseMatch):
+                reverse('seo:journal_rss')
+            self.assertEqual(self.client.get('/journal/feed.xml').status_code, 404)
+        finally:
+            app_registry.activate('seo')
+
+        self.assertEqual(reverse('seo:journal_rss'), '/journal/feed.xml')
+        self.assertEqual(self.client.get('/journal/feed.xml').status_code, 200)

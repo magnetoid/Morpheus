@@ -90,7 +90,8 @@ how v0.36 through v0.43 actually shipped.
   mentions a contributor licence agreement. Accepting outside code without one
   is the single hardest thing here to unwind later.
 - **Per-app and per-theme update channels**, which is what an app ecosystem
-  actually runs on.
+  actually runs on. *(Built v0.44.0 — `core/component_updates.py`; hosting
+  the manifest is still open.)*
 
 ---
 
@@ -101,8 +102,14 @@ how v0.36 through v0.43 actually shipped.
    existing docstring true.
 3. **Distribution** — signed manifest, `UpdateSource`, per-app channels.
    Unblocks everything called "ecosystem" in all three documents.
-4. **P6 disable-debt** — stop live Stripe calls and real refunds from running
-   through disabled apps.
+   *(Client side shipped v0.43.2–v0.44.0; what remains is hosting the
+   manifest and the repo-visibility decision.)*
+4. **P6 disable-debt** — the two sharpest sites (`/account/payment-methods/`
+   → live Stripe, `/account/orders/<n>/cancel/` → real refunds) are moot since
+   v0.42.0 made `payments`/`orders` undisableable; the remaining debt is
+   surfaces that survive a disable, plus the runtime URL-refresh bug fixed in
+   v0.44.0 (a disable never reached the live resolver; a theme `{% url %}` on
+   `seo:` then 500'd every storefront page on the next restart).
 5. **PII encryption** — needs care on searchable fields.
 6. **OpenAPI schema** — the real prerequisite for anything named "SDK".
 

@@ -30,11 +30,18 @@ class ComponentVersionsTests(SimpleTestCase):
         self.assertIn('catalog', names)  # a core-ish plugin always present
 
     def test_theme_entries_well_formed(self):
-        # Theme discovery runs at server startup, not under SimpleTestCase, so
-        # the list may be empty here — just assert shape when present.
-        for t in component_versions()['themes']:
-            for key in ('name', 'version', 'active'):
+        # Theme discovery runs at settings import, so the registry is populated
+        # here. This used to "assert shape when present" — which passed for
+        # months while the list was ALWAYS empty (`theme_registry.active` is a
+        # property; calling it raised inside the fail-soft try). Assert the
+        # shipped theme is actually listed, and exactly one theme is active.
+        themes = component_versions()['themes']
+        names = {t['name'] for t in themes}
+        self.assertIn('dot_books', names, themes)
+        for t in themes:
+            for key in ('name', 'label', 'version', 'active'):
                 self.assertIn(key, t)
+        self.assertEqual(sum(1 for t in themes if t['active']), 1, themes)
 
 
 class PlatformUpdateStatusTests(SimpleTestCase):

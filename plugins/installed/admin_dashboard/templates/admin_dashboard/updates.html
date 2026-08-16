@@ -6,7 +6,7 @@
 
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Updates</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">Installed versions of core, apps and themes, plus the central updater: check for updates and apply them (git fast-forward, backup + auto-rollback). CLI parity: <code>manage.py morph_versions</code> / <code>morph_check_updates</code> / <code>morph_apply_update</code>.</p>
+    <p class="text-sm text-[color:var(--text-muted)]">Installed versions of core, apps and themes, plus the updater: check for updates and apply them (backup, verified artifact, boot probe, auto-rollback). Apps and themes installed on their own update one at a time from the signed release channel. CLI parity: <code>manage.py morph_versions</code> / <code>morph_check_updates</code> / <code>morph_apply_update [--app|--theme NAME]</code>.</p>
   </div>
 
   <div class="card card-padded">
@@ -45,6 +45,51 @@
         <span class="text-[color:var(--text-muted)]">{{ platform.reason }}{% if platform.current and platform.current != 'unknown' %} · deployed <code>{{ platform.current }}</code>{% endif %}</span>
       {% endif %}
     </div>
+  </div>
+
+  {# Per-app / per-theme channel: entries the signed manifest publishes for components installed here. #}
+  <div class="card overflow-hidden" data-testid="component-updates">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold text-sm">App &amp; theme updates</h2>
+        <p class="text-sm text-[color:var(--text-muted)]">Apps and themes installed on their own — those that ship with the platform update with core.</p>
+      </div>
+      {% if component_updates %}<span class="pill pill-warn">{{ component_updates|length }} available</span>{% endif %}
+    </div>
+    {% if component_updates %}
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Component</th><th>Installed</th><th>Available</th><th></th></tr></thead>
+      <tbody>
+        {% for c in component_updates %}
+        <tr>
+          <td class="font-medium">{{ c.name }} <span class="text-[color:var(--text-muted)] font-mono text-xs">{{ c.kind }}</span></td>
+          <td class="font-mono text-xs">{{ c.current }}</td>
+          <td class="font-mono text-xs">{{ c.latest }}{% if c.notes %} · <a class="link" href="{{ c.notes }}" rel="noopener" target="_blank">notes</a>{% endif %}</td>
+          <td class="text-right">
+            {% if c.core_ok %}
+            <form method="post" action="{% url 'admin_dashboard:updates_apply_component' %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="kind" value="{{ c.kind }}">
+              <input type="hidden" name="name" value="{{ c.name }}">
+              <button type="submit" class="btn btn-primary text-sm"
+                      data-confirm="Update {{ c.name }} from {{ c.current }} to {{ c.latest }}? The artifact is verified against the signed manifest, the new code is boot-probed, and the previous version is restored on any failure. You will need to restart the web and worker processes afterwards.">
+                <i data-lucide="download" class="h-4 w-4"></i> Update
+              </button>
+            </form>
+            {% else %}
+            <span class="text-xs text-[color:var(--text-muted)]">needs core {{ c.min_core }} first</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not self_update_enabled %}
+    <div class="card-padded text-xs text-[color:var(--text-muted)] border-t border-[color:var(--border)]">Self-update is off — set <code>MORPHEUS_SELF_UPDATE_ENABLED=1</code> to allow one-click apply.</div>
+    {% endif %}
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">Nothing newer is published for the apps and themes installed here{% if platform.source == 'git' or platform.available == 'unavailable' %} — or no release channel is configured (<code>MORPHEUS_UPDATE_MANIFEST_URL</code>){% endif %}.</div>
+    {% endif %}
   </div>
 
   {% comment %}This page used to repeat the whole app list as a

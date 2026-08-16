@@ -247,32 +247,58 @@ class AppRegistry:
                 logger.error('Failed to activate plugin %s: %s', name, e, exc_info=True)
                 return False
             self._wired.add(name)
-            self._refresh_urlconf()
         self._active.add(name)
         self._collect_contributions(instance)
+        # Re-mount URLs *after* marking active and on *every* enable:
+        # `get_urlpatterns` skips inactive owners, so a refresh before
+        # `_active.add` filtered out the very routes being enabled, and a
+        # re-enable after a disable (already wired) got no refresh at all —
+        # both left the plugin's endpoints 404ing until a restart.
+        self._refresh_urlconf()
         self._update_db_status(name, enabled=True)
         logger.info('Plugin activated at runtime: %s', name)
         return True
 
-    def _refresh_urlconf(self) -> None:
-        """Re-mount plugin URLs into the live URLconf after a runtime enable.
+    # The URL modules the root urlconf actually includes, with the surface
+    # filter each one applies. `morph/urls.py` mounts `plugins.chrome_urls`
+    # (dashboard/api/payments — never language-prefixed) and
+    # `plugins.storefront_urls` (inside i18n_patterns) — ADR 0022. `plugins.urls`
+    # is the pre-split module, kept for anything out of tree that includes it.
+    _URL_MODULES: tuple[tuple[str, dict], ...] = (
+        ('plugins.chrome_urls', {'storefront': False}),
+        ('plugins.storefront_urls', {'storefront': True}),
+        ('plugins.urls', {}),
+    )
 
-        `plugins.urls.urlpatterns` is built once (at first request) from
-        `get_urlpatterns()`. A plugin enabled at runtime added its entry to
-        `_plugin_urls` during `ready()`, so rebuild that module list in place
-        and clear Django's resolver caches; the next request rebuilds the root
-        resolver and re-reads the updated patterns. No-op at boot (the urlconf
-        isn't imported yet)."""
+    def _refresh_urlconf(self) -> None:
+        """Re-mount plugin URLs into the live URLconf after a runtime toggle.
+
+        Each URL module's `urlpatterns` is built once, when the root urlconf
+        first imports it. A plugin enabled at runtime added its entry to
+        `_plugin_urls` during `ready()`; a disabled one must stop resolving. So
+        rebuild each *already-imported* module's list **in place** — the live
+        resolvers hold a reference to that very list — and clear Django's
+        resolver caches so the next request re-populates from it. Modules not
+        yet imported are skipped: they will compute the right list on import.
+
+        This used to rebuild only `plugins.urls`, which nothing has included
+        since the ADR 0022 split, so a runtime disable never reached the live
+        resolver: the plugin's endpoints kept serving until the next restart —
+        and a template still reversing one of its routes then 500'd on boot.
+        Guarded by `core/tests/test_registry_url_disable.py::LiveResolverDisableTests`.
+        """
         try:
-            from importlib import import_module
+            import sys
 
             from django.urls import clear_url_caches
 
-            urls_mod = import_module('plugins.urls')
-            urls_mod.urlpatterns[:] = self.get_urlpatterns()
+            for mod_name, kwargs in self._URL_MODULES:
+                mod = sys.modules.get(mod_name)
+                if mod is not None:
+                    mod.urlpatterns[:] = self.get_urlpatterns(**kwargs)
             clear_url_caches()
         except Exception as e:  # noqa: BLE001 — URL refresh failure must not break the toggle
-            logger.warning('Failed to refresh URLconf after activate: %s', e, exc_info=True)
+            logger.warning('Failed to refresh URLconf after toggle: %s', e, exc_info=True)
 
     # ── Contributions ─────────────────────────────────────────────────────────
 

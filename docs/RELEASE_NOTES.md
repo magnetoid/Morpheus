@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.44.0 — 2026-08-16
+
+**Per-app / per-theme update channel; runtime toggles reach the live URL resolver**
+
+- feat(updates): apps and themes installed on their own now update one at a time from the signed manifest (`core/component_updates.py`). Chain, fail-closed at every link: signed `sha256` required → artifact streamed + hashed over HTTPS with a size cap → every tar member inspected (no absolute paths, `..`, links, devices; exactly one top-level dir) → `tarfile` data filter → `app.py`/`theme.py` marker → app `migrations/__init__.py` present → rename swap → fresh-interpreter boot probe → migrate → check → rename-back on any failure; `restart_required` reported. Refuses anything that ships with core (`MORPHEUS_DEFAULT_APPS` / git-tracked) and `core/safety.py` protected paths; `min_core` gate; same `MORPHEUS_SELF_UPDATE_ENABLED` opt-in and dry-run default.
+- feat(updates): `morph_check_updates` lists app/theme updates; `morph_apply_update --app NAME | --theme NAME`; `morph_sign_manifest --components FILE` signs `apps`/`themes` entries (validated: version, https artifact, 64-hex sha256). Dashboard Updates page: 'App & theme updates' card populated by the daily check / Check button, one-click apply. `SignedManifestSource.components()`; the GitHub source deliberately publishes none (transport-authenticated only). Every guard mutation-tested; verified end-to-end with a real fresh-interpreter boot probe.
+- fix(plugins): runtime enable/disable never reached the live URL resolver — `_refresh_urlconf` rebuilt `plugins.urls`, which nothing has included since the ADR 0022 split into `plugins.chrome_urls` + `plugins.storefront_urls`; and `activate()` refreshed only on first wiring, *before* `_active.add`, so an enable never mounted URLs and a re-enable never remounted them. A disabled app's endpoints kept serving until restart; an enabled one 404'd. Now rebuilds the included modules in place after the active set changes, on every toggle. Guarded by `LiveResolverDisableTests` (asserts on the live resolver, not `get_urlpatterns()`).
+- fix(seo,theme): dot_books' `<head>` hard-reversed `seo:journal_rss`/`journal_atom` — with seo disabled and the process restarted, that NoReverseMatch 500'd every storefront page. Feed autodiscovery is now a seo-owned `global_head` block that vanishes with the plugin. New `storefront/tests/test_disable_safety.py` toggles each optional plugin and asserts the storefront still answers.
+- fix(versioning): `theme_versions()` called `theme_registry.active` — a property — so it raised inside its fail-soft guard and returned `[]` on every deployment: the Updates page said 'No themes discovered' and `morph_versions --json` (the stable contract) never listed a theme. The old test excused the empty list; it now asserts `dot_books` is present and exactly one theme is active. Theme discovery also skips dot-dirs so a mid-swap crash cannot register a phantom duplicate.
+- rbac: `updates_apply` and `updates_apply_component` gated on `system.write`.
+- docs: UPDATING.md rewritten to state precisely what is built and what is not (hosting still open); CLAUDE.md +2 landmines (URL-refresh-on-the-wrong-module, verify-the-bytes-not-just-the-manifest); PLUGIN_DEVELOPMENT 'shipping updates to installed copies'; roadmap reconciliation updated.
+
 ## v0.43.3 — 2026-08-12
 
 **Signed release manifests (Ed25519)**

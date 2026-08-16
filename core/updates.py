@@ -127,6 +127,15 @@ def refresh_update_status() -> dict:
     from django.core.cache import cache
 
     status = platform_update_status(fetch=True)
+    if 'components' not in status:
+        # A git deployment's platform status knows nothing about apps/themes —
+        # those come from the release source regardless of how core deploys.
+        from core.update_sources import component_updates
+
+        try:
+            status['components'] = component_updates()
+        except Exception:  # noqa: BLE001 — a component check must never blank the platform status
+            status['components'] = []
     cache.set(_UPDATE_STATUS_CACHE_KEY, status, _UPDATE_STATUS_TTL)
     return status
 
