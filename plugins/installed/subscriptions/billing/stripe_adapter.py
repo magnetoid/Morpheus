@@ -152,6 +152,49 @@ class StripeSubscriptionAdapter:
         plan.save(update_fields=['provider_price_id'])
         return price.id
 
+    # ── Card collection ───────────────────────────────────────────────────────
+    @classmethod
+    def payment_method_from_setup_intent(  # noqa: PLR0911 — flat guard clauses, each a refusal
+        cls, setup_intent_id: str, customer
+    ) -> str:
+        """The payment method a *succeeded* SetupIntent collected for ``customer``.
+
+        The storefront hands the browser a SetupIntent, Stripe collects the
+        card, and the browser comes back with the SetupIntent id in the URL.
+        That id is **caller-supplied**: anyone can paste one. So before it is
+        trusted the intent is fetched from Stripe and must (a) be ``succeeded``
+        and (b) belong to *this* customer's Stripe vault — otherwise a shopper
+        could subscribe with someone else's card. Returns ``''`` on any doubt;
+        never raises.
+        """
+        setup_intent_id = (setup_intent_id or '').strip()
+        if not setup_intent_id.startswith('seti_'):
+            return ''
+        key = _stripe_key()
+        if not key:
+            return ''
+        expected_customer = (getattr(customer, 'stripe_customer_id', '') or '').strip()
+        if not expected_customer:
+            # A SetupIntent is minted against the customer's vault; a customer
+            # with no vault cannot have one that is theirs.
+            return ''
+        try:
+            stripe.api_key = key
+            intent = stripe.SetupIntent.retrieve(setup_intent_id)
+        except Exception as exc:  # noqa: BLE001 — never raise into a view
+            logger.warning('payment_method_from_setup_intent: %s: %s', setup_intent_id, exc)
+            return ''
+        if _get(intent, 'status') != 'succeeded':
+            return ''
+        if str(_get(intent, 'customer') or '') != expected_customer:
+            logger.warning(
+                'payment_method_from_setup_intent: %s belongs to another customer', setup_intent_id
+            )
+            return ''
+        pm = _get(intent, 'payment_method')
+        pm_id = _get(pm, 'id') if pm is not None and not isinstance(pm, str) else pm
+        return str(pm_id or '')
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
     @classmethod
     def start_subscription(cls, subscription, payment_method_id: str) -> dict:

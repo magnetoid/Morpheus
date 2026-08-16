@@ -1,0 +1,63 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% block content %}
+<section style="max-width:34rem;margin:2.5rem auto;padding:0 1.25rem;">
+  <header style="margin-bottom:1.5rem;">
+    <h1 style="font-size:1.75rem;margin:0 0 .5rem;">Join {{ plan.name }}</h1>
+    <p style="color:#666;margin:0;">
+      {{ plan.price|money }}<span style="color:#888;">/{{ plan.interval }}</span>
+      {% if plan.trial_days %} · {{ plan.trial_days }}-day free trial, then billed automatically{% else %} · billed automatically each {{ plan.interval }}{% endif %}
+      {% if plan.member_discount_percent %} · {{ plan.member_discount_percent }}% off books at checkout{% endif %}
+    </p>
+  </header>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div style="margin:0 0 1rem;padding:.75rem 1rem;border-radius:10px;background:{% if m.tags == 'error' %}#fde8e8{% else %}#e8f6ee{% endif %};">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% comment %}Same SetupIntent + Payment Element flow as the account "saved cards"
+  page (proven on this deployment). Stripe collects the card into the customer's
+  vault; nothing is charged on this page. confirmSetup redirects to return_url,
+  where the subscription is created and started server-side.{% endcomment %}
+  {% if not stripe_publishable_key or not setup_client_secret %}
+  <p data-signup-state="unavailable" style="color:#666;">Card entry isn’t available right now. Please refresh in a moment, or contact us and we’ll set the membership up for you.</p>
+  {% else %}
+  <div id="setup-element" data-signup-state="ready" style="border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem;background:#fff;"></div>
+  <div id="setup-message" style="margin-top:.75rem;font-size:.9rem;"></div>
+  <button id="submit-setup" type="button" style="width:100%;margin-top:1.25rem;padding:.8rem;border:0;border-radius:10px;background:#111;color:#fff;font-size:1rem;cursor:pointer;">
+    {% if plan.trial_days %}Start free trial{% else %}Subscribe — {{ plan.price|money }}/{{ plan.interval }}{% endif %}
+  </button>
+  <p style="color:#888;font-size:.8rem;margin:.75rem 0 0;">Your card is held by Stripe; we only keep a reference to it. Cancel any time from your account.</p>
+
+  <script src="https://js.stripe.com/v3/"></script>
+  <script>
+  (function () {
+    var stripe = Stripe('{{ stripe_publishable_key|escapejs }}');
+    var elements = stripe.elements({
+      clientSecret: '{{ setup_client_secret|escapejs }}',
+      appearance: { theme: 'stripe', variables: { colorPrimary: '#0e0e0e', fontFamily: 'system-ui, sans-serif', borderRadius: '8px' } }
+    });
+    elements.create('payment').mount('#setup-element');
+    var btn = document.getElementById('submit-setup');
+    var msg = document.getElementById('setup-message');
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      msg.textContent = '';
+      var result = await stripe.confirmSetup({
+        elements: elements,
+        confirmParams: { return_url: '{{ return_url|escapejs }}' }
+      });
+      if (result.error) {
+        msg.textContent = result.error.message || 'We could not confirm that card — please try again.';
+        msg.style.color = '#b00020';
+        btn.disabled = false;
+      }
+    });
+  })();
+  </script>
+  {% endif %}
+  <p style="margin-top:1.5rem;"><a href="/membership/" style="color:#666;">← Back to plans</a></p>
+</section>
+{% endblock %}

@@ -160,6 +160,10 @@ class DraftOrderForm(forms.Form):
     def save(self) -> Any:
         from django.contrib.auth import get_user_model
 
+        from plugins.registry import app_registry
+
+        if not app_registry.is_active('draft_orders'):
+            raise ValueError('DraftOrderForm.save() requires the draft_orders app.')
         from plugins.installed.draft_orders.models import DraftOrder
 
         User = get_user_model()

@@ -367,14 +367,21 @@ def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str,
     ``('', friendly_message)`` so the caller can return a clean JSON
     payload without needing per-route try/except.
     """
-    try:
-        from plugins.installed.ai_content.services import with_brand_voice
+    from plugins.registry import app_registry
 
-        system = with_brand_voice(system)
-    except Exception as e:  # noqa: BLE001 — ai_content plugin optional
-        import logging
+    # Both plugins are optional (ADR 0013): a disabled plugin is still
+    # importable, so gate on active-state — the try/excepts guard absence only.
+    if app_registry.is_active('ai_content'):
+        try:
+            from plugins.installed.ai_content.services import with_brand_voice
 
-        logging.getLogger('morpheus.admin').debug('brand voice unavailable: %s', e)
+            system = with_brand_voice(system)
+        except Exception as e:  # noqa: BLE001 — ai_content plugin optional
+            import logging
+
+            logging.getLogger('morpheus.admin').debug('brand voice unavailable: %s', e)
+    if not app_registry.is_active('ai_assistant'):
+        return ('', 'AI provider not configured: the AI assistant app is disabled')
     try:
         from plugins.installed.ai_assistant.services.llm import get_llm
 

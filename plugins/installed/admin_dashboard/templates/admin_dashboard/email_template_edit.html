@@ -61,12 +61,12 @@
   <summary class="cursor-pointer font-semibold">Available placeholders</summary>
   <p class="text-sm text-[color:var(--text-muted)] mt-3">Each template has access to its event context. Common placeholders:</p>
   <ul class="text-sm mt-2 list-disc pl-5 space-y-1">
-    <li><code>{{ "{{ order.order_number }}" }}</code>, <code>{{ "{{ order.email }}" }}</code>, <code>{{ "{{ order.total }}" }}</code></li>
-    <li><code>{{ "{% for item in order.items.all %}{{ item.product.name }}{% endfor %}" }}</code></li>
-    <li><code>{{ "{{ refund.amount }}" }}</code> on the refund template</li>
-    <li><code>{{ "{% for link in links %}{{ link.url }}{% endfor %}" }}</code> on digital downloads</li>
-    <li><code>{{ "{{ customer.first_name }}" }}</code> on welcome</li>
-    <li><code>{{ "{{ cart.item_count }}" }}</code>, <code>{{ "{{ cart.subtotal }}" }}</code> on cart abandoned</li>
+    <li><code>{% verbatim %}{{ order.order_number }}{% endverbatim %}</code>, <code>{% verbatim %}{{ order.email }}{% endverbatim %}</code>, <code>{% verbatim %}{{ order.total }}{% endverbatim %}</code></li>
+    <li><code>{% verbatim %}{% for item in order.items.all %}{{ item.product.name }}{% endfor %}{% endverbatim %}</code></li>
+    <li><code>{% verbatim %}{{ refund.amount }}{% endverbatim %}</code> on the refund template</li>
+    <li><code>{% verbatim %}{% for link in links %}{{ link.url }}{% endfor %}{% endverbatim %}</code> on digital downloads</li>
+    <li><code>{% verbatim %}{{ customer.first_name }}{% endverbatim %}</code> on welcome</li>
+    <li><code>{% verbatim %}{{ cart.item_count }}{% endverbatim %}</code>, <code>{% verbatim %}{{ cart.subtotal }}{% endverbatim %}</code> on cart abandoned</li>
   </ul>
 </details>
 

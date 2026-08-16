@@ -72,16 +72,24 @@ class CouponForm(forms.Form):
         code = self.cleaned_data['code'].strip().upper()
         if not code:
             raise forms.ValidationError('Code is required.')
-        from plugins.installed.marketing.models import Coupon
+        # marketing is optional (ADR 0013): only touch its table while enabled.
+        from plugins.registry import app_registry
 
-        qs = Coupon.objects.filter(code=code)
-        if self.instance is not None:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise forms.ValidationError('Another coupon already uses this code.')
+        if app_registry.is_active('marketing'):
+            from plugins.installed.marketing.models import Coupon
+
+            qs = Coupon.objects.filter(code=code)
+            if self.instance is not None:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError('Another coupon already uses this code.')
         return code
 
     def save(self) -> Any:
+        from plugins.registry import app_registry
+
+        if not app_registry.is_active('marketing'):
+            raise ValueError('CouponForm.save() requires the marketing app.')
         from plugins.installed.marketing.models import Coupon
 
         cd = self.cleaned_data

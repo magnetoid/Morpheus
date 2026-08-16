@@ -33,6 +33,12 @@ and `product_form.html:761` hard-coded the card. Self-hid on
 
 ## 2. Other shared-shell leaks (same class, same fix pattern)
 
+> **Interim, v0.45.0:** every site below that is still a direct import is now
+> gated on `app_registry.is_active(<plugin>)` (storefront + admin_dashboard),
+> so the surface disappears on disable and plugin-only views 404 — the litmus
+> test passes. The boundary *pairs* remain in the baseline; the contribution
+> designs below are still the end state.
+
 Optional plugins rendered by direct import instead of contribution
 (~74 import lines; the try/except ImportError guards protect *absence*,
 not *disable*):

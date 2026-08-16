@@ -26,6 +26,7 @@ from api.client import internal_graphql
 from morpheus.core import MorpheusEvents, hook_registry
 from morpheus.app.views import render
 from plugins.installed.storefront.services import page_intro
+from plugins.registry import app_registry
 
 from ._queries import PRODUCT_DETAIL_QUERY
 
@@ -127,9 +128,10 @@ def product_list(request):
             book_filter[qk] = v
     for qk, v in book_filter.items():
         try:
-            from plugins.installed.book_product.compat import product_ids_for
+            if app_registry.is_active('book_product'):
+                from plugins.installed.book_product.compat import product_ids_for
 
-            qs = qs.filter(id__in=product_ids_for(qk, v))
+                qs = qs.filter(id__in=product_ids_for(qk, v))
         except Exception:  # noqa: BLE001
             pass
 
@@ -252,9 +254,10 @@ def product_list(request):
     # Author facet — distinct authors (BookProduct model ∪ legacy metafields).
     available_authors: list[str] = []
     try:
-        from plugins.installed.book_product.compat import distinct_values
+        if app_registry.is_active('book_product'):
+            from plugins.installed.book_product.compat import distinct_values
 
-        available_authors = distinct_values('author')
+            available_authors = distinct_values('author')
     except Exception:  # noqa: BLE001
         pass
 
@@ -423,6 +426,8 @@ def _apply_search(qs, q: str):
 
 def _metafield_search_ids(q: str) -> list:
     """Return product IDs whose book.author/publisher/isbn metafield contains q."""
+    if not app_registry.is_active('metafields'):
+        return []
     try:
         from django.contrib.contenttypes.models import ContentType
         from plugins.installed.catalog.models import Product
@@ -540,13 +545,14 @@ def product_detail(request, slug):
 
     videos: list = []
     try:
-        from plugins.installed.product_videos.models import ProductVideo
+        if app_registry.is_active('product_videos'):
+            from plugins.installed.product_videos.models import ProductVideo
 
-        videos = list(
-            ProductVideo.objects.filter(product__slug=slug, is_active=True).order_by(
-                'sort_order', 'created_at'
-            )[:15]
-        )
+            videos = list(
+                ProductVideo.objects.filter(product__slug=slug, is_active=True).order_by(
+                    'sort_order', 'created_at'
+                )[:15]
+            )
     except Exception:  # noqa: BLE001
         pass
 
@@ -664,7 +670,7 @@ def _pdp_faqs(slug: str, *, product_row=None) -> list[dict]:
         return []
     try:
         product = product_row or Product.objects.filter(slug=slug).first()
-        if product is None:
+        if product is None or not app_registry.is_active('metafields'):
             return []
         from django.contrib.contenttypes.models import ContentType
 
@@ -743,6 +749,8 @@ _BOOK_SPEC_FIELDS = (
 
 def _product_codes(product_row) -> list[dict]:
     """Product identifier codes (ISBN/EAN/GTIN/UPC/MPN/ASIN) for the PDP."""
+    if not app_registry.is_active('metafields'):
+        return []
     try:
         from plugins.installed.metafields.identifiers import product_identifiers
 
@@ -775,7 +783,7 @@ def _product_seo_extra(product_row, primary_image, hero_image, review_summary, r
             for r in (reviews or [])[:5]
             if r.get('stars')
         ]
-    if product_row is not None:
+    if product_row is not None and app_registry.is_active('book_product'):
         try:
             from plugins.installed.book_product.compat import book_attrs
 
@@ -819,6 +827,8 @@ def _book_jsonld_data(product_row, product, product_codes, out_of_stock):
     there's no author — a Book Work needs a title + author to be valid.
     """
     if product_row is None or not isinstance(product, dict):
+        return None
+    if not app_registry.is_active('book_product'):
         return None
     try:
         from plugins.installed.book_product.compat import book_attrs
@@ -873,6 +883,8 @@ def _book_specs(slug: str) -> list[dict]:
 
 
 def _book_specs_from_model(slug, slugify, urlencode):  # noqa: PLR0911 — flat field map
+    if not app_registry.is_active('book_product'):
+        return None
     try:
         from plugins.installed.book_product.models import BookProduct
     except Exception:  # noqa: BLE001 — plugin absent
@@ -914,6 +926,8 @@ def _book_specs_from_model(slug, slugify, urlencode):  # noqa: PLR0911 — flat 
 
 
 def _book_specs_from_metafields(slug, slugify, urlencode):
+    if not app_registry.is_active('metafields'):
+        return []
     try:
         from plugins.installed.catalog.models import Product
         from plugins.installed.metafields.models import Metafield
@@ -1103,20 +1117,21 @@ def _attach_book_authors(products) -> None:
         return
     by_id = {str(p.id): p for p in products}
     try:
-        from plugins.installed.book_product.models import BookProduct  # noqa: PLC0415
+        if app_registry.is_active('book_product'):
+            from plugins.installed.book_product.models import BookProduct  # noqa: PLC0415
 
-        for pid, author in (
-            BookProduct.objects.filter(product_id__in=list(by_id))
-            .exclude(author='')
-            .values_list('product_id', 'author')
-        ):
-            target = by_id.get(str(pid))
-            if target is not None:
-                target.author_name = author
+            for pid, author in (
+                BookProduct.objects.filter(product_id__in=list(by_id))
+                .exclude(author='')
+                .values_list('product_id', 'author')
+            ):
+                target = by_id.get(str(pid))
+                if target is not None:
+                    target.author_name = author
     except Exception:  # noqa: BLE001
         pass
     missing = [pid for pid, p in by_id.items() if not p.author_name]
-    if missing:
+    if missing and app_registry.is_active('metafields'):
         try:
             from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
             from plugins.installed.catalog.models import Product  # noqa: PLC0415
@@ -1145,10 +1160,11 @@ def category_detail(request, slug):
         from django.shortcuts import redirect  # noqa: PLC0415
 
         try:
-            from plugins.installed.book_product.models import Genre  # noqa: PLC0415
+            if app_registry.is_active('book_product'):
+                from plugins.installed.book_product.models import Genre  # noqa: PLC0415
 
-            if Genre.objects.filter(slug=slug, is_active=True).exists():
-                return redirect(f'/genre/{slug}/', permanent=True)
+                if Genre.objects.filter(slug=slug, is_active=True).exists():
+                    return redirect(f'/genre/{slug}/', permanent=True)
         except Exception:  # noqa: BLE001 — book_product may be disabled
             pass
         raise Http404
@@ -1353,6 +1369,8 @@ def author_detail(request, slug):
 
     author_name = ''
     bibliography = []
+    if not app_registry.is_active('book_product'):
+        raise Http404
     try:
         from plugins.installed.book_product.compat import product_ids_for, resolve_slug
         from plugins.installed.catalog.models import Product
@@ -1381,11 +1399,12 @@ def author_detail(request, slug):
 
     bio_page = None
     try:
-        from plugins.installed.cms.models import Page
+        if app_registry.is_active('cms'):
+            from plugins.installed.cms.models import Page
 
-        bio_page = Page.objects.filter(
-            slug=f'author-{slug}', state='published', metadata__category='author'
-        ).first()
+            bio_page = Page.objects.filter(
+                slug=f'author-{slug}', state='published', metadata__category='author'
+            ).first()
     except Exception:  # noqa: BLE001
         pass
 
@@ -1409,9 +1428,10 @@ def author_detail(request, slug):
     # Merchant-editable per-author SEO + intro (Book taxonomies dashboard).
     book_term = None
     try:
-        from plugins.installed.book_product.models import BookTaxonomyTerm
+        if app_registry.is_active('book_product'):
+            from plugins.installed.book_product.models import BookTaxonomyTerm
 
-        book_term = BookTaxonomyTerm.objects.filter(taxonomy='author', slug=slug).first()
+            book_term = BookTaxonomyTerm.objects.filter(taxonomy='author', slug=slug).first()
     except Exception:  # noqa: BLE001
         book_term = None
     default_desc = (

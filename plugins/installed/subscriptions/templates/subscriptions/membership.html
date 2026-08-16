@@ -30,6 +30,14 @@
       {% if plan.description %}<p style="color:#666;flex:1;">{{ plan.description }}</p>{% endif %}
       {% if plan.trial_days %}<p style="color:#888;font-size:.85rem;">{{ plan.trial_days }}-day free trial</p>{% endif %}
       {% if not current %}
+      {% if plan.signup_mode == 'stripe' and request.user.is_authenticated %}
+      {# Paid Stripe plan: card collection first (SetupIntent + Payment Element), then the subscription starts. #}
+      <a href="/membership/subscribe/{{ plan.id }}/" data-signup="stripe" style="display:block;text-align:center;margin-top:1rem;padding:.7rem;border-radius:10px;background:#111;color:#fff;font-size:1rem;text-decoration:none;">
+        Join {{ plan.name }}
+      </a>
+      {% elif plan.signup_mode == 'unavailable' and request.user.is_authenticated %}
+      <p data-signup="unavailable" style="margin-top:1rem;color:#888;font-size:.9rem;text-align:center;">Online sign-up isn’t available for this plan yet — contact us and we’ll set it up.</p>
+      {% else %}
       <form method="post" action="/membership/subscribe/" style="margin-top:1rem;">
         {% csrf_token %}
         <input type="hidden" name="plan_id" value="{{ plan.id }}">
@@ -37,6 +45,7 @@
           {% if request.user.is_authenticated %}Join {{ plan.name }}{% else %}Sign in to join{% endif %}
         </button>
       </form>
+      {% endif %}
       {% endif %}
     </div>
     {% empty %}

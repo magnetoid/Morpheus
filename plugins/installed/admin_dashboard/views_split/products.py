@@ -13,7 +13,7 @@ from core.authz import require_capability
 from decimal import Decimal
 from typing import Any
 
-from morpheus.app.views import HttpRequest, HttpResponse, messages, staff_member_required
+from morpheus.app.views import Http404, HttpRequest, HttpResponse, messages, staff_member_required
 from morpheus.app.views import get_object_or_404, redirect, render
 from django.db.models import Sum
 from django.utils import timezone
@@ -184,6 +184,12 @@ def _seo_field_defaults(product) -> dict:
         return {}
     import re as _re
 
+    from plugins.registry import app_registry
+
+    # seo is optional: a disabled (still-importable) plugin must not supply
+    # placeholders the storefront no longer renders (ADR 0013).
+    if not app_registry.is_active('seo'):
+        return {}
     try:
         from django.conf import settings as _settings
         from plugins.installed.seo.services import _site_base_url, site_settings
@@ -254,6 +260,10 @@ def _save_product_identifiers(product, post) -> None:
     Fail-soft: a missing metafields plugin must not break product save."""
     if not post.get('identifiers_present'):
         return
+    from plugins.registry import app_registry
+
+    if not app_registry.is_active('metafields'):
+        return
     try:
         from plugins.installed.metafields.identifiers import (  # noqa: PLC0415
             IDENTIFIERS_NAMESPACE,
@@ -283,6 +293,10 @@ def _save_product_identifiers(product, post) -> None:
 
 def _identifier_fields(product) -> list[dict]:
     """``[{key, label, placeholder, value}]`` for the editor's codes card."""
+    from plugins.registry import app_registry
+
+    if not app_registry.is_active('metafields'):
+        return []
     try:
         from plugins.installed.metafields.identifiers import (  # noqa: PLC0415
             PRODUCT_IDENTIFIERS,
@@ -300,6 +314,10 @@ def _identifier_fields(product) -> list[dict]:
 
 def _seo_tokens(product) -> list[dict]:
     """``[{token, label}]`` for the SEO title/description "Insert field" menu."""
+    from plugins.registry import app_registry
+
+    if not app_registry.is_active('seo'):
+        return []
     try:
         from plugins.installed.seo.services.tokens import available_tokens  # noqa: PLC0415
 
@@ -407,17 +425,21 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     # Convention: sort_order=0 is the front cover, 1 is the back.
     front_image = next((i for i in images if i.is_primary and i.sort_order == 0), None)
     back_image = next((i for i in images if i.is_primary and i.sort_order == 1), None)
-    # Load attached videos for the dashboard video CRUD card. The
-    # plugin may be disabled — fall through to an empty list.
+    # Load attached videos for the dashboard video CRUD card. The plugin is
+    # optional — only query it while enabled (a disabled plugin is still
+    # importable, so the try/except alone would keep the card populated).
     videos: list = []
-    try:
-        from plugins.installed.product_videos.models import ProductVideo
+    from plugins.registry import app_registry
 
-        videos = list(
-            ProductVideo.objects.filter(product=product).order_by('sort_order', 'created_at')
-        )
-    except Exception:  # noqa: BLE001
-        pass
+    if app_registry.is_active('product_videos'):
+        try:
+            from plugins.installed.product_videos.models import ProductVideo
+
+            videos = list(
+                ProductVideo.objects.filter(product=product).order_by('sort_order', 'created_at')
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     # Plugin-contributed product-form cards (modular extension point) — includes
     # book_product's Book details card and bookvault's fulfilment panel, both
@@ -495,6 +517,16 @@ def _get_product(product_id: str):
     from plugins.installed.catalog.models import Product
 
     return get_object_or_404(Product, pk=product_id)
+
+
+def _require_product_videos() -> None:
+    """The video CRUD endpoints belong to the optional product_videos plugin:
+    when it is disabled (still importable, tables still there) they must not
+    operate — 404, as if the plugin's routes were gone (ADR 0013)."""
+    from plugins.registry import app_registry
+
+    if not app_registry.is_active('product_videos'):
+        raise Http404('Product videos app is disabled.')
 
 
 @staff_member_required
@@ -726,14 +758,11 @@ def video_add(request: HttpRequest, product_id: str) -> HttpResponse:
     to a product. Phase 2 of docs/plans/product-slider.md — moves
     video CRUD off the Django admin and onto the product edit page.
     """
+    _require_product_videos()
     if request.method != 'POST':
         return redirect('admin_dashboard:product_edit', product_id=product_id)
     product = _get_product(product_id)
-    try:
-        from plugins.installed.product_videos.models import ProductVideo
-    except ImportError:
-        messages.error(request, 'Product videos plugin is not installed.')
-        return redirect('admin_dashboard:product_edit', product_id=product.id)
+    from plugins.installed.product_videos.models import ProductVideo
 
     title = (request.POST.get('title') or '').strip()[:200]
     url = (request.POST.get('url') or '').strip()[:500]
@@ -766,13 +795,12 @@ def video_add(request: HttpRequest, product_id: str) -> HttpResponse:
 @staff_member_required
 @require_capability('catalog.write')
 def video_delete(request: HttpRequest, product_id: str, video_id: str) -> HttpResponse:
+    _require_product_videos()
     if request.method != 'POST':
         return redirect('admin_dashboard:product_edit', product_id=product_id)
     product = _get_product(product_id)
-    try:
-        from plugins.installed.product_videos.models import ProductVideo
-    except ImportError:
-        return redirect('admin_dashboard:product_edit', product_id=product.id)
+    from plugins.installed.product_videos.models import ProductVideo
+
     video = ProductVideo.objects.filter(pk=video_id, product=product).first()
     if video is not None:
         video.delete()
@@ -810,13 +838,12 @@ def video_edit(request: HttpRequest, product_id: str, video_id: str) -> HttpResp
     """
     from django.http import JsonResponse
 
+    _require_product_videos()
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
     product = _get_product(product_id)
-    try:
-        from plugins.installed.product_videos.models import ProductVideo
-    except ImportError:
-        return JsonResponse({'ok': False, 'error': 'product_videos plugin disabled'}, status=400)
+    from plugins.installed.product_videos.models import ProductVideo
+
     video = ProductVideo.objects.filter(pk=video_id, product=product).first()
     if video is None:
         return JsonResponse({'ok': False, 'error': 'video not found'}, status=404)

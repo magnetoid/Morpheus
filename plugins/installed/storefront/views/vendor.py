@@ -9,11 +9,13 @@ from django.db.models import Count, Prefetch, Q, Sum
 from morpheus.app.views import Http404, render
 from plugins.installed.catalog.models import Product, Vendor
 from plugins.installed.storefront.services import page_intro
+from plugins.registry import app_registry
 
 # Optional sibling plugins — marketplace ships VendorOrder for the
 # "books sold" stat, metafields drives editorial FAQ overrides. Both
 # imports are wrapped so the storefront still boots if either plugin is
-# disabled in MORPHEUS_DEFAULT_APPS.
+# absent from MORPHEUS_DEFAULT_APPS; every USE is additionally gated on
+# `app_registry.is_active()` so a runtime disable drops the surface too.
 try:
     from plugins.installed.marketplace.models import VendorOrder as _VendorOrder
 except Exception:  # noqa: BLE001
@@ -139,7 +141,7 @@ def vendor_detail(request, slug):
     # Books sold lifetime — sum of confirmed/shipped/delivered VendorOrder.gross.
     # Cheap aggregate; safe to skip if the marketplace plugin isn't installed.
     books_sold = 0
-    if _VendorOrder is not None:
+    if _VendorOrder is not None and app_registry.is_active('marketplace'):
         try:
             agg = _VendorOrder.objects.filter(
                 vendor=vendor, status__in=('confirmed', 'shipped', 'delivered')
@@ -234,7 +236,7 @@ def marketplace_landing(request):
     # type (namespace='marketplace', keys 'faq_<n>_q' / 'faq_<n>_a'). Falls
     # through to template defaults if nothing is configured.
     faqs = []
-    if _Metafield is not None:
+    if _Metafield is not None and app_registry.is_active('metafields'):
         try:
             vendor_ct = ContentType.objects.get_for_model(Vendor)
             rows = _Metafield.objects.filter(

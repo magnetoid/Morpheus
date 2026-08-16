@@ -10,6 +10,7 @@ from django.http import HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from morpheus.app.views import render
+from plugins.registry import app_registry
 
 # Served at the conventional /favicon.ico path — browsers request it unprompted
 # on every visit, and without it each page load logs a 404. Colors are the
@@ -118,14 +119,15 @@ def about(request):
 def contact(request):
     sent = False
     if request.method == 'POST':
-        from plugins.installed.crm.services import upsert_lead, log_interaction
         from django.db import DatabaseError
 
         email = (request.POST.get('email') or '').strip().lower()
         name = (request.POST.get('name') or '').strip()
         body = (request.POST.get('message') or '').strip()
-        if email and body:
+        if email and body and app_registry.is_active('crm'):
             try:
+                from plugins.installed.crm.services import upsert_lead, log_interaction
+
                 lead = upsert_lead(
                     email=email,
                     first_name=name.split(' ')[0] if name else '',
@@ -162,10 +164,12 @@ def contact(request):
 
 def journal_index(request):
     """Prefer CMS pages (metadata.category=='journal'); fall back to seeded entries."""
+    cms_entries = []
     try:
-        from plugins.installed.cms.services import list_journal_entries
+        if app_registry.is_active('cms'):
+            from plugins.installed.cms.services import list_journal_entries
 
-        cms_entries = list_journal_entries()
+            cms_entries = list_journal_entries()
     except Exception:  # noqa: BLE001
         cms_entries = []
     entries = cms_entries or _JOURNAL_ENTRIES
@@ -210,14 +214,15 @@ def journal_detail(request, slug):
     entry = None
     seo_object = None
     try:
-        from plugins.installed.cms.services import get_journal_page, journal_dict
+        if app_registry.is_active('cms'):
+            from plugins.installed.cms.services import get_journal_page, journal_dict
 
-        # One Page fetch serves both: the model instance is the SEO object
-        # (resolve_meta layers the per-page SeoMeta override + visual schema
-        # blocks off it) and the render dict is derived from it. None for the
-        # seeded fallback entries (they degrade to the fallbacks).
-        seo_object = get_journal_page(slug)
-        entry = journal_dict(seo_object) if seo_object else None
+            # One Page fetch serves both: the model instance is the SEO object
+            # (resolve_meta layers the per-page SeoMeta override + visual schema
+            # blocks off it) and the render dict is derived from it. None for the
+            # seeded fallback entries (they degrade to the fallbacks).
+            seo_object = get_journal_page(slug)
+            entry = journal_dict(seo_object) if seo_object else None
     except Exception:  # noqa: BLE001
         pass
     if entry is None:
@@ -263,9 +268,10 @@ def journal_amp(request, slug):
 
     entry = None
     try:
-        from plugins.installed.cms.services import get_journal_entry  # noqa: PLC0415
+        if app_registry.is_active('cms'):
+            from plugins.installed.cms.services import get_journal_entry  # noqa: PLC0415
 
-        entry = get_journal_entry(slug)
+            entry = get_journal_entry(slug)
     except Exception:  # noqa: BLE001, S110
         pass
     if entry is None:
@@ -357,19 +363,20 @@ def do_not_sell(request):
         from django.http import HttpResponse  # noqa: PLC0415
 
         with contextlib.suppress(Exception):
-            from plugins.installed.consent.services import write_consent  # noqa: PLC0415
+            if app_registry.is_active('consent'):
+                from plugins.installed.consent.services import write_consent  # noqa: PLC0415
 
-            response = HttpResponse()
-            write_consent(
-                request,
-                response,
-                analytics=False,
-                marketing=False,
-                functional=False,
-                customer=getattr(request, 'user', None)
-                if getattr(request, 'user', None) and request.user.is_authenticated
-                else None,
-            )
+                response = HttpResponse()
+                write_consent(
+                    request,
+                    response,
+                    analytics=False,
+                    marketing=False,
+                    functional=False,
+                    customer=getattr(request, 'user', None)
+                    if getattr(request, 'user', None) and request.user.is_authenticated
+                    else None,
+                )
         submitted = True
         with contextlib.suppress(Exception):
             messages.success(

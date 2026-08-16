@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.45.0 — 2026-08-16
+
+**Paid memberships collect a card; every shell surface now vanishes with its plugin**
+
+- feat(subscriptions): P4a part 2 — a paid **Stripe** plan is sold online at last. `/membership/subscribe/<plan>/` mounts a Stripe Payment Element on a SetupIntent (`usage=off_session`, the same flow the account 'saved cards' page runs live); Stripe returns to `…/confirm/`, which **verifies the caller-supplied SetupIntent** against Stripe (`succeeded` and *this* customer's vault — `StripeSubscriptionAdapter.payment_method_from_setup_intent`), creates the subscription, calls `start_subscription`, and **deletes the row if Stripe refuses** so a failed attempt never greets the shopper as a member. `invoice.paid`/`payment_failed` reconcile from there (existing subscribers, now with a producer). Free plans unchanged; a paid plan on any other provider is still refused honestly. 27 tests, four guards mutation-tested. **Not yet exercised against Stripe test mode** (no test keys here) — before enabling a paid plan for real, run one signup with a test card and confirm the webhook lands. No paid Stripe plan exists on dotbooks.store, so nothing changes there until one is created.
+- fix(disable-safety): P6 interim — every remaining shell→optional-plugin read is gated on `app_registry.is_active()` (ADR 0013), so the surface disappears when the merchant toggles the plugin off instead of surviving behind a `try/except` that only ever guarded absence: storefront `catalog/content/home/vendor` (book_product ×9, metafields ×6, cms ×5, product_videos, crm, consent, marketplace) and dashboard `views_split/*` + `forms/*` (cloudflare ×7, cms ×8, marketing ×5, seo ×4, product_videos ×4, ai_assistant ×3, metafields ×3, draft_orders ×2, ai_content, analytics). Views that exist only for a plugin — coupons, theme builder, video CRUD, `orders/new`, email-template edit — return 404 while it is off. Two unguarded imports that would have 500'd if the plugin were uninstalled (`content.py` crm, `theme_builder.py` cms) are gated too. New `storefront/tests/test_disable_safety.py` + `admin_dashboard/tests/test_disable_safety.py` toggle each plugin, GET every shell page, and assert three surfaces per shell actually vanish; gates mutation-tested.
+- fix(admin_dashboard): the email-template editor (`/dashboard/settings/email-templates/<key>/`) had 500'd since 2026-06-13 — its placeholder help wrote literal `{{ "{{ order.order_number }}" }}`, which the template lexer cuts at the first `}}` (TemplateSyntaxError). Now `{% verbatim %}`; the page is asserted 200.
+- docs: CLAUDE.md — the interim disable-safety rule and a literal-braces landmine; boundary-debt plan marked interim; open-core plan P4a part 2 status + Stripe test-mode caveat.
+
 ## v0.44.0 — 2026-08-16
 
 **Per-app / per-theme update channel; runtime toggles reach the live URL resolver**

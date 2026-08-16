@@ -5,6 +5,7 @@ from __future__ import annotations
 from api.client import internal_graphql
 from morpheus.app.views import render
 from morpheus.core import MorpheusEvents, hook_registry
+from plugins.registry import app_registry
 
 
 def _serialize_product(p) -> dict:
@@ -143,10 +144,12 @@ def home(request):
     # Journal teaser — real entries instead of copy hardcoded in the template.
     # Same source chain as /journal/: published CMS journal pages first, then
     # the seeded editorial set (fail-soft, mirrors content.journal_index).
+    entries = []
     try:
-        from plugins.installed.cms.services import list_journal_entries  # noqa: PLC0415
+        if app_registry.is_active('cms'):
+            from plugins.installed.cms.services import list_journal_entries  # noqa: PLC0415
 
-        entries = list_journal_entries(limit=3)
+            entries = list_journal_entries(limit=3)
     except Exception:  # noqa: BLE001 — journal must never break home
         entries = []
     if not entries:

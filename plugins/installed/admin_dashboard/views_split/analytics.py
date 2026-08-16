@@ -31,7 +31,7 @@ from plugins.installed.admin_dashboard.views_split._shared import (
 
 
 @staff_member_required
-def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0915
+def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0915
     date_range = _resolve_date_range(request)
 
     metrics: list[Metric] = []
@@ -243,14 +243,19 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0915
     # AI visibility — sessions/revenue referred by AI assistants + AI-crawler
     # catalog reads (analytics plugin owns the data; None hides the card).
     ai_traffic = None
-    try:
-        from plugins.installed.analytics.services import ai_traffic_summary
+    from plugins.registry import app_registry
 
-        ai_traffic = ai_traffic_summary(days=30)
-        if not (ai_traffic['assistant_sessions'] or ai_traffic['crawler_hits']):
-            ai_traffic = None  # nothing to show yet — keep the page quiet
-    except Exception:  # noqa: BLE001 — analytics plugin off/missing
-        ai_traffic = None
+    # analytics is optional: only read it while enabled — a disabled plugin is
+    # still importable, so the try/except alone would keep the card (ADR 0013).
+    if app_registry.is_active('analytics'):
+        try:
+            from plugins.installed.analytics.services import ai_traffic_summary
+
+            ai_traffic = ai_traffic_summary(days=30)
+            if not (ai_traffic['assistant_sessions'] or ai_traffic['crawler_hits']):
+                ai_traffic = None  # nothing to show yet — keep the page quiet
+        except Exception:  # noqa: BLE001 — analytics plugin off/missing
+            ai_traffic = None
 
     return render(
         request,

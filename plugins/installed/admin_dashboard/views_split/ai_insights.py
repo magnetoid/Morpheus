@@ -14,13 +14,18 @@ from morpheus.app.views import (
 
 @staff_member_required
 def ai_insights(request: HttpRequest) -> HttpResponse:
-    insights: list[Any] = []
-    try:
-        from plugins.installed.ai_assistant.models import MerchantInsight
+    from plugins.registry import app_registry
 
-        insights = list(MerchantInsight.objects.order_by('-created_at')[:50])
-    except Exception:  # noqa: BLE001
-        insights = []
+    insights: list[Any] = []
+    # ai_assistant is optional: only read its rows while enabled, so disabling
+    # it empties this page (a disabled plugin is still importable — ADR 0013).
+    if app_registry.is_active('ai_assistant'):
+        try:
+            from plugins.installed.ai_assistant.models import MerchantInsight
+
+            insights = list(MerchantInsight.objects.order_by('-created_at')[:50])
+        except Exception:  # noqa: BLE001
+            insights = []
     return render(
         request,
         'admin_dashboard/ai_insights.html',

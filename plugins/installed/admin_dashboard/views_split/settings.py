@@ -159,6 +159,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     Returns ``{"ok": bool, "models": [{"id", "label"}], "error": str}``.
     """
     from morpheus.app.views import JsonResponse
+    from plugins.registry import app_registry
 
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
@@ -170,8 +171,6 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     base_url = (request.POST.get('base_url') or '').strip()
     ai_plugin = None
     try:
-        from plugins.registry import app_registry
-
         ai_plugin = app_registry.get('ai_assistant')
         if ai_plugin is not None:
             cfg = ai_plugin.get_config()
@@ -182,6 +181,10 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001
         pass
 
+    # ai_assistant is optional: a disabled (still-importable) plugin must not
+    # answer the probe — mirror settings_ai_disconnect's JSON contract.
+    if not app_registry.is_active('ai_assistant'):
+        return JsonResponse({'ok': False, 'error': 'ai_assistant unavailable'}, status=503)
     from plugins.installed.ai_assistant.services.probe import probe
 
     result = probe(provider, api_key=api_key, base_url=base_url)
@@ -454,7 +457,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 'warmup_extra_urls', (request.POST.get('warmup_extra_urls') or '').strip()
             )
             messages.success(request, 'Cache-warmup settings saved.')
-        elif action == 'optimize_images':
+        elif action == 'optimize_images' and app_registry.is_active('seo'):
             # Re-warm WebP/AVIF image variants in the background. Lives here
             # (the Caching page) rather than the SEO dashboard — ADR 0005,
             # superseding ADR 0002. Fail-soft when the broker is down.
@@ -469,7 +472,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 )
             except Exception as e:  # noqa: BLE001 — broker down: report, don't 500
                 messages.error(request, f'Could not start image optimization: {e}')
-        elif action == 'cf_patch_setting':
+        elif action == 'cf_patch_setting' and app_registry.is_active('cloudflare'):
             # Edit one Cloudflare cache setting (cache_level, browser_cache_ttl,
             # brotli, early_hints, polish, mirage) for a zone — ADR 0005. Only
             # the curated cache subset is editable here; everything else stays
@@ -498,7 +501,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 messages.error(request, f'Cloudflare API error: {e}')
             except Exception as e:  # noqa: BLE001
                 messages.error(request, f'Could not update Cloudflare setting: {e}')
-        elif action == 'cf_purge_all':
+        elif action == 'cf_purge_all' and app_registry.is_active('cloudflare'):
             zone_id = (request.POST.get('zone_id') or '').strip()
             try:
                 from plugins.installed.cloudflare.models import CloudflareZone
@@ -613,31 +616,38 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     }
 
     # ── Recent cache activity (across all CF zones) — last 10 purges ───────
+    # cloudflare is an optional plugin: only query it while it's enabled, so
+    # disabling it empties the edge section here (ADR 0013) — a disabled
+    # plugin is still importable, so a bare try/except would not.
+    cloudflare_active = app_registry.is_active('cloudflare')
     recent_activity = []
-    try:
-        from plugins.installed.cloudflare.models import CacheInvalidation
+    if cloudflare_active:
+        try:
+            from plugins.installed.cloudflare.models import CacheInvalidation
 
-        recent_activity = list(
-            CacheInvalidation.objects.select_related('zone').order_by('-created_at')[:10]
-        )
-    except Exception:  # noqa: BLE001
-        pass
+            recent_activity = list(
+                CacheInvalidation.objects.select_related('zone').order_by('-created_at')[:10]
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     # ── Cloudflare zone summary ────────────────────────────────────────────
     cf_zones = []
     cf_account_count = 0
-    try:
-        from plugins.installed.cloudflare.models import (
-            CacheInvalidation,
-            CloudflareAccount,
-            CloudflareZone,
-        )
+    recent_purges_count = 0
+    if cloudflare_active:
+        try:
+            from plugins.installed.cloudflare.models import (
+                CacheInvalidation,
+                CloudflareAccount,
+                CloudflareZone,
+            )
 
-        cf_zones = list(CloudflareZone.objects.select_related('account')[:10])
-        cf_account_count = CloudflareAccount.objects.count()
-        recent_purges_count = CacheInvalidation.objects.count()
-    except Exception:  # noqa: BLE001
-        recent_purges_count = 0
+            cf_zones = list(CloudflareZone.objects.select_related('account')[:10])
+            cf_account_count = CloudflareAccount.objects.count()
+            recent_purges_count = CacheInvalidation.objects.count()
+        except Exception:  # noqa: BLE001
+            recent_purges_count = 0
 
     # ── Cloudflare cache controls (live per-zone read; fail-soft) ──────────
     # ADR 0005: the six curated cache settings are editable here. One CF API
@@ -666,12 +676,13 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
 
     # ── Image-optimization last-run status (SEO task; ADR 0005) ────────────
     image_optimize_status = None
-    try:
-        from plugins.installed.seo.tasks import last_image_optimize_status
+    if app_registry.is_active('seo'):
+        try:
+            from plugins.installed.seo.tasks import last_image_optimize_status
 
-        image_optimize_status = last_image_optimize_status()
-    except Exception:  # noqa: BLE001
-        pass
+            image_optimize_status = last_image_optimize_status()
+        except Exception:  # noqa: BLE001
+            pass
 
     return render(
         request,
@@ -1228,9 +1239,15 @@ def email_templates_list(request: HttpRequest) -> HttpResponse:
     """Central email-templates list — core + every plugin's contributed
     templates, grouped by the owning app (the WooCommerce Settings → Emails
     pattern)."""
-    from plugins.installed.cms.models import EmailTemplate
+    from plugins.registry import app_registry
 
-    existing = {t.key: t for t in EmailTemplate.objects.all()}
+    # Overrides are stored (and applied, via EMAIL_TEMPLATE_OVERRIDE) by the
+    # optional cms plugin — with it disabled every row shows its default.
+    existing = {}
+    if app_registry.is_active('cms'):
+        from plugins.installed.cms.models import EmailTemplate
+
+        existing = {t.key: t for t in EmailTemplate.objects.all()}
     groups: dict[str, list] = {}
     for key, label, default_subject, group in _email_template_defs():
         tpl = existing.get(key)
@@ -1259,6 +1276,14 @@ def email_templates_list(request: HttpRequest) -> HttpResponse:
 @staff_member_required
 def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
     """Edit one template. Reset = delete the row → falls back to filesystem default."""
+    from django.http import Http404
+
+    from plugins.registry import app_registry
+
+    # The override row lives in (and is applied by) the optional cms plugin;
+    # without it there is nothing to read or write here.
+    if not app_registry.is_active('cms'):
+        raise Http404('Email template overrides need the CMS app enabled.')
     from plugins.installed.cms.models import EmailTemplate
 
     # Core + every plugin-contributed template is editable here.
@@ -1266,8 +1291,6 @@ def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
     label_map = {k: lbl for k, lbl, _, _ in defs}
     default_subject_map = {k: subj for k, _, subj, _ in defs}
     if key not in label_map:
-        from django.http import Http404
-
         raise Http404('Unknown template.')
 
     tpl = EmailTemplate.objects.filter(key=key).first()

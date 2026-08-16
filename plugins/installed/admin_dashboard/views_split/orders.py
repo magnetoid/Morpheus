@@ -7,6 +7,7 @@ from typing import Any
 
 from core.authz import require_capability
 from morpheus.app.views import (
+    Http404,
     HttpRequest,
     HttpResponse,
     get_object_or_404,
@@ -82,13 +83,18 @@ def orders_list(request: HttpRequest) -> HttpResponse:
     # sidebar entry — staff sees drafts and real orders side by side.
     draft_count = 0
     drafts_url = ''
-    try:
-        from plugins.installed.draft_orders.models import DraftOrder
+    from plugins.registry import app_registry
 
-        draft_count = DraftOrder.objects.exclude(status='converted').count()
-        drafts_url = '/dashboard/draft-orders/'
-    except Exception:  # noqa: BLE001, S110
-        pass
+    # draft_orders is optional: only query it while enabled, so disabling it
+    # removes the Drafts button here (a disabled plugin is still importable).
+    if app_registry.is_active('draft_orders'):
+        try:
+            from plugins.installed.draft_orders.models import DraftOrder
+
+            draft_count = DraftOrder.objects.exclude(status='converted').count()
+            drafts_url = '/dashboard/draft-orders/'
+        except Exception:  # noqa: BLE001, S110
+            pass
 
     return render(
         request,
@@ -197,6 +203,12 @@ def order_new(request: HttpRequest) -> HttpResponse:
     Real `orders.Order` rows are produced by the storefront checkout or by
     converting a draft — staff don't hand-craft FSM-managed orders.
     """
+    from plugins.registry import app_registry
+
+    # The page only produces draft_orders rows: with that optional plugin
+    # disabled there is nothing to create here — 404 (ADR 0013).
+    if not app_registry.is_active('draft_orders'):
+        raise Http404('The Draft orders app is disabled.')
     customers: list[Any] = []
     try:
         from django.contrib.auth import get_user_model

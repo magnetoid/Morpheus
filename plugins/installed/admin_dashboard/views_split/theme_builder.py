@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
@@ -25,6 +25,16 @@ from django.views.decorators.http import require_http_methods
 from morpheus.app.views import staff_member_required
 
 logger = logging.getLogger('morpheus.admin.theme_builder')
+
+
+def _require_cms() -> None:
+    """Every builder endpoint edits cms `Page`/`PageSection` rows, so with the
+    optional cms plugin disabled (still importable, tables still there) the
+    whole surface is meaningless — 404, as if its routes were gone (ADR 0013)."""
+    from plugins.registry import app_registry
+
+    if not app_registry.is_active('cms'):
+        raise Http404('The CMS app is disabled.')
 
 
 def _serialize_section_def(section) -> dict:
@@ -50,6 +60,7 @@ def _serialize_row(row) -> dict:
 
 @staff_member_required
 def builder(request: HttpRequest, page_id) -> HttpResponse:
+    _require_cms()
     from plugins.installed.cms.models import Page
     from themes.sections import section_registry
 
@@ -77,6 +88,7 @@ def builder(request: HttpRequest, page_id) -> HttpResponse:
 @require_http_methods(['POST'])
 def api_add(request: HttpRequest, page_id) -> JsonResponse:
     """Append a new section to a page. Returns the created row."""
+    _require_cms()
     from plugins.installed.cms.models import Page, PageSection
     from themes.sections import section_registry
 
@@ -107,6 +119,7 @@ def api_reorder(request: HttpRequest, page_id) -> JsonResponse:
     from the list is left where it is. Anything passed that isn't on
     this page is silently ignored.
     """
+    _require_cms()
     from plugins.installed.cms.models import Page, PageSection
 
     get_object_or_404(Page, pk=page_id)
@@ -129,6 +142,7 @@ def api_reorder(request: HttpRequest, page_id) -> JsonResponse:
 @require_http_methods(['POST'])
 def api_update(request: HttpRequest, page_id, row_id) -> JsonResponse:
     """Update a row's settings or visibility."""
+    _require_cms()
     from plugins.installed.cms.models import PageSection
 
     row = get_object_or_404(PageSection, pk=row_id, page_id=page_id)
@@ -151,6 +165,7 @@ def api_update(request: HttpRequest, page_id, row_id) -> JsonResponse:
 @csrf_protect
 @require_http_methods(['POST'])
 def api_delete(request: HttpRequest, page_id, row_id) -> JsonResponse:
+    _require_cms()
     from plugins.installed.cms.models import PageSection
 
     row = get_object_or_404(PageSection, pk=row_id, page_id=page_id)

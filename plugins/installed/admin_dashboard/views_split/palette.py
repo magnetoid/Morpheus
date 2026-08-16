@@ -73,7 +73,7 @@ def _nav_hits(q: str, ql: str) -> list[dict]:
     return hits
 
 
-def _entity_hits(q: str) -> list[dict]:
+def _entity_hits(q: str) -> list[dict]:  # noqa: PLR0912 — one fail-soft block per entity
     """Live matches across the commerce spine + catalog + content. Fail-soft."""
     from django.contrib.auth import get_user_model  # noqa: PLC0415
     from django.db.models import Q  # noqa: PLC0415
@@ -170,19 +170,24 @@ def _entity_hits(q: str) -> list[dict]:
         pass
 
     try:
-        from plugins.installed.cms.models import Page  # noqa: PLC0415
+        # cms is optional (ADR 0013): a disabled plugin is still importable, so
+        # gate on active-state or the palette keeps offering pages that 404.
+        from plugins.registry import app_registry  # noqa: PLC0415
 
-        for pg in Page.objects.filter(title__icontains=q)[:4]:
-            hits.append(
-                {
-                    'section': 'Content',
-                    'kind': 'page',
-                    'label': pg.title,
-                    'hint': f'/{pg.slug}',
-                    'url': f'/dashboard/cms/pages/{pg.id}/edit/',
-                    'icon': 'file-text',
-                }
-            )
+        if app_registry.is_active('cms'):
+            from plugins.installed.cms.models import Page  # noqa: PLC0415
+
+            for pg in Page.objects.filter(title__icontains=q)[:4]:
+                hits.append(
+                    {
+                        'section': 'Content',
+                        'kind': 'page',
+                        'label': pg.title,
+                        'hint': f'/{pg.slug}',
+                        'url': f'/dashboard/cms/pages/{pg.id}/edit/',
+                        'icon': 'file-text',
+                    }
+                )
     except Exception:  # noqa: BLE001, S110
         pass
 

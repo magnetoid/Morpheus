@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from morpheus.app.views import (
+    Http404,
     HttpRequest,
     HttpResponse,
     get_object_or_404,
@@ -23,8 +24,19 @@ from plugins.installed.admin_dashboard.views_split._shared import (
 )
 
 
+def _require_marketing() -> None:
+    """The coupon pages are the optional marketing plugin's surface: when it
+    is disabled (still importable, tables still there) they must not operate
+    — 404, as if the plugin's routes were gone (ADR 0013)."""
+    from plugins.registry import app_registry
+
+    if not app_registry.is_active('marketing'):
+        raise Http404('The Marketing app is disabled.')
+
+
 @staff_member_required
 def marketing_view(request: HttpRequest) -> HttpResponse:
+    _require_marketing()
     coupons: list[Any] = []
     try:
         from plugins.installed.marketing.models import Coupon
@@ -47,6 +59,7 @@ def marketing_view(request: HttpRequest) -> HttpResponse:
 
 @staff_member_required
 def coupon_new(request: HttpRequest) -> HttpResponse:
+    _require_marketing()
     if request.method == 'POST':
         form = CouponForm(request.POST)
         if form.is_valid():
@@ -72,6 +85,7 @@ def coupon_new(request: HttpRequest) -> HttpResponse:
 
 @staff_member_required
 def coupon_edit(request: HttpRequest, coupon_id: str) -> HttpResponse:
+    _require_marketing()
     from plugins.installed.marketing.models import Coupon
 
     coupon = get_object_or_404(Coupon, pk=coupon_id)
@@ -98,6 +112,7 @@ def coupon_edit(request: HttpRequest, coupon_id: str) -> HttpResponse:
 
 @staff_member_required
 def coupon_delete(request: HttpRequest, coupon_id: str) -> HttpResponse:
+    _require_marketing()
     from plugins.installed.marketing.models import Coupon
 
     coupon = get_object_or_404(Coupon, pk=coupon_id)

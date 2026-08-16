@@ -233,6 +233,15 @@ tree) and anything under `core/safety.py`'s protected paths. When extending it,
 keep the order and keep it fail-closed; a mutation test that removes any single
 guard must fail a test (`core/tests/test_component_updates.py`).
 
+**Landmine — literal `{{ … }}` in display text is a TemplateSyntaxError, and
+the page 500s for everyone, always.** `email_template_edit.html` documented
+placeholders as `<code>{{ "{{ order.order_number }}" }}</code>`; the lexer cuts a
+variable token at the FIRST `}}`, so the whole editor 500'd from 2026-06-13 to
+v0.45.0 — no test rendered it, and the surrounding disable-safety test had to be
+written *around* it. Wrap literal template syntax in `{% verbatim %}…{% endverbatim %}`,
+and compile every changed template with `get_template()` before shipping
+(sqlite tests + `manage.py check` do not catch this).
+
 **Landmine — a new sign-in path silently bypasses MFA.** Staff second factor
 (staff_mfa) hangs off the `AUTH_SECOND_FACTOR` filter, fired in
 `core/auth/views.py:otp_verify` *after* email-OTP and *before* `login()`. Any
@@ -461,6 +470,22 @@ shared dashboard settings-panel renderer
 value, and a blank submit preserves the existing secret. Never echo a stored
 secret (API key, SSO client secret) back as cleartext; mark secret fields
 `format: password` (guarded by `test_settings_secret_masking.py`).
+
+**Interim disable-safety (v0.45.0): every remaining shell→optional-plugin
+read is gated on `app_registry.is_active(<name>)`** — the ADR 0013 shape from
+`account_credits`, applied across `storefront/views/{catalog,content,home,vendor}.py`
+(book_product, metafields, product_videos, cms, crm, consent, marketplace) and
+`admin_dashboard/views_split/*` + `forms/*` (cloudflare, seo, cms, ai_assistant,
+ai_content, analytics, product_videos, metafields, marketing, draft_orders).
+Views that only exist *for* a plugin (coupons, theme builder, video CRUD,
+`orders/new`, email-template edit) return **404** when it is off. This is not
+the end state — a `try/except`+`is_active` in a shell is still a shell→plugin
+import (the pairs stay in the boundary baseline) — but the surface now
+disappears on disable, which is what the litmus test demands. Guarded by
+`storefront/tests/test_disable_safety.py` (toggles each plugin, GETs every
+page, and asserts three surfaces vanish) + `admin_dashboard/tests/test_disable_safety.py`.
+The right end state is still a contribution per surface (PDP gallery/facets,
+journal, settings panels) — `docs/plans/boundary-debt-2026-07.md`.
 
 **Known debt to repay (still fails the disable test):**
 the storefront account *summary* is fixed — `_account_summary` is now

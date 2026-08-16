@@ -200,7 +200,7 @@ smoked on the compose stack (CELERY_TASK_ALWAYS_EAGER only covers tests).
 Per the "maximal build-out" decision: **build, don't amputate.** One deploy per
 sub-batch.
 
-### P4a — Subscriptions actually charge — **PART 1 SHIPPED v0.40.0**
+### P4a — Subscriptions actually charge — **PART 1 SHIPPED v0.40.0, PART 2 v0.45.0**
 `subscriptions/views_storefront.py:54` creates active/trialing subs without
 payment; `billing/stripe_adapter.py:157` `start_subscription` is dead code;
 webhook reconciler (`webhooks.py:33`) can never fire; unpaid members get the
@@ -215,13 +215,28 @@ paid invoice) in one place, which also retroactively de-entitles rows already
 minted the wrong way with no data migration; and the signup view now refuses a
 paid plan rather than minting a membership that entitles nobody.
 
-**Part 2 (remaining):** the Stripe billing flow —
-- Wire `subscribe_view` → payment collection (SetupIntent) →
-  `StripeSubscriptionAdapter.start_subscription` against
-  `Plan.provider_price_id`; create local sub in `state='pending'` and let
-  `invoice.paid` reconcile to active (the reconciler exists — give it
-  producers). `payment_failed` → dunning state. Member discount granted only
-  to active/trialing paid states.
+**Part 2 — SHIPPED v0.45.0 (code complete; see the caveat):** the Stripe
+billing flow —
+- `subscribe_view` routes a paid **Stripe** plan to
+  `subscribe_start_view` (`/membership/subscribe/<plan>/`): a SetupIntent
+  (`payments.services.stripe.create_setup_intent`, `usage=off_session`) +
+  Payment Element — the same flow the account "saved cards" page runs live.
+  Stripe returns to `subscribe_confirm_view`, which **verifies the
+  caller-supplied SetupIntent** (fetched from Stripe: `succeeded` AND this
+  customer's vault — `StripeSubscriptionAdapter.payment_method_from_setup_intent`),
+  creates the local row, calls `start_subscription`, and **deletes the row if
+  Stripe refuses** so a failed attempt never leaves a "member" behind. No
+  `pending` state was added (no migration): the row exists only across the
+  start call, and entitlement never trusted the state anyway
+  (`entitling_subscriptions` requires the provider id). `invoice.paid` /
+  `payment_failed` reconcile from there (existing subscribers, now with a
+  producer). A paid plan on any other provider is still refused honestly.
+- **Caveat:** verified with the Stripe SDK mocked at its boundary + mutation
+  tests; **not yet exercised against Stripe test mode** (no test keys in the
+  environment). Before enabling a paid plan for real: create a Stripe-mode
+  plan, run one signup with a test card, and confirm the `invoice.paid`
+  webhook lands. Blast radius until then: nil — no paid Stripe plan exists on
+  dotbooks.store, and every other plan type behaves exactly as before.
 
 ### P4b — Draft-order conversion joins the real order path
 `draft_orders/services.py:44` bare-creates an Order with **no hooks** — no
